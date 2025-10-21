@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.utils.AddressVal
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -56,7 +57,7 @@ public class AtlassianRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from search API  {}", ex.getMessage());
+                log.error(NOISY, "HTTP client error while getting response from search API. Status: {}", statusCode, ex);
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnauthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
@@ -66,6 +67,13 @@ public class AtlassianRestClient {
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
                     log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
                 }
+                try {
+                    Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                }
+            } catch (RestClientException ex) {
+                log.error(NOISY, "REST client error while getting response from search API: ", ex);
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
                 } catch (InterruptedException e) {

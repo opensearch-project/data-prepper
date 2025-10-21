@@ -12,4 +12,9 @@ public class DownloadFailedException extends EngineFailureException {
     public DownloadFailedException(final String exceptionMsg) {
         super(exceptionMsg);
     }
+
+    public DownloadFailedException(final String exceptionMsg, Throwable cause){
+        super(exceptionMsg, cause);
+    }
+
 }

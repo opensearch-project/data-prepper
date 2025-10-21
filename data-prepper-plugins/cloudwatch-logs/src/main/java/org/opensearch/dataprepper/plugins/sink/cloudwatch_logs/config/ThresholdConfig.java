@@ -6,13 +6,15 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.model.constraints.ByteCountMax;
+import org.opensearch.dataprepper.model.constraints.ByteCountMin;
 
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 
 /**
  * The threshold config holds the different configurations for
@@ -20,59 +22,46 @@ import java.time.temporal.ChronoUnit;
  * restrictions.
  */
 public class ThresholdConfig {
+    public static final long ONE_MB = 1048576L;
     public static final int DEFAULT_BATCH_SIZE = 25;
-    public static final String DEFAULT_EVENT_SIZE = "256kb";
-    public static  final String DEFAULT_SIZE_OF_REQUEST = "1mb";
-    public static final int DEFAULT_RETRY_COUNT = 5;
-    public static final long DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
-    public static final long DEFAULT_BACKOFF_TIME = 500;
+    public static final ByteCount DEFAULT_MAX_EVENT_SIZE = ByteCount.parse("1mb");
+    public static  final ByteCount DEFAULT_MAX_REQUEST_SIZE = ByteCount.parse("1mb");
+    public static final long DEFAULT_FLUSH_INTERVAL = 60;
 
-    @JsonProperty("batch_size")
-    @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
+    @JsonProperty(value = "batch_size", defaultValue="25")
+    @Min(1)
+    @Max(10000)
     private int batchSize = DEFAULT_BATCH_SIZE;
 
-    @JsonProperty("max_event_size")
-    @Size(min = 1, max = 256, message = "max_event_size amount should be between 1 to 256 kilobytes")
-    private String maxEventSize = DEFAULT_EVENT_SIZE;
+    @JsonProperty(value = "max_event_size", defaultValue="1mb")
+    @ByteCountMin("1b")
+    @ByteCountMax("1mb")
+    private ByteCount maxEventSize = DEFAULT_MAX_EVENT_SIZE;
 
-    @JsonProperty("max_request_size")
-    private String maxRequestSize = DEFAULT_SIZE_OF_REQUEST;
+    @JsonProperty(value = "max_request_size", defaultValue="1mb")
+    @ByteCountMin("1b")
+    @ByteCountMax("1mb")
+    private ByteCount maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
 
-    @JsonProperty("retry_count")
-    @Size(min = 1, max = 15, message = "retry_count amount should be between 1 and 15")
-    private int retryCount = DEFAULT_RETRY_COUNT;
-
-    @JsonProperty("log_send_interval")
+    @JsonProperty("flush_interval")
     @DurationMin(seconds = 60)
     @DurationMax(seconds = 3600)
-    private Duration logSendInterval = Duration.ofSeconds(DEFAULT_LOG_SEND_INTERVAL_TIME);
-
-    @JsonProperty("back_off_time")
-    @DurationMin(millis = 500)
-    @DurationMax(millis = 1000)
-    private Duration backOffTime = Duration.ofMillis(DEFAULT_BACKOFF_TIME);
+    private Duration flushInterval = Duration.ofSeconds(DEFAULT_FLUSH_INTERVAL);
 
     public int getBatchSize() {
         return batchSize;
     }
 
     public long getMaxEventSizeBytes() {
-        return ByteCount.parse(maxEventSize).getBytes();
+        return maxEventSize.getBytes();
     }
 
     public long getMaxRequestSizeBytes() {
-        return ByteCount.parse(maxRequestSize).getBytes();
+        return maxRequestSize.getBytes();
     }
 
-    public int getRetryCount() {
-        return retryCount;
+    public long getFlushInterval() {
+        return flushInterval.getSeconds();
     }
 
-    public long getLogSendInterval() {
-        return logSendInterval.getSeconds();
-    }
-
-    public long getBackOffTime() {
-        return (backOffTime.get(ChronoUnit.NANOS) / 1000000) + (backOffTime.getSeconds() * 1000);
-    }
 }

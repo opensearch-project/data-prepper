@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.TestProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,9 @@ public class KafkaBuffer_KmsIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
+    @Mock
+    private EncryptionSupplier encryptionSupplier;
+
     private Random random;
 
     private BufferTopicConfig topicConfig;
@@ -104,25 +108,6 @@ public class KafkaBuffer_KmsIT {
 
         topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
 
-        final Map<String, Object> topicConfigMap = Map.of(
-                "name", topicName,
-                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
-                "create_topic", true
-        );
-
-        topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
-
-        bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
-
-        LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
-
-        final Map<String, Object> bufferConfigMap = Map.of(
-                "topics", List.of(topicConfigMap),
-                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
-                "encryption", Map.of("type", "none")
-        );
-        kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
-
         kmsKey = System.getProperty("tests.kafka.kms_key");
         kmsClient = KmsClient.create();
 
@@ -132,7 +117,7 @@ public class KafkaBuffer_KmsIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, null, encryptionSupplier);
     }
 
     @Nested
@@ -160,14 +145,25 @@ public class KafkaBuffer_KmsIT {
             encryptCipher = Cipher.getInstance("AES");
             encryptCipher.init(Cipher.ENCRYPT_MODE, secretKey);
 
+            final Map<String, Object> topicConfigMap = Map.of(
+                    "name", topicName,
+                    "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                    "create_topic", true,
+                    "encryption_key", aesKey,
+                    "kms", Map.of("key_id", kmsKey)
+            );
 
-            final Map<String, Object> topicConfigMap = objectMapper.convertValue(topicConfig, Map.class);
-            topicConfigMap.put("encryption_key", aesKey);
-            topicConfigMap.put("kms", Map.of(
-                    "key_id", kmsKey
-            ));
-            final Map<String, Object> bufferConfigMap = objectMapper.convertValue(kafkaBufferConfig, Map.class);
-            bufferConfigMap.put("topics", List.of(topicConfigMap));
+            topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
+
+            bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
+
+            LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
+
+            final Map<String, Object> bufferConfigMap = Map.of(
+                    "topics", List.of(topicConfigMap),
+                    "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                    "encryption", Map.of("type", "none")
+            );
             kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
         }
 

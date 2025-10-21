@@ -121,6 +121,8 @@ public class OpenSearchSinkIT {
     private static final String TEST_INDEX_TEMPLATE_V2_FILE = "test-composable-index-template-v2.json";
     private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
     private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
+    private static final String ALTERNATE_RAW_SPAN_FILE_2_ID_AS_DEFAULT_SPAN_1 = "raw-span-2-same-id-as-1.json";
+
     private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
     private static final String INCLUDE_TYPE_NAME_FALSE_URI = "?include_type_name=false";
     private static final String TRACE_INGESTION_TEST_DISABLED_REASON = "Trace ingestion is not supported for ES 6";
@@ -368,7 +370,7 @@ public class OpenSearchSinkIT {
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
         assertThat(retSources.size(), equalTo(2));
         assertThat(retSources, hasItems(expData1, expData2));
-        assertThat(getDocumentCount(expIndexAlias, "_id", (String) expData1.get("spanId")), equalTo(Integer.valueOf(1)));
+        assertThat(getDocumentCount(expIndexAlias, "_id", (String) expData1.get("traceId") + "/" + (String) expData1.get("spanId")), equalTo(Integer.valueOf(1)));
         sink.shutdown();
 
         // Verify metrics
@@ -411,10 +413,32 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 792.0 : 2058.0;
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 799.0 : 2058.0;
         assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
         assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
     }
+
+    @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputRawSpanWithEqualId(final boolean estimateBulkSizeUsingCompression,
+                                         final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
+        final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
+        final String testDoc2 = readDocFromFile(ALTERNATE_RAW_SPAN_FILE_2_ID_AS_DEFAULT_SPAN_1);
+        final ObjectMapper mapper = new ObjectMapper();
+
+        final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+                                                                                       estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
+        final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+        sink.output(testRecords);
+
+        final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+        assertThat("Spans should not overwrite each other",retSources.size(), equalTo(2));
+        sink.shutdown();
+    }
+
 
     @DisabledIf(value = "isES6", disabledReason = TRACE_INGESTION_TEST_DISABLED_REASON)
     @ParameterizedTest
@@ -473,7 +497,7 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1078.0 : 2072.0;
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1085.0 : 2072.0;
         assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
         assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
@@ -1667,6 +1691,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
         metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
         metadata.put(IndexConfiguration.FLUSH_TIMEOUT, -1);
+        metadata.put("insecure", true);
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {

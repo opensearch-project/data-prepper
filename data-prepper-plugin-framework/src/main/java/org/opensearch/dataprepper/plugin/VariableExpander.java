@@ -57,8 +57,47 @@ public class VariableExpander {
 
                     })
                     .findFirst()
-                    .orElseGet(() -> objectMapper.convertValue(rawValue, destinationType));
+                    .orElseGet(() -> {
+                        // This change is to support any call
+                        // to validate the secret with a placeholder secret expression like "AWS_SECRET_EXPRESSION"
+                        // which is not of a secrets expression that we would check (filter check above fails) but
+                        // still expects an instance of PluginConfigVariable object returned
+                        if (destinationType.equals(PluginConfigVariable.class)) {
+                            return destinationType.cast(new ImmutablePluginConfigVariable(rawValue));
+                        }
+                        return objectMapper.convertValue(rawValue, destinationType);
+                    });
         }
         return objectMapper.readValue(jsonParser, destinationType);
     }
+
+    private static class ImmutablePluginConfigVariable implements PluginConfigVariable {
+        private final Object rawValue;
+
+        private ImmutablePluginConfigVariable(final Object rawValue) {
+            this.rawValue = rawValue;
+        }
+
+        @Override
+        public Object getValue() {
+            return rawValue;
+        }
+
+        @Override
+        public void setValue(Object updatedValue) {
+            throw new UnsupportedOperationException("ImmutablePluginConfigVariable doesn't support this operation");
+        }
+
+        @Override
+        public void refresh() {
+            // No-op as this is immutable
+            throw new UnsupportedOperationException("ImmutablePluginConfigVariable doesn't support this operation");
+        }
+
+        @Override
+        public boolean isUpdatable() {
+            return false;
+        }
+    }
+
 }

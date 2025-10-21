@@ -1,0 +1,11 @@
+simple-pipeline:
+  workers: 2
+  source:
+    random:
+  buffer:
+    zero:
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - stdout:

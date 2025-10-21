@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.model.buffer.DelegatingBuffer;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -93,6 +94,8 @@ public class KafkaBufferOTelIT {
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
     private BufferTopicConfig topicConfig;
+    @Mock
+    private EncryptionSupplier encryptionSupplier;
 
     private DelegatingBuffer buffer;
 
@@ -294,7 +297,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_metrics_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelMetricDecoder(OTelOutputFormat.OPENSEARCH), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelMetricDecoder(OTelOutputFormat.OPENSEARCH), null, null, encryptionSupplier);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportMetricsServiceRequest request = createExportMetricsServiceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -366,7 +369,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_logs_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelLogsDecoder(OTelOutputFormat.OPENSEARCH), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelLogsDecoder(OTelOutputFormat.OPENSEARCH), null, null, encryptionSupplier);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportLogsServiceRequest request = createExportLogsRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -437,7 +440,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_traces_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelTraceDecoder(OTelOutputFormat.OPENSEARCH), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelTraceDecoder(OTelOutputFormat.OPENSEARCH), null, null, encryptionSupplier);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportTraceServiceRequest request = createExportTraceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);

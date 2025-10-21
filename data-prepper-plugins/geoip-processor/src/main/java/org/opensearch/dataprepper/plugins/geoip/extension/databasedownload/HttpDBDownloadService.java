@@ -53,7 +53,6 @@ public class HttpDBDownloadService implements DBSource {
         for (final String key: databasePaths) {
             geoIPFileManager.createDirectoryIfNotExist(tarDir);
             try {
-                initiateSSL();
                 buildRequestAndDownloadFile(maxMindDatabaseConfig.getDatabasePaths().get(key), downloadTarFilepath);
                 final File tarFile = decompressAndgetTarFile(tarDir, downloadTarFilepath);
                 unTarFile(tarFile, new File(destinationDirectory), key);

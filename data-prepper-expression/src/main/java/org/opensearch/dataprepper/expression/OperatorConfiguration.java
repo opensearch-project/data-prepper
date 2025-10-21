@@ -274,11 +274,6 @@ class OperatorConfiguration {
     }
 
     @Bean
-    public AddBinaryOperator concatOperator() {
-        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, null); 
-    }
-
-    @Bean
     public GenericTypeOfOperator typeOfOperator() {
         return new GenericTypeOfOperator(DataPrepperExpressionParser.TYPEOF, typeOf);
     }
@@ -417,7 +412,7 @@ class OperatorConfiguration {
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
                 Map.of(
-                        Integer.class, (lhs, rhs) -> ((double)(int)lhs) /((double)(int)rhs),
+                        Integer.class, (lhs, rhs) -> ((double)(int)lhs) / ((double)(int)rhs),
                         Float.class, (lhs, rhs) -> (float)(int)lhs / (Float) rhs,
                         Long.class, (lhs, rhs) -> (double)(int)lhs / (Long) rhs,
                         Double.class, (lhs, rhs) -> (double)(int)lhs / (Double) rhs
@@ -450,5 +445,19 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Double.class, doubleOperations);
 
         return new ArithmeticBinaryOperator(DataPrepperExpressionParser.DIVIDE, operandsToOperationMap);
+    }
+
+    @Bean
+    public ArithmeticBinaryOperator modOperator() {
+        final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
+                operandsToOperationMap = new HashMap<>();
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
+                Map.of(
+                        Integer.class, (lhs, rhs) -> ((int)lhs) % ((int)rhs)
+                );
+
+        operandsToOperationMap.put(Integer.class, intOperations);
+
+        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.MOD, operandsToOperationMap);
     }
 }

@@ -9,12 +9,12 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManagerFactory
 import org.opensearch.dataprepper.plugins.source.rds.stream.ReplicationLogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -65,6 +66,8 @@ public class RdsService {
     private final RdsSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
+    private final PipelineDescription pipelineDescription;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -78,13 +81,16 @@ public class RdsService {
                       final ClientFactory clientFactory,
                       final PluginMetrics pluginMetrics,
                       final AcknowledgementSetManager acknowledgementSetManager,
-                      final PluginConfigObservable pluginConfigObservable) {
+                      final PluginConfigObservable pluginConfigObservable,
+                      final PipelineDescription pipelineDescription) {
         this.sourceCoordinator = sourceCoordinator;
         this.eventFactory = eventFactory;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.rdsSourceAggregateMetrics = new RdsSourceAggregateMetrics();
+        this.pipelineDescription = pipelineDescription;
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -110,12 +116,12 @@ public class RdsService {
         DbTableMetadata dbTableMetadata = getDbTableMetadata(dbMetadata, schemaManager);
 
         leaderScheduler = new LeaderScheduler(
-                sourceCoordinator, sourceConfig, s3PathPrefix,  schemaManager, dbTableMetadata);
+                sourceCoordinator, sourceConfig, s3PathPrefix, schemaManager, dbTableMetadata, pipelineDescription.getPipelineName());
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
             final SnapshotManager snapshotManager = new SnapshotManager(rdsApiStrategy);
-            final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient);
+            final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient, rdsSourceAggregateMetrics);
             exportScheduler = new ExportScheduler(
                     sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
             dataFileScheduler = new DataFileScheduler(
@@ -125,7 +131,8 @@ public class RdsService {
         }
 
         if (sourceConfig.isStreamEnabled()) {
-            ReplicationLogClientFactory replicationLogClientFactory = new ReplicationLogClientFactory(sourceConfig, rdsClient, dbMetadata);
+            ReplicationLogClientFactory replicationLogClientFactory = new ReplicationLogClientFactory(
+                    sourceConfig, rdsClient, dbMetadata, rdsSourceAggregateMetrics);
 
             if (sourceConfig.isTlsEnabled()) {
                 replicationLogClientFactory.setSSLMode(SSLMode.REQUIRED);
@@ -199,7 +206,7 @@ public class RdsService {
         if (sourceCoordinator.getPartitionPrefix() != null ) {
             // The prefix will be used in RDS export, which has a limit of 60 characters.
             final String uniqueIdentifier = IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
+            s3PathPrefix = s3UserPathPrefix.isEmpty() ? uniqueIdentifier : s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
             LOG.info("Unique identifier used in S3 path prefix is {}", uniqueIdentifier);
         } else {
             s3PathPrefix = s3UserPathPrefix;
@@ -213,10 +220,9 @@ public class RdsService {
     }
 
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
-        TableFilterConfig tableFilterConfig = sourceConfig.getTables();
-        Set<String> tableNames = schemaManager.getTableNames(tableFilterConfig.getDatabase());
-        tableFilterConfig.applyTableFilter(tableNames);
-        LOG.info("These tables will be include in processing: {}", tableNames);
+        Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getDatabase());
+        sourceConfig.applyTableFilter(tableNames);
+        LOG.info("These tables will be included in processing: {}", tableNames);
         return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
 }

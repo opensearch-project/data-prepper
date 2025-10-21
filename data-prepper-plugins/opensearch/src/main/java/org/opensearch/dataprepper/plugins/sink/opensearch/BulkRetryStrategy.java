@@ -9,19 +9,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
+import jakarta.json.stream.JsonParsingException;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.client.opensearch.core.bulk.OperationType;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -49,6 +53,7 @@ public final class BulkRetryStrategy {
     static final long INITIAL_DELAY_MS = 50;
     static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
     static final String VERSION_CONFLICT_EXCEPTION_TYPE = "version_conflict_engine_exception";
+    private static final int DELETE_404_MAX_RETRIES = 3;
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
@@ -99,6 +104,14 @@ public final class BulkRetryStrategy {
                     RestStatus.REQUEST_TIMEOUT.getStatus()
             ));
 
+    private static final Set<Integer> POTENTIAL_DUPLICATES_ERRORS = Set.of(
+            RestStatus.INTERNAL_SERVER_ERROR.getStatus(),
+            RestStatus.GATEWAY_TIMEOUT.getStatus());
+
+    private static final Set<Class<? extends Exception>> SOCKET_TIMEOUT_EXCEPTIONS = Set.of(
+            SocketTimeoutException.class,
+            JsonParsingException.class);
+
     private final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction;
     private final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure;
     private final PluginMetrics pluginMetrics;
@@ -119,6 +132,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestServerErrors;
     private final Counter documentsVersionConflictErrors;
     private final Counter documentsDuplicates;
+    private final ExistingDocumentQueryManager existingDocumentQueryManager;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -136,6 +150,7 @@ public final class BulkRetryStrategy {
         BulkResponse getResponse() {
             return response;
         }
+        Exception getException() { return exception; }
         String getExceptionMessage() {
             return exception != null ? exception.getMessage() : "-";
         }
@@ -147,7 +162,9 @@ public final class BulkRetryStrategy {
                              final int maxRetries,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
                              final String pipelineName,
-                             final String pluginName) {
+                             final String pluginName,
+                             final ExistingDocumentQueryManager existingDocumentQueryManager) {
+        this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.pluginMetrics = pluginMetrics;
@@ -193,16 +210,18 @@ public final class BulkRetryStrategy {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
         BulkOperationRequestResponse operationResponse;
         BulkResponse response = null;
+        Exception exception = null;
         AccumulatingBulkRequest request = bulkRequest;
         int attempt = 1;
         do {
-            operationResponse = handleRetry(request, response, attempt);
+            operationResponse = handleRetry(request, response, attempt, exception);
             if (operationResponse != null) {
                 final long delayMillis = backoff.nextDelayMillis(attempt++);
                 String exceptionMessage = "";
                 request = operationResponse.getBulkRequest();
                 response = operationResponse.getResponse();
                 exceptionMessage = operationResponse.getExceptionMessage();
+                exception = operationResponse.getException();
                 if (delayMillis < 0) {
                     RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries (configured value %d. Last exception message: %s)", maxRetries, exceptionMessage));
                     handleFailures(request, null, e);
@@ -220,7 +239,7 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
-            if (isItemInError(bulkItemResponse) && !NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
+            if (isItemInError(bulkItemResponse) && canRetryItem(bulkItemResponse)) {
                 return true;
             }
         }
@@ -233,12 +252,42 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((OpenSearchException) e).status())));
     }
 
+    private boolean canRetryItem(final BulkResponseItem bulkItemResponse) {
+        return canRetryItem(bulkItemResponse, 1);
+    }
+
+    private boolean canRetryItem(final BulkResponseItem bulkItemResponse, final int attemptNumber) {
+        if (isDeleteOperationWithNotFoundError(bulkItemResponse)) {
+            return canRetryDeleteNotFoundOperation(bulkItemResponse, attemptNumber);
+        }
+        
+        return isGenerallyRetryableOperation(bulkItemResponse);
+    }
+
+    private boolean isDeleteOperationWithNotFoundError(final BulkResponseItem bulkItemResponse) {
+        return bulkItemResponse.status() == RestStatus.NOT_FOUND.getStatus() &&
+               bulkItemResponse.operationType() == OperationType.Delete;
+    }
+
+    private boolean canRetryDeleteNotFoundOperation(final BulkResponseItem bulkItemResponse, final int attemptNumber) {
+        if (attemptNumber > DELETE_404_MAX_RETRIES) {
+            LOG.info("DELETE operation for index '{}' reached maximum retry limit ({}) for 404 errors, sending to DLQ", 
+                    bulkItemResponse.index(), DELETE_404_MAX_RETRIES);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isGenerallyRetryableOperation(final BulkResponseItem bulkItemResponse) {
+        return !NON_RETRY_STATUS.contains(bulkItemResponse.status());
+    }
+
     private BulkOperationRequestResponse handleRetriesAndFailures(final AccumulatingBulkRequest bulkRequestForRetry,
-                                                                  final int retryCount,
+                                                                  final int attemptNumber,
                                                                   final BulkResponse bulkResponse,
                                                                   final Exception exceptionFromRequest) {
         final boolean doRetry = (Objects.isNull(exceptionFromRequest)) ? canRetry(bulkResponse) : canRetry(exceptionFromRequest);
-        if (!Objects.isNull(bulkResponse) && retryCount == 1) { // first attempt
+        if (!Objects.isNull(bulkResponse) && attemptNumber == 1) { 
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (!isItemInError(bulkItemResponse)) {
                     sentDocumentsOnFirstAttemptCounter.increment();
@@ -246,8 +295,8 @@ public final class BulkRetryStrategy {
             }
         }
         if (doRetry) {
-            if (retryCount % 5 == 0) {
-                LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, exceptionFromRequest);
+            if (attemptNumber % 5 == 1) { 
+                LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
@@ -285,8 +334,11 @@ public final class BulkRetryStrategy {
         bulkRequestFailedCounter.increment();
     }
 
-    private BulkOperationRequestResponse handleRetry(final AccumulatingBulkRequest request, final BulkResponse response, int retryCount) throws InterruptedException {
-        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+    private BulkOperationRequestResponse handleRetry(final AccumulatingBulkRequest request,
+                                                     final BulkResponse response,
+                                                     int attemptNumber,
+                                                     final Exception previousException) throws InterruptedException {
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response, previousException, attemptNumber);
         if (bulkRequestForRetry.getOperationsCount() == 0) {
             return null;
         }
@@ -296,13 +348,13 @@ public final class BulkRetryStrategy {
             bulkResponse = requestFunction.apply(bulkRequestForRetry);
         } catch (Exception e) {
             incrementErrorCounters(e);
-            return handleRetriesAndFailures(bulkRequestForRetry, retryCount, null, e);
+            return handleRetriesAndFailures(bulkRequestForRetry, attemptNumber, null, e);
         }
         if (bulkResponse.errors()) {
-            return handleRetriesAndFailures(bulkRequestForRetry, retryCount, bulkResponse, null);
+            return handleRetriesAndFailures(bulkRequestForRetry, attemptNumber, bulkResponse, null);
         } else {
             final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
-            final boolean firstAttempt = (retryCount == 1);
+            final boolean firstAttempt = (attemptNumber == 1);
             if (firstAttempt) {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
@@ -317,7 +369,14 @@ public final class BulkRetryStrategy {
     }
 
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
-            final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response) {
+            final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response, final Exception previousException, final int attemptNumber) {
+        if (shouldSendAllForQuerying(previousException)) {
+            for (final BulkOperationWrapper bulkOperationWrapper : request.getOperations()) {
+                existingDocumentQueryManager.addBulkOperation(bulkOperationWrapper);
+            }
+            return bulkRequestSupplier.get();
+        }
+
         if (response == null) {
             // first attempt or retry due to Exception
             return request;
@@ -327,9 +386,15 @@ public final class BulkRetryStrategy {
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 BulkOperationWrapper bulkOperation =
-                    (BulkOperationWrapper)request.getOperationAt(index);
+                        (BulkOperationWrapper)request.getOperationAt(index);
                 if (isItemInError(bulkItemResponse)) {
-                    if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
+                    if (existingDocumentQueryManager != null && POTENTIAL_DUPLICATES_ERRORS.contains(bulkItemResponse.status())) {
+                        existingDocumentQueryManager.addBulkOperation(bulkOperation);
+                        index++;
+                        continue;
+                    }
+
+                    if (canRetryItem(bulkItemResponse, attemptNumber)) {
                         requestToReissue.addOperation(bulkOperation);
                     } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
@@ -415,5 +480,18 @@ public final class BulkRetryStrategy {
 
     private Counter getDocumentStatusCounter(final int status) {
         return pluginMetrics.counterWithTags(DOCUMENT_STATUSES, "status", Integer.toString(status));
+    }
+
+    private boolean shouldSendAllForQuerying(final Exception exception) {
+        if (exception != null && existingDocumentQueryManager != null) {
+            LOG.warn("Received exception that may result in querying for duplicate documents", exception);
+            if (SOCKET_TIMEOUT_EXCEPTIONS.contains(exception.getClass())) {
+                return true;
+            }
+
+            return exception instanceof OpenSearchException && POTENTIAL_DUPLICATES_ERRORS.contains(((OpenSearchException) exception).status());
+        }
+
+        return false;
     }
 }

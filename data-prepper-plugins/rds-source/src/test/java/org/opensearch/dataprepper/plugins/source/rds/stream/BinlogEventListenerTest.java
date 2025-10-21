@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
@@ -208,7 +209,7 @@ class BinlogEventListenerTest {
         // verify rowList and bulkActionList that were sent to handleRowChangeEvent() were correct
         ArgumentCaptor<List<Serializable[]>> rowListArgumentCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionListArgumentCaptor = ArgumentCaptor.forClass(List.class);
-        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListArgumentCaptor.capture(), bulkActionListArgumentCaptor.capture());
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListArgumentCaptor.capture(), bulkActionListArgumentCaptor.capture(), eq(StreamEventType.UPDATE));
         List<Serializable[]> rowList = rowListArgumentCaptor.getValue();
         List<OpenSearchBulkActions> bulkActionList = bulkActionListArgumentCaptor.getValue();
 

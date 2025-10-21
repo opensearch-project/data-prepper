@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 
 import java.util.concurrent.ExecutorService;
@@ -58,7 +58,7 @@ public class JiraSourceTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
-    private Crawler crawler;
+    private PaginationCrawler crawler;
     @Mock
     private EnhancedSourceCoordinator sourceCooridinator;
     @Mock

@@ -27,6 +27,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfigSupplier;
+import org.opensearch.dataprepper.plugins.kinesis.source.apihandler.KinesisClientApiHandler;
+import org.opensearch.dataprepper.plugins.kinesis.source.apihandler.KinesisClientApiRetryHandler;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisShardRecordProcessorFactory;
@@ -178,8 +180,8 @@ public class KinesisService {
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisClientApiHandler(kinesisClient, Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
-                                .withMaxAttempts(NUM_OF_RETRIES), NUM_OF_RETRIES)),
+                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisClientApiHandler(kinesisClient, new KinesisClientApiRetryHandler(Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                                .withMaxAttempts(NUM_OF_RETRIES), NUM_OF_RETRIES))),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory
                 )

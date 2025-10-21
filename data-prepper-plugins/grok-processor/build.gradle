@@ -12,7 +12,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation "io.krakens:java-grok:0.1.9"
     implementation 'io.micrometer:micrometer-core'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:plugin-test-framework')
 }
 
 jacocoTestCoverageVerification {

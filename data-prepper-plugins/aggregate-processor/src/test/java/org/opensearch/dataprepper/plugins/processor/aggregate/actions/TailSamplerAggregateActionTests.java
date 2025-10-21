@@ -87,6 +87,19 @@ public class TailSamplerAggregateActionTests {
     }
 
     @Test
+    void testTailSamplerAggregationWithEmptyGroupStateReturnsNull() {
+        final Duration testWaitPeriod = Duration.ofSeconds(3);
+        final int testPercent = 100;
+        when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
+        when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn("");
+        tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Map.of());
+        final AggregateActionOutput actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        assertThat(actionOutput, equalTo(null));
+    }
+
+    @Test
     void testTailSamplerAggregateWithErrorCondition() throws InterruptedException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
         final int testPercent = 0;

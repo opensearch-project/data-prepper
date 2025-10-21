@@ -5,66 +5,50 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
-import org.opensearch.dataprepper.core.pipeline.PipelineRunner;
-import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.event.AggregateEventHandle;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
-import org.opensearch.dataprepper.core.pipeline.Pipeline;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSet;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetMetrics;
+import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.ProcessWorker;
+import org.opensearch.dataprepper.core.pipeline.ProcessorProvider;
+import org.opensearch.dataprepper.core.pipeline.ProcessorRegistry;
+import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
+import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.AppendAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.AppendAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateActionConfig;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.OutputFormat;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateActionConfig;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateActionConfig;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateAction;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
-import org.opensearch.dataprepper.plugins.processor.aggregate.actions.OutputFormat;
-import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateActionConfig;
 
-import static org.awaitility.Awaitility.await;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.hamcrest.MatcherAssert.assertThat;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThan;
-
-
-import org.apache.commons.lang3.RandomStringUtils;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -72,20 +56,36 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
+
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 
 public class AggregateProcessorITWithAcks {
     private static final int testValue = 1;
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
-    private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_EVENTS_PER_BATCH = 5;
     private static final Duration TEST_TIMEOUT = Duration.ofSeconds(30);
 
     @Mock
     private Pipeline pipeline;
+    @Mock
+    private ProcessorProvider processorProvider;
     @Mock
     private Buffer buffer;
     @Mock
@@ -129,6 +129,7 @@ public class AggregateProcessorITWithAcks {
         pipeline = mock(Pipeline.class);
         source = mock(Source.class);
         buffer = mock(Buffer.class);
+        processorProvider = mock(ProcessorProvider.class);
         processors = List.of();
         aggregateProcessorConfig = mock(AggregateProcessorConfig.class);
         actionConfiguration = mock(PluginModel.class);
@@ -144,6 +145,8 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(null);
+        when(pipeline.getSingleThreadUnsafeProcessorProvider()).thenReturn(processorProvider);
+        when(processorProvider.getProcessors()).thenReturn(processors);
 
         records = getRecords(testKey, testValue, acknowledgementSet);
         acknowledgementSet.complete();
@@ -199,15 +202,14 @@ public class AggregateProcessorITWithAcks {
                 .thenReturn(aggregateAction);
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -231,15 +233,14 @@ public class AggregateProcessorITWithAcks {
 
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -264,15 +265,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -297,15 +297,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
 
             processWorker.run();
@@ -326,15 +325,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -357,15 +355,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -415,15 +412,14 @@ public class AggregateProcessorITWithAcks {
 
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -470,15 +466,14 @@ public class AggregateProcessorITWithAcks {
         });
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -501,15 +496,14 @@ public class AggregateProcessorITWithAcks {
                 .thenReturn(aggregateAction);
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -534,7 +528,7 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
@@ -542,8 +536,7 @@ public class AggregateProcessorITWithAcks {
                     .thenReturn(futureHelperResult);
 
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -570,15 +563,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -598,15 +590,14 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final Processor processor = new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
         processors = List.of(processor);
-        when(pipeline.getProcessors()).thenReturn(processors);
+        when(processorProvider.getProcessors()).thenReturn(processors);
         final FutureHelperResult<Void> futureHelperResult = mock(FutureHelperResult.class);
         when(futureHelperResult.getFailedReasons()).thenReturn(Collections.emptyList());
         try (final MockedStatic<FutureHelper> futureHelperMockedStatic = mockStatic(FutureHelper.class)) {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            PipelineRunner pipelineRunner = new PipelineRunnerImpl(pipeline);
-            final ProcessWorker processWorker = new ProcessWorker(pipelineRunner);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)

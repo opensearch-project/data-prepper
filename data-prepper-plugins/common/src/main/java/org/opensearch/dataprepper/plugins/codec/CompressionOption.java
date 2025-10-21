@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.codec;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 
 import java.util.Arrays;
@@ -16,6 +17,7 @@ public enum CompressionOption {
     NONE("none"),
     GZIP("gzip"),
     SNAPPY("snappy"),
+    ZSTD("zstd"),
     AUTOMATIC("automatic");
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
@@ -27,7 +29,15 @@ public enum CompressionOption {
     private static final Map<String, DecompressionEngine> DECOMPRESSION_ENGINE_MAP = Map.of(
             "none", new NoneDecompressionEngine(),
             "gzip", new GZipDecompressionEngine(),
-            "snappy", new SnappyDecompressionEngine()
+            "snappy", new SnappyDecompressionEngine(),
+            "zstd", new ZstdDecompressionEngine()
+    );
+
+    private static final Map<String, CompressionEngine> COMPRESSION_ENGINE_MAP = Map.of(
+            "none", new NoneCompressionEngine(),
+            "gzip", new GZipCompressionEngine(),
+            "snappy", new SnappyCompressionEngine(),
+            "zstd", new ZstdCompressionEngine()
     );
 
     private final String option;
@@ -44,6 +54,10 @@ public enum CompressionOption {
         }else {
             return CompressionOption.NONE;
         }
+    }
+
+    public CompressionEngine getCompressionEngine() {
+        return COMPRESSION_ENGINE_MAP.getOrDefault(this.option, new NoneCompressionEngine());
     }
 
     public DecompressionEngine getDecompressionEngine() {

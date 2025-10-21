@@ -35,7 +35,8 @@ public class KeyGenerator {
      */
     public String generateKeyForEvent(final Event event) {
         final String pathPrefix = s3BucketSelector != null ? s3BucketSelector.getPathPrefix() : ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator);
+        final String safePathPrefix = pathPrefix != null ? pathPrefix : "";
         final String namePattern = ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension(), event, expressionEvaluator);
-        return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
+        return (!safePathPrefix.isEmpty()) ? safePathPrefix + namePattern : namePattern;
     }
 }

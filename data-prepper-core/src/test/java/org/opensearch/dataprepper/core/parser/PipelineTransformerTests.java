@@ -21,15 +21,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
+import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -63,17 +64,18 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
 
@@ -145,15 +147,14 @@ class PipelineTransformerTests {
     void tearDown() {
         verify(dataPrepperConfiguration).getEventConfiguration();
         verify(dataPrepperConfiguration).getExperimental();
-        verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
 
-        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
+        this.pipelinesDataFlowModel = new PipelinesDataflowModelParser(
                 new PipelineConfigurationFileReader(pipelineConfigurationFileLocation)).parseConfiguration();
         return new PipelineTransformer(
-                pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
+                pluginFactory, peerForwarderProvider,
                 routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
                 acknowledgementSetManager, sourceCoordinatorFactory, pluginErrorCollector,
                 pluginErrorsHandler, expressionEvaluator);
@@ -164,9 +165,9 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -175,9 +176,9 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_OFF_HEAP_FILE_WITH_ACKS);
-        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
 
         assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
@@ -200,9 +201,9 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.DISCONNECTED_VALID_OFF_HEAP_FILE_WITH_ACKS);
-        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
 
         assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
@@ -224,7 +225,7 @@ class PipelineTransformerTests {
     void parseConfiguration_with_invalid_root_source_pipeline_creates_empty_pipelinesMap() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);
-        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(connectedPipelines.size(), equalTo(0));
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
@@ -239,7 +240,7 @@ class PipelineTransformerTests {
     void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap(
             final String pipelineResourcePath, final String failedPluginName) {
         final PipelineTransformer pipelineTransformer = createObjectUnderTest(pipelineResourcePath);
-        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(connectedPipelines.size(), equalTo(0));
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
@@ -264,7 +265,7 @@ class PipelineTransformerTests {
                         .build());
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer = createObjectUnderTest(pipelineConfigurationFileLocation);
-        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(connectedPipelines.size(), equalTo(0));
         verifyDataPrepperConfigurationAccesses();
         verify(dataPrepperConfiguration).getPipelineExtensions();
@@ -286,8 +287,8 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
-        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
-        assertThat(actualPipelineMap.keySet().size(), equalTo(1));
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(actualPipelineMap.size(), equalTo(1));
         verifyDataPrepperConfigurationAccesses();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
@@ -297,7 +298,8 @@ class PipelineTransformerTests {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
         assertThat(actualException.getMessage(),
                 equalTo("Provided configuration results in a loop, check pipeline: test-pipeline-1"));
         verify(dataPrepperConfiguration).getPipelineExtensions();
@@ -308,7 +310,8 @@ class PipelineTransformerTests {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
         assertThat(actualException.getMessage(),
                 equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
         verify(dataPrepperConfiguration).getPipelineExtensions();
@@ -318,7 +321,7 @@ class PipelineTransformerTests {
     void parseConfiguration_with_compatible_version() {
         final PipelineTransformer pipelineTransformer =
             createObjectUnderTest(TestDataProvider.COMPATIBLE_VERSION_CONFIG_FILE);
-        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(connectedPipelines.size(), equalTo(1));
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
@@ -331,7 +334,8 @@ class PipelineTransformerTests {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
         assertThat(actualException.getMessage(),
                 equalTo("name is a required attribute for sink pipeline plugin, " +
                     "check pipeline: test-pipeline-1"));
@@ -339,10 +343,21 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_with_missing_source_should_fail() {
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.MISSING_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
+        assertThat(actualException.getMessage(),
+                        equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
+    }
+
+    @Test
     void parseConfiguration_with_missing_pipeline_name_in_multiple_pipelines_should_throw() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
         assertThat(actualException.getMessage(), equalTo("Invalid configuration, no pipeline is defined with name test-pipeline-4"));
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
@@ -352,10 +367,32 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE);
-        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
-        assertThat(pipelineMap.keySet().size(), equalTo(3));
-        verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(3));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void testMultipleSinksWithFailurePipeline() {
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        when(expressionEvaluator.isValidExpressionStatement("/value == raw")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("/value == service")).thenReturn(true);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_WITH_FAILURE_PIPELINE_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(4));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
+        Pipeline failurePipeline = pipelineMap.get(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        assertTrue(failurePipeline != null);
+        for (Map.Entry<String, Pipeline> entry : pipelineMap.entrySet()) {
+            if (!entry.getKey().equals(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME)) {
+                assertThat(entry.getValue().getFailurePipeline(), sameInstance(failurePipeline));
+            }
+        }
+        assertTrue(failurePipeline.getSource() instanceof HeadlessPipelineSource);
+        assertThat(((HeadlessPipelineSource)failurePipeline.getSource()).getAcknowledgementsEnabled(), equalTo(false));
     }
 
     @Test
@@ -363,9 +400,9 @@ class PipelineTransformerTests {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PROCESSERS_CONFIG_FILE);
-        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
-        assertThat(pipelineMap.keySet().size(), equalTo(3));
-        verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(3));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -375,9 +412,9 @@ class PipelineTransformerTests {
         when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(true);
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
-        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
-        assertThat(pipelineMap.keySet().size(), equalTo(3));
-        verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(3));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
 
         final Pipeline entryPipeline = pipelineMap.get("entry-pipeline");
         assertThat(entryPipeline, notNullValue());
@@ -395,8 +432,8 @@ class PipelineTransformerTests {
         doNothing().when(pluginErrorsHandler).handleErrors(pluginErrorArgumentCaptor.capture());
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
-        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
-        assertThat(pipelineMap.keySet().isEmpty(), equalTo(true));
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.isEmpty(), equalTo(true));
 
         final Collection<PluginError> pluginErrorCollection = pluginErrorArgumentCaptor.getValue();
         assertThat(pluginErrorCollection, notNullValue());
@@ -450,7 +487,7 @@ class PipelineTransformerTests {
         final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration(this.pipelinesDataFlowModel);
 
         assertThat(pipelineMap.size(), equalTo(1));
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
@@ -469,7 +506,7 @@ class PipelineTransformerTests {
         final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_OFF_HEAP_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration(this.pipelinesDataFlowModel);
 
         assertThat(pipelineMap.size(), equalTo(1));
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
@@ -492,7 +529,7 @@ class PipelineTransformerTests {
         final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration(this.pipelinesDataFlowModel);
 
         assertThat(pipelineMap.size(), equalTo(1));
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
@@ -515,7 +552,7 @@ class PipelineTransformerTests {
         final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration(this.pipelinesDataFlowModel);
 
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline entryPipeline = pipelineMap.get("test-pipeline-1");
@@ -602,5 +639,40 @@ class PipelineTransformerTests {
         }
 
         return bufferMap;
+    }
+
+    @Test
+    void parseConfiguration_with_zero_buffer_and_single_worker_thread_creates_pipeline_successfully() {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_ZERO_BUFFER_SINGLE_THREAD_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+
+        assertThat(pipelineMap.size(), equalTo(1));
+        assertThat(pipelineMap, hasKey("simple-pipeline"));
+        assertThat(pipelineMap.isEmpty(), equalTo(false));
+
+        verifyDataPrepperConfigurationAccesses();
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidZeroBufferConfigFiles")
+    void parseConfiguration_with_invalid_zero_buffer_configurations_results_in_pipeline_creation_failure(String configFile) {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(configFile);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+
+        assertThat(pipelineMap.isEmpty(), equalTo(true));
+
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    private static Stream<Arguments> provideInvalidZeroBufferConfigFiles() {
+        return Stream.of(
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_MULTIPLE_THREADS_CONFIG_FILE),
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_WITH_SINGLE_THREAD_PROCESSOR_CONFIG_FILE),
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_MULTIPLE_THREADS_NO_SINGLE_THREAD_PROCESSORS_CONFIG_FILE)
+        );
     }
 }

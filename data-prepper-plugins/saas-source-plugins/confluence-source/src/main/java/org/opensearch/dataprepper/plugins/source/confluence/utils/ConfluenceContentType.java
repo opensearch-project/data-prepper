@@ -15,18 +15,18 @@ import lombok.Getter;
 
 @AllArgsConstructor
 public enum ConfluenceContentType {
-    SPACE("SPACE"),
-    PAGE("PAGE"),
-    BLOGPOST("BLOGPOST"),
-    COMMENT("COMMENT"),
-    ATTACHMENT("ATTACHMENT");
+    SPACE("space"),
+    PAGE("page"),
+    BLOGPOST("blogpost"),
+    COMMENT("comment"),
+    ATTACHMENT("attachment");
 
     @Getter
     private final String type;
 
     public static ConfluenceContentType fromString(String value) {
         for (ConfluenceContentType contentType : ConfluenceContentType.values()) {
-            if (contentType.type.equalsIgnoreCase(value)) {
+            if (contentType.type.equals(value)) {
                 return contentType;
             }
         }

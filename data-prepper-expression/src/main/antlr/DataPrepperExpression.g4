@@ -29,7 +29,7 @@ arithmeticExpression
     ;
 
 multiplicativeExpression
-    : multiplicativeExpression (MULTIPLY | DIVIDE) arithmeticTerm
+    : multiplicativeExpression (MULTIPLY | DIVIDE | MOD) arithmeticTerm
     | arithmeticTerm
     ;
 
@@ -160,7 +160,7 @@ Function
 
 fragment
 FunctionArgs
-    : (FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg
+    : ((FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg)?
     ;
 
 fragment
@@ -272,6 +272,7 @@ VariableNameCharacter
 
 String
     : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
+    | DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE StringCharacters? DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE
     ;
 
 fragment
@@ -335,6 +336,7 @@ ZERO : '0';
 PLUS: '+';
 MULTIPLY: '*';
 DOT : '.';
+MOD: '%';
 EXPONENTLETTER
     : 'E'
     | 'e'

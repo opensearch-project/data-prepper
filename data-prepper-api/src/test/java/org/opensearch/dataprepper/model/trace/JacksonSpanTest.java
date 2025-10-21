@@ -47,6 +47,8 @@ public class JacksonSpanTest {
     protected static final String TEST_PARENT_SPAN_ID =  UUID.randomUUID().toString();
     protected static final String TEST_NAME =  UUID.randomUUID().toString();
     protected static final String TEST_KIND =  UUID.randomUUID().toString();
+    protected static final String TEST_SCHEMA_URL =  UUID.randomUUID().toString();
+    protected static final int TEST_FLAGS = 10;
     protected static final String TEST_START_TIME =  UUID.randomUUID().toString();
     protected static final String TEST_END_TIME =  UUID.randomUUID().toString();
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of("key1", new Date().getTime(), "key2", UUID.randomUUID().toString());
@@ -100,10 +102,12 @@ public class JacksonSpanTest {
                 .withName(TEST_NAME)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withKind(TEST_KIND)
+                .withFlags(TEST_FLAGS)
                 .withScope(TEST_SCOPE)
                 .withResource(TEST_RESOURCE)
                 .withStatus(TEST_STATUS)
                 .withStartTime(TEST_START_TIME)
+                .withSchemaUrl(TEST_SCHEMA_URL)
                 .withEndTime(TEST_END_TIME)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
@@ -158,6 +162,18 @@ public class JacksonSpanTest {
     public void testGetKind() {
         final String kind = jacksonSpan.getKind();
         assertThat(kind, is(equalTo(TEST_KIND)));
+    }
+
+    @Test
+    public void testGetFlags() {
+        final Integer flags = jacksonSpan.getFlags();
+        assertThat(flags, is(equalTo(TEST_FLAGS)));
+    }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String schemaUrl = jacksonSpan.getSchemaUrl();
+        assertThat(schemaUrl, is(equalTo(TEST_SCHEMA_URL)));
     }
 
     @Test
@@ -251,6 +267,16 @@ public class JacksonSpanTest {
     }
 
     @Test
+    public void testSetAndGetServiceName() {
+        String serviceName = jacksonSpan.getServiceName();
+        assertThat(serviceName, is(equalTo(TEST_SERVICE_NAME)));
+        final String testServiceName = "testServiceName";
+        jacksonSpan.setServiceName(testServiceName);
+        serviceName = jacksonSpan.getServiceName();
+        assertThat(serviceName, is(equalTo(testServiceName)));
+    }
+
+    @Test
     public void testSetAndGetTraceGroup() {
         final String testTraceGroup = "testTraceGroup";
         jacksonSpan.setTraceGroup(testTraceGroup);
@@ -265,6 +291,20 @@ public class JacksonSpanTest {
                 .withStatusCode(404)
                 .withEndTime("Different end time")
                 .build();
+        jacksonSpan.setTraceGroupFields(testTraceGroupFields);
+        final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
+        assertThat(traceGroupFields, is(equalTo(traceGroupFields)));
+        assertThat(traceGroupFields, is(equalTo(testTraceGroupFields)));
+    }
+
+    @Test
+    public void testSetAndGetTraceGroupFieldsInMetadata() {
+        final TraceGroupFields testTraceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(200L)
+                .withStatusCode(404)
+                .withEndTime("Different end time")
+                .build();
+        jacksonSpan.getMetadata().setAttribute(JacksonSpan.TRACE_GROUP_FIELDS_KEY, new DefaultTraceGroupFields());
         jacksonSpan.setTraceGroupFields(testTraceGroupFields);
         final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
         assertThat(traceGroupFields, is(equalTo(traceGroupFields)));

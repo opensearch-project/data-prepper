@@ -5,10 +5,45 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
+import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
+import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.Source;
+
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -22,44 +57,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.Counter;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
-import org.opensearch.dataprepper.model.event.InternalEventHandle;
-import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
-
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 @ExtendWith(MockitoExtension.class)
 class PipelineRunnerTest {
     private static final int BUFFER_READ_TIMEOUT_MILLIS = 1000;
@@ -67,6 +64,8 @@ class PipelineRunnerTest {
 
     @Mock
     Pipeline pipeline;
+    @Mock
+    ProcessorProvider processorProvider;
     @Mock
     Buffer buffer;
     @Mock
@@ -85,13 +84,19 @@ class PipelineRunnerTest {
     EventHandle eventHandle;
     @Mock
     DefaultEventHandle defaultEventHandle;
+    private List<Processor> processors;
 
     private void setupPipeline(boolean shouldEnableAcknowledgements) {
         lenient().when(pipeline.areAcknowledgementsEnabled()).thenReturn(shouldEnableAcknowledgements);
     }
 
     private PipelineRunnerImpl createObjectUnderTest() {
-        return new PipelineRunnerImpl(pipeline);
+        return new PipelineRunnerImpl(pipeline, processorProvider);
+    }
+
+    @BeforeEach
+    void setUp() {
+        processors = List.of(processor);
     }
 
     @Nested
@@ -268,7 +273,7 @@ class PipelineRunnerTest {
 
             when(processor.holdsEvents()).thenReturn(false);
             when(processor.execute(records)).thenReturn(List.of());
-            List<Processor> processors = List.of(processor);
+
 
             final PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
             pipelineRunner.runProcessorsAndProcessAcknowledgements(processors, records);
@@ -325,11 +330,11 @@ class PipelineRunnerTest {
         void testRunProcessorsAndProcessAcknowledgementsThrowsException() {
             List<Record<Event>> inputRecords = new ArrayList<>();
             final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-            ((InternalEventHandle)defaultEventHandle).addAcknowledgementSet(acknowledgementSet);
+            defaultEventHandle.addAcknowledgementSet(acknowledgementSet);
             inputRecords.add(record);
             setupPipeline(false);
             // Have the processor throw an exception
-            when(processor.execute(inputRecords)).thenThrow(new RuntimeException());;
+            when(processor.execute(inputRecords)).thenThrow(new RuntimeException());
             final Processor skippedProcessor = mock(Processor.class);
             List<Processor> processors = List.of(processor, skippedProcessor);
             PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
@@ -370,11 +375,11 @@ class PipelineRunnerTest {
             setupPipeline(true);
             // Set up additional pipeline behavior
             when(pipeline.getBuffer()).thenReturn(buffer);
-            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
+            when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =
                     new AbstractMap.SimpleEntry<>(recordsList, checkpointState);
@@ -397,9 +402,9 @@ class PipelineRunnerTest {
             when(pipeline.getBuffer()).thenReturn(buffer);
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
-            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
+            when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =
                     new AbstractMap.SimpleEntry<>(recordsList, checkpointState);

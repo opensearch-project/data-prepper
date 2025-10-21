@@ -19,8 +19,6 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 @Getter
 public class ConfluenceSourceConfig extends AtlassianSourceConfig implements CrawlerSourceConfig {
 
-    private static final int DEFAULT_BATCH_SIZE = 50;
-
     /**
      * Filter Config to filter what tickets get ingested
      */
@@ -37,4 +35,10 @@ public class ConfluenceSourceConfig extends AtlassianSourceConfig implements Cra
     public String getOauth2UrlContext() {
         return "confluence";
     }
+
+    /**
+     * boolean flag to control whether to preserve the original formatting or not
+     */
+    @JsonProperty("preserve_formatting")
+    private boolean preserveContentFormatting;
 }

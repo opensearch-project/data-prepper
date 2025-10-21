@@ -64,6 +64,12 @@ public interface SourceCoordinator<T> {
     Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier, final boolean forceSupplier);
 
     /**
+     * Can be used to directly create partitions for source coordination, as an alternative to relying on getNextPartition to create partitions.
+     * @param partitionIdentifiers  - The partitions to be created.
+     */
+    void createPartitions(final List<PartitionIdentifier> partitionIdentifiers);
+
+    /**
      * Should be called by the source when it has fully processed a given partition
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator
@@ -129,6 +135,17 @@ public interface SourceCoordinator<T> {
      */
     void giveUpPartition(final String partitionKey, final Instant priorityTimestamp);
 
+
+    /**
+     * Should be called by the source when it is shutting down to indicate that it will no longer be able to perform work on partitions,
+     * or can be called to give up ownership of its partitions in order to pick up new ones with {@link #getNextPartition(Function)} ()}.
+     * @param partitionKey - Key used as the partition key.
+     * @param priorityTimestamp - A timestamp that will determine the order that UNASSIGNED partitions are acquired after they are given up.
+     * @param maxRetries - The number of times to retry giving up the partition before throwing an exception
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition could not be given up due to some failure
+     * @since 2.12
+     */
+    void giveUpPartition(final String partitionKey, final Instant priorityTimestamp,final Integer maxRetries);
 
     /**
      * Should be called by the source after when acknowledgments are enabled to keep ownership of the partition for acknowledgmentTimeout amount of time

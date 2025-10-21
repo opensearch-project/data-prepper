@@ -32,14 +32,17 @@ import java.util.stream.Collectors;
 public class PipelineRunnerImpl implements PipelineRunner {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineRunnerImpl.class);
     private static final String INVALID_EVENT_HANDLES = "invalidEventHandles";
+    private boolean isEmptyRecordsLogged = false;
+    @VisibleForTesting
+    final Counter invalidEventHandlesCounter;
     private final Pipeline pipeline;
     private final PluginMetrics pluginMetrics;
-    private boolean isEmptyRecordsLogged = false;
-    @VisibleForTesting final Counter invalidEventHandlesCounter;
+    private final ProcessorProvider processorProvider;
 
-    public PipelineRunnerImpl(Pipeline pipeline) {
+    public PipelineRunnerImpl(final Pipeline pipeline, final ProcessorProvider processorProvider) {
         this.pipeline = pipeline;
         this.pluginMetrics = PluginMetrics.fromNames("PipelineRunner", pipeline.getName());
+        this.processorProvider = processorProvider;
         this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
     }
 
@@ -48,7 +51,8 @@ public class PipelineRunnerImpl implements PipelineRunner {
         final Map.Entry<Collection, CheckpointState> recordsReadFromBuffer = readFromBuffer(getBuffer(), getPipeline());
         Collection records = recordsReadFromBuffer.getKey();
         final CheckpointState checkpointState = recordsReadFromBuffer.getValue();
-        records = runProcessorsAndProcessAcknowledgements(getProcessors(), records);
+        List<Processor> currentProcessors = processorProvider.getProcessors();
+        records = runProcessorsAndProcessAcknowledgements(currentProcessors, records);
         postToSink(getPipeline(), records);
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
         getBuffer().checkpoint(checkpointState);
@@ -60,7 +64,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         Collection records = readResult.getKey();
         //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
         if (records.isEmpty()) {
-            if(!isEmptyRecordsLogged) {
+            if (!isEmptyRecordsLogged) {
                 LOG.debug(" {} Worker: No records received from buffer", pipeline.getName());
                 isEmptyRecordsLogged = true;
             }
@@ -77,7 +81,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         inputEvents.forEach(event -> {
             EventHandle eventHandle = event.getEventHandle();
             if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
-                InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
+                InternalEventHandle internalEventHandle = (InternalEventHandle) eventHandle;
                 if (!outputEventsSet.contains(event)) {
                     eventHandle.release(true);
                 }
@@ -104,8 +108,11 @@ public class PipelineRunnerImpl implements PipelineRunner {
                     processAcknowledgements(inputEvents, records);
                 }
             } catch (final Exception e) {
-                LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
-                if (inputEvents != null) {
+                if (pipeline.getFailurePipeline() != null) {
+                    LOG.error("A processor threw an exception. This batch of Events will be sent to DLQ. ", e);
+                    pipeline.getFailurePipeline().sendEvents(records);
+                } else if (inputEvents != null) {
+                    LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
                     processAcknowledgements(inputEvents, Collections.emptyList());
                 }
 
@@ -133,11 +140,6 @@ public class PipelineRunnerImpl implements PipelineRunner {
     @Override
     public Pipeline getPipeline() {
         return pipeline;
-    }
-
-    @VisibleForTesting
-    List<Processor> getProcessors() {
-        return getPipeline().getProcessors();
     }
 
     @VisibleForTesting

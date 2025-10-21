@@ -1,0 +1,8 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - drop_events:
+        drop_when: /my_key == ""
+  sink:
+    - unused:

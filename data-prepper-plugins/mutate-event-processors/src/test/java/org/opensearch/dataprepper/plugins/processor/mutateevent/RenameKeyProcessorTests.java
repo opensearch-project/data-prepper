@@ -12,8 +12,11 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,6 +36,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +62,44 @@ public class RenameKeyProcessorTests {
         when(expressionEvaluator.isValidExpressionStatement(renameWhen)).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_both_present() throws NoSuchFieldException, IllegalAccessException {
+        final String renameWhen = UUID.randomUUID().toString();
+        List<RenameKeyProcessorConfig.Entry> entries = createListOfEntries(createEntry("message", null,"newMessage", true, renameWhen));
+
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", entries);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.LOWERCASE);
+        assertFalse(renameKeyProcessorConfig.isValidConfig());
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_both_not_present() throws NoSuchFieldException, IllegalAccessException {
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", null);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.NONE);
+        assertFalse(renameKeyProcessorConfig.isValidConfig());
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_valid_entries() throws NoSuchFieldException, IllegalAccessException {
+        final String renameWhen = UUID.randomUUID().toString();
+        List<RenameKeyProcessorConfig.Entry> entries = createListOfEntries(createEntry("message", null,"newMessage", true, renameWhen));
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", entries);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.NONE);
+        assertTrue(renameKeyProcessorConfig.isValidConfig());
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_valid_transformation() throws NoSuchFieldException, IllegalAccessException {
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", null);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.UPPERCASE);
+        assertTrue(renameKeyProcessorConfig.isValidConfig());
     }
 
     @Test
@@ -224,7 +267,95 @@ public class RenameKeyProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
+    @Test
+    public void test_transformKey_converting_allkeys_lowercase() {
+        final String key1 = "KeY1";
+        final String key2 = "kEy2";
+        final String key3 = "keY3";
+        final String key4 = "key4";
+        final String key5 = "KEY5";
+        Map<String, Object> data = Map.of(key1, 1, key2, Map.of(key3, Map.of(key4, "value4", key5, 5.555)));
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.LOWERCASE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey(key1), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key4), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key5), is(false));
 
+        assertThat(editedRecords.get(0).getData().containsKey(key1.toLowerCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key1.toLowerCase(), Integer.class), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toLowerCase()), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toLowerCase()+"/"+key3.toLowerCase()), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toLowerCase()+"/"+key3.toLowerCase()+"/"+key4.toLowerCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key2.toLowerCase()+"/"+key3.toLowerCase()+"/"+key4.toLowerCase(), String.class), equalTo("value4"));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toLowerCase()+"/"+key3.toLowerCase()+"/"+key5.toLowerCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key2.toLowerCase()+"/"+key3.toLowerCase()+"/"+key5.toLowerCase(), String.class), equalTo("5.555"));
+    }
+
+    @Test
+    public void test_transformKey_converting_allkeys_uppercase() {
+        final String key1 = "KeY1";
+        final String key2 = "kEy2";
+        final String key3 = "keY3";
+        final String key4 = "key4";
+        final String key5 = "KEY5";
+        Map<String, Object> data = Map.of(key1, 1, key2, Map.of(key3, Map.of(key4, "value4", key5, 5.555)));
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.UPPERCASE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey(key1), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key4), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key5), is(false));
+
+        assertThat(editedRecords.get(0).getData().containsKey(key1.toUpperCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key1.toUpperCase(), Integer.class), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toUpperCase()), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toUpperCase()+"/"+key3.toUpperCase()), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toUpperCase()+"/"+key3.toUpperCase()+"/"+key4.toUpperCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key2.toUpperCase()+"/"+key3.toUpperCase()+"/"+key4.toUpperCase(), String.class), equalTo("value4"));
+        assertThat(editedRecords.get(0).getData().containsKey(key2.toUpperCase()+"/"+key3.toUpperCase()+"/"+key5.toUpperCase()), is(true));
+        assertThat(editedRecords.get(0).getData().get(key2.toUpperCase()+"/"+key3.toUpperCase()+"/"+key5.toUpperCase(), String.class), equalTo("5.555"));
+    }
+
+    @Test
+    public void test_transformKey_converting_allkeys_capitalize() {
+        final String key1 = "key1";
+        final String key2 = "key2";
+        final String key3 = "key3";
+        final String key4 = "key4";
+        final String key5 = "key5";
+        Map<String, Object> data = Map.of(key1, 1, key2, Map.of(key3, Map.of(key4, "value4", key5, 5.555)));
+
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.CAPITALIZE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey(key1), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key4), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey(key2+"/"+key3+"/"+key5), is(false));
+
+        assertThat(editedRecords.get(0).getData().containsKey("Key1"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3/Key4"), is(true));
+        assertThat(editedRecords.get(0).getData().get("Key2/Key3/Key4", String.class), equalTo("value4"));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3/Key5"), is(true));
+        assertThat(editedRecords.get(0).getData().get("Key2/Key3/Key5", String.class), equalTo("5.555"));
+    }
 
     private RenameKeyProcessor createObjectUnderTest() {
         return new RenameKeyProcessor(pluginMetrics, mockConfig, expressionEvaluator);

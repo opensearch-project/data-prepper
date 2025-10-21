@@ -13,6 +13,7 @@ dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:armeria-common')
     implementation project(':data-prepper-plugins:otel-proto-common')
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.commons.codec
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation libs.opentelemetry.proto
@@ -28,7 +29,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix
-    testImplementation 'org.assertj:assertj-core:3.27.0'
+    testImplementation 'org.assertj:assertj-core:3.27.3'
     testImplementation testLibs.slf4j.simple
     testImplementation libs.commons.io
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'

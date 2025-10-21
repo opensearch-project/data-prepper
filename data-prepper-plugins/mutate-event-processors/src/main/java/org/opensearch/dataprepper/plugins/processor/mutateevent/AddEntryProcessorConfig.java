@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenEl
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -64,6 +65,15 @@ public class AddEntryProcessorConfig {
 
     @JsonPropertyOrder
     public static class Entry {
+        @JsonProperty("iterate_on")
+        @JsonPropertyDescription(
+                "Specifies the key of the list of object to iterate over and add entry into.")
+        private String iterateOn;
+
+        @JsonPropertyDescription("Specifies the condition for when to add the key to each element of a list when using iterate_on.")
+        @JsonProperty("add_to_element_when")
+        private String addToElementWhen;
+
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
                 "use the value of field <code>key1</code> as the key. Exactly one of <code>key</code> or <code>metadata_key</code> is required.")
@@ -147,6 +157,15 @@ public class AddEntryProcessorConfig {
         })
         private boolean appendIfKeyExists = false;
 
+        @JsonProperty("flatten_key")
+        @JsonPropertyDescription(
+                "When true and used with iterate_on, treats the key as a plain string. When false and used with iterate_on, treats the key as a json pointer. " + 
+                "Has no effect when not used with iterate_on.")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name="iterate_on")
+        })
+        private boolean flattenKey = true;
+
         @JsonProperty("add_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
                 "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
@@ -154,6 +173,12 @@ public class AddEntryProcessorConfig {
                 @Example(value = "/some_key == null", description = "Only runs the add_entries processor if the key some_key is null or does not exist.")
         })
         private String addWhen;
+
+        public String getIterateOn() {
+            return iterateOn;
+        }
+
+        public String getAddToElementWhen() { return addToElementWhen; }
 
         public String getKey() {
             return key;
@@ -183,6 +208,10 @@ public class AddEntryProcessorConfig {
             return appendIfKeyExists;
         }
 
+        public boolean getFlattenKey(){
+                return flattenKey;
+        }
+
         public String getAddWhen() { return addWhen; }
 
         @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
@@ -195,6 +224,11 @@ public class AddEntryProcessorConfig {
             return !(overwriteIfKeyExists && appendIfKeyExists);
         }
 
+        @AssertTrue(message = "flatten_key=false must be used with iterate_on.")
+        boolean flattenKeyFalseIsUsedWithIterateOn() {
+            return (!flattenKey && iterateOn!=null) || flattenKey;
+        }
+
         public Entry(final String key,
                      final String metadataKey,
                      final Object value,
@@ -202,7 +236,10 @@ public class AddEntryProcessorConfig {
                      final String valueExpression,
                      final boolean overwriteIfKeyExists,
                      final boolean appendIfKeyExists,
-                     final String addWhen)
+                     final String addWhen,
+                     final String iterateOn,
+                     final boolean flattenKey,
+                     final String addToElementWhen)
         {
             if (key != null && metadataKey != null) {
                 throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
@@ -210,6 +247,14 @@ public class AddEntryProcessorConfig {
             if (key == null && metadataKey == null) {
                 throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
             }
+            if (metadataKey != null && iterateOn != null) {
+                throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
+            }
+
+            if (iterateOn == null && addToElementWhen != null) {
+                throw new InvalidPluginConfigurationException("add_to_element_when only applies when iterate_on is configured.");
+            }
+
             this.key = key;
             this.metadataKey = metadataKey;
             this.value = value;
@@ -218,6 +263,47 @@ public class AddEntryProcessorConfig {
             this.overwriteIfKeyExists = overwriteIfKeyExists;
             this.appendIfKeyExists = appendIfKeyExists;
             this.addWhen = addWhen;
+            this.iterateOn = iterateOn;
+            this.flattenKey = flattenKey;
+            this.addToElementWhen = addToElementWhen;
+        }
+
+        public Entry(final String key,
+                     final String metadataKey,
+                     final Object value,
+                     final String format,
+                     final String valueExpression,
+                     final boolean overwriteIfKeyExists,
+                     final boolean appendIfKeyExists,
+                     final String addWhen,
+                     final String iterateOn,
+                     final String addToElementWhen)
+        {
+            if (key != null && metadataKey != null) {
+                throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
+            }
+            if (key == null && metadataKey == null) {
+                throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
+            }
+            if (metadataKey != null && iterateOn != null) {
+                throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
+            }
+
+            if (iterateOn == null && addToElementWhen != null) {
+                throw new InvalidPluginConfigurationException("add_to_element_when only applies when iterate_on is configured.");
+            }
+
+            this.key = key;
+            this.metadataKey = metadataKey;
+            this.value = value;
+            this.format = format;
+            this.valueExpression = valueExpression;
+            this.overwriteIfKeyExists = overwriteIfKeyExists;
+            this.appendIfKeyExists = appendIfKeyExists;
+            this.addWhen = addWhen;
+            this.iterateOn = iterateOn;
+            this.flattenKey = true;
+            this.addToElementWhen = addToElementWhen;
         }
 
         public Entry() {

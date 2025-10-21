@@ -7,8 +7,13 @@ plugins {
     id 'data-prepper.publish'
 }
 
+def generatedSourcesDir = "${project.buildDir}/generated/sources/version/java"
+
 sourceSets {
     main {
+        java {
+            srcDirs += generatedSourcesDir
+        }
         resources {
             srcDirs += "../shared-config"
         }
@@ -23,6 +28,7 @@ dependencies {
     implementation project(':data-prepper-event')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:encryption-plugin')
     implementation project(':data-prepper-logstash-configuration')
     implementation project(':data-prepper-pipeline-parser')
     implementation project(':data-prepper-plugin-framework')
@@ -36,7 +42,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:cloudwatch'
-    implementation platform('org.apache.logging.log4j:log4j-bom:2.24.3')
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.25.1')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'javax.inject:javax.inject:1'
@@ -55,13 +61,13 @@ dependencies {
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'commons-validator:commons-validator:1.8.0'
+    implementation 'commons-validator:commons-validator:1.10.0'
     implementation 'software.amazon.awssdk:servicediscovery'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.lang3
-    testImplementation project(':data-prepper-test-event')
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-event')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 
@@ -78,6 +84,29 @@ sourceSets {
 configurations {
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntime.extendsFrom testRuntime
+}
+
+task generateVersionProvider {
+    inputs.property('version', version)
+    inputs.file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
+    outputs.dir(generatedSourcesDir)
+
+    doLast {
+        def outputDir = file("$generatedSourcesDir/org/opensearch/dataprepper/core")
+        outputDir.mkdirs()
+
+        def templateFile = file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
+        def versionProviderFile = file("$outputDir/CoreVersionProvider.java")
+        versionProviderFile.text = templateFile.text.replace('${version}', version)
+    }
+}
+
+compileJava.dependsOn generateVersionProvider
+sourcesJar.dependsOn generateVersionProvider
+spotlessJava.mustRunAfter generateVersionProvider
+
+test {
+    systemProperty 'project.version', version
 }
 
 task integrationTest(type: Test) {

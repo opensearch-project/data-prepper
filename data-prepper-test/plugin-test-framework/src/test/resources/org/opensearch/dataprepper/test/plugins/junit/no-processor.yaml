@@ -1,0 +1,6 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+  sink:
+    - unused:

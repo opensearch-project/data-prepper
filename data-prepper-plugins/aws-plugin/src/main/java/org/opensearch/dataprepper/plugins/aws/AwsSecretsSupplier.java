@@ -14,9 +14,11 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
@@ -39,12 +41,14 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     public AwsSecretsSupplier(
             final SecretValueDecoder secretValueDecoder,
-            final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
+            final AwsSecretPluginConfig awsSecretPluginConfig,
+            final ObjectMapper objectMapper,
+            final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.secretValueDecoder = secretValueDecoder;
         this.objectMapper = objectMapper;
         awsSecretManagerConfigurationMap = awsSecretPluginConfig
                 .getAwsSecretManagerConfigurationMap();
-        secretsManagerClientMap = toSecretsManagerClientMap(awsSecretPluginConfig);
+        secretsManagerClientMap = toSecretsManagerClientMap(awsSecretPluginConfig, awsCredentialsSupplier);
         secretIdToValue = toSecretMap(awsSecretManagerConfigurationMap);
     }
 
@@ -61,11 +65,12 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     private Map<String, SecretsManagerClient> toSecretsManagerClientMap(
-            final AwsSecretPluginConfig awsSecretPluginConfig) {
+            final AwsSecretPluginConfig awsSecretPluginConfig,
+            final AwsCredentialsSupplier  awsCredentialsSupplier) {
         return awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
                     final AwsSecretManagerConfiguration awsSecretManagerConfiguration = entry.getValue();
-                    return awsSecretManagerConfiguration.createSecretManagerClient();
+                    return awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier);
                 }));
     }
 
@@ -123,10 +128,16 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         final GetSecretValueResponse getSecretValueResponse;
         try {
             getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
-        } catch (Exception e) {
+        } catch (final AwsServiceException e) {
+            LOG.error("Unable to retrieve secret {}: {}", getSecretValueRequest.secretId(), e.getMessage());
             throw new RuntimeException(
                     String.format("Unable to retrieve secret: %s",
                             awsSecretManagerConfiguration.getAwsSecretId()), e);
+        } catch (final Exception ex) {
+            LOG.error("Unable to retrieve secret {} due to unexpected error", getSecretValueRequest.secretId(), ex);
+            throw new RuntimeException(
+                    String.format("Unable to retrieve secret: %s",
+                            awsSecretManagerConfiguration.getAwsSecretId()), ex);
         }
 
         try {

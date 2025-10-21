@@ -108,7 +108,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             final AggregateActionOutput actionOutput = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
             final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
-            if (!concludeGroupEvents.isEmpty()) {
+            if (concludeGroupEvents != null && !concludeGroupEvents.isEmpty()) {
                 concludeGroupEvents.stream().forEach((event) -> {
                     if (aggregatedEventsTag != null) {
                         event.getMetadata().addTags(List.of(aggregatedEventsTag));

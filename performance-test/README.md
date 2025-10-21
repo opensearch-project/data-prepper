@@ -18,8 +18,8 @@ example:
 To run TargetRpsSimulation. Source code available at `./performance-test/src/gatling/java/org/opensearch/dataprepper/test/performance/TargetRpsSimulation.java`
 
 ```shell
-# ./gradlew gatlingRun-<simulation-class-path>
-./gradlew :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.TargetRpsSimulation
+# ./gradlew gatlingRun --simulation=<simulation-class-path>
+./gradlew :performance-test:gatlingRun --simulation=org.opensearch.dataprepper.test.performance.TargetRpsSimulation
 ```
 
 ### Configurations
@@ -30,7 +30,7 @@ Supply the configurations as Java system variables on the command line.
 For example, you can configure the port and use HTTPS with a custom certificate with the following:
 
 ```
-./gradlew -Dport=7099 -Dprotocol=https -Dpath=/simple-sample-pipeline/logs -Djavax.net.ssl.keyStore=examples/demo/test_keystore.p12 :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.SingleRequestSimulation
+./gradlew -Dport=7099 -Dprotocol=https -Dpath=/simple-sample-pipeline/logs -Djavax.net.ssl.keyStore=examples/demo/test_keystore.p12 :performance-test:gatlingRun --simulation=org.opensearch.dataprepper.test.performance.SingleRequestSimulation
 ```
 
 **Available configuration options:**
@@ -51,12 +51,29 @@ This performance tool also works with [Amazon OpenSearch Ingestion](https://docs
 Setup your AWS credentials to meet your needs. Then run a command similar to the following:
 
 ```
-./gradlew -Dhost=<your-custom-dns>.<aws-region>.osis.amazonaws.com -Dprotocol=https -Dpath=<your-path> -Dport=443 -Dauthentication=aws_sigv4 -Daws_region=<aws-region> -Daws_service=osis :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.SingleRequestSimulation
+./gradlew -Dhost=<your-custom-dns>.<aws-region>.osis.amazonaws.com -Dprotocol=https -Dpath=<your-path> -Dport=443 -Dauthentication=aws_sigv4 -Daws_region=<aws-region> -Daws_service=osis :performance-test:gatlingRun --simulation=org.opensearch.dataprepper.test.performance.SingleRequestSimulation
 ```
 
 ### Verify Gatling scenarios compile
 ```shell
 ./gradlew :performance-test:compileGatlingJava
+```
+
+### Deploying
+
+You can also create an uber-jar that has everything needed to run the Gatling performance tests so that you can
+deploy them easily.
+
+```shell
+./gradlew :performance-test:assemble
+```
+
+This will create an uber jar in `performance-test/build/libs` with the name `opensearch-data-prepper-performance-test-${VERSION}.jar`
+
+You can run this using a command similar to the following.
+
+```shell
+java -jar performance-test/build/libs/opensearch-data-prepper-performance-test-2.11.0-SNAPSHOT.jar -s org.opensearch.dataprepper.test.performance.StaticRequestSimulation
 ```
 
 # Gatling Documentation

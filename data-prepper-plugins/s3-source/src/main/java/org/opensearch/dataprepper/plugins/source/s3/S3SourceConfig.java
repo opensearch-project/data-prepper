@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.time.Duration;
 import java.util.Map;
@@ -99,6 +100,9 @@ public class S3SourceConfig {
 
     @JsonProperty("disable_s3_metadata_in_event")
     private boolean deleteS3MetadataInEvent = false;
+
+    @JsonProperty("data_selection")
+    private S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
 
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
@@ -213,5 +217,9 @@ public class S3SourceConfig {
 
     public boolean isDeleteS3MetadataInEvent() {
         return deleteS3MetadataInEvent;
+    }
+
+    public S3DataSelection getDataSelection() {
+        return dataSelection;
     }
 }

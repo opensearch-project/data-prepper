@@ -76,7 +76,9 @@ public class PipelineConfiguration {
     }
 
     public void updateCommonPipelineConfiguration(final String pipelineName) {
-        updatePluginSetting(sourcePluginSetting, pipelineName);
+        if (sourcePluginSetting != null) {
+            updatePluginSetting(sourcePluginSetting, pipelineName);
+        }
         updatePluginSetting(bufferPluginSetting, pipelineName);
         processorPluginSettings.forEach(processorPluginSettings ->
                 updatePluginSetting(processorPluginSettings, pipelineName));
@@ -92,7 +94,7 @@ public class PipelineConfiguration {
 
     private PluginSetting getSourceFromPluginModel(final PluginModel pluginModel) {
         if (pluginModel == null) {
-            throw new IllegalArgumentException("Invalid configuration, source is a required component");
+            return null;
         }
         return getPluginSettingFromPluginModel(pluginModel);
     }
@@ -135,7 +137,8 @@ public class PipelineConfiguration {
         final Map<String, Object> settingsMap = Optional
                 .ofNullable(sinkModel.getPluginSettings())
                 .orElseGet(HashMap::new);
-        return new SinkContextPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes(), sinkModel.getIncludeKeys(), sinkModel.getExcludeKeys()));
+        List<String> pipelineNames = sinkModel.getForwardConfig() == null ? null : sinkModel.getForwardConfig().getPipelineNames();
+        return new SinkContextPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes(), sinkModel.getIncludeKeys(), sinkModel.getExcludeKeys(), pipelineNames));
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {

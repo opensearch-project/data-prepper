@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.utils.HtmlToTextConv
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,16 +49,16 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
  * This class represents a Confluence client.
  */
 @Named
-public class ConfluenceClient implements CrawlerClient {
+public class ConfluenceClient implements CrawlerClient<PaginationCrawlerWorkerProgressState> {
 
     private static final Logger log = LoggerFactory.getLogger(ConfluenceClient.class);
     private ObjectMapper objectMapper = new ObjectMapper();
-    private Instant lastPollTime;
     private final ConfluenceService service;
     private final ConfluenceIterator confluenceIterator;
     private final ExecutorService executorService;
     private final CrawlerSourceConfig configuration;
     private final int bufferWriteTimeoutInSeconds = 10;
+    private final boolean preserveContentFormatting;
 
     public ConfluenceClient(ConfluenceService service,
                             ConfluenceIterator confluenceIterator,
@@ -68,18 +68,13 @@ public class ConfluenceClient implements CrawlerClient {
         this.confluenceIterator = confluenceIterator;
         this.executorService = executorServiceProvider.get();
         this.configuration = sourceConfig;
+        this.preserveContentFormatting = sourceConfig.isPreserveContentFormatting();
     }
 
     @Override
-    public Iterator<ItemInfo> listItems() {
+    public Iterator<ItemInfo> listItems(Instant lastPollTime) {
         confluenceIterator.initialize(lastPollTime);
         return confluenceIterator;
-    }
-
-    @Override
-    public void setLastPollTime(Instant lastPollTime) {
-        log.trace("Setting the lastPollTime: {}", lastPollTime);
-        this.lastPollTime = lastPollTime;
     }
 
     @VisibleForTesting
@@ -88,7 +83,7 @@ public class ConfluenceClient implements CrawlerClient {
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state,
+    public void executePartition(PaginationCrawlerWorkerProgressState state,
                                  Buffer<Record<Event>> buffer,
                                  AcknowledgementSet acknowledgementSet) {
         log.trace("Executing the partition: {} with {} ticket(s)",
@@ -121,7 +116,11 @@ public class ConfluenceClient implements CrawlerClient {
                     try {
                         ObjectNode contentJsonObj = objectMapper.readValue(contentJson, new TypeReference<>() {
                         });
-                        return HtmlToTextConversionUtil.convertHtmlToText(contentJsonObj, "body/view/value");
+                        if (preserveContentFormatting) {
+                            return contentJsonObj;
+                        } else {
+                            return HtmlToTextConversionUtil.convertHtmlToText(contentJsonObj, "body/view/value");
+                        }
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -131,6 +130,7 @@ public class ConfluenceClient implements CrawlerClient {
                         .withData(t)
                         .build())
                 .map(Record::new)
+                .peek(record -> record.getData().getMetadata().setAttribute(SPACE, space.toLowerCase()))
                 .collect(Collectors.toList());
 
         try {

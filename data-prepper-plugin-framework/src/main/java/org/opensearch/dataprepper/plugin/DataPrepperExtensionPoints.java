@@ -12,6 +12,8 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Objects;
 
 @Named
@@ -19,6 +21,7 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
     private static final ExtensionProvider.Context EMPTY_CONTEXT = new EmptyContext();
     private final GenericApplicationContext sharedApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
+    private Set<Class> providerClassesSet;
 
     @Inject
     public DataPrepperExtensionPoints(
@@ -28,10 +31,14 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
         Objects.requireNonNull(pluginBeanFactoryProvider.getSharedPluginApplicationContext());
         this.sharedApplicationContext = pluginBeanFactoryProvider.getSharedPluginApplicationContext();
         this.coreApplicationContext = pluginBeanFactoryProvider.getCoreApplicationContext();
+        this.providerClassesSet = new HashSet<>();
     }
 
     @Override
     public void addExtensionProvider(final ExtensionProvider extensionProvider) {
+        if (providerClassesSet.contains(extensionProvider.supportedClass())) {
+            return;
+        }
         coreApplicationContext.registerBean(
                 extensionProvider.supportedClass(),
                 () -> extensionProvider.provideInstance(EMPTY_CONTEXT).orElse(null),
@@ -40,6 +47,13 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
                 extensionProvider.supportedClass(),
                 () -> extensionProvider.provideInstance(EMPTY_CONTEXT),
                 b -> b.setScope(BeanDefinition.SCOPE_PROTOTYPE));
+        providerClassesSet.add(extensionProvider.supportedClass());
+    }
+
+    @Override
+    public <T> T getExtensionProvider(final Class<T> type) {
+        sharedApplicationContext.refresh();
+        return sharedApplicationContext.getBean(type);
     }
 
     private static class EmptyContext implements ExtensionProvider.Context {

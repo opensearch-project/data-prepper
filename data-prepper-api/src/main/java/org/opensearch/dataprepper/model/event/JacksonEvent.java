@@ -58,8 +58,18 @@ import static org.opensearch.dataprepper.model.event.JacksonEventKey.trimTrailin
  * @since 1.2
  */
 public class JacksonEvent implements Event {
+    class DefaultEventFailureMetadata implements EventFailureMetadata {
+        static final String FAILURE_METADATA = "_failure_metadata";
+
+        public DefaultEventFailureMetadata with(String key, Object value) {
+            put(FAILURE_METADATA+"/"+key, value);
+            return this;
+        }
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
+
+    private static final int FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT = 0;
 
     private static final String SEPARATOR = "/";
 
@@ -140,6 +150,33 @@ public class JacksonEvent implements Event {
         return jsonNode;
     }
 
+    void normalizeKeys(Map<String, Object> map) {
+        Map<String, Object> toAdd = new HashMap<>();
+        Iterator<Map.Entry<String, Object>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            final String newKey = JacksonEventKey.replaceInvalidCharacters(key);
+            if (value instanceof Map) {
+                normalizeKeys((Map<String, Object>)value);
+            }
+            if (!newKey.equals(key)) {
+                toAdd.put(newKey, value);
+                iterator.remove();
+            }
+        }
+        map.putAll(toAdd);
+    }
+
+    @Override
+    public void put(EventKey key, Object value, boolean replaceInvalidCharacters) {
+        if (replaceInvalidCharacters && (value instanceof Map)) {
+            normalizeKeys((Map<String, Object>)value);
+        }
+        put(key, value);
+    }
+
     @Override
     public void put(EventKey key, Object value) {
         final JacksonEventKey jacksonEventKey = asJacksonEventKey(key);
@@ -162,6 +199,21 @@ public class JacksonEvent implements Event {
                 }
             }
         }
+    }
+
+    @Override
+    public void put(String key, final Object value, final boolean replaceInvalidCharacters) {
+        if (replaceInvalidCharacters) {
+            key = JacksonEventKey.replaceInvalidCharacters(key);
+            if (value instanceof Map) {
+                normalizeKeys((Map<String, Object>)value);
+            }
+        }
+        put(key, value);
+    }
+
+    public EventFailureMetadata updateFailureMetadata() {
+        return new DefaultEventFailureMetadata();
     }
 
     /**
@@ -195,8 +247,31 @@ public class JacksonEvent implements Event {
         JsonNode childNode = node.get(key);
         if (childNode == null) {
             childNode = mapper.createObjectNode();
-            ((ObjectNode) node).set(key, childNode);
+            if (node.isArray()) {
+                int index = Integer.parseInt(key);
+                ArrayNode arrayNode = (ArrayNode) node;
+
+                int distanceFromArrayEnd = index - arrayNode.size();
+                if (distanceFromArrayEnd >= FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT + 1) {
+                    throw new IndexOutOfBoundsException(
+                            String.format("Cannot expand array past the limit of size %s to reach index %s", arrayNode.size(), index));
+                }
+                while (arrayNode.size() <= index) {
+                    arrayNode.addNull();
+                }
+
+                JsonNode existing = arrayNode.get(index);
+                if (existing == null || !existing.isObject()) {
+                    childNode = mapper.createObjectNode();
+                    arrayNode.set(index, childNode);
+                } else {
+                    childNode = existing;
+                }
+            } else {
+                ((ObjectNode) node).set(key, childNode);
+            }
         }
+
         return childNode;
     }
 
@@ -234,6 +309,10 @@ public class JacksonEvent implements Event {
     public <T> T get(final String key, final Class<T> clazz) {
         final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return get(jacksonEventKey, clazz);
+    }
+
+    public static String replaceInvalidKeyChars(final String key) {
+        return JacksonEventKey.replaceInvalidCharacters(key);
     }
 
     private JsonNode getNode(final String key) {

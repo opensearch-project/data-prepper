@@ -128,6 +128,35 @@ class CsvProcessorTest {
     }
 
     @Test
+    void test_when_multLine_then_parsedCorrectly() {
+        when(processorConfig.isMultiLine()).thenReturn(true);
+        when(processorConfig.getDelimiter()).thenReturn(",");
+        csvProcessor = createObjectUnderTest();
+
+        Record<Event> eventUnderTest = createMessageEvent("key1,key2,key3\n1,2,3");
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+        assertThatKeyEquals(parsedEvent, "key1", "1");
+        assertThatKeyEquals(parsedEvent, "key2", "2");
+        assertThatKeyEquals(parsedEvent, "key3", "3");
+    }
+
+    @Test
+    void test_when_multLine_invalid_keys_then_parsedCorrectly() {
+        when(processorConfig.isMultiLine()).thenReturn(true);
+        when(processorConfig.getDelimiter()).thenReturn(",");
+        when(processorConfig.getNormalizeKeys()).thenReturn(true);
+        csvProcessor = createObjectUnderTest();
+
+        Record<Event> eventUnderTest = createMessageEvent("key%1,key&2,key^3\n1,2,3");
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+        assertThatKeyEquals(parsedEvent, "key_1", "1");
+        assertThatKeyEquals(parsedEvent, "key_2", "2");
+        assertThatKeyEquals(parsedEvent, "key_3", "3");
+    }
+
+    @Test
     void test_when_deleteHeaderAndHeaderSourceDefined_then_headerIsDeleted() {
         when(processorConfig.isDeleteHeader()).thenReturn(true);
         when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");
@@ -145,6 +174,26 @@ class CsvProcessorTest {
         assertThatKeyEquals(parsedEvent, "col1", "1");
         assertThatKeyEquals(parsedEvent, "col2", "2");
         assertThatKeyEquals(parsedEvent, "col3", "3");
+    }
+
+    @Test
+    void test_when_ColumnNames_with_invalid_keys_parsedCorrectly() {
+        when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");
+        when(processorConfig.getNormalizeKeys()).thenReturn(true);
+        csvProcessor = createObjectUnderTest();
+
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put("message","1,2,3");
+        eventData.put("header","col%1,col&2,col^3");
+        Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+
+        assertThat(parsedEvent.containsKey("message"), equalTo(true));
+
+        assertThatKeyEquals(parsedEvent, "col_1", "1");
+        assertThatKeyEquals(parsedEvent, "col_2", "2");
+        assertThatKeyEquals(parsedEvent, "col_3", "3");
     }
 
     @Test

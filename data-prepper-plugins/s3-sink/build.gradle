@@ -11,7 +11,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.13.0'
+    implementation 'joda-time:joda-time:2.14.0'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:netty-nio-client'
@@ -30,7 +30,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
     implementation libs.commons.lang3
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-plugins:csv-processor')

@@ -295,4 +295,19 @@ public class AppendAggregateActionTest {
         assertThat(result.get(0).getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
         assertThat(result.get(0).toMap(), equalTo(groupState));
     }
+
+    @Test
+    void concludeGroup_with_empty_groupState_returns_null() throws NoSuchFieldException, IllegalAccessException {
+        AppendAggregateActionConfig appendAggregateActionConfig = new AppendAggregateActionConfig();
+        final List<String> testKeysToAppend = new ArrayList<>();
+        testKeysToAppend.add(UUID.randomUUID().toString());
+        setField(AppendAggregateActionConfig.class, appendAggregateActionConfig, "keysToAppend", testKeysToAppend);
+        appendAggregateAction = createObjectUnderTest(appendAggregateActionConfig);
+
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
+        final GroupState groupState = aggregateActionInput.getGroupState();
+
+        final AggregateActionOutput actionOutput = appendAggregateAction.concludeGroup(aggregateActionInput);
+        assertThat(actionOutput, equalTo(null));
+    }
 }

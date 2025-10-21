@@ -1,0 +1,8 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - test_plugin:
+        option_a: some-value-for-a
+  sink:
+    - unused:

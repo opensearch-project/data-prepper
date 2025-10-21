@@ -18,15 +18,23 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -38,7 +46,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -46,6 +53,52 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceTest {
+    @Test
+    void testNullNodeThrowsException() {
+        final Event testEvent = createTestEvent(new HashMap<>());
+        assertThrows(NullPointerException.class, () -> objectUnderTest.coercePrimaryTerminalNode(null, testEvent));
+    }
+
+
+    @Test
+    void testFunctionCachingUnderConcurrentAccess() throws InterruptedException {
+        final int numThreads = 10;
+        final int numIterations = 1000;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(numThreads);
+        final Event testEvent = createTestEvent(Collections.singletonMap("test", "value"));
+        final String functionString = "length(/test)";
+        
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        when(terminalNode.getText()).thenReturn(functionString);
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(5);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        for (int i = 0; i < numThreads; i++) {
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < numIterations; j++) {
+                        objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        completionLatch.await(5, TimeUnit.SECONDS);
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.SECONDS);
+        
+        // Verify one last time that the function still works correctly
+        Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, equalTo(5));
+    }
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Mock
@@ -54,11 +107,13 @@ class ParseTreeCoercionServiceTest {
     @Mock
     private Token token;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration =
             new LiteralTypeConversionsConfiguration();
     private final ExpressionFunctionProvider expressionFunctionProvider = mock(ExpressionFunctionProvider.class);
     private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService(
-            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider);
+            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider, eventKeyFactory);
 
     @Test
     void testCoerceTerminalNodeStringType() {
@@ -226,6 +281,18 @@ class ParseTreeCoercionServiceTest {
         assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
 
+    @ParameterizedTest
+    @MethodSource("provideSupportedJsonPointerValues")
+    void testCoerceTerminalNodeTripleQuoteStringTypeSupportedValues(final Object testValue) {
+        final String testKey = "/testKey";
+        final String testTruipleQuoteStringKey = "\"\"\"/testKey\"\"\"";
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.String);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(testTruipleQuoteStringKey);
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, null);
+        assertThat(result, equalTo(testKey));
+    }
+
     @Test
     void testCoerceTerminalNodeJsonPointerTypeUnSupportedValues() {
         final String testKey1 = "key1";
@@ -316,7 +383,7 @@ class ParseTreeCoercionServiceTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         when(terminalNode.getText()).thenReturn("xyz(arg1)");
-        assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, null));
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, null));
     }
 
     @Test
@@ -347,11 +414,11 @@ class ParseTreeCoercionServiceTest {
     private Event createTestEvent(final Object data) {
         final Event event = mock(Event.class);
         final JsonNode node = mapper.valueToTree(data);
-        lenient().when(event.get(anyString(), any())).thenAnswer(invocation -> {
+        lenient().when(event.get(any(EventKey.class), any())).thenAnswer(invocation -> {
             Object[] args = invocation.getArguments();
-            final String jsonPointer = (String) args[0];
+            final EventKey eventKey = (EventKey) args[0];
             final Class<?> clazz = (Class<?>) args[1];
-            final JsonNode childNode = node.at(jsonPointer);
+            final JsonNode childNode = node.at(eventKey.getKey());
             if (childNode.isMissingNode()) {
                 return null;
             }
@@ -362,7 +429,7 @@ class ParseTreeCoercionServiceTest {
 
     private Event createInvalidTestEvent(final Object data) {
         final Event event = mock(Event.class);
-        lenient().when(event.get(anyString(), any())).thenReturn(new AtomicBoolean());
+        lenient().when(event.get(any(EventKey.class), any())).thenReturn(new AtomicBoolean());
         return event;
     }
 
@@ -370,7 +437,7 @@ class ParseTreeCoercionServiceTest {
         return Stream.of(
                 Arguments.of("test key", "\"/test key\""),
                 Arguments.of("test/key", "\"/test~1key\""),
-                Arguments.of("test\\key", "\"/test\\key\""),
+                Arguments.of("test/key", "\"/test~1key\""),
                 Arguments.of("test~0key", "\"/test~00key\"")
         );
     }

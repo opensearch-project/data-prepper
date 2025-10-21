@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.codec.json;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -21,22 +20,48 @@ import java.util.Objects;
  */
 @DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NdjsonOutputConfig.class)
 public class NdjsonOutputCodec implements OutputCodec {
-    private static final String NDJSON = "ndjson";
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final NdjsonOutputConfig config;
-    private OutputCodecContext codecContext;
+    private final NdjsonOutputConfig ndjsonOutputConfig;
+    private OutputCodecContext deprecatedSupportCodecContext;
 
     @DataPrepperPluginConstructor
     public NdjsonOutputCodec(final NdjsonOutputConfig config) {
-        Objects.requireNonNull(config);
-        this.config = config;
+        Objects.requireNonNull(config, "NdjsonOutputConfig cannot be null");
+        this.ndjsonOutputConfig = config;
+    }
+
+    private static class NdjsonWriter implements Writer {
+        private final OutputStream outputStream;
+        private final OutputCodecContext codecContext;
+
+        private NdjsonWriter(final OutputStream outputStream, final OutputCodecContext codecContext) {
+            this.outputStream = outputStream;
+            this.codecContext = codecContext;
+        }
+
+        @Override
+        public void writeEvent(final Event event) throws IOException {
+            doWriteEvent(outputStream, event, codecContext);
+        }
+
+        @Override
+        public void complete() throws IOException {
+            outputStream.close();
+        }
+    }
+
+    @Override
+    public Writer createWriter(final OutputStream outputStream, final Event sampleEvent, final OutputCodecContext codecContext) {
+        Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+
+        return new NdjsonWriter(outputStream, codecContext);
     }
 
     @Override
     public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
         Objects.requireNonNull(codecContext);
-        this.codecContext = codecContext;
+        this.deprecatedSupportCodecContext = codecContext;
     }
 
     @Override
@@ -44,9 +69,9 @@ public class NdjsonOutputCodec implements OutputCodec {
         Objects.requireNonNull(event);
 
         String json = event.jsonBuilder()
-                .includeKeys(codecContext.getIncludeKeys())
-                .excludeKeys(codecContext.getExcludeKeys())
-                .includeTags(codecContext.getTagsTargetKey())
+                .includeKeys(deprecatedSupportCodecContext.getIncludeKeys())
+                .excludeKeys(deprecatedSupportCodecContext.getExcludeKeys())
+                .includeTags(deprecatedSupportCodecContext.getTagsTargetKey())
                 .toJsonString();
         outputStream.write(json.getBytes());
         outputStream.write(System.lineSeparator().getBytes());
@@ -59,6 +84,18 @@ public class NdjsonOutputCodec implements OutputCodec {
 
     @Override
     public String getExtension() {
-        return NDJSON;
+        return ndjsonOutputConfig.getExtensionOption().getExtension();
+    }
+
+    private static void doWriteEvent(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(event);
+
+        String json = event.jsonBuilder()
+                .includeKeys(codecContext.getIncludeKeys())
+                .excludeKeys(codecContext.getExcludeKeys())
+                .includeTags(codecContext.getTagsTargetKey())
+                .toJsonString();
+        outputStream.write(json.getBytes());
+        outputStream.write(System.lineSeparator().getBytes());
     }
 }

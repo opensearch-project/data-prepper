@@ -11,8 +11,9 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,10 +28,14 @@ public class WorkerScheduler implements Runnable {
 
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
+    private static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
+    private static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
     private static final Logger log = LoggerFactory.getLogger(WorkerScheduler.class);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
     private static final Duration DEFAULT_SLEEP_DURATION_MILLIS = Duration.ofMillis(10000);
+    private final Counter parititionsCompletedCounter;
+    private final Counter parititionsFailedCounter;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
@@ -59,6 +64,8 @@ public class WorkerScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetSuccesses = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME);
         this.acknowledgementSetFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME);
+        this.parititionsCompletedCounter = pluginMetrics.counter(WORKER_PARTITIONS_COMPLETED);
+        this.parititionsFailedCounter = pluginMetrics.counter(WORKER_PARTITIONS_FAILED);
     }
 
     @Override
@@ -73,6 +80,7 @@ public class WorkerScheduler implements Runnable {
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
                     processPartition(partition.get(), buffer);
+                    parititionsCompletedCounter.increment();
 
                 } else {
                     log.debug("No partition available. This thread will sleep for {}", DEFAULT_SLEEP_DURATION_MILLIS);
@@ -85,6 +93,7 @@ public class WorkerScheduler implements Runnable {
                 }
             } catch (Exception e) {
                 log.error("Error processing partition", e);
+                parititionsFailedCounter.increment();
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
                 } catch (InterruptedException ex) {
@@ -103,13 +112,21 @@ public class WorkerScheduler implements Runnable {
             AcknowledgementSet acknowledgementSet = null;
             if (sourceConfig.isAcknowledgments()) {
                 acknowledgementSet = createAcknowledgementSet(partition);
+                // When acknowledgments are enabled, partition completion is handled in the acknowledgment callback
+                crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+            } else {
+                // When acknowledgments are disabled, complete the partition immediately after execution
+                crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+                sourceCoordinator.completePartition(partition);
             }
-            crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+        } else {
+            // If no progress state, complete the partition immediately
+            sourceCoordinator.completePartition(partition);
         }
-        sourceCoordinator.completePartition(partition);
     }
 
-    private AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition) {
+    @VisibleForTesting
+    AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition) {
         return acknowledgementSetManager.create((result) -> {
             if (result) {
                 acknowledgementSetSuccesses.increment();

@@ -9,6 +9,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -148,5 +150,27 @@ class KeyGeneratorTest {
             assertThat(key.contains(objectName), equalTo(true));
         }
 
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void test_generateKey_with_null_or_empty_pathPrefix_from_bucketSelector(String pathPrefix) {
+        final String objectName = UUID.randomUUID().toString();
+        when(extensionProvider.getExtension()).thenReturn(null);
+
+        S3BucketSelector s3BucketSelector = mock(S3BucketSelector.class);
+        when(s3BucketSelector.getPathPrefix()).thenReturn(pathPrefix);
+        final KeyGenerator objectUnderTest = createObjectUnderTest(s3BucketSelector);
+
+        final Event event = mock(Event.class);
+
+        try (final MockedStatic<ObjectKey> objectKeyMockedStatic = mockStatic(ObjectKey.class)) {
+            objectKeyMockedStatic.when(() -> ObjectKey.objectFileName(s3SinkConfig, null, event, expressionEvaluator))
+                    .thenReturn(objectName);
+
+            String key = objectUnderTest.generateKeyForEvent(event);
+            assertThat(key, notNullValue());
+            assertThat(key, equalTo(objectName));
+        }
     }
 }

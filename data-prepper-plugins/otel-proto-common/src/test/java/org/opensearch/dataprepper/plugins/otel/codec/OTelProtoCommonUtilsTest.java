@@ -24,9 +24,9 @@ public class OTelProtoCommonUtilsTest {
     }
 
     @Test
-    public void test_timeISO8601ToNanos() {
+    public void test_convertISO8601ToNanos() {
         Instant curTime = Instant.now();
-        assertThat(curTime.getEpochSecond() * OTelProtoCommonUtils.NANO_MULTIPLIER + curTime.getNano(), equalTo(OTelProtoCommonUtils.timeISO8601ToNanos(curTime.toString())));
+        assertThat(curTime.getEpochSecond() * OTelProtoCommonUtils.NANO_MULTIPLIER + curTime.getNano(), equalTo(OTelProtoCommonUtils.convertISO8601ToNanos(curTime.toString())));
     }
 
     @Test

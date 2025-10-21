@@ -157,7 +157,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         // Initialize the partial buffer
         statefulBuffer = new InMemoryBufferSynchronized(
                 lambdaSinkConfig.getBatchOptions().getKeyName(),
-                outputCodecContext
+                outputCodecContext,
+                null
         );
         sinkInitialized = Boolean.TRUE;
     }
@@ -190,7 +191,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 // create a new partial buffer.
                 statefulBuffer = new InMemoryBufferSynchronized(
                         lambdaSinkConfig.getBatchOptions().getKeyName(),
-                        outputCodecContext
+                        outputCodecContext,
+                        null
                 );
                 flushBuffers(Collections.singletonList(bufferToFlush));
             }
@@ -215,7 +217,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                     // Create new partial buffer
                     statefulBuffer = new InMemoryBufferSynchronized(
                             lambdaSinkConfig.getBatchOptions().getKeyName(),
-                            outputCodecContext
+                            outputCodecContext,
+                            null
                     );
                 }
             }

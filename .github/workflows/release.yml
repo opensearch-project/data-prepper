@@ -45,7 +45,7 @@ jobs:
       run: ./gradlew --parallel --max-workers 2 :release:archives:buildArchives
 
     - name: Build Maven Artifacts
-      run: ./gradlew publish
+      run: ./gradlew publishAllPublicationsToMavenRepository
 
     - name: Build Docker Image
       run: ./gradlew :release:docker:docker
@@ -97,7 +97,7 @@ jobs:
       fail-fast: false
     runs-on: ubuntu-latest
     needs: build
-    timeout-minutes: 8
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Data Prepper
@@ -110,7 +110,6 @@ jobs:
 
   promote:
     runs-on: ubuntu-latest
-    if: ${{ (success() || failure()) && needs.build.result == 'success' }}
     needs: [build, validate-docker, validate-archive]
     permissions:
       contents: write

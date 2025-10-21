@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -55,6 +56,13 @@ class TranslateProcessorTest {
     @Mock
     private MappingsParameterConfig mappingsParameterConfig;
 
+    private static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
+        return new Record<>(JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build());
+    }
+
     @BeforeEach
     void setup() {
         lenient()
@@ -77,7 +85,7 @@ class TranslateProcessorTest {
     @Test
     void test_string_keys_in_map() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "mappedValue1")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
@@ -90,7 +98,7 @@ class TranslateProcessorTest {
     @Test
     void test_integer_keys_in_map() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("123", "mappedValue1")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("123");
@@ -103,7 +111,7 @@ class TranslateProcessorTest {
     @Test
     void test_integer_range_keys_in_map() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("1-10", "mappedValue1")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("5");
@@ -208,7 +216,7 @@ class TranslateProcessorTest {
     @Test
     void test_multiple_dashes_in_keys_should_be_treated_as_string_literal() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("1-10-20", "mappedValue1")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> failureRecord = getEvent("1-10-20");
@@ -326,7 +334,7 @@ class TranslateProcessorTest {
     void test_source_array_single_key() {
         when(mappingsParameterConfig.getSource()).thenReturn(new ArrayList(List.of("sourceField")));
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("400", "mappedValue1")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
         final TranslateProcessor processor = createObjectUnderTest();
@@ -342,7 +350,7 @@ class TranslateProcessorTest {
         when(mappingsParameterConfig.getSource()).thenReturn(new ArrayList(List.of("sourceField1", "sourceField2")));
         targetsParameterConfig = new TargetsParameterConfig(
                 createMapEntries(createMapping("key1", "mappedValue1"), createMapping("key2", "mappedValue2"),
-                                 createMapping("key3", "mappedValue3")), "targetField", null, null, null, null);
+                        createMapping("key3", "mappedValue3")), "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
         final TranslateProcessor processor = createObjectUnderTest();
@@ -358,7 +366,7 @@ class TranslateProcessorTest {
         when(mappingsParameterConfig.getSource()).thenReturn(new ArrayList(List.of("sourceField1", "sourceField2")));
         targetsParameterConfig = new TargetsParameterConfig(
                 createMapEntries(createMapping("key1", "mappedValue1"), createMapping("key2", "mappedValue2"),
-                                 createMapping("key3", "mappedValue3")), "targetField", null, null, null, null);
+                        createMapping("key3", "mappedValue3")), "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
         final TranslateProcessor processor = createObjectUnderTest();
@@ -375,7 +383,7 @@ class TranslateProcessorTest {
         when(mappingsParameterConfig.getSource()).thenReturn(new ArrayList(List.of("sourceField1", "sourceField2")));
         targetsParameterConfig = new TargetsParameterConfig(
                 createMapEntries(createMapping("key1", "mappedValue1"), createMapping("key2", "mappedValue2"),
-                                 createMapping("key3", "mappedValue3")), "targetField", null, null, defaultValue, null);
+                        createMapping("key3", "mappedValue3")), "targetField", null, null, defaultValue, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
         final TranslateProcessor processor = createObjectUnderTest();
@@ -436,7 +444,7 @@ class TranslateProcessorTest {
                 createMapping("key2", "mappedValue2")));
         when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField");
         targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, "No Match",
-                                                            null);
+                null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
         final TranslateProcessor processor = createObjectUnderTest();
@@ -499,7 +507,7 @@ class TranslateProcessorTest {
         final Map<String, Object> testJson = Map.of("collection", List.of(
                 Map.of("sourceField1", List.of(Map.of("sourceField2", "key1")))));
         final List<Map<String, Object>> outputJson = List.of(
-                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField","mappedValue1"))));
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField", "mappedValue1"))));
 
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
         when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField1/sourceField2");
@@ -535,9 +543,9 @@ class TranslateProcessorTest {
     @Test
     void test_no_path_found_with_no_list() {
         final Map<String, Object> testJson = Map.of("collection", List.of(
-                Map.of("sourceField1", "key1","sourceField2", "key1")));
+                Map.of("sourceField1", "key1", "sourceField2", "key1")));
         final List<Map<String, Object>> outputJson = List.of(
-                Map.of("sourceField1", "key1","sourceField2", "key1"));
+                Map.of("sourceField1", "key1", "sourceField2", "key1"));
 
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
         when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField1/sourceField2");
@@ -556,7 +564,7 @@ class TranslateProcessorTest {
         final Map<String, Object> testJson = Map.of("collection", List.of(
                 Map.of("sourceField1", List.of(Map.of("sourceField2", "key1")))));
         final List<Map<String, Object>> outputJson = List.of(
-                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField","mappedValue1"))));
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField", "mappedValue1"))));
 
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
         when(mappingsParameterConfig.getSource()).thenReturn(" collection/sourceField1/sourceField2  ");
@@ -573,7 +581,7 @@ class TranslateProcessorTest {
     @Test
     void test_target_type_default() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "200")),
-                                                            "targetField", null, null, null, null);
+                "targetField", null, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
@@ -586,7 +594,7 @@ class TranslateProcessorTest {
     @Test
     void test_target_type_integer() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "200")),
-                                                            "targetField", null, null, null, TargetType.INTEGER);
+                "targetField", null, null, null, TargetType.INTEGER);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
@@ -599,7 +607,7 @@ class TranslateProcessorTest {
     @Test
     void test_target_type_boolean() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "false")),
-                                                            "targetField", null, null, null, TargetType.BOOLEAN);
+                "targetField", null, null, null, TargetType.BOOLEAN);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
@@ -612,7 +620,7 @@ class TranslateProcessorTest {
     @Test
     void test_target_type_double() {
         targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "20.3")),
-                                                            "targetField", null, null, null, TargetType.DOUBLE);
+                "targetField", null, null, null, TargetType.DOUBLE);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
@@ -622,22 +630,52 @@ class TranslateProcessorTest {
         assertThat(translatedRecords.get(0).getData().get("targetField", Double.class), is(20.3));
     }
 
+    private TranslateProcessor createObjectUnderTest() {
+        return new TranslateProcessor(pluginMetrics, mockConfig, expressionEvaluator, TestEventKeyFactory.getTestEventFactory());
+    }
+
+    private Record<Event> sourceAndTargetFields(Object sourceValue, Object targetValue) {
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("sourceField", sourceValue);
+        testData.put("targetField", targetValue);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Record<Event> getEvent(Object sourceField) {
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("sourceField", sourceField);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Map.Entry<String, String> createMapping(String key, String value) {
+        return new AbstractMap.SimpleEntry<>(key, value);
+    }
+
+    private Map<String, Object> createMapEntries(Map.Entry<String, String>... mappings) {
+        final Map<String, Object> finalMap = new HashMap<>();
+        for (Map.Entry<String, String> mapping : mappings) {
+            finalMap.put(mapping.getKey(), mapping.getValue());
+        }
+
+        return finalMap;
+    }
+
     @Nested
     class FilePathTests {
-        private File testMappingsFile;
-        private String filePath;
         TranslateProcessorConfig fileTranslateConfig;
         FileParameterConfig fileParameterConfig;
+        private File testMappingsFile;
+        private String filePath;
 
         @BeforeEach
         void setup() throws IOException, NoSuchFieldException, IllegalAccessException {
             testMappingsFile = File.createTempFile("test", ".yaml");
             String fileContent = "mappings:\n" +
-                                 "  - source: sourceField\n" +
-                                 "    targets:\n" +
-                                 "      - target: fileTarget\n" +
-                                 "        map:\n" +
-                                 "          key1: fileMappedValue";
+                    "  - source: sourceField\n" +
+                    "    targets:\n" +
+                    "      - target: fileTarget\n" +
+                    "        map:\n" +
+                    "          key1: fileMappedValue";
             Files.write(testMappingsFile.toPath(), fileContent.getBytes());
             filePath = testMappingsFile.getAbsolutePath();
             fileTranslateConfig = new TranslateProcessorConfig();
@@ -662,10 +700,11 @@ class TranslateProcessorTest {
             assertTrue(translatedRecords.get(0).getData().containsKey("fileTarget"));
             assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("fileMappedValue"));
         }
+
         @Test
         void test_non_overlapping_sources() throws NoSuchFieldException, IllegalAccessException {
             targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key2", "mappedValue2")),
-                                                                "targetField", null, null, null, null);
+                    "targetField", null, null, null, null);
             MappingsParameterConfig fileMappingConfig = createMappingConfig();
             setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
             parseMappings();
@@ -683,10 +722,11 @@ class TranslateProcessorTest {
             assertTrue(translatedMappingsRecords.get(0).getData().containsKey("targetField"));
             assertThat(translatedMappingsRecords.get(0).getData().get("targetField", String.class), is("mappedValue2"));
         }
+
         @Test
         void test_overlapping_sources_different_targets() throws NoSuchFieldException, IllegalAccessException {
             targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "mappedValue1")),
-                                                                "targetField", null, null, null, null);
+                    "targetField", null, null, null, null);
             MappingsParameterConfig fileMappingConfig = createMappingConfig();
             setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
             parseMappings();
@@ -708,7 +748,7 @@ class TranslateProcessorTest {
         @Test
         void test_overlapping_sources_and_overlapping_targets() throws NoSuchFieldException, IllegalAccessException {
             targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "mappedValue1")),
-                                                                "fileTarget", null, null, null, null);
+                    "fileTarget", null, null, null, null);
             MappingsParameterConfig fileMappingConfig = createMappingConfig();
             setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
             parseMappings();
@@ -721,53 +761,17 @@ class TranslateProcessorTest {
             assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("mappedValue1"));
         }
 
-        void parseMappings(){
+        void parseMappings() {
             fileTranslateConfig.hasMappings();
             fileTranslateConfig.getCombinedMappingsConfigs().get(0).parseMappings();
             when(mockConfig.getCombinedMappingsConfigs()).thenReturn(fileTranslateConfig.getCombinedMappingsConfigs());
         }
+
         MappingsParameterConfig createMappingConfig() throws NoSuchFieldException, IllegalAccessException {
             MappingsParameterConfig fileMappingConfig = new MappingsParameterConfig();
             setField(MappingsParameterConfig.class, fileMappingConfig, "source", "sourceField");
             setField(MappingsParameterConfig.class, fileMappingConfig, "targetsParameterConfigs", List.of(targetsParameterConfig));
             return fileMappingConfig;
         }
-    }
-
-    private TranslateProcessor createObjectUnderTest() {
-        return new TranslateProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-    }
-
-    private Record<Event> sourceAndTargetFields(Object sourceValue, Object targetValue) {
-        final Map<String, Object> testData = new HashMap<>();
-        testData.put("sourceField", sourceValue);
-        testData.put("targetField", targetValue);
-        return buildRecordWithEvent(testData);
-    }
-
-    private Record<Event> getEvent(Object sourceField) {
-        final Map<String, Object> testData = new HashMap<>();
-        testData.put("sourceField", sourceField);
-        return buildRecordWithEvent(testData);
-    }
-
-    private static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
-        return new Record<>(JacksonEvent.builder()
-                .withData(data)
-                .withEventType("event")
-                .build());
-    }
-
-    private Map.Entry<String, String> createMapping(String key, String value) {
-        return new AbstractMap.SimpleEntry<>(key, value);
-    }
-
-    private Map<String, Object> createMapEntries(Map.Entry<String, String>... mappings) {
-        final Map<String, Object> finalMap = new HashMap<>();
-        for (Map.Entry<String, String> mapping : mappings) {
-            finalMap.put(mapping.getKey(), mapping.getValue());
-        }
-
-        return finalMap;
     }
 }

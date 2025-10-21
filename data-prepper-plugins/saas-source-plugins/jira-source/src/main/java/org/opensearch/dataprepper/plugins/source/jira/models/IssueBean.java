@@ -17,7 +17,6 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -31,12 +30,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 
 public class IssueBean {
 
-    @JsonIgnore
-    private final Pattern JiraDateTimePattern = Pattern.compile(
-            "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[-+]\\d{4}$");
-    @JsonIgnore
-    private final DateTimeFormatter offsetDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-
     /**
      * Expand options that include additional issue details in the response.
      */
@@ -44,7 +37,6 @@ public class IssueBean {
     @Setter
     @JsonProperty("expand")
     private String expand = null;
-
     /**
      * The ID of the issue.
      */
@@ -52,7 +44,6 @@ public class IssueBean {
     @Setter
     @JsonProperty("id")
     private String id = null;
-
     /**
      * The URL of the issue details.
      */
@@ -60,7 +51,6 @@ public class IssueBean {
     @Setter
     @JsonProperty("self")
     private String self = null;
-
     /**
      * The key of the issue.
      */
@@ -88,7 +78,12 @@ public class IssueBean {
     @Setter
     @JsonProperty("fields")
     private Map<String, Object> fields = null;
-
+    
+    @JsonIgnore
+    private final Pattern JiraDateTimePattern = Pattern.compile(
+            "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[-+]\\d{4}$");
+    @JsonIgnore
+    private final DateTimeFormatter offsetDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
     @JsonIgnore
     public String getProject() {
@@ -124,8 +119,7 @@ public class IssueBean {
                 .toString()).matches()) {
             String charSequence = fields.get(dateTimeFieldToPull).toString();
             OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence, offsetDateTimeFormatter);
-            new Date(offsetDateTime.toInstant().toEpochMilli());
-            dateTimeField = offsetDateTime.toEpochSecond() * 1000;
+            dateTimeField = offsetDateTime.toInstant().toEpochMilli();
         }
         return dateTimeField;
     }

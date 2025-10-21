@@ -196,7 +196,7 @@ public class OTelMetricsGrpcServiceTest {
     }
 
     OTelMetricsGrpcService createObjectUnderTest(OTelProtoCodec.OTelProtoDecoder decoder) {
-        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics);
+        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
     }
 
     @ParameterizedTest

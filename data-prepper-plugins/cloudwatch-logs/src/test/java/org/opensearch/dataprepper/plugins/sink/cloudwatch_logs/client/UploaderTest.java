@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsExcept
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UploaderTest {
+    private static final int RETRY_COUNT = 5;
     private CloudWatchLogsClient mockCloudWatchLogsClient;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
 
@@ -29,7 +30,7 @@ class UploaderTest {
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
     }
 
-    Collection<EventHandle> getTestEventHandles() {
+    List<EventHandle> getTestEventHandles() {
         final ArrayList<EventHandle> eventHandles = new ArrayList<>();
         for (int i = 0; i < ThresholdConfig.DEFAULT_BATCH_SIZE; i++) {
             final EventHandle mockEventHandle = mock(EventHandle.class);
@@ -50,8 +51,7 @@ class UploaderTest {
                 .putLogEventsRequest(getMockPutLogEventsRequest())
                 .eventHandles(getTestEventHandles())
                 .totalEventCount(ThresholdConfig.DEFAULT_BATCH_SIZE)
-                .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
-                .backOffTimeBase(ThresholdConfig.DEFAULT_BACKOFF_TIME)
+                .retryCount(RETRY_COUNT)
                 .build();
     }
 
@@ -78,7 +78,7 @@ class UploaderTest {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 
@@ -88,7 +88,7 @@ class UploaderTest {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 }

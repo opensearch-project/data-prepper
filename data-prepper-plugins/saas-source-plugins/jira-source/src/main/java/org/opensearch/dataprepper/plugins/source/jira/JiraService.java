@@ -130,7 +130,7 @@ public class JiraService {
      * @param ts            Input Parameter
      * @return String Builder created issue filter criteria
      */
-    private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
+     StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
@@ -167,7 +167,7 @@ public class JiraService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        jiraQl.append(" order by " + UPDATED);
+        jiraQl.append(" order by " + UPDATED + " asc ");
         log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }

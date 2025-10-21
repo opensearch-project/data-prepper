@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
     static final String SQS_MESSAGES_RECEIVED_METRIC_NAME = "sqsMessagesReceived";
+    static final String SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME = "sqsReceiveMessageFailed";
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
@@ -65,6 +66,7 @@ public class SqsWorker implements Runnable {
     private final S3EventFilter objectCreatedFilter;
     private final S3EventFilter evenBridgeObjectCreatedFilter;
     private final Counter sqsMessagesReceivedCounter;
+    private final Counter sqsReceiveMessagesFailedCounter;
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
     private final Counter s3ObjectsEmptyCounter;
@@ -105,6 +107,7 @@ public class SqsWorker implements Runnable {
         s3ObjectsEmptyCounter = pluginMetrics.counter(S3_OBJECTS_EMPTY_METRIC_NAME);
         sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
+        sqsReceiveMessagesFailedCounter = pluginMetrics.counter(SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME);
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
         sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
@@ -161,6 +164,7 @@ public class SqsWorker implements Runnable {
             return messages;
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            sqsReceiveMessagesFailedCounter.increment();
             applyBackoff();
             return Collections.emptyList();
         }
@@ -346,7 +350,7 @@ public class SqsWorker implements Runnable {
             final AcknowledgementSet acknowledgementSet) {
         // SQS messages won't be deleted if we are unable to process S3Objects because of an exception
         try {
-            s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
+            s3Service.addS3Object(s3ObjectReference, s3SourceConfig.getDataSelection(), acknowledgementSet);
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
         } catch (final Exception e) {
             LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());

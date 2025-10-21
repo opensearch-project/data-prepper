@@ -10,7 +10,7 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 }
 
 test {

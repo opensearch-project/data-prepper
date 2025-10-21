@@ -113,19 +113,6 @@ class PipelineConfigurationTests {
     }
 
     @Test
-    void testNoSourceConfiguration() {
-        final PipelineModel pipelineModel = mock(PipelineModel.class);
-        when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getSinks()).thenReturn(sinks);
-        when(pipelineModel.getWorkers()).thenReturn(TestConfigurationProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(TestConfigurationProvider.TEST_DELAY);
-
-        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
-
-        assertThat(actual.getMessage(), equalTo("Invalid configuration, source is a required component"));
-    }
-
-    @Test
     void testNullProcessorConfiguration() {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);

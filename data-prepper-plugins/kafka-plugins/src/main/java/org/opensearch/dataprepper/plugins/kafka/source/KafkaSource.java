@@ -19,6 +19,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.connect.json.JsonDeserializer;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -30,6 +31,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -93,6 +95,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private final List<ExecutorService> allTopicExecutorServices;
     private final List<KafkaCustomConsumer> allTopicConsumers;
     private final PluginConfigObservable pluginConfigObservable;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -100,7 +103,8 @@ public class KafkaSource implements Source<Record<Event>> {
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final PipelineDescription pipelineDescription,
                        final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
-                       final PluginConfigObservable pluginConfigObservable) {
+                       final PluginConfigObservable pluginConfigObservable,
+                       final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -110,6 +114,7 @@ public class KafkaSource implements Source<Record<Event>> {
         this.allTopicExecutorServices = new ArrayList<>();
         this.allTopicConsumers = new ArrayList<>();
         this.pluginConfigObservable = pluginConfigObservable;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.updateConfig(kafkaClusterConfigSupplier);
     }
 
@@ -186,7 +191,8 @@ public class KafkaSource implements Source<Record<Event>> {
                 return new KafkaConsumer<String, GenericRecord>(consumerProperties);
             case PLAINTEXT:
             default:
-                glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig);
+                final AwsContext awsContext = new AwsContext(sourceConfig, awsCredentialsSupplier);
+                glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig, awsContext);
                 if (Objects.nonNull(glueDeserializer)) {
                     return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
                 } else {

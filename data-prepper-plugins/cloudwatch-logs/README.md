@@ -30,6 +30,11 @@ pipeline:
           max_request_size: 1mb
           retry_count: 5
           back_off_time: 500ms
+        header_overrides:
+          X-Custom-Header: "custom-value"
+          X-Request-ID: "request-123"
+          X-Source: "dataprepper"
+        endpoint: "https://logs.us-west-2.amazonaws.com"
 ```
 
 ## AWS Configuration
@@ -55,6 +60,10 @@ pipeline:
 - `log_send_interval` (Optional) : A string representing the amount of time in seconds between making requests. Defaults to "60s". (Min = "5s", Max = "300s") 
 
 - `back_off_time` (Optional) : A string representing the amount of time in milliseconds between errored transmission re-attempts. Defaults to "500ms". (Min = "500ms", Max = "1000ms")
+
+- `header_overrides` (Optional) : A string map representing custom HTTP headers to include in CloudWatch Logs requests.
+
+- `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
 ## Buffer Type Configuration
 

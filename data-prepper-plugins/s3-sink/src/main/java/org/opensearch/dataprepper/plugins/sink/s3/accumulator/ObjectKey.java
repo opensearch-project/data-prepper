@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
-import java.util.regex.Pattern;
-
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.s3keyindex.S3ObjectIndexUtility;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.regex.Pattern;
 
 /**
  * Building the path prefix and name pattern.
@@ -49,6 +49,9 @@ public class ObjectKey {
                                                      final Event event,
                                                      final ExpressionEvaluator expressionEvaluator) {
         String pathPrefix = s3SinkConfig.getObjectKeyOptions().getPathPrefix();
+        if (pathPrefix == null) {
+            return "";
+        }
         String pathPrefixExpressionResult = expressionEvaluator != null ? event.formatString(pathPrefix, expressionEvaluator, REPLACEMENT_FOR_NON_EXISTENT_KEYS) : pathPrefix;
         StringBuilder s3ObjectPath = new StringBuilder();
         if (pathPrefixExpressionResult != null && !pathPrefixExpressionResult.isEmpty()) {

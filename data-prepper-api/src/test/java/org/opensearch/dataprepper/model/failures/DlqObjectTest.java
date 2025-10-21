@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.Event;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -28,10 +33,12 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 public class DlqObjectTest {
 
@@ -42,6 +49,8 @@ public class DlqObjectTest {
     private Object failedData;
     private EventHandle eventHandle;
 
+    private Event event;
+
     @BeforeEach
     public void setUp() {
         pluginId = randomUUID().toString();
@@ -49,6 +58,7 @@ public class DlqObjectTest {
         pipelineName = randomUUID().toString();
         failedData = randomUUID();
         eventHandle = mock(EventHandle.class);
+        event = mock(Event.class);
     }
 
     @Test
@@ -64,6 +74,56 @@ public class DlqObjectTest {
                 .build();
 
         assertThat(testObject, is(notNullValue()));
+    }
+
+    @Test
+    public void test_build_with_timestamp_with_event_handles() {
+
+        List<EventHandle> eventHandles = List.of(eventHandle);
+        final DlqObject testObject = DlqObject.builder()
+                .withPluginId(pluginId)
+                .withPluginName(pluginName)
+                .withPipelineName(pipelineName)
+                .withFailedData(failedData)
+                .withEventHandles(eventHandles)
+                .withTimestamp(randomUUID().toString())
+                .build();
+
+        assertThat(testObject, is(notNullValue()));
+        assertThat(testObject.getEvent(), equalTo(null));
+        assertThat(testObject.getEventHandles(), equalTo(eventHandles));
+    }
+
+    @Test
+    public void test_build_with_timestamp_with_event() {
+
+        final DlqObject testObject = DlqObject.builder()
+                .withPluginId(pluginId)
+                .withPluginName(pluginName)
+                .withPipelineName(pipelineName)
+                .withFailedData(failedData)
+                .withEvent(event)
+                .withEventHandles(null)
+                .withTimestamp(randomUUID().toString())
+                .build();
+
+        assertThat(testObject, is(notNullValue()));
+        assertThat(testObject.getEvent(), equalTo(event));
+        assertThat(testObject.getEventHandles(), equalTo(null));
+    }
+
+    @Test
+    public void test_build_with_timestamp_with_event_and_eventHandles_throws() {
+
+        assertThrows(IllegalArgumentException.class, () -> DlqObject.builder()
+                .withPluginId(pluginId)
+                .withPluginName(pluginName)
+                .withPipelineName(pipelineName)
+                .withFailedData(failedData)
+                .withEvent(event)
+                .withEventHandles(List.of(eventHandle))
+                .withTimestamp(randomUUID().toString())
+                .build());
     }
 
     @Test
@@ -119,6 +179,40 @@ public class DlqObjectTest {
             failedData = null;
             assertThrows(NullPointerException.class, this::createTestObject);
         }
+
+        @Test
+        public void test_createDlqObject() {
+            final String testName = randomUUID().toString();
+            final String testPipelineName = randomUUID().toString();
+            PluginSetting pluginSetting = mock(PluginSetting.class);
+            when(pluginSetting.getName()).thenReturn(testName);
+            when(pluginSetting.getPipelineName()).thenReturn(testPipelineName);
+            eventHandle = mock(EventHandle.class);
+            Map<String, Object> data = new HashMap<>();
+            DlqObject dlqObject = DlqObject.createDlqObject(pluginSetting, List.of(eventHandle), data);
+            assertThat(dlqObject, is(notNullValue()));
+            assertThat(dlqObject.getEventHandles(), is(List.of(eventHandle)));
+            assertThat(dlqObject.getFailedData(), is(data));
+            assertThat(dlqObject.getPluginName(), is(testName));
+            assertThat(dlqObject.getPipelineName(), is(testPipelineName));
+        }
+        @Test
+        public void test_createDlqObjectWithEvent() {
+            final String testName = randomUUID().toString();
+            final String testPipelineName = randomUUID().toString();
+            PluginSetting pluginSetting = mock(PluginSetting.class);
+            when(pluginSetting.getName()).thenReturn(testName);
+            when(pluginSetting.getPipelineName()).thenReturn(testPipelineName);
+            event = mock(Event.class);
+            Map<String, Object> data = new HashMap<>();
+            DlqObject dlqObject = DlqObject.createDlqObject(pluginSetting, event, data);
+            assertThat(dlqObject, is(notNullValue()));
+            assertThat(dlqObject.getEvent(), is(event));
+            assertThat(dlqObject.getFailedData(), is(data));
+            assertThat(dlqObject.getPluginName(), is(testName));
+            assertThat(dlqObject.getPipelineName(), is(testPipelineName));
+
+        }
     }
 
     @Nested
@@ -169,11 +263,56 @@ public class DlqObjectTest {
         @Test
         public void test_get_release_eventHandle() {
             doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
-            final Object actualEventHandle = testObject.getEventHandle();
-            assertThat(actualEventHandle, is(notNullValue()));
-            assertThat(actualEventHandle, is(eventHandle));
+            final List<EventHandle> actualEventHandles = testObject.getEventHandles();
+            assertThat(actualEventHandles, is(notNullValue()));
+            assertThat(actualEventHandles, is(List.of(eventHandle)));
             testObject.releaseEventHandle(true);
             verify(eventHandle).release(any(Boolean.class));
+        }
+
+        @Test
+        public void test_get_release_eventHandle_with_Event() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            Event event = mock(Event.class);
+            when(event.getEventHandle()).thenReturn(eventHandle);
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .withEvent(event)
+                    .build();
+            assertThat(testObject.getEvent(), equalTo(event));
+            testObject.releaseEventHandle(true);
+            verify(eventHandle, times(0)).release(any(Boolean.class));
+        }
+
+
+        @Test
+        public void test_get_release_eventHandles() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            final List<EventHandle> actualEventHandles = testObject.getEventHandles();
+            assertThat(actualEventHandles, is(notNullValue()));
+            assertThat(actualEventHandles, is(List.of(eventHandle)));
+            testObject.releaseEventHandles(true);
+            verify(eventHandle).release(any(Boolean.class));
+        }
+
+        @Test
+        public void test_get_release_eventHandles_with_Event() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            Event event = mock(Event.class);
+            when(event.getEventHandle()).thenReturn(eventHandle);
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .withEvent(event)
+                    .build();
+            assertThat(testObject.getEvent(), equalTo(event));
+            testObject.releaseEventHandles(true);
+            verify(eventHandle, times(0)).release(any(Boolean.class));
         }
 
         @Test

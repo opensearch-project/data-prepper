@@ -7,6 +7,9 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -28,6 +31,7 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonStandardOTelLog;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
@@ -51,6 +55,7 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
 import org.opensearch.dataprepper.model.trace.Link;
 import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.SpanEvent;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import org.slf4j.Logger;
@@ -73,7 +78,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * OTelProtoStandardCodec is for encoding/decoding between DataPrepper OTEL representation and standard 
+ * OTelProtoStandardCodec is for encoding/decoding between DataPrepper OTEL representation and standard
  * {@link io.opentelemetry.proto} as per the Standard Spec.
  */
 public class OTelProtoStandardCodec {
@@ -92,6 +97,7 @@ public class OTelProtoStandardCodec {
 
 
     static final String NAME_KEY = "name";
+    static final String SCHEMA_URL_KEY = "schemaUrl";
     static final String VERSION_KEY = "version";
     static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
 
@@ -135,14 +141,6 @@ public class OTelProtoStandardCodec {
             return Objects.hash(scale, sign);
         }
     }
-    public static String convertUnixNanosToISO8601(final long unixNano) {
-        return Instant.ofEpochSecond(0L, unixNano).toString();
-    }
-
-    public static long timeISO8601ToNanos(final String timeISO08601) {
-        final Instant instant = Instant.parse(timeISO08601);
-        return instant.getEpochSecond() * NANO_MULTIPLIER + instant.getNano();
-    }
 
     public static class OTelProtoDecoder implements OTelProtoCodec.OTelProtoDecoder {
 
@@ -176,27 +174,26 @@ public class OTelProtoStandardCodec {
         @Override
         public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived) {
             return exportLogsServiceRequest.getResourceLogsList().stream()
-                    .flatMap(rs -> parseResourceLogs(rs, timeReceived).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceLogs(rs, timeReceived)).collect(Collectors.toList());
         }
 
-        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
-            final String serviceName = OTelProtoStandardCodec.getServiceName(rs.getResource()).orElse(null);
-            final Map<String, Object> resourceAttributes = getResourceAttributes(rs.getResource());
-            final String schemaUrl = rs.getSchemaUrl();
+        protected Stream<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
+            final String serviceName = getServiceName(rs.getResource()).orElse(null);
+            final Map<String, Object> resourceAttributes = getResourceAttributes(rs.getResource(), rs.getSchemaUrl());
 
             Stream<OpenTelemetryLog> mappedScopeListLogs = rs.getScopeLogsList()
                     .stream()
                     .map(sls -> {
                             return processLogsList(sls.getLogRecordsList(),
                                     serviceName,
-                                    OTelProtoStandardCodec.getInstrumentationScopeAttributes(sls.getScope()),
+                                    getInstrumentationScopeAttributes(sls.getScope()),
                                     resourceAttributes,
-                                    schemaUrl,
+                                    sls.getSchemaUrl(),
                                     timeReceived);
                     })
                     .flatMap(Collection::stream);
 
-            return mappedScopeListLogs.collect(Collectors.toList());
+            return mappedScopeListLogs;
         }
 
         protected Map<String, ResourceSpans> splitResourceSpansByTraceId(final ResourceSpans resourceSpans) {
@@ -229,7 +226,7 @@ public class OTelProtoStandardCodec {
 
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
-            final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
+            final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource(), resourceSpans.getSchemaUrl());
             if (!resourceSpans.getScopeSpansList().isEmpty()) {
                 return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived);
             }
@@ -240,7 +237,7 @@ public class OTelProtoStandardCodec {
 
         private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList, final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
             return scopeSpansList.stream()
-                    .map(scopeSpans -> parseSpans(scopeSpans.getSpansList(), scopeSpans.getScope(),
+                    .map(scopeSpans -> parseSpans(scopeSpans.getSpansList(), scopeSpans.getScope(), scopeSpans.getSchemaUrl(),
                             OTelProtoStandardCodec::getInstrumentationScopeAttributes, serviceName, resourceAttributes, timeReceived))
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
@@ -284,13 +281,14 @@ public class OTelProtoStandardCodec {
         }
 
         private <T> List<Span> parseSpans(final List<io.opentelemetry.proto.trace.v1.Span> spans, final T scope,
-                                          final Function<T, Map<String, Object>> scopeAttributesGetter,
-                                          final String serviceName, final Map<String, Object> resourceAttributes,
-                                          final Instant timeReceived) {
+                          final String schemaUrl,
+                          final Function<T, Map<String, Object>> scopeAttributesGetter,
+                          final String serviceName, final Map<String, Object> resourceAttributes,
+                          final Instant timeReceived) {
             return spans.stream()
                     .map(span -> {
                         final Map<String, Object> scopeAttributes = scopeAttributesGetter.apply(scope);
-                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes, timeReceived);
+                        return parseSpan(span, scopeAttributes, schemaUrl, serviceName, resourceAttributes, timeReceived);
                     })
                     .collect(Collectors.toList());
         }
@@ -303,20 +301,19 @@ public class OTelProtoStandardCodec {
                                                          final Instant timeReceived) {
             return logsList.stream()
                     .map(log -> JacksonStandardOTelLog.builder()
-                            .withTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(log.getTimeUnixNano()))
-                            .withObservedTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
-                            .withServiceName(serviceName)
+                            .withTime(convertUnixNanosToISO8601(log.getTimeUnixNano()))
+                            .withObservedTime(convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
                             .withAttributes(convertKeyValueToAttributes(log.getAttributesList()))
                             .withScope(ils)
                             .withResource(resourceAttributes)
                             .withSchemaUrl(schemaUrl)
                             .withFlags(log.getFlags())
-                            .withTraceId(OTelProtoStandardCodec.convertByteStringToString(log.getTraceId()))
-                            .withSpanId(OTelProtoStandardCodec.convertByteStringToString(log.getSpanId()))
+                            .withTraceId(convertByteStringToString(log.getTraceId()))
+                            .withSpanId(convertByteStringToString(log.getSpanId()))
                             .withSeverityNumber(log.getSeverityNumberValue())
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
-                            .withBody(OTelProtoStandardCodec.convertAnyValue(log.getBody()))
+                            .withBody(convertAnyValue(log.getBody()))
                             .withTimeReceived(timeReceived)
                             .build())
                     .collect(Collectors.toList());
@@ -326,19 +323,24 @@ public class OTelProtoStandardCodec {
             return Map.of("message", status.getMessage(), "code", status.getCodeValue());
         }
 
-        protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final Map<String, Object> instrumentationScopeAttributes,
-                                    final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
-            return JacksonStandardSpan.builder()
+        protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp,
+                    final Map<String, Object> instrumentationScopeAttributes,
+                    final String schemaUrl,
+                    final String serviceName,
+                    final Map<String, Object> resourceAttributes,
+                     final Instant timeReceived) {
+            Span span = JacksonStandardSpan.builder()
                     .withSpanId(convertByteStringToString(sp.getSpanId()))
                     .withTraceId(convertByteStringToString(sp.getTraceId()))
                     .withTraceState(sp.getTraceState())
                     .withParentSpanId(convertByteStringToString(sp.getParentSpanId()))
                     .withName(sp.getName())
-                    .withServiceName(serviceName)
+                    .withSchemaUrl(schemaUrl)
                     .withKind(sp.getKind().name())
-                    .withStartTime(getStartTimeISO8601(sp))
-                    .withEndTime(getEndTimeISO8601(sp))
+                    .withStartTime(convertUnixNanosToISO8601(sp.getStartTimeUnixNano()))
+                    .withEndTime(convertUnixNanosToISO8601(sp.getEndTimeUnixNano()))
                     .withStatus(getStatus(sp.getStatus()))
+                    .withFlags(sp.getFlags())
                     .withScope(instrumentationScopeAttributes)
                     .withResource(resourceAttributes)
                     .withAttributes(convertKeyValueToAttributes(sp.getAttributesList()))
@@ -347,11 +349,14 @@ public class OTelProtoStandardCodec {
                     .withDroppedEventsCount(sp.getDroppedEventsCount())
                     .withLinks(sp.getLinksList().stream().map(this::getLink).collect(Collectors.toList()))
                     .withDroppedLinksCount(sp.getDroppedLinksCount())
-                    .withTraceGroup(getTraceGroup(sp))
                     .withDurationInNanos(sp.getEndTimeUnixNano() - sp.getStartTimeUnixNano())
-                    .withTraceGroupFields(getTraceGroupFields(sp))
                     .withTimeReceived(timeReceived)
                     .build();
+            EventMetadata eventMetadata = span.getMetadata();
+            eventMetadata.setAttribute(JacksonSpan.SERVICE_NAME_KEY, serviceName);
+            eventMetadata.setAttribute(JacksonSpan.TRACE_GROUP_KEY, getTraceGroup(sp));
+            eventMetadata.setAttribute(JacksonSpan.TRACE_GROUP_FIELDS_KEY, getTraceGroupFields(sp));
+            return span;
         }
 
         protected Object convertAnyValue(final AnyValue value) {
@@ -400,9 +405,9 @@ public class OTelProtoStandardCodec {
             return span.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
         }
 
-        protected Map<String, Object> getResourceAttributes(final Resource resource) {
+        protected Map<String, Object> getResourceAttributes(final Resource resource, final String schemaUrl) {
             Map<String, Object> attributes = resource.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
-            return Map.of(ATTRIBUTES_KEY, attributes, DROPPED_ATTRIBUTES_COUNT_KEY, resource.getDroppedAttributesCount());
+            return Map.of(ATTRIBUTES_KEY, attributes, DROPPED_ATTRIBUTES_COUNT_KEY, resource.getDroppedAttributesCount(), SCHEMA_URL_KEY, schemaUrl);
         }
 
         /**
@@ -484,12 +489,12 @@ public class OTelProtoStandardCodec {
                             final boolean flattenAttributes) {
             Collection<Record<? extends Metric>> recordsOut = new ArrayList<>();
             for (ResourceMetrics rs : request.getResourceMetricsList()) {
-                final Map<String, Object> resourceAttributes = getResourceAttributes(rs.getResource());
-                final String serviceName = OTelProtoStandardCodec.getServiceName(rs.getResource()).orElse(null);
+                final Map<String, Object> resourceAttributes = getResourceAttributes(rs.getResource(), rs.getSchemaUrl());
+                final String serviceName = getServiceName(rs.getResource()).orElse(null);
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
                     final String schemaUrl = sm.getSchemaUrl();
-                    final Map<String, Object> ils = OTelProtoStandardCodec.getInstrumentationScopeAttributes(sm.getScope());
+                    final Map<String, Object> ils = getInstrumentationScopeAttributes(sm.getScope());
                     recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets));
                 }
             }
@@ -529,6 +534,11 @@ public class OTelProtoStandardCodec {
             return recordsOut;
         }
 
+        private Map<String, Object> getMetricMetadata(io.opentelemetry.proto.metrics.v1.Metric metric) {
+            List<KeyValue> metadata = metric.getMetadataList();
+            return convertKeyValueToAttributes(metadata);
+        }
+
         private List<? extends Record<? extends Metric>> mapGauge(
                                          io.opentelemetry.proto.metrics.v1.Metric metric,
                                          String serviceName,
@@ -541,15 +551,15 @@ public class OTelProtoStandardCodec {
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoStandardCodec.getStartTimeISO8601(dp))
-                        .withTime(OTelProtoStandardCodec.getTimeISO8601(dp))
-                        .withServiceName(serviceName)
-                        .withValue(OTelProtoStandardCodec.getValueAsDouble(dp))
+                        .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                        .withValue(getValueAsDouble(dp))
                         .withScope(ils)
+                        .withMetricMetadata(getMetricMetadata(metric))
                         .withResource(resourceAttributes)
                         .withAttributes(convertKeyValueToAttributes(dp.getAttributesList()))
                         .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelProtoStandardCodec.convertExemplars(dp.getExemplarsList()))
+                        .withExemplars(convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
                         .withTimeReceived(timeReceived)
                         .build())
@@ -569,17 +579,17 @@ public class OTelProtoStandardCodec {
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoStandardCodec.getStartTimeISO8601(dp))
                         .withAttributes(convertKeyValueToAttributes(dp.getAttributesList()))
-                        .withTime(OTelProtoStandardCodec.getTimeISO8601(dp))
-                        .withServiceName(serviceName)
+                        .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withIsMonotonic(metric.getSum().getIsMonotonic())
-                        .withValue(OTelProtoStandardCodec.getValueAsDouble(dp))
+                        .withValue(getValueAsDouble(dp))
                         .withAggregationTemporality(metric.getSum().getAggregationTemporality().toString())
                         .withScope(ils)
                         .withResource(resourceAttributes)
                         .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelProtoStandardCodec.convertExemplars(dp.getExemplarsList()))
+                        .withMetricMetadata(getMetricMetadata(metric))
+                        .withExemplars(convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
                         .withTimeReceived(timeReceived)
                         .build())
@@ -599,12 +609,12 @@ public class OTelProtoStandardCodec {
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                        .withTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
-                        .withServiceName(serviceName)
+                        .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withCount(dp.getCount())
                         .withSum(dp.getSum())
-                        .withQuantiles(OTelProtoStandardCodec.getQuantileValues(dp.getQuantileValuesList()))
+                        .withMetricMetadata(getMetricMetadata(metric))
+                        .withQuantiles(getQuantileValues(dp.getQuantileValuesList()))
                         .withQuantilesValueCount(dp.getQuantileValuesCount())
                         .withScope(ils)
                         .withResource(resourceAttributes)
@@ -631,25 +641,27 @@ public class OTelProtoStandardCodec {
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
-                            .withStartTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                            .withTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
-                            .withServiceName(serviceName)
+                            .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                             .withSum(dp.getSum())
+                            .withMin(dp.getMin())
+                            .withMax(dp.getMax())
                             .withCount(dp.getCount())
                             .withBucketCount(dp.getBucketCountsCount())
                             .withExplicitBoundsCount(dp.getExplicitBoundsCount())
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
                             .withBucketCountsList(dp.getBucketCountsList())
                             .withExplicitBoundsList(dp.getExplicitBoundsList())
+                            .withMetricMetadata(getMetricMetadata(metric))
                             .withScope(ils)
                             .withResource(resourceAttributes)
                             .withAttributes(convertKeyValueToAttributes(dp.getAttributesList()))
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelProtoStandardCodec.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(convertExemplars(dp.getExemplarsList()))
                             .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
                     if (calculateHistogramBuckets) {
-                        builder.withBuckets(OTelProtoStandardCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
+                        builder.withBuckets(createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
                     }
                     JacksonHistogram jh = builder.build();
                     return jh;
@@ -685,12 +697,15 @@ public class OTelProtoStandardCodec {
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
-                            .withStartTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                            .withTime(OTelProtoStandardCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
-                            .withServiceName(serviceName)
+                            .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                             .withSum(dp.getSum())
+                            .withMin(dp.getMin())
+                            .withMax(dp.getMax())
                             .withCount(dp.getCount())
+                            .withMetricMetadata(getMetricMetadata(metric))
                             .withZeroCount(dp.getZeroCount())
+                            .withZeroThreshold(dp.getZeroThreshold())
                             .withScale(dp.getScale())
                             .withPositive(dp.getPositive().getBucketCountsList())
                             .withPositiveOffset(dp.getPositive().getOffset())
@@ -701,13 +716,13 @@ public class OTelProtoStandardCodec {
                             .withResource(resourceAttributes)
                             .withAttributes(convertKeyValueToAttributes(dp.getAttributesList()))
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelProtoStandardCodec.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(convertExemplars(dp.getExemplarsList()))
                             .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
 
                     if (calculateExponentialHistogramBuckets) {
-                        builder.withPositiveBuckets(OTelProtoStandardCodec.createExponentialBuckets(dp.getPositive(), dp.getScale()));
-                        builder.withNegativeBuckets(OTelProtoStandardCodec.createExponentialBuckets(dp.getNegative(), dp.getScale()));
+                        builder.withPositiveBuckets(createExponentialBuckets(dp.getPositive(), dp.getScale()));
+                        builder.withNegativeBuckets(createExponentialBuckets(dp.getNegative(), dp.getScale()));
                     }
 
                     return builder.build();
@@ -725,9 +740,15 @@ public class OTelProtoStandardCodec {
             final Map<String, Object> allAttributes = span.getAttributes();
             final Resource resource = constructResource(span.getResource());
             rsBuilder.setResource(resource);
+            if (span.getResource() != null) {
+                rsBuilder.setSchemaUrl((String)span.getResource().get(SCHEMA_URL_KEY));
+            }
             final ScopeSpans.Builder scopeSpansBuilder = ScopeSpans.newBuilder();
             final InstrumentationScope instrumentationScope = constructInstrumentationScope(span.getScope());
             scopeSpansBuilder.setScope(instrumentationScope);
+            if (span.getSchemaUrl() != null) {
+                scopeSpansBuilder.setSchemaUrl(span.getSchemaUrl());
+            }
             final io.opentelemetry.proto.trace.v1.Span otelProtoSpan = constructSpan(span);
             scopeSpansBuilder.addSpans(otelProtoSpan);
             rsBuilder.addScopeSpans(scopeSpansBuilder);
@@ -742,7 +763,7 @@ public class OTelProtoStandardCodec {
                 if (attributes != null) {
                     resourceAttributes = convertAttributesToKeyValue(attributes);
                 }
-                final Integer droppedAttributesCount = (Integer)resourceAttrs.get(DROPPED_ATTRIBUTES_COUNT_KEY); 
+                final Integer droppedAttributesCount = (Integer)resourceAttrs.get(DROPPED_ATTRIBUTES_COUNT_KEY);
                 if (droppedAttributesCount != null) {
                     rsBuilder.setDroppedAttributesCount(droppedAttributesCount);
                 }
@@ -780,7 +801,7 @@ public class OTelProtoStandardCodec {
                 if (version != null) {
                     builder.setVersion(version);
                 }
-                final Integer droppedAttributesCount = (Integer)scopeAttributes.get(DROPPED_ATTRIBUTES_COUNT_KEY); 
+                final Integer droppedAttributesCount = (Integer)scopeAttributes.get(DROPPED_ATTRIBUTES_COUNT_KEY);
                 if (droppedAttributesCount != null) {
                     builder.setDroppedAttributesCount(droppedAttributesCount);
                 }
@@ -814,7 +835,7 @@ public class OTelProtoStandardCodec {
         protected io.opentelemetry.proto.trace.v1.Span.Event convertSpanEvent(final SpanEvent spanEvent) throws UnsupportedEncodingException {
             final io.opentelemetry.proto.trace.v1.Span.Event.Builder builder = io.opentelemetry.proto.trace.v1.Span.Event.newBuilder();
             builder.setName(spanEvent.getName());
-            builder.setTimeUnixNano(timeISO8601ToNanos(spanEvent.getTime()));
+            builder.setTimeUnixNano(convertISO8601ToNanos(spanEvent.getTime()));
             builder.setDroppedAttributesCount(spanEvent.getDroppedAttributesCount());
             final List<KeyValue> attributeKeyValueList = new ArrayList<>();
             for (Map.Entry<String, Object> entry : spanEvent.getAttributes().entrySet()) {
@@ -848,7 +869,7 @@ public class OTelProtoStandardCodec {
             return builder.build();
         }
 
-        protected io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span) 
+        protected io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span)
                 throws DecoderException, UnsupportedEncodingException {
             final Map<String, Object> allAttributes = span.getAttributes();
             io.opentelemetry.proto.trace.v1.Span.Builder builder = io.opentelemetry.proto.trace.v1.Span.newBuilder()
@@ -858,8 +879,8 @@ public class OTelProtoStandardCodec {
                     .setTraceState(span.getTraceState())
                     .setName(span.getName())
                     .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.valueOf(span.getKind()))
-                    .setStartTimeUnixNano(timeISO8601ToNanos(span.getStartTime()))
-                    .setEndTimeUnixNano(timeISO8601ToNanos(span.getEndTime()))
+                    .setStartTimeUnixNano(convertISO8601ToNanos(span.getStartTime()))
+                    .setEndTimeUnixNano(convertISO8601ToNanos(span.getEndTime()))
                     .setDroppedAttributesCount(span.getDroppedAttributesCount())
                     .setDroppedEventsCount(span.getDroppedEventsCount())
                     .setDroppedLinksCount(span.getDroppedLinksCount());
@@ -886,7 +907,7 @@ public class OTelProtoStandardCodec {
                 anyValueBuilder.setDoubleValue((Double) obj);
             } else if (obj instanceof List) {
                 List<AnyValue> arrayValues = new ArrayList<>();
-               
+
                 for (Object aobj : (List<?>)obj) {
                     arrayValues.add(objectToAnyValue(aobj));
                 }
@@ -1171,9 +1192,5 @@ public class OTelProtoStandardCodec {
             }
         }
         return mappedBuckets;
-    }
-
-    public static String convertByteStringToString(ByteString bs) {
-        return Hex.encodeHexString(bs.toByteArray());
     }
 }

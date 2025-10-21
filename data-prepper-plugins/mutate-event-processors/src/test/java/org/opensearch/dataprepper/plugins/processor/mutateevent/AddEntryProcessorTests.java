@@ -9,9 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
@@ -29,7 +31,10 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,11 +52,13 @@ public class AddEntryProcessorTests {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     @Test
     void invalid_add_when_throws_InvalidPluginConfigurationException() {
         final String addWhen = UUID.randomUUID().toString();
 
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,addWhen)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, true, null)));
 
         when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(false);
 
@@ -59,8 +66,41 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void test_add_empty_array_followed_by_list_of_map_to_the_same_key() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("actor/user/groups", null, new ArrayList<>(), null, null, false, false, null, null, true, null),
+                createEntry("actor/user/groups", null, List.of(Map.of("name", "")), null, null, false, true, null, null, true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = getEvent(mapList);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertEquals("{\"message\":[{\"testKey\":\"testValue\"}],\"actor\":{\"user\":{\"groups\":[[{\"name\":\"\"}]]}}}",
+                editedRecords.get(0).getData().toJsonString());
+    }
+
+    @Test
+    public void test_add_list_of_map_followed_by_empty_array_to_the_same_key() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("actor/user/groups", null, List.of(Map.of("name", "")), null, null, false, true, null, null, true, null),
+                createEntry("actor/user/groups", null, new ArrayList<>(), null, null, false, false, null, null, true, null),
+                createEntry("actor/user/groups", null, List.of(Map.of("second", "slistval")), null, null, false, true, null, null, true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = getEvent(mapList);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertEquals("{\"message\":[{\"testKey\":\"testValue\"}],\"actor\":{\"user\":{\"groups\":[{\"name\":\"\"},[{\"second\":\"slistval\"}]]}}}",
+                editedRecords.get(0).getData().toJsonString());
+    }
+
+    @Test
     public void testSingleAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -73,9 +113,293 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void testBuilderReuseInHandleWithIterateOn() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = Arrays.asList(
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptyMap()
+        );
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("message", List.class);
+        assertThat(result.size(), equalTo(3));
+        for (Map<String, Object> item : result) {
+            assertThat(item.get("newMessage"), equalTo(3));
+        }
+    }
+
+    @Test
+    public void testSingleEntryIterativeAddValue() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Collections.emptyMap());
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("newMessage", 3))));
+    }
+
+    @Test
+    void invalid_add_to_element_when_throws_InvalidPluginConfigurationException() {
+        final String addToElementWhen = UUID.randomUUID().toString();
+
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(false);
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", true, addToElementWhen)));
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void using_add_to_element_when_without_iterate_on_throws_InvalidPluginConfigurationException() {
+        final String addToElementWhen = UUID.randomUUID().toString();
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, null, true, addToElementWhen)));
+    }
+
+    @Test
+    void add_to_element_when_as_false_does_not_add() {
+        final String addToElementWhen = UUID.randomUUID().toString();
+
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenReturn(false);
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", true, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Collections.emptyMap());
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    void add_to_element_when_as_true_does_add() {
+        final String addToElementWhen = UUID.randomUUID().toString();
+
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenReturn(true);
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", true, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Collections.emptyMap());
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("newMessage", 3))));
+    }
+
+    @Test
+    public void testSingleEntryIterativeAddValue_key_exists() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("newMessage", 5));
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("newMessage", 5))));
+    }
+
+    @Test
+    public void testSingleEntryIterativeAddValue_overwriteIfKeyExists() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, true, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("newMessage", 5));
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("newMessage", 3))));
+    }
+
+    @Test
+    public void testSingleEntryIterativeAddValue_appendIfKeyExists() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, true,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("newMessage", 5));
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("newMessage", List.of(5, 3)))));
+    }
+
+    @Test
+    public void test_iterate_on_add_value_expression() {
+        String valueExpression = "/testKey";
+        when(expressionEvaluator.evaluate(eq(valueExpression), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("testKey", String.class);
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, valueExpression, false, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of(
+                        "newMessage", "testValue",
+                        "testKey", "testValue"
+                ))));
+    }
+
+    @Test
+    public void test_iterate_on_add_format() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, TEST_FORMAT, null, false, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(
+                "date", "date-value",
+                "time", "time-value"
+        ));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of(
+                        "date", "date-value",
+                        "time", "time-value",
+                        "newMessage", "date-value time-value"))));
+    }
+
+    @Test
+    public void testFormatPartsCaching() {
+        String format = "prefix ${key1} middle ${key2} suffix";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, format, null, false, false, null, null, null),
+            createEntry("target2", null, null, format, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        Map<String, Object> data = Map.of(
+            "key1", "value1",
+            "key2", "value2"
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+        assertThat(editedRecords.get(0).getData().get("target2", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+    }
+
+    @Test
+    public void testStaticExpressionValueCaching() {
+        String valueExpression = "1 + 2";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, null, valueExpression, false, false, null, null, null),
+            createEntry("target2", null, null, null, valueExpression, false, false, null, null, null)
+        ));
+
+        when(expressionEvaluator.evaluate(eq(valueExpression), any())).thenReturn(3);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", Integer.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().get("target2", Integer.class), equalTo(3));
+    }
+
+    @Test
+    public void testInvalidFormatHandling() {
+        String invalidFormat = "prefix ${key1 missing-brace";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, invalidFormat, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("target"), is(false));
+    }
+
+    @Test
+    public void testBulkIterateOnProcessing() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("newField", null, "value", null, null, false, false, null, "items", null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        List<Map<String, Object>> items = Arrays.asList(
+            new HashMap<>(),
+            new HashMap<>(),
+            new HashMap<>()
+        );
+        final Record<Event> record = buildRecordWithEvent(Map.of("items", items));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> processedItems = editedRecords.get(0).getData().get("items", List.class);
+        assertThat(processedItems.size(), equalTo(3));
+        for (Map<String, Object> item : processedItems) {
+            assertThat(item.get("newField"), equalTo("value"));
+        }
+    }
+
+    @Test
+    public void testCachedAddWhenEvaluatedField() {
+        final String addWhen = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        when(expressionEvaluator.evaluateConditional(addWhen, record.getData())).thenReturn(true);
+
+        // First execution
+        List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+
+        // Second execution should use cached value
+        editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+    }
+
+    @Test
+    public void testListMergeOptimization() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, Arrays.asList(4, 5), null, null, false, true, null, null, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Object> currentList = new ArrayList<>(Arrays.asList(1, 2, 3));
+        final Record<Event> record = getEvent(currentList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(Arrays.asList(1, 2, 3, Arrays.asList(4, 5))));
+    }
+
+    @Test
     public void testMultiAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null),
-                createEntry("message2", null, 4, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, null, true, null),
+                createEntry("message2", null, 4, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -91,7 +415,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testSingleNoOverwriteAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -106,7 +430,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testSingleOverwriteAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, true, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, true, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -121,8 +445,8 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testMultiOverwriteMixedAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, true, false,null),
-                createEntry("message", null, 4, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, true, false,null, null, true, null),
+                createEntry("message", null, 4, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -137,7 +461,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAppendValueToExistingSimpleField() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, 3, null, null, false, true,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, 3, null, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final String currentValue = "old_message";
@@ -150,7 +474,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAppendValueToExistingListField() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, 3, null, null, false, true,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, 3, null, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final List<Object> listValue = new ArrayList<>();
@@ -165,7 +489,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testIntAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -179,7 +503,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testBoolAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, true, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, true, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -193,7 +517,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testStringAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, "string", null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, "string", null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -207,7 +531,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testNullAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, null, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, null, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -233,7 +557,7 @@ public class AddEntryProcessorTests {
     public void testNestedAddProcessorTests() {
         TestObject obj = new TestObject();
         obj.a = "test";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, obj, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, obj, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -248,7 +572,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testArrayAddProcessorTests() {
         Object[] array = new Object[] { 1, 1.2, "string", true, null };
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, array, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, array, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -263,7 +587,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testFloatAddProcessorTests() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("newMessage", null, 1.2, null, null, false, false,null)));
+                .thenReturn(createListOfEntries(createEntry("newMessage", null, 1.2, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -278,7 +602,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testAddSingleFormatEntry() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, null, false, false,null)));
+                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -293,8 +617,8 @@ public class AddEntryProcessorTests {
     @Test
     public void testAddMultipleFormatEntries() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, null, false, false,null),
-                        createEntry("date-time2", null, null, ANOTHER_TEST_FORMAT, null, false, false,null)));
+                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, null, false, false,null, null, true, null),
+                        createEntry("date-time2", null, null, ANOTHER_TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -311,7 +635,7 @@ public class AddEntryProcessorTests {
     public void testFormatOverwritesExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, null, true, false,null)));
+                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, null, true, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -326,7 +650,7 @@ public class AddEntryProcessorTests {
     public void testFormatNotOverwriteExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, null, false, false,null)));
+                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -340,7 +664,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAppendFormatValueToExistingSimpleField() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("time", null, 3, TEST_FORMAT, null, false, true,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("time", null, 3, TEST_FORMAT, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -353,7 +677,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAppendFormatValueToExistingListField() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("date-time", null, 3, TEST_FORMAT, null, false, true,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("date-time", null, 3, TEST_FORMAT, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -371,7 +695,7 @@ public class AddEntryProcessorTests {
     public void testFormatPrecedesValue() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("date-time", null, "date-time-value", TEST_FORMAT, null, false, false,null)));
+                        createListOfEntries(createEntry("date-time", null, "date-time-value", TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -386,7 +710,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testFormatVariousDataTypes() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(
-                "newField", null, null, "${number-key}-${boolean-key}-${string-key}", null, false, false, null)));
+                "newField", null, null, "${number-key}-${boolean-key}-${string-key}", null, false, false, null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
@@ -398,7 +722,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testBadFormatThenEntryNotAdded() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("data-time", null, null, BAD_TEST_FORMAT, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("data-time", null, null, BAD_TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -412,7 +736,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testMetadataKeySetWithBadFormatThenEntryNotAdded() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null,"data-time", null, BAD_TEST_FORMAT, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null,"data-time", null, BAD_TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
@@ -428,7 +752,7 @@ public class AddEntryProcessorTests {
     public void testKeyIsNotAdded_when_addWhen_condition_is_false() {
         final String addWhen = UUID.randomUUID().toString();
 
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,addWhen)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, true, null)));
         when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
@@ -446,7 +770,7 @@ public class AddEntryProcessorTests {
     public void testMetadataKeyIsNotAdded_when_addWhen_condition_is_false() {
         final String addWhen = UUID.randomUUID().toString();
 
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newMessage", 3, null, null, false, false,addWhen)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newMessage", 3, null, null, false, false, addWhen, null, true, null)));
         when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
@@ -465,9 +789,9 @@ public class AddEntryProcessorTests {
     @Test
     public void testMetadataKeySetWithDifferentDataTypes() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-            createEntry(null, "newField", "newValue", null, null, false, false,null),
-            createEntry(null, "newIntField", 123, null, null, false, false,null),
-            createEntry(null, "newBooleanField", true, null, null, false, false,null)
+            createEntry(null, "newField", "newValue", null, null, false, false,null, null, true, null),
+            createEntry(null, "newIntField", 123, null, null, false, false,null, null, true, null),
+            createEntry(null, "newBooleanField", true, null, null, false, false,null, null, true, null)
             ));
 
         final AddEntryProcessor processor = createObjectUnderTest();
@@ -484,7 +808,7 @@ public class AddEntryProcessorTests {
     public void testMetadataKeySetWithFormatNotOverwriteExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, null, false, false,null)));
+                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
@@ -500,7 +824,7 @@ public class AddEntryProcessorTests {
     public void testMetadataKeySetWithFormatOverwriteExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, null, true, false,null)));
+                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, null, true, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
@@ -516,7 +840,7 @@ public class AddEntryProcessorTests {
     public void testMetadataKeySetAppendToExistingSimpleValue() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry(null, "time", "time-value2", null, null, false, true,null)));
+                        createListOfEntries(createEntry(null, "time", "time-value2", null, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final String currentValue = "time-value1";
@@ -531,7 +855,7 @@ public class AddEntryProcessorTests {
     public void testMetadataKeySetAppendToExistingListValue() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry(null, "time", "time-value2", null, null, false, true,null)));
+                        createListOfEntries(createEntry(null, "time", "time-value2", null, null, false, true,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final List<Object> listValue = new ArrayList<>();
@@ -546,38 +870,38 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testMetadataKeyAndKeyBothNotSetThrows() {
-        assertThrows(IllegalArgumentException.class, () -> createEntry(null, null, "newValue", null, null, false, false,null));
+        assertThrows(IllegalArgumentException.class, () -> createEntry(null, null, "newValue", null, null, false, false,null, null, true, null));
     }
 
     @Test
     public void testMetadataKeyAndKeyBothSetThrows() {
-        assertThrows(IllegalArgumentException.class, () -> createEntry("newKey", "newMetadataKey", "newValue", null, null, false, false,null));
+        assertThrows(IllegalArgumentException.class, () -> createEntry("newKey", "newMetadataKey", "newValue", null, null, false, false,null, null, true, null));
     }
 
     @Test
     public void testOnlyOneTypeOfValueIsSupported() {
-        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", "newValue", "/newFormat", null, false, false,null));
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", "newValue", "/newFormat", null, false, false,null, null, true, null));
     }
 
     @Test
     public void testOnlyOneTypeOfValueIsSupportedWithExpressionAndFormat() {
-        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", null, "/newFormat", "length(/message)", false, false,null));
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", null, "/newFormat", "length(/message)", false, false,null, null, true, null));
     }
 
     @Test
     public void testOnlyOneTypeOfValueIsSupportedWithValueAndExpressionAndFormat() {
-        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", "value", "/newFormat", "length(/message)", false, false,null));
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", "value", "/newFormat", "length(/message)", false, false,null, null, true, null));
     }
 
     @Test
     public void testWithAllValuesNull() {
-        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", null, null, null, false, false,null));
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", null, null, null, false, false,null, null, true, null));
     }
 
     @Test
     public void testValueExpressionWithArithmeticExpression() {
         String valueExpression = "/number-key";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         Random random = new Random();
@@ -591,7 +915,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testValueExpressionWithStringExpression() {
         String valueExpression = "/string-key";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         String randomString = UUID.randomUUID().toString();
@@ -604,7 +928,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testValueExpressionWithBooleanExpression() {
         String valueExpression = "/number-key > 5";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(false);
@@ -616,7 +940,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testValueExpressionWithIntegerFunctions() {
         String valueExpression = "length(/string-key)";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("length_key", null, null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("length_key", null, null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         String randomString = UUID.randomUUID().toString();
@@ -629,7 +953,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testValueExpressionWithIntegerFunctionsAndMetadataKey() {
         String valueExpression = "length(/date)";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "length_key", null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "length_key", null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
         String randomString = UUID.randomUUID().toString();
@@ -642,7 +966,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testValueExpressionWithStringExpressionWithMetadataKey() {
         String valueExpression = "/date";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newkey", null, null, valueExpression, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newkey", null, null, valueExpression, false, false,null, null, true, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
         String randomString = UUID.randomUUID().toString();
@@ -654,7 +978,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAddSingleFieldWithDynamicKey() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("value_as_name");
@@ -668,7 +992,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAddSingleFieldWithDynamicExpression() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}_${getMetadata(\"id\")}", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}_${getMetadata(\"id\")}", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("value_as_name", Map.of("id", 1));
@@ -684,8 +1008,8 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAddMultipleFieldsWithDynamicKeys() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null),
-                createEntry("${message}_2", null, 4, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null, null, true, null),
+                createEntry("${message}_2", null, 4, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("value_as_name");
@@ -701,7 +1025,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAddFieldWithInvalidInputKeyThenNoChangeToEvent() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("value_as_name");
@@ -715,7 +1039,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testAddFieldWithInvalidDynamicKeyThenNoChangeToEvent() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("${message}", null, 3, null, null, false, false,null, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("name_with_invalid_chars|[$");
@@ -726,13 +1050,66 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().toMap().size(), is(1));
     }
 
+    @Test
+    public void testAddNestedEntryIterateOn() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("nested/newMessage", null, 3, null, null, false, false,null, "message", false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("key", 5)); // [{"key": 5}]
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("key", 5, "nested", Map.of("newMessage", 3))))); // [{"key": 5, "nested": {"newMessage":3}}]
+    }
+
+    @Test
+    public void testAddFlattenedNestedEntryIterateOn() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("nested/newMessage", null, 3, null, null, false, false,null, "message", true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("key", 5)); // [{"key": 5}]
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class),
+                equalTo(List.of(Map.of("key", 5, "nested/newMessage", 3)))); // [{"key": 5, "nested/newMessage": 3}}]
+    }
+
     private AddEntryProcessor createObjectUnderTest() {
-        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator, eventKeyFactory);
     }
 
     private AddEntryProcessorConfig.Entry createEntry(
-            final String key, final String metadataKey, final Object value, final String format, final String valueExpression, final boolean overwriteIfKeyExists, final boolean appendIfKeyExists, final String addWhen) {
-        return new AddEntryProcessorConfig.Entry(key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen);
+            final String key,
+            final String metadataKey,
+            final Object value,
+            final String format,
+            final String valueExpression,
+            final boolean overwriteIfKeyExists,
+            final boolean appendIfKeyExists,
+            final String addWhen,
+            final String iterateOn,
+            final boolean flattenKey,   
+            final String addToElementWhen) {
+        return new AddEntryProcessorConfig.Entry(
+                key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                iterateOn, flattenKey, addToElementWhen);
+    }
+    private AddEntryProcessorConfig.Entry createEntry(
+            final String key,
+            final String metadataKey,
+            final Object value,
+            final String format,
+            final String valueExpression,
+            final boolean overwriteIfKeyExists,
+            final boolean appendIfKeyExists,
+            final String addWhen,
+            final String iterateOn, 
+            final String addToElementWhen) {
+        return new AddEntryProcessorConfig.Entry(
+                key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                iterateOn, addToElementWhen);
     }
 
     private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {

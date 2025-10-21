@@ -18,5 +18,6 @@ service-map-pipeline:
         hosts: ["https://node-0.example.com:9200"]
         username: "admin"
         password: "admin"
+        insecure: true
         index_type: trace-analytics-service-map
         flush_timeout: 5000

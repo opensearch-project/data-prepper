@@ -51,6 +51,7 @@ public class JsonCodecsIT {
         when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(Collections.emptyList());
         when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
+        when(jsonInputCodecConfig.getMaxEventLength()).thenReturn(null);
         eventConsumer = mock(Consumer.class);
     }
 

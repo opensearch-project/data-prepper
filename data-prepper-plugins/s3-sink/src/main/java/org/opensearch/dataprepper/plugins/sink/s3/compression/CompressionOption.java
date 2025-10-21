@@ -6,6 +6,10 @@
 package org.opensearch.dataprepper.plugins.sink.s3.compression;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.GZipCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.NoneCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.SnappyCompressionEngine;
 
 import java.util.Arrays;
 import java.util.Map;
