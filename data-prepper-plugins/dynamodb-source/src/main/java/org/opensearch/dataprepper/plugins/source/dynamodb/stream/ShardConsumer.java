@@ -272,6 +272,11 @@ public class ShardConsumer implements Runnable {
                 lastCheckpointTime = System.currentTimeMillis();
             }
 
+            if (shardAcknowledgementManager != null && !shardAcknowledgementManager.isStillTrackingShard(streamPartition)) {
+                LOG.warn("Shard {} is no longer being tracked by the acknowledgment manager, exiting", streamPartition.getShardId());
+                break;
+            }
+
             GetRecordsResponse response = callGetRecords(shardIterator);
             shardIterator = response.nextShardIterator();
             if (!response.records().isEmpty()) {
@@ -290,7 +295,13 @@ public class ShardConsumer implements Runnable {
 
                 AcknowledgementSet acknowledgementSet = null;
                 if (shardAcknowledgementManager != null) {
-                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    try {
+                        acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    } catch (final ShardNotTrackedException e) {
+                        LOG.warn("Not creating acknowledgment set since shard is not tracked: {}", e.getMessage());
+                        break;
+                    }
+
                     if (shardIterator == null) {
                         createdFinalAcknowledgmentSetForShard = true;
                     }
