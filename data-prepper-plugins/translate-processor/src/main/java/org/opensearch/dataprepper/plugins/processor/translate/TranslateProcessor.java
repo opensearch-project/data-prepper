@@ -73,7 +73,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                     List<TargetsParameterConfig> targetsConfig = mappingConfig.getTargetsParameterConfigs();
                     for (TargetsParameterConfig targetConfig : targetsConfig) {
                         Object sourceObject = mappingConfig.getSource();
-                        translateSourceWithAbsoluteKeyPath(sourceObject, recordEvent, targetConfig);
+                        translateSource(sourceObject, recordEvent, targetConfig);
                     }
                 } catch (Exception ex) {
                     LOG.atError()
@@ -103,7 +103,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return sourceKeys;
     }
 
-    private void translateSourceWithAbsoluteKeyPath(Object sourceObject, Event event, TargetsParameterConfig targetConfig) {
+    private void translateSource(Object sourceObject, Event event, TargetsParameterConfig targetConfig) {
         List<String> sourceKeys = getSourceKeys(sourceObject);
         if (sourceKeys.isEmpty()) {
             return;
