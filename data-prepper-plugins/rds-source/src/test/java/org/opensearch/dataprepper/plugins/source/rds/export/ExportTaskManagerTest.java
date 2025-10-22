@@ -30,6 +30,8 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -156,6 +158,46 @@ class ExportTaskManagerTest {
                 Arguments.of(List.of()),
                 Arguments.of(List.of(tableName1)),
                 Arguments.of(List.of(tableName1, tableName2))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideSnapshotIdsWithTrailingHyphens")
+    void test_generateExportTaskId_handles_various_trailing_hyphen_scenarios(String snapshotIdWithTrailingHyphens, String expectedPrefix) {
+        final String snapshotArn = "arn:aws:rds:us-east-1:123456789012:snapshot:" + snapshotIdWithTrailingHyphens;
+        final String iamRoleArn = "arn:aws:iam:us-east-1:123456789012:role:" + UUID.randomUUID();
+        final String bucket = UUID.randomUUID().toString();
+        final String prefix = UUID.randomUUID().toString();
+        final String kmsKey = UUID.randomUUID().toString();
+        final StartExportTaskResponse response = mock(StartExportTaskResponse.class);
+        when(rdsClient.startExportTask(any(StartExportTaskRequest.class))).thenReturn(response);
+        when(response.status()).thenReturn("STARTING");
+
+        final String exportTaskId = exportTaskManager.startExportTask(snapshotArn, iamRoleArn, bucket, prefix, kmsKey, List.of());
+
+        final ArgumentCaptor<StartExportTaskRequest> exportTaskRequestArgumentCaptor =
+                ArgumentCaptor.forClass(StartExportTaskRequest.class);
+        verify(rdsClient).startExportTask(exportTaskRequestArgumentCaptor.capture());
+
+        final StartExportTaskRequest actualRequest = exportTaskRequestArgumentCaptor.getValue();
+        final String actualExportTaskId = actualRequest.exportTaskIdentifier();
+
+        // Verify that there are no consecutive hyphens in the export task identifier
+        assertThat(actualExportTaskId, not(containsString("--")));
+        // Verify that it still contains the expected components
+        assertThat(actualExportTaskId, containsString("-export-"));
+        // Verify that it starts with the expected prefix (after removing trailing hyphens)
+        assertThat(actualExportTaskId, startsWith(expectedPrefix));
+    }
+
+    private static Stream<Arguments> provideSnapshotIdsWithTrailingHyphens() {
+        return Stream.of(
+                Arguments.of("snapshot-name-", "snapshot-name"),
+                Arguments.of("snapshot-name--", "snapshot-name"),
+                Arguments.of("snapshot-name---", "snapshot-name"),
+                Arguments.of("my-cluster-snapshot-", "my-cluster-snapshot"),
+                Arguments.of("complex-db-cluster-backup-snapshot-", "complex-db-cluster-backup-snapshot"),
+                Arguments.of("normal-snapshot", "normal-snapshot") // No trailing hyphen case
         );
     }
 

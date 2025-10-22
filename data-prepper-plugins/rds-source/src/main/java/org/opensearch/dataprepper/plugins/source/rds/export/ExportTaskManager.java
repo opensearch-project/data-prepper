@@ -76,7 +76,10 @@ public class ExportTaskManager {
 
     private String generateExportTaskId(String snapshotArn) {
         String snapshotId = Arn.fromString(snapshotArn).resource().resource();
-        return truncateString(snapshotId, EXPORT_TASK_ID_MAX_LENGTH - 16) + "-export-" + UUID.randomUUID().toString().substring(0, 8);
+        String truncatedSnapshotId = truncateString(snapshotId, EXPORT_TASK_ID_MAX_LENGTH - 16);
+        // Remove trailing hyphens to prevent consecutive hyphens in the export task identifier
+        truncatedSnapshotId = truncatedSnapshotId.replaceAll("-+$", "");
+        return truncatedSnapshotId + "-export-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
     private String truncateString(String originalString, int maxLength) {
