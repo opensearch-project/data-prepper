@@ -7,6 +7,7 @@ plugins {
     id 'data-prepper.publish'
 }
 
+def dataPrepperVersion = version
 def generatedSourcesDir = "${project.buildDir}/generated/sources/version/java"
 
 sourceSets {
@@ -87,7 +88,7 @@ configurations {
 }
 
 task generateVersionProvider {
-    inputs.property('version', version)
+    inputs.property('version', dataPrepperVersion)
     inputs.file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
     outputs.dir(generatedSourcesDir)
 
@@ -97,7 +98,7 @@ task generateVersionProvider {
 
         def templateFile = file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
         def versionProviderFile = file("$outputDir/CoreVersionProvider.java")
-        versionProviderFile.text = templateFile.text.replace('${version}', version)
+        versionProviderFile.text = templateFile.text.replace('${version}', dataPrepperVersion)
     }
 }
 
