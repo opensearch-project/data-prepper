@@ -298,7 +298,7 @@ public class ShardConsumer implements Runnable {
                     try {
                         acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
                     } catch (final ShardNotTrackedException e) {
-                        LOG.warn(e.getMessage());
+                        LOG.warn("Not creating acknowledgment set since shard is not tracked: {}", e.getMessage());
                         break;
                     }
 
