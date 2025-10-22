@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.translate;
 
-import org.opensearch.dataprepper.model.event.Event;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -84,33 +82,6 @@ public class JsonExtractor {
             return List.of();
         }
         return new ArrayList<>(Arrays.asList(strippedPath.split(DELIMITER)));
-    }
-
-    /**
-     * @param fieldsInPath list of fields in a path
-     * @param level        current level inside the nested object with reference to the root level
-     * @param rootObject   Java Object in which root field is located. Can be either a List or Map
-     * @return all the Java Objects that satisfy the fields hierarchy in fieldsInPath
-     */
-    private List<Object> getLeafObjects(List<String> fieldsInPath, int level, Event rootObject) {
-        if (Objects.isNull(rootObject)) {
-            return List.of();
-        }
-
-        if (rootObject instanceof List) {
-            return ((List<?>) rootObject).stream()
-                    .flatMap(arrayObject -> getLeafObjects(fieldsInPath, level, arrayObject).stream())
-                    .collect(Collectors.toList());
-        } else if (rootObject instanceof Map) {
-            if (level >= fieldsInPath.size()) {
-                return List.of(rootObject);
-            } else {
-                String field = fieldsInPath.get(level);
-                Object outObj = ((Map<?, ?>) rootObject).get(field);
-                return getLeafObjects(fieldsInPath, level + 1, outObj);
-            }
-        }
-        return List.of();
     }
 
     /**
