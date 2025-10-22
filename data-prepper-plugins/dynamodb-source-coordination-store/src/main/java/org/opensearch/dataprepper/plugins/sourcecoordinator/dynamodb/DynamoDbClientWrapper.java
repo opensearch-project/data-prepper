@@ -183,8 +183,8 @@ public class DynamoDbClientWrapper {
         } catch (final ConditionalCheckFailedException e) {
             final String message = String.format(
                     "ConditionalCheckFailed while updating partition %s. This partition item was either deleted from the dynamo table, " +
-                            "or another instance of Data Prepper has modified it.",
-                    dynamoDbSourcePartitionItem.getSourcePartitionKey());
+                            "or another instance of Data Prepper has modified it. Expected version: %s",
+                    dynamoDbSourcePartitionItem.getSourcePartitionKey(), dynamoDbSourcePartitionItem.getVersion() - 1L);
             throw new PartitionUpdateException(message, e);
         } catch (final Exception e) {
             final String errorMessage = String.format("An exception occurred while attempting to update a DynamoDb partition item %s",
