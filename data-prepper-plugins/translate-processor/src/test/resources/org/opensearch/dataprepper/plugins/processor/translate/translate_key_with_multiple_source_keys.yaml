@@ -3,7 +3,6 @@ test-pipeline:
     unused:
   processor:
     - translate:
-        use_absolute_paths: false
         mappings:
           - source:
               - cities/citi-name

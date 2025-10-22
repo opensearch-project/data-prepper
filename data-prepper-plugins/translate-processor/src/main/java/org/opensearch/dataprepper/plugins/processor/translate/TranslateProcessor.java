@@ -105,6 +105,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private void translateSourceWithAbsoluteKeyPath(Object sourceObject, Event event, TargetsParameterConfig targetConfig) {
         List<String> sourceKeys;
+        boolean hasLeafNodes = false;
         if (sourceObject instanceof List<?>) {
             sourceKeys = ((ArrayList<String>) sourceObject);
         } else if (sourceObject instanceof String) {
@@ -114,35 +115,23 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
             throw new InvalidPluginConfigurationException(exceptionMsg);
         }
 
-        List<String> sourceKeyLeafNodes = new ArrayList<>();
         List<EventKey> sourceKeyParentNodes = new ArrayList<>();
         for (String sourceKeyPath : sourceKeys) {
-            String[] parentAndLeafField = jsonExtractor.getParentAndLeafField(sourceKeyPath);
-            EventKey parentNode = keyResolver.resolveKey(parentAndLeafField[0], event, expressionEvaluator);
-            sourceKeyParentNodes.add(parentNode);
-            if (!parentAndLeafField[1].isEmpty()) {
-                sourceKeyLeafNodes.add(parentAndLeafField[1]);
+            String leafField = jsonExtractor.getLeafField(sourceKeyPath);
+            if (!leafField.isEmpty()) {
+                hasLeafNodes = true;
+                break;
             }
+            EventKey parentNode = keyResolver.resolveKey(sourceKeyPath, event, expressionEvaluator);
+            sourceKeyParentNodes.add(parentNode);
         }
 
-        if (sourceKeyLeafNodes.isEmpty() || sourceKeyLeafNodes.size() < sourceKeyParentNodes.size()) {
-            performMappingsWithEventKey(event, sourceKeyParentNodes, sourceObject, targetConfig);
+        if (hasLeafNodes) {
+            //process it through the old method
+            translateSource(sourceObject, event, targetConfig);
             return;
         }
-
-        Object sourceKeyParentNodeObject = event.get(sourceKeyParentNodes.get(0), Object.class);
-        List<Object> targetObjects;
-
-        if (sourceKeyParentNodeObject instanceof Map) {
-            performMappings(sourceKeyParentNodeObject, sourceKeyLeafNodes, sourceObject, targetConfig);
-            event.put(sourceKeyParentNodes.get(0), sourceKeyParentNodeObject);
-        } else {
-            targetObjects = event.getList(sourceKeyParentNodes.get(0), Object.class);
-            if (!targetObjects.isEmpty()) {
-                targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeyLeafNodes, sourceObject, targetConfig));
-            }
-            event.put(sourceKeyParentNodes.get(0), targetObjects);
-        }
+        performMappingsWithEventKey(event, sourceKeyParentNodes, sourceObject, targetConfig);
     }
 
     private void performMappingsWithEventKey(Event event, List<EventKey> sourceKeyLeafNodes, Object sourceObject, TargetsParameterConfig targetConfig) {

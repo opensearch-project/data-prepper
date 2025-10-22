@@ -38,22 +38,6 @@ public class JsonExtractor {
     }
 
     /**
-     * @param fullPath full path to the leaf field as an EventKey
-     * @return the last field from the full path, returns empty string "" if the path is empty
-     */
-    public String[] getParentAndLeafField(String fullPath) {
-        String strippedPath = getStrippedPath(fullPath);
-        final String[] fields = strippedPath.split(DELIMITER);
-        if (fields.length <= 1) {
-            return new String[]{strippedPath, ""};
-        } else {
-            String leaf = fields[fields.length - 1].strip();
-            String parent = strippedPath.substring(0, strippedPath.lastIndexOf(DELIMITER));
-            return new String[]{parent, leaf};
-        }
-    }
-
-    /**
      * @param fullPath full path to the leaf field
      * @return the last field from the full path, returns empty string "" if the path is empty
      */
