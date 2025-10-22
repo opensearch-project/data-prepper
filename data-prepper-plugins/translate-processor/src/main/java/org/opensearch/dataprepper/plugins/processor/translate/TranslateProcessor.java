@@ -104,34 +104,29 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     private void translateSourceWithAbsoluteKeyPath(Object sourceObject, Event event, TargetsParameterConfig targetConfig) {
-        List<String> sourceKeys;
-        boolean hasLeafNodes = false;
-        if (sourceObject instanceof List<?>) {
-            sourceKeys = ((ArrayList<String>) sourceObject);
-        } else if (sourceObject instanceof String) {
-            sourceKeys = List.of((String) sourceObject);
-        } else {
-            String exceptionMsg = "source option configured incorrectly. source can only be a String or list of Strings";
-            throw new InvalidPluginConfigurationException(exceptionMsg);
+        List<String> sourceKeys = getSourceKeys(sourceObject);
+        if (sourceKeys.isEmpty()) {
+            return;
         }
 
+        boolean hasParentPath = false;
         List<EventKey> sourceKeyParentNodes = new ArrayList<>();
         for (String sourceKeyPath : sourceKeys) {
-            String leafField = jsonExtractor.getLeafField(sourceKeyPath);
-            if (!leafField.isEmpty()) {
-                hasLeafNodes = true;
+            String parentPath = jsonExtractor.getParentPath(sourceKeyPath);
+            if (!parentPath.isEmpty()) {
+                hasParentPath = true;
                 break;
             }
             EventKey parentNode = keyResolver.resolveKey(sourceKeyPath, event, expressionEvaluator);
             sourceKeyParentNodes.add(parentNode);
         }
 
-        if (hasLeafNodes) {
-            //process it through the old method
-            translateSource(sourceObject, event, targetConfig);
-            return;
+        if (hasParentPath) {
+            //process it through the old logic
+            translateSourceWithParentPath(sourceKeys, sourceObject, event, targetConfig);
+        } else {
+            performMappingsWithEventKey(event, sourceKeyParentNodes, sourceObject, targetConfig);
         }
-        performMappingsWithEventKey(event, sourceKeyParentNodes, sourceObject, targetConfig);
     }
 
     private void performMappingsWithEventKey(Event event, List<EventKey> sourceKeyLeafNodes, Object sourceObject, TargetsParameterConfig targetConfig) {
@@ -156,11 +151,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         addTargetToRecords(sourceObject, targetValues, event, targetConfig);
     }
 
-    private void translateSource(Object sourceObject, Event recordEvent, TargetsParameterConfig targetConfig) {
-        List<String> sourceKeysPaths = getSourceKeys(sourceObject);
-        if (sourceKeysPaths.isEmpty()) {
-            return;
-        }
+    private void translateSourceWithParentPath(List<String> sourceKeysPaths, Object sourceObject, Event recordEvent, TargetsParameterConfig targetConfig) {
 
         List<String> sourceKeys = new ArrayList<>();
         for(String sourceKeyPath: sourceKeysPaths){
@@ -168,11 +159,6 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
 
         String commonPath = jsonExtractor.getParentPath(sourceKeysPaths.get(0));
-        if(commonPath.isEmpty()) {
-            performMappings(recordEvent, sourceKeys, sourceObject, targetConfig);
-            return;
-        }
-
         String rootField = jsonExtractor.getRootField(commonPath);
         EventKey rootKey = keyResolver.resolveKey(rootField, recordEvent, expressionEvaluator);
         if (rootKey == null || !recordEvent.containsKey(rootKey)) {
