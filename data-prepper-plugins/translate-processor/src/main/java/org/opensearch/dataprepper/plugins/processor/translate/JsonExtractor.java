@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.translate;
 
-import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +38,22 @@ public class JsonExtractor {
     }
 
     /**
+     * @param fullPath full path to the leaf field as an EventKey
+     * @return the last field from the full path, returns empty string "" if the path is empty
+     */
+    public String[] getParentAndLeafField(String fullPath) {
+        String strippedPath = getStrippedPath(fullPath);
+        final String[] fields = strippedPath.split(DELIMITER);
+        if (fields.length <= 1) {
+            return new String[]{strippedPath, ""};
+        } else {
+            String leaf = fields[fields.length - 1].strip();
+            String parent = strippedPath.substring(0, strippedPath.lastIndexOf(DELIMITER));
+            return new String[]{parent, leaf};
+        }
+    }
+
+    /**
      * @param fullPath full path to the leaf field
      * @return the last field from the full path, returns empty string "" if the path is empty
      */
@@ -45,14 +61,6 @@ public class JsonExtractor {
         String strippedPath = getStrippedPath(fullPath);
         final String[] fields = strippedPath.split(DELIMITER);
         return fields.length==0 ? "" : fields[fields.length - 1].strip();
-    }
-
-    /**
-     * @param fullPath full path to the leaf field
-     * @return the path leading up to the lead field, returns empty string "" if there is no parent path
-     */
-    public String getParentPath(EventKey fullPath) {
-        return getParentPath(fullPath.getKey());
     }
 
     /**
@@ -92,6 +100,33 @@ public class JsonExtractor {
             return List.of();
         }
         return new ArrayList<>(Arrays.asList(strippedPath.split(DELIMITER)));
+    }
+
+    /**
+     * @param fieldsInPath list of fields in a path
+     * @param level        current level inside the nested object with reference to the root level
+     * @param rootObject   Java Object in which root field is located. Can be either a List or Map
+     * @return all the Java Objects that satisfy the fields hierarchy in fieldsInPath
+     */
+    private List<Object> getLeafObjects(List<String> fieldsInPath, int level, Event rootObject) {
+        if (Objects.isNull(rootObject)) {
+            return List.of();
+        }
+
+        if (rootObject instanceof List) {
+            return ((List<?>) rootObject).stream()
+                    .flatMap(arrayObject -> getLeafObjects(fieldsInPath, level, arrayObject).stream())
+                    .collect(Collectors.toList());
+        } else if (rootObject instanceof Map) {
+            if (level >= fieldsInPath.size()) {
+                return List.of(rootObject);
+            } else {
+                String field = fieldsInPath.get(level);
+                Object outObj = ((Map<?, ?>) rootObject).get(field);
+                return getLeafObjects(fieldsInPath, level + 1, outObj);
+            }
+        }
+        return List.of();
     }
 
     /**

@@ -32,10 +32,11 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
-@DataPrepperPluginTest(pluginName = "drop_events", pluginType = Processor.class)
+@DataPrepperPluginTest(pluginName = "translate", pluginType = Processor.class)
 class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTestSuite {
 
     @Mock
@@ -58,7 +59,7 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
 
 
     @Test
-    void test_new_framework(@PluginConfigurationFile("translate_dynamic_key_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
+    void test_dynamic_key_multiple_source_keys(@PluginConfigurationFile("translate_dynamic_key_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
         Map<String, Object> data = new HashMap<>();
         String replaceValue = "Administrative";
         String firstValueToAssert = "Sacramento";
@@ -77,6 +78,32 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
         Map<String, Object> statesData = (Map<String, Object>) translatedRecords.get(0).getData().get("states", Map.class);
         assertTrue(statesData.containsKey("majorCapitals"));
         assertEquals(List.of(firstValueToAssert, secondValueToAssert), statesData.get("majorCapitals"));
+    }
+
+
+    @Test
+    void test_mapping_multiple_source_keys(@PluginConfigurationFile("translate_key_with_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
+        Map<String, Object> data = new HashMap<>();
+        List cities = new ArrayList<>();
+        cities.add(Map.of("citi-name", "las-angeles", "mapCountry", true));
+        cities.add(Map.of("citi-name", "san-francisco", "mapCountry", true));
+        cities.add(Map.of("citi-name", "london"));
+        cities.add(Map.of("citi-name", "paris", "mapCountry", true));
+
+        data.put("cities", cities);
+        Record<Event> record = buildRecordWithEvent(data);
+        List<Record<Event>> translatedRecords = (List<Record<Event>>) objectUnderTest.execute(Collections.singletonList(record));
+        // The majorCapitals should be added to the states object, not the root level
+        List citiesData = translatedRecords.get(0).getData().get("cities", List.class);
+        assertEquals(4, citiesData.size(), "Expected 4 cities to be there");
+        Map<String, Object> laCity = ((Map<String, Object>) citiesData.get(0));
+        assertTrue(laCity.containsKey("country"), "Expected country to be there");
+        assertEquals(List.of("usa"), laCity.get("country"), "Expected usa");
+        Map<String, Object> londonCity = ((Map<String, Object>) citiesData.get(2));
+        assertFalse(londonCity.containsKey("country"), "Expected country not to be there for london");
+        Map<String, Object> parisCity = ((Map<String, Object>) citiesData.get(3));
+        assertTrue(parisCity.containsKey("country"), "Expected country to be there");
+        assertEquals(List.of("france"), parisCity.get("country"), "Expected usa");
     }
 
     @ParameterizedTest

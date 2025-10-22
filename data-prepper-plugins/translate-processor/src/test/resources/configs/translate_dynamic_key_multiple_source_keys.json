@@ -7,7 +7,6 @@
       ],
       "targets": [
         {
-          "translate_when": "loadCities = true",
           "target": "majorCapitals",
           "map": {
             "caAdministrativeCapital": "Sacramento",
