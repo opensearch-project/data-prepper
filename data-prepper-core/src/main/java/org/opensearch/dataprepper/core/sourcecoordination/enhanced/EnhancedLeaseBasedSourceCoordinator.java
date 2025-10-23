@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.sourcecoordination.enhanced;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
@@ -32,6 +33,9 @@ import java.util.stream.Collectors;
 public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordinator {
 
     private static final Logger LOG = LoggerFactory.getLogger(EnhancedLeaseBasedSourceCoordinator.class);
+
+    static final String PARTITIONS_COMPLETED_COUNT = "partitionsComplete";
+    static final String PARTITION_CREATED_COUNT = "partitionsCreated";
 
     /**
      * Default time out duration for lease.
@@ -63,6 +67,9 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     private final PluginMetrics pluginMetrics;
     private final String partitionPrefix;
 
+    private final Counter partitionsCreatedCounter;
+    private final Counter partitionsCompletedCounter;
+
     /**
      * Use host name of the node as the default ownerId
      */
@@ -90,6 +97,8 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         this.pluginMetrics = pluginMetrics;
         this.partitionFactory = partitionFactory;
         this.partitionPrefix = sourceCoordinationConfig.getPartitionPrefix();
+        this.partitionsCreatedCounter = pluginMetrics.counter(PARTITION_CREATED_COUNT);
+        this.partitionsCompletedCounter = pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT);
     }
 
     @Override
@@ -103,7 +112,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Don't need the status for Global state which is not for lease.
         SourcePartitionStatus status = partition.getPartitionType() == null ? null : SourcePartitionStatus.UNASSIGNED;
 
-        return coordinationStore.tryCreatePartitionItem(
+        boolean partitionCreated = coordinationStore.tryCreatePartitionItem(
                 this.sourceIdentifier + "|" + partitionType,
                 partition.getPartitionKey(),
                 status,
@@ -112,6 +121,11 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 // For now, global items with no partitionType will be considered ReadOnly, but this should be directly in EnhancedSourcePartition in the future
                 partition.getPartitionType() == null);
 
+        if (partitionCreated) {
+            partitionsCreatedCounter.increment();
+        }
+
+        return partitionCreated;
     }
 
 
@@ -230,6 +244,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
         // Throws UpdateException if update failed.
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        partitionsCompletedCounter.increment();
     }
 
     @Override

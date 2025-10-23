@@ -216,6 +216,54 @@ class DataFileSchedulerTest {
     }
 
     @Test
+    void run_DataFileLoader_with_loaded_files_greater_than_total_creates_stream_partition() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willReturn(Optional.of(dataFilePartition)).willReturn(Optional.empty());
+        given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(true);
+
+        LoadStatus loadStatus = new LoadStatus(1, 2, 100, 0);
+        lenient().when(coordinator.getPartition(exportArn)).thenReturn(Optional.of(exportInfoGlobalState));
+        lenient().when(exportInfoGlobalState.getProgressState()).thenReturn(Optional.of(loadStatus.toMap()));
+
+        final Duration dataFileAcknowledgmentTimeout = Duration.ofSeconds(30);
+        given(dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout()).willReturn(dataFileAcknowledgmentTimeout);
+
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(dataFileAcknowledgmentTimeout));
+
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout))).willReturn(() -> LOG.info("Hello"));
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Should acquire data file partition
+        verify(coordinator).acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
+        // Should create a loader
+        verify(loaderFactory).createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), eq(acknowledgementSet), eq(dataFileAcknowledgmentTimeout));
+        // Need to call getPartition for 3 times (3 global states, 2 TableInfo)
+        verify(coordinator, times(3)).getPartition(anyString());
+        // Should update global state with load status
+        verify(coordinator).saveProgressStateForPartition(any(GlobalState.class), eq(null));
+        // Should create a partition to inform streaming can start.
+        verify(coordinator).createPartition(any(GlobalState.class));
+        // Should mask the partition as completed.
+        verify(coordinator).completePartition(any(DataFilePartition.class));
+        // Should update metrics.
+        verify(exportFileSuccess).increment();
+
+        executorService.shutdownNow();
+    }
+
+    @Test
     void run_catches_exception_and_retries_when_exception_is_thrown_during_processing() throws InterruptedException {
         given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
@@ -229,6 +277,4 @@ class DataFileSchedulerTest {
         future.cancel(true);
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
     }
-
-
 }
