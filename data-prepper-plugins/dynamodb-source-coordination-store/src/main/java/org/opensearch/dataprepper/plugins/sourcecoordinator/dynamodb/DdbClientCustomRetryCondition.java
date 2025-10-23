@@ -11,13 +11,13 @@ import software.amazon.awssdk.core.retry.RetryPolicyContext;
 import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 
-public class DdbClientCustomRetryCondition implements RetryCondition {
+class DdbClientCustomRetryCondition implements RetryCondition {
     private static final Logger LOG = LoggerFactory.getLogger(DdbClientCustomRetryCondition.class);
     private static final int DEFAULT_RETRIES = 10;
 
     private final RetryCondition defaultRetryCondition;
 
-    public DdbClientCustomRetryCondition() {
+    DdbClientCustomRetryCondition() {
         this.defaultRetryCondition = RetryCondition.defaultRetryCondition();
     }
 

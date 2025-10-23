@@ -85,7 +85,6 @@ import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.Dyna
 
 @ExtendWith(MockitoExtension.class)
 public class DynamoDbClientWrapperTest {
-
     @Mock
     private DynamoDbEnhancedClient dynamoDbEnhancedClient;
 
@@ -107,15 +106,13 @@ public class DynamoDbClientWrapperTest {
     }
 
     private DynamoDbClientWrapper createObjectUnderTest() {
-        try (final MockedStatic<DynamoDbClientFactory> dynamoDbClientFactoryMockedStatic = mockStatic(DynamoDbClientFactory.class);
-             final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
-              dynamoDbClientFactoryMockedStatic.when(() -> DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, null)).thenReturn(dynamoDbClient);
-            final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
+        final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
+        when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
+        when(builder.build()).thenReturn(dynamoDbEnhancedClient);
 
+        try (final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
             dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
-            when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
-            when(builder.build()).thenReturn(dynamoDbEnhancedClient);
-            return DynamoDbClientWrapper.create(region, stsRoleArn, null);
+            return DynamoDbClientWrapper.create(dynamoDbClient);
         }
     }
 
@@ -150,8 +147,11 @@ public class DynamoDbClientWrapperTest {
 
         given(dynamoDbClient.updateTimeToLive(any(UpdateTimeToLiveRequest.class))).willReturn(mock(UpdateTimeToLiveResponse.class));
 
-        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
+        final DynamoDbWaiter.Builder waiterBuilder = mock(DynamoDbWaiter.Builder.class);
+        when(waiterBuilder.client(dynamoDbClient)).thenReturn(waiterBuilder);
+        when(waiterBuilder.build()).thenReturn(dynamoDbWaiter);
+        try (final MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::builder).thenReturn(waiterBuilder);
             objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
         }
 
@@ -185,8 +185,11 @@ public class DynamoDbClientWrapperTest {
         given(describeTableResponse.table()).willReturn(tableDescription);
         given(tableDescription.tableName()).willReturn(tableName);
 
-        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
+        final DynamoDbWaiter.Builder waiterBuilder = mock(DynamoDbWaiter.Builder.class);
+        when(waiterBuilder.client(dynamoDbClient)).thenReturn(waiterBuilder);
+        when(waiterBuilder.build()).thenReturn(dynamoDbWaiter);
+        try (final MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::builder).thenReturn(waiterBuilder);
             objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
             verifyNoInteractions(dynamoDbClient);
         }
@@ -212,8 +215,11 @@ public class DynamoDbClientWrapperTest {
         given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
         given(waiterResponse.matched()).willReturn(response);
 
-        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
+        final DynamoDbWaiter.Builder waiterBuilder = mock(DynamoDbWaiter.Builder.class);
+        when(waiterBuilder.client(dynamoDbClient)).thenReturn(waiterBuilder);
+        when(waiterBuilder.build()).thenReturn(dynamoDbWaiter);
+        try (final MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::builder).thenReturn(waiterBuilder);
 
             assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
         }
@@ -255,9 +261,11 @@ public class DynamoDbClientWrapperTest {
         given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
         given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
 
-        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
-
+        final DynamoDbWaiter.Builder waiterBuilder = mock(DynamoDbWaiter.Builder.class);
+        when(waiterBuilder.client(dynamoDbClient)).thenReturn(waiterBuilder);
+        when(waiterBuilder.build()).thenReturn(dynamoDbWaiter);
+        try (final MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::builder).thenReturn(waiterBuilder);
             assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
 
             verify(dynamoDbClient, never()).updateTimeToLive(any(UpdateTimeToLiveRequest.class));
