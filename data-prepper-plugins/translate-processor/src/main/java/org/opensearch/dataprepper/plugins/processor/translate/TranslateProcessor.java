@@ -74,6 +74,8 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 try {
                     List<TargetsParameterConfig> targetsConfig = mappingConfig.getTargetsParameterConfigs();
                     Object sourceObject = mappingConfig.getSource();
+                    // If source is a list of source keys then target will be a list of mapped values
+                    // if source is a one simple string key, then target will be a simple string value
                     boolean isTargetShouldBeString = sourceObject instanceof String;
                     List<String> sourceKeysPaths = getSourceKeys(sourceObject);
                     if (sourceKeysPaths.isEmpty()) {
