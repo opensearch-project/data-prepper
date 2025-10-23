@@ -56,6 +56,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
+    private static final String NON_RETRYABLE_ERRORS = "nonRetryableErrors";
+    private static final String RETRYABLE_ERRORS = "retryableErrors";
+    private static final String API_CALLS = "apiCalls";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
@@ -68,6 +71,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private final Counter bufferWriteRetrySuccessCounter;
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
+    private final Counter nonRetryableErrorsCounter;
+    private final Counter retryableErrorsCounter;
+    private final Counter apiCallsCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -84,6 +90,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
+        this.nonRetryableErrorsCounter = pluginMetrics.counter(NON_RETRYABLE_ERRORS);
+        this.retryableErrorsCounter = pluginMetrics.counter(RETRYABLE_ERRORS);
+        this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
     }
 
     @VisibleForTesting
@@ -109,6 +118,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
             List<Record<Event>> records = new ArrayList<>();
 
             do {
+                apiCallsCounter.increment();
                 AuditLogsResponse response =
                         service.searchAuditLogs(logType, startTime, endTime, nextPageUri);
 
@@ -121,7 +131,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                                 records.add(record);
                             }
                         } catch (Office365Exception e) {
-
+                            handleExceptionMetrics(e);
                             log.error(NOISY, "{} error processing audit log: {}",
                                     e.isRetryable() ? "Retryable" : "Non-retryable", logId, e);
                             if (e.isRetryable()) {
@@ -132,6 +142,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                             }
                         } catch (Exception e) {
                             // Unexpected errors are treated as retryable to be safe
+                            handleExceptionMetrics(e);
                             log.error(NOISY, "Unexpected error processing audit log: {}", logId, e);
                             throw new RuntimeException("Unexpected error processing audit log: " + logId, e);
                         }
@@ -151,9 +162,22 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
             });
 
         } catch (Exception e) {
+            handleExceptionMetrics(e);
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
             throw e;
+        }
+    }
+
+    private void handleExceptionMetrics(Exception e) {
+        if (e instanceof Office365Exception) {
+            if (((Office365Exception) e).isRetryable()) {
+                retryableErrorsCounter.increment();
+            } else {
+                nonRetryableErrorsCounter.increment();
+            }
+        } else {
+            retryableErrorsCounter.increment();
         }
     }
 
@@ -163,6 +187,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
             throw new Office365Exception("Missing contentUri in metadata", false);
         }
 
+        apiCallsCounter.increment();
         String logContent = service.getAuditLog(contentUri);
         if (logContent == null) {
             throw new Office365Exception("Received null log content for URI: " + contentUri, false);

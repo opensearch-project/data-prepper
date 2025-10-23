@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.Audi
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +54,10 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -81,6 +84,15 @@ class Office365CrawlerClientTest {
     private Timer bufferWriteLatencyTimer;
 
     @Mock
+    private Counter apiCallsCounter;
+
+    @Mock
+    private Counter nonRetryableErrorsCounter;
+
+    @Mock
+    private Counter retryableErrorsCounter;
+
+    @Mock
     private static Logger log;
 
     @BeforeAll
@@ -92,7 +104,16 @@ class Office365CrawlerClientTest {
     @BeforeEach
     void setUp() {
         when(pluginMetrics.timer(anyString())).thenReturn(bufferWriteLatencyTimer);
-        when(pluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
+        // Configure specific counters
+        when(pluginMetrics.counter("apiCalls")).thenReturn(apiCallsCounter);
+        when(pluginMetrics.counter("nonRetryableErrors")).thenReturn(nonRetryableErrorsCounter);
+        when(pluginMetrics.counter("retryableErrors")).thenReturn(retryableErrorsCounter);
+        // Configure other known counters
+        when(pluginMetrics.counter("bufferWriteAttempts")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("bufferWriteSuccess")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("bufferWriteRetrySuccess")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("bufferWriteRetryAttempts")).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter("bufferWriteFailures")).thenReturn(mock(Counter.class));
         when(state.getStartTime()).thenReturn(Instant.now().minus(Duration.ofHours(1)));
         when(state.getEndTime()).thenReturn(Instant.now());
         when(state.getDimensionType()).thenReturn("Exchange");
@@ -111,15 +132,14 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1"
-                )), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 eq("Exchange"),
                 any(Instant.class),
                 any(Instant.class),
-                isNull()
-        )).thenReturn(response);
+                isNull())).thenReturn(response);
 
         when(service.getAuditLog(anyString()))
                 .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
@@ -143,6 +163,11 @@ class Office365CrawlerClientTest {
             assertNotNull(record.getData());
             assertEquals("Exchange", record.getData().getMetadata().getAttribute("contentType"));
         }
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter, never()).increment();
+        verify(retryableErrorsCounter, never()).increment();
     }
 
     @Test
@@ -154,18 +179,18 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1"
-                )), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 anyString(),
                 any(Instant.class),
                 any(Instant.class),
-                any()
-        )).thenReturn(response);
+                any())).thenReturn(response);
 
         when(service.getAuditLog(anyString())).thenReturn("{\"invalid\":json}");
-        when(mockObjectMapper.readTree(anyString())).thenThrow(new JsonProcessingException("Test error") {});
+        when(mockObjectMapper.readTree(anyString())).thenThrow(new JsonProcessingException("Test error") {
+        });
 
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
@@ -176,6 +201,11 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog, JSON processing errors are non-retryable
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter).increment();
+        verify(retryableErrorsCounter, never()).increment();
     }
 
     @Test
@@ -185,15 +215,14 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1"
-                )), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 anyString(),
                 any(Instant.class),
                 any(Instant.class),
-                any()
-        )).thenReturn(response);
+                any())).thenReturn(response);
 
         when(service.getAuditLog(anyString()))
                 .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
@@ -210,6 +239,11 @@ class Office365CrawlerClientTest {
         verify(acknowledgementSet).add(any(Event.class));
         verify(acknowledgementSet).complete();
         verify(buffer).writeAll(any(), anyInt());
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter, never()).increment();
+        verify(retryableErrorsCounter, never()).increment();
     }
 
     @Test
@@ -219,15 +253,14 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1"
-                )), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 anyString(),
                 any(Instant.class),
                 any(Instant.class),
-                any()
-        )).thenReturn(response);
+                any())).thenReturn(response);
 
         when(service.getAuditLog(anyString()))
                 .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
@@ -247,6 +280,12 @@ class Office365CrawlerClientTest {
 
         assertEquals("Error writing to buffer", exception.getMessage());
         verify(buffer).writeAll(any(), anyInt());
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog, and retryable error counter
+        // since buffer errors are retryable
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter, never()).increment();
+        verify(retryableErrorsCounter).increment();
     }
 
     @Test
@@ -256,14 +295,14 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1")), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 anyString(),
                 any(Instant.class),
                 any(Instant.class),
-                any()
-        )).thenReturn(response);
+                any())).thenReturn(response);
 
         when(service.getAuditLog(anyString())).thenReturn(null);
 
@@ -276,6 +315,11 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog, null content causes non-retryable error
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter).increment();
+        verify(retryableErrorsCounter, never()).increment();
     }
 
     @Test
@@ -285,15 +329,14 @@ class Office365CrawlerClientTest {
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
-                        "contentUri", "uri1"
-                )), null);
+                        "contentUri", "uri1")),
+                null);
 
         when(service.searchAuditLogs(
                 anyString(),
                 any(Instant.class),
                 any(Instant.class),
-                any()
-        )).thenReturn(response);
+                any())).thenReturn(response);
 
         when(service.getAuditLog(anyString())).thenReturn("{\"Operation\":\"Test\"}");
 
@@ -306,5 +349,10 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+
+        // Verify counters - 2 API calls: searchAuditLogs + getAuditLog, missing workload field causes non-retryable error
+        verify(apiCallsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter).increment();
+        verify(retryableErrorsCounter, never()).increment();
     }
 }
