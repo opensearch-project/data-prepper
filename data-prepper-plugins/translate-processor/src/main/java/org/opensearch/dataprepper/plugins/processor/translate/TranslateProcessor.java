@@ -46,6 +46,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final JacksonEvent.Builder eventBuilder = JacksonEvent.builder();
     private final JsonExtractor jsonExtractor = new JsonExtractor();
     private final KeyResolver keyResolver;
+    private final boolean useAbsolutePaths;
 
     @DataPrepperPluginConstructor
     public TranslateProcessor(
@@ -57,6 +58,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.expressionEvaluator = expressionEvaluator;
         this.mappingsConfig = translateProcessorConfig.getCombinedMappingsConfigs();
         this.keyResolver = new CachingKeyResolver(eventKeyFactory);
+        this.useAbsolutePaths = translateProcessorConfig.isUseAbsolutePaths();
         Optional.ofNullable(mappingsConfig)
                 .ifPresent(configs -> configs.forEach(MappingsParameterConfig::parseMappings));
     }
@@ -71,9 +73,19 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
             for (MappingsParameterConfig mappingConfig : mappingsConfig) {
                 try {
                     List<TargetsParameterConfig> targetsConfig = mappingConfig.getTargetsParameterConfigs();
+                    Object sourceObject = mappingConfig.getSource();
+                    //is target should be a list or a single response - depends on sourceEventKey size.
+                    boolean isSourceAList = sourceObject instanceof String;
+                    List<String> sourceKeysPaths = getSourceKeys(sourceObject);
+                    if (sourceKeysPaths.isEmpty()) {
+                        continue;
+                    }
                     for (TargetsParameterConfig targetConfig : targetsConfig) {
-                        Object sourceObject = mappingConfig.getSource();
-                        translateSource(sourceObject, recordEvent, targetConfig);
+                        if (this.useAbsolutePaths) {
+                            translateSourceWithAbsolutePath(sourceKeysPaths, isSourceAList, recordEvent, targetConfig);
+                        } else {
+                            translateSource(sourceKeysPaths, isSourceAList, recordEvent, targetConfig);
+                        }
                     }
                 } catch (Exception ex) {
                     LOG.atError()
@@ -103,62 +115,40 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return sourceKeys;
     }
 
-    private void translateSource(Object sourceObject, Event event, TargetsParameterConfig targetConfig) {
-        List<String> sourceKeys = getSourceKeys(sourceObject);
-        if (sourceKeys.isEmpty()) {
-            return;
+    private void translateSourceWithAbsolutePath(List<String> sourceKeysPaths, boolean isSourceAList, Event event, TargetsParameterConfig targetConfig) {
+        List<EventKey> sourceEventKeys = new ArrayList<>();
+        for (String sourceKeyPath : sourceKeysPaths) {
+            sourceEventKeys.add(keyResolver.resolveKey(sourceKeyPath, event, expressionEvaluator));
         }
 
-        boolean hasParentPath = false;
-        List<EventKey> sourceKeyParentNodes = new ArrayList<>();
-        for (String sourceKeyPath : sourceKeys) {
-            String parentPath = jsonExtractor.getParentPath(sourceKeyPath);
-            if (!parentPath.isEmpty()) {
-                hasParentPath = true;
-                break;
-            }
-            EventKey parentNode = keyResolver.resolveKey(sourceKeyPath, event, expressionEvaluator);
-            sourceKeyParentNodes.add(parentNode);
-        }
-
-        if (hasParentPath) {
-            //process it through the old logic
-            translateSourceWithParentPath(sourceKeys, sourceObject, event, targetConfig);
-        } else {
-            performMappingsWithEventKey(event, sourceKeyParentNodes, sourceObject, targetConfig);
-        }
-    }
-
-    private void performMappingsWithEventKey(Event event, List<EventKey> sourceKeyLeafNodes, Object sourceObject, TargetsParameterConfig targetConfig) {
-        if (Objects.isNull(event) ||
-                Objects.isNull(sourceObject) ||
-                Objects.isNull(targetConfig) ||
-                sourceKeyLeafNodes.isEmpty()) {
-            return;
-        }
         String translateWhen = targetConfig.getTranslateWhen();
         if (!isExpressionValid(translateWhen, event)) {
             return;
         }
+
         List<Object> targetValues = new ArrayList<>();
-        for (EventKey sourceKey : sourceKeyLeafNodes) {
-            String sourceValue = event.get(sourceKey, String.class);
+        for (EventKey sourceEventKey : sourceEventKeys) {
+            String sourceValue = event.get(sourceEventKey, String.class);
             if (sourceValue != null) {
                 Optional<Object> targetValue = getTargetValueForSource(sourceValue, targetConfig);
                 targetValue.ifPresent(targetValues::add);
             }
         }
-        addTargetToRecords(sourceObject, targetValues, event, targetConfig);
+        addTargetToRecords(isSourceAList, targetValues, event, targetConfig);
     }
 
-    private void translateSourceWithParentPath(List<String> sourceKeysPaths, Object sourceObject, Event recordEvent, TargetsParameterConfig targetConfig) {
+    private void translateSource(List<String> sourceKeysPaths, boolean isSingleSourceKey, Event recordEvent, TargetsParameterConfig targetConfig) {
 
         List<String> sourceKeys = new ArrayList<>();
         for(String sourceKeyPath: sourceKeysPaths){
             sourceKeys.add(jsonExtractor.getLeafField(sourceKeyPath));
         }
-
         String commonPath = jsonExtractor.getParentPath(sourceKeysPaths.get(0));
+        if (commonPath.isEmpty()) {
+            performMappings(recordEvent, sourceKeys, isSingleSourceKey, targetConfig);
+            return;
+        }
+
         String rootField = jsonExtractor.getRootField(commonPath);
         EventKey rootKey = keyResolver.resolveKey(rootField, recordEvent, expressionEvaluator);
         if (rootKey == null || !recordEvent.containsKey(rootKey)) {
@@ -167,7 +157,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         Map<String, Object> recordObject = recordEvent.toMap();
         List<Object> targetObjects = jsonExtractor.getObjectFromPath(commonPath, recordObject);
         if(!targetObjects.isEmpty()) {
-            targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, sourceObject, targetConfig));
+            targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, isSingleSourceKey, targetConfig));
             recordEvent.put(rootKey, recordObject.get(rootField));
         }
     }
@@ -184,9 +174,9 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return sourceValue.map(Object::toString).orElse(null);
     }
 
-    private Object getTargetValue(Object sourceObject, List<Object> targetValues, TargetsParameterConfig targetConfig) {
+    private Object getTargetValue(boolean isSingleSourceKey, List<Object> targetValues, TargetsParameterConfig targetConfig) {
         TypeConverter converter = targetConfig.getTargetType().getTargetConverter();
-        if (sourceObject instanceof String) {
+        if (isSingleSourceKey) {
             return converter.convert(targetValues.get(0));
         }
         return targetValues
@@ -195,9 +185,8 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 .collect(Collectors.toList());
     }
 
-    private void performMappings(Object recordObject, List<String> sourceKeys, Object sourceObject, TargetsParameterConfig targetConfig) {
+    private void performMappings(Object recordObject, List<String> sourceKeys, boolean isSingleSourceKey, TargetsParameterConfig targetConfig) {
         if (Objects.isNull(recordObject) ||
-            Objects.isNull(sourceObject) ||
             Objects.isNull(targetConfig) ||
             sourceKeys.isEmpty()) {
             return;
@@ -214,7 +203,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 targetValue.ifPresent(targetValues::add);
             }
         }
-        addTargetToRecords(sourceObject, targetValues, recordObject, targetConfig);
+        addTargetToRecords(isSingleSourceKey, targetValues, recordObject, targetConfig);
     }
 
     private boolean isExpressionValid(String translateWhen, Object recordObject) {
@@ -279,19 +268,19 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return Optional.empty();
     }
 
-    private void addTargetToRecords(Object sourceObject, List<Object> targetValues, Object recordObject, TargetsParameterConfig targetMappings) {
+    private void addTargetToRecords(boolean isSingleSourceKey, List<Object> targetValues, Object recordObject, TargetsParameterConfig targetMappings) {
         if (targetValues.isEmpty()) {
             return;
         }
         final String targetField = targetMappings.getTarget();
         if (recordObject instanceof Map) {
             Map<String, Object> recordMap = (Map<String, Object>) recordObject;
-            recordMap.put(targetField, getTargetValue(sourceObject, targetValues, targetMappings));
+            recordMap.put(targetField, getTargetValue(isSingleSourceKey, targetValues, targetMappings));
         } else if (recordObject instanceof Event) {
             Event event = (Event) recordObject;
             EventKey targetKey = keyResolver.resolveKey(targetField, event, expressionEvaluator);
             if (targetKey != null) {
-                event.put(targetKey, getTargetValue(sourceObject, targetValues, targetMappings));
+                event.put(targetKey, getTargetValue(isSingleSourceKey, targetValues, targetMappings));
             }
         }
     }
