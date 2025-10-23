@@ -77,7 +77,7 @@ class Office365SourceConfigTest {
     @Test
     void testDefaultValues() {
         assertFalse(config.isAcknowledgments());
-        assertEquals(2, config.getNumberOfWorkers());
+        assertEquals(4, config.getNumberOfWorkers());
     }
 
     @Test
