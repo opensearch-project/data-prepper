@@ -19,11 +19,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class DataPrepperVersionIT {
     @Test
     void getCurrentVersion_returns_expected_value_using_Java_SPI() {
-        final String fullDataPrepperVersion = System.getProperty("project.version");
-
         final DataPrepperVersion currentVersion = DataPrepperVersion.getCurrentVersion();
         assertThat(currentVersion, notNullValue());
+
+        final String fullDataPrepperVersion = System.getProperty("project.version");
+        final String[] majorMinorPair = fullDataPrepperVersion.split("\\.");
         assertThat(fullDataPrepperVersion, containsString(currentVersion.toString()));
-        assertThat(currentVersion, equalTo(DataPrepperVersion.parse(fullDataPrepperVersion)));
+        assertThat(currentVersion, equalTo(DataPrepperVersion.parse(majorMinorPair[0] + "." + majorMinorPair[1])));
     }
 }

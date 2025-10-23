@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
@@ -67,11 +68,7 @@ class DataPrepperVersionTest {
             arguments("1.0", 1, Optional.of(0)),
             arguments("123423.0", 123423, Optional.of(0)),
             arguments("2.325", 2, Optional.of(325)),
-            arguments("3.14", 3, Optional.of(14)),
-            arguments("3.14.0", 3, Optional.of(14)),
-            arguments("3.14.1", 3, Optional.of(14)),
-            arguments("3.14.1-SNAPSHOT", 3, Optional.of(14)),
-            arguments("11-SNAPSHOT", 11, Optional.empty())
+            arguments("3.14", 3, Optional.of(14))
         );
     }
 
@@ -79,6 +76,12 @@ class DataPrepperVersionTest {
     @ValueSource(strings = {"*", "1.*", ".0", "alpha", "4.text", "foo.645",
             "\\a323", "1.1.1.1", "1.1.1-RELEASE", "1.1-RELEASE", "1-test"})
     void testInvalidVersionsCannotBeParsed(final String version) {
+        assertThrows(IllegalArgumentException.class, () -> DataPrepperVersion.parse(version));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"3.14.1", "3.14.1-SNAPSHOT", "11-SNAPSHOT"})
+    void parse_throws_if_given_a_valid_version_that_cannot_be_a_configuration_version(final String version) {
         assertThrows(IllegalArgumentException.class, () -> DataPrepperVersion.parse(version));
     }
 
@@ -190,8 +193,16 @@ class DataPrepperVersionTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"2.11", "2.13", "3.0", "3.1"})
-    void getCurrentVersion_returns_value_from_VersionProvider(final String versionString) {
+    @CsvSource({
+            "2.11, 2.11",
+            "2.13, 2.13",
+            "3.0, 3.0",
+            "3.1, 3.1",
+            "3.14.1, 3.14",
+            "3.14.20, 3.14",
+            "3.14.1-SNAPSHOT, 3.14",
+            "11-SNAPSHOT, 11"})
+    void getCurrentVersion_returns_value_from_VersionProvider(final String versionString, final String expectedVersion) {
         final DataPrepperVersion currentVersion;
         when(serviceLoader.findFirst()).thenReturn(Optional.of(currentVersionProvider));
         when(currentVersionProvider.getVersionString()).thenReturn(versionString);
@@ -203,7 +214,7 @@ class DataPrepperVersionTest {
         }
 
         assertThat(currentVersion, is(notNullValue()));
-        assertThat(currentVersion, is(equalTo(DataPrepperVersion.parse(versionString))));
+        assertThat(currentVersion.toString(), is(equalTo(expectedVersion)));
     }
 
     @Test
@@ -231,6 +242,19 @@ class DataPrepperVersionTest {
                     .thenReturn(serviceLoader);
 
             assertThrows(RuntimeException.class, DataPrepperVersion::getCurrentVersion);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2.", ".", ".1", "3.1.2.11", "3.14.1-RELEASE", "3.14.1-snapshot"})
+    void getCurrentVersion_throws_for_invalid_DataPrepperVersion(final String versionString) {
+        when(serviceLoader.findFirst()).thenReturn(Optional.of(currentVersionProvider));
+        when(currentVersionProvider.getVersionString()).thenReturn(versionString);
+        try (final MockedStatic<ServiceLoader> serviceLoaderStatic = mockStatic(ServiceLoader.class)) {
+            serviceLoaderStatic.when(() -> ServiceLoader.load(VersionProvider.class))
+                    .thenReturn(serviceLoader);
+
+            assertThrows(IllegalArgumentException.class, DataPrepperVersion::getCurrentVersion);
         }
     }
 
