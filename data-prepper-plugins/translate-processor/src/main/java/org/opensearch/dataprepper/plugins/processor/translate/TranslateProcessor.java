@@ -138,7 +138,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         addTargetToRecords(isTargetShouldBeString, targetValues, event, targetConfig);
     }
 
-    private void translateSource(List<String> sourceKeysPaths, boolean isSingleSourceKey, Event recordEvent, TargetsParameterConfig targetConfig) {
+    private void translateSource(List<String> sourceKeysPaths, boolean isTargetShouldBeString, Event recordEvent, TargetsParameterConfig targetConfig) {
 
         List<String> sourceKeys = new ArrayList<>();
         for(String sourceKeyPath: sourceKeysPaths){
@@ -146,7 +146,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
         String commonPath = jsonExtractor.getParentPath(sourceKeysPaths.get(0));
         if (commonPath.isEmpty()) {
-            performMappings(recordEvent, sourceKeys, isSingleSourceKey, targetConfig);
+            performMappings(recordEvent, sourceKeys, isTargetShouldBeString, targetConfig);
             return;
         }
 
@@ -158,7 +158,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         Map<String, Object> recordObject = recordEvent.toMap();
         List<Object> targetObjects = jsonExtractor.getObjectFromPath(commonPath, recordObject);
         if(!targetObjects.isEmpty()) {
-            targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, isSingleSourceKey, targetConfig));
+            targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, isTargetShouldBeString, targetConfig));
             recordEvent.put(rootKey, recordObject.get(rootField));
         }
     }
@@ -186,7 +186,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 .collect(Collectors.toList());
     }
 
-    private void performMappings(Object recordObject, List<String> sourceKeys, boolean isSingleSourceKey, TargetsParameterConfig targetConfig) {
+    private void performMappings(Object recordObject, List<String> sourceKeys, boolean isTargetShouldBeString, TargetsParameterConfig targetConfig) {
         if (Objects.isNull(recordObject) ||
             Objects.isNull(targetConfig) ||
             sourceKeys.isEmpty()) {
@@ -204,7 +204,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 targetValue.ifPresent(targetValues::add);
             }
         }
-        addTargetToRecords(isSingleSourceKey, targetValues, recordObject, targetConfig);
+        addTargetToRecords(isTargetShouldBeString, targetValues, recordObject, targetConfig);
     }
 
     private boolean isExpressionValid(String translateWhen, Object recordObject) {
