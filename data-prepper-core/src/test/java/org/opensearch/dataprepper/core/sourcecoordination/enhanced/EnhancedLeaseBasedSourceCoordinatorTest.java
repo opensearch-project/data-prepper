@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.sourcecoordination.enhanced;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator.PARTITIONS_COMPLETED_COUNT;
+import static org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator.PARTITION_CREATED_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class EnhancedLeaseBasedSourceCoordinatorTest {
@@ -47,6 +51,12 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
+    @Mock
+    private Counter partitonsCreatedCounter;
+
+    @Mock
+    private Counter partitionsCompletedCounter;
+
     private String sourceIdentifier;
 
     private EnhancedLeaseBasedSourceCoordinator coordinator;
@@ -59,6 +69,8 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         sourceIdentifier = UUID.randomUUID().toString();
         lenient().when(sourcePartitionStoreItem.getSourcePartitionKey()).thenReturn(UUID.randomUUID().toString());
         lenient().when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE);
+        when(pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT)).thenReturn(partitionsCompletedCounter);
+        when(pluginMetrics.counter(PARTITION_CREATED_COUNT)).thenReturn(partitonsCreatedCounter);
     }
 
     private EnhancedLeaseBasedSourceCoordinator createObjectUnderTest() {
@@ -120,6 +132,9 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         coordinator = createObjectUnderTest();
         // A normal type.
         TestEnhancedSourcePartition partition = new TestEnhancedSourcePartition(false);
+        when(sourceCoordinationStore.tryCreatePartitionItem(eq(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE),
+                        anyString(), eq(SourcePartitionStatus.UNASSIGNED), anyLong(), eq(null), eq(false)))
+                .thenReturn(true);
         coordinator.createPartition(partition);
         verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE), anyString(), eq(SourcePartitionStatus.UNASSIGNED), anyLong(), eq(null), eq(false));
 
@@ -127,6 +142,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         TestEnhancedSourcePartition globalState = new TestEnhancedSourcePartition(true);
         coordinator.createPartition(globalState);
         verify(sourceCoordinationStore).tryCreatePartitionItem(eq(sourceIdentifier + "|GLOBAL"), anyString(), eq(null), anyLong(), eq(null), eq(true));
+        verify(partitonsCreatedCounter).increment();
 
     }
 
@@ -208,6 +224,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
         verify(sourceCoordinationStore).tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class));
         verify(sourceCoordinationStore).tryUpdateSourcePartitionItem(any(SourcePartitionStoreItem.class));
+        verify(partitionsCompletedCounter).increment();
     }
 
     @Test
