@@ -182,11 +182,11 @@ public class Office365RestClient {
 
                             return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
-                        authConfig::renewCredentials
+                        authConfig::renewCredentials,
+                        searchRequestsFailedCounter
                 );
             } catch (Exception e) {
                 log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
-                searchRequestsFailedCounter.increment();
                 throw new RuntimeException("Failed to fetch audit logs", e);
             }
         });
@@ -216,12 +216,11 @@ public class Office365RestClient {
                             new HttpEntity<>(headers),
                             String.class
                     ).getBody();
-                }, authConfig::renewCredentials);
+                }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
                 auditLogRequestsSuccessCounter.increment();
                 return response;
             } catch (Exception e) {
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
-                auditLogRequestsFailedCounter.increment();
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
         });

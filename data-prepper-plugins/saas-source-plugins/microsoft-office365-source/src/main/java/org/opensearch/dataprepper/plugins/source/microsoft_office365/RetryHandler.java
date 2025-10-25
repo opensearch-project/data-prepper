@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
+import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
@@ -26,10 +27,17 @@ public class RetryHandler {
     private static final int SLEEP_TIME_MULTIPLIER = 1000;
 
     public static <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal) {
+        return executeWithRetry(operation, credentialRenewal, null);
+    }
+
+    public static <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal, Counter failureCounter) {
         int retryCount = 0;
         while (retryCount < MAX_RETRIES) {
+            boolean operationSucceeded = false;
             try {
-                return operation.get();
+                T result = operation.get();
+                operationSucceeded = true;
+                return result;
             } catch (HttpClientErrorException | HttpServerErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
@@ -69,6 +77,10 @@ public class RetryHandler {
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Retry interrupted", ie);
+                }
+            } finally {
+                if (!operationSucceeded && failureCounter != null) {
+                    failureCounter.increment();
                 }
             }
             retryCount++;

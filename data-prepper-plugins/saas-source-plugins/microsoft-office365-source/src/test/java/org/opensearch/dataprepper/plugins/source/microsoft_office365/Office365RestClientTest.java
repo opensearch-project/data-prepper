@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import io.micrometer.core.instrument.Counter;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -290,5 +291,60 @@ class Office365RestClientTest {
         assertEquals(2, requestTokens.size(), "Should have made two requests");
         assertEquals("Bearer token-0", requestTokens.get(0), "First request should use token-0");
         assertEquals("Bearer token-1", requestTokens.get(1), "Second request should use token-1");
+    }
+
+    @Test
+    void testSearchAuditLogsFailureCounterIncrementsOnEachRetry() throws Exception {
+        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant endTime = Instant.now();
+        
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "searchRequestsFailedCounter", mockCounter);
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThrows(RuntimeException.class, () -> 
+            office365RestClient.searchAuditLogs(
+                    "Audit.AzureActiveDirectory",
+                    startTime,
+                    endTime,
+                    null
+            )
+        );
+
+        // Verify counter.increment() was called exactly 6 times (once for each retry attempt)
+        verify(mockCounter, times(6)).increment();
+    }
+
+    @Test
+    void testGetAuditLogFailureCounterIncrementsOnEachRetry() throws Exception {
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
+        
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogRequestsFailedCounter", mockCounter);
+
+        when(restTemplate.exchange(
+                eq(contentUri),
+                eq(HttpMethod.GET),
+                any(),
+                eq(String.class)
+        )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThrows(RuntimeException.class, () -> 
+            office365RestClient.getAuditLog(contentUri)
+        );
+
+        // Verify counter.increment() was called exactly 6 times (once for each retry attempt)
+        verify(mockCounter, times(6)).increment();
     }
 }
