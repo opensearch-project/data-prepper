@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 
-public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvider, SinkDLQHandler {
+public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvider, SinkDlqHandler {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultSinkOutputStrategy.class);
     private final LockStrategy lockStrategy;
     private final SinkBuffer sinkBuffer;
@@ -44,11 +44,11 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
             } else {    
                 // flush Result should contain the events that are 
                 // failed to be delivered, so that these events can be forwarded to DLQ
-                addFailedEventsToDLQ(flushResult.getEvents(), flushResult.getException());
+                addFailedEventsToDlq(flushResult.getEvents(), flushResult.getException());
             }           
         } catch (Exception e) {
             // Add list of events to DLQ
-            addFailedEventsToDLQ(flushableBuffer.getEvents(), e);
+            addFailedEventsToDlq(flushableBuffer.getEvents(), e);
         }              
     }
 
@@ -69,7 +69,7 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
                     SinkBufferEntry bufferEntry = getSinkBufferEntry(event);
 
                     // Check if individual event exceeds sink's max event size
-                    if (exceedsMaxEventSizeThreshold(bufferEntry.getEstimatedSize())) {
+                    if (bufferEntry.exceedsMaxEventSizeThreshold()) {
                         throw new RuntimeException("Event size exceeds max allowed event size");
                     }
 
@@ -91,11 +91,11 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
                     } 
                 } catch (Exception ex) {
                     LOG.warn(NOISY, "Failed process the event ", ex);
-                    addFailedEventsToDLQ(List.of(event), ex);
+                    addFailedEventsToDlq(List.of(event), ex);
                 }
             }   
         } finally {     
-            flushDLQList();
+            flushDlqList();
             lockStrategy.unlock();
         }                   
     }

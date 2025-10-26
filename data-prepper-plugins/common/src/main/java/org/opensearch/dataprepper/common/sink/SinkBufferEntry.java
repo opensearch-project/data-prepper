@@ -10,4 +10,5 @@ import org.opensearch.dataprepper.model.event.Event;
 public interface SinkBufferEntry {
     public long getEstimatedSize();
     public Event getEvent();
+    public boolean exceedsMaxEventSizeThreshold();
 }

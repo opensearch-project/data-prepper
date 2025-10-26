@@ -278,6 +278,9 @@ public class DefaultSinkOutputStrategyTest {
         public Event getEvent() {
             return event;
         }
+        public boolean exceedsMaxEventSizeThreshold() {
+            return estimatedSize > 1000L;
+        }
     }
 
     private static class DefaultSinkOutputStrategyImpl extends DefaultSinkOutputStrategy {
@@ -289,14 +292,14 @@ public class DefaultSinkOutputStrategyTest {
             dlqEvents = new ArrayList<>();
         }
 
-        public void flushDLQList() {
+        public void flushDlqList() {
             for (final Event event: dlqEvents) {
                 event.getEventHandle().release(false);
             }
             dlqEvents.clear();
         }
 
-        public void addFailedEventsToDLQ(final List<Event> events, final Throwable ex) {
+        public void addFailedEventsToDlq(final List<Event> events, final Throwable ex) {
             dlqEvents.addAll(events);
         }
 
@@ -308,9 +311,6 @@ public class DefaultSinkOutputStrategyTest {
             return new TestSinkBufferEntry(event, size);
         }
 
-        public boolean exceedsMaxEventSizeThreshold(final long estimatedSize) {
-            return estimatedSize > 1000L;
-        }
     }
 
 }

@@ -9,8 +9,8 @@ import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.List;
 
-public interface SinkDLQHandler {
-    void flushDLQList();
-    void addFailedEventsToDLQ(final List<Event> events, final Throwable ex);
+public interface SinkDlqHandler {
+    void flushDlqList();
+    void addFailedEventsToDlq(final List<Event> events, final Throwable ex);
     
 }

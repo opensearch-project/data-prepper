@@ -8,13 +8,13 @@ package org.opensearch.dataprepper.common.sink;
 import java.time.Instant;
 
 public class DefaultSinkBuffer implements SinkBuffer {
-    final SinkBufferWriter sinkBufferWriter;
-    final long maxEvents;
-    final long maxRequestSize;
-    final long flushIntervalMs;
-    long lastFlushedTimeMs;
-    long numEvents;
-    long currentRequestSize;
+    private final SinkBufferWriter sinkBufferWriter;
+    private final long maxEvents;
+    private final long maxRequestSize;
+    private final long flushIntervalMs;
+    private long lastFlushedTimeMs;
+    private long numEvents;
+    private long currentRequestSize;
 
     public DefaultSinkBuffer(final long maxEvents, 
         final long maxRequestSize, 
