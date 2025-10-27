@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,13 +112,21 @@ public class WorkerScheduler implements Runnable {
             AcknowledgementSet acknowledgementSet = null;
             if (sourceConfig.isAcknowledgments()) {
                 acknowledgementSet = createAcknowledgementSet(partition);
+                // When acknowledgments are enabled, partition completion is handled in the acknowledgment callback
+                crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+            } else {
+                // When acknowledgments are disabled, complete the partition immediately after execution
+                crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+                sourceCoordinator.completePartition(partition);
             }
-            crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+        } else {
+            // If no progress state, complete the partition immediately
+            sourceCoordinator.completePartition(partition);
         }
-        sourceCoordinator.completePartition(partition);
     }
 
-    private AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition) {
+    @VisibleForTesting
+    AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition) {
         return acknowledgementSetManager.create((result) -> {
             if (result) {
                 acknowledgementSetSuccesses.increment();

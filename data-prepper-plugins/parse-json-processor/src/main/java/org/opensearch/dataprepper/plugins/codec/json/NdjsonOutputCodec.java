@@ -20,12 +20,13 @@ import java.util.Objects;
  */
 @DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NdjsonOutputConfig.class)
 public class NdjsonOutputCodec implements OutputCodec {
-    private static final String NDJSON = "ndjson";
+    private final NdjsonOutputConfig ndjsonOutputConfig;
     private OutputCodecContext deprecatedSupportCodecContext;
 
     @DataPrepperPluginConstructor
     public NdjsonOutputCodec(final NdjsonOutputConfig config) {
-        Objects.requireNonNull(config);
+        Objects.requireNonNull(config, "NdjsonOutputConfig cannot be null");
+        this.ndjsonOutputConfig = config;
     }
 
     private static class NdjsonWriter implements Writer {
@@ -83,7 +84,7 @@ public class NdjsonOutputCodec implements OutputCodec {
 
     @Override
     public String getExtension() {
-        return NDJSON;
+        return ndjsonOutputConfig.getExtensionOption().getExtension();
     }
 
     private static void doWriteEvent(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {

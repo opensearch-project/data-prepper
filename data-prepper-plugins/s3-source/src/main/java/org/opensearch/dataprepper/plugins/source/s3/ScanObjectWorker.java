@@ -136,7 +136,7 @@ public class ScanObjectWorker implements Runnable {
                     S3DataSelection dataSelection = s3ScanBucketOption.getDataSelection();
                     if (scanFilter != null && scanFilter.getS3scanIncludePrefixOptions() != null) {
                         for (final String prefix : scanFilter.getS3scanIncludePrefixOptions()) {
-                            prefixMap.put(prefix, dataSelection == null ? S3DataSelection.DATA_AND_METADATA : dataSelection);
+                            prefixMap.put(prefix, dataSelection == null ? s3SourceConfig.getDataSelection() : dataSelection);
                         }
                         bucketDataSelectionMap.put(bucketName, prefixMap);
                     }
@@ -156,7 +156,7 @@ public class ScanObjectWorker implements Runnable {
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
         this.acknowledgmentSetTimeout = s3SourceConfig.getS3ScanScanOptions().getAcknowledgmentTimeout();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead());
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator);
         this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
         this.objectsToDeleteForAcknowledgmentSets = new ConcurrentHashMap<>();
     }
@@ -372,7 +372,6 @@ public class ScanObjectWorker implements Runnable {
 
         return false;
     }
-
 
     private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
                                                   final SourcePartition<S3SourceProgressState> folderPartition) {

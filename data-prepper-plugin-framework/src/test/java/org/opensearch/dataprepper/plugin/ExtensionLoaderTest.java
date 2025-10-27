@@ -18,10 +18,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.annotations.ExtensionDependsOn;
+import org.opensearch.dataprepper.model.annotations.ExtensionProvides;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 import org.opensearch.dataprepper.validation.PluginError;
@@ -31,6 +34,7 @@ import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
@@ -43,6 +47,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -67,14 +72,18 @@ class ExtensionLoaderTest {
     private ArgumentCaptor<Collection<PluginError>> pluginErrorsArgumentCaptor;
     private PluginErrorCollector pluginErrorCollector;
 
+    private Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator;
+
     private ExtensionLoader createObjectUnderTest() {
         return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider,
-                extensionPluginCreator, pluginErrorCollector, pluginErrorsHandler);
+                extensionPluginCreator, pluginErrorCollector, pluginErrorsHandler, extensionsLoaderComparator);
     }
 
     @BeforeEach
     void setUp() {
         pluginErrorCollector = new PluginErrorCollector();
+        PluginCreatorContext pluginCreatorContext = new PluginCreatorContext();
+        extensionsLoaderComparator = pluginCreatorContext.extensionsLoaderComparator();
     }
 
     @Test
@@ -106,6 +115,37 @@ class ExtensionLoaderTest {
         assertThat(extensionPlugins, notNullValue());
         assertThat(extensionPlugins.size(), equalTo(1));
         assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+        assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
+    }
+
+    @Test
+    void loadExtensions_returns_single_extension_with_config_for_multiple_plugin_class() {
+        when(extensionClassProvider.loadExtensionPluginClasses())
+                .thenReturn(List.of(TestExtension.class, TestExtensionWithConfig.class));
+
+        final TestExtensionWithConfig expectedPlugin = mock(TestExtensionWithConfig.class);
+        final TestExtension testPlugin = mock(TestExtension.class);
+        final String expectedPluginName = "test_extension_with_config";
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                anyString())).thenReturn(new TestExtensionConfig());
+        when(extensionPluginCreator.newPluginInstance(
+                eq(TestExtensionWithConfig.class),
+                any(PluginArgumentsContext.class),
+                eq(expectedPluginName)))
+                .thenReturn(expectedPlugin);
+
+        when(extensionPluginCreator.newPluginInstance(
+                eq(TestExtension.class),
+                any(PluginArgumentsContext.class),
+                anyString()))
+                .thenReturn(testPlugin);
+
+        final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
+
+        assertThat(extensionPlugins, notNullValue());
+        assertThat(extensionPlugins.size(), equalTo(2));
+        assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+        assertThat(extensionPlugins.get(1), equalTo(testPlugin));
         assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
     }
 
@@ -187,7 +227,7 @@ class ExtensionLoaderTest {
     }
 
     @Test
-    void loadExtensions_returns_multiple_extensions_for_multiple_plugin_classes() {
+    void loadExtensions_returns_multiple_extensions_for_multiple_plugin_classes_in_correct_order() {
         final Collection<Class<? extends ExtensionPlugin>> pluginClasses = new HashSet<>();
         final Collection<ExtensionPlugin> expectedPlugins = new ArrayList<>();
 
@@ -219,6 +259,13 @@ class ExtensionLoaderTest {
         for (ExtensionPlugin expectedPlugin : actualPlugins) {
             assertThat(actualPlugins, hasItem(expectedPlugin));
         }
+
+        assertThat(actualPlugins.get(0), instanceOf(TestExtension2.class));
+        assertTrue(actualPlugins.get(1) instanceof TestExtension1 || actualPlugins.get(1) instanceof TestExtension3,
+                "Expected result to be either TestExtension1 or TestExtension3 but was " + actualPlugins.get(1).getClass().getName());
+
+        assertTrue(actualPlugins.get(2) instanceof TestExtension1 || actualPlugins.get(2) instanceof TestExtension3,
+                "Expected result to be either TestExtension1 or TestExtension3 but was " + actualPlugins.get(2).getClass().getName());
         assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
     }
 
@@ -298,10 +345,15 @@ class ExtensionLoaderTest {
                 null);
     }
 
+    @ExtensionDependsOn(dependentClasses = TestExtensionConfig.class)
     private interface TestExtension1 extends ExtensionPlugin {
     }
+
+    @ExtensionProvides(providedClasses = TestExtensionConfig.class)
     private interface TestExtension2 extends ExtensionPlugin {
     }
+
+    @ExtensionDependsOn(dependentClasses = TestExtensionConfig.class)
     private interface TestExtension3 extends ExtensionPlugin {
     }
 

@@ -35,4 +35,10 @@ public class ConfluenceSourceConfig extends AtlassianSourceConfig implements Cra
     public String getOauth2UrlContext() {
         return "confluence";
     }
+
+    /**
+     * boolean flag to control whether to preserve the original formatting or not
+     */
+    @JsonProperty("preserve_formatting")
+    private boolean preserveContentFormatting;
 }

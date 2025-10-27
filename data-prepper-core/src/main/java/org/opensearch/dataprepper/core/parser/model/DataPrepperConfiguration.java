@@ -11,11 +11,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
-import org.opensearch.dataprepper.core.event.EventConfiguration;
-import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
 import org.opensearch.dataprepper.core.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
+import org.opensearch.dataprepper.event.EventConfiguration;
+import org.opensearch.dataprepper.event.EventConfigurationContainer;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugin.ExperimentalConfiguration;
@@ -35,6 +35,7 @@ import java.util.Objects;
  */
 public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer, ExperimentalConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
+    public static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq_pipeline";
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
 
@@ -60,6 +61,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private Duration sinkShutdownTimeout;
     private ExperimentalConfiguration experimental;
     private PipelineExtensions pipelineExtensions;
+    private String failurePipelineName = DEFAULT_FAILURE_PIPELINE_NAME;
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
@@ -141,6 +143,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
 
     public int getServerPort() {
         return serverPort;
+    }
+
+    public String getFailurePipelineName() {
+        return failurePipelineName;
     }
 
     public boolean ssl() {

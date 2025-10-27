@@ -62,7 +62,8 @@ public class GrpcService {
                 (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
                 new OTelProtoOpensearchCodec.OTelProtoDecoder(),
                 buffer,
-                pluginMetrics
+                pluginMetrics,
+                null
         );
 
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor();

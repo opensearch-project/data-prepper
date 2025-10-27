@@ -78,6 +78,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -207,6 +208,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("existing-document-query-manager")) : null;
 
     final Optional<DlqConfiguration> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
+
     if (dlqConfig.isPresent()) {
       dlqProvider = new S3DlqProvider(dlqConfig.get().getS3DlqWriterConfig());
     }
@@ -249,11 +251,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     openSearchClientRefresher = new OpenSearchClientRefresher(
             pluginMetrics, connectionConfiguration, clientFunction);
 
-    if (queryExecutorService != null) {
-      existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
-      queryExecutorService.submit(existingDocumentQueryManager);
-    }
-
     pluginConfigObservable.addPluginConfigObserver(
             newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
@@ -264,7 +261,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
             openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
-    if (dlqFile != null) {
+     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     } else if (dlqProvider != null) {
       Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
@@ -303,6 +300,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             pipeline,
             PLUGIN_NAME,
             openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null);
+
+    if (queryExecutorService != null) {
+      existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
+      queryExecutorService.submit(existingDocumentQueryManager);
+    }
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
@@ -506,7 +508,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final String queryTermKey = openSearchSinkConfig.getIndexConfiguration().getQueryTerm();
       final String termValue = queryTermKey != null ?
               event.get(queryTermKey, String.class) : null;
-      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode, termValue);
+      BulkOperationWrapper bulkOperationWrapper = getFailurePipeline() != null ?
+              new BulkOperationWrapper(bulkOperation, event, serializedJsonNode, termValue) :
+              new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode, termValue);
 
       if (openSearchSinkConfig.getIndexConfiguration().getQueryWhen() != null &&
               expressionEvaluator.evaluateConditional(openSearchSinkConfig.getIndexConfiguration().getQueryWhen(), event)) {
@@ -582,6 +586,26 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private void logFailureForDlqObjects(final List<DlqObject> dlqObjects, final Throwable failure) {
+    if (getFailurePipeline() != null) {
+      List<Record<Event>> records = new ArrayList<>();
+      for (DlqObject dlqObject : dlqObjects) {
+        Event event = dlqObject.getEvent();
+
+        if (event != null) {
+            event.updateFailureMetadata()
+                .with("pluginId", dlqObject.getPluginId())
+                .with("pluginName", dlqObject.getPluginName())
+                .with("pipelineName", dlqObject.getPipelineName())
+                .with("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
+                .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
+                .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
+          records.add(new Record<>(event));
+        }
+      }
+      getFailurePipeline().sendEvents(records);
+      return;
+    }
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
@@ -649,7 +673,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super.shutdown();
     closeFiles();
     openSearchClient.shutdown();
-    if (queryExecutorService != null) {
+    if (queryExecutorService != null && existingDocumentQueryManager != null) {
       existingDocumentQueryManager.stop();
       queryExecutorService.shutdown();
     }
@@ -674,17 +698,22 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private DlqObject createDlqObjectFromEvent(final Event event,
                                              final String index,
                                              final String message) {
-    return DlqObject.builder()
-            .withEventHandle(event.getEventHandle())
+    DlqObject.Builder builder = DlqObject.builder()
             .withFailedData(FailedDlqData.builder()
                     .withDocument(event.toJsonString())
                     .withIndex(index)
-                    .withMessage(message)
+                    .withMessage(message != null ? message : "")
                     .build())
             .withPluginName(PLUGIN_NAME)
             .withPipelineName(pipeline)
-            .withPluginId(PLUGIN_NAME)
-            .build();
+            .withPluginId(PLUGIN_NAME);
+
+    if (getFailurePipeline() != null) {
+      builder.withEvent(event);
+    } else {
+      builder.withEventHandle(event.getEventHandle());
+    }
+    return builder.build();
   }
 
   /**

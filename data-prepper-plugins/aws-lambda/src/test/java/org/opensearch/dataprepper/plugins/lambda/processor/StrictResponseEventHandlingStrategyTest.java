@@ -37,7 +37,7 @@ public class StrictResponseEventHandlingStrategyTest {
         }
 
         // Act
-        List<Record<Event>> resultRecords = strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
+        List<Record<Event>> resultRecords = strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, null);
 
         // Before Test, make sure that they are not the same
         for (int i = 0; i < oneRandomCount; i++) {
@@ -54,14 +54,14 @@ public class StrictResponseEventHandlingStrategyTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(StrictResponseModeNotRespectedException.class, () ->
-                strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords)
+                strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, null)
         );
     }
 
     @Test
     public void testHandleEvents_EmptyParsedEvents_ShouldNotThrowException() {
         // Act
-        List<Record<Event>> resultRecords = strictResponseEventHandlingStrategy.handleEvents(new ArrayList<>(), new ArrayList<>());
+        List<Record<Event>> resultRecords = strictResponseEventHandlingStrategy.handleEvents(new ArrayList<>(), new ArrayList<>(), null);
         // Ensure resultRecords is empty
         assertEquals(0, resultRecords.size());
     }

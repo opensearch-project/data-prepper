@@ -32,6 +32,7 @@ public class OpenSearchIT {
             builder.withUsername(user);
             builder.withPassword(password);
         }
+        builder.withInsecure(true);
         final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         final RestHighLevelClient client = builder.build().createClient(awsCredentialsSupplier);
 

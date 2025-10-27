@@ -6,6 +6,7 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * A thread-safe extension of InMemoryBuffer.
@@ -13,11 +14,11 @@ import java.util.Collections;
 public class InMemoryBufferSynchronized extends InMemoryBuffer {
 
   public InMemoryBufferSynchronized(String batchOptionKeyName) {
-    this(batchOptionKeyName, new OutputCodecContext());
+    this(batchOptionKeyName, new OutputCodecContext(), null);
   }
 
-  public InMemoryBufferSynchronized(String batchOptionKeyName, OutputCodecContext outputCodecContext) {
-    super(batchOptionKeyName, outputCodecContext);
+  public InMemoryBufferSynchronized(String batchOptionKeyName, OutputCodecContext outputCodecContext, List<String> keys) {
+    super(batchOptionKeyName, outputCodecContext, keys);
 
      this.records = Collections.synchronizedList(new ArrayList<>());
   }

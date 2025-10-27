@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import java.util.Optional;
@@ -29,9 +30,11 @@ import java.util.concurrent.Executors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -120,6 +123,31 @@ public class WorkerSchedulerTest {
     }
 
     @Test
+    void testDeserializeDimensionalTimeSliceWorkerProgressState() throws Exception {
+        String json = "{\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState\",\n" +
+                "  \"startTime\": 1729391235717,\n" +
+                "  \"endTime\": 1729395235717,\n" +
+                "  \"dimensionType\": \"Exchange\"\n" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerSubtypes(DimensionalTimeSliceWorkerProgressState.class);
+        mapper.registerModule(new JavaTimeModule());
+
+        SaasWorkerProgressState state = mapper.readValue(json, SaasWorkerProgressState.class);
+
+        assertTrue(state instanceof DimensionalTimeSliceWorkerProgressState);
+        DimensionalTimeSliceWorkerProgressState dimensionalState =
+                (DimensionalTimeSliceWorkerProgressState) state;
+
+        assertNotNull(dimensionalState.getStartTime());
+        assertNotNull(dimensionalState.getEndTime());
+        assertEquals("Exchange", dimensionalState.getDimensionType());
+    }
+
+
+    @Test
     void testEmptyProgressState() throws InterruptedException {
         WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
                 coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
@@ -189,5 +217,46 @@ public class WorkerSchedulerTest {
 
         // Crawler shouldn't be invoked in this case
         verifyNoInteractions(crawler);
+    }
+
+    @Test
+    void testCompletePartitionWithAcknowledgements() throws InterruptedException {
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
+        WorkerScheduler spyWorkerScheduler = org.mockito.Mockito.spy(workerScheduler);
+        
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        
+        PaginationCrawlerWorkerProgressState mockProgressState = new PaginationCrawlerWorkerProgressState();
+        
+        EnhancedSourcePartition mockPartition = org.mockito.Mockito.mock(EnhancedSourcePartition.class);
+        when(mockPartition.getProgressState()).thenReturn(Optional.of(mockProgressState));
+        
+        org.mockito.Mockito.doAnswer(invocation -> {
+            coordinator.completePartition(mockPartition);
+            return acknowledgementSet;
+        }).when(spyWorkerScheduler).createAcknowledgementSet(any(EnhancedSourcePartition.class));
+        
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+            .willReturn(Optional.of(mockPartition))
+            .willReturn(Optional.empty());
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(spyWorkerScheduler);
+
+        Thread.sleep(500);
+        executorService.shutdownNow();
+        
+        verify(mockPartition, atLeast(1)).getProgressState();
+        verify(sourceConfig, atLeast(1)).isAcknowledgments();
+        
+        // Verify that createAcknowledgementSet was called
+        verify(spyWorkerScheduler, times(1)).createAcknowledgementSet(eq(mockPartition));
+        
+        // Verify that crawler.executePartition was called with acknowledgement set
+        verify(crawler, times(1)).executePartition(any(SaasWorkerProgressState.class), eq(buffer), eq(acknowledgementSet));
+        
+        // Verify that coordinator.completePartition was called (from the acknowledgement callback with true)
+        verify(coordinator, times(1)).completePartition(eq(mockPartition));
     }
 }

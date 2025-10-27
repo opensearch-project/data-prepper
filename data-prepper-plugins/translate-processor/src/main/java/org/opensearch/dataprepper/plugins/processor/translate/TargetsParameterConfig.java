@@ -9,6 +9,7 @@ import org.apache.commons.lang3.Range;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,7 +22,6 @@ import java.util.stream.Stream;
 public class TargetsParameterConfig {
     static final String MAP_KEY = "map";
     static final String REGEX_KEY = "regex";
-    private final TypeConverter converter;
     private final LinkedHashMap<Range<Float>, Object> rangeMappings = new LinkedHashMap<>();
     private final Map<String, Object> individualMappings = new HashMap<>();
     private final Map<Pattern, Object> compiledPatterns = new HashMap<>();
@@ -57,10 +57,10 @@ public class TargetsParameterConfig {
     @JsonPropertyDescription("Specifies the data type for the target value.")
     private TargetType targetType = TargetType.STRING;
 
-    public TargetsParameterConfig(){
-        converter = TargetType.STRING.getTargetConverter();
-    }
-    public TargetsParameterConfig(Map<String, Object> map, String target, RegexParameterConfiguration regexParameterConfig, String translateWhen, String defaultValue, TargetType targetType) {
+    public TargetsParameterConfig(){}
+
+    @VisibleForTesting
+    TargetsParameterConfig(Map<String, Object> map, String target, RegexParameterConfiguration regexParameterConfig, String translateWhen, String defaultValue, TargetType targetType) {
         this.targetType = Optional
                 .ofNullable(targetType)
                 .orElse(TargetType.STRING);
@@ -68,7 +68,6 @@ public class TargetsParameterConfig {
         this.map = map;
         this.defaultValue = defaultValue;
         this.regexParameterConfig = regexParameterConfig;
-        this.converter = this.targetType.getTargetConverter();
         this.translateWhen = translateWhen;
         parseMappings();
     }
@@ -108,11 +107,6 @@ public class TargetsParameterConfig {
     public Map<Pattern, Object> fetchCompiledPatterns() {
         return compiledPatterns;
     }
-
-    public TypeConverter getConverter() {
-        return converter;
-    }
-
 
     @AssertTrue(message = "pattern option is mandatory while configuring regex option")
     public boolean isPatternPresent() {

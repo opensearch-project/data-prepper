@@ -6,15 +6,15 @@
 package org.opensearch.dataprepper.expression;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,11 +34,11 @@ import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-class GenericExpressionEvaluator_ConditionalIT {
+class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT {
     /**
      * {@link JacksonEvent#get(String, Class)} supports a String matching the following regex expression:
      * ^[A-Za-z0-9]+([A-Za-z0-9.-_][A-Za-z0-9])*$
@@ -46,14 +46,6 @@ class GenericExpressionEvaluator_ConditionalIT {
     private static final String ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_abcdefghijklmnopqrstuvwxyz0123456789";
 
-    private AnnotationConfigApplicationContext applicationContext;
-
-    @BeforeEach
-    void beforeEach() {
-        applicationContext = new AnnotationConfigApplicationContext();
-        applicationContext.scan("org.opensearch.dataprepper.expression");
-        applicationContext.refresh();
-    }
 
     @Test
     void testGenericExpressionEvaluatorBeanAvailable() {
@@ -192,6 +184,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/should_drop", event("{\"should_drop\": true}"), true),
                 arguments("/should_drop", event("{\"should_drop\": false}"), false),
                 arguments("/logs/2/should_drop", event("{\"logs\": [{}, {}, {\"should_drop\": true}]}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/path/to/route\"}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/incorrect/path\"}"), false),
                 arguments(
                         escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
@@ -250,7 +244,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
-                arguments("getEventType() == \"LOG\"",  longEvent, false)
+                arguments("getEventType() == \"LOG\"",  longEvent, false),
+                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
         );
     }
 

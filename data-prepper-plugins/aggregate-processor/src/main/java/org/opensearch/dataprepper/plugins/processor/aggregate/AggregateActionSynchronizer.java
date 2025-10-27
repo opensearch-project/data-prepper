@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.locks.Lock;
 import java.util.Collections;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * An {@link AggregateAction} contains two functons, {@link AggregateAction#concludeGroup(AggregateActionInput)} and {@link AggregateAction#handleEvent(Event, AggregateActionInput)},
  * that potentially modify a shared state that needs to be synchronized between multiple worker threads. These two functions should not be called on the same {@link AggregateGroup} at the same time,
@@ -65,7 +67,7 @@ class AggregateActionSynchronizer {
                     aggregateGroupManager.closeGroup(hash, aggregateGroup);
                 }
             } catch (final Exception e) {
-                LOG.debug("Error while concluding group: ", e);
+                LOG.error(NOISY, "Error while concluding group: ", e);
                 actionConcludeGroupEventsProcessingErrors.increment();
             } finally {
                 handleEventForGroupLock.unlock();
@@ -89,7 +91,7 @@ class AggregateActionSynchronizer {
             handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
-            LOG.debug("Error while handling event, event will be processed by remainder of the pipeline: ", e);
+            LOG.error(NOISY, "Error while handling event, event will be processed by remainder of the pipeline: ", e);
             actionHandleEventsProcessingErrors.increment();
             handleEventResponse = new AggregateActionResponse(event);
         } finally {

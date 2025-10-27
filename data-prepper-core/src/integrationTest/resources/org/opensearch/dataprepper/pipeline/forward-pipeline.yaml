@@ -1,0 +1,25 @@
+test-forward-pipeline:
+  delay: 10
+  source:
+    in_memory:
+      testing_key: ForwardPipelineIT
+
+  processor:
+    - simple_test:
+        key1: /test1
+        value_prefix1: knownUpdatedPrefix1
+
+  sink:
+    - in_memory:
+        testing_key: ForwardPipelineIT
+        forward_to:
+          pipelines: [ "pipeline2"]
+
+pipeline2:
+  sink:
+    - in_memory:
+        testing_key: ForwardPipelineIT
+
+
+
+

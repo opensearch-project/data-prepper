@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -53,4 +54,19 @@ class SourceTopicConfigTest {
         setField(SourceTopicConfig.class, objectUnderTest, "fetchMaxBytes", "0b");
         assertThrows(RuntimeException.class, () -> objectUnderTest.getFetchMaxBytes());
     }
+
+    @Test
+    void verify_default_isolation_level() {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo(IsolationLevel.READ_UNCOMMITTED));
+    }
+
+    @Test
+    void verify_custom_isolation_level() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+
+        setField(SourceTopicConfig.class, objectUnderTest, "isolationLevel", IsolationLevel.READ_COMMITTED);
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo(IsolationLevel.READ_COMMITTED));
+    }
+
 }

@@ -13,6 +13,7 @@ public class SimpleProcessorConfig {
     @EventKeyConfiguration(EventKeyFactory.EventAction.PUT)
     private EventKey key1;
     private String valuePrefix1;
+    private boolean throwException;
 
     public EventKey getKey1() {
         return key1;
@@ -20,5 +21,9 @@ public class SimpleProcessorConfig {
 
     public String getValuePrefix1() {
         return valuePrefix1;
+    }
+
+    public boolean getThrowException() {
+        return throwException;
     }
 }

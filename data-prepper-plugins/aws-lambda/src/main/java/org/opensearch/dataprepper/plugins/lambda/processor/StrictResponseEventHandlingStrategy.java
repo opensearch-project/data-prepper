@@ -13,12 +13,14 @@ import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictRespo
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public class StrictResponseEventHandlingStrategy implements ResponseEventHandlingStrategy {
 
     @Override
     public List<Record<Event>> handleEvents(List<Event> parsedEvents,
-                                            List<Record<Event>> originalRecords) {
+                                            List<Record<Event>> originalRecords,
+                                            BiConsumer<Event, Event> consumer) {
         if (parsedEvents.size() != originalRecords.size()) {
             throw new StrictResponseModeNotRespectedException(
                     "Event count mismatch. The aws_lambda processor is configured with response_events_match set to true. " +
@@ -35,7 +37,12 @@ public class StrictResponseEventHandlingStrategy implements ResponseEventHandlin
             Event originalEvent = originalRecords.get(i).getData();
 
             // Clear the original event's data
-            originalEvent.clear();
+            if (consumer != null) {
+                consumer.accept(originalEvent, responseEvent);
+            } else {
+                originalEvent.clear();
+            }
+
 
             // Manually copy each key-value pair from the responseEvent to the originalEvent
             Map<String, Object> responseData = responseEvent.toMap();

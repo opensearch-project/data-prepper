@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
@@ -20,8 +21,10 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.A
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @JsonPropertyOrder
@@ -29,6 +32,7 @@ import java.util.List;
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class MLProcessorConfig {
     private static final int DEFAULT_MAX_BATCH_SIZE = 100;
+    public static final Duration DEFAULT_RETRY_WINDOW = Duration.ofMinutes(10);
 
     @JsonProperty("aws")
     @NotNull
@@ -80,6 +84,14 @@ public class MLProcessorConfig {
     @JsonProperty("max_batch_size")
     private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
 
+    @JsonPropertyDescription("The time duration for which the ml_inference processor retains events for retry attempts."
+            + "Supports ISO_8601 notation Strings (\"PT20.345S\", \"PT15M\", etc.) as well as simple notation Strings for seconds (\"60s\") and milliseconds (\"1500ms\")")
+    @JsonProperty("retry_time_window")
+    private Duration retryTimeWindow = DEFAULT_RETRY_WINDOW;
+
+    @JsonProperty("dlq")
+    private PluginModel dlq;
+
     public ActionType getActionType() {
         return actionType;
     }
@@ -95,4 +107,12 @@ public class MLProcessorConfig {
     }
 
     public List<String> getTagsOnFailure() { return tagsOnFailure; }
+
+    public PluginModel getDlq() {
+        return dlq;
+    }
+
+    public Map<String, Object> getDlqPluginSetting() {
+        return dlq != null ? dlq.getPluginSettings() : null;
+    }
 }

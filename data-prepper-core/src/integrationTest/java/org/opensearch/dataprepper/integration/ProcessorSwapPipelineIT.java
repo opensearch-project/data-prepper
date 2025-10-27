@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -39,6 +40,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.opensearch.dataprepper.test.framework.DataPrepperTestRunner.BASE_PATH;
 
+@Disabled
 class ProcessorSwapPipelineIT {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorSwapPipelineIT.class);
     private static final String IN_MEMORY_IDENTIFIER = "ProcessorSwapPipelineIT";

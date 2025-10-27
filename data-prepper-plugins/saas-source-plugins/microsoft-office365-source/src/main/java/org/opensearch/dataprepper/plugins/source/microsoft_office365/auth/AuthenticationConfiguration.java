@@ -17,16 +17,5 @@ import lombok.Getter;
 public class AuthenticationConfiguration {
     @JsonProperty("oauth2")
     @NotNull
-    private OAuth2Credentials oauth2;
-
-    @Getter
-    public static class OAuth2Credentials {
-        @JsonProperty("client_id")
-        @NotNull
-        private String clientId;
-
-        @JsonProperty("client_secret")
-        @NotNull
-        private String clientSecret;
-    }
+    private Oauth2Config oauth2;
 }

@@ -73,6 +73,7 @@ public class KafkaBufferIT {
     private PluginSetting pluginSetting;
 
     private KafkaBufferConfig kafkaBufferConfig;
+    private KafkaBufferConfig kafkaBufferCompressionConfig;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
@@ -111,6 +112,13 @@ public class KafkaBufferIT {
 
         topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
 
+        final Map<String, Object> topicConfigMapCompression = Map.of(
+                "name", topicName,
+                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                "create_topic", true,
+                "encryption_key", "6fib8P/ML7Lh7lUEHCFYCt+bschigjNwmEZUctkP5dw=" // sample key
+        );
+
         bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
 
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
@@ -121,6 +129,15 @@ public class KafkaBufferIT {
                 "encryption", Map.of("type", "none")
         );
         kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
+
+        final Map<String, Object> bufferCompressionConfigMap = Map.of(
+                "topics", List.of(topicConfigMapCompression),
+                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                "encryption", Map.of("type", "none"),
+                "producer_properties", Map.of("compression_type", "zstd")
+        );
+
+        kafkaBufferCompressionConfig = objectMapper.convertValue(bufferCompressionConfigMap, KafkaBufferConfig.class);
 
         byteDecoder = null;
     }
@@ -133,9 +150,40 @@ public class KafkaBufferIT {
         return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null, encryptionSupplier);
     }
 
+    private KafkaBuffer createObjectUnderTestWithCompression() {
+        return new KafkaBuffer(pluginSetting, kafkaBufferCompressionConfig, acknowledgementSetManager, null, null, null, encryptionSupplier);
+    }
+
     @Test
     void write_and_read() throws TimeoutException {
         KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        Record<Event> record = createRecord();
+        objectUnderTest.write(record, 1_000);
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(1));
+        objectUnderTest.checkpoint(readResult.getValue());
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(0));
+    }
+
+    @Test
+    void write_and_read_compression() throws TimeoutException {
+        KafkaBuffer objectUnderTest = createObjectUnderTestWithCompression();
 
         Record<Event> record = createRecord();
         objectUnderTest.write(record, 1_000);
@@ -287,6 +335,32 @@ public class KafkaBufferIT {
     }
 
     @Test
+    void writeBytes_and_read_with_compression() throws Exception {
+        byteDecoder = new JsonDecoder();
+
+        final KafkaBuffer objectUnderTest = createObjectUnderTestWithCompression();
+
+        final Map<String, String> inputDataMap = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final byte[] bytes = objectMapper.writeValueAsBytes(inputDataMap);
+        final String key = UUID.randomUUID().toString();
+        objectUnderTest.writeBytes(bytes, key, 1_000);
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(inputDataMap));
+    }
+
+    @Test
     void write_puts_correctly_formatted_data_in_protobuf_wrapper() throws TimeoutException, IOException {
         final KafkaBuffer objectUnderTest = createObjectUnderTest();
 
@@ -371,6 +445,31 @@ public class KafkaBufferIT {
 
         @BeforeEach
         void setUp() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
+            random = new Random();
+            acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+            acknowledgementSet = mock(AcknowledgementSet.class);
+            lenient().doAnswer((a) -> null).when(acknowledgementSet).complete();
+            lenient().when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
+            objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+            when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
+
+            topicName = "buffer-" + RandomStringUtils.randomAlphabetic(5);
+
+            Map<String, Object> topicConfigMap = new java.util.HashMap<>(Map.of(
+                    "name", topicName,
+                    "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                    "create_topic", true
+            ));
+
+            topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
+
+            final Map<String, Object> bufferConfigMap = new java.util.HashMap<>(Map.of(
+                    "topics", List.of(topicConfigMap),
+                    "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                    "encryption", Map.of("type", "none")
+            ));
+
             final KeyGenerator aesKeyGenerator = KeyGenerator.getInstance("AES");
             aesKeyGenerator.init(256);
             final SecretKey secretKey = aesKeyGenerator.generateKey();
@@ -382,11 +481,11 @@ public class KafkaBufferIT {
             final byte[] base64Bytes = Base64.getEncoder().encode(secretKey.getEncoded());
             aesKey = new String(base64Bytes);
 
-            final Map<String, Object> topicConfigMap = objectMapper.convertValue(topicConfig, Map.class);
             topicConfigMap.put("encryption_key", aesKey);
-            final Map<String, Object> bufferConfigMap = objectMapper.convertValue(kafkaBufferConfig, Map.class);
             bufferConfigMap.put("topics", List.of(topicConfigMap));
             kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
+
+            byteDecoder = null;
         }
 
         @Test

@@ -16,6 +16,7 @@ import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.Event;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
@@ -24,6 +25,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.mockito.Mockito.mock;
 
 public class BulkOperationWrapperTests {
@@ -41,13 +43,25 @@ public class BulkOperationWrapperTests {
         return new BulkOperationWrapper(bulkOperation, eventHandle);
     }
 
+    BulkOperationWrapper createObjectUnderTestWithEvent(final Event event, BulkOperation aBulkOperation) {
+        bulkOperation = Objects.isNull(aBulkOperation) ? mock(BulkOperation.class) : aBulkOperation;
+        return new BulkOperationWrapper(bulkOperation, event);
+    }
+
     @Test
     public void testConstructorWithOneArgument() {
+        Event event = mock(Event.class);
+        BulkOperationWrapper bulkOperationWithHandle = createObjectUnderTestWithEvent(event, null);
+        assertThat(bulkOperationWithHandle.getBulkOperation(), notNullValue());
+        assertThat(bulkOperationWithHandle.getEvent(), equalTo(event));
+    }
+
+    @Test
+    public void testConstructorWithEvent() {
         BulkOperationWrapper bulkOperationWithHandle = createObjectUnderTest(null, null);
         assertThat(bulkOperationWithHandle.getBulkOperation(), equalTo(bulkOperation));
         assertThat(bulkOperationWithHandle.getEventHandle(), equalTo(null));
     }
-
     @Test
     public void testConstructorWithTwoArguments() {
         EventHandle eventHandle = mock(EventHandle.class);

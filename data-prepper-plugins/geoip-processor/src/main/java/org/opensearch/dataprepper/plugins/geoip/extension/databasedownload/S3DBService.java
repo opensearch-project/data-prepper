@@ -8,6 +8,10 @@ package org.opensearch.dataprepper.plugins.geoip.extension.databasedownload;
 import org.opensearch.dataprepper.plugins.geoip.exception.DownloadFailedException;
 import org.opensearch.dataprepper.plugins.geoip.extension.AwsAuthenticationOptionsConfig;
 import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.File;
@@ -19,6 +23,7 @@ import java.util.Set;
  * Implementation class for Download through S3
  */
 public class S3DBService implements DBSource {
+    private static final Logger LOG = LoggerFactory.getLogger(S3DBService.class);
     private final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig;
     private final String destinationDirectory;
     private final MaxMindDatabaseConfig maxMindDatabaseConfig;
@@ -52,7 +57,7 @@ public class S3DBService implements DBSource {
                 final String bucketName = uri.getHost();
                 buildRequestAndDownloadFile(bucketName, key, database);
             } catch (URISyntaxException ex) {
-                throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage());
+                throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage(), ex);
             }
         }
     }
@@ -64,15 +69,16 @@ public class S3DBService implements DBSource {
      * @param key        Name of S3 object key
      * @param fileName   Name of the file to save
      */
-    private void buildRequestAndDownloadFile(final String bucketName, final String key, final String fileName) {
+    private void buildRequestAndDownloadFile(String bucketName, String key, String fileName) {
+        File destination = new File(this.destinationDirectory + File.separator + fileName + ".mmdb");
+        final S3Client s3Client = this.createS3Client();
         try {
-            final S3Client s3Client = createS3Client();
-
-            final File destination = new File(destinationDirectory + File.separator + fileName + MAXMIND_DATABASE_EXTENSION);
-
-            s3Client.getObject(b -> b.bucket(bucketName).key(key), destination.toPath());
+            s3Client.getObject((b) -> {
+                b.bucket(bucketName).key(key);
+            }, ResponseTransformer.toFile(destination));
         } catch (Exception ex) {
-            throw new DownloadFailedException("Failed to download database from S3." + ex.getMessage());
+            LOG.error("Failed to download database '{}' from S3: {}", fileName, ex.getMessage());
+            throw new DownloadFailedException("Failed to download database from S3: " + ex.getMessage(), ex);
         }
     }
 

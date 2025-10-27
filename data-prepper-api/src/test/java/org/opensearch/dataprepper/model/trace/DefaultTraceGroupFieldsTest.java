@@ -9,7 +9,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -19,6 +25,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 public class DefaultTraceGroupFieldsTest {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_END_TIME = UUID.randomUUID().toString();
     private static final Long TEST_DURATION = 123L;
     private static final Integer TEST_STATUS_CODE = 200;
@@ -71,6 +78,15 @@ public class DefaultTraceGroupFieldsTest {
     }
 
     @Test
+    public void testEquals_withDifferentValues() {
+        final DefaultTraceGroupFields traceGroupFields =
+            new DefaultTraceGroupFields(TEST_END_TIME, TEST_DURATION - 1, TEST_STATUS_CODE);
+        assertThat(traceGroupFields, is(not(equalTo(null))));
+        Integer tmp = 5;
+        assertThat(traceGroupFields, is(not(equalTo(tmp))));
+    }
+
+    @Test
     public void testEquals_withDifferentStatusCode() {
         final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
                 .withDurationInNanos(TEST_DURATION)
@@ -111,4 +127,25 @@ public class DefaultTraceGroupFieldsTest {
 
         assertThat(result, is(notNullValue()));
     }
+
+    @Test
+    public void testSerialization() throws Exception {
+        final DefaultTraceGroupFields result = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(TEST_DURATION)
+                .withStatusCode(TEST_STATUS_CODE)
+                .withEndTime(TEST_END_TIME)
+                .build();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(result);
+        }
+
+        byte[] data = baos.toByteArray();
+    
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(data))) {
+            DefaultTraceGroupFields result2 = (DefaultTraceGroupFields) ois.readObject();
+            assertThat(result, equalTo(result2));
+        }
+    }
+
 }

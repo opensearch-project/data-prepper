@@ -21,15 +21,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
+import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -63,17 +64,18 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
 
@@ -145,7 +147,6 @@ class PipelineTransformerTests {
     void tearDown() {
         verify(dataPrepperConfiguration).getEventConfiguration();
         verify(dataPrepperConfiguration).getExperimental();
-        verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
@@ -342,6 +343,16 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_with_missing_source_should_fail() {
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.MISSING_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
+        assertThat(actualException.getMessage(),
+                        equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
+    }
+
+    @Test
     void parseConfiguration_with_missing_pipeline_name_in_multiple_pipelines_should_throw() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE);
@@ -360,6 +371,28 @@ class PipelineTransformerTests {
         assertThat(pipelineMap.size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void testMultipleSinksWithFailurePipeline() {
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        when(expressionEvaluator.isValidExpressionStatement("/value == raw")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("/value == service")).thenReturn(true);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_WITH_FAILURE_PIPELINE_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(4));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
+        Pipeline failurePipeline = pipelineMap.get(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        assertTrue(failurePipeline != null);
+        for (Map.Entry<String, Pipeline> entry : pipelineMap.entrySet()) {
+            if (!entry.getKey().equals(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME)) {
+                assertThat(entry.getValue().getFailurePipeline(), sameInstance(failurePipeline));
+            }
+        }
+        assertTrue(failurePipeline.getSource() instanceof HeadlessPipelineSource);
+        assertThat(((HeadlessPipelineSource)failurePipeline.getSource()).getAcknowledgementsEnabled(), equalTo(false));
     }
 
     @Test

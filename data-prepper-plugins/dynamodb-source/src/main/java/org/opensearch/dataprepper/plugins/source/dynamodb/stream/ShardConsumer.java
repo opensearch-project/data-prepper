@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
@@ -34,10 +35,6 @@ import java.util.stream.Collectors;
 public class ShardConsumer implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardConsumer.class);
-
-    private static final Duration ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME = Duration.ofMinutes(10);
-
-    private static final Duration ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL = Duration.ofMinutes(3);
 
     /**
      * A flag to interrupt the process
@@ -88,13 +85,17 @@ public class ShardConsumer implements Runnable {
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String SHARD_PROGRESS = "shardProgress";
-
+    static final String END_OF_SHARD = "END_OF_SHARD";
 
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
     private final StreamRecordConverter recordConverter;
 
     private final StreamCheckpointer checkpointer;
+
+    private final ShardAcknowledgementManager shardAcknowledgementManager;
+
+    private final StreamPartition streamPartition;
 
     private String shardIterator;
 
@@ -103,10 +104,6 @@ public class ShardConsumer implements Runnable {
     private final Instant startTime;
 
     private boolean waitForExport;
-
-    private final AcknowledgementSet acknowledgementSet;
-
-    private final Duration shardAcknowledgmentTimeout;
 
     private final String shardId;
 
@@ -120,6 +117,8 @@ public class ShardConsumer implements Runnable {
         this.shardProgress = builder.pluginMetrics.counter(SHARD_PROGRESS);
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
         this.checkpointer = builder.checkpointer;
+        this.shardAcknowledgementManager = builder.shardAcknowledgementManager;
+        this.streamPartition = builder.streamPartition;
         this.shardIterator = builder.shardIterator;
         this.lastShardIterator = builder.lastShardIterator;
         // Introduce an overlap
@@ -127,8 +126,6 @@ public class ShardConsumer implements Runnable {
         this.waitForExport = builder.waitForExport;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(builder.buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordConverter = new StreamRecordConverter(bufferAccumulator, builder.tableInfo, builder.pluginMetrics, builder.streamConfig);
-        this.acknowledgementSet = builder.acknowledgementSet;
-        this.shardAcknowledgmentTimeout = builder.dataFileAcknowledgmentTimeout;
         this.shardId = builder.shardId;
         this.recordsWrittenToBuffer = 0;
         this.dynamoDBSourceAggregateMetrics = builder.dynamoDBSourceAggregateMetrics;
@@ -157,6 +154,10 @@ public class ShardConsumer implements Runnable {
 
         private StreamCheckpointer checkpointer;
 
+        private ShardAcknowledgementManager shardAcknowledgementManager;
+
+        private StreamPartition streamPartition;
+
         private String shardIterator;
 
         private String lastShardIterator;
@@ -166,9 +167,6 @@ public class ShardConsumer implements Runnable {
         private boolean waitForExport;
 
         private String shardId;
-
-        private AcknowledgementSet acknowledgementSet;
-        private Duration dataFileAcknowledgmentTimeout;
 
         private StreamConfig streamConfig;
 
@@ -199,6 +197,16 @@ public class ShardConsumer implements Runnable {
             return this;
         }
 
+        public Builder shardAcknowledgementManager(ShardAcknowledgementManager shardAcknowledgementManager) {
+            this.shardAcknowledgementManager = shardAcknowledgementManager;
+            return this;
+        }
+
+        public Builder streamPartition(StreamPartition streamPartition) {
+            this.streamPartition = streamPartition;
+            return this;
+        }
+
         public Builder shardIterator(String shardIterator) {
             this.shardIterator = shardIterator;
             return this;
@@ -219,16 +227,6 @@ public class ShardConsumer implements Runnable {
             return this;
         }
 
-        public Builder acknowledgmentSet(AcknowledgementSet acknowledgementSet) {
-            this.acknowledgementSet = acknowledgementSet;
-            return this;
-        }
-
-        public Builder acknowledgmentSetTimeout(Duration dataFileAcknowledgmentTimeout) {
-            this.dataFileAcknowledgmentTimeout = dataFileAcknowledgmentTimeout;
-            return this;
-        }
-
         public ShardConsumer build() {
             return new ShardConsumer(this);
         }
@@ -242,100 +240,109 @@ public class ShardConsumer implements Runnable {
         // Check should skip processing or not.
         if (shouldSkip()) {
             shardProgress.increment();
-            if (acknowledgementSet != null) {
-                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
-                acknowledgementSet.complete();
+            if (shardAcknowledgementManager != null) {
+                checkpointer.completePartition();
             }
             return;
         }
-
-        if (acknowledgementSet != null) {
-            addProgressCheck(acknowledgementSet);
+        if (shardAcknowledgementManager != null) {
+            shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
         }
-
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
         int interval;
         List<software.amazon.awssdk.services.dynamodb.model.Record> records;
+        boolean createdFinalAcknowledgmentSetForShard = false;
+        while (!shouldStop) {
+            if (shardIterator == null) {
+                // End of Shard
+                if (shardAcknowledgementManager != null && !createdFinalAcknowledgmentSetForShard) {
+                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, END_OF_SHARD, true);
+                    finalAcknowledgmentSet.complete();
+                }
+                LOG.debug("Reached end of shard");
+                break;
+            }
 
-        try {
-            while (!shouldStop) {
-                if (shardIterator == null) {
-                    // End of Shard
-                    LOG.debug("Reached end of shard");
+            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
+                if (shardAcknowledgementManager == null) {
                     checkpointer.checkpoint(sequenceNumber);
-                    break;
+                }
+                lastCheckpointTime = System.currentTimeMillis();
+            }
+
+            if (shardAcknowledgementManager != null && !shardAcknowledgementManager.isStillTrackingShard(streamPartition)) {
+                LOG.warn("Shard {} is no longer being tracked by the acknowledgment manager, exiting", streamPartition.getShardId());
+                break;
+            }
+
+            GetRecordsResponse response = callGetRecords(shardIterator);
+            shardIterator = response.nextShardIterator();
+            if (!response.records().isEmpty()) {
+                // Always use the last sequence number for checkpoint
+                sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
+                Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
+
+                if (lastEventTime.isBefore(startTime)) {
+                    LOG.debug("Get {} events before start time, ignore...", response.records().size());
+                    continue;
+                }
+                if (waitForExport) {
+                    waitForExport();
+                    waitForExport = false;
                 }
 
-                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                    LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
-                    if (acknowledgementSet != null) {
-                        checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
-                    } else {
-                        checkpointer.checkpoint(sequenceNumber);
+                AcknowledgementSet acknowledgementSet = null;
+                if (shardAcknowledgementManager != null) {
+                    try {
+                        acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    } catch (final ShardNotTrackedException e) {
+                        LOG.warn("Not creating acknowledgment set since shard is not tracked: {}", e.getMessage());
+                        break;
                     }
-                    lastCheckpointTime = System.currentTimeMillis();
-                }
 
-                GetRecordsResponse response = callGetRecords(shardIterator);
-                shardIterator = response.nextShardIterator();
-                if (!response.records().isEmpty()) {
-                    // Always use the last sequence number for checkpoint
-                    sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
-                    Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
-
-                    if (lastEventTime.isBefore(startTime)) {
-                        LOG.debug("Get {} events before start time, ignore...", response.records().size());
-                        continue;
+                    if (shardIterator == null) {
+                        createdFinalAcknowledgmentSetForShard = true;
                     }
-                    if (waitForExport) {
-                        checkpointer.checkpoint(sequenceNumber);
-                        waitForExport();
-                        waitForExport = false;
-                    }
-                    records = response.records().stream()
-                            .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
-                            .collect(Collectors.toList());
-                    recordConverter.writeToBuffer(acknowledgementSet, records);
-                    shardProgress.increment();
-                    recordsWrittenToBuffer += records.size();
-                    long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
-                    interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
-
-                } else {
-                    interval = GET_RECORD_INTERVAL_MILLS;
-                    shardProgress.increment();
                 }
 
-                try {
-                    // Idle between get records call.
-                    Thread.sleep(interval);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                records = response.records().stream()
+                        .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
+                        .collect(Collectors.toList());
+
+                recordConverter.writeToBuffer(acknowledgementSet, records);
+                if (acknowledgementSet != null) {
+                    acknowledgementSet.complete();
                 }
+
+                shardProgress.increment();
+                recordsWrittenToBuffer += records.size();
+                long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
+                interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
+
+            } else {
+                interval = GET_RECORD_INTERVAL_MILLS;
+                shardProgress.increment();
             }
 
-            // interrupted
-            if (shouldStop) {
-                // Do last checkpoint and then quit
-                LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
-                checkpointer.checkpoint(sequenceNumber);
-                throw new RuntimeException("Consuming shard was interrupted from shutdown");
+            try {
+                // Idle between get records call.
+                Thread.sleep(interval);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
+        }
 
-            if (acknowledgementSet != null) {
-                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
-                acknowledgementSet.complete();
-            }
+        // interrupted
+        if (shouldStop) {
+            // Do last checkpoint and then quit
+            LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
+            throw new RuntimeException("Consuming shard was interrupted from shutdown");
+        }
 
-            if (waitForExport) {
-                waitForExport();
-            }
-        } catch (final Exception exc) {
-            if (acknowledgementSet != null) {
-                acknowledgementSet.cancel();
-            }
-            throw exc;
+        if (waitForExport) {
+            waitForExport();
         }
     }
 
@@ -377,7 +384,9 @@ public class ShardConsumer implements Runnable {
                 numberOfWaits++;
                 if (numberOfWaits % DEFAULT_WAIT_COUNT_TO_CHECKPOINT == 0) {
                     // To extend the timeout of lease
-                    checkpointer.checkpoint(null);
+                    if (shardAcknowledgementManager == null) {
+                        checkpointer.checkpoint(null);
+                    }
                 }
             } catch (InterruptedException e) {
                 LOG.error("Wait for export is interrupted ({})", e.getMessage());
@@ -423,10 +432,4 @@ public class ShardConsumer implements Runnable {
         shouldStop = true;
     }
 
-    private void addProgressCheck(final AcknowledgementSet acknowledgementSet) {
-        acknowledgementSet.addProgressCheck(
-                (ignored) -> {
-                    acknowledgementSet.increaseExpiry(ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME);
-                }, ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL);
-    }
 }

@@ -21,7 +21,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.AuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.DimensionalTimeSliceCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 
@@ -58,7 +59,7 @@ class Office365SourceTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private PaginationCrawler crawler;
+    private DimensionalTimeSliceCrawler crawler;
 
     @Mock
     private PluginExecutorServiceProvider executorServiceProvider;
@@ -70,10 +71,10 @@ class Office365SourceTest {
     private AuthenticationConfiguration authenticationConfiguration;
 
     @Mock
-    private AuthenticationConfiguration.OAuth2Credentials oauth2Credentials;
+    private EnhancedSourceCoordinator sourceCoordinator;
 
     @Mock
-    private EnhancedSourceCoordinator sourceCoordinator;
+    private Office365Service office365Service;
 
 
     @Test
@@ -81,7 +82,7 @@ class Office365SourceTest {
         when(executorServiceProvider.get()).thenReturn(executorService);
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider);
+                executorServiceProvider, office365Service);
         assertNotNull(source);
     }
 
@@ -91,12 +92,13 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider);
+                executorServiceProvider, office365Service);
 
         source.setEnhancedSourceCoordinator(sourceCoordinator);
         source.start(buffer);
 
         verify(office365AuthProvider).initCredentials();
+        verify(office365Service).initializeSubscriptions();
         verify(executorService, atLeast(1)).submit(any(Runnable.class));
     }
 
@@ -106,7 +108,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider);
+                executorServiceProvider, office365Service);
 
         doThrow(new RuntimeException("Authentication failed"))
                 .when(office365AuthProvider).initCredentials();
@@ -125,7 +127,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider);
+                executorServiceProvider, office365Service);
 
         source.setEnhancedSourceCoordinator(sourceCoordinator);
         source.start(buffer);
@@ -140,7 +142,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider);
+                executorServiceProvider, office365Service);
 
         source.stop();
 

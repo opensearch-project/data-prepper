@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
@@ -30,7 +32,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class SqsSinkBatch {
+    private static final Logger LOG = LoggerFactory.getLogger(SqsSinkBatch.class);
     public static final int MAX_MESSAGES_PER_BATCH = 10;
     public static final int MAX_BATCH_SIZE_BYTES = 256*1024;
     private static final String SQS_FIFO_SUFFIX = ".fifo";
@@ -67,7 +72,7 @@ public class SqsSinkBatch {
         this.codecContext = codecContext;
         this.queueUrl = queueUrl;
         this.sqsClient = sqsClient;
-        lastFlushedTime = Instant.now().getEpochSecond();
+        lastFlushedTime = Instant.now().toEpochMilli();
         flushReady = false;
         fifoQueue = queueUrl.endsWith(SQS_FIFO_SUFFIX);
         entries = new HashMap<>();
@@ -227,6 +232,7 @@ public class SqsSinkBatch {
             sinkMetrics.recordRequestSize((double)requestSize);
 
         } catch (SqsException e) {
+            LOG.error(NOISY, "Failed to send messages to SQS: {}", e.getMessage());
             sinkMetrics.incrementRequestsFailedCounter(1);
             sinkMetrics.incrementEventsFailedCounter(entries.size());
             if (!isRetryableException(e)) {
@@ -268,7 +274,7 @@ public class SqsSinkBatch {
             entries.clear();
             entries = newEntries;
         }
-        lastFlushedTime = Instant.now().getEpochSecond();
+        lastFlushedTime = Instant.now().toEpochMilli();
         return entries.size() == 0;
     }
 

@@ -35,6 +35,7 @@ public class CloudWatchLogsDispatcher {
     private CloudWatchLogsClient cloudWatchLogsClient;
     private CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private DlqPushHandler dlqPushHandler;
+    private boolean dropIfDlqNotConfigured;
     private Executor executor;
     private String logGroup;
     private String logStream;
@@ -42,6 +43,7 @@ public class CloudWatchLogsDispatcher {
     public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                     final DlqPushHandler dlqPushHandler,
+                                    final boolean dropIfDlqNotConfigured,
                                     final Executor executor,
                                     final String logGroup,
                                     final String logStream,
@@ -52,6 +54,7 @@ public class CloudWatchLogsDispatcher {
         this.logStream = logStream;
         this.retryCount = retryCount;
         this.dlqPushHandler = dlqPushHandler;
+        this.dropIfDlqNotConfigured = dropIfDlqNotConfigured;
 
         this.executor = executor;
     }
@@ -95,6 +98,7 @@ public class CloudWatchLogsDispatcher {
                 .dlqPushHandler(dlqPushHandler)
                 .putLogEventsRequest(putLogEventsRequest)
                 .eventHandles(eventHandles)
+                .dropIfDlqNotConfigured(dropIfDlqNotConfigured)
                 .totalEventCount(inputLogEvents.size())
                 .retryCount(retryCount)
                 .build());
@@ -111,6 +115,7 @@ public class CloudWatchLogsDispatcher {
         private final List<EventHandle> eventHandles;
         private final int totalEventCount;
         private final int retryCount;
+        private boolean dropIfDlqNotConfigured;
 
         @Override
         public void run() {
@@ -154,7 +159,7 @@ public class CloudWatchLogsDispatcher {
                 cloudWatchLogsMetrics.increaseLogEventFailCounter(totalEventCount);
                 List<InputLogEvent> logEvents = putLogEventsRequest.logEvents();
                 for (int i = 0; i < logEvents.size(); i++) {
-                    DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(i), logEvents.get(i).message(), failureMessage, dlqPushHandler);
+                    DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(i), logEvents.get(i).message(), failureMessage, dlqPushHandler, dropIfDlqNotConfigured);
                     if (dlqObject != null) {
                         dlqObjects.add(dlqObject);
                     }
@@ -164,6 +169,7 @@ public class CloudWatchLogsDispatcher {
                     dlqObjects = getDlqObjectsFromResponse(putLogEventsResponse);
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
+                releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
         }
@@ -178,7 +184,7 @@ public class CloudWatchLogsDispatcher {
                 if (endIndex != null) {
                     int i = 0;
                     for (InputLogEvent logEvent : logEvents.subList(0, endIndex)) {
-                        DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(i), logEvent.message(), "Too old log event", dlqPushHandler);
+                        DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(i), logEvent.message(), "Too old log event", dlqPushHandler, dropIfDlqNotConfigured);
                         if (dlqObject != null) {
                             dlqObjects.add(dlqObject);
                         }
@@ -189,7 +195,7 @@ public class CloudWatchLogsDispatcher {
                 if (startIndex != null) {
                     int i = 0;
                     for (InputLogEvent logEvent : logEvents.subList(startIndex, logEvents.size())) {
-                        DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(startIndex + i), logEvent.message(), "Too old log event", dlqPushHandler);
+                        DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(startIndex + i), logEvent.message(), "Too old log event", dlqPushHandler, dropIfDlqNotConfigured);
                         if (dlqObject != null) {
                             dlqObjects.add(dlqObject);
                         }
@@ -200,5 +206,23 @@ public class CloudWatchLogsDispatcher {
             return dlqObjects;
         }
 
+        private void releaseEventHandles(final PutLogEventsResponse putLogEventsResponse) {
+            if (putLogEventsResponse == null || putLogEventsResponse.rejectedLogEventsInfo() == null) {
+                eventHandles.forEach(eventHandle -> eventHandle.release(true));
+                return;
+            }
+
+            final Integer tooOldEndIndex = putLogEventsResponse.rejectedLogEventsInfo().tooOldLogEventEndIndex();
+            final Integer tooNewStartIndex = putLogEventsResponse.rejectedLogEventsInfo().tooNewLogEventStartIndex();
+
+            for (int i = 0; i < eventHandles.size(); i++) {
+                boolean isRejected = (tooOldEndIndex != null && i < tooOldEndIndex) ||
+                        (tooNewStartIndex != null && i >= tooNewStartIndex);
+
+                if (!isRejected) {
+                    eventHandles.get(i).release(true);
+                }
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class StreamPartition extends EnhancedSourcePartition<StreamProgressState> {
@@ -60,5 +61,17 @@ public class StreamPartition extends EnhancedSourcePartition<StreamProgressState
 
     public String getShardId() {
         return shardId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        StreamPartition that = (StreamPartition) o;
+        return Objects.equals(shardId, that.shardId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(shardId);
     }
 }

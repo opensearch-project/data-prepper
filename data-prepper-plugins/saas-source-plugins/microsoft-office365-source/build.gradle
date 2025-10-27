@@ -18,7 +18,7 @@ dependencies {
     // Microsoft Graph API dependencies
     implementation 'com.microsoft.graph:microsoft-graph:5.65.0'
     implementation 'com.microsoft.azure:msal4j:1.13.9'
-    implementation 'com.azure:azure-identity:1.11.1'
+    implementation 'com.azure:azure-identity:1.16.3'
 
     implementation libs.commons.io
     implementation 'io.micrometer:micrometer-core'
@@ -29,6 +29,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation testLibs.awaitility
 
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'

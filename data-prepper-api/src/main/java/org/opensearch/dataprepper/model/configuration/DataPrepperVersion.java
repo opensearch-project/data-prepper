@@ -1,17 +1,25 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
 package org.opensearch.dataprepper.model.configuration;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DataPrepperVersion {
-    private static final String CURRENT_VERSION = "2.13";
-
     private static final String FULL_FORMAT = "%d.%d";
     private static final String SHORTHAND_FORMAT = "%d";
-    private static final String VERSION_PATTERN_STRING = "^((\\d+)(\\.(\\d+))?)$";
-    private static final Pattern VERSION_PATTERN = Pattern.compile(VERSION_PATTERN_STRING);
+    private static final Pattern VERSION_PATTERN = Pattern.compile("^((\\d+)(\\.(\\d+))?)$");
+    private static final Pattern VERSION_FULL_PATTERN = Pattern.compile("^((\\d+)(\\.(\\d+))?(\\.(\\d+))?)(-SNAPSHOT)?$");
     private static final int MAJOR_VERSION_PATTERN_POSITION = 2;
     private static final int MINOR_VERSION_PATTERN_POSITION = 4;
 
@@ -20,21 +28,27 @@ public class DataPrepperVersion {
 
     private static DataPrepperVersion instance;
 
-    private DataPrepperVersion(int majorVersion, Integer minorVersion) {
+    private DataPrepperVersion(final int majorVersion, final Integer minorVersion) {
         this.minorVersion = minorVersion;
         this.majorVersion = majorVersion;
     }
 
-    public static DataPrepperVersion getCurrentVersion() {
-        if (Objects.isNull(instance)) {
-            instance = parse(CURRENT_VERSION);
+    public static synchronized DataPrepperVersion getCurrentVersion() {
+        if (instance == null) {
+            final String versionString = ServiceLoader.load(VersionProvider.class).findFirst()
+                    .orElseThrow(() -> new RuntimeException("No Data Prepper version available."))
+                    .getVersionString();
+            instance = parse(versionString, VERSION_FULL_PATTERN);
         }
         return instance;
     }
 
     public static DataPrepperVersion parse(final String version) {
+        return parse(version, VERSION_PATTERN);
+    }
 
-        final Matcher result = VERSION_PATTERN.matcher(version);
+    private static DataPrepperVersion parse(final String version, final Pattern versionPattern) {
+        final Matcher result = versionPattern.matcher(version);
         if(result.find()) {
             String major = result.group(MAJOR_VERSION_PATTERN_POSITION);
             final int foundMajorVersion = Integer.parseInt(major);

@@ -14,6 +14,10 @@ subprojects {
     jar {
         archiveBaseName.set("data-prepper-${project.name}")
     }
+
+    dependencies {
+        testImplementation project(':data-prepper-test:plugin-test-framework')
+    }
 }
 
 dependencies {

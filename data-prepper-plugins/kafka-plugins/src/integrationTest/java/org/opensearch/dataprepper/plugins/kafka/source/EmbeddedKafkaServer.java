@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 
 import kafka.server.KafkaConfig;
-import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
 import kafka.utils.TestUtils;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -61,19 +60,13 @@ public class EmbeddedKafkaServer {
 
     private Properties effectiveConfigFrom(final Properties initialConfig) throws IOException {
         final Properties effectiveConfig = new Properties();
-        effectiveConfig.put(KafkaConfig$.MODULE$.BrokerIdProp(), 1);
-        effectiveConfig.put(KafkaConfig$.MODULE$.NumPartitionsProp(), 1);
-        effectiveConfig.put(KafkaConfig$.MODULE$.AutoCreateTopicsEnableProp(), true);
-        effectiveConfig.put(KafkaConfig$.MODULE$.MessageMaxBytesProp(), 1000000);
-        effectiveConfig.put(KafkaConfig$.MODULE$.ControlledShutdownEnableProp(), true);
 
         effectiveConfig.putAll(initialConfig);
-        effectiveConfig.setProperty(KafkaConfig$.MODULE$.LogDirProp(), logDir.getAbsolutePath());
         return effectiveConfig;
     }
 
     public String brokerList() {
-        return kafka.config().zkConnect();
+        return "";
     }
 
 

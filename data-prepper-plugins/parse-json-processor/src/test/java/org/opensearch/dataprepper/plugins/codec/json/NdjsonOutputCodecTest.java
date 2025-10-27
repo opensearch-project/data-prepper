@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +37,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anEmptyMap;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NdjsonOutputCodecTest {
@@ -115,6 +121,39 @@ class NdjsonOutputCodecTest {
         final Map<?, ?> serializedMap = OBJECT_MAPPER.readValue(outputStream.toByteArray(), Map.class);
 
         assertThat(serializedMap, equalTo(eventMap));
+    }
+
+    @Test
+    void constructor_with_valid_ndjson_extension_should_not_throw_exception() {
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.NDJSON);
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("ndjson"));
+    }
+
+    @Test
+    void constructor_with_valid_jsonl_extension_should_not_throw_exception() {
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.JSONL);
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("jsonl"));
+    }
+
+    @Test
+    void constructor_with_uppercase_valid_extension_should_not_throw_exception() {
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.NDJSON);
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("ndjson"));
+    }
+
+    @Test
+    void constructor_with_null_config_should_throw_exception() {
+        assertThrows(NullPointerException.class, () -> new NdjsonOutputCodec(null),
+                "NdjsonOutputConfig cannot be null");
     }
 
     @ParameterizedTest
@@ -195,6 +234,40 @@ class NdjsonOutputCodecTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void writer_write_with_empty_values_writes_each_empty_event(final int numberOfEvents) throws IOException {
+        final NdjsonOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final OutputCodec.Writer writer = objectUnderTest.createWriter(outputStream, null, codecContext);
+
+        IntStream.range(0, numberOfEvents)
+                .mapToObj(eventMap -> eventFactory.eventBuilder(EventBuilder.class).withData(Collections.emptyMap()).build())
+                .forEach(event -> {
+                    try {
+                        writer.writeEvent(event);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+        objectUnderTest.complete(outputStream);
+
+        final String jsonLinesCombined = new String(outputStream.toByteArray());
+
+        final String[] jsonLines = jsonLinesCombined.split("\n");
+
+        assertThat(jsonLines.length, equalTo(numberOfEvents));
+
+        for (int i = 0; i < numberOfEvents; i++) {
+            final String jsonLine = jsonLines[i];
+            final Map<?, ?> serializedMap = OBJECT_MAPPER.readValue(jsonLine, Map.class);
+
+            assertThat(serializedMap, notNullValue());
+            assertThat(serializedMap, is(anEmptyMap()));
+        }
+    }
 
     private static Map<String, Object> generateEventMap() {
         final Map<String, Object> jsonObject = new LinkedHashMap<>();

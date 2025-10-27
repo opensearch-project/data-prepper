@@ -20,4 +20,6 @@ public interface ExtensionPoints {
      * @since 2.3
      */
     void addExtensionProvider(ExtensionProvider<?> extensionProvider);
+
+    <T> T getExtensionProvider(Class<T> type);
 }

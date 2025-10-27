@@ -149,9 +149,8 @@ public class SearchAccessorStrategy {
             return new OpenSearchAccessor(clientRefresher,
                     SearchContextType.NONE);
         } else {
-            if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType()) ||
-                SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
-                throw new InvalidPluginConfigurationException("A search_context_type of point_in_time or scroll is not supported for serverless collections");
+            if ( SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+                throw new InvalidPluginConfigurationException("A search_context_type of scroll is not supported for serverless collections");
             }
 
             LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());

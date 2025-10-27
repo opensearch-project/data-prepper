@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -28,9 +27,11 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -148,8 +149,8 @@ class SinkModelTest {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "abc", "efg"), null, pluginSettings);
 
-        assertThat(sinkModel.getExcludeKeys(), equalTo(new ArrayList<String>()));
-        assertThat(sinkModel.getIncludeKeys(), equalTo(Arrays.asList("bcd", "abc", "efg")));
+        assertThat(sinkModel.getExcludeKeys(), is(empty()));
+        assertThat(sinkModel.getIncludeKeys(), contains("abc", "bcd", "efg")); //must be sorted
 
     }
 
@@ -162,11 +163,23 @@ class SinkModelTest {
     @Test
     void sinkModel_with_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("bcd", "efg", "abc"), pluginSettings);
 
-        assertThat(sinkModel.getIncludeKeys(), equalTo(new ArrayList<String>()));
-        assertThat(sinkModel.getExcludeKeys(), equalTo(Arrays.asList("abc", "bcd", "efg")));
+        assertThat(sinkModel.getIncludeKeys(), is(empty()));
+        assertThat(sinkModel.getExcludeKeys(), contains("abc", "bcd", "efg")); //must be sorted
 
+    }
+
+    @Test
+    void sinkModel_with_forward_pipelines() {
+        SinkForwardConfig sinkForwardConfig = mock(SinkForwardConfig.class);
+        List<String> forwardPipelineList = List.of("forward-pipeline1", "forward-pipeline2");
+        when(sinkForwardConfig.getPipelineNames()).thenReturn(forwardPipelineList);
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), sinkForwardConfig, pluginSettings);
+
+        assertThat(sinkModel.getForwardConfig().getPipelineNames(), equalTo(forwardPipelineList));
     }
 
     @Test
@@ -212,7 +225,7 @@ class SinkModelTest {
             assertThat(actualSinkModel.getExcludeKeys(), notNullValue());
             assertThat(actualSinkModel.getExcludeKeys(), empty());
             assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
-            assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
+            assertThat(actualSinkModel.getForwardConfig(), nullValue());
 
         }
     }

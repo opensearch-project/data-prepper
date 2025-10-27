@@ -1691,6 +1691,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
         metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
         metadata.put(IndexConfiguration.FLUSH_TIMEOUT, -1);
+        metadata.put("insecure", true);
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {

@@ -90,6 +90,7 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
 
     private void dissectField(Event event, String field){
         Dissector dissector = dissectorMap.get(field);
+        boolean isDeleteSourceOnSuccessfulDissect = dissectConfig.isDeleteSourceRequested();
         String text = event.get(field, String.class);
         if (dissector.dissectText(text)) {
             List<Field> dissectedFields = dissector.getDissectedFields();
@@ -97,6 +98,9 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                 String dissectFieldName = disectedField.getKey();
                 Object dissectFieldValue = convertTargetType(dissectFieldName,disectedField.getValue());
                 event.put(disectedField.getKey(), dissectFieldValue);
+            }
+            if (isDeleteSourceOnSuccessfulDissect) {
+                event.delete(field);
             }
         }
     }

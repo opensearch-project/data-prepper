@@ -14,7 +14,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.common.MLBatchJobCreator;
 import io.micrometer.core.instrument.Counter;
@@ -75,6 +77,12 @@ public class MLProcessorTest {
     @Mock
     private AwsCredentialsProvider awsCredentialsProvider;
 
+    @Mock
+    private PluginFactory pluginFactory;
+
+    @Mock
+    private PluginSetting pluginSetting;
+
     @BeforeEach
     void setUp() throws NoSuchFieldException, IllegalAccessException {
         MockitoAnnotations.openMocks(this);
@@ -84,10 +92,11 @@ public class MLProcessorTest {
         lenient().when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
         lenient().when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
         lenient().when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        lenient().when(mlProcessorConfig.getDlqPluginSetting()).thenReturn(null);
         lenient().when(pluginMetrics.counter(NUMBER_OF_ML_PROCESSOR_SUCCESS)).thenReturn(successCounter);
         lenient().when(pluginMetrics.counter(NUMBER_OF_ML_PROCESSOR_FAILED)).thenReturn(failureCounter);
 
-        mlProcessor = new MLProcessor(mlProcessorConfig, pluginMetrics, awsCredentialsSupplier, expressionEvaluator);
+        mlProcessor = new MLProcessor(mlProcessorConfig, pluginMetrics, pluginFactory, pluginSetting, awsCredentialsSupplier, expressionEvaluator);
         // Inject the mocked mlBatchJobCreator using reflection
         Field field = MLProcessor.class.getDeclaredField("mlBatchJobCreator");
         field.setAccessible(true);

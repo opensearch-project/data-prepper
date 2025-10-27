@@ -109,6 +109,16 @@ public class PluginMetricsTest {
     }
 
     @Test
+    public void testTimerWithMetricsPrefix() {
+        final Timer timer = objectUnderTest.timer("timer", PIPELINE_NAME);
+        assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME)
+                        .add("timer").toString(),
+                timer.getId().getName());
+    }
+
+    @Test
     public void testTimerWithTags() {
         final Timer timer = objectUnderTest.timerWithTags("timer", TAG_KEY, TAG_VALUE);
         assertEquals(
@@ -126,6 +136,16 @@ public class PluginMetricsTest {
         assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("summary").toString(),
+                summary.getId().getName());
+    }
+
+    @Test
+    public void testSummaryWithMetricsPrefix() {
+        final DistributionSummary summary = objectUnderTest.summary("summary", PIPELINE_NAME);
+        assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME)
                         .add("summary").toString(),
                 summary.getId().getName());
     }

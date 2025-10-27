@@ -29,10 +29,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
@@ -45,15 +47,19 @@ class CloudWatchLogsServiceTest {
     private CloudWatchLogsSinkConfig mockCloudWatchLogsSinkConfig;
     private ThresholdConfig thresholdConfig;
     private CloudWatchLogsLimits cloudWatchLogsLimits;
+    private CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private InMemoryBufferFactory inMemoryBufferFactory;
     private Buffer buffer;
     private CloudWatchLogsDispatcher mockDispatcher;
     private DlqPushHandler dlqPushHandler;
+    private EventHandle eventHandle;
 
     @BeforeEach
     void setUp() {
         mockCloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
 
+        eventHandle = mock(EventHandle.class);
+        cloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         thresholdConfig = new ThresholdConfig();
         cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSizeBytes(),
                 thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getFlushInterval());
@@ -63,8 +69,8 @@ class CloudWatchLogsServiceTest {
         inMemoryBufferFactory = new InMemoryBufferFactory();
         mockDispatcher = mock(CloudWatchLogsDispatcher.class);
         dlqPushHandler = mock(DlqPushHandler.class);
-        cloudWatchLogsService = new CloudWatchLogsService(buffer,
-                cloudWatchLogsLimits, mockDispatcher, null);
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, mockDispatcher, null, true);
     }
 
     Collection<Record<Event>> getSampleRecordsCollectionSmall() {
@@ -116,11 +122,11 @@ class CloudWatchLogsServiceTest {
     }
 
     CloudWatchLogsService getSampleService(DlqPushHandler dlqPushHandler) {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher, dlqPushHandler);
+        return new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, mockDispatcher, dlqPushHandler, true);
     }
 
     CloudWatchLogsService getSampleService() {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher, null);
+        return new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, mockDispatcher, null, true);
     }
 
     @Test
@@ -159,6 +165,19 @@ class CloudWatchLogsServiceTest {
         cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
         verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
         verify(dlqPushHandler, atLeast(1)).perform(any(List.class));
+    }
+
+    @Test
+    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_large_record_no_dlq_are_dropped() throws Exception {
+        PluginSetting pluginSetting = mock(PluginSetting.class);
+        when(pluginSetting.getName()).thenReturn("test");
+        when(pluginSetting.getPipelineName()).thenReturn("test");
+        setUpRealBuffer();
+        cloudWatchLogsService = getSampleService(null);
+        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
+        verify(eventHandle, times(1)).release(eq(true));
+        verify(cloudWatchLogsMetrics, times(1)).increaseLogLargeEventsDroppedCounter(eq(1));
     }
 
     @Test
@@ -229,7 +248,8 @@ class CloudWatchLogsServiceTest {
     }
 
      private Record<Event> getLargeRecord(long size) {
-        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.randomAlphabetic((int)size))).build();
+        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.randomAlphabetic((int)size))).withEventHandle(eventHandle).build();
+
         return new Record<>(event);
     }   
 }

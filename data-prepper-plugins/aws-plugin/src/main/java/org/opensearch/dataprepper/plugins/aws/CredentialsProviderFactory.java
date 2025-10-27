@@ -66,8 +66,16 @@ class CredentialsProviderFactory {
     }
 
     private AwsCredentialsProvider createStsCredentials(final AwsCredentialsOptions credentialsOptions) {
-
-        final String stsRoleArn = credentialsOptions.getStsRoleArn() == null ? defaultStsConfiguration.getAwsStsRoleArn() : credentialsOptions.getStsRoleArn();
+        final boolean useDefaultStsRoleArn;
+        final String stsRoleArn;
+        if(credentialsOptions.getStsRoleArn() != null) {
+            stsRoleArn = credentialsOptions.getStsRoleArn();
+            useDefaultStsRoleArn = false;
+        }
+        else {
+            stsRoleArn = defaultStsConfiguration.getAwsStsRoleArn();
+            useDefaultStsRoleArn = true;
+        }
 
         validateStsRoleArn(stsRoleArn);
 
@@ -85,7 +93,12 @@ class CredentialsProviderFactory {
             assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(credentialsOptions.getStsExternalId());
         }
 
-        final Map<String, String> awsStsHeaderOverrides = credentialsOptions.getStsHeaderOverrides();
+        final Map<String, String> awsStsHeaderOverrides;
+        if(useDefaultStsRoleArn) {
+            awsStsHeaderOverrides = defaultStsConfiguration.getStsHeaderOverrides();
+        } else {
+            awsStsHeaderOverrides = credentialsOptions.getStsHeaderOverrides();
+        }
 
         if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
             assumeRoleRequestBuilder = assumeRoleRequestBuilder
@@ -117,7 +130,7 @@ class CredentialsProviderFactory {
         }
     }
 
-    private StsClient createStsClient(final Region region) {
+    protected StsClient createStsClient(final Region region) {
         final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
                 .baseDelay(Duration.ofMillis(STS_CLIENT_BASE_BACKOFF_MILLIS))
                 .maxBackoffTime(Duration.ofMillis(STS_CLIENT_MAX_BACKOFF_MILLIS))

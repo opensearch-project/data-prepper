@@ -211,6 +211,19 @@ public class ZeroBufferTests {
             assertTrue(readRecordsMap.getKey().isEmpty());
             verify(pipelineRunner, never()).runAllProcessorsAndPublishToSinks();
         }
+
+        @Test
+        public void testReadFromEmptyBufferCallsThreadSleep() {
+            ZeroBuffer<Record<String>> zeroBuffer = createObjectUnderTest();
+
+            // Interrupt the current thread to test the InterruptedException handling and Thread.sleep() call indirectly
+            Thread.currentThread().interrupt();
+
+            Map.Entry<Collection<Record<String>>, CheckpointState> result = zeroBuffer.read(READ_TIMEOUT);
+            
+            assertTrue(result.getKey().isEmpty());
+            assertEquals(ZeroBuffer.EMPTY_CHECKPOINT, result.getValue());
+        }
     }
 
     @Nested

@@ -58,7 +58,7 @@ public class DlqPushHandler {
             }
         }
         if (settingsChanged) {
-            LOG.info("Using AWS credentials from Lambda Sink Config");
+            LOG.info("Using AWS credentials from aws Auth Config");
             dlqPluginSetting.setSettings(dlqSettings);
         }
         this.dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
@@ -76,4 +76,3 @@ public class DlqPushHandler {
         }
     }
 }
-

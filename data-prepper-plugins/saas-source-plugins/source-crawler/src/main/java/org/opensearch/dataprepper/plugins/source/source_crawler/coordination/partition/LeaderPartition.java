@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition;
 
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.TokenLeaderProgressState;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,7 +57,22 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
     }
 
     public void setLeaderProgressState(LeaderProgressState state) {
-        this.state.setLastPollTime(state.getLastPollTime());
+        boolean stateIsToken = state instanceof TokenLeaderProgressState;
+        boolean thisStateIsToken = this.state instanceof TokenLeaderProgressState;
+        
+        if (stateIsToken != thisStateIsToken) {
+            // Validate that the states are not inconsistent
+            // We don't expect to reach here.
+            throw new RuntimeException("Leader partition progress state type mismatch: " +
+                    "Provided state type: " + state.getClass().getSimpleName() + 
+                    ", Current state type: " + this.state.getClass().getSimpleName());
+        }
+        
+        if (state instanceof TokenLeaderProgressState) {
+            ((TokenLeaderProgressState) this.state).setLastToken(((TokenLeaderProgressState) state).getLastToken());
+        } else {
+            this.state.setLastPollTime(state.getLastPollTime());
+        }
     }
 
     /**

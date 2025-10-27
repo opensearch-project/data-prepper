@@ -571,4 +571,26 @@ public class SqsSinkServiceTest {
         return recordList;
     }
 
+    @Test
+    void test_when_flush_interval_is_zero_then_flushes_immediately() throws Exception {
+        when(thresholdConfig.getFlushInterval()).thenReturn(0L);
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        
+        final Event event = JacksonLog.builder()
+                .withData(Map.of("key", "value"))
+                .withEventHandle(eventHandle)
+                .build();
+        
+        long estimatedSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+        boolean isFull = sqsSinkService.addToBuffer(event, estimatedSize);
+        
+        assertFalse(isFull);
+        assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(1));
+
+        Thread.sleep(1);
+
+        boolean exceedsFlushTimeInterval = sqsSinkService.exceedsFlushTimeInterval();
+        
+        assertTrue(exceedsFlushTimeInterval);
+    }
 }

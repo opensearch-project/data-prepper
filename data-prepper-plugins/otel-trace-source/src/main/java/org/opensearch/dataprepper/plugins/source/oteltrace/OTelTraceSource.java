@@ -90,7 +90,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             configureGrpcService(serverBuilder, buffer);
 
-            // todo needed until clarified if unframedRequests should survive
+            // needed until clarified if unframedRequests should survive
             if (!oTelTraceSourceConfig.enableUnframedRequests()) {
                 configureHttpService(serverBuilder, buffer);
             }

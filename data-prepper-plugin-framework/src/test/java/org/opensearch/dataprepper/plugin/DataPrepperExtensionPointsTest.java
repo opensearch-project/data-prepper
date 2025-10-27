@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -98,6 +99,19 @@ class DataPrepperExtensionPointsTest {
     }
 
     @Test
+    void addExtensionProvider_should_not_registerBean_for_the_sameClass() {
+        DataPrepperExtensionPoints dataPrepperExtensionPoints = createObjectUnderTest();
+        dataPrepperExtensionPoints.addExtensionProvider(extensionProvider);
+
+        verify(sharedApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+        verify(coreApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+
+        dataPrepperExtensionPoints.addExtensionProvider(extensionProvider);
+        verify(sharedApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+        verify(coreApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+    }
+
+    @Test
     void addExtensionProvider_should_registerBean_which_calls_provideInstance() {
         createObjectUnderTest().addExtensionProvider(extensionProvider);
 
@@ -111,6 +125,20 @@ class DataPrepperExtensionPointsTest {
 
         verifyRegisterBeanAsPrototype(sharedApplicationContext);
         verifyRegisterBeanAsPrototype(coreApplicationContext);
+    }
+
+    @Test
+    void getExtensionProvider_refreshes_shared_context_and_returns_correct_bean() {
+        final Class<DefaultPluginFactory> defaultPluginFactoryClass = DefaultPluginFactory.class;
+        final DefaultPluginFactory defaultPluginFactory = mock(DefaultPluginFactory.class);
+
+        when(sharedApplicationContext.getBean(defaultPluginFactoryClass)).thenReturn(defaultPluginFactory);
+
+        final DefaultPluginFactory result = createObjectUnderTest().getExtensionProvider(defaultPluginFactoryClass);
+
+        assertThat(result, equalTo(defaultPluginFactory));
+
+        verify(sharedApplicationContext).refresh();
     }
 
     private void verifyRegisterBeanWithProvideInstance(final GenericApplicationContext applicationContext) {

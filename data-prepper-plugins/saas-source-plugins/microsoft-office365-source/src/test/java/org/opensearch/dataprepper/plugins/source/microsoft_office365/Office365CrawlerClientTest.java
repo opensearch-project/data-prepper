@@ -20,29 +20,35 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -51,12 +57,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class Office365CrawlerClientTest {
     @Mock
     private Buffer<Record<Event>> buffer;
 
     @Mock
-    private PaginationCrawlerWorkerProgressState state;
+    private DimensionalTimeSliceWorkerProgressState state;
 
     @Mock
     private AcknowledgementSet acknowledgementSet;
@@ -68,9 +75,6 @@ class Office365CrawlerClientTest {
     private Office365Service service;
 
     @Mock
-    private Office365Iterator office365Iterator;
-
-    @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
@@ -78,10 +82,6 @@ class Office365CrawlerClientTest {
 
     @Mock
     private static Logger log;
-
-    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
-    private static final String BUFFER_WRITE_FAILURES_TIMEOUT = "bufferWriteFailuresTimeout";
 
     @BeforeAll
     static void setupLogger() {
@@ -93,29 +93,36 @@ class Office365CrawlerClientTest {
     void setUp() {
         when(pluginMetrics.timer(anyString())).thenReturn(bufferWriteLatencyTimer);
         when(pluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
+        when(state.getStartTime()).thenReturn(Instant.now().minus(Duration.ofHours(1)));
+        when(state.getEndTime()).thenReturn(Instant.now());
+        when(state.getDimensionType()).thenReturn("Exchange");
     }
 
     @Test
     void testConstructor() {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
         assertNotNull(client);
     }
 
     @Test
-    void testListItems() {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
-        assertNotNull(client.listItems(Instant.ofEpochSecond(1234L)));
-        verify(service).initializeSubscriptions();
-        verify(office365Iterator).initialize(any(Instant.class));
-    }
-
-    @Test
     void testExecutePartition() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
-        List<String> itemIds = Arrays.asList("ID1", "ID2");
-        when(state.getItemIds()).thenReturn(itemIds);
-        when(service.getAuditLog(anyString())).thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                eq("Exchange"),
+                any(Instant.class),
+                any(Instant.class),
+                isNull()
+        )).thenReturn(response);
+
+        when(service.getAuditLog(anyString()))
+                .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
 
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
@@ -131,7 +138,7 @@ class Office365CrawlerClientTest {
         Collection<Record<Event>> capturedRecords = recordsCaptor.getValue();
 
         assertFalse(capturedRecords.isEmpty());
-        assertEquals(itemIds.size(), capturedRecords.size());
+        assertEquals(1, capturedRecords.size());
         for (Record<Event> record : capturedRecords) {
             assertNotNull(record.getData());
             assertEquals("Exchange", record.getData().getMetadata().getAttribute("contentType"));
@@ -140,14 +147,24 @@ class Office365CrawlerClientTest {
 
     @Test
     void testExecutePartitionWithJsonProcessingError() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
         client.injectObjectMapper(mockObjectMapper);
 
-        List<String> itemIds = List.of("ID1");
-        when(state.getItemIds()).thenReturn(itemIds);
-        when(service.getAuditLog(anyString())).thenReturn("{\"invalid\":json}");
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
 
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        when(service.getAuditLog(anyString())).thenReturn("{\"invalid\":json}");
         when(mockObjectMapper.readTree(anyString())).thenThrow(new JsonProcessingException("Test error") {});
 
         doAnswer(invocation -> {
@@ -163,11 +180,23 @@ class Office365CrawlerClientTest {
 
     @Test
     void testBufferWriteWithAcknowledgements() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
-        List<String> itemIds = List.of("ID1");
-        when(state.getItemIds()).thenReturn(itemIds);
-        when(service.getAuditLog(anyString())).thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        when(service.getAuditLog(anyString()))
+                .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
         when(sourceConfig.isAcknowledgments()).thenReturn(true);
 
         doAnswer(invocation -> {
@@ -185,41 +214,57 @@ class Office365CrawlerClientTest {
 
     @Test
     void testBufferWriteTimeout() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
-        List<String> itemIds = List.of("ID1");
-        when(state.getItemIds()).thenReturn(itemIds);
-        when(service.getAuditLog(anyString())).thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
 
-        // Mock the timer to execute the runnable
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        when(service.getAuditLog(anyString()))
+                .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
+
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
         }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
 
-        // Configure buffer to throw RuntimeException directly
         doThrow(new RuntimeException("Error writing to buffer"))
                 .when(buffer)
                 .writeAll(any(), anyInt());
 
-        // Execute and verify exception
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> client.executePartition(state, buffer, acknowledgementSet));
 
-        // Verify the exact error message
         assertEquals("Error writing to buffer", exception.getMessage());
-
-        // Verify that buffer.writeAll was called exactly once
         verify(buffer).writeAll(any(), anyInt());
     }
 
     @Test
     void testNonRetryableError() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
-        List<String> itemIds = List.of("ID1");
-        when(state.getItemIds()).thenReturn(itemIds);
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1")), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
         when(service.getAuditLog(anyString())).thenReturn(null);
 
         doAnswer(invocation -> {
@@ -235,10 +280,21 @@ class Office365CrawlerClientTest {
 
     @Test
     void testMissingWorkloadField() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, office365Iterator, executorServiceProvider, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
-        List<String> itemIds = List.of("ID1");
-        when(state.getItemIds()).thenReturn(itemIds);
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
         when(service.getAuditLog(anyString())).thenReturn("{\"Operation\":\"Test\"}");
 
         doAnswer(invocation -> {
