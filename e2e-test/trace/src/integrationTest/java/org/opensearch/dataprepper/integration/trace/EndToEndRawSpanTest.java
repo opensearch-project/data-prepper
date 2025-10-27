@@ -162,42 +162,6 @@ public class EndToEndRawSpanTest {
         return getExpectedDocuments(
                 exportTraceServiceRequestTrace1BatchWithRoot, exportTraceServiceRequestTrace1BatchNoRoot,
                 exportTraceServiceRequestTrace2BatchWithRoot, exportTraceServiceRequestTrace2BatchNoRoot);
-        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
-                Collections.singletonList("https://127.0.0.1:9200"));
-        builder.withUsername("admin");
-        builder.withPassword("admin");
-        builder.withInsecure(true);
-        final RestHighLevelClient restHighLevelClient = builder.build().createClient(null);
-        // Wait for data to flow through pipeline and be indexed by ES
-        await().atLeast(3, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
-                () -> {
-                    refreshIndices(restHighLevelClient);
-                    final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
-                    searchRequest.source(
-                            SearchSourceBuilder.searchSource()
-                                    .size(100)
-                                    .fetchField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)
-                                    .fetchField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, "strict_date_time")
-                                    .fetchField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)
-                    );
-                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    assertEquals(expectedDocuments.size(), foundSources.size());
-                    /**
-                     * Our raw trace prepper add more fields than the actual sent object. These are defaults from the proto.
-                     * So assertion is done if all the expected fields exists.
-                     *
-                     * TODO: Can we do better?
-                     *
-                     */
-                    expectedDocuments.forEach(expectedDoc -> {
-                        assertTrue(foundSources.stream()
-                                .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
-                                .findFirst().get()
-                                .entrySet().containsAll(expectedDoc.entrySet()));
-                    });
-                }
-        );
     }
 
     private void refreshIndices(final RestHighLevelClient restHighLevelClient) throws IOException {
