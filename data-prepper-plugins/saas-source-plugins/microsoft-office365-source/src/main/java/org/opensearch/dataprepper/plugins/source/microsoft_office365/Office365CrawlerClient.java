@@ -106,9 +106,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
 
         try {
             String nextPageUri = null;
-            List<Record<Event>> records = new ArrayList<>();
 
             do {
+                List<Record<Event>> records = new ArrayList<>();
                 AuditLogsResponse response =
                         service.searchAuditLogs(logType, startTime, endTime, nextPageUri);
 
@@ -138,18 +138,22 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                     }
                 }
 
+                // Write Records to the buffer after processing a page of data
+                bufferWriteLatencyTimer.record(() -> {
+                    try {
+                        writeRecordsWithRetry(records, buffer, acknowledgementSet);
+                    } catch (Exception e) {
+                        bufferWriteFailuresCounter.increment();
+                        throw e;
+                    }
+                });
+
                 nextPageUri = response.getNextPageUri();
             } while (nextPageUri != null);
 
-            bufferWriteLatencyTimer.record(() -> {
-                try {
-                    writeRecordsWithRetry(records, buffer, acknowledgementSet);
-                } catch (Exception e) {
-                    bufferWriteFailuresCounter.increment();
-                    throw e;
-                }
-            });
-
+            if (configuration.isAcknowledgments()) {
+                acknowledgementSet.complete();
+            }
         } catch (Exception e) {
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
@@ -212,7 +216,6 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                 if (configuration.isAcknowledgments()) {
                     records.forEach(record -> acknowledgementSet.add(record.getData()));
                     buffer.writeAll(records, (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis());
-                    acknowledgementSet.complete();
                 } else {
                     buffer.writeAll(records, (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis());
                 }

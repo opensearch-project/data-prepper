@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +36,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +57,17 @@ public class TokenPaginationCrawlerTest {
     private PaginationCrawlerWorkerProgressState state;
     @Mock
     private LeaderPartition leaderPartition;
+    @Mock
+    private Timer partitionWaitTimeTimer;
+    @Mock
+    private Timer partitionProcessLatencyTimer;
+    @Mock
+    private Timer crawlingTimer;
+    @Mock
+    private Counter mockCounter;
+    @Mock
+    private PluginMetrics mockPluginMetrics;
+
     private Crawler crawler;
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("CrawlerTest", "crawler");
 
@@ -69,8 +86,64 @@ public class TokenPaginationCrawlerTest {
     @Test
     public void executePartitionTest() {
         reset(leaderPartition);
+        // Mock the getExportStartTime() method to return a valid Instant
+        when(state.getExportStartTime()).thenReturn(Instant.now().minusSeconds(1));
         crawler.executePartition(state, buffer, acknowledgementSet);
         verify(client).executePartition(state, buffer, acknowledgementSet);
+    }
+
+    @Test
+    public void test_metrics_in_crawler() {
+        reset(leaderPartition);
+
+        // Mock all required timers and counters for TokenPaginationCrawler constructor
+        Timer mockCrawlingTimer = mock(Timer.class);
+        Counter mockPartitionsCreatedCounter = mock(Counter.class);
+        Counter mockInvalidItemsCounter = mock(Counter.class);
+
+        when(mockPluginMetrics.timer("crawlingTime")).thenReturn(mockCrawlingTimer);
+        when(mockPluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(mockPluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
+        when(mockPluginMetrics.counter("paginationWorkerPartitionsCreated")).thenReturn(mockPartitionsCreatedCounter);
+        when(mockPluginMetrics.counter("invalidPaginationItems")).thenReturn(mockInvalidItemsCounter);
+
+        TokenPaginationCrawler testCrawler = new TokenPaginationCrawler(client, mockPluginMetrics);
+
+        // Test executePartition method which uses partitionWaitTimeTimer and partitionProcessLatencyTimer
+        when(state.getExportStartTime()).thenReturn(Instant.now().minusSeconds(1));
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(partitionProcessLatencyTimer).record(any(Runnable.class));
+        doNothing().when(partitionWaitTimeTimer).record(any(Duration.class));
+
+        testCrawler.executePartition(state, buffer, acknowledgementSet);
+
+        // Verify executePartition metrics
+        verify(partitionProcessLatencyTimer).record(any(Runnable.class));
+        verify(partitionWaitTimeTimer).record(any(Duration.class));
+
+        // Test crawl method which uses crawlingTimer, parititionsCreatedCounter, and invalidPaginationItemsCounter
+        // Re-setup leaderPartition mock after reset
+        when(leaderPartition.getProgressState()).thenReturn(Optional.of(new TokenPaginationCrawlerLeaderProgressState(INITIAL_TOKEN)));
+
+        List<ItemInfo> itemInfoList = new ArrayList<>();
+        itemInfoList.add(null); // This will trigger invalidPaginationItemsCounter
+        itemInfoList.add(new TestItemInfo("testId1"));
+
+        when(client.listItems(INITIAL_TOKEN)).thenReturn(itemInfoList.iterator());
+        doNothing().when(mockCrawlingTimer).record(any(Long.class), any());
+        doNothing().when(mockPartitionsCreatedCounter).increment();
+        doNothing().when(mockInvalidItemsCounter).increment();
+
+        testCrawler.crawl(leaderPartition, coordinator);
+
+        // Verify crawl metrics
+        verify(mockCrawlingTimer).record(any(Long.class), any()); // crawlingTimer records crawl duration
+        verify(mockPartitionsCreatedCounter).increment(); // parititionsCreatedCounter increments when partition is created
+        verify(mockInvalidItemsCounter).increment(); // invalidPaginationItemsCounter increments for null items
     }
 
     @Test
