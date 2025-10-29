@@ -136,6 +136,7 @@ public class EndToEndRawSpanTest {
         return new ConnectionConfiguration.Builder(Collections.singletonList("https://127.0.0.1:9200"))
                     .withUsername("admin")
                     .withPassword("admin")
+                    .withInsecure(true)
                     .build().createClient(null);
     }
 
