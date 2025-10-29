@@ -237,7 +237,7 @@ public class DataFileScheduler implements Runnable {
             try {
                 coordinator.saveProgressStateForPartition(globalState, null);
                 // if all load are completed.
-                if (streamArn != null && loadStatus.getLoadedFiles() == loadStatus.getTotalFiles()) {
+                if (streamArn != null && loadStatus.getLoadedFiles() >= loadStatus.getTotalFiles()) {
                     LOG.info("All Exports are done, streaming can continue...");
                     coordinator.createPartition(new GlobalState(streamArn, Optional.empty()));
                 }
