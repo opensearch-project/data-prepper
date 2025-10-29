@@ -30,17 +30,13 @@ import java.util.function.Consumer;
  */
 public class JsonCodec implements Codec<List<String>> {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
-            new TypeReference<List<Map<String, Object>>>() {
-            };
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
 
     @Override
     public List<String> parse(final HttpData httpData) throws IOException {
         final List<String> jsonList = new ArrayList<>();
-        final List<Map<String, Object>> logList = mapper.readValue(httpData.toInputStream(),
-                LIST_OF_MAP_TYPE_REFERENCE);
+        final List<Map<String, Object>> logList = readHttpData(httpData);
         for (final Map<String, Object> log : logList) {
             final String recordString = mapper.writeValueAsString(log);
             jsonList.add(recordString);
@@ -51,8 +47,7 @@ public class JsonCodec implements Codec<List<String>> {
 
     @Override
     public void validate(final HttpData content) throws IOException {
-        mapper.readValue(content.toInputStream(),
-                LIST_OF_MAP_TYPE_REFERENCE);
+        readHttpData(content);
     }
 
     @Override
@@ -65,6 +60,16 @@ public class JsonCodec implements Codec<List<String>> {
         }
     }
 
+
+    private List<Map<String, Object>> readHttpData(final HttpData httpData) throws IOException {
+        try {
+            return mapper.readValue(httpData.toInputStream(), new TypeReference<List<Map<String, Object>>>() {});
+        } catch (IOException e) {
+            final List<Map<String, Object>> logList = new ArrayList<>();
+            logList.add(mapper.readValue(httpData.toInputStream(), new TypeReference<Map<String, Object>>() {}));
+            return logList;
+        }
+    }
 
     private void performSerialization(final InputStream inputStream,
                                       final Consumer<String> serializedBodyConsumer,
