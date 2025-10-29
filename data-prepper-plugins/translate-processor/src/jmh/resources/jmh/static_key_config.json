@@ -1,7 +1,7 @@
 {
   "mappings": [
     {
-      "source": "sourceField",
+      "source": "testRecords/sourceField",
       "targets": [
         {
           "target": "targetField",
