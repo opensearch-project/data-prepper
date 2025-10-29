@@ -10,6 +10,7 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -26,6 +27,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +43,13 @@ import static org.opensearch.dataprepper.plugins.source.microsoft_office365.util
 @Named
 public class Office365RestClient {
     private static final String AUDIT_LOG_FETCH_LATENCY = "auditLogFetchLatency";
-    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
-    private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
+    private static final String AUDIT_LOG_RESPONSE_SIZE = "auditLogResponseSizeBytes";
     private static final String AUDIT_LOG_REQUESTS_FAILED = "auditLogRequestsFailed";
     private static final String AUDIT_LOG_REQUESTS_SUCCESS = "auditLogRequestsSuccess";
+    private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
+    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
+    private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
+    private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
     private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
 
@@ -56,6 +61,9 @@ public class Office365RestClient {
     private final Counter auditLogRequestsFailedCounter;
     private final Counter auditLogRequestsSuccessCounter;
     private final Counter searchRequestsFailedCounter;
+    private final Counter searchRequestsSuccessCounter;
+    private final DistributionSummary auditLogResponseSizeSummary;
+    private final DistributionSummary searchResponseSizeSummary;
 
     public Office365RestClient(final Office365AuthenticationInterface authConfig,
                                final PluginMetrics pluginMetrics) {
@@ -67,6 +75,9 @@ public class Office365RestClient {
         this.auditLogRequestsFailedCounter = pluginMetrics.counter(AUDIT_LOG_REQUESTS_FAILED);
         this.auditLogRequestsSuccessCounter = pluginMetrics.counter(AUDIT_LOG_REQUESTS_SUCCESS);
         this.searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
+        this.searchRequestsSuccessCounter = pluginMetrics.counter(SEARCH_REQUESTS_SUCCESS);
+        this.auditLogResponseSizeSummary = pluginMetrics.summary(AUDIT_LOG_RESPONSE_SIZE);
+        this.searchResponseSizeSummary = pluginMetrics.summary(SEARCH_RESPONSE_SIZE);
     }
 
     /**
@@ -170,6 +181,8 @@ public class Office365RestClient {
                                     new HttpEntity<>(headers),
                                     new ParameterizedTypeReference<>() {}
                             );
+                            // Record search request size.
+                            searchResponseSizeSummary.record(response.getHeaders().getContentLength());
 
                             // Extract NextPageUri from response headers
                             List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
@@ -180,6 +193,7 @@ public class Office365RestClient {
                                 log.debug("Next page URI found: {}", nextPageUri);
                             }
 
+                            searchRequestsSuccessCounter.increment();
                             return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
                         authConfig::renewCredentials,
@@ -210,12 +224,20 @@ public class Office365RestClient {
             try {
                 String response = RetryHandler.executeWithRetry(() -> {
                     headers.setBearerAuth(authConfig.getAccessToken());
-                    return restTemplate.exchange(
+                    ResponseEntity<String> responseEntity = restTemplate.exchange(
                             contentUri,
                             HttpMethod.GET,
                             new HttpEntity<>(headers),
                             String.class
-                    ).getBody();
+                    );
+
+                    // Record audit log request size from response body
+                    String responseBody = responseEntity.getBody();
+                    if (responseBody != null) {
+                        auditLogResponseSizeSummary.record(responseBody.getBytes(StandardCharsets.UTF_8).length);
+                    }
+
+                    return responseBody;
                 }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
                 auditLogRequestsSuccessCounter.increment();
                 return response;

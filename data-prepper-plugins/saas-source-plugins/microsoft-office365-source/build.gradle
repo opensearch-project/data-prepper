@@ -29,6 +29,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     testImplementation project(':data-prepper-test:test-common')
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.7'
     testImplementation testLibs.awaitility
 
     implementation(libs.spring.context) {
