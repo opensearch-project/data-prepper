@@ -6,7 +6,7 @@ version: "2"
 
 services:
   kafka:
-    image: docker.io/bitnami/kafka:${KAFKA_VERSION}
+    image: docker.io/bitnamilegacy/kafka:${KAFKA_VERSION}
     ports:
       - "9092:9092"
     environment:
