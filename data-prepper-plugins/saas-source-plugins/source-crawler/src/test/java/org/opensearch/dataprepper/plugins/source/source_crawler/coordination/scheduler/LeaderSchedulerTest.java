@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -27,7 +29,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
@@ -180,6 +181,7 @@ public class LeaderSchedulerTest {
     }
 
     @Test
+    @DisplayName("Ensure that if DynamoDB becomes unreachable, the leader gives up the partition and retries acquisition")
     void testLeaderPartitionGivenUpOnSaveFailure_andRetryAcquire() throws InterruptedException {
         // This test verifies the fix for line 72: leaderPartition = null when saveProgressStateForPartition fails
         // This ensures that if DynamoDB becomes unreachable, the leader gives up the partition and retries acquisition
