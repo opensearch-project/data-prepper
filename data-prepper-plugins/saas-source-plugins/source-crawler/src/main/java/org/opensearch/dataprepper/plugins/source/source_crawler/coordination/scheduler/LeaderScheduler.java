@@ -65,6 +65,11 @@ public class LeaderScheduler implements Runnable {
                     try {
                         coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
                     } catch (final Exception e) {
+                        // For any reason, if the leader schedule unable to reach source coordination ddb table,
+                        // it should give up leader partition and require whenever ddb store reachable again
+                        // Not giving up will make this to continue hold on to an ownership expired record which will create inconsistent state issues
+                        // if you are not the owner in ddb table, then you are not supposed to hold the ownership
+                        leaderPartition = null;
                         LOG.error("Failed to save Leader partition state. This process will retry.");
                     }
                 }
