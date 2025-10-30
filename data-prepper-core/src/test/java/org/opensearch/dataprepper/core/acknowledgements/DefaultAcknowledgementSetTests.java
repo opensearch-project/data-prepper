@@ -63,9 +63,9 @@ class DefaultAcknowledgementSetTests {
         metrics = mock(DefaultAcknowledgementSetMetrics.class);
         lenient().doAnswer(a -> {
             String metricName = a.getArgument(0);
-            if (metricName == DefaultAcknowledgementSetMetrics.INVALID_ACQUIRES_METRIC_NAME) {
+            if (DefaultAcknowledgementSetMetrics.INVALID_ACQUIRES_METRIC_NAME.equals(metricName)) {
                 invalidAcquiresCounter++;
-            } else if (metricName == DefaultAcknowledgementSetMetrics.INVALID_RELEASES_METRIC_NAME) {
+            } else if (DefaultAcknowledgementSetMetrics.INVALID_RELEASES_METRIC_NAME.equals(metricName)) {
                 invalidReleasesCounter++;
             }
             return null;
@@ -110,7 +110,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetBasic() throws Exception {
+    void testDefaultAcknowledgementSetBasic() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
@@ -119,7 +119,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetMultipleAcquireAndRelease() throws Exception {
+    void testDefaultAcknowledgementSetMultipleAcquireAndRelease() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
@@ -150,7 +150,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementDuplicateReleaseError() throws Exception {
+    void testDefaultAcknowledgementDuplicateReleaseError() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
@@ -160,7 +160,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetWithCustomCallback() throws Exception {
+    void testDefaultAcknowledgementSetWithCustomCallback() {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
@@ -179,7 +179,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetNegativeAcknowledgements() throws Exception {
+    void testDefaultAcknowledgementSetNegativeAcknowledgements() {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
@@ -208,7 +208,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetExpirations() throws Exception {
+    void testDefaultAcknowledgementSetExpirations() {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 try {
@@ -240,7 +240,7 @@ class DefaultAcknowledgementSetTests {
     }
 
     @Test
-    void testDefaultAcknowledgementSetWithProgressCheck() throws Exception {
+    void testDefaultAcknowledgementSetWithProgressCheck() {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
@@ -308,5 +308,142 @@ class DefaultAcknowledgementSetTests {
 
         verify(callbackFuture).cancel(false);
         verify(progressCheck).cancel(true);
+    }
+
+    @Test
+    void testCallbackInvokedWithFalseOnTimeout() throws InterruptedException {
+        // Verify callback is invoked with false when acknowledgement set times out
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+        final AtomicBoolean callbackResult = new AtomicBoolean(true);
+
+        final Duration shortTimeout = Duration.ofMillis(100);
+        final DefaultAcknowledgementSet acknowledgementSet =
+                new DefaultAcknowledgementSet(executor, (result) -> {
+                    callbackInvoked.set(true);
+                    callbackResult.set(result);
+                }, shortTimeout, metrics);
+
+        // Wait for timeout to occur
+        Thread.sleep(150);
+
+        // Trigger timeout check
+        acknowledgementSet.isDone();
+
+        // Wait for callback to execute
+        Thread.sleep(100);
+
+        // Verify callback was invoked with false
+        assertThat(callbackInvoked.get(), equalTo(true));
+        assertThat(callbackResult.get(), equalTo(false));
+    }
+
+    @Test
+    void testCallbackInvokedOnlyOnceWhenTimeoutOccurs() throws InterruptedException {
+        // Verify callback is not invoked twice if isDone() is called multiple times after timeout
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+        final AtomicBoolean callbackResult = new AtomicBoolean(true);
+
+        final Duration shortTimeout = Duration.ofMillis(100);
+        final DefaultAcknowledgementSet acknowledgementSet =
+                new DefaultAcknowledgementSet(executor, (result) -> {
+                    callbackInvoked.set(true);
+                    callbackResult.set(result);
+                }, shortTimeout, metrics);
+
+        // Wait for timeout
+        Thread.sleep(150);
+
+        // Call isDone multiple times
+        acknowledgementSet.isDone();
+        acknowledgementSet.isDone();
+        acknowledgementSet.isDone();
+
+        // Wait for any callbacks to execute
+        Thread.sleep(100);
+
+        // Verify callback was invoked exactly once with false
+        assertThat(callbackInvoked.get(), equalTo(true));
+        assertThat(callbackResult.get(), equalTo(false));
+    }
+
+    @Test
+    void testCallbackNotInvokedOnTimeoutIfAlreadyCompleted() throws InterruptedException {
+        // Verify that if acknowledgement completes normally before timeout,
+        // timeout doesn't invoke callback again
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+        final AtomicBoolean lastCallbackResult = new AtomicBoolean(false);
+
+        final Duration timeout = Duration.ofSeconds(5);
+        final DefaultAcknowledgementSet acknowledgementSet =
+                new DefaultAcknowledgementSet(executor, (result) -> {
+                    callbackInvoked.set(true);
+                    lastCallbackResult.set(result);
+                }, timeout, metrics);
+
+        // Add and release an event (normal completion)
+        acknowledgementSet.add(event);
+        acknowledgementSet.complete();
+        acknowledgementSet.release(handle, true);
+
+        // Wait for callback
+        Thread.sleep(100);
+
+        // Verify callback was invoked once with true
+        assertThat(callbackInvoked.get(), equalTo(true));
+        assertThat(lastCallbackResult.get(), equalTo(true));
+
+        // Reset flag to detect if callback is invoked again
+        callbackInvoked.set(false);
+
+        // Manually trigger timeout check (simulating late timeout check)
+        acknowledgementSet.isDone();
+        Thread.sleep(100);
+
+        // Verify callback was not invoked again
+        assertThat(callbackInvoked.get(), equalTo(false));
+    }
+
+    @Test
+    void testExistingPositiveAcknowledgementBehaviorUnchanged() throws InterruptedException {
+        // Verify normal positive acknowledgement flow still works as before
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+        final AtomicBoolean callbackResult = new AtomicBoolean(false);
+
+        final DefaultAcknowledgementSet acknowledgementSet =
+                new DefaultAcknowledgementSet(executor, (result) -> {
+                    callbackInvoked.set(true);
+                    callbackResult.set(result);
+                }, Duration.ofMinutes(5), metrics);
+
+        acknowledgementSet.add(event);
+        acknowledgementSet.complete();
+        acknowledgementSet.release(handle, true);
+
+        Thread.sleep(100);
+
+        assertThat(callbackInvoked.get(), equalTo(true));
+        assertThat(callbackResult.get(), equalTo(true));
+    }
+
+    @Test
+    void testExistingNegativeAcknowledgementBehaviorUnchanged() throws InterruptedException {
+        // Verify normal negative acknowledgement flow still works as before
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+        final AtomicBoolean callbackResult = new AtomicBoolean(true);
+
+        final DefaultAcknowledgementSet acknowledgementSet =
+                new DefaultAcknowledgementSet(executor, (result) -> {
+                    callbackInvoked.set(true);
+                    callbackResult.set(result);
+                }, Duration.ofMinutes(5), metrics);
+
+        acknowledgementSet.add(event);
+        acknowledgementSet.complete();
+        acknowledgementSet.release(handle, false);  // Negative acknowledgement
+
+        Thread.sleep(100);
+
+        assertThat(callbackInvoked.get(), equalTo(true));
+        assertThat(callbackResult.get(), equalTo(false));
     }
 }
