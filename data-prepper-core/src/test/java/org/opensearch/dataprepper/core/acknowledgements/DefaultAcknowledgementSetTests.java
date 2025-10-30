@@ -326,15 +326,15 @@ class DefaultAcknowledgementSetTests {
         // Wait for timeout to occur
         Thread.sleep(150);
 
-        // Trigger timeout check
-        acknowledgementSet.isDone();
+        // Trigger timeout check and verify it's done
+        assertThat(acknowledgementSet.isDone(), equalTo(true));
 
         // Wait for callback to execute
-        Thread.sleep(100);
-
-        // Verify callback was invoked with false
-        assertThat(callbackInvoked.get(), equalTo(true));
-        assertThat(callbackResult.get(), equalTo(false));
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(callbackInvoked.get(), equalTo(true));
+                    assertThat(callbackResult.get(), equalTo(false));
+                });
     }
 
     @Test
@@ -353,17 +353,17 @@ class DefaultAcknowledgementSetTests {
         // Wait for timeout
         Thread.sleep(150);
 
-        // Call isDone multiple times
-        acknowledgementSet.isDone();
-        acknowledgementSet.isDone();
-        acknowledgementSet.isDone();
+        // Call isDone multiple times and verify it returns true
+        assertThat(acknowledgementSet.isDone(), equalTo(true));
+        assertThat(acknowledgementSet.isDone(), equalTo(true));
+        assertThat(acknowledgementSet.isDone(), equalTo(true));
 
         // Wait for any callbacks to execute
-        Thread.sleep(100);
-
-        // Verify callback was invoked exactly once with false
-        assertThat(callbackInvoked.get(), equalTo(true));
-        assertThat(callbackResult.get(), equalTo(false));
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(callbackInvoked.get(), equalTo(true));
+                    assertThat(callbackResult.get(), equalTo(false));
+                });
     }
 
     @Test
@@ -383,20 +383,20 @@ class DefaultAcknowledgementSetTests {
         // Add and release an event (normal completion)
         acknowledgementSet.add(event);
         acknowledgementSet.complete();
-        acknowledgementSet.release(handle, true);
+        assertThat(acknowledgementSet.release(handle, true), equalTo(true));
 
         // Wait for callback
-        Thread.sleep(100);
-
-        // Verify callback was invoked once with true
-        assertThat(callbackInvoked.get(), equalTo(true));
-        assertThat(lastCallbackResult.get(), equalTo(true));
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(callbackInvoked.get(), equalTo(true));
+                    assertThat(lastCallbackResult.get(), equalTo(true));
+                });
 
         // Reset flag to detect if callback is invoked again
         callbackInvoked.set(false);
 
-        // Manually trigger timeout check (simulating late timeout check)
-        acknowledgementSet.isDone();
+        // Manually trigger timeout check (simulating late timeout check) and verify it's done
+        assertThat(acknowledgementSet.isDone(), equalTo(true));
         Thread.sleep(100);
 
         // Verify callback was not invoked again
@@ -417,12 +417,13 @@ class DefaultAcknowledgementSetTests {
 
         acknowledgementSet.add(event);
         acknowledgementSet.complete();
-        acknowledgementSet.release(handle, true);
+        assertThat(acknowledgementSet.release(handle, true), equalTo(true));
 
-        Thread.sleep(100);
-
-        assertThat(callbackInvoked.get(), equalTo(true));
-        assertThat(callbackResult.get(), equalTo(true));
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(callbackInvoked.get(), equalTo(true));
+                    assertThat(callbackResult.get(), equalTo(true));
+                });
     }
 
     @Test
@@ -439,11 +440,12 @@ class DefaultAcknowledgementSetTests {
 
         acknowledgementSet.add(event);
         acknowledgementSet.complete();
-        acknowledgementSet.release(handle, false);  // Negative acknowledgement
+        assertThat(acknowledgementSet.release(handle, false), equalTo(true));  // Negative acknowledgement
 
-        Thread.sleep(100);
-
-        assertThat(callbackInvoked.get(), equalTo(true));
-        assertThat(callbackResult.get(), equalTo(false));
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    assertThat(callbackInvoked.get(), equalTo(true));
+                    assertThat(callbackResult.get(), equalTo(false));
+                });
     }
 }
