@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
-class GrpcRetryInfoCalculator {
+public class RetryInfoCalculator {
 
     private final Duration minimumDelay;
     private final Duration maximumDelay;
@@ -14,7 +14,7 @@ class GrpcRetryInfoCalculator {
     private final AtomicReference<Instant> lastTimeCalled;
     private final AtomicReference<Duration> nextDelay;
 
-    GrpcRetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
+    public RetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
         this.minimumDelay = minimumDelay;
         this.maximumDelay = maximumDelay;
         // Create a cushion so that the calculator treats a first quick exception (after prepper startup) as normal request (e.g. does not calculate a backoff)
@@ -34,7 +34,7 @@ class GrpcRetryInfoCalculator {
         return com.google.protobuf.Duration.newBuilder().setSeconds(duration.getSeconds()).setNanos(duration.getNano());
     }
 
-    RetryInfo createRetryInfo() {
+    public RetryInfo createRetryInfo() {
         Instant now = Instant.now();
         // Is the last time we got called longer ago than the next delay?
         if (lastTimeCalled.getAndSet(now).isBefore(now.minus(nextDelay.get()))) {

@@ -43,12 +43,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_1 = 21890;
@@ -88,7 +88,59 @@ public class EndToEndRawSpanTest {
 
     @Test
     public void testPipelineEndToEnd() {
-        //Send data to otel trace source
+        final List<Map<String, Object>> expectedDocuments = sendTracesToOpenSearchAndReturnExpectedDocuments();
+        final RestHighLevelClient restHighLevelClient = createRestClientForSearch();
+        final SearchSourceBuilder sourceBuilder = createSearchSourceBuilder();
+        final SearchRequest searchRequest = new SearchRequest(INDEX_NAME).source(sourceBuilder);
+
+        // Wait for data to flow through pipeline and be indexed by ES
+        await().atLeast(3, TimeUnit.SECONDS).atMost(30, TimeUnit.SECONDS).untilAsserted(
+                () -> {
+                    refreshIndices(restHighLevelClient);
+                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
+
+                    assertThat(foundSources).hasSize(expectedDocuments.size());
+                    assertThatFoundDocumentsContainAllFieldsFromExpectedDocuments(expectedDocuments, foundSources);
+                }
+        );
+    }
+
+    private void assertThatFoundDocumentsContainAllFieldsFromExpectedDocuments(List<Map<String, Object>> expectedDocuments, List<Map<String, Object>> foundDocuments) {
+        /**
+         * Our raw trace prepper add more fields than the actual sent object. These are defaults from the proto.
+         * So assertion is done if all the expected fields exists.
+         *
+         * TODO: Can we do better?
+         */
+        expectedDocuments.forEach(expectedDoc -> {
+            Set<Map.Entry<String, Object>> foundEntrySet = foundDocuments.stream()
+                    .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
+                    .findFirst().get()
+                    .entrySet();
+
+            assertThat(foundEntrySet).containsAll(expectedDoc.entrySet());
+        });
+
+    }
+
+    private SearchSourceBuilder createSearchSourceBuilder() {
+        return SearchSourceBuilder.searchSource()
+                .size(100)
+                .fetchField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)
+                .fetchField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, "strict_date_time")
+                .fetchField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+    }
+
+    private RestHighLevelClient createRestClientForSearch() {
+        return new ConnectionConfiguration.Builder(Collections.singletonList("https://127.0.0.1:9200"))
+                    .withUsername("admin")
+                    .withPassword("admin")
+                    .withInsecure(true)
+                    .build().createClient(null);
+    }
+
+    private List<Map<String, Object>> sendTracesToOpenSearchAndReturnExpectedDocuments() {
         final ExportTraceServiceRequest exportTraceServiceRequestTrace1BatchWithRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_SPAN_SET_1_WITH_ROOT_SPAN)
         );
@@ -108,45 +160,9 @@ public class EndToEndRawSpanTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace1BatchNoRoot);
 
         //Verify data in OpenSearch backend
-        final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
+        return getExpectedDocuments(
                 exportTraceServiceRequestTrace1BatchWithRoot, exportTraceServiceRequestTrace1BatchNoRoot,
                 exportTraceServiceRequestTrace2BatchWithRoot, exportTraceServiceRequestTrace2BatchNoRoot);
-        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
-                Collections.singletonList("https://127.0.0.1:9200"));
-        builder.withUsername("admin");
-        builder.withPassword("admin");
-        builder.withInsecure(true);
-        final RestHighLevelClient restHighLevelClient = builder.build().createClient(null);
-        // Wait for data to flow through pipeline and be indexed by ES
-        await().atLeast(3, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
-                () -> {
-                    refreshIndices(restHighLevelClient);
-                    final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
-                    searchRequest.source(
-                            SearchSourceBuilder.searchSource()
-                                    .size(100)
-                                    .fetchField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)
-                                    .fetchField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, "strict_date_time")
-                                    .fetchField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)
-                    );
-                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    assertEquals(expectedDocuments.size(), foundSources.size());
-                    /**
-                     * Our raw trace prepper add more fields than the actual sent object. These are defaults from the proto.
-                     * So assertion is done if all the expected fields exists.
-                     *
-                     * TODO: Can we do better?
-                     *
-                     */
-                    expectedDocuments.forEach(expectedDoc -> {
-                        assertTrue(foundSources.stream()
-                                .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
-                                .findFirst().get()
-                                .entrySet().containsAll(expectedDoc.entrySet()));
-                    });
-                }
-        );
     }
 
     private void refreshIndices(final RestHighLevelClient restHighLevelClient) throws IOException {

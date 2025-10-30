@@ -207,6 +207,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
     integrationTestImplementation testLibs.awaitility
+    integrationTestImplementation testLibs.assertj
     integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${targetOpenTelemetryVersion}"
     integrationTestImplementation libs.protobuf.util
     integrationTestImplementation libs.armeria.core
