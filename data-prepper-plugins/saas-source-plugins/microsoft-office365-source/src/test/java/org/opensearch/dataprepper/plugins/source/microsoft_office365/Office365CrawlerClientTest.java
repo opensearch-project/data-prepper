@@ -153,8 +153,8 @@ class Office365CrawlerClientTest {
         client.injectObjectMapper(mockObjectMapper);
 
          // Mock the total failures counter
-        Counter mockTotalFailuresCounter = mock(Counter.class);
-        when(pluginMetrics.counter("totalFailures")).thenReturn(mockTotalFailuresCounter);
+        Counter mockRequestErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("requestErrors")).thenReturn(mockRequestErrorsCounter);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -181,7 +181,7 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
-        verify(mockTotalFailuresCounter, never()).increment();
+        verify(mockRequestErrorsCounter, never()).increment();
     }
 
     @Test
@@ -317,8 +317,8 @@ class Office365CrawlerClientTest {
     @Test
     void testExecutePartitionWithSearchAuditLogsError() throws Exception {
         // Mock the total failures counter before creating the client
-        Counter mockTotalFailuresCounter = mock(Counter.class);
-        when(pluginMetrics.counter("totalFailures")).thenReturn(mockTotalFailuresCounter);
+        Counter mockRequestErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("requestErrors")).thenReturn(mockRequestErrorsCounter);
 
         Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
@@ -336,6 +336,6 @@ class Office365CrawlerClientTest {
 
         // Verify exception message and counter increment
         assertEquals("Search audit logs failed", exception.getMessage());
-        verify(mockTotalFailuresCounter).increment();
+        verify(mockRequestErrorsCounter).increment();
     }
 }
