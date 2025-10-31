@@ -48,6 +48,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -75,6 +76,13 @@ class CredentialsProviderFactoryTest {
 
     @Test
     void providerFromOptions_without_StsRoleArn_returns_DefaultCredentialsProvider() {
+        assertThat(createObjectUnderTest().providerFromOptions(awsCredentialsOptions),
+                instanceOf(DefaultCredentialsProvider.class));
+    }
+
+    @Test
+    void providerFromOptions_without_StsRoleArn_returns_DefaultCredentialsProvider_even_if_defaultRegion_is_provided() {
+        lenient().when(defaultStsConfiguration.getAwsRegion()).thenReturn(Region.US_EAST_1);
         assertThat(createObjectUnderTest().providerFromOptions(awsCredentialsOptions),
                 instanceOf(DefaultCredentialsProvider.class));
     }
@@ -185,6 +193,50 @@ class CredentialsProviderFactoryTest {
             verify(stsCredentialsProviderBuilder).build();
             verifyNoMoreInteractions(stsClientBuilder);
             verifyNoMoreInteractions(stsCredentialsProviderBuilder);
+
+            final AssumeRoleRequest assumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(assumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(assumeRoleRequest.externalId(), equalTo(externalId));
+            assertThat(assumeRoleRequest.roleSessionName(), startsWith("Data-Prepper"));
+            assertThat(assumeRoleRequest.roleSessionName().length(), lessThanOrEqualTo(MAXIMUM_ROLE_SESSION_LENGTH));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"us-east-1", "us-west-2", "eu-west-1"})
+        void providerFromOptions_should_return_StsCredentialsProvider_using_defaultRegion_for_the_STS_region_when_the_defaultRegion_is_provided(
+                final String regionString) {
+            final String externalId = UUID.randomUUID().toString();
+            lenient().when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
+            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsExternalId()).thenReturn(externalId);
+            final Region region = Region.of(regionString);
+            when(defaultStsConfiguration.getAwsRegion()).thenReturn(region);
+
+            when(stsClientBuilder.region(region)).thenReturn(stsClientBuilder);
+
+            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
+            final AwsCredentialsProvider actualCredentialsProvider;
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
+                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, equalTo(stsCredentialsProvider));
+
+            verify(stsClientBuilder).region(region);
+            verify(stsClientBuilder).overrideConfiguration(any(ClientOverrideConfiguration.class));
+            verify(stsClientBuilder).build();
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+            verify(stsCredentialsProviderBuilder).stsClient(stsClient);
+            verify(stsCredentialsProviderBuilder).build();
+            verifyNoMoreInteractions(stsClientBuilder);
+            verifyNoMoreInteractions(stsCredentialsProviderBuilder);
+
+            verify(awsCredentialsOptions, never()).getRegion();
 
             final AssumeRoleRequest assumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
             assertThat(assumeRoleRequest.roleArn(), equalTo(testStsRole));

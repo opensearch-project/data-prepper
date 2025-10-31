@@ -81,7 +81,7 @@ class CredentialsProviderFactory {
 
         LOG.debug("Creating new AwsCredentialsProvider with role {}.", stsRoleArn);
 
-        final Region region = credentialsOptions.getRegion() == null ? defaultStsConfiguration.getAwsRegion() : credentialsOptions.getRegion();
+        final Region region = defaultStsConfiguration.getAwsRegion() != null ? defaultStsConfiguration.getAwsRegion() : credentialsOptions.getRegion();
 
         final StsClient stsClient = createStsClient(region);
 
