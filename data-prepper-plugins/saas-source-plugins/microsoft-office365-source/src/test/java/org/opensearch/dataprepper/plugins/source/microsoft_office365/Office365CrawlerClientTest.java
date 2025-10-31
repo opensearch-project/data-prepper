@@ -55,6 +55,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -151,6 +152,10 @@ class Office365CrawlerClientTest {
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
         client.injectObjectMapper(mockObjectMapper);
 
+         // Mock the total failures counter
+        Counter mockTotalFailuresCounter = mock(Counter.class);
+        when(pluginMetrics.counter("totalFailures")).thenReturn(mockTotalFailuresCounter);
+
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
                         "contentId", "ID1",
@@ -176,6 +181,7 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        verify(mockTotalFailuresCounter, never()).increment();
     }
 
     @Test
@@ -306,5 +312,30 @@ class Office365CrawlerClientTest {
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+    }
+
+    @Test
+    void testExecutePartitionWithSearchAuditLogsError() throws Exception {
+        // Mock the total failures counter before creating the client
+        Counter mockTotalFailuresCounter = mock(Counter.class);
+        when(pluginMetrics.counter("totalFailures")).thenReturn(mockTotalFailuresCounter);
+
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        // Mock searchAuditLogs to throw exception
+        when(service.searchAuditLogs(
+                eq("Exchange"),  // Match the value from setUp()
+                any(Instant.class),
+                any(Instant.class),
+                isNull()
+        )).thenThrow(new RuntimeException("Search audit logs failed"));
+
+        // Execute and verify exception
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> client.executePartition(state, buffer, acknowledgementSet));
+
+        // Verify exception message and counter increment
+        assertEquals("Search audit logs failed", exception.getMessage());
+        verify(mockTotalFailuresCounter).increment();
     }
 }

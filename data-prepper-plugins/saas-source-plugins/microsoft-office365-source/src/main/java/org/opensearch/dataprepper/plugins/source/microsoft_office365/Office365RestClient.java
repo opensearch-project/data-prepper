@@ -24,13 +24,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpStatus;
 
 import javax.inject.Named;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
@@ -51,6 +54,12 @@ public class Office365RestClient {
     private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
     private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
     private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
+
+    // specific retryable/non-retryable metric names
+    private static final String ACCESS_DENIED_FAILED  = "accessDenied";
+    private static final String THROTTLING_FAILED = "throttling";
+    private static final String RESOURCE_NOT_FOUND_FAILED = "resourceNotFound";
+
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -65,6 +74,8 @@ public class Office365RestClient {
     private final DistributionSummary auditLogResponseSizeSummary;
     private final DistributionSummary searchResponseSizeSummary;
 
+    private Map<String, Counter> errorTypeMetricCounterMap;
+
     public Office365RestClient(final Office365AuthenticationInterface authConfig,
                                final PluginMetrics pluginMetrics) {
         // TODO: Abstract into a Office365PluginMetrics
@@ -78,6 +89,8 @@ public class Office365RestClient {
         this.searchRequestsSuccessCounter = pluginMetrics.counter(SEARCH_REQUESTS_SUCCESS);
         this.auditLogResponseSizeSummary = pluginMetrics.summary(AUDIT_LOG_RESPONSE_SIZE);
         this.searchResponseSizeSummary = pluginMetrics.summary(SEARCH_RESPONSE_SIZE);
+
+        this.initializeErrorTypeMetricCounterMap(pluginMetrics);
     }
 
     /**
@@ -124,7 +137,7 @@ public class Office365RestClient {
                         );
                         log.debug("Started subscription for {}: {}", contentType, response.getBody());
                         return response;
-                    } catch (HttpClientErrorException e) {
+                    } catch (HttpClientErrorException | HttpServerErrorException e) {
                         if (e.getResponseBodyAsString().contains("AF20024")) {
                             log.debug("Subscription for {} is already enabled", contentType);
                             return null;
@@ -133,13 +146,19 @@ public class Office365RestClient {
                     }
                 }, authConfig::renewCredentials);
             }
-        } catch (HttpClientErrorException e) {
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            HttpStatus statusCode = e.getStatusCode();
+            publishErrorTypeMetricCounter(statusCode.getReasonPhrase());
             log.error(NOISY, "Failed to initialize subscriptions with status code {}: {}",
-                    e.getStatusCode(), e.getMessage());
+                    statusCode, e.getMessage());
             throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
         } catch (Exception e) {
+            // FORBIDDEN throws SecurityException in RetryHandler
+            if (e instanceof SecurityException) {
+                publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase());
+            }
             log.error(NOISY, "Failed to initialize subscriptions", e);
-            throw new RuntimeException("Failed to initialize subscriptions", e);
+            throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
         }
     }
 
@@ -199,7 +218,17 @@ public class Office365RestClient {
                         authConfig::renewCredentials,
                         searchRequestsFailedCounter
                 );
+            } catch (HttpClientErrorException | HttpServerErrorException e) {
+                HttpStatus statusCode = e.getStatusCode();
+                publishErrorTypeMetricCounter(statusCode.getReasonPhrase());
+                log.error(NOISY, "Error while fetching audit logs with status code {}: {}",
+                        statusCode, e.getMessage());
+                throw new RuntimeException("Failed to fetch audit logs", e);
             } catch (Exception e) {
+                // FORBIDDEN throws SecurityException in RetryHandler
+                if (e instanceof SecurityException) {
+                    publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase());
+                }
                 log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
                 throw new RuntimeException("Failed to fetch audit logs", e);
             }
@@ -241,11 +270,49 @@ public class Office365RestClient {
                 }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
                 auditLogRequestsSuccessCounter.increment();
                 return response;
+            } catch (HttpClientErrorException | HttpServerErrorException e) {
+                HttpStatus statusCode = e.getStatusCode();
+                publishErrorTypeMetricCounter(statusCode.getReasonPhrase());
+                log.error(NOISY, "Error while getting audit log with status code {}: {}",
+                        statusCode, e.getMessage());
+                throw new RuntimeException("Failed to fetch audit log", e);
             } catch (Exception e) {
+                // FORBIDDEN throws SecurityException in RetryHandler
+                if (e instanceof SecurityException) {
+                    publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase());
+                }
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
         });
+    }
+
+    /**
+     * Initialize the metric counter map for specific errorType
+     * FORBIDDEN/UNAUTHORIZED = accessDenied
+     * TOO_MANY_REQUESTS = throttling
+     * NOT_FOUND = resourceNotFound
+     */
+    private void initializeErrorTypeMetricCounterMap(PluginMetrics pluginMetrics) {
+        // TODO: should move this over to a common class later
+        this.errorTypeMetricCounterMap = new HashMap<>();
+        this.errorTypeMetricCounterMap.put(HttpStatus.FORBIDDEN.getReasonPhrase(), pluginMetrics.counter(ACCESS_DENIED_FAILED));
+        this.errorTypeMetricCounterMap.put(HttpStatus.UNAUTHORIZED.getReasonPhrase(), pluginMetrics.counter(ACCESS_DENIED_FAILED));
+        this.errorTypeMetricCounterMap.put(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), pluginMetrics.counter(THROTTLING_FAILED));
+        this.errorTypeMetricCounterMap.put(HttpStatus.NOT_FOUND.getReasonPhrase(), pluginMetrics.counter(RESOURCE_NOT_FOUND_FAILED));
+    }
+
+    /**
+     * Increment the errorType metric if it exists in errorTypeMetricCounterMap
+     * Should only be the following: 
+     * FORBIDDEN/UNAUTHORIZED = accessDenied
+     * TOO_MANY_REQUESTS = throttling
+     * NOT_FOUND = resourceNotFound
+     */
+    private void publishErrorTypeMetricCounter(String errorType) {
+        if (this.errorTypeMetricCounterMap != null && this.errorTypeMetricCounterMap.containsKey(errorType)) {
+            errorTypeMetricCounterMap.get(errorType).increment();
+        }
     }
 
 }
