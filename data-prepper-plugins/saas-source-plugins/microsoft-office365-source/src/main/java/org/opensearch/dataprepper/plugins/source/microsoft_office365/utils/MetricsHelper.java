@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.Map;
 import java.util.HashMap;
-
 /**
  * The MetricsHelper class.
  */
