@@ -56,7 +56,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
-    private static final String TOTAL_FAILURES = "totalFailures";
+    private static final String REQEUEST_ERRORS = "requestErrors";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
@@ -69,7 +69,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private final Counter bufferWriteRetrySuccessCounter;
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
-    private final Counter totalFailuresCounter;
+    private final Counter requestErrorsCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -86,7 +86,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
-        this.totalFailuresCounter = pluginMetrics.counter(TOTAL_FAILURES);
+        this.requestErrorsCounter = pluginMetrics.counter(REQEUEST_ERRORS);
     }
 
     @VisibleForTesting
@@ -160,7 +160,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         } catch (Exception e) {
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
-            totalFailuresCounter.increment();
+            requestErrorsCounter.increment();
             throw e;
         }
     }
