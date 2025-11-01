@@ -18,7 +18,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:securitylake'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.2.21'
     implementation project(':data-prepper-plugins:avro-codecs')
     implementation libs.avro.core
     implementation(libs.hadoop.common) {
@@ -28,7 +28,7 @@ dependencies {
     }
     implementation libs.parquet.avro
     implementation 'software.amazon.awssdk:apache-client'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:2.2.21'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
