@@ -19,7 +19,7 @@ dependencies {
     testImplementation project(':data-prepper-test:test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
     testImplementation libs.commons.io
-    testImplementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+    testImplementation 'org.hibernate.validator:hibernate-validator:9.0.1.Final'
 }
 
 jacocoTestCoverageVerification {
