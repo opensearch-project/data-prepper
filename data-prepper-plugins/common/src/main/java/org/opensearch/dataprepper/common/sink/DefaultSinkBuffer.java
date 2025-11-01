@@ -56,6 +56,9 @@ public class DefaultSinkBuffer implements SinkBuffer {
 
     @Override
     public SinkFlushableBuffer getFlushableBuffer(final SinkFlushContext sinkFlushContext) {
+        numEvents = 0;
+        currentRequestSize = 0L;
+        lastFlushedTimeMs = Instant.now().toEpochMilli();
         return sinkBufferWriter.getBuffer(sinkFlushContext);
     }
 

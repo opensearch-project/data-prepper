@@ -1,7 +1,9 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- */
+
+KEEPING IT FOR FUTURE USE
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.handler;
 
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
@@ -109,3 +111,4 @@ public class HttpAuthOptions {
     }
 
 }
+ */

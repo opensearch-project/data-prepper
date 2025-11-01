@@ -12,4 +12,5 @@ import java.util.List;
 public interface SinkFlushResult {
     List<Event> getEvents();
     Throwable getException();
+    int getStatusCode();
 }
