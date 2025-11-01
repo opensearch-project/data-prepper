@@ -39,7 +39,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
 
-    private final LeaderOnlyTokenCrawlerClient client;
+    private final CrawlerClient client;
     private final Timer crawlingTimer;
     private final PluginMetrics pluginMetrics;
     @Setter
@@ -58,7 +58,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
     private Duration noAckTimeout;
 
     public LeaderOnlyTokenCrawler(
-            LeaderOnlyTokenCrawlerClient client,
+            CrawlerClient client,
             PluginMetrics pluginMetrics) {
         this.client = client;
         this.pluginMetrics = pluginMetrics;
@@ -82,7 +82,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
 
         log.info("Starting leader-only crawl with token: {}", lastToken);
 
-        Iterator<ItemInfo> itemIterator = client.listItems(lastToken);
+        Iterator<ItemInfo> itemIterator = ((LeaderOnlyTokenCrawlerClient) client).listItems(lastToken);
 
         while (itemIterator.hasNext() && !shouldStopCrawl) {
             List<ItemInfo> batch = collectBatch(itemIterator);
@@ -161,7 +161,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
 
             bufferWriteTimer.record(() -> {
                 try {
-                    client.writeBatchToBuffer(batch, buffer, acknowledgementSet);
+                    ((LeaderOnlyTokenCrawlerClient) client).writeBatchToBuffer(batch, buffer, acknowledgementSet);
                     acknowledgementSet.complete();
                     // Check every 15 seconds until either:
                     // 1. We get an ack (positive/negative)
@@ -191,7 +191,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
             // Write directly and update checkpoint
             bufferWriteTimer.record(() -> {
                 try {
-                    client.writeBatchToBuffer(batch, buffer, null);
+                    ((LeaderOnlyTokenCrawlerClient) client).writeBatchToBuffer(batch, buffer, null);
                     updateLeaderProgressState(leaderPartition, lastToken, coordinator);
                 } catch (Exception e) {
                     log.error("Failed to write batch to buffer", e);

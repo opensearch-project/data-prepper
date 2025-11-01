@@ -14,7 +14,7 @@ import java.util.List;
  * This interface adds additional method for direct buffer writing,
  * optimized for single-leader processing without worker partitions.
  */
-public interface LeaderOnlyTokenCrawlerClient extends TokenCrawlerClient<PaginationCrawlerWorkerProgressState> {
+public interface LeaderOnlyTokenCrawlerClient<T extends SaasWorkerProgressState> extends TokenCrawlerClient<PaginationCrawlerWorkerProgressState> {
     /**
      * Writes a batch of items directly to the buffer.
      *
