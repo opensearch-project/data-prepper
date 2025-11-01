@@ -299,7 +299,7 @@ public class DefaultSinkOutputStrategyTest {
             dlqEvents.clear();
         }
 
-        public void addFailedEventsToDlq(final List<Event> events, final Throwable ex) {
+        public void addFailedEventsToDlq(final List<Event> events, final Throwable ex, final int statusCode) {
             dlqEvents.addAll(events);
         }
 

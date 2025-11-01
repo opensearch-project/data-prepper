@@ -31,24 +31,26 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
 
     public void flushBuffer() {
         long startTime = System.nanoTime();
-        // getBuffer() should return the buffer contents
+        // getFlushableBuffer() should return the buffer contents
         SinkFlushableBuffer flushableBuffer = sinkBuffer.getFlushableBuffer(sinkFlushContext);
+        List<Event> events = flushableBuffer.getEvents();
         try {      
             SinkFlushResult flushResult = flushableBuffer.flush();
             if (flushResult == null) { // success
                 sinkMetrics.recordRequestLatency((double)(System.nanoTime() - startTime));
-                List<Event> events = flushableBuffer.getEvents();
                 for (final Event event: events) {
                     event.getEventHandle().release(true);
                 }
             } else {    
                 // flush Result should contain the events that are 
                 // failed to be delivered, so that these events can be forwarded to DLQ
-                addFailedEventsToDlq(flushResult.getEvents(), flushResult.getException());
+                addFailedEventsToDlq(flushResult.getEvents(), flushResult.getException(), flushResult.getStatusCode());
             }           
         } catch (Exception e) {
             // Add list of events to DLQ
-            addFailedEventsToDlq(flushableBuffer.getEvents(), e);
+            sinkMetrics.incrementRequestsFailedCounter(1);
+            sinkMetrics.incrementEventsFailedCounter(events.size());
+            addFailedEventsToDlq(events, e, 0);
         }              
     }
 
@@ -91,7 +93,7 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
                     } 
                 } catch (Exception ex) {
                     LOG.warn(NOISY, "Failed process the event ", ex);
-                    addFailedEventsToDlq(List.of(event), ex);
+                    addFailedEventsToDlq(List.of(event), ex, 0);
                 }
             }   
         } finally {     

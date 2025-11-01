@@ -1,7 +1,9 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- */
+
+KEEPING IT FUTURE USE
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.handler;
 
 import org.apache.hc.client5.http.auth.AuthScope;
@@ -11,9 +13,9 @@ import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.opensearch.dataprepper.plugins.sink.prometheus.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.prometheus.util.PrometheusSinkUtil;
 
-/**
+**
  * * This class handles Basic Authentication
- */
+ *
 public class BasicAuthPrometheusSinkHandler implements MultiAuthPrometheusSinkHandler {
 
     private final HttpClientConnectionManager httpClientConnectionManager;
@@ -42,3 +44,4 @@ public class BasicAuthPrometheusSinkHandler implements MultiAuthPrometheusSinkHa
         return httpAuthOptionsBuilder.build();
     }
 }
+ */

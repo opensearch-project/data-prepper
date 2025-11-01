@@ -12,10 +12,12 @@ import java.util.List;
 public class DefaultSinkFlushResult implements SinkFlushResult {
     private final List<Event> events;
     private final Throwable exception;
+    private final int statusCode;
 
-    public DefaultSinkFlushResult(final List<Event> events, final Throwable exception) {
+    public DefaultSinkFlushResult(final List<Event> events, final int statusCode, final Throwable exception) {
         this.events = events;
         this.exception = exception;
+        this.statusCode = statusCode;
     }
 
     public List<Event> getEvents() {
@@ -24,6 +26,10 @@ public class DefaultSinkFlushResult implements SinkFlushResult {
 
     public Throwable getException() {
         return exception;
+    }
+
+    public int getStatusCode() {
+        return statusCode;
     }
 }
 

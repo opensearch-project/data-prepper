@@ -11,6 +11,6 @@ import java.util.List;
 
 public interface SinkDlqHandler {
     void flushDlqList();
-    void addFailedEventsToDlq(final List<Event> events, final Throwable ex);
+    void addFailedEventsToDlq(final List<Event> events, final Throwable ex, final int statusCode);
     
 }
