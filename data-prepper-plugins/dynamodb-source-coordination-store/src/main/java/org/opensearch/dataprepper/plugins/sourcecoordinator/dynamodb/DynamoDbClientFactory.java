@@ -18,9 +18,11 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+import javax.inject.Named;
 import java.time.Duration;
 import java.util.UUID;
 
+@Named
 public class DynamoDbClientFactory {
 
     /**
@@ -31,7 +33,7 @@ public class DynamoDbClientFactory {
     private static final long DYNAMO_CLIENT_BASE_BACKOFF_MILLIS = 1000L;
     private static final long DYNAMO_CLIENT_MAX_BACKOFF_MILLIS = 60000L;
 
-    public static DynamoDbClient provideDynamoDbClient(
+    DynamoDbClient provideDynamoDbClient(
         final String region, final String stsRoleArn, final String stsExternalId
     ) {
         return DynamoDbClient.builder()

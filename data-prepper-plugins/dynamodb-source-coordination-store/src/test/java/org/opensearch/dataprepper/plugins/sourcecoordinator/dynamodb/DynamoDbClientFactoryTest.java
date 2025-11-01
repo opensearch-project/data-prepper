@@ -44,6 +44,10 @@ public class DynamoDbClientFactoryTest {
         stsRoleArn = "arn:aws:iam::123456789012:role/ddb-role";
     }
 
+    private DynamoDbClientFactory createObjectUnderTest() {
+        return new DynamoDbClientFactory();
+    }
+
     @Test
     void provideDynamoDbClient_with_null_stsRole_creates_client_with_default_credentials() {
 
@@ -61,7 +65,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient provideDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, null, null);
+            final DynamoDbClient provideDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, null, null);
 
             assertThat(provideDynamoDbClient, equalTo(dynamoDbClient));
         }
@@ -107,7 +111,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient providedDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, null);
+            final DynamoDbClient providedDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, stsRoleArn, null);
 
             assertThat(providedDynamoDbClient, equalTo(dynamoDbClient));
         }

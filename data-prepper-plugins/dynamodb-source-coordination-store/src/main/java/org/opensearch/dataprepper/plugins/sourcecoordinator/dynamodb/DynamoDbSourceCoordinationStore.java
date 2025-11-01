@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
@@ -27,8 +28,10 @@ import java.util.Optional;
  *
  * @since 2.2
  */
-
-@DataPrepperPlugin(name = "dynamodb", pluginType = SourceCoordinationStore.class, pluginConfigurationType = DynamoStoreSettings.class)
+@DataPrepperPlugin(name = "dynamodb",
+        pluginType = SourceCoordinationStore.class,
+        pluginConfigurationType = DynamoStoreSettings.class,
+        packagesToScan = DynamoDbSourceCoordinationStore.class)
 public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSourceCoordinationStore.class);
@@ -40,13 +43,17 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     static final String SOURCE_STATUS_COMBINATION_KEY_FORMAT = "%s|%s";
 
     @DataPrepperPluginConstructor
-    public DynamoDbSourceCoordinationStore(final DynamoStoreSettings dynamoStoreSettings, final PluginMetrics pluginMetrics) {
+    public DynamoDbSourceCoordinationStore(
+            final DynamoStoreSettings dynamoStoreSettings,
+            final DynamoDbClientFactory dynamoDbClientFactory,
+            final PluginMetrics pluginMetrics) {
         this.dynamoStoreSettings = dynamoStoreSettings;
         this.pluginMetrics = pluginMetrics;
-        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(
+        final DynamoDbClient dynamoDbClient = dynamoDbClientFactory.provideDynamoDbClient(
                 dynamoStoreSettings.getRegion(),
                 dynamoStoreSettings.getStsRoleArn(),
                 dynamoStoreSettings.getStsExternalId());
+        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoDbClient);
     }
 
     @Override
