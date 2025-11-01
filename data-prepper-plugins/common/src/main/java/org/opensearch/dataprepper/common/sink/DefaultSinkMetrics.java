@@ -43,12 +43,10 @@ public class DefaultSinkMetrics implements SinkMetrics {
     }
 
     public void incrementEventsSuccessCounter(int value){
-        System.out.println("---IMSC---"+value);
         sinkEventsSucceeded.increment(value);
     }
 
     public void incrementRequestsSuccessCounter(int value){
-        System.out.println("---IRSC---"+value);
         sinkRequestsSucceeded.increment(value);
     }
 
