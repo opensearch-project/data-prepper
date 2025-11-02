@@ -11,11 +11,12 @@ import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkThresholdConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
@@ -29,6 +30,7 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.Collection;
 
+@Experimental
 @DataPrepperPlugin(name = "prometheus", pluginType = Sink.class, pluginConfigurationType = PrometheusSinkConfiguration.class)
 public class PrometheusSink extends AbstractSink<Record<Event>> {
 
