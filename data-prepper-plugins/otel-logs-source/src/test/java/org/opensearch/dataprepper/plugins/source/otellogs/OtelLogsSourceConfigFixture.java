@@ -30,6 +30,22 @@ public class OtelLogsSourceConfigFixture {
                 .build();
     }
 
+    public static OTelLogsSourceConfig createLogsConfigWittSsl() {
+        return OTelLogsSourceConfig.builder()
+                .port(DEFAULT_PORT)
+                .enableUnframedRequests(false)
+                .ssl(true)
+                .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
+                .maxConnectionCount(10)
+                .threadCount(5)
+                .compression(CompressionOption.NONE)
+                .path(CONFIG_PATH)
+                .useAcmCertForSSL(false)
+                .sslKeyCertChainFile("data/certificate/test_cert.crt")
+                .sslKeyFile("data/certificate/test_decrypted_key.key")
+                .build();
+    }
+
     public static OTelLogsSourceConfig createConfigWithBasicAuth() {
         Map<String, Object> httpBasicConfig = Map.of("http_basic", Map.of("username", "test", "password", ""));
         PluginModel authentication = new PluginModel("authentication", httpBasicConfig);

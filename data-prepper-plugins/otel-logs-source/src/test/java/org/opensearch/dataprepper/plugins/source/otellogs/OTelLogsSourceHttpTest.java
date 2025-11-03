@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithoutSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWittSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
 
 import java.io.ByteArrayOutputStream;
@@ -185,6 +186,8 @@ class OTelLogsSourceHttpTest {
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
     private OTelLogsSource SOURCE;
+    private static final ExportLogsServiceRequest LOGS_REQUEST = ExportLogsServiceRequest.newBuilder()
+            .addResourceLogs(ResourceLogs.newBuilder().build()).build();
 
     @BeforeEach
     public void beforeEach() {
@@ -231,7 +234,6 @@ class OTelLogsSourceHttpTest {
     @Test
     void httpRequest_writesToBuffer_returnsSuccessfulResponse() throws Exception {
         SOURCE.start(buffer);
-
         ExportLogsServiceRequest request = createExportLogsRequest();
 
         WebClient.of().execute(
@@ -246,29 +248,14 @@ class OTelLogsSourceHttpTest {
     @Test
     // todo tlongo
     void testHttpRequestWhenSSLRequiredNoResponse() throws InvalidProtocolBufferException {
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, true);
-        settingsMap.put("useAcmCertForSSL", false);
-        settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-        settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-        pluginSetting = new PluginSetting("otel_logs", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
-
-        oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelLogsSourceConfig.class);
-        SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
+        SOURCE = new OTelLogsSource(createLogsConfigWittSsl(), pluginMetrics, pluginFactory, pipelineDescription);
         SOURCE.start(buffer);
 
         CompletableFuture<AggregatedHttpResponse> future = WebClient.builder()
                 .factory(ClientFactory.insecure())
                 .build()
-                .execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
+                .execute(getDefaultRequestHeadersBuilder()
                                 .authority("127.0.0.1:2021")
-                                .method(HttpMethod.POST)
-                                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                                .contentType(MediaType.JSON_UTF_8)
                                 .build(),
                         HttpData.copyOf(JsonFormat.printer().print(createLogsServiceRequest()).getBytes()))
                 .aggregate();
