@@ -2,6 +2,8 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_PATH;
 
 import java.util.Map;
@@ -14,9 +16,26 @@ import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.common.HttpData;
 
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
+import io.opentelemetry.proto.logs.v1.ScopeLogs;
+import io.opentelemetry.proto.resource.v1.Resource;
 
 public class OtelLogsSourceConfigFixture {
+    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createDefaultConfigBuilder() {
+        return OTelLogsSourceConfig.builder()
+                .port(DEFAULT_PORT)
+                .enableUnframedRequests(false)
+                .ssl(false)
+                .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
+                .maxConnectionCount(10)
+                .threadCount(5)
+                .compression(CompressionOption.NONE)
+                .path(CONFIG_PATH);
+    }
+
     public static OTelLogsSourceConfig createLogsConfigWithoutSsl() {
         return OTelLogsSourceConfig.builder()
                 .port(DEFAULT_PORT)
@@ -47,24 +66,40 @@ public class OtelLogsSourceConfigFixture {
     }
 
     public static OTelLogsSourceConfig createConfigWithBasicAuth() {
-        Map<String, Object> httpBasicConfig = Map.of("http_basic", Map.of("username", "test", "password", ""));
-        PluginModel authentication = new PluginModel("authentication", httpBasicConfig);
+        Map<String, Object> httpBasicConfig = Map.of(
+                "username", BASIC_AUTH_USERNAME,
+                "password", BASIC_AUTH_PASSWORD
+        );
+        PluginModel authentication = new PluginModel("http_basic", httpBasicConfig);
         return OTelLogsSourceConfig.builder()
                 .port(DEFAULT_PORT)
                 .ssl(false)
                 .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
                 .maxConnectionCount(10)
                 .threadCount(5)
+                .healthCheck(true)
                 .compression(CompressionOption.NONE)
-                .path(CONFIG_PATH) // todo tlongo chekc path
+                .path(CONFIG_PATH)
                 .authentication(authentication)
                 .build();
     }
 
     public static ExportLogsServiceRequest createLogsServiceRequest() {
-        return  ExportLogsServiceRequest
-                .newBuilder()
-                .addResourceLogs(ResourceLogs.newBuilder().build())
+        final Resource resource = Resource.newBuilder()
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey("service.name")
+                        .setValue(AnyValue.newBuilder().setStringValue("service").build())
+                ).build();
+
+        final ResourceLogs resourceLogs = ResourceLogs.newBuilder()
+                .addScopeLogs(ScopeLogs.newBuilder()
+                        .addLogRecords(LogRecord.newBuilder().setSeverityNumberValue(1))
+                        .build())
+                .setResource(resource)
+                .build();
+
+        return ExportLogsServiceRequest.newBuilder()
+                .addResourceLogs(resourceLogs)
                 .build();
     }
 

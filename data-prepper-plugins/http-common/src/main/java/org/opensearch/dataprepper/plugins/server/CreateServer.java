@@ -237,6 +237,7 @@ public class CreateServer {
 
         sb.disableServerHeader();
 
+        // todo tlongo extract
         if (serverConfiguration.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -279,6 +280,7 @@ public class CreateServer {
         final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
         sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
+        // todo tlongo extra. Same as grpc
         if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
             sb.annotatedService(httpSourcePath, logService, httpRequestExceptionHandler);
         } else {
@@ -286,6 +288,7 @@ public class CreateServer {
                     httpRequestExceptionHandler);
         }
 
+        // todo tlongo extra. Same as grpc
         if (serverConfiguration.hasHealthCheck()) {
             LOG.info("HTTP source health check is enabled");
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
