@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -24,8 +25,14 @@ import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 
 public class OtelLogsSourceConfigFixture {
+
+    public static OTelLogsSourceConfig createDefaultConfig() {
+        return createDefaultConfigBuilder().build();
+    }
+
     public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createDefaultConfigBuilder() {
         return OTelLogsSourceConfig.builder()
+                .retryInfo(new RetryInfoConfig())
                 .port(DEFAULT_PORT)
                 .enableUnframedRequests(false)
                 .ssl(false)
@@ -36,29 +43,9 @@ public class OtelLogsSourceConfigFixture {
                 .path(CONFIG_PATH);
     }
 
-    public static OTelLogsSourceConfig createLogsConfigWithoutSsl() {
-        return OTelLogsSourceConfig.builder()
-                .port(DEFAULT_PORT)
-                .enableUnframedRequests(false)
-                .ssl(false)
-                .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
-                .maxConnectionCount(10)
-                .threadCount(5)
-                .compression(CompressionOption.NONE)
-                .path(CONFIG_PATH) // todo tlongo chekc path
-                .build();
-    }
-
     public static OTelLogsSourceConfig createLogsConfigWittSsl() {
-        return OTelLogsSourceConfig.builder()
-                .port(DEFAULT_PORT)
-                .enableUnframedRequests(false)
+        return createDefaultConfigBuilder()
                 .ssl(true)
-                .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
-                .maxConnectionCount(10)
-                .threadCount(5)
-                .compression(CompressionOption.NONE)
-                .path(CONFIG_PATH)
                 .useAcmCertForSSL(false)
                 .sslKeyCertChainFile("data/certificate/test_cert.crt")
                 .sslKeyFile("data/certificate/test_decrypted_key.key")
@@ -70,17 +57,8 @@ public class OtelLogsSourceConfigFixture {
                 "username", BASIC_AUTH_USERNAME,
                 "password", BASIC_AUTH_PASSWORD
         );
-        PluginModel authentication = new PluginModel("http_basic", httpBasicConfig);
-        return OTelLogsSourceConfig.builder()
-                .port(DEFAULT_PORT)
-                .ssl(false)
-                .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
-                .maxConnectionCount(10)
-                .threadCount(5)
-                .healthCheck(true)
-                .compression(CompressionOption.NONE)
-                .path(CONFIG_PATH)
-                .authentication(authentication)
+        return createDefaultConfigBuilder()
+                .authentication(new PluginModel("http_basic", httpBasicConfig))
                 .build();
     }
 

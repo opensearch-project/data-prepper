@@ -10,6 +10,7 @@ import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
@@ -231,7 +232,7 @@ public class CreateServer {
     public Server createHTTPServer(final Buffer<Record<Log>> buffer,
             final ICertificateProviderFactory certificateProviderFactory,
             final ArmeriaHttpAuthenticationProvider authenticationProvider,
-            final HttpRequestExceptionHandler httpRequestExceptionHandler,
+            final ExceptionHandlerFunction httpRequestExceptionHandler,
             final Object logService) {
         final ServerBuilder sb = Server.builder();
 
@@ -280,7 +281,6 @@ public class CreateServer {
         final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
         sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
-        // todo tlongo extra. Same as grpc
         if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
             sb.annotatedService(httpSourcePath, logService, httpRequestExceptionHandler);
         } else {

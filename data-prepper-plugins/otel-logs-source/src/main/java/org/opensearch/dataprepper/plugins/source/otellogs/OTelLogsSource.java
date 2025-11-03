@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.plugins.server.CreateServer;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.source.otellogs.http.ArmeriaHttpService;
+import org.opensearch.dataprepper.plugins.source.otellogs.http.HttpExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +108,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     null,
                     certificateProviderFactory,
                     createHttpAuthentication(),
-                    new HttpRequestExceptionHandler(pluginMetrics),
+                    new HttpExceptionHandler(pluginMetrics, oTelLogsSourceConfig.getRetryInfo().getMinDelay(), oTelLogsSourceConfig.getRetryInfo().getMaxDelay()),
                     new ArmeriaHttpService(buffer, pluginMetrics, 100));
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
