@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,24 +54,35 @@ public class DynamoDbSourceCoordinationStoreTest {
     private DynamoStoreSettings dynamoStoreSettings;
 
     @Mock
+    private DynamoDbClientFactory dynamoDbClientFactory;
+
+    @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private DynamoDbClient dynamoDbClient;
 
     @Mock
     private DynamoDbClientWrapper dynamoDbClientWrapper;
 
     @BeforeEach
     void setup() {
-        given(dynamoStoreSettings.getRegion()).willReturn(UUID.randomUUID().toString());
-        given(dynamoStoreSettings.getStsRoleArn()).willReturn(UUID.randomUUID().toString());
-        given(dynamoStoreSettings.getStsExternalId()).willReturn(UUID.randomUUID().toString());
+        final String region = UUID.randomUUID().toString();
+        final String stsRoleArn = UUID.randomUUID().toString();
+        final String stsExternalId = UUID.randomUUID().toString();
+        given(dynamoStoreSettings.getRegion()).willReturn(region);
+        given(dynamoStoreSettings.getStsRoleArn()).willReturn(stsRoleArn);
+        given(dynamoStoreSettings.getStsExternalId()).willReturn(stsExternalId);
+
+        when(dynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, stsExternalId))
+                .thenReturn(dynamoDbClient);
     }
 
     private DynamoDbSourceCoordinationStore createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientWrapper> dynamoDbClientWrapperMockedStatic = mockStatic(DynamoDbClientWrapper.class)) {
-            dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(),
-                    dynamoStoreSettings.getStsRoleArn(), dynamoStoreSettings.getStsExternalId()))
+            dynamoDbClientWrapperMockedStatic.when(() -> dynamoDbClientWrapper.create(dynamoDbClient))
                 .thenReturn(dynamoDbClientWrapper);
-            return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, pluginMetrics);
+            return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, dynamoDbClientFactory, pluginMetrics);
         }
     }
 
