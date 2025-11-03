@@ -42,6 +42,7 @@ import java.util.Iterator;
 import java.util.concurrent.TimeoutException;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQEUEST_ERRORS;
 
 /**
  * Implementation of CrawlerClient for Office 365 audit logs.
@@ -56,7 +57,6 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
-    private static final String REQEUEST_ERRORS = "requestErrors";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
