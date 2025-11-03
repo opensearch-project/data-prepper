@@ -1,0 +1,111 @@
+package org.opensearch.dataprepper.plugins.source.otellogs.http;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.opensearch.dataprepper.exceptions.BadRequestException;
+import org.opensearch.dataprepper.exceptions.BufferWriteException;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.linecorp.armeria.server.ServiceRequestContext;
+import com.linecorp.armeria.server.annotation.Consumes;
+import com.linecorp.armeria.server.annotation.Post;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+
+public class ArmeriaHttpService {
+    private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);
+
+    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
+    public static final String REQUESTS_RECEIVED = "requestsReceived";
+    public static final String BAD_REQUESTS = "badRequests";
+    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
+    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
+    public static final String SUCCESS_REQUESTS = "successRequests";
+    public static final String PAYLOAD_SIZE = "payloadSize";
+    public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+
+    private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
+    private final Buffer<Record<Object>> buffer;
+
+    private final int bufferWriteTimeoutInMillis;
+
+    private final Counter requestsReceivedCounter;
+    private final Counter successRequestsCounter;
+    private final DistributionSummary payloadSizeSummary;
+    private final Timer requestProcessDuration;
+
+    public ArmeriaHttpService(Buffer<Record<Object>> buffer, final PluginMetrics pluginMetrics, final int bufferWriteTimeoutInMillis) {
+        this.buffer = buffer;
+        this.oTelProtoDecoder = new OTelProtoOpensearchCodec.OTelProtoDecoder();
+        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
+
+        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
+        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
+        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+    }
+
+    // no path provided. Will be set by config.
+    @Post("")
+    @Consumes(value = "application/json")
+    public ExportTraceServiceResponse exportLog(ExportLogsServiceRequest request) {
+//        requestsReceivedCounter.increment();
+        payloadSizeSummary.record(request.getSerializedSize());
+
+        requestProcessDuration.record(() -> processRequest(request));
+
+        return ExportTraceServiceResponse.newBuilder().build();
+    }
+
+    // todo tlongo extract this method so that grpc and http share same functionality
+    private void processRequest(final ExportLogsServiceRequest request) {
+        final List<OpenTelemetryLog> logs;
+
+        try {
+            logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
+        } catch (Exception e) {
+            LOG.error("Failed to parse the request {} due to:", request, e);
+            throw new BadRequestException(e.getMessage(), e);
+        }
+
+        final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
+        try {
+            if (buffer.isByteBuffer()) {
+                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+            } else {
+                buffer.writeAll(records, bufferWriteTimeoutInMillis);
+            }
+        } catch (Exception e) {
+            if (ServiceRequestContext.current().isTimedOut()) {
+                LOG.warn("Exception writing to buffer but request already timed out.", e);
+                return;
+            }
+
+            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
+            throw new BufferWriteException(e.getMessage(), e);
+        }
+
+        if (ServiceRequestContext.current().isTimedOut()) {
+            LOG.warn("Buffer write completed successfully but request already timed out.");
+            return;
+        }
+
+        successRequestsCounter.increment();
+        // todo tlong wtf??!!
+//        responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
+//        responseObserver.onCompleted();
+    }
+}

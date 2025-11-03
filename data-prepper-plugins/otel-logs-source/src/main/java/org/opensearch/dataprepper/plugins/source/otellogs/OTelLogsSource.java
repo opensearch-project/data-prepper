@@ -5,11 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import static org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME;
+
 import com.linecorp.armeria.server.Server;
-import io.grpc.MethodDescriptor;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
+
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -22,18 +23,16 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.source.otellogs.http.ArmeriaHttpService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
@@ -48,6 +47,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ByteDecoder byteDecoder;
+    private final PluginFactory pluginFactory;
     private Server server;
 
     @DataPrepperPluginConstructor
@@ -66,6 +66,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.pluginFactory = pluginFactory;
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
         this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOutputFormat());
     }
@@ -83,22 +84,31 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
         if (server == null) {
 
-            final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
-                    (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-                    buffer,
-                    pluginMetrics,
-                    null
-            );
+//            final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
+//                    (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
+//                    oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+//                    buffer,
+//                    pluginMetrics,
+//                    null
+//            );
+//
+//            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
+//            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
+//            CertificateProvider certificateProvider = null;
+//            if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
+//                certificateProvider = certificateProviderFactory.getCertificateProvider();
+//            }
+//            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
+//            server = createServer.createGRPCServer(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
             CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            CertificateProvider certificateProvider = null;
-            if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
-                certificateProvider = certificateProviderFactory.getCertificateProvider();
-            }
-            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
-            server = createServer.createGRPCServer(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
+            server = createServer.createHTTPServer(
+                    null,
+                    certificateProviderFactory,
+                    createHttpAuthentication(),
+                    new HttpRequestExceptionHandler(pluginMetrics),
+                    new ArmeriaHttpService(buffer, pluginMetrics, 100));
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
@@ -152,5 +162,20 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
         authenticationPluginSetting.setPipelineName(pipelineName);
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
+    }
+
+    private ArmeriaHttpAuthenticationProvider createHttpAuthentication() {
+        if (oTelLogsSourceConfig.getAuthentication() == null || oTelLogsSourceConfig.getAuthentication().getPluginName().equals(UNAUTHENTICATED_PLUGIN_NAME)) {
+            LOG.warn("Creating otel_trace_source http service without authentication. This is not secure.");
+            LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
+            return null; // todo tlongo find solution
+        } else {
+            return createAuthenticationProvider(oTelLogsSourceConfig.getAuthentication());
+        }
+    }
+
+    private ArmeriaHttpAuthenticationProvider createAuthenticationProvider(final PluginModel authenticationConfiguration) {
+        Map<String, Object> pluginSettings = authenticationConfiguration.getPluginSettings();
+        return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, new PluginSetting(authenticationConfiguration.getPluginName(), pluginSettings));
     }
 }

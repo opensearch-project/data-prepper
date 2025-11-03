@@ -26,12 +26,12 @@ import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticati
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
-import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.ICertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.Logger;
@@ -229,9 +229,10 @@ public class CreateServer {
 
 
     public Server createHTTPServer(final Buffer<Record<Log>> buffer,
-            final CertificateProviderFactory certificateProviderFactory,
+            final ICertificateProviderFactory certificateProviderFactory,
             final ArmeriaHttpAuthenticationProvider authenticationProvider,
-            final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService) {
+            final HttpRequestExceptionHandler httpRequestExceptionHandler,
+            final Object logService) {
         final ServerBuilder sb = Server.builder();
 
         sb.disableServerHeader();

@@ -5,41 +5,58 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
-import com.linecorp.armeria.client.ClientFactory;
-import com.linecorp.armeria.client.Clients;
-import com.linecorp.armeria.client.UnprocessedRequestException;
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpHeaderNames;
-import com.linecorp.armeria.common.HttpMethod;
-import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.RequestHeaders;
-import com.linecorp.armeria.common.SessionProtocol;
-import com.linecorp.armeria.server.Server;
-import com.linecorp.armeria.server.ServerBuilder;
-import com.linecorp.armeria.server.grpc.GrpcService;
-import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
-import io.grpc.BindableService;
-import io.grpc.ServerServiceDefinition;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
-import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Statistic;
-import io.netty.util.AsciiString;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.logs.v1.LogRecord;
-import io.opentelemetry.proto.logs.v1.ResourceLogs;
-import io.opentelemetry.proto.logs.v1.ScopeLogs;
-import io.opentelemetry.proto.resource.v1.Resource;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithoutSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.GZIPOutputStream;
+
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,71 +90,56 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
+import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.GZIPOutputStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
+import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.Clients;
+import com.linecorp.armeria.client.UnprocessedRequestException;
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpHeaderNames;
+import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.common.RequestHeaders;
+import com.linecorp.armeria.common.RequestHeadersBuilder;
+import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.Server;
+import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.grpc.GrpcService;
+import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
+import io.grpc.BindableService;
+import io.grpc.ServerServiceDefinition;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
+import io.netty.util.AsciiString;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
+import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
+import io.opentelemetry.proto.logs.v1.ScopeLogs;
+import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
-class OTelLogsSourceTest {
+class OTelLogsSourceHttpTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/logs";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final ExportLogsServiceRequest LOGS_REQUEST = ExportLogsServiceRequest.newBuilder()
-            .addResourceLogs(ResourceLogs.newBuilder().build()).build();
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -197,13 +199,6 @@ class OTelLogsSourceTest {
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
-        when(oTelLogsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
-        when(oTelLogsSourceConfig.isSsl()).thenReturn(false);
-        when(oTelLogsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
-        when(oTelLogsSourceConfig.getMaxConnectionCount()).thenReturn(10);
-        when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
-        when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
 
@@ -211,7 +206,7 @@ class OTelLogsSourceTest {
                 .thenReturn(authenticationProvider);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        SOURCE = new OTelLogsSource(createLogsConfigWithoutSsl(), pluginMetrics, pluginFactory, pipelineDescription);
     }
 
     @AfterEach
@@ -220,57 +215,36 @@ class OTelLogsSourceTest {
     }
 
     private void configureObjectUnderTest() {
-        SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        SOURCE = new OTelLogsSource(createLogsConfigWithoutSsl(), pluginMetrics, pluginFactory, pipelineDescription);
         assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
     }
 
-    @Test
-    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
+    private RequestHeadersBuilder getDefaultRequestHeadersBuilder() {
+        return RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892")
+                        .authority("127.0.0.1:21892") // todo tlongo create constant
                         .method(HttpMethod.POST)
                         .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
+                        .contentType(MediaType.JSON_UTF_8);
     }
 
     @Test
-    void testHttpsFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
-
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, true);
-        settingsMap.put("useAcmCertForSSL", false);
-        settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-        settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-        pluginSetting = new PluginSetting("otel_logs", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
-
-        oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelLogsSourceConfig.class);
-        SOURCE = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
+    void httpRequest_writesToBuffer_returnsSuccessfulResponse() throws Exception {
         SOURCE.start(buffer);
 
-        WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTPS)
-                        .authority("127.0.0.1:21892")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
+        ExportLogsServiceRequest request = createExportLogsRequest();
+
+        WebClient.of().execute(
+                getDefaultRequestHeadersBuilder().build(),
+                HttpData.copyOf(JsonFormat.printer().print(request).getBytes())
+        )
+            .aggregate()
+            .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
+            .join();
     }
 
     @Test
+    // todo tlongo
     void testHttpRequestWhenSSLRequiredNoResponse() throws InvalidProtocolBufferException {
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
@@ -296,7 +270,7 @@ class OTelLogsSourceTest {
                                 .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
+                        HttpData.copyOf(JsonFormat.printer().print(createLogsServiceRequest()).getBytes()))
                 .aggregate();
 
         ExecutionException exception = assertThrows(ExecutionException.class,
@@ -306,50 +280,12 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void testHttpFullBytesWithNonUnframedRequests() {
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                        .contentType(MediaType.PROTOBUF)
-                        .build(),
-                HttpData.copyOf(LOGS_REQUEST.toByteArray()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpFullJsonWithUnframedRequests() throws InvalidProtocolBufferException {
-        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
-        SOURCE.start(buffer);
-
-        WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:21892")
-                                .method(HttpMethod.POST)
-                                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                                .contentType(MediaType.JSON_UTF_8)
-                                .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
-                .join();
-    }
-
-    @Test
+    // todo tlongo extract into separate test class that deals with general server stuff
     void testServerConnectionsMetric() throws InvalidProtocolBufferException {
         // Prepare
-        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
         SOURCE.start(buffer);
 
-        final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
-                .add("pipeline").add("otel_logs").toString();
-        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(OTelLogsSource.SERVER_CONNECTIONS).toString());
+        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList("pipeline.otel_logs.serverConnections");
 
         // Verify connections metric value is 0
         Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
@@ -362,10 +298,9 @@ class OTelLogsSourceTest {
                 .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
                 .contentType(MediaType.JSON_UTF_8)
                 .build();
-        final HttpData testHttpData = HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes());
 
         // Send request
-        WebClient.of().execute(testRequestHeaders, testHttpData)
+        WebClient.of().execute(testRequestHeaders, createJsonHttpPayload())
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
@@ -376,26 +311,23 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void testHttpCompressionWithUnframedRequests() throws IOException {
+    // todo tlongo
+    void compressedRequest_requestIsProcessed_returns200() throws IOException {
         when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
         SOURCE.start(buffer);
 
-        WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:21892")
-                                .method(HttpMethod.POST)
-                                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
-                                .contentType(MediaType.JSON_UTF_8)
+        WebClient.of().execute(getDefaultRequestHeadersBuilder()
                                 .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
                                 .build(),
-                        createGZipCompressedPayload(JsonFormat.printer().print(LOGS_REQUEST)))
+                        createGZipCompressedPayload(JsonFormat.printer().print(createLogsServiceRequest())))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
     }
 
     @Test
+    // todo tlongo
     void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
         when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelLogsSourceConfig.getPath()).thenReturn(TEST_PATH);
@@ -416,6 +348,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+    // todo tlongo
     void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
         when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
@@ -450,6 +383,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+    // todo tlongo
     void testHttpFullJsonWithCustomPathAndAuthHeader_with_unsuccessful_response() throws InvalidProtocolBufferException {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
         when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
@@ -480,6 +414,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+        // todo tlongo
     void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -514,6 +449,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+        // todo tlongo
     void testServerStartACMCertSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -552,6 +488,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+        // todo tlongo
     void start_with_Health_configured_includes_HealthCheck_service() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
@@ -595,6 +532,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+        // todo tlongo
     void start_without_Health_configured_does_not_include_HealthCheck_service() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
@@ -637,27 +575,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void testDoubleStart() {
-        // starting server
-        SOURCE.start(buffer);
-        // double start server
-        assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
-    }
-
-    @Test
-    void testRunAnotherSourceWithSamePort() {
-        // starting server
-        SOURCE.start(buffer);
-
-        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
-        testPluginSetting.setPipelineName("pipeline");
-        oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelLogsSourceConfig.class);
-        final OTelLogsSource source = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
-        assertThrows(RuntimeException.class, () -> source.start(buffer));
-    }
-
-    @Test
+    // todo tlongo
     void testStartWithEmptyBuffer() {
         testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
@@ -667,6 +585,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
+    // todo tlongo
     void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelLogsSource source = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
@@ -756,23 +675,6 @@ class OTelLogsSourceTest {
         }
     }
 
-    @Test
-    void http_request_writes_to_buffer_with_successful_response() throws Exception {
-        SOURCE.start(buffer);
-
-        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
-
-        final ExportLogsServiceResponse exportResponse = client.export(createExportLogsRequest());
-        assertThat(exportResponse, notNullValue());
-
-        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
-
-        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
-        assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites, hasSize(1));
-    }
 
     @Test
     void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
