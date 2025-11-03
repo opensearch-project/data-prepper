@@ -28,7 +28,7 @@ class JacksonEventKey implements EventKey {
     private JsonPointer jsonPointer;
     private final Set<EventKeyFactory.EventAction> supportedActions;
     private static final Pattern INVALID_KEY_CHARS_PATTERN =
-            Pattern.compile("[^A-Za-z0-9._~@/\\[\\]-]");
+            Pattern.compile("[^A-Za-z0-9._~@/\\[\\]\\(\\)-]");
 
     /**
      * Constructor for the JacksonEventKey which should only be used by implementation
@@ -182,6 +182,8 @@ class JacksonEventKey implements EventKey {
                     || c == ']'
                     || c == ' '
                     || c == '$'
+                    || c == '('
+                    || c == ')'
             )) {
 
                 return false;

@@ -1225,7 +1225,6 @@ public class JacksonEventTest {
     @ParameterizedTest
     @CsvSource(value = {"test_key, true",
             "/test_key, true",
-            "inv(alid, false",
             "getMetadata(\"test_key\"), false",
             "key.with.dot, true",
             "key-with-hyphen, true",
