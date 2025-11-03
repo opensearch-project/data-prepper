@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.microsoft_office365.utils;
+package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import io.micrometer.core.instrument.Counter;
 import org.springframework.http.HttpStatus;
@@ -25,6 +25,9 @@ public class MetricsHelper {
     private static final String REQUEST_ACCESS_DENIED  = "requestAccessDenied";
     private static final String REQUEST_THROTTLED = "requestThrottled";
     private static final String RESOURCE_NOT_FOUND = "resourceNotFound";
+
+    // other errors in crawlerClient
+    public static final String REQEUEST_ERRORS = "requestErrors";
 
     /**
      * Get the metric counter map for specific errorType

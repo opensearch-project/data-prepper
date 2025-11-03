@@ -36,8 +36,8 @@ import java.util.Map;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
-import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.MetricsHelper.getErrorTypeMetricCounterMap;
-import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.MetricsHelper.publishErrorTypeMetricCounter;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.getErrorTypeMetricCounterMap;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishErrorTypeMetricCounter;
 
 /**
  * REST client for interacting with Office 365 Management API.
