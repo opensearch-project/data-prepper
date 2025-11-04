@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.Audi
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -337,5 +338,173 @@ class Office365CrawlerClientTest {
         // Verify exception message and counter increment
         assertEquals("Search audit logs failed", exception.getMessage());
         verify(mockRequestErrorsCounter).increment();
+    }
+
+    @Test
+    void testRetryableErrorCounterIncrement() throws Exception {
+        // Mock the retryable errors counter
+        Counter mockRetryableErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("retryableErrors")).thenReturn(mockRetryableErrorsCounter);
+
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        // Mock service.getAuditLog to throw a retryable Office365Exception
+        when(service.getAuditLog(anyString()))
+                .thenThrow(new Office365Exception("Retryable error", true));
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+
+        // Execute and expect RuntimeException to be thrown due to retryable error
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> client.executePartition(state, buffer, acknowledgementSet));
+
+        // Verify retryable error counter was incremented
+        verify(mockRetryableErrorsCounter).increment();
+        assertEquals("Retryable error processing audit log: ID1", exception.getMessage());
+    }
+
+    @Test
+    void testNonRetryableErrorCounterIncrement() throws Exception {
+        // Mock the non-retryable errors counter
+        Counter mockNonRetryableErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("nonRetryableErrors")).thenReturn(mockNonRetryableErrorsCounter);
+
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        // Mock service.getAuditLog to throw a non-retryable Office365Exception
+        when(service.getAuditLog(anyString()))
+                .thenThrow(new Office365Exception("Non-retryable error", false));
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+
+        // Execute - non-retryable errors should not throw exception, just drop the record
+        client.executePartition(state, buffer, acknowledgementSet);
+
+        // Verify non-retryable error counter was incremented
+        verify(mockNonRetryableErrorsCounter).increment();
+        // Verify buffer was called with empty list (record was dropped)
+        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+    }
+
+    @Test
+    void testUnexpectedErrorTreatedAsRetryable() throws Exception {
+        // Mock the retryable errors counter
+        Counter mockRetryableErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("retryableErrors")).thenReturn(mockRetryableErrorsCounter);
+
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        // Mock service.getAuditLog to throw an unexpected RuntimeException (not Office365Exception)
+        when(service.getAuditLog(anyString()))
+                .thenThrow(new RuntimeException("Unexpected error"));
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+
+        // Execute and expect RuntimeException to be thrown
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> client.executePartition(state, buffer, acknowledgementSet));
+
+        // Verify retryable error counter was incremented (unexpected errors are treated as retryable)
+        verify(mockRetryableErrorsCounter).increment();
+        assertEquals("Unexpected error processing audit log: ID1", exception.getMessage());
+    }
+
+    @Test
+    void testMultipleRecordsWithMixedErrors() throws Exception {
+        // Mock both error counters
+        Counter mockRetryableErrorsCounter = mock(Counter.class);
+        Counter mockNonRetryableErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter("retryableErrors")).thenReturn(mockRetryableErrorsCounter);
+        when(pluginMetrics.counter("nonRetryableErrors")).thenReturn(mockNonRetryableErrorsCounter);
+
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(
+                        Map.of("contentId", "ID1", "contentUri", "uri1"),
+                        Map.of("contentId", "ID2", "contentUri", "uri2"),
+                        Map.of("contentId", "ID3", "contentUri", "uri3")
+                ), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        // Mock different responses for different URIs
+        when(service.getAuditLog("uri1"))
+                .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}"); // Success
+        when(service.getAuditLog("uri2"))
+                .thenThrow(new Office365Exception("Non-retryable error", false)); // Non-retryable
+        when(service.getAuditLog("uri3"))
+                .thenThrow(new Office365Exception("Retryable error", true)); // Retryable
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+
+        // Execute and expect RuntimeException due to retryable error
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> client.executePartition(state, buffer, acknowledgementSet));
+
+        // Verify both error counters were incremented
+        verify(mockNonRetryableErrorsCounter).increment(); // For ID2
+        verify(mockRetryableErrorsCounter).increment(); // For ID3
+        assertEquals("Retryable error processing audit log: ID3", exception.getMessage());
     }
 }

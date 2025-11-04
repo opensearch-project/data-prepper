@@ -27,7 +27,7 @@ public class MetricsHelper {
     private static final String RESOURCE_NOT_FOUND = "resourceNotFound";
 
     // other errors in crawlerClient
-    public static final String REQEUEST_ERRORS = "requestErrors";
+    public static final String REQUEST_ERRORS = "requestErrors";
 
     /**
      * Get the metric counter map for specific errorType

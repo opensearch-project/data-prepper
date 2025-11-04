@@ -42,7 +42,7 @@ import java.util.Iterator;
 import java.util.concurrent.TimeoutException;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQEUEST_ERRORS;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQUEST_ERRORS;
 
 /**
  * Implementation of CrawlerClient for Office 365 audit logs.
@@ -57,6 +57,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
+    private static final String NON_RETRYABLE_ERRORS = "nonRetryableErrors";
+    private static final String RETRYABLE_ERRORS = "retryableErrors";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
@@ -70,6 +72,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
     private final Counter requestErrorsCounter;
+    private final Counter nonRetryableErrorsCounter;
+    private final Counter retryableErrorsCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -86,7 +90,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
-        this.requestErrorsCounter = pluginMetrics.counter(REQEUEST_ERRORS);
+        this.requestErrorsCounter = pluginMetrics.counter(REQUEST_ERRORS);
+        this.nonRetryableErrorsCounter = pluginMetrics.counter(NON_RETRYABLE_ERRORS);
+        this.retryableErrorsCounter = pluginMetrics.counter(RETRYABLE_ERRORS);
     }
 
     @VisibleForTesting
@@ -130,6 +136,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                             if (e.isRetryable()) {
                                 throw new RuntimeException("Retryable error processing audit log: " + logId, e);
                             } else {
+                                handleExceptionMetrics(e);
                                 // TODO: When pipeline DLQ is ready, add this record to DLQ instead of dropping the record
                                 log.error(NOISY, "Non-retryable error - record will be dropped. Error processing audit log: {}", logId, e);
                             }
@@ -158,10 +165,23 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                 acknowledgementSet.complete();
             }
         } catch (Exception e) {
+            handleExceptionMetrics(e);
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
             requestErrorsCounter.increment();
             throw e;
+        }
+    }
+
+    private void handleExceptionMetrics(Exception e) {
+        if (e instanceof Office365Exception) {
+            if (((Office365Exception) e).isRetryable()) {
+                retryableErrorsCounter.increment();
+            } else {
+                nonRetryableErrorsCounter.increment();
+            }
+        } else {
+            retryableErrorsCounter.increment();
         }
     }
 
