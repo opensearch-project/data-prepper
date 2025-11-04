@@ -134,14 +134,16 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                             log.error(NOISY, "{} error processing audit log: {}",
                                     e.isRetryable() ? "Retryable" : "Non-retryable", logId, e);
                             if (e.isRetryable()) {
+                                retryableErrorsCounter.increment();
                                 throw new RuntimeException("Retryable error processing audit log: " + logId, e);
                             } else {
-                                handleExceptionMetrics(e);
+                                nonRetryableErrorsCounter.increment();
                                 // TODO: When pipeline DLQ is ready, add this record to DLQ instead of dropping the record
                                 log.error(NOISY, "Non-retryable error - record will be dropped. Error processing audit log: {}", logId, e);
                             }
                         } catch (Exception e) {
                             // Unexpected errors are treated as retryable to be safe
+                            retryableErrorsCounter.increment();
                             log.error(NOISY, "Unexpected error processing audit log: {}", logId, e);
                             throw new RuntimeException("Unexpected error processing audit log: " + logId, e);
                         }
