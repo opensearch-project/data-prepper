@@ -22,7 +22,6 @@ import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
-import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
@@ -115,7 +114,7 @@ public class CreateServer {
             final List<GRPCServiceConfig<?, ?>> grpcServiceConfigs,
             final CertificateProvider certificateProvider) {
             
-        final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
+        final List<ServerInterceptor> serverInterceptors = getGrpcAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                 .builder()
@@ -129,8 +128,7 @@ public class CreateServer {
                 final String transformedPath = serviceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
                 grpcServiceBuilder.addService(
                     transformedPath,
-                    ServerInterceptors.intercept(serviceConfig.getService(), serverInterceptors), 
-                    serviceConfig.getMethodDescriptor());
+                    ServerInterceptors.intercept(serviceConfig.getService(), serverInterceptors), serviceConfig.getMethodDescriptor());
                 LOG.info("Adding service with path: {}", transformedPath);
             } else {
                 grpcServiceBuilder.addService(
@@ -159,6 +157,7 @@ public class CreateServer {
             sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
         }
 
+        // todo tlongo can be removed once the http server is up?
         if (serverConfiguration.enableHttpHealthCheck()) {
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
@@ -204,6 +203,45 @@ public class CreateServer {
         return sb.build();
     }
 
+
+
+    public GrpcService createGRPCService(
+            GrpcAuthenticationProvider authenticationProvider,
+            GRPCServiceConfig serviceConfig
+    ) {
+        final List<ServerInterceptor> serverInterceptors = getGrpcAuthenticationInterceptor(authenticationProvider);
+
+        final GrpcServiceBuilder grpcServiceBuilder = GrpcService
+                .builder()
+                .useClientTimeoutHeader(false)
+                .useBlockingTaskExecutor(true)
+                .exceptionHandler(createGrpExceptionHandler());
+
+        // Add each service with its own path and method descriptor
+        if (serviceConfig.getPath() != null && serviceConfig.getMethodDescriptor() != null) {
+            final String transformedPath = serviceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+            grpcServiceBuilder.addService(
+                    transformedPath,
+                    ServerInterceptors.intercept(serviceConfig.getService(), serverInterceptors),
+                    serviceConfig.getMethodDescriptor());
+            LOG.info("Adding service with path: {}", transformedPath);
+        } else {
+            grpcServiceBuilder.addService(ServerInterceptors.intercept(serviceConfig.getService(), serverInterceptors));
+            LOG.info("Adding service without specific path");
+        }
+
+        if (serverConfiguration.hasHealthCheck()) {
+            LOG.info("Health check is enabled");
+            grpcServiceBuilder.addService(new HealthGrpcService());
+        }
+
+        if (serverConfiguration.hasProtoReflectionService()) {
+            LOG.info("Proto reflection service is enabled");
+            grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
+        }
+
+        return grpcServiceBuilder.build();
+    }
     /**
      * Creates a GRPC server with a single service
      * @param authenticationProvider Provider for authentication
@@ -305,8 +343,7 @@ public class CreateServer {
         return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
-    private List<ServerInterceptor> getAuthenticationInterceptor(
-            final GrpcAuthenticationProvider authenticationProvider) {
+    private List<ServerInterceptor> getGrpcAuthenticationInterceptor(final GrpcAuthenticationProvider authenticationProvider) {
         final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
         if (authenticationInterceptor == null) {
             return Collections.emptyList();

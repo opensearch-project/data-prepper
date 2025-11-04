@@ -11,6 +11,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import org.apache.commons.lang3.StringUtils;
@@ -63,6 +64,11 @@ public class OTelLogsSourceConfig {
     @JsonProperty(PATH)
     @Size(min = 1, message = "path length should be at least 1")
     private String path;
+
+    @Getter
+    @JsonProperty("http_path")
+    @Size(min = 1, message = "path length should be at least 1")
+    private String httpPath;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheck = DEFAULT_HEALTH_CHECK;

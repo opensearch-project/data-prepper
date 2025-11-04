@@ -17,10 +17,12 @@ import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.google.rpc.RetryInfo;
+import com.linecorp.armeria.common.ContentTooLargeException;
 import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.server.HttpStatusException;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
@@ -56,7 +58,15 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
     public HttpResponse handleException(final ServiceRequestContext ctx,
                                         final HttpRequest req,
                                         final Throwable e) {
-        final Throwable exceptionCause = e instanceof BufferWriteException ? e.getCause() : e;
+        final Throwable exceptionCause;
+        if (e instanceof BufferWriteException) {
+            exceptionCause = e.getCause();
+        } else if (e instanceof HttpStatusException) {
+            exceptionCause = e.getCause();
+        } else {
+            exceptionCause = e;
+        }
+
         StatusHolder statusHolder = createStatus(exceptionCause);
 
         try {
@@ -75,7 +85,7 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
         if (e instanceof RequestTimeoutException || e instanceof TimeoutException) {
             requestTimeoutsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.RESOURCE_EXHAUSTED), createHttpStatusFromProtoBufStatus(Status.Code.RESOURCE_EXHAUSTED));
-        } else if (e instanceof SizeOverflowException) {
+        } else if (e instanceof SizeOverflowException || e instanceof ContentTooLargeException) {
             requestsTooLargeCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.RESOURCE_EXHAUSTED), createHttpStatusFromProtoBufStatus(Status.Code.RESOURCE_EXHAUSTED));
         } else if (e instanceof BadRequestException) {

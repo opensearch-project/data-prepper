@@ -4,7 +4,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
 
 import java.util.Map;
 
@@ -32,6 +32,8 @@ public class OtelLogsSourceConfigFixture {
 
     public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createDefaultConfigBuilder() {
         return OTelLogsSourceConfig.builder()
+                .healthCheck(true)
+                .httpPath("/logs/v1")
                 .retryInfo(new RetryInfoConfig())
                 .port(DEFAULT_PORT)
                 .enableUnframedRequests(false)
@@ -40,7 +42,7 @@ public class OtelLogsSourceConfigFixture {
                 .maxConnectionCount(10)
                 .threadCount(5)
                 .compression(CompressionOption.NONE)
-                .path(CONFIG_PATH);
+                .path(CONFIG_GRPC_PATH);
     }
 
     public static OTelLogsSourceConfig createLogsConfigWittSsl() {
@@ -50,6 +52,16 @@ public class OtelLogsSourceConfigFixture {
                 .sslKeyCertChainFile("data/certificate/test_cert.crt")
                 .sslKeyFile("data/certificate/test_decrypted_key.key")
                 .build();
+    }
+
+    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createBuilderForConfigForAcmeSsl() {
+        return createDefaultConfigBuilder()
+                .ssl(true)
+                .useAcmCertForSSL(true)
+                .awsRegion("us-east-1")
+                .acmCertificateArn("arn:aws:acm:us-east-1:account:certificate/1234-567-856456")
+                .sslKeyCertChainFile("data/certificate/test_cert.crt")
+                .sslKeyFile("data/certificate/test_decrypted_key.key");
     }
 
     public static OTelLogsSourceConfig createConfigWithBasicAuth() {

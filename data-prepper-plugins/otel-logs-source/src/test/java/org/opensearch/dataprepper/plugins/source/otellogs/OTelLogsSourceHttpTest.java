@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,7 +36,8 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -46,7 +46,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,8 +62,6 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
@@ -86,7 +83,6 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
-import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
@@ -103,13 +99,10 @@ import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 
 import io.grpc.BindableService;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
@@ -189,9 +182,9 @@ class OTelLogsSourceHttpTest {
     private RequestHeadersBuilder getDefaultRequestHeadersBuilder() {
         return RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892") // todo tlongo create constant
+                        .authority("127.0.0.1:21892")
                         .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
+                        .path(CONFIG_HTTP_PATH)
                         .contentType(MediaType.JSON_UTF_8);
     }
 
@@ -199,7 +192,7 @@ class OTelLogsSourceHttpTest {
     @MethodSource("getPathParams")
     void httpRequest_writesToBuffer_returnsSuccessfulResponse(String givenPath, String resolvedRequestPath) throws Exception {
         OTelLogsSource source = new OTelLogsSource(createDefaultConfigBuilder()
-                .path(givenPath)
+                .httpPath(givenPath)
                 .build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
@@ -222,7 +215,9 @@ class OTelLogsSourceHttpTest {
         source.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
-        WebClient.builder().factory(ClientFactory.insecure()).build().execute(
+        WebClient.builder()
+                .factory(ClientFactory.insecure()).
+                build().execute(
                         getDefaultRequestHeadersBuilder().scheme(SessionProtocol.HTTPS).build(),
                         HttpData.copyOf(JsonFormat.printer().print(request).getBytes())
                 )
@@ -236,7 +231,7 @@ class OTelLogsSourceHttpTest {
 
     private static Stream<Arguments> getPathParams() {
         return Stream.of(
-                Arguments.of(CONFIG_PATH, CONFIG_PATH),
+                Arguments.of(CONFIG_HTTP_PATH, CONFIG_HTTP_PATH),
                 Arguments.of("/${pipelineName}/v1/logs", "/test_pipeline/v1/logs")
         );
     }
@@ -361,8 +356,7 @@ class OTelLogsSourceHttpTest {
 
     @ParameterizedTest
     @ArgumentsSource(BufferExceptionToStatusArgumentsProvider.class)
-    // todo tlongo
-    void gRPC_request_returns_expected_status_for_exceptions_from_buffer(
+    void httpRequest_writingToBufferThrowsAnException_correctHttpStatusIsReturned(
             final Class<Exception> bufferExceptionClass,
             final HttpStatus expectedStatus) throws Exception {
         configureObjectUnderTest();
@@ -381,14 +375,14 @@ class OTelLogsSourceHttpTest {
     }
 
     @Test
-    void httpRequest_requestBodyIsTooLarge_returns413() throws InvalidProtocolBufferException {
+    void httpRequest_requestBodyIsTooLarge_returns507() throws InvalidProtocolBufferException {
         OTelLogsSource source = new OTelLogsSource(createDefaultConfigBuilder().maxRequestLength(ByteCount.ofBytes(4)).build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
 
         WebClient.of()
                 .execute(getDefaultRequestHeadersBuilder().build(), createJsonHttpPayload())
                 .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.REQUEST_ENTITY_TOO_LARGE, throwable))
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, INSUFFICIENT_STORAGE, throwable))
                 .join();
 
         source.stop();
