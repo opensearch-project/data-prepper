@@ -33,7 +33,7 @@ public class PrometheusSinkBufferWriterTest {
         sinkMetrics = mock(SinkMetrics.class);
         sinkFlushContext = mock(PrometheusSinkFlushContext.class);
         gauge = createGaugeMetric();
-        prometheusSinkBufferEntry = new PrometheusSinkBufferEntry(gauge);
+        prometheusSinkBufferEntry = new PrometheusSinkBufferEntry(gauge, true);
     }
 
     PrometheusSinkBufferWriter createObjectUnderTest() {

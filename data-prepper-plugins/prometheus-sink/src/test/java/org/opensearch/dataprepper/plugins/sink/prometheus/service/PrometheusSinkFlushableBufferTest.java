@@ -44,9 +44,9 @@ public class PrometheusSinkFlushableBufferTest {
     @BeforeEach
     void setUp() throws Exception {
         JacksonGauge gauge = createGaugeMetric("gauge1");
-        PrometheusSinkBufferEntry bufferEntry1 = new PrometheusSinkBufferEntry(gauge);
+        PrometheusSinkBufferEntry bufferEntry1 = new PrometheusSinkBufferEntry(gauge, true);
         gauge = createGaugeMetric("gauge2");
-        PrometheusSinkBufferEntry bufferEntry2 = new PrometheusSinkBufferEntry(gauge);
+        PrometheusSinkBufferEntry bufferEntry2 = new PrometheusSinkBufferEntry(gauge, true);
         buffer = new ArrayList<>();
         buffer.add((SinkBufferEntry)bufferEntry1);
         buffer.add((SinkBufferEntry)bufferEntry2);

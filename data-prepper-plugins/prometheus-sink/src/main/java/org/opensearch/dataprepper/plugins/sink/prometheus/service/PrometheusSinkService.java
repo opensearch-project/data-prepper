@@ -35,6 +35,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     private final PrometheusHttpSender httpSender;
     private final PluginSetting pluginSetting;
     private final List<Record<Event>> dlqRecords;
+    private final boolean sanitizeNames;
     private HeadlessPipeline dlqPipeline;
     private boolean dropIfNoDLQConfigured;
 
@@ -51,6 +52,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
                   new PrometheusSinkBufferWriter(sinkMetrics)),
               new PrometheusSinkFlushContext(httpSender),
               sinkMetrics);
+        sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
         this.dropIfNoDLQConfigured = false;
         this.dlqPipeline = dlqPipeline;
         this.dlqRecords = new ArrayList<>();
@@ -65,7 +67,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     }
 
     public SinkBufferEntry getSinkBufferEntry(final Event event) throws Exception {
-        return new PrometheusSinkBufferEntry(event);
+        return new PrometheusSinkBufferEntry(event, sanitizeNames);
     }
 
     @VisibleForTesting

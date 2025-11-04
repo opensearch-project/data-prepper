@@ -30,29 +30,14 @@ public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
     private final String metricName;
     private long timestamp;
+    private boolean sanitizeNames;
     List<TimeSeries> timeSeriesList;
     List<Label> labels;
     private int size;
 
-    public String toString() {
-        String result = "";
-        for (final TimeSeries ts : timeSeriesList) {
-            result += "{\n\tLabels:[";
-            for (final Label l : ts.getLabelsList()) {
-                result += "\t\t{"+l.getName()+", "+l.getValue()+"}";
-            }
-            result += "\t]";
-            result += "\tSamples:[";
-            for (final Sample s : ts.getSamplesList()) {
-                result += "\t\t{"+s.getValue()+", "+s.getTimestamp()+"}";
-            }
-            result += "\t]\n}";
-        }
-        return result;
-    }
-
-    public PrometheusTimeSeries(JacksonMetric metric) throws Exception {
-        metricName = metric.getName();
+    public PrometheusTimeSeries(JacksonMetric metric, final boolean sanitizeNames) throws Exception {
+        this.sanitizeNames = sanitizeNames;
+        metricName = sanitizeNames ? sanitizeMetricName(metric.getName()) : metric.getName();
         String time = metric.getTime();
         String startTime = metric.getStartTime();
         timestamp = (time != null) ? getTimeStampVal(time) : getTimeStampVal(startTime);
@@ -61,8 +46,7 @@ public class PrometheusTimeSeries {
         Map<String, Object> attributesMap = metric.getAttributes();
         Map<String, Object> flattenedAttributeMap = flattenMap(attributesMap);
         for (Map.Entry<String, Object> entry : flattenedAttributeMap.entrySet()) {
-            final String key = entry.getKey().replace(".", "_");
-            addLabel(key, entry.getValue());
+            addLabel(entry.getKey(), entry.getValue());
         }
         Map<String, Object> resourceAttributesMap = null;
         Map<String, Object> scopeAttributesMap = null;
@@ -79,20 +63,25 @@ public class PrometheusTimeSeries {
         if (resourceAttributesMap != null) {
             flattenedAttributeMap = flattenMap(resourceAttributesMap);
             for (Map.Entry<String, Object> entry : flattenedAttributeMap.entrySet()) {
-                final String key = entry.getKey().replace(".", "_");
-                addLabel("resource_"+key, entry.getValue());
+                addLabel("resource_"+entry.getKey(), entry.getValue());
             }
         }
         if (scopeAttributesMap != null) {
             flattenedAttributeMap = flattenMap(scopeAttributesMap);
             for (Map.Entry<String, Object> entry : flattenedAttributeMap.entrySet()) {
-                final String key = entry.getKey().replace(".", "_");
-                addLabel("scope_"+key, entry.getValue());
+                addLabel("scope_"+entry.getKey(), entry.getValue());
             }
         }
     }
 
-    private void addLabel(final String name, final Object value) {
+    private void addLabel(String name, final Object value) {
+        if (sanitizeNames) {
+            name = sanitizeLabelName(name);
+        }
+        addLabelSanitized(name, value);
+    }
+
+    private void addLabelSanitized(final String name, final Object value) {
         String valueStr;
         if (value instanceof String) {
             valueStr = (String)value;
@@ -109,6 +98,7 @@ public class PrometheusTimeSeries {
     }
 
     private void addTimeSeries(final String labelName, final String labelValue, final Double sampleValue) {
+        // labelName here is a constant string without any invalid characters
         Label label = Label.newBuilder().setName(labelName).setValue(labelValue).build();
         size += label.toByteArray().length;
         Sample sample = Sample.newBuilder().setValue(sampleValue).setTimestamp(timestamp).build();
@@ -123,6 +113,7 @@ public class PrometheusTimeSeries {
     private void addTimeSeries(final String metricName, final String labelName,
                                 final String labelValue, final Double sampleValue) {
         Label label1 = Label.newBuilder().setName("__name__").setValue(metricName).build();
+        // labelName here is a constant string without any invalid characters
         Label label2 = Label.newBuilder().setName(labelName).setValue(labelValue).build();
         size += label1.toByteArray().length + label2.toByteArray().length;
         Sample sample = Sample.newBuilder().setValue(sampleValue).setTimestamp(timestamp).build();
@@ -172,7 +163,7 @@ public class PrometheusTimeSeries {
         List<Double> explicitBounds = histogram.getExplicitBoundsList();
         List<Long> bucketCounts = histogram.getBucketCountsList();
         if (explicitBounds != null && bucketCounts != null) {
-            addLabel("__name__", metricName+"_bucket");
+            addLabelSanitized("__name__", metricName+"_bucket");
             for (int i = 0; i < bucketCounts.size(); i++) {
                 final String labelValue = (i == bucketCounts.size()-1) ? "+Inf" : explicitBounds.get(i).toString();
                 addTimeSeries("le", labelValue, (double)bucketCounts.get(i));
@@ -203,7 +194,7 @@ public class PrometheusTimeSeries {
         boolean negativeBucketsPresent = (negativeBucketCounts != null) && (negativeOffset != null);
 
         if (positiveBucketsPresent || negativeBucketsPresent) {
-            addLabel("__name__", metricName+"_bucket");
+            addLabelSanitized("__name__", metricName+"_bucket");
             if (positiveBucketsPresent) {
                 for (int i = 0; i < positiveBucketCounts.size(); i++) {
                     double bound = calculateBucketBound(i + positiveOffset + 1, scale);
@@ -235,6 +226,53 @@ public class PrometheusTimeSeries {
             }
         }
     }
+
+    public String toString() {
+        String result = "";
+        for (final TimeSeries ts : timeSeriesList) {
+            result += "{\n\tLabels:[";
+            for (final Label l : ts.getLabelsList()) {
+                result += "\t\t{"+l.getName()+", "+l.getValue()+"}";
+            }
+            result += "\t]";
+            result += "\tSamples:[";
+            for (final Sample s : ts.getSamplesList()) {
+                result += "\t\t{"+s.getValue()+", "+s.getTimestamp()+"}";
+            }
+            result += "\t]\n}";
+        }
+        return result;
+    }
+
+
+    private static String sanitizeMetricName(String name) {
+        return sanitizeName(name, true);  // metric names allow colon
+    }
+
+    private static String sanitizeLabelName(String name) {
+        return sanitizeName(name, false); // label names do NOT allow colon
+    }
+
+    private static String sanitizeName(String name, boolean allowColon) {
+        StringBuilder sb = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            sb.append(sanitizeChar(name.charAt(i), i == 0, allowColon));
+        }
+
+        return sb.toString();
+    }
+
+    private static char sanitizeChar(char c, boolean isFirst, boolean allowColon) {
+        if (allowColon && c == ':') {
+            return c;
+        }
+        if (isFirst) {
+            return (Character.isLetter(c)) ? c : '_';
+        } else {
+            return (Character.isLetterOrDigit(c)) ? c : '_';
+        }
+    }
+
 
     private static Map<String, Object> flattenMap(Map<String, Object> map) {
         Map<String, Object> flatMap = new HashMap<>();

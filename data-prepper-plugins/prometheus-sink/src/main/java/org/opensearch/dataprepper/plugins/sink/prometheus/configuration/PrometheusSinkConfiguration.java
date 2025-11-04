@@ -69,6 +69,13 @@ public class PrometheusSinkConfiguration {
     @DurationMax(seconds = 600)
     private Duration idleTimeout = DEFAULT_IDLE_TIMEOUT;
 
+    @JsonProperty("sanitize_names")
+    private Boolean sanitizeNames = true;
+
+    public Boolean getSanitizeNames() {
+        return sanitizeNames;
+    }
+
     public String getUrl() {
         return url;
     }

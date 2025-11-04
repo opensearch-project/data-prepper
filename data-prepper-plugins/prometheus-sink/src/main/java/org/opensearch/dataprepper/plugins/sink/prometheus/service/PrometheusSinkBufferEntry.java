@@ -18,9 +18,9 @@ public class PrometheusSinkBufferEntry implements SinkBufferEntry {
     final Event event;
     final PrometheusTimeSeries timeSeries;
 
-    public PrometheusSinkBufferEntry(final Event event) throws Exception {
+    public PrometheusSinkBufferEntry(final Event event, final boolean sanitizeNames) throws Exception {
         this.event = event;
-        timeSeries = getTimeSeriesForEvent();
+        timeSeries = getTimeSeriesForEvent(sanitizeNames);
     }
 
     public PrometheusTimeSeries getTimeSeries() {
@@ -42,10 +42,10 @@ public class PrometheusSinkBufferEntry implements SinkBufferEntry {
         return event;
     }
 
-    private PrometheusTimeSeries getTimeSeriesForEvent() throws Exception {
+    private PrometheusTimeSeries getTimeSeriesForEvent(final boolean sanitizeNames) throws Exception {
         if (event.getMetadata().getEventType().equals("METRIC")) {
             try {
-                PrometheusTimeSeries timeSeries = new PrometheusTimeSeries((JacksonMetric)event);
+                PrometheusTimeSeries timeSeries = new PrometheusTimeSeries((JacksonMetric)event, sanitizeNames);
                 if (event instanceof JacksonGauge) {
                     final JacksonGauge jacksonGauge = (JacksonGauge) event;
                     timeSeries.addGaugeMetric(jacksonGauge);

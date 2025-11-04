@@ -25,6 +25,7 @@ public class PrometheusSinkConfigurationTest {
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n" +
+                    " sanitize_names: false \n" +
                     " aws:\n" +
                     "          region: \"us-east-2\"\n" +
                     "          sts_role_arn: \"arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role\"\n" +
@@ -51,6 +52,7 @@ public class PrometheusSinkConfigurationTest {
         assertThat(prometheusSinkConfiguration.getRequestTimeout(), equalTo(Duration.ofSeconds(60)));
         assertThat(prometheusSinkConfiguration.getEncoding(), equalTo(CompressionOption.SNAPPY));
         assertThat(prometheusSinkConfiguration.getContentType(), equalTo(X_PROTOBUF));
+        assertThat(prometheusSinkConfiguration.getSanitizeNames(), equalTo(true));
         assertThat(prometheusSinkConfiguration.getRemoteWriteVersion(), equalTo(PrometheusSinkConfiguration.DEFAULT_REMOTE_WRITE_VERSION));
     }
     @Test
@@ -68,6 +70,7 @@ public class PrometheusSinkConfigurationTest {
         assertThat(prometheusSinkConfiguration.getRequestTimeout(), equalTo(Duration.ofSeconds(45)));
         assertThat(prometheusSinkConfiguration.getEncoding(), equalTo(CompressionOption.SNAPPY));
         assertThat(prometheusSinkConfiguration.getContentType(), equalTo(X_PROTOBUF));
+        assertThat(prometheusSinkConfiguration.getSanitizeNames(), equalTo(false));
         assertThat(prometheusSinkConfiguration.getRemoteWriteVersion(), equalTo(PrometheusSinkConfiguration.DEFAULT_REMOTE_WRITE_VERSION));
     }
 }
