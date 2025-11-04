@@ -85,7 +85,7 @@ public class DeleteEntryProcessorConfig {
 
         @AssertTrue(message = "exclude_from_delete only applies when with_keys_regex is configured.")
         boolean isExcludeFromDeleteValid() {
-            return excludeFromDelete != null && !excludeFromDelete.isEmpty() && withKeysRegex != null && !withKeysRegex.isEmpty();
+            return !((excludeFromDelete != null && !excludeFromDelete.isEmpty()) && (withKeysRegex == null || withKeysRegex.isEmpty()));
         }
 
         @JsonIgnore
