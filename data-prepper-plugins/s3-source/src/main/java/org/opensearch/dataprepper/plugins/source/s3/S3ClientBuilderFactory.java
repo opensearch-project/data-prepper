@@ -4,6 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.source.s3;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -23,24 +25,28 @@ public class S3ClientBuilderFactory {
     private final AwsCredentialsProvider credentialsProvider;
     private final S3Client s3Client;
     private final S3AsyncClient s3AsyncClient;
+
     public S3ClientBuilderFactory(final S3SourceConfig s3SourceConfig, AwsCredentialsProvider credentialsProvider){
         this.s3SourceConfig = s3SourceConfig;
         this.credentialsProvider = credentialsProvider;
         this.s3Client = createS3Client();
         this.s3AsyncClient = createS3AsyncClient();
     }
+
     /**
      * Create a S3Client Object for download the s3 Objects
      * @return a S3Client Object
      */
     public S3Client createS3Client() {
         LOG.info("Creating S3 client");
+        final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
             return S3Client.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
                 .crossRegionAccessEnabled(true)
                 .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(ClientOverrideConfiguration.builder()
                             .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
+                            .addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics))
                             .build())
                     .build();
     }
@@ -51,6 +57,7 @@ public class S3ClientBuilderFactory {
      */
     public S3AsyncClient createS3AsyncClient() {
         LOG.info("Creating S3 Async client");
+        final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
         return S3AsyncClient.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
                 .crossRegionAccessEnabled(true)
@@ -60,6 +67,7 @@ public class S3ClientBuilderFactory {
                 .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
+                        .addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics))
                         .build())
                 .build();
     }

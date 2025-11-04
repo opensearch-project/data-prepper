@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.source.sqs.common;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
@@ -28,11 +30,14 @@ public final class SqsClientFactory {
             final Region region,
             final AwsCredentialsProvider credentialsProvider) {
 
+        final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
+
         return SqsClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
+                        .addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics))
                         .build())
                 .build();
     }
