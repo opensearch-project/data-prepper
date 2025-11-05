@@ -1,11 +1,15 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -140,91 +144,36 @@ public class DeleteEntryProcessorConfigTests {
         assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
     }
 
-    @Test
-    void testIsExcludeFromDeleteValid_with_nonEmptyWithKeysRegexEntry_and_nonEmptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of("test.*"), Set.of(mock(EventKey.class)), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
+    @ParameterizedTest
+    @MethodSource("provideEntriesForExcludeFromDeleteValidation")
+    void testIsExcludeFromDeleteValid_with_entries(DeleteEntryProcessorConfig.Entry entry, boolean expectedResult) {
+        assertThat(entry.isExcludeFromDeleteValid(), equalTo(expectedResult));
     }
 
-    @Test
-    void testIsExcludeFromDeleteValid_with_nonEmptyWithKeysEntry() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                List.of(mock(EventKey.class)), null, null, null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nonEmptyWithKeysEntry_and_nonEmptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                List.of(mock(EventKey.class)), null, Set.of(mock(EventKey.class)), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(false));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_emptyWithKeysRegexEntry_and_nonEmptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of(), Set.of(mock(EventKey.class)), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(false));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nullWithKeysRegexEntry_and_nonEmptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, null, Set.of(mock(EventKey.class)), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(false));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nonEmptyWithKeysRegexEntry_and_emptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of("test.*"), Set.of(), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_emptyWithKeysRegexEntry_and_emptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of(), Set.of(), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nullWithKeysRegexEntry_and_emptyExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, null, Set.of(), null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nonEmptyWithKeysRegexEntry_and_nullExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of("test.*"), null, null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_emptyWithKeysRegexEntry_and_nullExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, List.of(), null, null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testIsExcludeFromDeleteValid_with_nullWithKeysRegexEntry_and_nullExcludeFromDelete() {
-        final DeleteEntryProcessorConfig.Entry withKeysRegexEntry = new DeleteEntryProcessorConfig.Entry(
-                null, null, null, null, null, null);
-
-        assertThat(withKeysRegexEntry.isExcludeFromDeleteValid(), equalTo(true));
+    private static Stream<Arguments> provideEntriesForExcludeFromDeleteValidation() {
+        return Stream.of(
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        List.of(mock(EventKey.class)), null, null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        List.of(mock(EventKey.class)), null, Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), Set.of(mock(EventKey.class)), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, null, null, null, null), true)
+        );
     }
 }
