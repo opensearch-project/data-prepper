@@ -61,6 +61,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperatio
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamDetector;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -150,6 +151,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExpressionEvaluator expressionEvaluator;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
+  private DataStreamDetector dataStreamDetector;
 
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
@@ -306,6 +308,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       queryExecutorService.submit(existingDocumentQueryManager);
     }
 
+    // Initialize Data Stream detector
+    this.dataStreamDetector = new DataStreamDetector(openSearchClient);
+
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
@@ -317,6 +322,20 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @Override
   public boolean isReady() {
     return initialized;
+  }
+
+  /**
+   * Determines the appropriate action for the given index, considering Data Stream requirements
+   */
+  private String determineAction(final String configuredAction, final String indexName) {
+    if (dataStreamDetector.isDataStream(indexName)) {
+      if (configuredAction != null && !configuredAction.equals(OpenSearchBulkActions.CREATE.toString())) {
+        LOG.warn("Data Stream '{}' requires 'create' action, but '{}' was configured. Using 'create' action.", 
+                indexName, configuredAction);
+      }
+      return OpenSearchBulkActions.CREATE.toString();
+    }
+    return configuredAction != null ? configuredAction : OpenSearchBulkActions.INDEX.toString();
   }
 
   private BulkOperation getBulkOperationForAction(final String action,
@@ -483,6 +502,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       if (eventAction.contains("${")) {
           eventAction = event.formatString(eventAction, expressionEvaluator);
       }
+      
+      // Determine final action based on Data Stream requirements
+      eventAction = determineAction(eventAction, indexName);
       if (OpenSearchBulkActions.fromOptionValue(eventAction) == null) {
         LOG.error("Unknown action {}, skipping the event", eventAction);
         invalidActionErrorsCounter.increment();
@@ -498,6 +520,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperation bulkOperation;
 
       try {
+        // Add @timestamp for Data Streams if missing
+        if (dataStreamDetector.isDataStream(indexName) && !event.containsKey("@timestamp")) {
+          event.put("@timestamp", event.getEventHandle().getInternalOriginationTime());
+        }
+        
         bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
       } catch (final Exception e) {
         LOG.error("An exception occurred while constructing the bulk operation for a document: ", e);

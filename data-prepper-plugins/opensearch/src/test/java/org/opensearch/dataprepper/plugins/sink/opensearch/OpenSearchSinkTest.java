@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamDetector;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
@@ -131,6 +132,9 @@ public class OpenSearchSinkTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private DataStreamDetector dataStreamDetector;
 
     @BeforeEach
     void setup() {
@@ -403,5 +407,65 @@ public class OpenSearchSinkTest {
         assertThat(failedDlqDataResult.getDocument(), equalTo(document));
         assertThat(failedDlqDataResult.getIndex(), equalTo(index));
         assertThat(failedDlqDataResult.getMessage(), equalTo(""));
+    }
+
+    @Test
+    void determineAction_returnsCreate_whenIndexIsDataStream() throws IOException {
+        when(indexConfiguration.getAction()).thenReturn("index");
+        
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use reflection to access the private method
+        try {
+            java.lang.reflect.Method method = OpenSearchSink.class.getDeclaredMethod("determineAction", String.class, String.class);
+            method.setAccessible(true);
+            
+            // Mock DataStreamDetector to return true for data stream
+            java.lang.reflect.Field field = OpenSearchSink.class.getDeclaredField("dataStreamDetector");
+            field.setAccessible(true);
+            field.set(objectUnderTest, dataStreamDetector);
+            
+            when(dataStreamDetector.isDataStream("my-data-stream")).thenReturn(true);
+            
+            String result = (String) method.invoke(objectUnderTest, "index", "my-data-stream");
+            assertThat(result, equalTo("create"));
+            
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void determineAction_returnsConfiguredAction_whenIndexIsNotDataStream() throws IOException {
+        when(indexConfiguration.getAction()).thenReturn("index");
+        
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use reflection to access the private method
+        try {
+            java.lang.reflect.Method method = OpenSearchSink.class.getDeclaredMethod("determineAction", String.class, String.class);
+            method.setAccessible(true);
+            
+            // Mock DataStreamDetector to return false for regular index
+            java.lang.reflect.Field field = OpenSearchSink.class.getDeclaredField("dataStreamDetector");
+            field.setAccessible(true);
+            field.set(objectUnderTest, dataStreamDetector);
+            
+            when(dataStreamDetector.isDataStream("regular-index")).thenReturn(false);
+            
+            String result = (String) method.invoke(objectUnderTest, "update", "regular-index");
+            assertThat(result, equalTo("update"));
+            
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
