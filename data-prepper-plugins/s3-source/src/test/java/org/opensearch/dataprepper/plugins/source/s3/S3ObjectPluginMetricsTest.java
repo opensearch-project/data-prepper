@@ -45,5 +45,6 @@ public class S3ObjectPluginMetricsTest {
         assertThat(metrics.getS3ObjectsSucceededCounter(),sameInstance(counter));
         assertThat(metrics.getS3ObjectsFailedAccessDeniedCounter(),sameInstance(counter));
         assertThat(metrics.getS3ObjectsFailedNotFoundCounter(),sameInstance(counter));
+        assertThat(metrics.getS3ObjectsThrottledCounter(),sameInstance(counter));
     }
 }
