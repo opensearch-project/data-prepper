@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.TokenPaginationCrawlerLeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
@@ -25,9 +27,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 @Named
-public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> {
+public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerProgressState> {
     private static final Logger log = LoggerFactory.getLogger(LeaderOnlyTokenCrawler.class);
     private static final Duration NO_ACK_TIME_OUT_SECONDS = Duration.ofSeconds(900);
     private static final Duration CHECKPOINT_INTERVAL = Duration.ofMinutes(1);
@@ -54,7 +57,6 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
     private final Timer bufferWriteTimer;
 
     private String lastToken;
-    private boolean shouldStopCrawl = false;
     private Duration noAckTimeout;
 
     public LeaderOnlyTokenCrawler(
@@ -73,7 +75,6 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
     @Override
     public Instant crawl(LeaderPartition leaderPartition,
                          EnhancedSourceCoordinator coordinator) {
-        shouldStopCrawl = false;
         long startTime = System.currentTimeMillis();
         Instant lastCheckpointTime = Instant.now();
         TokenPaginationCrawlerLeaderProgressState leaderProgressState =
@@ -84,7 +85,7 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
 
         Iterator<ItemInfo> itemIterator = ((LeaderOnlyTokenCrawlerClient) client).listItems(lastToken);
 
-        while (itemIterator.hasNext() && !shouldStopCrawl) {
+        while (itemIterator.hasNext()) {
             List<ItemInfo> batch = collectBatch(itemIterator);
             if (batch.isEmpty()) {
                 continue;
@@ -121,8 +122,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state, Buffer buffer, AcknowledgementSet acknowledgementSet) {
-
+    public void executePartition(PaginationCrawlerWorkerProgressState state, Buffer buffer, AcknowledgementSet acknowledgementSet) {
+        client.executePartition(state, buffer, acknowledgementSet);
     }
 
     private List<ItemInfo> collectBatch(Iterator<ItemInfo> iterator) {
@@ -148,12 +149,12 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
                         if (success) {
                             // On success: update checkpoint
                             acknowledgementSetSuccesses.increment();
-                            updateLeaderProgressState(leaderPartition, lastToken, coordinator);
                         } else {
-                            // On failure: Stop the crawl
+                            // On failure: Create a retry partition
                             acknowledgementSetFailures.increment();
-                            log.warn("Batch processing received negative acknowledgment for token: {}. Stopping current crawl.", lastToken);
-                            shouldStopCrawl = true;
+                            log.warn("Batch processing received negative acknowledgment for token: {}. Creating retry " +
+                                    "partition.", lastToken);
+                            createRetryPartition(batch, coordinator);
                         }
                     },
                     noAckTimeout
@@ -172,17 +173,19 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
 
                         if (!ackWaitDuration.minus(noAckTimeout).isNegative()) {
                             // No ack received within NO_ACK_TIME_OUT_SECONDS
-                            log.warn("Acknowledgment not received for batch with token {} past wait time. Stopping current crawl.", lastToken);
-                            shouldStopCrawl = true;
+                            log.warn("No acknowledgment received for batch with token: {}. Creating retry partition.", lastToken);
+                            createRetryPartition(batch, coordinator);
                             break;
                         }
                     }
+                    updateLeaderProgressState(leaderPartition, lastToken, coordinator);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Interrupted while waiting for acknowledgment", e);
                 } catch (Exception e) {
                     log.error("Failed to process batch ending with token {}", lastToken, e);
                     acknowledgementSet.complete();
+                    createRetryPartition(batch, coordinator);
                     throw e;
                 }
             });
@@ -200,6 +203,23 @@ public class LeaderOnlyTokenCrawler implements Crawler<SaasWorkerProgressState> 
             });
         }
     }
+
+    private void createRetryPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {
+        if (itemInfoList.isEmpty()) {
+            return;
+        }
+        ItemInfo itemInfo = itemInfoList.get(0);
+        String partitionKey = itemInfo.getPartitionKey();
+        List<String> itemIds = itemInfoList.stream().map(ItemInfo::getId).collect(Collectors.toList());
+        PaginationCrawlerWorkerProgressState state = new PaginationCrawlerWorkerProgressState();
+        state.setKeyAttributes(itemInfo.getKeyAttributes());
+        state.setItemIds(itemIds);
+        state.setExportStartTime(Instant.now());
+        state.setLoadedItems(itemInfoList.size());
+        SaasSourcePartition sourcePartition = new SaasSourcePartition(state, partitionKey);
+        coordinator.createPartition(sourcePartition);
+    }
+
 
     private void updateLeaderProgressState(LeaderPartition leaderPartition,
                                            String updatedToken,
