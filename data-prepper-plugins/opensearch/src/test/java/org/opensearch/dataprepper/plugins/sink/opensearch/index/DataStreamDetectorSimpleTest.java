@@ -35,13 +35,11 @@ class DataStreamDetectorSimpleTest {
 
     @Test
     void isDataStream_returnsFalse_whenClientThrowsException() {
-        // When OpenSearch client throws exception, should return false
         assertFalse(dataStreamDetector.isDataStream("test-index"));
     }
 
     @Test
     void clearCache_doesNotThrowException() {
         dataStreamDetector.clearCache();
-        // Should not throw any exception
     }
 }

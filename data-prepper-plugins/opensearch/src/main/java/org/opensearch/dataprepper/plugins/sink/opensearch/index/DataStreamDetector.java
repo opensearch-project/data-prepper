@@ -39,7 +39,6 @@ public class DataStreamDetector {
     
     private boolean checkDataStream(final String indexName) {
         try {
-            // Try to get data stream info for the specific name
             final GetDataStreamRequest request = GetDataStreamRequest.of(r -> r.name(indexName));
             final GetDataStreamResponse response = openSearchClient.indices().getDataStream(request);
             

@@ -308,7 +308,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       queryExecutorService.submit(existingDocumentQueryManager);
     }
 
-    // Initialize Data Stream detector
     this.dataStreamDetector = new DataStreamDetector(openSearchClient);
 
     this.initialized = true;
@@ -329,7 +328,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
    */
   private String determineAction(final String configuredAction, final String indexName) {
     if (dataStreamDetector.isDataStream(indexName)) {
-      if (configuredAction != null && !configuredAction.equals(OpenSearchBulkActions.CREATE.toString())) {
+      // Only warn if user explicitly configured a non-create action (excluding the default "index" action)
+      if (configuredAction != null && 
+          !configuredAction.equals(OpenSearchBulkActions.CREATE.toString()) &&
+          !configuredAction.equals(OpenSearchBulkActions.INDEX.toString())) {
         LOG.warn("Data Stream '{}' requires 'create' action, but '{}' was configured. Using 'create' action.", 
                 indexName, configuredAction);
       }
@@ -503,7 +505,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           eventAction = event.formatString(eventAction, expressionEvaluator);
       }
       
-      // Determine final action based on Data Stream requirements
       eventAction = determineAction(eventAction, indexName);
       if (OpenSearchBulkActions.fromOptionValue(eventAction) == null) {
         LOG.error("Unknown action {}, skipping the event", eventAction);
@@ -520,7 +521,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperation bulkOperation;
 
       try {
-        // Add @timestamp for Data Streams if missing
         if (dataStreamDetector.isDataStream(indexName) && !event.containsKey("@timestamp")) {
           event.put("@timestamp", event.getEventHandle().getInternalOriginationTime());
         }
