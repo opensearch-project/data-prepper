@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.CrawlerException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -180,9 +182,14 @@ class Office365CrawlerClientTest {
             return null;
         }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
 
-        client.executePartition(state, buffer, acknowledgementSet);
+         CrawlerException exception = assertThrows(CrawlerException.class,
+            () -> client.executePartition(state, buffer, acknowledgementSet));
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        assertEquals("Error processing audit log: ID1", exception.getMessage());
+        assertFalse(exception.isRetryable());
+        assertTrue(exception.getCause() instanceof CrawlerException);
+        assertEquals("Failed to parse audit log: ID1", exception.getCause().getMessage());
+
         verify(mockRequestErrorsCounter, never()).increment();
     }
 
@@ -250,10 +257,11 @@ class Office365CrawlerClientTest {
                 .when(buffer)
                 .writeAll(any(), anyInt());
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        CrawlerException exception = assertThrows(CrawlerException.class,
                 () -> client.executePartition(state, buffer, acknowledgementSet));
 
         assertEquals("Error writing to buffer", exception.getMessage());
+        assertTrue(exception.isRetryable());
         verify(buffer).writeAll(any(), anyInt());
     }
 
@@ -281,9 +289,15 @@ class Office365CrawlerClientTest {
             return null;
         }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
 
-        client.executePartition(state, buffer, acknowledgementSet);
+        CrawlerException exception = assertThrows(CrawlerException.class,
+            () -> client.executePartition(state, buffer, acknowledgementSet));
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        assertEquals("Error processing audit log: ID1", exception.getMessage());
+        assertFalse(exception.isRetryable());
+        assertTrue(exception.getCause() instanceof CrawlerException);
+        assertEquals("Received null log content for URI: uri1", exception.getCause().getMessage());
+
+        verify(buffer, never()).writeAll(argThat(list -> list.isEmpty()), anyInt());
     }
 
     @Test
@@ -311,9 +325,15 @@ class Office365CrawlerClientTest {
             return null;
         }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
 
-        client.executePartition(state, buffer, acknowledgementSet);
+        CrawlerException exception = assertThrows(CrawlerException.class,
+            () -> client.executePartition(state, buffer, acknowledgementSet));
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        assertEquals("Error processing audit log: ID1", exception.getMessage());
+        assertFalse(exception.isRetryable());
+        assertTrue(exception.getCause() instanceof CrawlerException);
+        assertEquals("Missing Workload field in audit log: ID1", exception.getCause().getMessage());
+
+        verify(buffer, never()).writeAll(argThat(list -> list.isEmpty()), anyInt());
     }
 
     @Test
@@ -330,14 +350,43 @@ class Office365CrawlerClientTest {
                 any(Instant.class),
                 any(Instant.class),
                 isNull()
-        )).thenThrow(new RuntimeException("Search audit logs failed"));
+        )).thenThrow(new CrawlerException("Search audit logs failed", true));
 
         // Execute and verify exception
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        CrawlerException exception = assertThrows(CrawlerException.class,
                 () -> client.executePartition(state, buffer, acknowledgementSet));
 
         // Verify exception message and counter increment
         assertEquals("Search audit logs failed", exception.getMessage());
+        assertTrue(exception.isRetryable());
         verify(mockRequestErrorsCounter).increment();
+    }
+
+    @Test
+    void testExecutePartitionWithNonCrawlerException() throws Exception {
+        // Create the counter mock before creating the client
+        Counter mockRequestErrorsCounter = mock(Counter.class);
+        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);  // Use the constant
+
+        // Create client after counter is mocked
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+
+        // Simulate a non-CrawlerException (like RuntimeException)
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenThrow(new RuntimeException("Unexpected error"));
+
+        // Execute and verify exception
+        CrawlerException exception = assertThrows(CrawlerException.class,
+                () -> client.executePartition(state, buffer, acknowledgementSet));
+
+        // Verify:
+        assertEquals("Failed to process partition", exception.getMessage());
+        assertFalse(exception.isRetryable());
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        verify(mockRequestErrorsCounter).increment();  // Verify counter increment
     }
 }

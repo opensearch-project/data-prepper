@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Authen
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Oauth2Config;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -90,5 +91,12 @@ class Office365SourceConfigTest {
     void testGetClientSecretValue() {
         String actualClientSecret = (String) config.getAuthenticationConfiguration().getOauth2().getClientSecret().getValue();
         assertEquals(clientSecret, actualClientSecret);
+    }
+
+    @Test
+    void testDefaultDurationValues() {
+        // Test default values from CrawlerSourceConfig interface
+        assertEquals(Duration.ofDays(30), config.getDurationToGiveUpRetry());
+        assertEquals(Duration.ofDays(1), config.getDurationToDelayRetry());
     }
 }

@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.CrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
@@ -123,20 +123,10 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                             if (record != null) {
                                 records.add(record);
                             }
-                        } catch (Office365Exception e) {
-
+                        } catch (CrawlerException e) {
                             log.error(NOISY, "{} error processing audit log: {}",
                                     e.isRetryable() ? "Retryable" : "Non-retryable", logId, e);
-                            if (e.isRetryable()) {
-                                throw new RuntimeException("Retryable error processing audit log: " + logId, e);
-                            } else {
-                                // TODO: When pipeline DLQ is ready, add this record to DLQ instead of dropping the record
-                                log.error(NOISY, "Non-retryable error - record will be dropped. Error processing audit log: {}", logId, e);
-                            }
-                        } catch (Exception e) {
-                            // Unexpected errors are treated as retryable to be safe
-                            log.error(NOISY, "Unexpected error processing audit log: {}", logId, e);
-                            throw new RuntimeException("Unexpected error processing audit log: " + logId, e);
+                            throw new CrawlerException("Error processing audit log: " + logId, e, e.isRetryable());
                         }
                     }
                 }
@@ -161,19 +151,23 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
             requestErrorsCounter.increment();
-            throw e;
+            if (e instanceof CrawlerException) {
+                throw (CrawlerException) e;
+            }
+            // any other exceptions = non-retryable
+            throw new CrawlerException("Failed to process partition", e, false);
         }
     }
 
-    private Record<Event> processAuditLog(Map<String, Object> metadata) throws Office365Exception {
+    private Record<Event> processAuditLog(Map<String, Object> metadata) throws CrawlerException {
         String contentUri = (String) metadata.get(CONTENT_URI);
         if (contentUri == null) {
-            throw new Office365Exception("Missing contentUri in metadata", false);
+            throw new CrawlerException("Missing contentUri in metadata", false);
         }
 
         String logContent = service.getAuditLog(contentUri);
         if (logContent == null) {
-            throw new Office365Exception("Received null log content for URI: " + contentUri, false);
+            throw new CrawlerException("Received null log content for URI: " + contentUri, false);
         }
         String logId = (String) metadata.get(CONTENT_ID);
 
@@ -191,7 +185,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
 
             String contentType = (String) data.get("Workload");
             if (contentType == null) {
-                throw new Office365Exception("Missing Workload field in audit log: " + logId, false);
+                throw new CrawlerException("Missing Workload field in audit log: " + logId, false);
             }
 
             Event event = JacksonEvent.builder()
@@ -202,7 +196,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
             return new Record<>(event);
         } catch (JsonProcessingException e) {
             // JSON parsing errors are non-retryable as they indicate malformed data
-            throw new Office365Exception("Failed to parse audit log: " + logId, e, false);
+            throw new CrawlerException("Failed to parse audit log: " + logId, e, false);
         }
     }
 
@@ -235,7 +229,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                 retryCount++;
                 if (retryCount >= maxRetries) {
                     bufferWriteFailuresCounter.increment();
-                    throw new RuntimeException("Failed to write to buffer after " + maxRetries + " attempts", e);
+                    // allows all writeToBuffer exceptions to be retryable to keep current behaviour of immediate retry by WorkerScheduler
+                    throw new CrawlerException("Failed to write to buffer after " + maxRetries + " attempts", e, true);
                 }
 
                 bufferWriteRetryAttemptsCounter.increment();
@@ -244,16 +239,13 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
 
                 try {
                     Thread.sleep(currentBackoff);
-                    // TODO: Update worker partition state to prevent timeout
-                    // Ideally, we want to call the saveWorkerPartitionState and extend the lease like so
-                    // coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("Buffer write retry interrupted", ie);
+                    throw new CrawlerException("Buffer write retry interrupted", ie, true);
                 }
             } catch (Exception e) {
                 bufferWriteFailuresCounter.increment();
-                throw new RuntimeException("Error writing to buffer", e);
+                throw new CrawlerException("Error writing to buffer", e, true);
             }
         }
     }
