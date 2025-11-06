@@ -32,6 +32,7 @@ import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -193,7 +194,16 @@ class ShardConsumerFactoryTest {
         Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
         assertThat(consumer, notNullValue());
         // Should get iterators twice
-        verify(dynamoDbStreamsClient, times(2)).getShardIterator(any(GetShardIteratorRequest.class));
+
+        final ArgumentCaptor<GetShardIteratorRequest> captor = ArgumentCaptor.forClass(GetShardIteratorRequest.class);
+        verify(dynamoDbStreamsClient, times(2)).getShardIterator(captor.capture());
+        final List<GetShardIteratorRequest> getShardIteratorRequests = captor.getAllValues();
+
+        final GetShardIteratorRequest lastShardIteratorRequest = getShardIteratorRequests.get(0);
+        assertThat(lastShardIteratorRequest.shardIteratorType(), equalTo(ShardIteratorType.AT_SEQUENCE_NUMBER));
+
+        final GetShardIteratorRequest getShardIteratorRequest = getShardIteratorRequests.get(1);
+        assertThat(getShardIteratorRequest.shardIteratorType(), equalTo(ShardIteratorType.TRIM_HORIZON));
 
         verify(streamApiInvocations, times(2)).increment();
 

@@ -27,4 +27,5 @@ public class LeaderProgressState {
     public void setStreamArns(List<String> streamArns) {
         this.streamArns = streamArns;
     }
+
 }

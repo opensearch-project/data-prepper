@@ -362,5 +362,4 @@ public class LeaderScheduler implements Runnable {
         ExportPartition exportPartition = new ExportPartition(tableArn, exportTime, Optional.of(exportProgressState));
         coordinator.createPartition(exportPartition);
     }
-
 }
