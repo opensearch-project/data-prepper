@@ -167,6 +167,7 @@ fragment
 FunctionArg
     : JsonPointer
     | String
+    | SUBTRACT? Integer
     ;
 
 variableIdentifier
