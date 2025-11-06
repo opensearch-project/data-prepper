@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
@@ -29,6 +30,10 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sqs.model.KmsThrottledException;
+import software.amazon.awssdk.services.sqs.model.KmsAccessDeniedException;
+import software.amazon.awssdk.services.sqs.model.KmsNotFoundException;
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,6 +51,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 
@@ -222,5 +228,57 @@ class SqsWorkerCommonTest {
                 newVisibilityTimeout, messageId);
 
         verify(sqsVisibilityTimeoutChangeFailedCount).increment();
+    }
+
+    @Test
+    void testRecordSqsException_KmsThrottledException() {
+        testRecordSqsException(mock(KmsThrottledException.class), SqsWorkerCommon.SQS_MESSAGE_THROTTLED_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_403Status() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.statusCode()).thenReturn(403);
+        testRecordSqsException(sqsException, SqsWorkerCommon.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_KmsAccessDeniedException() {
+        testRecordSqsException(mock(KmsAccessDeniedException.class), SqsWorkerCommon.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_404Status() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.statusCode()).thenReturn(404);
+        testRecordSqsException(sqsException, SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_QueueDoesNotExistException() {
+        testRecordSqsException(mock(QueueDoesNotExistException.class), SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_KmsNotFoundException() {
+        testRecordSqsException(mock(KmsNotFoundException.class), SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+    }
+
+    @Test
+    void testRecordSqsException_isThrottlingException() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.isThrottlingException()).thenReturn(true);
+        testRecordSqsException(sqsException, SqsWorkerCommon.SQS_MESSAGE_THROTTLED_METRIC_NAME);
+    }
+
+    private void testRecordSqsException(AwsServiceException exception, String metricName) {
+        final Counter expectedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(metricName)).thenReturn(expectedCounter);
+        final SqsWorkerCommon testWorker = new SqsWorkerCommon(backoff, pluginMetrics, acknowledgementSetManager);
+
+        testWorker.recordSqsException(exception);
+
+        verify(expectedCounter).increment();
+        verifyNoMoreInteractions(expectedCounter);
     }
 }

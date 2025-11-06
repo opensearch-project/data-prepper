@@ -17,13 +17,18 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
+import software.amazon.awssdk.services.sqs.model.KmsAccessDeniedException;
+import software.amazon.awssdk.services.sqs.model.KmsNotFoundException;
+import software.amazon.awssdk.services.sqs.model.KmsThrottledException;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
@@ -41,6 +46,9 @@ public class SqsWorkerCommon {
     public static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
+    public static final String SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME = "sqsMessagesAccessDenied";
+    public static final String SQS_MESSAGE_THROTTLED_METRIC_NAME = "sqsMessagesThrottled";
+    public static final String SQS_QUEUE_NOT_FOUND_METRIC_NAME = "sqsQueueNotFound";
 
     private final Backoff standardBackoff;
     private final PluginMetrics pluginMetrics;
@@ -54,6 +62,9 @@ public class SqsWorkerCommon {
     private final Counter acknowledgementSetCallbackCounter;
     private final Counter sqsVisibilityTimeoutChangedCount;
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
+    private final Counter sqsMessageAccessDeniedCounter;
+    private final Counter sqsMessageThrottledCounter;
+    private final Counter sqsQueueNotFoundCounter;
 
     public SqsWorkerCommon(final Backoff standardBackoff,
                            final PluginMetrics pluginMetrics,
@@ -73,6 +84,9 @@ public class SqsWorkerCommon {
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
         sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
+        sqsMessageAccessDeniedCounter = pluginMetrics.counter(SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME);
+        sqsMessageThrottledCounter = pluginMetrics.counter(SQS_MESSAGE_THROTTLED_METRIC_NAME);
+        sqsQueueNotFoundCounter = pluginMetrics.counter(SQS_QUEUE_NOT_FOUND_METRIC_NAME);
     }
 
     public List<Message> pollSqsMessages(final String queueUrl,
@@ -91,6 +105,7 @@ public class SqsWorkerCommon {
         }
         catch (SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            recordSqsException(e);
             applyBackoff();
             return Collections.emptyList();
         }
@@ -211,5 +226,22 @@ public class SqsWorkerCommon {
 
     public void stop() {
         isStopped = true;
+    }
+
+    public void recordSqsException(final AwsServiceException e) {
+        // AWS SQS emits some of their exceptions without the matching HTTP code. As we want to generate an aggregate version of
+        // these exceptions, we have to explicitly catch the type alongside the status code for the ones that leverage the status
+        // code (i.e. InvalidAddressException)
+        if (e.statusCode() == 403 ||
+                e instanceof KmsAccessDeniedException) {
+            sqsMessageAccessDeniedCounter.increment();
+        } else if (e.statusCode() == 404 ||
+                e instanceof QueueDoesNotExistException ||
+                e instanceof KmsNotFoundException) {
+            sqsQueueNotFoundCounter.increment();
+        } else if (e.isThrottlingException() ||
+                e instanceof KmsThrottledException) {
+            sqsMessageThrottledCounter.increment();
+        }
     }
 }
