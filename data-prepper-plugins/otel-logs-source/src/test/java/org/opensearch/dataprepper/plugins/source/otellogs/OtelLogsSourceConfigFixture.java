@@ -46,16 +46,15 @@ public class OtelLogsSourceConfigFixture {
                 .compression(CompressionOption.NONE);
     }
 
-    public static OTelLogsSourceConfig createLogsConfigWithSsl() {
+    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createBuilderForConfigWithSsl() {
         return createDefaultConfigBuilder()
                 .ssl(true)
                 .useAcmCertForSSL(false)
                 .sslKeyCertChainFile("data/certificate/test_cert.crt")
-                .sslKeyFile("data/certificate/test_decrypted_key.key")
-                .build();
+                .sslKeyFile("data/certificate/test_decrypted_key.key");
     }
 
-    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createBuilderForConfigForAcmeSsl() {
+    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createBuilderForConfigWithAcmeSsl() {
         return createDefaultConfigBuilder()
                 .ssl(true)
                 .useAcmCertForSSL(true)

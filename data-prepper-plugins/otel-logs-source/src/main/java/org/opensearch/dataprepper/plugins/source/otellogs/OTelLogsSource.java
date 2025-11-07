@@ -146,8 +146,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
         } else {
             LOG.warn("Creating otlp logs source without SSL/TLS. This is not secure.");
-            // todo tlongo get url for source docs
-            LOG.warn("In order to set up TLS for the otlp logs source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
+            LOG.warn("In order to set up TLS for the otlp logs source, go here: https://docs.opensearch.org/latest/data-prepper/pipelines/configuration/sources/otel-logs-source/#ssl");
             serverBuilder.http(oTelLogsSourceConfig.getPort());
         }
 

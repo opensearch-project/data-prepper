@@ -28,11 +28,7 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 public class ArmeriaHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);
 
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
-    public static final String BAD_REQUESTS = "badRequests";
-    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
-    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
@@ -62,7 +58,7 @@ public class ArmeriaHttpService {
     @Post("")
     @Consumes(value = "application/json")
     public ExportTraceServiceResponse exportLog(ExportLogsServiceRequest request) {
-//        requestsReceivedCounter.increment();
+        requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
         requestProcessDuration.record(() -> processRequest(request));
@@ -103,8 +99,5 @@ public class ArmeriaHttpService {
         }
 
         successRequestsCounter.increment();
-        // todo tlong solve
-//        responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
-//        responseObserver.onCompleted();
     }
 }

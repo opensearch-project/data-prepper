@@ -107,10 +107,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigForAcmeSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithAcmeSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
 
@@ -213,7 +213,7 @@ class OTelLogsSourceGrpcTest {
             settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
             settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
 
-            final OTelLogsSource source = new OTelLogsSource(createLogsConfigWithSsl(), pluginMetrics, pluginFactory, pipelineDescription);
+            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithSsl().build(), pluginMetrics, pluginFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -240,7 +240,7 @@ class OTelLogsSourceGrpcTest {
             when(certificate.getPrivateKey()).thenReturn(keyAsString);
             when(certificateProvider.getCertificate()).thenReturn(certificate);
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigForAcmeSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithAcmeSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -274,7 +274,7 @@ class OTelLogsSourceGrpcTest {
             when(certificateProvider.getCertificate()).thenReturn(certificate);
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
 
-            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigForAcmeSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithAcmeSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }
@@ -305,7 +305,7 @@ class OTelLogsSourceGrpcTest {
             when(certificateProvider.getCertificate()).thenReturn(certificate);
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
 
-            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigForAcmeSsl().healthCheck(false).build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            final OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithAcmeSsl().healthCheck(false).build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }

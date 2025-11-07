@@ -32,7 +32,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
@@ -112,7 +112,6 @@ import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
 class OTelLogsSourceHttpTest {
-    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
 
     @Mock
@@ -207,7 +206,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpsRequest_requestIsProcessed_writesToBufferAndReturnsSuccessfulResponse() throws Exception {
-        OTelLogsSource source = new OTelLogsSource(createLogsConfigWithSsl(), pluginMetrics, pluginFactory, pipelineDescription);
+        OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithSsl().build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
