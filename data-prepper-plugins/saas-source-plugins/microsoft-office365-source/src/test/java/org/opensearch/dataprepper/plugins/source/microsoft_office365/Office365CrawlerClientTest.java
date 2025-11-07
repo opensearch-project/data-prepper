@@ -57,6 +57,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQUEST_ERRORS;
+
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class Office365CrawlerClientTest {
@@ -154,7 +156,7 @@ class Office365CrawlerClientTest {
 
          // Mock the total failures counter
         Counter mockRequestErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter("requestErrors")).thenReturn(mockRequestErrorsCounter);
+        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -318,7 +320,7 @@ class Office365CrawlerClientTest {
     void testExecutePartitionWithSearchAuditLogsError() throws Exception {
         // Mock the total failures counter before creating the client
         Counter mockRequestErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter("requestErrors")).thenReturn(mockRequestErrorsCounter);
+        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);
 
         Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
 
