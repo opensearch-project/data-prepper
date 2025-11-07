@@ -1,11 +1,15 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,35 +34,146 @@ public class DeleteEntryProcessorConfigTests {
 
         assertThat(objectUnderTest.isValidWithKeysRegexPattern(), equalTo(false));
     }
-    
+
     @Test
-    void testisExcludeFromDeleteValid_with_valid_config() throws NoSuchFieldException, IllegalAccessException{
+    void testisExcludeFromDeleteValid_with_nonEmptyWithKeys() throws NoSuchFieldException, IllegalAccessException{
         final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
-        final List<String> regexKeys = List.of("test.*");
-        final Set<EventKey> excludeKeys = Set.of(mock(EventKey.class));
-        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", regexKeys);
-        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", excludeKeys);
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", List.of("test1"));
 
         assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
     }
 
     @Test
-    void test_with_keys_valid_config() throws NoSuchFieldException, IllegalAccessException{
+    void testisExcludeFromDeleteValid_with_nonEmptyWithKeys_and_nonEmptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
         final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
-        final List<String> regexKeys = List.of("test.*");
-        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", regexKeys);
 
-        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
-    }
-
-    @Test
-    void testisExcludeFromDeleteValid_with_invalid_config() throws NoSuchFieldException, IllegalAccessException{
-        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
-        final List<EventKey> testKeys = List.of(mock(EventKey.class));
-        final Set<EventKey> excludeKeys = Set.of(mock(EventKey.class));
-        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", testKeys);
-        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", excludeKeys);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", List.of("test1"));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of(mock(EventKey.class)));
 
         assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(false));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nonEmptyWithKeysRegex_and_nonEmptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of("test.*"));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of(mock(EventKey.class)));
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nullWithKeysRegex_and_nonEmptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", null);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of(mock(EventKey.class)));
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(false));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_EmptyWithKeysRegex_and_nonEmptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of());
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of(mock(EventKey.class)));
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(false));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nullWithKeysRegex_and_emptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", null);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of());
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_emptyWithKeysRegex_and_emptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of());
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of());
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nonEmptyWithKeysRegex_and_emptyExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of("^tes.*"));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", Set.of());
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nullWithKeysRegex_and_nullExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", null);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", null);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_emptyWithKeysRegex_and_nullExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of());
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", null);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_nonEmptyWithKeysRegex_and_nullExcludeKeys() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", List.of("^tes.*"));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", null);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideEntriesForExcludeFromDeleteValidation")
+    void testIsExcludeFromDeleteValid_with_entries(DeleteEntryProcessorConfig.Entry entry, boolean expectedResult) {
+        assertThat(entry.isExcludeFromDeleteValid(), equalTo(expectedResult));
+    }
+
+    private static Stream<Arguments> provideEntriesForExcludeFromDeleteValidation() {
+        return Stream.of(
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        List.of(mock(EventKey.class)), null, null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        List.of(mock(EventKey.class)), null, Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), Set.of(mock(EventKey.class)), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, Set.of(mock(EventKey.class)), null, null, null), false),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, Set.of(), null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of("test.*"), null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, List.of(), null, null, null, null), true),
+                Arguments.of(new DeleteEntryProcessorConfig.Entry(
+                        null, null, null, null, null, null), true)
+        );
     }
 }

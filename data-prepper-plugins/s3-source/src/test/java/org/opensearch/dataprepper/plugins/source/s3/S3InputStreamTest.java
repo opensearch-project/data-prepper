@@ -60,6 +60,7 @@ class S3InputStreamTest {
     private DistributionSummary s3ObjectSizeProcessedSummary;
     private Counter s3ObjectsFailedNotFoundCounter;
     private Counter s3ObjectsFailedAccessDeniedCounter;
+    private Counter s3ObjectsThrottledCounter;
     private String bucketName;
     private String key;
 
@@ -68,6 +69,7 @@ class S3InputStreamTest {
         s3ObjectSizeProcessedSummary = mock(DistributionSummary.class);
         s3ObjectsFailedNotFoundCounter = mock(Counter.class);
         s3ObjectsFailedAccessDeniedCounter = mock(Counter.class);
+        s3ObjectsThrottledCounter = mock(Counter.class);
 
         bucketName = UUID.randomUUID().toString();
         key = UUID.randomUUID().toString();
@@ -77,6 +79,7 @@ class S3InputStreamTest {
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter()).thenReturn(s3ObjectsFailedNotFoundCounter);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter()).thenReturn(s3ObjectsFailedAccessDeniedCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectsThrottledCounter()).thenReturn(s3ObjectsThrottledCounter);
     }
 
     private S3InputStream createObjectUnderTest() {
@@ -559,6 +562,19 @@ class S3InputStreamTest {
         assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
 
         verify(s3ObjectsFailedAccessDeniedCounter).increment();
+    }
+
+    @Test
+    void testS3ObjectsThrottledCounter() {
+        S3Exception throttledException = mock(S3Exception.class);
+        when(throttledException.isThrottlingException()).thenReturn(true);
+        
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenThrow(throttledException);
+
+        final S3InputStream s3InputStream = createObjectUnderTest();
+        assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
+
+        verify(s3ObjectsThrottledCounter).increment();
     }
 
     private static Stream<Class<? extends Throwable>> retryableExceptions() {

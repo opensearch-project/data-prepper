@@ -1,5 +1,8 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +17,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.TokenPaginationCrawlerLeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
@@ -29,12 +34,14 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -144,29 +151,79 @@ class LeaderOnlyTokenCrawlerTest {
     }
 
     @Test
-    void testNegativeAcknowledgment() {
-        List<ItemInfo> items = createTestItems(BATCH_SIZE + 1);
-        when(client.listItems(INITIAL_TOKEN)).thenReturn(items.iterator());
-        when(acknowledgementSetManager.create(any(), eq(TEST_TIMEOUT)))
-                .thenReturn(acknowledgementSet);
+    void testRetryPartitionStateSerializationAndDeserialization() {
+        List<ItemInfo> batch = createTestItems( 1);
 
-        ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+        // Mock client to return our test items
+        when(client.listItems(INITIAL_TOKEN)).thenReturn(batch.iterator());
 
+        // Capture the created partition
+        ArgumentCaptor<SaasSourcePartition> partitionCaptor = ArgumentCaptor.forClass(SaasSourcePartition.class);
+
+        // Simulate negative acknowledgment
+        when(acknowledgementSetManager.create(any(), any())).thenAnswer(inv -> {
+            Consumer<Boolean> callback = inv.getArgument(0);
+            callback.accept(false);
+            return acknowledgementSet;
+        });
+
+        // Create retry partition
         crawler.setAcknowledgementsEnabled(true);
         crawler.crawl(leaderPartition, coordinator);
 
-        verify(acknowledgementSetManager).create(callbackCaptor.capture(), eq(TEST_TIMEOUT));
+        // Verify partition creation and get original state
+        verify(coordinator).createPartition(partitionCaptor.capture());
+        SaasSourcePartition originalPartition = partitionCaptor.getValue();
+        PaginationCrawlerWorkerProgressState originalState =
+                (PaginationCrawlerWorkerProgressState) originalPartition.getProgressState().get();
 
-        // Simulate negative acknowledgment
-        callbackCaptor.getValue().accept(false);
+        // Test serialization/deserialization
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule());  // For Instant serialization
 
-        verify(client, times(1)).writeBatchToBuffer(any(), any(), any());
-        verify(coordinator, never()).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+        try {
+            // Serialize state
+            String serializedState = objectMapper.writeValueAsString(originalState);
+
+            // Deserialize state
+            PaginationCrawlerWorkerProgressState deserializedState =
+                    objectMapper.readValue(serializedState, PaginationCrawlerWorkerProgressState.class);
+
+            // Verify deserialized state matches original
+            assertEquals(originalState.getItemIds(), deserializedState.getItemIds());
+            assertEquals(originalState.getKeyAttributes(), deserializedState.getKeyAttributes());
+            assertEquals(originalState.getExportStartTime(), deserializedState.getExportStartTime());
+            assertEquals(originalState.getLoadedItems(), deserializedState.getLoadedItems());
+        } catch (JsonProcessingException e) {
+            fail("Serialization/deserialization failed", e);
+        }
     }
 
     @Test
+    void testNegativeAcknowledgment() {
+        List<ItemInfo> items = createTestItems(1);
+        when(client.listItems(INITIAL_TOKEN)).thenReturn(items.iterator());
+
+        // Setup immediate negative acknowledgment
+        doAnswer(invocation -> {
+            Consumer<Boolean> callback = invocation.getArgument(0);
+            callback.accept(false);  // Trigger negative ack immediately
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(), eq(TEST_TIMEOUT));
+
+        crawler.setAcknowledgementsEnabled(true);
+        crawler.crawl(leaderPartition, coordinator);
+
+        // Verify behavior
+        verify(client, times(1)).writeBatchToBuffer(any(), any(), any());
+        verify(coordinator, times(1)).createPartition(any());
+        verify(acknowledgementSet, times(1)).complete();
+    }
+
+
+    @Test
     void testAcknowledgmentTimeout() {
-        List<ItemInfo> items = createTestItems(BATCH_SIZE + 1);
+        List<ItemInfo> items = createTestItems( 1);
         when(client.listItems(INITIAL_TOKEN)).thenReturn(items.iterator());
         when(acknowledgementSetManager.create(any(), eq(TEST_TIMEOUT)))
                 .thenReturn(acknowledgementSet);
@@ -178,13 +235,10 @@ class LeaderOnlyTokenCrawlerTest {
 
         verify(acknowledgementSetManager).create(callbackCaptor.capture(), eq(TEST_TIMEOUT));
 
-        // Verify:
-        // 1. Only first batch was processed
+        // Verify timeout behavior
         verify(client, times(1)).writeBatchToBuffer(any(), any(), any());
-        // 2. No checkpoint update happened
-        verify(coordinator, never()).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
-        // 3. Acknowledgment set was completed
         verify(acknowledgementSet).complete();
+        verify(coordinator).createPartition(any());
     }
 
 

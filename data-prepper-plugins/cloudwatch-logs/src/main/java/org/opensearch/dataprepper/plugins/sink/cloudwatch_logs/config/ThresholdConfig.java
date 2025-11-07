@@ -44,7 +44,7 @@ public class ThresholdConfig {
     private ByteCount maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
 
     @JsonProperty("flush_interval")
-    @DurationMin(seconds = 60)
+    @DurationMin(seconds = 10)
     @DurationMax(seconds = 3600)
     private Duration flushInterval = Duration.ofSeconds(DEFAULT_FLUSH_INTERVAL);
 

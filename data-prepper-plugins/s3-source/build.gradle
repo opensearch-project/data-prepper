@@ -43,6 +43,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:newline-codecs')
     testImplementation project(':data-prepper-plugins:avro-codecs')
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
+    testImplementation 'io.micrometer:micrometer-registry-prometheus'
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
