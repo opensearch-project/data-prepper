@@ -60,20 +60,14 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
-import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
-import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 
 import java.io.ByteArrayOutputStream;
@@ -84,7 +78,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,13 +116,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigForAcmeSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWittSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
@@ -138,9 +129,6 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 class OTelLogsSourceTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final String USERNAME = "test_user";
-    private static final String PASSWORD = "test_password";
-    private static final String TEST_PATH = "/${pipelineName}/v1/logs";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ExportLogsServiceRequest LOGS_REQUEST = ExportLogsServiceRequest.newBuilder()
             .addResourceLogs(ResourceLogs.newBuilder().build()).build();
@@ -179,13 +167,7 @@ class OTelLogsSourceTest {
     private ArmeriaHttpAuthenticationProvider httpAuthenticationProvider;
 
     @Mock
-    private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
-
-    @Mock
     private BlockingBuffer<Record<Object>> buffer;
-
-    @Mock(lenient = true)
-    private OTelLogsSourceConfig oTelLogsSourceConfig;
 
     private PluginSetting testPluginSetting;
     private PluginMetrics pluginMetrics;
@@ -227,63 +209,6 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892")
-                        .method(HttpMethod.POST)
-                        .path(CONFIG_GRPC_PATH)
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpRequestWhenSSLRequiredNoResponse() throws InvalidProtocolBufferException {
-        SOURCE = new OTelLogsSource(createLogsConfigWittSsl(), pluginMetrics, pluginFactory, pipelineDescription);
-
-        SOURCE.start(buffer);
-
-        CompletableFuture<AggregatedHttpResponse> future = WebClient.builder()
-                .factory(ClientFactory.insecure())
-                .build()
-                .execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:2021")
-                                .method(HttpMethod.POST)
-                                .path(CONFIG_GRPC_PATH)
-                                .contentType(MediaType.JSON_UTF_8)
-                                .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate();
-
-        ExecutionException exception = assertThrows(ExecutionException.class,
-                () -> future.get(2, TimeUnit.SECONDS)
-        );
-        assertInstanceOf(UnprocessedRequestException.class, exception.getCause());
-    }
-
-    @Test
-    void testHttpFullBytesWithNonUnframedRequests() {
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892")
-                        .method(HttpMethod.POST)
-                        .path(CONFIG_GRPC_PATH)
-                        .contentType(MediaType.PROTOBUF)
-                        .build(),
-                HttpData.copyOf(LOGS_REQUEST.toByteArray()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
     void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -300,10 +225,7 @@ class OTelLogsSourceTest {
             settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
             settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
 
-            testPluginSetting = new PluginSetting(null, settingsMap);
-            testPluginSetting.setPipelineName("pipeline");
-            oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelLogsSourceConfig.class);
-            final OTelLogsSource source = new OTelLogsSource(createLogsConfigWittSsl(), pluginMetrics, pluginFactory, pipelineDescription);
+            final OTelLogsSource source = new OTelLogsSource(createLogsConfigWithSsl(), pluginMetrics, pluginFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -407,9 +329,7 @@ class OTelLogsSourceTest {
 
     @Test
     void testDoubleStart() {
-        // starting server
         SOURCE.start(buffer);
-        // double start server
         assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
     }
 

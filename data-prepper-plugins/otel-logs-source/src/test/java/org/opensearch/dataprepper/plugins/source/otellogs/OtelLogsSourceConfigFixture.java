@@ -46,7 +46,7 @@ public class OtelLogsSourceConfigFixture {
                 .compression(CompressionOption.NONE);
     }
 
-    public static OTelLogsSourceConfig createLogsConfigWittSsl() {
+    public static OTelLogsSourceConfig createLogsConfigWithSsl() {
         return createDefaultConfigBuilder()
                 .ssl(true)
                 .useAcmCertForSSL(false)

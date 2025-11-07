@@ -25,14 +25,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWittSsl;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
@@ -62,6 +62,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.verification.VerificationMode;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
@@ -138,9 +139,6 @@ class OTelLogsSourceHttpTest {
     @Mock
     private BlockingBuffer<Record<Object>> buffer;
 
-    @Mock(lenient = true)
-    private OTelLogsSourceConfig oTelLogsSourceConfig;
-
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
     private OTelLogsSource SOURCE;
@@ -209,7 +207,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpsRequest_requestIsProcessed_writesToBufferAndReturnsSuccessfulResponse() throws Exception {
-        OTelLogsSource source = new OTelLogsSource(createLogsConfigWittSsl(), pluginMetrics, pluginFactory, pipelineDescription);
+        OTelLogsSource source = new OTelLogsSource(createLogsConfigWithSsl(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
@@ -236,7 +234,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     // todo tlongo extract into separate test class that deals with general server stuff
-    void testServerConnectionsMetric() throws InvalidProtocolBufferException {
+    void httpRequest_oneConnectionIsEstablished_metricsReflectCorrectConnectionCount() throws InvalidProtocolBufferException {
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder().build(), createJsonHttpPayload())
@@ -252,8 +250,7 @@ class OTelLogsSourceHttpTest {
     }
 
     @Test
-    // todo tlongo
-    void compressedRequest_requestIsProcessed_returns200() throws IOException {
+    void httpRequest_payloadIsCompressed_returns200() throws IOException {
         OTelLogsSource source = new OTelLogsSource(
                 createDefaultConfigBuilder().compression(CompressionOption.GZIP).build(),
                 pluginMetrics,
@@ -273,49 +270,34 @@ class OTelLogsSourceHttpTest {
         source.stop();
     }
 
-    @Test
-    // todo tlongo make parameterized test
-    void httpRequestWithBasicAuth_requestIsProcessed_returnsAppropriateResponse() throws Exception {
+    @ParameterizedTest
+    @MethodSource("getBasicAuthTestData")
+    void httpRequest_withBasicAuth_returnsAppropriateResponse(String givenUsername, String givenPassword, HttpStatus expectedStatus, VerificationMode expectedBufferWrites) throws Exception {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
         final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
         final OTelLogsSource source = new OTelLogsSource(createConfigBuilderWithBasicAuth().build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
 
-        final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", "test", "password").getBytes(StandardCharsets.UTF_8));
+        final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", givenUsername, givenPassword).getBytes(StandardCharsets.UTF_8));
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
                                 .add(HttpHeaderNames.AUTHORIZATION, "Basic " + encodedCredentials)
                                 .build(),
                         HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, expectedStatus, throwable))
                 .join();
 
+        verify(buffer, expectedBufferWrites).writeAll(any(), anyInt());
         source.stop();
     }
 
-    @Test
-        // todo tlongo make parameterized test
-    void httpRequestWithBasicAuth_invalidCredentialsAreProvided_returns403AndDoesNotWriteToBuffer() throws Exception {
-        final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
-        final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
-        when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
-        final OTelLogsSource source = new OTelLogsSource(createConfigBuilderWithBasicAuth().build(), pluginMetrics, pluginFactory, pipelineDescription);
-        source.start(buffer);
-
-        final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", "test", "wrong_password").getBytes(StandardCharsets.UTF_8));
-        WebClient.of().execute(getDefaultRequestHeadersBuilder()
-                                .add(HttpHeaderNames.AUTHORIZATION, "Basic " + encodedCredentials)
-                                .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
-                .join();
-
-        verify(buffer, never()).writeAll(any(), anyInt());
-        source.stop();
+    private static Stream<Arguments> getBasicAuthTestData() {
+        return Stream.of(
+                Arguments.of(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD, HttpStatus.OK, times(1)),
+                Arguments.of(BASIC_AUTH_USERNAME, "wrong password", HttpStatus.UNAUTHORIZED, times(0))
+        );
     }
-
 
     @ParameterizedTest
     @MethodSource("getHealthCheckParams")
