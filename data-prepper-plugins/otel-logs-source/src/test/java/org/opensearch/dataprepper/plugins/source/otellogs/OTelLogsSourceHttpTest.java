@@ -28,7 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigWithBasicAuth;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
@@ -36,7 +36,6 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.io.ByteArrayOutputStream;
@@ -162,8 +161,7 @@ class OTelLogsSourceHttpTest {
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
 
-        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
-                .thenReturn(authenticationProvider);
+        lenient().when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authenticationProvider);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelLogsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
@@ -281,7 +279,7 @@ class OTelLogsSourceHttpTest {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
         final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
-        final OTelLogsSource source = new OTelLogsSource(createConfigWithBasicAuth(), pluginMetrics, pluginFactory, pipelineDescription);
+        final OTelLogsSource source = new OTelLogsSource(createConfigBuilderWithBasicAuth().build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
 
         final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", "test", "password").getBytes(StandardCharsets.UTF_8));
@@ -302,7 +300,7 @@ class OTelLogsSourceHttpTest {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
         final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
-        final OTelLogsSource source = new OTelLogsSource(createConfigWithBasicAuth(), pluginMetrics, pluginFactory, pipelineDescription);
+        final OTelLogsSource source = new OTelLogsSource(createConfigBuilderWithBasicAuth().build(), pluginMetrics, pluginFactory, pipelineDescription);
         source.start(buffer);
 
         final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", "test", "wrong_password").getBytes(StandardCharsets.UTF_8));

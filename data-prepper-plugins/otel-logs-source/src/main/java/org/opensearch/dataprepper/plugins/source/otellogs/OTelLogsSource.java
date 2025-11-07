@@ -9,7 +9,6 @@ import static org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthe
 
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
-import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.encoding.DecodingService;
@@ -41,7 +40,6 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
 import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
-import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.source.otellogs.http.ArmeriaHttpService;
 import org.opensearch.dataprepper.plugins.source.otellogs.http.HttpExceptionHandler;
@@ -51,38 +49,31 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.function.Function;
 
-import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
 public class OTelLogsSource implements Source<Record<Object>> {
-    private static final String PLUGIN_NAME = "otel_logs_source";
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
     static final String SERVER_CONNECTIONS = "serverConnections";
 
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private final String pipelineName;
     private final PluginMetrics pluginMetrics;
-    private final GrpcAuthenticationProvider grpcAuthenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ByteDecoder byteDecoder;
     private final PluginFactory pluginFactory;
-    private Server server; //todo tlongo remove
-//    private ServerBuilder serverBuilder;
-    private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
+    private Server server;
 
     @DataPrepperPluginConstructor
     public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
@@ -101,7 +92,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.pluginFactory = pluginFactory;
-        this.grpcAuthenticationProvider = createGrpcAuthenticationProvider(pluginFactory);
         this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOutputFormat());
     }
 
@@ -115,141 +105,16 @@ public class OTelLogsSource implements Source<Record<Object>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
-        SessionProtocol protocol;
-        if (oTelLogsSourceConfig.isSsl()) {
-            protocol = SessionProtocol.HTTPS;
-        } else {
-            protocol = SessionProtocol.HTTP;
-        }
-        ServerBuilder serverBuilder = Server.builder().port(oTelLogsSourceConfig.getPort(), protocol);
+        final SessionProtocol protocol = oTelLogsSourceConfig.isSsl() ? SessionProtocol.HTTPS : SessionProtocol.HTTP;
+        final ServerBuilder serverBuilder = Server.builder().port(oTelLogsSourceConfig.getPort(), protocol);
         if (server == null) {
-//
-//            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
-//            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-//            CertificateProvider certificateProvider = null;
-//            if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
-//                certificateProvider = certificateProviderFactory.getCertificateProvider();
-//            }
-//            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
-//            server = createServer.createGRPCServer(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
+            configureServer(serverBuilder);
 
-            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
-            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-
-            final GrpcServiceBuilder grpcServiceBuilder = GrpcService
-                    .builder()
-                    .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true)
-                    .exceptionHandler(createGrpExceptionHandler(oTelLogsSourceConfig));
-
-            final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
-                    (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-                    buffer,
-                    pluginMetrics,
-                    null
-            );
-            // this is our logs gRPC service. Pure, clean, no server bells or infra whistles
-            CreateServer.GRPCServiceConfig grpcServiceConfig = new CreateServer.GRPCServiceConfig(oTelLogsGrpcService);
-
-
-            // Configure server stuff
-
-            serverBuilder.disableServerHeader();
-            if (serverConfiguration.isSsl()) {
-                LOG.info("Creating http source with SSL/TLS enabled.");
-                final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
-                final Certificate certificate = certificateProvider.getCertificate();
-                // TODO: enable encrypted key with password
-                serverBuilder.https(serverConfiguration.getPort()).tls(
-                        new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-                        new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
-            } else {
-                LOG.warn("Creating otlp logs source without SSL/TLS. This is not secure.");
-                // todo tlongo get url for source docs
-                LOG.warn("In order to set up TLS for the otlp logs source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
-                serverBuilder.http(serverConfiguration.getPort());
-            }
-
-            if (serverConfiguration.getAuthentication() != null) {
-                final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = createHttpAuthentication().getAuthenticationDecorator();
-
-                if (serverConfiguration.isUnauthenticatedHealthCheck()) {
-                    optionalAuthDecorator.ifPresent(authDecorator -> serverBuilder.decorator(REGEX_HEALTH, authDecorator));
-                } else {
-                    optionalAuthDecorator.ifPresent(serverBuilder::decorator);
-                }
-            }
-
-            serverBuilder.maxNumConnections(serverConfiguration.getMaxConnectionCount());
-            serverBuilder.requestTimeout(Duration.ofMillis(serverConfiguration.getRequestTimeoutInMillis()));
-            if (serverConfiguration.getMaxRequestLength() != null) {
-                serverBuilder.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
-            }
-            final int threads = serverConfiguration.getThreadCount();
-            final ScheduledThreadPoolExecutor taskExecutor = new ScheduledThreadPoolExecutor(threads);
-            serverBuilder.blockingTaskExecutor(taskExecutor, true);
-
-            if (serverConfiguration.hasHealthCheck()) {
-                LOG.info("HTTP source health check is enabled");
-                serverBuilder.service("/health", HealthCheckService.builder().longPolling(0).build());
-            }
-
-
-            // ----------------------- End configure server stuff -----------------------
-
-
-
-
-
-
-            // ----------- Add services -------------------
-
-            final String transformedPath = serverConfiguration.getPath().replace("${pipelineName}", pipelineName);
-            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
-            List<ServerInterceptor> interceptors =
-                    grpcAuthenticationProvider.getAuthenticationInterceptor() == null ?
-                            Collections.emptyList() :
-                            Collections.singletonList(grpcAuthenticationProvider.getAuthenticationInterceptor());
-            grpcServiceBuilder.addService(
-                    transformedPath,
-                    ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors),
-                    methodDescriptor);
-            if (serverConfiguration.hasHealthCheck()) {
-                LOG.info("Health check is enabled");
-                grpcServiceBuilder.addService(new HealthGrpcService());
-            }
-
-            if (serverConfiguration.hasProtoReflectionService()) {
-                LOG.info("Proto reflection service is enabled");
-                grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
-            }
-            if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
-                serverBuilder.service(grpcServiceBuilder.build());
-            } else {
-                serverBuilder.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
-            }
+            final String transformedGrpcPath = oTelLogsSourceConfig.getPath().replace("${pipelineName}", pipelineName);
+            configureGrpcService(serverBuilder, buffer, transformedGrpcPath);
 
             final String transformedHttpPath = oTelLogsSourceConfig.getHttpPath().replace("${pipelineName}", pipelineName);
-            ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100);
-            HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, oTelLogsSourceConfig.getRetryInfo().getMinDelay(), oTelLogsSourceConfig.getRetryInfo().getMaxDelay());
-            if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
-                serverBuilder.annotatedService(transformedHttpPath, armeriaHttpService, httpExceptionHandler);
-            } else {
-                serverBuilder.annotatedService(transformedHttpPath, armeriaHttpService, DecodingService.newDecorator(),
-                        httpExceptionHandler);
-            }
-
-
-            // ----------------------- End add services -------------------
-
-
-//            server = createServer.createHTTPServer(
-//                    null,
-//                    certificateProviderFactory,
-//                    createHttpAuthentication(),
-//                    new HttpExceptionHandler(pluginMetrics, oTelLogsSourceConfig.getRetryInfo().getMinDelay(), oTelLogsSourceConfig.getRetryInfo().getMaxDelay()),
-//                    new ArmeriaHttpService(buffer, pluginMetrics, 100));
+            configureHttpService(serverBuilder, buffer, transformedHttpPath);
 
             server = serverBuilder.build();
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
@@ -267,6 +132,102 @@ public class OTelLogsSource implements Source<Record<Object>> {
             throw new RuntimeException(ex);
         }
         LOG.info("Started otel_logs_source...");
+    }
+
+    private void configureServer(ServerBuilder serverBuilder) {
+        serverBuilder.disableServerHeader();
+        if (oTelLogsSourceConfig.isSsl()) {
+            LOG.info("Creating http source with SSL/TLS enabled.");
+            final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+            final Certificate certificate = certificateProvider.getCertificate();
+            // TODO: enable encrypted key with password
+            serverBuilder.https(oTelLogsSourceConfig.getPort()).tls(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
+        } else {
+            LOG.warn("Creating otlp logs source without SSL/TLS. This is not secure.");
+            // todo tlongo get url for source docs
+            LOG.warn("In order to set up TLS for the otlp logs source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
+            serverBuilder.http(oTelLogsSourceConfig.getPort());
+        }
+
+        if (oTelLogsSourceConfig.getAuthentication() != null) {
+            createHttpAuthentication()
+                    .flatMap(ArmeriaHttpAuthenticationProvider::getAuthenticationDecorator)
+                    .ifPresent(serverBuilder::decorator);
+        }
+
+        serverBuilder.maxNumConnections(oTelLogsSourceConfig.getMaxConnectionCount());
+        serverBuilder.requestTimeout(Duration.ofMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis()));
+
+        if (oTelLogsSourceConfig.getMaxRequestLength() != null) {
+            serverBuilder.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
+        }
+        final int threadCount = oTelLogsSourceConfig.getThreadCount();
+        serverBuilder.blockingTaskExecutor(new ScheduledThreadPoolExecutor(threadCount), true);
+
+        if (oTelLogsSourceConfig.hasHealthCheck()) {
+            LOG.info("HTTP source health check is enabled");
+            serverBuilder.service("/health", HealthCheckService.builder().longPolling(0).build());
+        }
+    }
+
+    private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer, String path) {
+        final ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100);
+        final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
+        final HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
+        if (CompressionOption.NONE.equals(oTelLogsSourceConfig.getCompression())) {
+            serverBuilder.annotatedService(path, armeriaHttpService, httpExceptionHandler);
+        } else {
+            serverBuilder.annotatedService(
+                    path,
+                    armeriaHttpService,
+                    DecodingService.newDecorator(),
+                    httpExceptionHandler);
+        }
+    }
+
+    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer,  String path) {
+        final GrpcServiceBuilder grpcServiceBuilder = GrpcService
+                .builder()
+                .useClientTimeoutHeader(false)
+                .useBlockingTaskExecutor(true)
+                .exceptionHandler(createGrpExceptionHandler(oTelLogsSourceConfig));
+        final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
+                (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
+                oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+                buffer,
+                pluginMetrics,
+                null
+        );
+        GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
+
+        final List<ServerInterceptor> interceptors = new ArrayList<>();
+        if (authProvider.getAuthenticationInterceptor() != null) {
+            interceptors.add(authProvider.getAuthenticationInterceptor());
+        }
+
+        final CreateServer.GRPCServiceConfig<?, ?> grpcServiceConfig = new CreateServer.GRPCServiceConfig<>(oTelLogsGrpcService);
+        grpcServiceBuilder.addService(
+                path,
+                ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors),
+                LogsServiceGrpc.getExportMethod());
+
+        if (oTelLogsSourceConfig.hasHealthCheck()) {
+            LOG.info("Health check is enabled");
+            grpcServiceBuilder.addService(new HealthGrpcService());
+        }
+
+        if (oTelLogsSourceConfig.hasProtoReflectionService()) {
+            LOG.info("Proto reflection service is enabled");
+            grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
+        }
+
+        if (CompressionOption.NONE.equals(oTelLogsSourceConfig.getCompression())) {
+            serverBuilder.service(grpcServiceBuilder.build());
+        } else {
+            serverBuilder.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
+        }
     }
 
     @Override
@@ -306,13 +267,13 @@ public class OTelLogsSource implements Source<Record<Object>> {
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 
-    private ArmeriaHttpAuthenticationProvider createHttpAuthentication() {
+    private Optional<ArmeriaHttpAuthenticationProvider> createHttpAuthentication() {
         if (oTelLogsSourceConfig.getAuthentication() == null || oTelLogsSourceConfig.getAuthentication().getPluginName().equals(UNAUTHENTICATED_PLUGIN_NAME)) {
             LOG.warn("Creating otel_trace_source http service without authentication. This is not secure.");
             LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
-            return null; // todo tlongo find solution
+            return Optional.empty(); // todo tlongo find solution
         } else {
-            return createGrpcAuthenticationProvider(oTelLogsSourceConfig.getAuthentication());
+            return Optional.of(createGrpcAuthenticationProvider(oTelLogsSourceConfig.getAuthentication()));
         }
     }
 

@@ -5,6 +5,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.util.Map;
 
@@ -33,7 +34,8 @@ public class OtelLogsSourceConfigFixture {
     public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createDefaultConfigBuilder() {
         return OTelLogsSourceConfig.builder()
                 .healthCheck(true)
-                .httpPath("/logs/v1")
+                .path(CONFIG_GRPC_PATH)
+                .httpPath(CONFIG_HTTP_PATH)
                 .retryInfo(new RetryInfoConfig())
                 .port(DEFAULT_PORT)
                 .enableUnframedRequests(false)
@@ -41,8 +43,7 @@ public class OtelLogsSourceConfigFixture {
                 .requestTimeoutInMillis(DEFAULT_REQUEST_TIMEOUT_MS)
                 .maxConnectionCount(10)
                 .threadCount(5)
-                .compression(CompressionOption.NONE)
-                .path(CONFIG_GRPC_PATH);
+                .compression(CompressionOption.NONE);
     }
 
     public static OTelLogsSourceConfig createLogsConfigWittSsl() {
@@ -64,14 +65,13 @@ public class OtelLogsSourceConfigFixture {
                 .sslKeyFile("data/certificate/test_decrypted_key.key");
     }
 
-    public static OTelLogsSourceConfig createConfigWithBasicAuth() {
+    public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createConfigBuilderWithBasicAuth() {
         Map<String, Object> httpBasicConfig = Map.of(
                 "username", BASIC_AUTH_USERNAME,
                 "password", BASIC_AUTH_PASSWORD
         );
         return createDefaultConfigBuilder()
-                .authentication(new PluginModel("http_basic", httpBasicConfig))
-                .build();
+                .authentication(new PluginModel("http_basic", httpBasicConfig));
     }
 
     public static ExportLogsServiceRequest createLogsServiceRequest() {
