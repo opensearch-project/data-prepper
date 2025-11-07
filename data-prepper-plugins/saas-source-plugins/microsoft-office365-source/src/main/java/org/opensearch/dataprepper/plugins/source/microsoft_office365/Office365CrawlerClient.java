@@ -167,23 +167,10 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                 acknowledgementSet.complete();
             }
         } catch (Exception e) {
-            handleExceptionMetrics(e);
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
                     logType, startTime, endTime, e);
             requestErrorsCounter.increment();
             throw e;
-        }
-    }
-
-    private void handleExceptionMetrics(Exception e) {
-        if (e instanceof Office365Exception) {
-            if (((Office365Exception) e).isRetryable()) {
-                retryableErrorsCounter.increment();
-            } else {
-                nonRetryableErrorsCounter.increment();
-            }
-        } else {
-            retryableErrorsCounter.increment();
         }
     }
 
