@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.http.certificate;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.ICertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
@@ -30,7 +29,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Duration;
 
-public class CertificateProviderFactory implements ICertificateProviderFactory {
+public class CertificateProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderFactory.class);
 
     private static final int ACM_CLIENT_RETRIES = 10;

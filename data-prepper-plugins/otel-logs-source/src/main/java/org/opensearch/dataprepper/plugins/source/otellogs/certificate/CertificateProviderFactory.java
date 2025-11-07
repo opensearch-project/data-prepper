@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs.certificate;
 
-import org.opensearch.dataprepper.plugins.certificate.ICertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -25,7 +24,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.acm.AcmClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
-public class CertificateProviderFactory implements ICertificateProviderFactory {
+public class CertificateProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderFactory.class);
 
     final OTelLogsSourceConfig oTelLogsSourceConfig;
