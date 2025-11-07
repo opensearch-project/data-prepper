@@ -668,6 +668,8 @@ class S3InputStream extends SeekableInputStream {
             s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter().increment();
         } else if (ex.statusCode() == HttpStatusCode.FORBIDDEN) {
             s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter().increment();
+        } else if (ex.isThrottlingException()) {
+            s3ObjectPluginMetrics.getS3ObjectsThrottledCounter().increment();
         }
     }
 
