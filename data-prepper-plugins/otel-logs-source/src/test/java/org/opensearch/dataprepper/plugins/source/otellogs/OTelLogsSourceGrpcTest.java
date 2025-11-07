@@ -6,18 +6,9 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
-import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.Clients;
-import com.linecorp.armeria.client.UnprocessedRequestException;
-import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -83,7 +74,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -123,10 +113,9 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
 
 @ExtendWith(MockitoExtension.class)
-class OTelLogsSourceTest {
+class OTelLogsSourceGrpcTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -169,7 +158,6 @@ class OTelLogsSourceTest {
     @Mock
     private BlockingBuffer<Record<Object>> buffer;
 
-    private PluginSetting testPluginSetting;
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
     private OTelLogsSource SOURCE;
@@ -456,7 +444,6 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    // todo tlongo this does test nothing if it doesn't make sure that auth is setup correctly
     void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
         GrpcBasicAuthenticationProvider authProvider = new GrpcBasicAuthenticationProvider(new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD));
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);

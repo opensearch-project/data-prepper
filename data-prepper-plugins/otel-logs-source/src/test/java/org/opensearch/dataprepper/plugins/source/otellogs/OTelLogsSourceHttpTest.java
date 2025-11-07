@@ -233,7 +233,6 @@ class OTelLogsSourceHttpTest {
     }
 
     @Test
-    // todo tlongo extract into separate test class that deals with general server stuff
     void httpRequest_oneConnectionIsEstablished_metricsReflectCorrectConnectionCount() throws InvalidProtocolBufferException {
         SOURCE.start(buffer);
 

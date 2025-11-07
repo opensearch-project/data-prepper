@@ -70,7 +70,6 @@ public class ArmeriaHttpService {
         return ExportTraceServiceResponse.newBuilder().build();
     }
 
-    // todo tlongo extract this method so that grpc and http share same functionality
     private void processRequest(final ExportLogsServiceRequest request) {
         final List<OpenTelemetryLog> logs;
 
@@ -104,7 +103,7 @@ public class ArmeriaHttpService {
         }
 
         successRequestsCounter.increment();
-        // todo tlong wtf??!!
+        // todo tlong solve
 //        responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
 //        responseObserver.onCompleted();
     }

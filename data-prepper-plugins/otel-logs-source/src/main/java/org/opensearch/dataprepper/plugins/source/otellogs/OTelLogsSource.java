@@ -271,7 +271,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         if (oTelLogsSourceConfig.getAuthentication() == null || oTelLogsSourceConfig.getAuthentication().getPluginName().equals(UNAUTHENTICATED_PLUGIN_NAME)) {
             LOG.warn("Creating otel_trace_source http service without authentication. This is not secure.");
             LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
-            return Optional.empty(); // todo tlongo find solution
+            return Optional.empty();
         } else {
             return Optional.of(createGrpcAuthenticationProvider(oTelLogsSourceConfig.getAuthentication()));
         }
