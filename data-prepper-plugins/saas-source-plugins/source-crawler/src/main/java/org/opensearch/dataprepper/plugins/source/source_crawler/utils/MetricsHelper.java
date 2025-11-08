@@ -13,8 +13,11 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 import io.micrometer.core.instrument.Counter;
 import org.springframework.http.HttpStatus;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.HashMap;
 /**
  * The MetricsHelper class.
@@ -54,12 +57,27 @@ public class MetricsHelper {
      * TOO_MANY_REQUESTS = requestThrottled
      * NOT_FOUND = resourceNotFound
      * 
-     * @param errorType - the httpStatusCode string represenation 
+     * @param ex - exception from RestClient
      * @param errorTypeMetricCounterMap - the map of errorType to metric counter
     */
-    public static void publishErrorTypeMetricCounter(String errorType, Map<String, Counter> errorTypeMetricCounterMap) {
-        if (errorTypeMetricCounterMap != null && errorTypeMetricCounterMap.containsKey(errorType)) {
-            errorTypeMetricCounterMap.get(errorType).increment();
+    public static void publishErrorTypeMetricCounter(Exception ex, Map<String, Counter> errorTypeMetricCounterMap) {
+        Optional<String> statusCode = Optional.empty();
+        if (ex instanceof HttpClientErrorException) {
+            HttpClientErrorException httpE = (HttpClientErrorException) ex;
+            statusCode = Optional.ofNullable(httpE.getStatusCode().getReasonPhrase());
+        } else if (ex instanceof HttpServerErrorException) {
+            HttpServerErrorException httpE = (HttpServerErrorException) ex;
+            statusCode = Optional.ofNullable(httpE.getStatusCode().getReasonPhrase());
+        } else if (ex instanceof SecurityException) { // FORBIDDEN throws SecurityException in RetryHandler
+            statusCode = Optional.ofNullable(HttpStatus.FORBIDDEN.getReasonPhrase());
+        } // ignore for others
+
+        if (statusCode.isPresent()) {
+            String errorType = statusCode.get();
+            if (errorTypeMetricCounterMap != null && errorTypeMetricCounterMap.containsKey(errorType)) {
+                errorTypeMetricCounterMap.get(errorType).increment();
+            }
         }
+
     }
 }

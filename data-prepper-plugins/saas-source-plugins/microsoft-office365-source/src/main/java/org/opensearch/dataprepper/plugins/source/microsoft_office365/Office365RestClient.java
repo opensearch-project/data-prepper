@@ -26,7 +26,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpStatus;
 
 import javax.inject.Named;
 import java.nio.charset.StandardCharsets;
@@ -146,17 +145,8 @@ public class Office365RestClient {
                     }
                 }, authConfig::renewCredentials);
             }
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            HttpStatus statusCode = e.getStatusCode();
-            publishErrorTypeMetricCounter(statusCode.getReasonPhrase(), this.errorTypeMetricCounterMap);
-            log.error(NOISY, "Failed to initialize subscriptions with status code {}: {}",
-                    statusCode, e.getMessage());
-            throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
         } catch (Exception e) {
-            // FORBIDDEN throws SecurityException in RetryHandler
-            if (e instanceof SecurityException) {
-                publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase(), this.errorTypeMetricCounterMap);
-            }
+            publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
             log.error(NOISY, "Failed to initialize subscriptions", e);
             throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
         }
@@ -219,16 +209,8 @@ public class Office365RestClient {
                         authConfig::renewCredentials,
                         searchRequestsFailedCounter
                 );
-            } catch (HttpClientErrorException | HttpServerErrorException e) {
-                HttpStatus statusCode = e.getStatusCode();
-                publishErrorTypeMetricCounter(statusCode.getReasonPhrase(), this.errorTypeMetricCounterMap);
-                log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
-                throw new RuntimeException("Failed to fetch audit logs", e);
             } catch (Exception e) {
-                // FORBIDDEN throws SecurityException in RetryHandler
-                if (e instanceof SecurityException) {
-                    publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase(), this.errorTypeMetricCounterMap);
-                }
+                publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
                 log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
                 throw new RuntimeException("Failed to fetch audit logs", e);
             }
@@ -271,16 +253,8 @@ public class Office365RestClient {
                 }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
                 auditLogRequestsSuccessCounter.increment();
                 return response;
-            } catch (HttpClientErrorException | HttpServerErrorException e) {
-                HttpStatus statusCode = e.getStatusCode();
-                publishErrorTypeMetricCounter(statusCode.getReasonPhrase(), this.errorTypeMetricCounterMap);
-                log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
-                throw new RuntimeException("Failed to fetch audit log", e);
             } catch (Exception e) {
-                // FORBIDDEN throws SecurityException in RetryHandler
-                if (e instanceof SecurityException) {
-                    publishErrorTypeMetricCounter(HttpStatus.FORBIDDEN.getReasonPhrase(), this.errorTypeMetricCounterMap);
-                }
+                publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
