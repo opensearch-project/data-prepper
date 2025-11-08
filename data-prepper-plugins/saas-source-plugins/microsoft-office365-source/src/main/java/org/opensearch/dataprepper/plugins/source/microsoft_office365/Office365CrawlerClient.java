@@ -42,7 +42,7 @@ import java.util.Iterator;
 import java.util.concurrent.TimeoutException;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQEUEST_ERRORS;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQUEST_ERRORS;
 
 /**
  * Implementation of CrawlerClient for Office 365 audit logs.
@@ -86,7 +86,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
-        this.requestErrorsCounter = pluginMetrics.counter(REQEUEST_ERRORS);
+        this.requestErrorsCounter = pluginMetrics.counter(REQUEST_ERRORS);
     }
 
     @VisibleForTesting
