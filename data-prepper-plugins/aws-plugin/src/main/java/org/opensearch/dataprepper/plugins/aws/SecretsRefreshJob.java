@@ -20,8 +20,9 @@ public class SecretsRefreshJob implements Runnable {
     static final String SECRETS_REFRESH_SUCCESS = "secretsRefreshSuccess";
     static final String SECRETS_REFRESH_FAILURE = "secretsRefreshFailure";
     static final String SECRETS_REFRESH_DURATION = "secretsRefreshDuration";
-    static final String SECRETS_MANAGER_RESOURCE_NOT_FOUND = "secretsManagerResourceNotFound";
-    static final String SECRETS_MANAGER_LIMIT_EXCEEDED = "secretsManagerLimitExceeded";
+    static final String SECRETS_SECRET_NOT_FOUND = "secretsSecretNotFound";
+    static final String SECRETS_LIMIT_EXCEEDED = "secretsLimitExceeded";
+    static final String SECRETS_ACCESS_DENIED = "secretsAccessDenied";
     static final String SECRET_CONFIG_ID_TAG = "secretConfigId";
     private final String secretConfigId;
     private final SecretsSupplier secretsSupplier;
@@ -30,8 +31,9 @@ public class SecretsRefreshJob implements Runnable {
     private final Counter secretsRefreshSuccessCounter;
     private final Counter secretsRefreshFailureCounter;
     private final Timer secretsRefreshTimer;
-    private final Counter secretsManagerResourceNotFoundCounter;
-    private final Counter secretsManagerLimitExceededCounter;
+    private final Counter secretsSecretNotFoundCounter;
+    private final Counter secretsLimitExceededCounter;
+    private final Counter secretsAccessDeniedCounter;
 
     public SecretsRefreshJob(final String secretConfigId,
                              final SecretsSupplier secretsSupplier,
@@ -47,10 +49,12 @@ public class SecretsRefreshJob implements Runnable {
                 SECRETS_REFRESH_FAILURE, SECRET_CONFIG_ID_TAG, secretConfigId);
         this.secretsRefreshTimer = pluginMetrics.timerWithTags(
                 SECRETS_REFRESH_DURATION, SECRET_CONFIG_ID_TAG, secretConfigId);
-        this.secretsManagerResourceNotFoundCounter = pluginMetrics.counter(
-                SECRETS_MANAGER_RESOURCE_NOT_FOUND);
-        this.secretsManagerLimitExceededCounter = pluginMetrics.counter(
-                SECRETS_MANAGER_LIMIT_EXCEEDED);
+        this.secretsSecretNotFoundCounter = pluginMetrics.counterWithTags(
+                SECRETS_SECRET_NOT_FOUND, SECRET_CONFIG_ID_TAG, secretConfigId);
+        this.secretsLimitExceededCounter = pluginMetrics.counterWithTags(
+                SECRETS_LIMIT_EXCEEDED, SECRET_CONFIG_ID_TAG, secretConfigId);
+        this.secretsAccessDeniedCounter = pluginMetrics.counterWithTags(
+                SECRETS_ACCESS_DENIED, SECRET_CONFIG_ID_TAG, secretConfigId);
     }
 
     @Override
@@ -62,24 +66,19 @@ public class SecretsRefreshJob implements Runnable {
                 pluginConfigPublisher.notifyAllPluginConfigObservable();
             } catch(Exception e) {
                 if (e instanceof SecretsManagerException) {
-                    recordSecretsManagerException((SecretsManagerException) e);
+                    SecretsManagerException sme = (SecretsManagerException) e;
+                    if (sme instanceof ResourceNotFoundException) {
+                        secretsSecretNotFoundCounter.increment();
+                    } else if (sme instanceof LimitExceededException) {
+                        secretsLimitExceededCounter.increment();
+                    } else if (sme.awsErrorDetails() != null && 
+                               "AccessDeniedException".equals(sme.awsErrorDetails().errorCode())) {
+                        secretsAccessDeniedCounter.increment();
+                    }
                 }
                 LOG.error("Failed to refresh secrets in aws:secrets:{}.", secretConfigId, e);
                 secretsRefreshFailureCounter.increment();
             }
         });
-    }
-
-    /**
-     * Records metrics for Secrets Manager exceptions based on the exception type.
-     * 
-     * @param e the Secrets Manager exception to record metrics for
-     */
-    private void recordSecretsManagerException(final SecretsManagerException e) {
-        if (e instanceof ResourceNotFoundException) {
-            secretsManagerResourceNotFoundCounter.increment();
-        } else if (e instanceof LimitExceededException) {
-            secretsManagerLimitExceededCounter.increment();
-        }
     }
 }
