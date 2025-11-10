@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 
 public class ArmeriaHttpService {
@@ -57,13 +58,13 @@ public class ArmeriaHttpService {
     // no path provided. Will be set by config.
     @Post("")
     @Consumes(value = "application/json")
-    public ExportTraceServiceResponse exportLog(ExportLogsServiceRequest request) {
+    public ExportLogsServiceResponse exportLog(ExportLogsServiceRequest request) {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
         requestProcessDuration.record(() -> processRequest(request));
 
-        return ExportTraceServiceResponse.newBuilder().build();
+        return ExportLogsServiceResponse.newBuilder().build();
     }
 
     private void processRequest(final ExportLogsServiceRequest request) {
