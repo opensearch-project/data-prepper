@@ -20,12 +20,15 @@ class DataStreamDetectorSimpleTest {
 
     @Mock
     private OpenSearchClient openSearchClient;
+    
+    @Mock
+    private IndexCache indexCache;
 
     private DataStreamDetector dataStreamDetector;
 
     @BeforeEach
     void setUp() {
-        dataStreamDetector = new DataStreamDetector(openSearchClient);
+        dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
     }
 
     @Test
@@ -38,8 +41,5 @@ class DataStreamDetectorSimpleTest {
         assertFalse(dataStreamDetector.isDataStream("test-index"));
     }
 
-    @Test
-    void clearCache_doesNotThrowException() {
-        dataStreamDetector.clearCache();
-    }
+
 }

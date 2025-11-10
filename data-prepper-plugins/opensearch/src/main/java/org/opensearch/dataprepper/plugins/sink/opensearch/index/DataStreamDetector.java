@@ -21,11 +21,11 @@ public class DataStreamDetector {
     private static final Logger LOG = LoggerFactory.getLogger(DataStreamDetector.class);
     
     private final OpenSearchClient openSearchClient;
-    private final ConcurrentHashMap<String, Boolean> dataStreamCache;
+    private final IndexCache indexCache;
     
-    public DataStreamDetector(final OpenSearchClient openSearchClient) {
+    public DataStreamDetector(final OpenSearchClient openSearchClient, final IndexCache indexCache) {
         this.openSearchClient = openSearchClient;
-        this.dataStreamCache = new ConcurrentHashMap<>();
+        this.indexCache = indexCache;
     }
     
     /**
@@ -34,7 +34,14 @@ public class DataStreamDetector {
      * @return true if it's a Data Stream, false otherwise
      */
     public boolean isDataStream(final String indexName) {
-        return dataStreamCache.computeIfAbsent(indexName, this::checkDataStream);
+        final Boolean cached = indexCache.getDataStreamResult(indexName);
+        if (cached != null) {
+            return cached;
+        }
+        
+        final boolean result = checkDataStream(indexName);
+        indexCache.putDataStreamResult(indexName, result);
+        return result;
     }
     
     private boolean checkDataStream(final String indexName) {
@@ -55,10 +62,5 @@ public class DataStreamDetector {
         }
     }
     
-    /**
-     * Clears the cache for testing purposes
-     */
-    void clearCache() {
-        dataStreamCache.clear();
-    }
+
 }
