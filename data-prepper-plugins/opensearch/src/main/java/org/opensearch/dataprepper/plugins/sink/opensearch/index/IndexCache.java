@@ -23,7 +23,7 @@ public class IndexCache {
         return dataStreamCache.get(indexName);
     }
 
-    void clearAll() {
+    public void clearAll() {
         dataStreamCache.clear();
     }
 }

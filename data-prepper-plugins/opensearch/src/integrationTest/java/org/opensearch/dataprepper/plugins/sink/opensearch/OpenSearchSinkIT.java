@@ -47,11 +47,15 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkRetryStrategy;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.RetryConfiguration;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -1638,6 +1642,131 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    @DisabledIf(value = "isDataStreamNotSupported", disabledReason = "Data streams require OpenSearch 1.3.0+")
+    public void testDataStreamDetection() throws IOException, InterruptedException {
+        final String dataStreamName = "test-data-stream-" + UUID.randomUUID();
+        final String templateName = dataStreamName + "-template";
+        final File tempDirectory = Files.createTempDirectory("").toFile();
+        final String dlqFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
+        
+        try {
+            // Create an index template for the data stream first
+            final Request createTemplateRequest = new Request(HttpMethod.PUT, "/_index_template/" + templateName);
+            final String templateBody = "{" +
+                    "\"index_patterns\": [\"" + dataStreamName + "\"]," +
+                    "\"data_stream\": {}," +
+                    "\"template\": {" +
+                    "\"mappings\": {" +
+                    "\"properties\": {" +
+                    "\"@timestamp\": {\"type\": \"date\"}" +
+                    "}" +
+                    "}" +
+                    "}" +
+                    "}";
+            createTemplateRequest.setJsonEntity(templateBody);
+            client.performRequest(createTemplateRequest);
+            
+            // Create a data stream
+            final Request createDataStreamRequest = new Request(HttpMethod.PUT, "/_data_stream/" + dataStreamName);
+            client.performRequest(createDataStreamRequest);
+            
+            // Initialize sink AFTER creating the data stream so detection works
+            Map<String, Object> metadata = initializeConfigurationMetadata(null, dataStreamName, null);
+            metadata.put(RetryConfiguration.DLQ_FILE, dlqFile);
+            final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+            final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+            
+            // Clear the index cache to force re-detection of data stream
+            sink.indexCache.clearAll();
+            System.out.println("DEBUG: Index cache cleared after initialization");
+            
+            // Test that the data stream is detected
+            final String testIdField = "someId";
+            final String testId = "foo";
+            final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+            
+            System.out.println("DEBUG: Outputting records to sink...");
+            System.out.println("DEBUG: Expected index name: " + dataStreamName);
+            
+            // Verify data stream is detected before writing
+            Request verifyRequest = new Request(HttpMethod.GET, "/_data_stream/" + dataStreamName);
+            Response verifyResponse = client.performRequest(verifyRequest);
+            System.out.println("DEBUG: Data stream exists before write: " + (verifyResponse.getStatusLine().getStatusCode() == 200));
+            
+            sink.output(testRecords);
+            System.out.println("DEBUG: Records output complete, shutting down sink...");
+            sink.shutdown();
+            System.out.println("DEBUG: Sink shutdown complete");
+            
+            // Wait for indexing to complete
+            Thread.sleep(2000);
+            System.out.println("DEBUG: Wait complete, checking for documents...");
+            
+            // Verify the document was written to the data stream
+            System.out.println("DEBUG: Data stream name: " + dataStreamName);
+            System.out.println("DEBUG: Test record: " + testRecords.get(0).getData());
+            
+            // Check if data stream exists
+            Request checkRequest = new Request(HttpMethod.GET, "/_data_stream/" + dataStreamName);
+            Response checkResponse = client.performRequest(checkRequest);
+            System.out.println("DEBUG: Data stream exists: " + checkResponse.getStatusLine().getStatusCode());
+            System.out.println("DEBUG: Data stream info: " + EntityUtils.toString(checkResponse.getEntity()));
+            
+            // Check metrics for errors
+            final List<Measurement> documentErrors = MetricsTestUtil.getMeasurementList(
+                    new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                            .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+            System.out.println("DEBUG: Document errors: " + (documentErrors.isEmpty() ? "none" : documentErrors.get(0).getValue()));
+            
+            final List<Measurement> documentsSuccess = MetricsTestUtil.getMeasurementList(
+                    new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                            .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+            System.out.println("DEBUG: Documents success: " + (documentsSuccess.isEmpty() ? "none" : documentsSuccess.get(0).getValue()));
+            
+            // Check DLQ file for error details
+            if (new File(dlqFile).exists()) {
+                System.out.println("DEBUG: DLQ file contents:");
+                Files.lines(Paths.get(dlqFile)).forEach(line -> System.out.println("DLQ: " + line));
+            } else {
+                System.out.println("DEBUG: No DLQ file created");
+            }
+            
+            // The issue is that DataStreamDetector.isDataStream() is returning false
+            // This happens because the sink is initialized BEFORE the data stream is created
+            // So the cache has a negative result
+            
+            final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
+            System.out.println("DEBUG: Number of documents found: " + retSources.size());
+            System.out.println("DEBUG: Documents: " + retSources);
+            assertThat("Expected 1 document in data stream " + dataStreamName + " but found " + retSources.size(), 
+                       retSources.size(), equalTo(1));
+        } catch (Exception e) {
+            System.err.println("ERROR: Test failed with exception: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        } finally {
+            // Clean up the data stream
+            final Request deleteDataStreamRequest = new Request(HttpMethod.DELETE, "/_data_stream/" + dataStreamName);
+            try {
+                client.performRequest(deleteDataStreamRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            // Clean up the index template
+            final Request deleteTemplateRequest = new Request(HttpMethod.DELETE, "/_index_template/" + templateName);
+            try {
+                client.performRequest(deleteTemplateRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            // Clean up DLQ
+            FileUtils.deleteQuietly(tempDirectory);
+        }
+    }
+
+    @Test
     @Timeout(value = 1, unit = TimeUnit.MINUTES)
     @DisabledIf(value = "isES6",
             disabledReason = "PUT _opendistro/_security/api/roles/<role-id> request could not be parsed in ES 6.")
@@ -1960,6 +2089,11 @@ public class OpenSearchSinkIT {
 
     private static boolean isES6() {
         return DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(OpenSearchIntegrationHelper.getVersion()) >= 0;
+    }
+
+    private static boolean isDataStreamNotSupported() {
+        // Data streams require OpenSearch 1.3.0+
+        return OpenSearchIntegrationHelper.getVersion().compareTo(DeclaredOpenSearchVersion.parse("opensearch:1.3.0")) < 0;
     }
 
     private static Stream<Object> getAttributeTestSpecialAndExtremeValues() {

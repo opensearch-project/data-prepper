@@ -28,6 +28,9 @@ class DataStreamIndexTest {
     private DataStreamDetector dataStreamDetector;
     
     @Mock
+    private IndexConfiguration indexConfiguration;
+    
+    @Mock
     private Event event;
     
     @Mock
@@ -37,7 +40,7 @@ class DataStreamIndexTest {
     
     @BeforeEach
     void setUp() {
-        dataStreamIndex = new DataStreamIndex(dataStreamDetector, null, null, null, null);
+        dataStreamIndex = new DataStreamIndex(dataStreamDetector, indexConfiguration);
     }
     
     @Test
@@ -100,24 +103,5 @@ class DataStreamIndexTest {
         verify(event, never()).put("@timestamp", eventHandle.getInternalOriginationTime());
     }
     
-    @Test
-    void validateDataStreamCompatibility_logsWarning_whenDataStreamHasDocumentId() {
-        when(dataStreamDetector.isDataStream("my-data-stream")).thenReturn(true);
-        
-        dataStreamIndex.validateDataStreamCompatibility("my-data-stream", "doc-123", null);
-    }
-    
-    @Test
-    void validateDataStreamCompatibility_logsWarning_whenDataStreamHasRouting() {
-        when(dataStreamDetector.isDataStream("my-data-stream")).thenReturn(true);
-        
-        dataStreamIndex.validateDataStreamCompatibility("my-data-stream", null, "routing-key");
-    }
-    
-    @Test
-    void validateDataStreamCompatibility_doesNotLogWarning_whenNotDataStream() {
-        when(dataStreamDetector.isDataStream("regular-index")).thenReturn(false);
-        
-        dataStreamIndex.validateDataStreamCompatibility("regular-index", "doc-123", "routing-key");
-    }
+
 }

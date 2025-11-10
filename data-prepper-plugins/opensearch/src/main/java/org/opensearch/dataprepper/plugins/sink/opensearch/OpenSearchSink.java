@@ -155,7 +155,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private FailedBulkOperationConverter failedBulkOperationConverter;
   private DataStreamDetector dataStreamDetector;
   private DataStreamIndex dataStreamIndex;
-  private IndexCache indexCache;
+  IndexCache indexCache;
 
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
@@ -314,7 +314,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     this.indexCache = new IndexCache();
     this.dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
-    this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, documentIdField, documentId, routingField, routing);
+    this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, openSearchSinkConfig.getIndexConfiguration());
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
@@ -446,7 +446,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
-      final SerializedJson document = getDocument(event);
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
@@ -456,6 +455,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
           continue;
       }
+      
+      dataStreamIndex.ensureTimestamp(event, indexName);
+      final SerializedJson document = getDocument(event);
 
       Long version = null;
       String versionExpressionEvaluationResult = null;
@@ -512,8 +514,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperation bulkOperation;
 
       try {
-        dataStreamIndex.ensureTimestamp(event, indexName);
-        
         bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
       } catch (final Exception e) {
         LOG.error("An exception occurred while constructing the bulk operation for a document: ", e);
