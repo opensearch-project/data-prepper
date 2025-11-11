@@ -1,7 +1,13 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -51,8 +57,10 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
         Region region = (awsConfig != null) ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
       
-        sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "metric");
-        httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics, prometheusSinkConfiguration.getConnectionTimeoutMs(), prometheusSinkConfiguration.getIdleTimeoutMs());
+        sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Metric");
+        httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics,
+                prometheusSinkConfiguration.getConnectionTimeout().toMillis(),
+                prometheusSinkConfiguration.getIdleTimeout().toMillis());
 
         PrometheusSinkThresholdConfig thresholdConfig = prometheusSinkConfiguration.getThresholdConfig();
 

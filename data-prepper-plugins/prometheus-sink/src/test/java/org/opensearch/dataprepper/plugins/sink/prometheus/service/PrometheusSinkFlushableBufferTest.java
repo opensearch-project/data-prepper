@@ -1,7 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
@@ -11,6 +16,7 @@ import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.SinkFlushResult;
 import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
+import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusPushResult;
 
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
@@ -23,7 +29,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import software.amazon.awssdk.utils.Pair;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -62,7 +67,7 @@ public class PrometheusSinkFlushableBufferTest {
 
     @Test
     public void testPrometheusSinkFlushableBufferWithSuccess() throws Exception {
-        when(httpSender.pushToEndPoint(any())).thenReturn(Pair.of(true, 0));
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
         prometheusSinkFlushableBuffer = createObjectUnderTest();
         List<Event> events = prometheusSinkFlushableBuffer.getEvents();
         assertThat(events.size(), equalTo(buffer.size()));
@@ -74,7 +79,7 @@ public class PrometheusSinkFlushableBufferTest {
 
     @Test
     public void testPrometheusSinkFlushableBufferWithFailure() throws Exception {
-        when(httpSender.pushToEndPoint(any())).thenReturn(Pair.of(false, 404));
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(false, 404));
         prometheusSinkFlushableBuffer = createObjectUnderTest();
         List<Event> events = prometheusSinkFlushableBuffer.getEvents();
         assertThat(events.size(), equalTo(buffer.size()));
@@ -91,8 +96,8 @@ public class PrometheusSinkFlushableBufferTest {
             .withName(name)
             .withDescription("Test Gauge Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withValue(1.0d)
             .build(false);

@@ -1,7 +1,13 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 
@@ -10,12 +16,12 @@ import com.arpnetworking.metrics.prometheus.Types.Sample;
 import com.arpnetworking.metrics.prometheus.Types.TimeSeries;
 
 import org.opensearch.dataprepper.model.metric.Quantile;
-import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonGauge;
-import org.opensearch.dataprepper.model.metric.JacksonMetric;
-import org.opensearch.dataprepper.model.metric.JacksonHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonSum;
-import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.Gauge;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.Sum;
+import org.opensearch.dataprepper.model.metric.Summary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +37,11 @@ public class PrometheusTimeSeries {
     private final String metricName;
     private long timestamp;
     private boolean sanitizeNames;
-    List<TimeSeries> timeSeriesList;
-    List<Label> labels;
+    private List<TimeSeries> timeSeriesList;
+    private List<Label> labels;
     private int size;
 
-    public PrometheusTimeSeries(JacksonMetric metric, final boolean sanitizeNames) throws Exception {
+    public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
         this.sanitizeNames = sanitizeNames;
         metricName = sanitizeNames ? sanitizeMetricName(metric.getName()) : metric.getName();
         String time = metric.getTime();
@@ -131,15 +137,15 @@ public class PrometheusTimeSeries {
         return timestamp;
     }
 
-    public void addSumMetric(JacksonSum sum) {
+    public void addSumMetric(Sum sum) {
         addTimeSeries("__name__", metricName + "_sum", sum.getValue());
     }
 
-    public void addGaugeMetric(JacksonGauge gauge) {
+    public void addGaugeMetric(Gauge gauge) {
         addTimeSeries("__name__", metricName, gauge.getValue());
     }
 
-    public void addSummaryMetric(JacksonSummary summary) {
+    public void addSummaryMetric(Summary summary) {
         List<? extends Quantile> quantiles = summary.getQuantiles();
         for (int i = 0; i < quantiles.size(); i++) {
             Quantile quantile = quantiles.get(i);
@@ -148,7 +154,7 @@ public class PrometheusTimeSeries {
         }
     }
 
-    public void addHistogramMetric(JacksonHistogram histogram) {
+    public void addHistogramMetric(Histogram histogram) {
         addTimeSeries("__name__", metricName + "_count", (double)histogram.getCount());
         addTimeSeries("__name__", metricName + "_sum", (double)histogram.getSum());
 
@@ -171,7 +177,7 @@ public class PrometheusTimeSeries {
         }
     }
 
-    public void addExponentialHistogramMetric(JacksonExponentialHistogram histogram) {
+    public void addExponentialHistogramMetric(ExponentialHistogram histogram) {
         addTimeSeries("__name__", metricName + "_count", (double)histogram.getCount());
         addTimeSeries("__name__", metricName + "_sum", (double)histogram.getSum());
         Long zeroCount = histogram.getZeroCount();
@@ -226,24 +232,6 @@ public class PrometheusTimeSeries {
             }
         }
     }
-
-    public String toString() {
-        String result = "";
-        for (final TimeSeries ts : timeSeriesList) {
-            result += "{\n\tLabels:[";
-            for (final Label l : ts.getLabelsList()) {
-                result += "\t\t{"+l.getName()+", "+l.getValue()+"}";
-            }
-            result += "\t]";
-            result += "\tSamples:[";
-            for (final Sample s : ts.getSamplesList()) {
-                result += "\t\t{"+s.getValue()+", "+s.getTimestamp()+"}";
-            }
-            result += "\t]\n}";
-        }
-        return result;
-    }
-
 
     private static String sanitizeMetricName(String name) {
         return sanitizeName(name, true);  // metric names allow colon

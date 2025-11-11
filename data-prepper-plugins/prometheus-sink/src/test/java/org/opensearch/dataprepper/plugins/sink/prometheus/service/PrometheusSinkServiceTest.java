@@ -1,7 +1,13 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -22,8 +28,8 @@ import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
+import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusPushResult;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
-import software.amazon.awssdk.utils.Pair;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -117,7 +123,7 @@ public class PrometheusSinkServiceTest {
 
     @Test
     void prometheusSinkServiceTestSuccessfulOutput() throws NoSuchFieldException, IllegalAccessException {
-        when(httpSender.pushToEndPoint(any())).thenReturn(Pair.of(true, 0));
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
         JacksonGauge gauge1 = createGaugeMetric("gauge1");
         JacksonGauge gauge2 = createGaugeMetric("gauge2");
@@ -131,7 +137,7 @@ public class PrometheusSinkServiceTest {
 
     @Test
     void prometheusSinkServiceTestFailedOutput() throws NoSuchFieldException, IllegalAccessException {
-        when(httpSender.pushToEndPoint(any())).thenReturn(Pair.of(false, 410));
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(false, 410));
         Pipeline dlqPipeline = mock(Pipeline.class);
         doAnswer(a -> {
             Collection<Record<Event>> records = (Collection<Record<Event>>)a.getArgument(0);
@@ -158,7 +164,7 @@ public class PrometheusSinkServiceTest {
 
     @Test
     void prometheusSinkServiceTestFailedOutputWithNoDLQ() throws NoSuchFieldException, IllegalAccessException {
-        when(httpSender.pushToEndPoint(any())).thenReturn(Pair.of(false, 410));
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(false, 410));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
         JacksonGauge gauge1 = createGaugeMetric("gauge1");
         JacksonGauge gauge2 = createGaugeMetric("gauge2");
@@ -171,7 +177,7 @@ public class PrometheusSinkServiceTest {
 
     @Test
     void prometheusSinkServiceTestWithExceptionInHttpSender() throws NoSuchFieldException, IllegalAccessException {
-        when(httpSender.pushToEndPoint(any())).thenThrow(new RuntimeException("exception"));
+        when(httpSender.pushToEndpoint(any())).thenThrow(new RuntimeException("exception"));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
         JacksonGauge gauge1 = createGaugeMetric("gauge1");
         JacksonGauge gauge2 = createGaugeMetric("gauge2");
@@ -196,8 +202,8 @@ public class PrometheusSinkServiceTest {
             .withName(name)
             .withDescription("Test Gauge Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withValue(1.0d)
             .withEventHandle(eventHandle)

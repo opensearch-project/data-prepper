@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.configuration;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -44,9 +50,6 @@ public class PrometheusSinkConfigurationTest {
 
         assertThat(prometheusSinkConfiguration.getUrl(), equalTo(null));
         assertThat(prometheusSinkConfiguration.getMaxRetries(), equalTo(PrometheusSinkConfiguration.DEFAULT_MAX_RETRIES));
-        assertThat(prometheusSinkConfiguration.getConnectionTimeoutMs(), equalTo(60000L));
-        assertThat(prometheusSinkConfiguration.getIdleTimeoutMs(), equalTo(60000L));
-        assertThat(prometheusSinkConfiguration.getRequestTimeoutMs(), equalTo(60000L));
         assertThat(prometheusSinkConfiguration.getConnectionTimeout(), equalTo(Duration.ofSeconds(60)));
         assertThat(prometheusSinkConfiguration.getIdleTimeout(), equalTo(Duration.ofSeconds(60)));
         assertThat(prometheusSinkConfiguration.getRequestTimeout(), equalTo(Duration.ofSeconds(60)));
@@ -62,9 +65,6 @@ public class PrometheusSinkConfigurationTest {
 
         assertThat(prometheusSinkConfiguration.getUrl(), equalTo("http://localhost:8080/test"));
         assertThat(prometheusSinkConfiguration.getMaxRetries(), equalTo(5));
-        assertThat(prometheusSinkConfiguration.getConnectionTimeoutMs(), equalTo(45000L));
-        assertThat(prometheusSinkConfiguration.getIdleTimeoutMs(), equalTo(45000L));
-        assertThat(prometheusSinkConfiguration.getRequestTimeoutMs(), equalTo(45000L));
         assertThat(prometheusSinkConfiguration.getConnectionTimeout(), equalTo(Duration.ofSeconds(45)));
         assertThat(prometheusSinkConfiguration.getIdleTimeout(), equalTo(Duration.ofSeconds(45)));
         assertThat(prometheusSinkConfiguration.getRequestTimeout(), equalTo(Duration.ofSeconds(45)));

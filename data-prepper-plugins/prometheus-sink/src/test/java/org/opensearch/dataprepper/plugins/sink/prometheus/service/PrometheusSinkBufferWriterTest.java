@@ -1,7 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
@@ -53,8 +58,8 @@ public class PrometheusSinkBufferWriterTest {
             .withName("gauge")
             .withDescription("Test Gauge Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withValue(1.0d)
             .build(false);

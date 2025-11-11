@@ -1,7 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
@@ -12,12 +17,11 @@ import org.opensearch.dataprepper.common.sink.SinkFlushContext;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.DefaultSinkFlushResult;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
+import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusPushResult;
 import org.opensearch.dataprepper.model.event.Event;
 
 import com.arpnetworking.metrics.prometheus.Remote;
 import com.arpnetworking.metrics.prometheus.Types;
-
-import software.amazon.awssdk.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,11 +57,11 @@ public class PrometheusSinkFlushableBuffer implements SinkFlushableBuffer {
         writeRequestBuilder.addAllTimeseries(allTimeSeries);
         Remote.WriteRequest request = writeRequestBuilder.build();
         byte[] bytes = request.toByteArray();
-        Pair<Boolean, Integer> result = httpSender.pushToEndPoint(bytes);
-        if (!result.left()) {
+        PrometheusPushResult result = httpSender.pushToEndpoint(bytes);
+        if (!result.isSuccess()) {
             sinkMetrics.incrementRequestsFailedCounter(1);
             sinkMetrics.incrementEventsFailedCounter(events.size());
-            return new DefaultSinkFlushResult(events, result.right(), null);
+            return new DefaultSinkFlushResult(events, result.getStatusCode(), null);
         }
         sinkMetrics.incrementRequestsSuccessCounter(1);
         sinkMetrics.incrementEventsSuccessCounter(events.size());

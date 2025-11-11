@@ -1,7 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 package org.opensearch.dataprepper.plugins.sink.prometheus.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,7 +26,7 @@ public class PrometheusSinkConfiguration {
 
     static final int DEFAULT_MAX_RETRIES = 5;
 
-    private static final CompressionOption DEFAULT_ENCODING = CompressionOption.SNAPPY;
+    public static final CompressionOption DEFAULT_ENCODING = CompressionOption.SNAPPY;
 
     private static final String DEFAULT_CONTENT_TYPE = X_PROTOBUF;
 
@@ -70,9 +75,9 @@ public class PrometheusSinkConfiguration {
     private Duration idleTimeout = DEFAULT_IDLE_TIMEOUT;
 
     @JsonProperty("sanitize_names")
-    private Boolean sanitizeNames = true;
+    private boolean sanitizeNames = true;
 
-    public Boolean getSanitizeNames() {
+    public boolean getSanitizeNames() {
         return sanitizeNames;
     }
 
@@ -111,20 +116,8 @@ public class PrometheusSinkConfiguration {
         return requestTimeout;
     }
 
-    public long getRequestTimeoutMs() {
-        return requestTimeout.toMillis();
-    }
-
-    public long getConnectionTimeoutMs() {
-        return connectionTimeout.toMillis();
-    }
-
     public Duration getConnectionTimeout() {
         return connectionTimeout;
-    }
-
-    public long getIdleTimeoutMs() {
-        return idleTimeout.toMillis();
     }
 
     public Duration getIdleTimeout() {

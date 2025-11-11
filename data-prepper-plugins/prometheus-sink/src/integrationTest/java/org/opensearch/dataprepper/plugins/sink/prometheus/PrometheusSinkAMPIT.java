@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.sink.prometheus;
@@ -178,22 +183,10 @@ public class PrometheusSinkAMPIT {
 
         summary = mock(DistributionSummary.class);
 
-        lenient().doAnswer(a -> {
-            String s = (String)(a.getArgument(0));
-            if (s.contains("RequestsSucceeded")) {
-                return requestsSuccessCounter;
-            }
-            if (s.contains("Succeeded")) {
-                return metricsSuccessCounter;
-            }
-            if (s.contains("RequestsFailed")) {
-                return requestsFailedCounter;
-            }
-            if (s.contains("Failed")) {
-                return metricsFailedCounter;
-            }
-            return null;
-        }).when(pluginMetrics).counter(any(String.class));
+        when(pluginMetrics.counter(eq("sinkRequestsSucceeded"))).thenReturn(requestsSuccessCounter);
+        when(pluginMetrics.counter(eq("sinkRequestsFailed"))).thenReturn(requestsFailedCounter);
+        when(pluginMetrics.counter(eq("sinkMetricsSucceeded"))).thenReturn(metricsSuccessCounter);
+        when(pluginMetrics.counter(eq("sinkMetricsFailed"))).thenReturn(metricsFailedCounter);
 
         when(pluginMetrics.summary(any(String.class))).thenReturn(summary);
 
@@ -210,9 +203,10 @@ public class PrometheusSinkAMPIT {
         thresholdConfig = mock(PrometheusSinkThresholdConfig.class);
         when(thresholdConfig.getMaxEvents()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
-        when(thresholdConfig.getFlushInterval()).thenReturn(60L);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(60L);
         prometheusSinkConfig = mock(PrometheusSinkConfiguration.class);
         when(prometheusSinkConfig.getMaxRetries()).thenReturn(5);
+        when(prometheusSinkConfig.getSanitizeNames()).thenReturn(false);
         when(prometheusSinkConfig.getUrl()).thenReturn(remoteWriteUrl);
         when(prometheusSinkConfig.getContentType()).thenReturn("application/x-protobuf");
         when(prometheusSinkConfig.getEncoding()).thenReturn(CompressionOption.SNAPPY);
@@ -502,7 +496,7 @@ public class PrometheusSinkAMPIT {
     void TestGaugeMetricsWithMaxRequestSizeLimitAndFlushTimeout() throws Exception {
 
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(220L);
-        when(thresholdConfig.getFlushInterval()).thenReturn(20L);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(20L);
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getGaugeRecordList(NUM_RECORDS);
         sink.doOutput(records);
@@ -564,7 +558,7 @@ public class PrometheusSinkAMPIT {
     }
 
     @Test
-    void TestSummaryMetricsKK() throws Exception {
+    void TestSummaryMetrics() throws Exception {
 
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getSummaryRecordList(NUM_RECORDS);

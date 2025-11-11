@@ -1,7 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
@@ -44,8 +49,7 @@ public class PrometheusSinkBufferEntryTest {
 
     @ParameterizedTest
     @MethodSource("createDifferentMetricEvents")
-    public void testGaugeEvent() throws Exception {
-        event = createGaugeEvent();
+    public void testMetricEvents(Event event) throws Exception {
         prometheusSinkBufferEntry = createObjectUnderTest(event);
         assertThat(prometheusSinkBufferEntry.getTimeSeries(), notNullValue());
         assertThat(prometheusSinkBufferEntry.getEvent(), sameInstance(event));
@@ -84,8 +88,8 @@ public class PrometheusSinkBufferEntryTest {
             .withName("gauge")
             .withDescription("Test Gauge Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withValue(1.0d)
             .build(false);
@@ -96,8 +100,8 @@ public class PrometheusSinkBufferEntryTest {
             .withName("sum")
             .withDescription("Test Sum Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withIsMonotonic(true)
             .withUnit("1")
             .withAggregationTemporality("cumulative")
@@ -116,8 +120,8 @@ public class PrometheusSinkBufferEntryTest {
             .withName("summary")
             .withDescription("Test Summary Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withSum(1)
             .withCount(2L)
@@ -139,8 +143,8 @@ public class PrometheusSinkBufferEntryTest {
             .withName("histogram")
             .withDescription("Test Histogram Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withSum(1)
             .withMin(2.0d)
@@ -162,8 +166,8 @@ public class PrometheusSinkBufferEntryTest {
             .withName("exponentialHistogram")
             .withDescription("Test Exponential Histogram Metric")
             .withTimeReceived(Instant.now())
-            .withTime("2025-09-27T18:00:00Z")
-            .withStartTime("2025-09-27T17:00:00Z")
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withSum(1)
             .withCount(10L)

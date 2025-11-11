@@ -93,6 +93,7 @@ public class PrometheusSinkTest {
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(10000L);
 
         when(prometheusSinkConfiguration.getThresholdConfig()).thenReturn(thresholdConfig);
+        when(prometheusSinkConfiguration.getEncoding()).thenReturn(prometheusSinkConfiguration.DEFAULT_ENCODING);
         when(prometheusSinkConfiguration.getConnectionTimeout()).thenReturn(Duration.ofSeconds(2));
         when(prometheusSinkConfiguration.getUrl()).thenReturn("http://localhost:8080");
         Map<String, Object> dlqSetting = new HashMap<>();

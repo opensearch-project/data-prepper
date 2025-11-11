@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
@@ -21,16 +27,16 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.utils.Pair;
 
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
-import org.xerial.snappy.Snappy;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
+import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.ClientOptions;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
-import com.linecorp.armeria.client.ClientFactory;
-import com.linecorp.armeria.client.ClientOptions;
 
 /**
  * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using an Ameria client.
@@ -45,6 +51,7 @@ public class PrometheusHttpSender {
     private final SinkMetrics sinkMetrics;
     private final long connectionTimeoutMillis;
     private final long idleTimeoutMillis;
+    private final CompressionEngine compressionEngine;
 
     /**
      * Constructor for the PrometheusHttpSender.
@@ -53,16 +60,17 @@ public class PrometheusHttpSender {
      * @param config The configuration for the Prometheus sink plugin.
      */
     public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
-        this(new PrometheusSigV4Signer(awsCredentialsSupplier, config), buildWebClient(config), sinkMetrics, connectionTimeoutMillis, idleTimeoutMillis);
+        this(new PrometheusSigV4Signer(awsCredentialsSupplier, config), config.getEncoding(), buildWebClient(config), sinkMetrics, connectionTimeoutMillis, idleTimeoutMillis);
     }
 
     /**
      * Constructor for unit testing with injected dependencies.
      */
     @VisibleForTesting
-    PrometheusHttpSender(final PrometheusSigV4Signer signer, final WebClient webClient, final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
+    PrometheusHttpSender(final PrometheusSigV4Signer signer, final CompressionOption compressionOption, final WebClient webClient, final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
         this.signer = signer;
         this.webClient = webClient;
+        this.compressionEngine = compressionOption.getCompressionEngine();
         this.sinkMetrics = sinkMetrics;
         this.connectionTimeoutMillis = connectionTimeoutMillis;
         this.idleTimeoutMillis = idleTimeoutMillis;
@@ -91,17 +99,13 @@ public class PrometheusHttpSender {
         final RetryingClientBuilder retryingClientBuilder = RetryingClient.builder(retryRule, safeContentLimit)
                 .maxTotalAttempts(config.getMaxRetries() + 1);
 
-        final long httpTimeoutMs = Math.min(
-                Math.max(config.getThresholdConfig().getFlushInterval() * 2, 3_000), 10_000
-        );
-
         return WebClient.builder()
                 .factory(ClientFactory.builder()
                     .connectTimeout(config.getConnectionTimeout())
                     .idleTimeout(config.getIdleTimeout())
                     .build())
                 .decorator(retryingClientBuilder.newDecorator())
-                .responseTimeoutMillis(config.getRequestTimeoutMs())
+                .responseTimeoutMillis(config.getRequestTimeout().toMillis())
                 .maxResponseLength(safeContentLimit)
                 .options(ClientOptions.builder().build())
                 .build();
@@ -112,10 +116,10 @@ public class PrometheusHttpSender {
      *
      * @param payload - batch the batch of spans to send
      */
-    public Pair<Boolean, Integer> pushToEndPoint(final byte[] payload) {
-        Pair<Boolean, Integer> result;
+    public PrometheusPushResult pushToEndpoint(final byte[] payload) {
+        PrometheusPushResult result;
         try {
-            final byte[] compressedBufferData = Snappy.compress(payload);
+            final byte[] compressedBufferData = compressionEngine.compress(payload);
 
             final HttpRequest request = buildHttpRequest(compressedBufferData);
             final long startTime = System.currentTimeMillis();
@@ -126,20 +130,20 @@ public class PrometheusHttpSender {
                 .thenApply(response -> {
                     final long latency = System.currentTimeMillis() - startTime;
                     sinkMetrics.recordRequestSize(compressedBufferData.length);
-                    LOG.info("Response received in {}ms. Status: {}", latency, response.status());
+                    LOG.error("Response received in {}ms. Status: {}", latency, response.status());
                     
                     int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    return Pair.of(handleResponse(statusCode, responseBytes), statusCode);
+                    return new PrometheusPushResult(handleResponse(statusCode, responseBytes), statusCode);
                 })
                 .exceptionally(throwable -> {
                     LOG.error("Request failed", throwable);
-                    return Pair.of(null, 0);
+                    return new PrometheusPushResult(false, 0);
                 })
                 .join();  // Wait for completion
         } catch (Exception e) {
             LOG.error("Failed to execute request", e);
-            result = Pair.of(false, 0);
+            result = new PrometheusPushResult(false, 0);
         }
         return result;
     }

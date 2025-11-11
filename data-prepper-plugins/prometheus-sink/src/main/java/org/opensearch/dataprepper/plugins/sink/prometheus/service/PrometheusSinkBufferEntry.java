@@ -1,17 +1,24 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonGauge;
-import org.opensearch.dataprepper.model.metric.JacksonMetric;
-import org.opensearch.dataprepper.model.metric.JacksonHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonSum;
-import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.Gauge;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.Sum;
+import org.opensearch.dataprepper.model.metric.Summary;
 
 public class PrometheusSinkBufferEntry implements SinkBufferEntry {
 
@@ -43,24 +50,24 @@ public class PrometheusSinkBufferEntry implements SinkBufferEntry {
     }
 
     private PrometheusTimeSeries getTimeSeriesForEvent(final boolean sanitizeNames) throws Exception {
-        if (event.getMetadata().getEventType().equals("METRIC")) {
+        if (event.getMetadata().getEventType().equals(EventType.METRIC.toString())) {
             try {
-                PrometheusTimeSeries timeSeries = new PrometheusTimeSeries((JacksonMetric)event, sanitizeNames);
-                if (event instanceof JacksonGauge) {
-                    final JacksonGauge jacksonGauge = (JacksonGauge) event;
-                    timeSeries.addGaugeMetric(jacksonGauge);
-                } else if (event instanceof JacksonSum) {
-                    final JacksonSum jacksonSum = (JacksonSum) event;
-                    timeSeries.addSumMetric(jacksonSum);
-                } else if (event instanceof JacksonSummary) {
-                    final JacksonSummary jacksonSummary = (JacksonSummary) event;
-                    timeSeries.addSummaryMetric(jacksonSummary);
-                } else if (event instanceof JacksonHistogram) {
-                    final JacksonHistogram jacksonHistogram = (JacksonHistogram) event;
-                    timeSeries.addHistogramMetric(jacksonHistogram);
-                } else if (event instanceof JacksonExponentialHistogram) {
-                    final JacksonExponentialHistogram jacksonExponentialHistogram = (JacksonExponentialHistogram) event;
-                    timeSeries.addExponentialHistogramMetric(jacksonExponentialHistogram);
+                PrometheusTimeSeries timeSeries = new PrometheusTimeSeries((Metric)event, sanitizeNames);
+                if (event instanceof Gauge) {
+                    final Gauge gauge = (Gauge) event;
+                    timeSeries.addGaugeMetric(gauge);
+                } else if (event instanceof Sum) {
+                    final Sum sum = (Sum) event;
+                    timeSeries.addSumMetric(sum);
+                } else if (event instanceof Summary) {
+                    final Summary summary = (Summary) event;
+                    timeSeries.addSummaryMetric(summary);
+                } else if (event instanceof Histogram) {
+                    final Histogram histogram = (Histogram) event;
+                    timeSeries.addHistogramMetric(histogram);
+                } else if (event instanceof ExponentialHistogram) {
+                    final ExponentialHistogram exponentialHistogram = (ExponentialHistogram) event;
+                    timeSeries.addExponentialHistogramMetric(exponentialHistogram);
                 } else {
                     throw new RuntimeException("Unknown metric type");
                 }
