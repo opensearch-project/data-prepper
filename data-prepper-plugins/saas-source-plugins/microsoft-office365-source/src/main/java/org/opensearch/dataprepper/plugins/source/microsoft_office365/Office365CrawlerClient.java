@@ -57,6 +57,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
+    private static final String NON_RETRYABLE_ERRORS = "nonRetryableErrors";
+    private static final String RETRYABLE_ERRORS = "retryableErrors";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
@@ -70,6 +72,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
     private final Counter requestErrorsCounter;
+    private final Counter nonRetryableErrorsCounter;
+    private final Counter retryableErrorsCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -87,6 +91,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
         this.requestErrorsCounter = pluginMetrics.counter(REQUEST_ERRORS);
+        this.nonRetryableErrorsCounter = pluginMetrics.counter(NON_RETRYABLE_ERRORS);
+        this.retryableErrorsCounter = pluginMetrics.counter(RETRYABLE_ERRORS);
     }
 
     @VisibleForTesting
@@ -128,13 +134,16 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                             log.error(NOISY, "{} error processing audit log: {}",
                                     e.isRetryable() ? "Retryable" : "Non-retryable", logId, e);
                             if (e.isRetryable()) {
+                                retryableErrorsCounter.increment();
                                 throw new RuntimeException("Retryable error processing audit log: " + logId, e);
                             } else {
+                                nonRetryableErrorsCounter.increment();
                                 // TODO: When pipeline DLQ is ready, add this record to DLQ instead of dropping the record
                                 log.error(NOISY, "Non-retryable error - record will be dropped. Error processing audit log: {}", logId, e);
                             }
                         } catch (Exception e) {
                             // Unexpected errors are treated as retryable to be safe
+                            retryableErrorsCounter.increment();
                             log.error(NOISY, "Unexpected error processing audit log: {}", logId, e);
                             throw new RuntimeException("Unexpected error processing audit log: " + logId, e);
                         }

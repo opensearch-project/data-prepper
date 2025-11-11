@@ -370,6 +370,7 @@ class Office365RestClientTest {
         Counter mockAuditLogRequestsSuccessCounter = org.mockito.Mockito.mock(Counter.class);
         Counter mockSearchRequestsFailedCounter = org.mockito.Mockito.mock(Counter.class);
         Counter mockSearchRequestsSuccessCounter = org.mockito.Mockito.mock(Counter.class);
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
         DistributionSummary mockAuditLogRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
         DistributionSummary mockSearchRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
 
@@ -380,6 +381,7 @@ class Office365RestClientTest {
         when(mockPluginMetrics.counter("auditLogRequestsSuccess")).thenReturn(mockAuditLogRequestsSuccessCounter);
         when(mockPluginMetrics.counter("searchRequestsFailed")).thenReturn(mockSearchRequestsFailedCounter);
         when(mockPluginMetrics.counter("searchRequestsSuccess")).thenReturn(mockSearchRequestsSuccessCounter);
+        when(mockPluginMetrics.counter("apiCalls")).thenReturn(mockApiCallsCounter);
         when(mockPluginMetrics.summary("auditLogResponseSizeBytes")).thenReturn(mockAuditLogRequestSizeSummary);
         when(mockPluginMetrics.summary("searchResponseSizeBytes")).thenReturn(mockSearchRequestSizeSummary);
 
@@ -394,6 +396,7 @@ class Office365RestClientTest {
         verify(mockPluginMetrics).counter("auditLogRequestsSuccess");
         verify(mockPluginMetrics).counter("searchRequestsFailed");
         verify(mockPluginMetrics).counter("searchRequestsSuccess");
+        verify(mockPluginMetrics).counter("apiCalls");
         verify(mockPluginMetrics).summary("auditLogResponseSizeBytes");
         verify(mockPluginMetrics).summary("searchResponseSizeBytes");
     }
@@ -674,5 +677,125 @@ class Office365RestClientTest {
         } else {
             verify(mockCounter, never()).increment();
         }
+    }
+
+    @Test
+    void testApiCallsCounterIncrementForStartSubscriptions() throws NoSuchFieldException, IllegalAccessException {
+        // Test that apiCallsCounter is incremented for each subscription start call
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "apiCallsCounter", mockApiCallsCounter);
+
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock successful response
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        // Execute
+        office365RestClient.startSubscriptions();
+
+        // Verify apiCallsCounter was incremented once for each content type
+        verify(mockApiCallsCounter, times(CONTENT_TYPES.length)).increment();
+    }
+
+    @Test
+    void testApiCallsCounterIncrementForSearchAuditLogs() throws NoSuchFieldException, IllegalAccessException {
+        // Test that apiCallsCounter is incremented for search audit logs call
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "apiCallsCounter", mockApiCallsCounter);
+
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock successful response
+        List<Map<String, Object>> mockResults = Collections.singletonList(new HashMap<>());
+        ResponseEntity<List<Map<String, Object>>> mockResponse = new ResponseEntity<>(mockResults, HttpStatus.OK);
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), any(ParameterizedTypeReference.class)))
+                .thenReturn(mockResponse);
+
+        // Execute
+        office365RestClient.searchAuditLogs(
+                "Audit.AzureActiveDirectory",
+                Instant.now().minus(1, ChronoUnit.HOURS),
+                Instant.now(),
+                null
+        );
+
+        // Verify apiCallsCounter was incremented once
+        verify(mockApiCallsCounter, times(1)).increment();
+    }
+
+    @Test
+    void testApiCallsCounterIncrementForGetAuditLog() throws NoSuchFieldException, IllegalAccessException {
+        // Test that apiCallsCounter is incremented for get audit log call
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "apiCallsCounter", mockApiCallsCounter);
+
+        // Mock auth config
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock successful response
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
+        String mockAuditLog = "{\"id\":\"123\",\"contentType\":\"Audit.AzureActiveDirectory\"}";
+        ResponseEntity<String> mockResponse = new ResponseEntity<>(mockAuditLog, HttpStatus.OK);
+        when(restTemplate.exchange(eq(contentUri), eq(HttpMethod.GET), any(), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        // Execute
+        office365RestClient.getAuditLog(contentUri);
+
+        // Verify apiCallsCounter was incremented once
+        verify(mockApiCallsCounter, times(1)).increment();
+    }
+
+    @Test
+    void testApiCallsCounterIncrementOnRetries() throws NoSuchFieldException, IllegalAccessException {
+        // Test that apiCallsCounter is incremented for each retry attempt
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "apiCallsCounter", mockApiCallsCounter);
+
+        // Mock auth config
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock failure response that will trigger retries
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
+        when(restTemplate.exchange(eq(contentUri), eq(HttpMethod.GET), any(), eq(String.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
+
+        // Execute and expect exception
+        assertThrows(RuntimeException.class, () -> office365RestClient.getAuditLog(contentUri));
+
+        // Verify apiCallsCounter was incremented 6 times (once for each retry attempt)
+        verify(mockApiCallsCounter, times(6)).increment();
+    }
+
+    @Test
+    void testApiCallsCounterIncrementForSearchAuditLogsWithRetries() throws NoSuchFieldException, IllegalAccessException {
+        // Test that apiCallsCounter is incremented for each retry attempt in searchAuditLogs
+        Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "apiCallsCounter", mockApiCallsCounter);
+
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock failure response that will trigger retries
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), any(ParameterizedTypeReference.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
+
+        // Execute and expect exception
+        assertThrows(RuntimeException.class, () -> office365RestClient.searchAuditLogs(
+                "Audit.AzureActiveDirectory",
+                Instant.now().minus(1, ChronoUnit.HOURS),
+                Instant.now(),
+                null
+        ));
+
+        // Verify apiCallsCounter was incremented 6 times (once for each retry attempt)
+        verify(mockApiCallsCounter, times(6)).increment();
     }
 }

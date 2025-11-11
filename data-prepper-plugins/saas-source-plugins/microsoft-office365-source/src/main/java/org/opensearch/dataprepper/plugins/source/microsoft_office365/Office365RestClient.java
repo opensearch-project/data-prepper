@@ -49,6 +49,7 @@ public class Office365RestClient {
     private static final String AUDIT_LOG_RESPONSE_SIZE = "auditLogResponseSizeBytes";
     private static final String AUDIT_LOG_REQUESTS_FAILED = "auditLogRequestsFailed";
     private static final String AUDIT_LOG_REQUESTS_SUCCESS = "auditLogRequestsSuccess";
+    private static final String API_CALLS = "apiCalls";
     private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
     private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
     private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
@@ -66,6 +67,7 @@ public class Office365RestClient {
     private final Counter auditLogRequestsSuccessCounter;
     private final Counter searchRequestsFailedCounter;
     private final Counter searchRequestsSuccessCounter;
+    private final Counter apiCallsCounter;
     private final DistributionSummary auditLogResponseSizeSummary;
     private final DistributionSummary searchResponseSizeSummary;
 
@@ -82,6 +84,7 @@ public class Office365RestClient {
         this.auditLogRequestsSuccessCounter = pluginMetrics.counter(AUDIT_LOG_REQUESTS_SUCCESS);
         this.searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
         this.searchRequestsSuccessCounter = pluginMetrics.counter(SEARCH_REQUESTS_SUCCESS);
+        this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
         this.auditLogResponseSizeSummary = pluginMetrics.summary(AUDIT_LOG_RESPONSE_SIZE);
         this.searchResponseSizeSummary = pluginMetrics.summary(SEARCH_RESPONSE_SIZE);
 
@@ -124,6 +127,7 @@ public class Office365RestClient {
                 RetryHandler.executeWithRetry(() -> {
                     try {
                         headers.setBearerAuth(authConfig.getAccessToken());
+                        apiCallsCounter.increment();
                         ResponseEntity<String> response = restTemplate.exchange(
                                 url,
                                 HttpMethod.POST,
@@ -179,6 +183,7 @@ public class Office365RestClient {
                 return RetryHandler.executeWithRetry(
                         () -> {
                             headers.setBearerAuth(authConfig.getAccessToken());
+                            apiCallsCounter.increment();
 
                             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                                     url,
@@ -230,6 +235,7 @@ public class Office365RestClient {
             try {
                 String response = RetryHandler.executeWithRetry(() -> {
                     headers.setBearerAuth(authConfig.getAccessToken());
+                    apiCallsCounter.increment();
                     ResponseEntity<String> responseEntity = restTemplate.exchange(
                             contentUri,
                             HttpMethod.GET,
