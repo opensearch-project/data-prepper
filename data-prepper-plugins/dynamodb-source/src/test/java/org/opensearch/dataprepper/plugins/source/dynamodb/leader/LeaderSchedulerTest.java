@@ -189,7 +189,13 @@ class LeaderSchedulerTest {
         leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(true);
         leaderPartition.getProgressState().get().setStreamArns(List.of(streamArn));
+
+        final String expectedEndingSequenceNumber = UUID.randomUUID().toString();
+        when(shardManager.getEndingSequenceNumber(anyString())).thenReturn(expectedEndingSequenceNumber);
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+
+        final ArgumentCaptor<StreamPartition> createdPartitionCaptor = ArgumentCaptor.forClass(StreamPartition.class);
+        when(coordinator.createPartition(createdPartitionCaptor.capture())).thenReturn(true);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
@@ -207,6 +213,10 @@ class LeaderSchedulerTest {
 
         verify(coordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
 
+        final List<StreamPartition> createdPartitions = createdPartitionCaptor.getAllValues();
+        createdPartitions.forEach(streamPartition -> {
+            assertThat(streamPartition.getProgressState().get().getEndingSequenceNumber(), equalTo(expectedEndingSequenceNumber));
+        });
     }
 
     @Test

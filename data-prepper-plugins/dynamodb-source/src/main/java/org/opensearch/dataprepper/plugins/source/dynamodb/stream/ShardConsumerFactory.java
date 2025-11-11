@@ -86,11 +86,11 @@ public class ShardConsumerFactory {
             // If ending sequence number is present, get the shardIterator for last record
             String endingSequenceNumber = progressState.get().getEndingSequenceNumber();
             if (endingSequenceNumber != null && !endingSequenceNumber.isEmpty()) {
-                lastShardIterator = getShardIterator(streamPartition.getStreamArn(), streamPartition.getShardId(), endingSequenceNumber);
+                lastShardIterator = getShardIterator(streamPartition.getStreamArn(), streamPartition.getShardId(), endingSequenceNumber, ShardIteratorType.AT_SEQUENCE_NUMBER);
             }
         }
 
-        String shardIterator = getShardIterator(streamPartition.getStreamArn(), streamPartition.getShardId(), sequenceNumber);
+        String shardIterator = getShardIterator(streamPartition.getStreamArn(), streamPartition.getShardId(), sequenceNumber, ShardIteratorType.AFTER_SEQUENCE_NUMBER);
         if (shardIterator == null) {
             LOG.error("Failed to start consuming shard '{}'. Unable to get a shard iterator for this shard, this shard may have expired", streamPartition.getShardId());
             return null;
@@ -136,7 +136,7 @@ public class ShardConsumerFactory {
      * @param sequenceNumber The last Sequence Number processed if any
      * @return A shard iterator.
      */
-    public String getShardIterator(String streamArn, String shardId, String sequenceNumber) {
+    public String getShardIterator(String streamArn, String shardId, String sequenceNumber, ShardIteratorType shardIteratorType) {
         LOG.debug("Get Initial Shard Iter for {}", shardId);
         GetShardIteratorRequest getShardIteratorRequest;
 
@@ -145,7 +145,7 @@ public class ShardConsumerFactory {
             getShardIteratorRequest = GetShardIteratorRequest.builder()
                     .shardId(shardId)
                     .streamArn(streamArn)
-                    .shardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
+                    .shardIteratorType(shardIteratorType)
                     .sequenceNumber(sequenceNumber)
                     .build();
         } else {
