@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +29,9 @@ public class WorkerScheduler implements Runnable {
 
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
-    private static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
-    private static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
+    public static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
+    public static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
+    
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
     private static final Logger log = LoggerFactory.getLogger(WorkerScheduler.class);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
@@ -92,16 +94,25 @@ public class WorkerScheduler implements Runnable {
                     }
                 }
             } catch (Exception e) {
-                log.error("Error processing partition", e);
-                parititionsFailedCounter.increment();
-                try {
-                    Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
-                } catch (InterruptedException ex) {
-                    log.warn("Thread interrupted while waiting to retry due to {}", ex.getMessage());
-                }
+                // TODO: will be in a followup to handle retry strategy differently for non-retryable exceptions
+                backoffRetry(e);
             }
         }
         log.warn("SourceItemWorker Scheduler is interrupted, looks like shutdown has triggered");
+    }
+
+    /**
+     * Default behaviour of backoff retry workerScheduler by sleeping RETRY_BACKOFF_ON_EXCEPTION_MILLIS
+     * @param e - exception thrown by workerScheduler
+     */
+    private void backoffRetry(Exception e) {
+        this.parititionsFailedCounter.increment();
+        log.error("Error processing partition", e);
+        try {
+            Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
+        } catch (InterruptedException ex) {
+            log.warn("Thread interrupted while waiting to retry due to {}", ex.getMessage());
+        }
     }
 
     private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer) {

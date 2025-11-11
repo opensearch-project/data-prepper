@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -115,10 +116,11 @@ class Office365RestClientTest {
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
                 .thenThrow(otherException);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.startSubscriptions());
         assertEquals("Failed to initialize subscriptions: 400 Bad Request",
                 exception.getMessage());
+        assertTrue(exception.isRetryable());
     }
 
     @Test
@@ -210,7 +212,7 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
         // Verify that the exception is propagated
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.searchAuditLogs(
                         "Audit.AzureActiveDirectory",
                         startTime,
@@ -218,6 +220,7 @@ class Office365RestClientTest {
                         null
                 ));
         assertEquals("Failed to fetch audit logs", exception.getMessage());
+        assertTrue(exception.isRetryable());
     }
 
     @Test
@@ -250,9 +253,10 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
         // Verify that the exception is propagated
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.getAuditLog(contentUri));
         assertEquals("Failed to fetch audit log", exception.getMessage());
+        assertTrue(exception.isRetryable());
     }
 
     @Test
@@ -318,7 +322,7 @@ class Office365RestClientTest {
                 any(ParameterizedTypeReference.class)
         )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
 
-        assertThrows(RuntimeException.class, () -> 
+        assertThrows(SaaSCrawlerException.class, () -> 
             office365RestClient.searchAuditLogs(
                     "Audit.AzureActiveDirectory",
                     startTime,
@@ -347,7 +351,7 @@ class Office365RestClientTest {
                 eq(String.class)
         )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
 
-        assertThrows(RuntimeException.class, () -> 
+        assertThrows(SaaSCrawlerException.class, () -> 
             office365RestClient.getAuditLog(contentUri)
         );
 
@@ -441,7 +445,7 @@ class Office365RestClientTest {
         when(restTemplate.exchange(eq(contentUri), eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        assertThrows(RuntimeException.class, () -> office365RestClient.getAuditLog(contentUri));
+        assertThrows(SaaSCrawlerException.class, () -> office365RestClient.getAuditLog(contentUri));
 
         // Verify failure metrics
         verify(mockAuditLogsRequestedCounter, times(2)).increment(); // Called again before retry
@@ -532,9 +536,10 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(status));
 
         // Execute and verify exception
-        RuntimeException exception = assertThrows(RuntimeException.class, 
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class, 
                 () -> office365RestClient.getAuditLog(contentUri));
         assertEquals("Failed to fetch audit log", exception.getMessage());
+        assertTrue(exception.isRetryable());
 
         // Verify counter increment
         if (shouldIncrementCounter) {
@@ -562,9 +567,10 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(HttpStatus.BAD_GATEWAY));
 
         // Execute and verify exception
-        RuntimeException exception = assertThrows(RuntimeException.class, 
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class, 
                 () -> office365RestClient.getAuditLog(contentUri));
         assertEquals("Failed to fetch audit log", exception.getMessage());
+        assertTrue(exception.isRetryable());
 
         // Verify no counters were incremented
         assertTrue(mockErrorTypeMetricCounterMap.isEmpty());
@@ -610,7 +616,7 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(status));
 
         // Execute and verify exception
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.searchAuditLogs(
                 contentType,
                 startTime,
@@ -618,6 +624,7 @@ class Office365RestClientTest {
                 null
                 ));
         assertEquals("Failed to fetch audit logs", exception.getMessage());
+        assertTrue(exception.isRetryable());
 
         // Verify counter increment
         if (shouldIncrementCounter) {
@@ -662,7 +669,7 @@ class Office365RestClientTest {
         )).thenThrow(new HttpClientErrorException(status));
 
         // Execute and verify exception
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
         () -> office365RestClient.startSubscriptions());
         if (status == HttpStatus.FORBIDDEN) {
             assertEquals("Failed to initialize subscriptions: Access forbidden: 403 FORBIDDEN", 
@@ -671,6 +678,7 @@ class Office365RestClientTest {
             assertEquals("Failed to initialize subscriptions: " + status.toString(), 
                 exception.getMessage());
         }
+        assertTrue(exception.isRetryable());
 
         if (shouldIncrementCounter) {
             verify(mockCounter).increment();

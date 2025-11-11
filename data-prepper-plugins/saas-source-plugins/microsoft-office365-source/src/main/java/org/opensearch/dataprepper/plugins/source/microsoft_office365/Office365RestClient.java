@@ -15,7 +15,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -148,7 +148,7 @@ public class Office365RestClient {
         } catch (Exception e) {
             publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
             log.error(NOISY, "Failed to initialize subscriptions", e);
-            throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
+            throw new SaaSCrawlerException("Failed to initialize subscriptions: " + e.getMessage(), e, true);
         }
     }
 
@@ -212,7 +212,7 @@ public class Office365RestClient {
             } catch (Exception e) {
                 publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
                 log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
-                throw new RuntimeException("Failed to fetch audit logs", e);
+                throw new SaaSCrawlerException("Failed to fetch audit logs", e, true);
             }
         });
     }
@@ -226,7 +226,7 @@ public class Office365RestClient {
      */
     public String getAuditLog(String contentUri) {
         if (!contentUri.startsWith(MANAGEMENT_API_BASE_URL)) {
-            throw new Office365Exception("ContentUri must be from Office365 Management API: " + contentUri, false);
+            throw new SaaSCrawlerException("ContentUri must be from Office365 Management API: " + contentUri, false);
         }
         auditLogsRequestedCounter.increment();
         final HttpHeaders headers = new HttpHeaders();
@@ -256,7 +256,7 @@ public class Office365RestClient {
             } catch (Exception e) {
                 publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
-                throw new RuntimeException("Failed to fetch audit log", e);
+                throw new SaaSCrawlerException("Failed to fetch audit log", e, true);
             }
         });
     }

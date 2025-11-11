@@ -17,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365RestClient;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 
 import java.time.Duration;
@@ -31,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -183,13 +185,14 @@ class Office365ServiceTest {
                 any(), any(), any(), any()
         )).thenThrow(new RuntimeException("API Error"));
 
-        Office365Exception exception = assertThrows(
-                Office365Exception.class,
+        SaaSCrawlerException exception = assertThrows(
+                SaaSCrawlerException.class,
                 () -> office365Service.searchAuditLogs(logType, startTime, endTime, null)
         );
 
         assertEquals("Failed to fetch logs for time window " + startTime + " to " + endTime +
                 " for log type " + logType + ".", exception.getMessage());
+        assertTrue(exception.isRetryable());
     }
 
     @Test
@@ -207,6 +210,65 @@ class Office365ServiceTest {
         assertEquals(expectedLog, actualLog);
         verify(office365RestClient).getAuditLog("test-id");
     }
+
+    @Test
+    void testSearchAuditLogsWithNullStartTime() {
+        // Given
+        Instant endTime = Instant.now();
+        String logType = "Exchange";
+
+        // When/Then
+        SaaSCrawlerException exception = assertThrows(
+                SaaSCrawlerException.class,
+                () -> office365Service.searchAuditLogs(logType, null, endTime, null)
+        );
+        assertEquals("startTime and endTime must not be null", exception.getMessage());
+        assertFalse(exception.isRetryable());
+    }
+
+    @Test
+    void testSearchAuditLogsWithNullEndTime() {
+        // Given
+        Instant startTime = Instant.now().minus(Duration.ofHours(1));
+        String logType = "Exchange";
+
+        // When/Then
+        SaaSCrawlerException exception = assertThrows(
+                SaaSCrawlerException.class,
+                () -> office365Service.searchAuditLogs(logType, startTime, null, null)
+        );
+        assertEquals("startTime and endTime must not be null", exception.getMessage());
+        assertFalse(exception.isRetryable());
+     }
+
+     @Test
+     void testSearchAuditLogsWithBothTimesNull() {
+        // Given
+        String logType = "Exchange";
+
+        // When/Then
+        SaaSCrawlerException exception = assertThrows(
+                SaaSCrawlerException.class,
+                () -> office365Service.searchAuditLogs(logType, null, null, null)
+        );
+        assertEquals("startTime and endTime must not be null", exception.getMessage());
+        assertFalse(exception.isRetryable());
+     }
+
+     @Test
+     void testSearchAuditLogsWithNullLogType() {
+        // Given
+        Instant startTime = Instant.now().minus(Duration.ofHours(1));
+        Instant endTime = Instant.now();
+
+        // When/Then
+        SaaSCrawlerException exception = assertThrows(
+                SaaSCrawlerException.class,
+                () -> office365Service.searchAuditLogs(null, startTime, endTime, null)
+        );
+        assertEquals("logType must not be null", exception.getMessage());
+        assertFalse(exception.isRetryable());
+     }
 
     private Map<String, Object> createTestItem(String contentId, Instant contentCreated) {
         Map<String, Object> item = new HashMap<>();
