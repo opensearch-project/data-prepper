@@ -49,7 +49,6 @@ public class Office365Source extends CrawlerSourcePlugin {
     private final Office365AuthenticationInterface office365AuthProvider;
     private final Office365Service office365Service;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
-    private static final int OFFICE365_LOOKBACK_HOURS = 0;
 
     @DataPrepperPluginConstructor
     public Office365Source(final PluginMetrics pluginMetrics,
@@ -89,7 +88,7 @@ public class Office365Source extends CrawlerSourcePlugin {
 
     @Override
     protected LeaderProgressState createLeaderProgressState() {
-        return new DimensionalTimeSliceLeaderProgressState(Instant.now(), OFFICE365_LOOKBACK_HOURS);
+        return new DimensionalTimeSliceLeaderProgressState(Instant.now(), office365SourceConfig.getLookBackHours());
     }
 
     @Override
