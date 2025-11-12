@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class EMFLoggingRegistryConfigTest {
     @Test
     void testDefault() {
-        final EMFLoggingRegistryConfig objectUnderTest = EMFLoggingRegistryConfig.DEFAULT;
+        final EMFLoggingRegistryConfig objectUnderTest = k -> null;
         assertThat(objectUnderTest.prefix(), equalTo("emf"));
     }
 }

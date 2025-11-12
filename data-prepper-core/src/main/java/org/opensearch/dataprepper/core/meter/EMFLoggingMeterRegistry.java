@@ -65,12 +65,8 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     private final Environment environment;
     private static final WarnThenDebugLogger warnThenDebugLogger = new WarnThenDebugLogger(EMFLoggingMeterRegistry.class);
 
-    public EMFLoggingMeterRegistry() {
-        this(new EnvironmentProvider().resolveEnvironment().join());
-    }
-
-    public EMFLoggingMeterRegistry(final Environment environment) {
-        this(EMFLoggingRegistryConfig.DEFAULT, environment, Clock.SYSTEM);
+    public EMFLoggingMeterRegistry(final EMFLoggingRegistryConfig config) {
+        this(config, new EnvironmentProvider().resolveEnvironment().join(), Clock.SYSTEM);
     }
 
     public EMFLoggingMeterRegistry(final EMFLoggingRegistryConfig config, final Environment environment, final Clock clock) {
@@ -124,11 +120,16 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
                 .setNamespace(NAMESPACE)
                 .setTimestamp(timestamp);
         addDimensionSet(tags, metricsLogger);
+        addAdditionalProperties(metricsLogger);
         return metricsLogger;
     }
 
     private void addDimensionSet(final List<Tag> tags, final MetricsLogger metricsLogger) {
         metricsLogger.setDimensions(toDimensionSet(tags));
+    }
+
+    private void addAdditionalProperties(final MetricsLogger metricsLogger) {
+        config.additionalProperties().forEach(metricsLogger::putProperty);
     }
 
     private DimensionSet toDimensionSet(final List<Tag> tags) {

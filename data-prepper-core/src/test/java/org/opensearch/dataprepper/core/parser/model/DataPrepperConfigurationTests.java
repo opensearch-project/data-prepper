@@ -275,4 +275,11 @@ public class DataPrepperConfigurationTests {
                 Map.of("test_extension", Map.of("test_attribute", "test_string"))
         ));
     }
+
+    @Test
+    public void testGetEmfAdditionalPropertiesDefault() {
+        final DataPrepperConfiguration dataPrepperConfiguration = new DataPrepperConfiguration();
+        assertThat(dataPrepperConfiguration.getEmfAdditionalProperties(), notNullValue());
+        assertThat(dataPrepperConfiguration.getEmfAdditionalProperties().isEmpty(), equalTo(true));
+    }
 }
