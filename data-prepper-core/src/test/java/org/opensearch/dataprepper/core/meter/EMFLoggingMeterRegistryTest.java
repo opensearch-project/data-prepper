@@ -28,6 +28,7 @@ import software.amazon.cloudwatchlogs.emf.model.MetricsContext;
 import software.amazon.cloudwatchlogs.emf.model.Unit;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -60,7 +61,7 @@ class EMFLoggingMeterRegistryTest {
     private final MockClock clock = new MockClock();
     private final EMFLoggingMeterRegistry registry = spy(
             new EMFLoggingMeterRegistry(
-                    EMFLoggingRegistryConfig.DEFAULT, new EnvironmentProvider().resolveEnvironment().join(), clock)
+                    k -> null, new EnvironmentProvider().resolveEnvironment().join(), clock)
     );
     private final EMFLoggingMeterRegistry.Snapshot registrySnapshot = registry.new Snapshot();
 
@@ -218,7 +219,7 @@ class EMFLoggingMeterRegistryTest {
     void snapshotFunctionCounterDataShouldClampInfiniteValues() {
         FunctionCounter functionCounter = FunctionCounter
                 .builder("my.positive.infinity", Double.POSITIVE_INFINITY, Number::doubleValue).register(registry);
-        clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
+        clock.add(Duration.ofMinutes(1));
         final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints1 = registrySnapshot
                 .functionCounterData(functionCounter)
                 .collect(Collectors.toList());
@@ -227,7 +228,7 @@ class EMFLoggingMeterRegistryTest {
 
         functionCounter = FunctionCounter
                 .builder("my.negative.infinity", Double.NEGATIVE_INFINITY, Number::doubleValue).register(registry);
-        clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
+        clock.add(Duration.ofMinutes(1));
         final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints2 = registrySnapshot
                 .functionCounterData(functionCounter)
                 .collect(Collectors.toList());
@@ -270,7 +271,7 @@ class EMFLoggingMeterRegistryTest {
         final FunctionTimer functionTimer = FunctionTimer
                 .builder("my.function.timer", Double.NaN, Number::longValue, Number::doubleValue, TimeUnit.MILLISECONDS)
                 .register(registry);
-        clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
+        clock.add(Duration.ofMinutes(1));
         final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
                 .functionTimerData(functionTimer)
                 .collect(Collectors.toList());
@@ -354,6 +355,46 @@ class EMFLoggingMeterRegistryTest {
         } catch (final NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void testAdditionalPropertiesAreAddedToMetricsLogger() {
+        final String randomKey1 = "testKey_" + System.currentTimeMillis();
+        final String randomValue1 = "testValue_" + Math.random();
+        final String randomKey2 = "anotherKey_" + System.nanoTime();
+        final String randomValue2 = "anotherValue_" + Math.random();
+        
+        final Map<String, String> additionalProperties = Map.of(randomKey1, randomValue1, randomKey2, randomValue2);
+        final EMFLoggingRegistryConfig config = new EMFLoggingRegistryConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            public Map<String, String> additionalProperties() {
+                return additionalProperties;
+            }
+        };
+        
+        final EMFLoggingMeterRegistry registryWithProperties = new EMFLoggingMeterRegistry(
+                config, new EnvironmentProvider().resolveEnvironment().join(), clock);
+        
+        registryWithProperties.gauge("test_gauge", 1.0);
+        final List<MetricsLogger> metricsLoggers = registryWithProperties.metricsLoggers();
+        
+        assertThat(metricsLoggers.size(), equalTo(1));
+        
+        final MetricsLogger metricsLogger = metricsLoggers.get(0);
+        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
+        
+        // Verify properties exist
+        assertThat(context.getProperty(randomKey1), equalTo(randomValue1));
+        assertThat(context.getProperty(randomKey2), equalTo(randomValue2));
+        
+        // Verify properties are not dimensions
+        assertThat(hasDimension(context, randomKey1), is(false));
+        assertThat(hasDimension(context, randomKey2), is(false));
     }
 
     private boolean hasDimension(final MetricsContext context, final String key) {

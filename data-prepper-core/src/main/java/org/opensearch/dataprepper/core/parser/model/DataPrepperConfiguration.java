@@ -56,6 +56,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private List<String> disabledMetrics = new LinkedList<>();
+    private EmfConfig emf = new EmfConfig();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
@@ -93,6 +94,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             final List<MetricTagFilter> metricTagFilters,
             @JsonProperty("disabled_metrics")
             final List<String> disabledMetrics,
+            @JsonProperty("emf_metrics")
+            final EmfConfig emf,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processor_shutdown_timeout")
             @JsonAlias("processorShutdownTimeout")
@@ -126,6 +129,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.disabledMetrics = disabledMetrics;
+        this.emf = emf != null ? emf : new EmfConfig();
 
         this.processorShutdownTimeout = processorShutdownTimeout != null ? processorShutdownTimeout : DEFAULT_SHUTDOWN_DURATION;
         if (this.processorShutdownTimeout.isNegative()) {
@@ -179,6 +183,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
 
     public List<String> getDisabledMetrics() {
         return disabledMetrics != null ? disabledMetrics : Collections.emptyList();
+    }
+
+    public Map<String, String> getEmfAdditionalProperties() {
+        return emf.getAdditionalProperties();
     }
 
 

@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
+import org.opensearch.dataprepper.core.meter.EMFLoggingRegistryConfig;
 import org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
@@ -28,10 +29,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+
+import java.util.Map;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -149,7 +153,8 @@ public class MetricsConfig {
     @Bean
     public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
-            final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
+            final EMFLoggingRegistryConfig config = createEMFLoggingRegistryConfig(dataPrepperConfiguration);
+            final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry(config);
             configureMetricRegistry(
                     dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
                     dataPrepperConfiguration.getDisabledMetrics(), meterRegistry
@@ -182,6 +187,20 @@ public class MetricsConfig {
         meterBinders.forEach(binder -> binder.bindTo(compositeMeterRegistry));
 
         return compositeMeterRegistry;
+    }
+
+    private EMFLoggingRegistryConfig createEMFLoggingRegistryConfig(final DataPrepperConfiguration dataPrepperConfiguration) {
+        return new EMFLoggingRegistryConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            public Map<String, String> additionalProperties() {
+                return Collections.unmodifiableMap(dataPrepperConfiguration.getEmfAdditionalProperties());
+            }
+        };
     }
 
 }
