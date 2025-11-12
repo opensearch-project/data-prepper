@@ -129,7 +129,8 @@ public class LeaderScheduler implements Runnable {
                     try {
                         coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
                     } catch (final Exception e) {
-                        LOG.error("Failed to update ownership for leader partition. Retrying...");
+                        LOG.error("Failed to update ownership for leader partition. Will attempt to reacquire this partition...");
+                        leaderPartition = null;
                     }
                 }
                 try {

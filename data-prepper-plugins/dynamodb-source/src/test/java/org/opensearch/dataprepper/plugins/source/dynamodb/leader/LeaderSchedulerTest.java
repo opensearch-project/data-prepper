@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
@@ -16,6 +17,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableCon
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ContinuousBackupsDescription;
 import software.amazon.awssdk.services.dynamodb.model.ContinuousBackupsStatus;
@@ -55,6 +57,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -328,6 +331,35 @@ class LeaderSchedulerTest {
 
         verify(coordinator, atLeast(3)).acquireAvailablePartition(LeaderPartition.PARTITION_TYPE);
         verify(coordinator, never()).saveProgressStateForPartition(isNull(), any(Duration.class));
+    }
+
+    @Test
+    void test_shardDiscovery_with_failure_to_save_partition_state_reacquires_partition() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+        leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, List.of(tableConfig));
+        leaderPartition = new LeaderPartition();
+        leaderPartition.getProgressState().get().setInitialized(true);
+        leaderPartition.getProgressState().get().setStreamArns(List.of(streamArn));
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        doThrow(PartitionUpdateException.class).when(coordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+
+        ReflectivelySetField.setField(LeaderScheduler.class, leaderScheduler, "leaseInterval", Duration.ofMillis(40));
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> leaderScheduler.run());
+
+        Thread.sleep(100);
+        executorService.shutdownNow();
+        // Already init
+        verifyNoInteractions(dynamoDbClient);
+
+        // Should check the completed partitions
+        verify(coordinator, atLeast(2)).queryCompletedPartitions(eq(StreamPartition.PARTITION_TYPE), any(Instant.class));
+
+        // Should create 3 stream partitions for child shards found
+        verify(coordinator, atLeast(3)).createPartition(any(EnhancedSourcePartition.class));
+
+        verify(coordinator, atLeast(2)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+        verify(coordinator, atLeast(2)).acquireAvailablePartition(LeaderPartition.PARTITION_TYPE);
     }
 
 
