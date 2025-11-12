@@ -13,8 +13,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import org.hibernate.validator.constraints.time.DurationMax;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.AuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
+
+import java.time.Duration;
 
 /**
  * Configuration class for Office 365 source plugin.
@@ -45,6 +48,28 @@ public class Office365SourceConfig implements CrawlerSourceConfig {
      */
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
+
+    /**
+     * Time range for lookback data collection using ISO 8601 duration format.
+     * Specifies how far back in time to collect data from the current time.
+     * Default: null (no lookback, only incremental data)
+     * Maximum: P7D (7 days due to Office 365 API limitation)
+     */
+    @JsonProperty("range")
+    @DurationMax(days = 7, message = "Range cannot exceed 7 days due to Office 365 API limitation")
+    private Duration range;
+
+    /**
+     * Gets the look back range as hours for compatibility with existing crawler framework.
+     *
+     * @return the number of hours to look back, or 0 if no range is specified
+     */
+    public int getLookBackHours() {
+        if (range == null || range.toHours() <= 0) {
+            return 0;
+        }
+        return (int) range.toHours();
+    }
 
     @Override
     public int getNumberOfWorkers() {

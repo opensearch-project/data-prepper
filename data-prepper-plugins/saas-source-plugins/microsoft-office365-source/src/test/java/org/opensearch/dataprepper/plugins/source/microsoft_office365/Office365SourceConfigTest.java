@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Authen
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Oauth2Config;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -78,6 +79,7 @@ class Office365SourceConfigTest {
     void testDefaultValues() {
         assertFalse(config.isAcknowledgments());
         assertEquals(4, config.getNumberOfWorkers());
+        assertEquals(0, config.getLookBackHours());
     }
 
     @Test
@@ -90,5 +92,13 @@ class Office365SourceConfigTest {
     void testGetClientSecretValue() {
         String actualClientSecret = (String) config.getAuthenticationConfiguration().getOauth2().getClientSecret().getValue();
         assertEquals(clientSecret, actualClientSecret);
+    }
+
+    @Test
+    void testNegativeDurationRange() throws Exception {
+        Duration negativeDuration = Duration.ofDays(-1);
+        setField(config, "range", negativeDuration);
+
+        assertEquals(0, config.getLookBackHours());
     }
 }
