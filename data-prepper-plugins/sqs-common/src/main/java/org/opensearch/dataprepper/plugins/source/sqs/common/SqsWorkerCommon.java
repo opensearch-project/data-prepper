@@ -48,7 +48,7 @@ public class SqsWorkerCommon {
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
     public static final String SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME = "sqsMessagesAccessDenied";
     public static final String SQS_MESSAGE_THROTTLED_METRIC_NAME = "sqsMessagesThrottled";
-    public static final String SQS_QUEUE_NOT_FOUND_METRIC_NAME = "sqsQueueNotFound";
+    public static final String SQS_RESOURCE_NOT_FOUND_METRIC_NAME = "sqsResourceNotFound";
 
     private final Backoff standardBackoff;
     private final PluginMetrics pluginMetrics;
@@ -64,7 +64,7 @@ public class SqsWorkerCommon {
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
     private final Counter sqsMessageAccessDeniedCounter;
     private final Counter sqsMessageThrottledCounter;
-    private final Counter sqsQueueNotFoundCounter;
+    private final Counter sqsResourceNotFoundCounter;
 
     public SqsWorkerCommon(final Backoff standardBackoff,
                            final PluginMetrics pluginMetrics,
@@ -86,7 +86,7 @@ public class SqsWorkerCommon {
         sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
         sqsMessageAccessDeniedCounter = pluginMetrics.counter(SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME);
         sqsMessageThrottledCounter = pluginMetrics.counter(SQS_MESSAGE_THROTTLED_METRIC_NAME);
-        sqsQueueNotFoundCounter = pluginMetrics.counter(SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+        sqsResourceNotFoundCounter = pluginMetrics.counter(SQS_RESOURCE_NOT_FOUND_METRIC_NAME);
     }
 
     public List<Message> pollSqsMessages(final String queueUrl,
@@ -238,7 +238,7 @@ public class SqsWorkerCommon {
         } else if (e.statusCode() == 404 ||
                 e instanceof QueueDoesNotExistException ||
                 e instanceof KmsNotFoundException) {
-            sqsQueueNotFoundCounter.increment();
+            sqsResourceNotFoundCounter.increment();
         } else if (e.isThrottlingException() ||
                 e instanceof KmsThrottledException) {
             sqsMessageThrottledCounter.increment();

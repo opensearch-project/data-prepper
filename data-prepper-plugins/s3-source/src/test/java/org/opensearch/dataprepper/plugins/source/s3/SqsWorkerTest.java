@@ -73,6 +73,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -148,6 +149,10 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(mock(Counter.class));
         when(pluginMetrics.counter(SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsReceiveMessageFailedCounter);
         when(pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangedCount);
+        lenient().when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME)).thenReturn(mock(Counter.class));
+        lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME)).thenReturn(mock(Counter.class));
+        lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_THROTTLED_METRIC_NAME)).thenReturn(mock(Counter.class));
+        lenient().when(pluginMetrics.counter(SqsWorker.SQS_RESOURCE_NOT_FOUND_METRIC_NAME)).thenReturn(mock(Counter.class));
     }
 
     private SqsWorker createObjectUnderTest() {
@@ -831,6 +836,51 @@ class SqsWorkerTest {
         final int messagesProcessed = createObjectUnderTest().processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
         verify(sqsMessageDelayTimer).record(Duration.ZERO);
+    }
+
+    @Test
+    void processSqsMessages_increments_access_denied_metric_on_403_exception() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.statusCode()).thenReturn(403);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(sqsException);
+        
+        final Counter accessDeniedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME)).thenReturn(accessDeniedCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(accessDeniedCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_queue_not_found_metric_on_404_exception() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.statusCode()).thenReturn(404);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(sqsException);
+        
+        final Counter queueNotFoundCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_RESOURCE_NOT_FOUND_METRIC_NAME)).thenReturn(queueNotFoundCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(queueNotFoundCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_throttled_metric_on_throttling_exception() {
+        final SqsException sqsException = mock(SqsException.class);
+        when(sqsException.isThrottlingException()).thenReturn(true);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(sqsException);
+        
+        final Counter throttledCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_THROTTLED_METRIC_NAME)).thenReturn(throttledCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(throttledCounter).increment();
     }
 
     private static String createPutNotification(final Instant startTime) {
