@@ -13,6 +13,7 @@ public class S3ObjectPluginMetrics {
     static final String S3_OBJECTS_SIZE_PROCESSED = "s3ObjectProcessedBytes";
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
     static final String S3_OBJECTS_DELETE_FAILED_METRIC_NAME = "s3ObjectsDeleteFailed";
+    static final String S3_OBJECTS_READ_FAILED_METRIC_NAME = "s3ObjectReadFailed";
     static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
     static final String S3_OBJECTS_EVENTS = "s3ObjectsEvents";
     static final String S3_OBJECTS_FAILED_NOT_FOUND_METRIC_NAME = "s3ObjectsNotFound";
@@ -33,6 +34,7 @@ public class S3ObjectPluginMetrics {
     private final Counter s3ObjectNoRecordsFound;
 
     private final Counter s3ObjectsDeleteFailed;
+    private final Counter s3ObjectReadFailedCounter;
 
     public S3ObjectPluginMetrics(final PluginMetrics pluginMetrics){
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
@@ -46,6 +48,7 @@ public class S3ObjectPluginMetrics {
         s3ObjectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
         s3ObjectNoRecordsFound = pluginMetrics.counter(S3_OBJECTS_NO_RECORDS_FOUND);
         s3ObjectsDeleteFailed = pluginMetrics.counter(S3_OBJECTS_DELETE_FAILED_METRIC_NAME);
+        s3ObjectReadFailedCounter = pluginMetrics.counter(S3_OBJECTS_READ_FAILED_METRIC_NAME);
     }
 
     public Counter getS3ObjectsFailedCounter() {
@@ -89,4 +92,6 @@ public class S3ObjectPluginMetrics {
     }
 
     public Counter getS3ObjectsDeleteFailed() { return s3ObjectsDeleteFailed; }
+
+    public Counter getS3ObjectReadFailedCounter() { return s3ObjectReadFailedCounter; }
 }

@@ -155,10 +155,15 @@ class S3ObjectWorker implements S3ObjectHandler {
             final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                     compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
 
-            codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
-                consumer.accept(record, dataSelection);
-            });
-            return inputFile.getLength();
+            try {
+                codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
+                    consumer.accept(record, dataSelection);
+                });
+                return inputFile.getLength();
+            } catch (final Exception e) {
+                s3ObjectPluginMetrics.getS3ObjectReadFailedCounter().increment();
+                throw new S3ReadFailedException(e);
+            }
         }
     }
 
