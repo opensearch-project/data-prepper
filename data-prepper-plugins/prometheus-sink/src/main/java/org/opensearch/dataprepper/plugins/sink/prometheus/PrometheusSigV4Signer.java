@@ -80,20 +80,9 @@ class PrometheusSigV4Signer {
     /**
      * Signs a request payload using AWS SigV4 and returns a fully signed request.
      *
-     * @param payload The OTLP Protobuf-encoded request body to be sent
      * @return A signed {@link SdkHttpFullRequest} ready for transmission to the AWS OTLP endpoint
      */
-    SdkHttpFullRequest signRequest(@Nonnull final byte[] payload) {
-        final SdkHttpFullRequest unsignedRequest = SdkHttpFullRequest.builder()
-                .method(SdkHttpMethod.POST)
-                .uri(endpointUri)
-                .putHeader("Content-Encoding", config.getEncoding().toString())
-                .putHeader("Content-Type", config.getContentType())
-                .putHeader("X-Prometheus-Remote-Write-Version", config.getRemoteWriteVersion())
-                .putHeader("x-amz-content-sha256","required")
-                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream())
-                .build();
-
+    SdkHttpFullRequest signRequest(final SdkHttpFullRequest unsignedRequest) {
         return signer.sign(unsignedRequest, Aws4SignerParams.builder()
                 .signingRegion(region)
                 .signingName(SERVICE_NAME)

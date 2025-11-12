@@ -11,7 +11,6 @@
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
-import com.google.common.annotations.VisibleForTesting;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.client.retry.Backoff;
 import com.linecorp.armeria.client.retry.RetryRuleWithContent;
@@ -26,16 +25,18 @@ import com.linecorp.armeria.common.RequestHeadersBuilder;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
+import software.amazon.awssdk.http.SdkHttpMethod;
 
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ClientOptions;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.util.Set;
 
 /**
@@ -52,6 +53,7 @@ public class PrometheusHttpSender {
     private final long connectionTimeoutMillis;
     private final long idleTimeoutMillis;
     private final CompressionEngine compressionEngine;
+    private final PrometheusSinkConfiguration config;
 
     /**
      * Constructor for the PrometheusHttpSender.
@@ -60,18 +62,11 @@ public class PrometheusHttpSender {
      * @param config The configuration for the Prometheus sink plugin.
      */
     public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
-        this(new PrometheusSigV4Signer(awsCredentialsSupplier, config), config.getEncoding(), buildWebClient(config), sinkMetrics, connectionTimeoutMillis, idleTimeoutMillis);
-    }
-
-    /**
-     * Constructor for unit testing with injected dependencies.
-     */
-    @VisibleForTesting
-    PrometheusHttpSender(final PrometheusSigV4Signer signer, final CompressionOption compressionOption, final WebClient webClient, final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
-        this.signer = signer;
-        this.webClient = webClient;
-        this.compressionEngine = compressionOption.getCompressionEngine();
+        this.signer = config.getAwsConfig() != null ? new PrometheusSigV4Signer(awsCredentialsSupplier, config) : null;
+        this.webClient = buildWebClient(config);
+        this.compressionEngine = config.getEncoding().getCompressionEngine();
         this.sinkMetrics = sinkMetrics;
+        this.config = config;
         this.connectionTimeoutMillis = connectionTimeoutMillis;
         this.idleTimeoutMillis = idleTimeoutMillis;
     }
@@ -148,17 +143,33 @@ public class PrometheusHttpSender {
         return result;
     }
 
+    private SdkHttpFullRequest createSdkHttpRequest(final String url, @Nonnull final byte[] payload) {
+        return SdkHttpFullRequest.builder()
+                .method(SdkHttpMethod.POST)
+                .uri(URI.create(url))
+                .putHeader("Content-Encoding", config.getEncoding().toString())
+                .putHeader("Content-Type", config.getContentType())
+                .putHeader("X-Prometheus-Remote-Write-Version", config.getRemoteWriteVersion())
+                .putHeader("x-amz-content-sha256","required")
+                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream())
+                .build();
+
+    }
+
     private HttpRequest buildHttpRequest(final byte[] payload) {
-        final SdkHttpFullRequest signedRequest = signer.signRequest(payload);
+        SdkHttpFullRequest sdkHttpRequest = createSdkHttpRequest(config.getUrl(), payload);
+        if (signer != null) {
+            sdkHttpRequest = signer.signRequest(sdkHttpRequest);
+        }
         
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
                 .method(HttpMethod.POST)
-                .scheme(signedRequest.getUri().getScheme())
-                .path(signedRequest.getUri().getRawPath())
-                .authority(signedRequest.getUri().getAuthority());
+                .scheme(sdkHttpRequest.getUri().getScheme())
+                .path(sdkHttpRequest.getUri().getRawPath())
+                .authority(sdkHttpRequest.getUri().getAuthority());
 
         // Preserve all original headers from the signed request without modification
-        signedRequest.headers().forEach((k, vList) -> {
+        sdkHttpRequest.headers().forEach((k, vList) -> {
             // Add each header value individually to preserve exact format
             vList.forEach(v -> {
                 LOG.debug("Adding header [{}] = [{}]", k, v);
@@ -182,7 +193,8 @@ public class PrometheusHttpSender {
                 ? new String(responseBytes, StandardCharsets.UTF_8)
                 : "<no body>";
 
-        LOG.error("Non-successful Prometheus server response. Status: {}, Response: {}", statusCode, responseBody);
+        LOG.error("Non-successful Prometheus server response. Status: {}, Response: {}",
+                    statusCode, responseBody);
         return false;
     }
 
