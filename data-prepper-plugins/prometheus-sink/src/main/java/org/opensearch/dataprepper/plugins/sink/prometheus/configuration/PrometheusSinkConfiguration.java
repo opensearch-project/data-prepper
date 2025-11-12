@@ -126,7 +126,8 @@ public class PrometheusSinkConfiguration {
 
     @AssertTrue(message = "encoding or content_type or remote_write_version is incorrect.")
     boolean isValidConfig() {
-        return  encoding == CompressionOption.SNAPPY &&
+        return  url.startsWith("https://") &&
+                encoding == CompressionOption.SNAPPY &&
                 contentType.equals(X_PROTOBUF) &&
                 remoteWriteVersion.equals(DEFAULT_REMOTE_WRITE_VERSION);
     }

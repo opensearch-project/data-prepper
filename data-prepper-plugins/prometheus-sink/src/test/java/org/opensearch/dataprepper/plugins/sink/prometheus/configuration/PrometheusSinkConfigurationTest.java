@@ -23,6 +23,7 @@ import java.time.Duration;
 import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class PrometheusSinkConfigurationTest {
 
@@ -58,6 +59,7 @@ public class PrometheusSinkConfigurationTest {
         assertThat(prometheusSinkConfiguration.getSanitizeNames(), equalTo(true));
         assertThat(prometheusSinkConfiguration.getRemoteWriteVersion(), equalTo(PrometheusSinkConfiguration.DEFAULT_REMOTE_WRITE_VERSION));
     }
+
     @Test
     void prometheus_sink_test_with_provided_config_options() throws JsonProcessingException {
         objectMapper.registerModule(new JavaTimeModule());
@@ -72,5 +74,49 @@ public class PrometheusSinkConfigurationTest {
         assertThat(prometheusSinkConfiguration.getContentType(), equalTo(X_PROTOBUF));
         assertThat(prometheusSinkConfiguration.getSanitizeNames(), equalTo(false));
         assertThat(prometheusSinkConfiguration.getRemoteWriteVersion(), equalTo(PrometheusSinkConfiguration.DEFAULT_REMOTE_WRITE_VERSION));
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_invalid_encoding() throws JsonProcessingException {
+        final String INVALID_SINK_YAML =
+            " url: \"https://localhost:8080/test\"\n" +
+                    " encoding: \"not_snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(INVALID_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(prometheusSinkConfiguration.isValidConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_invalid_remote_write_version() throws JsonProcessingException {
+        final String INVALID_SINK_YAML =
+            " url: \"https://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"1.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(INVALID_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(prometheusSinkConfiguration.isValidConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_invalid_content_type() throws JsonProcessingException {
+        final String INVALID_SINK_YAML =
+            " url: \"https://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/json\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(INVALID_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(prometheusSinkConfiguration.isValidConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_invalid_url() throws JsonProcessingException {
+        final String INVALID_SINK_YAML =
+            " url: \"http://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(INVALID_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(prometheusSinkConfiguration.isValidConfig());
     }
 }
