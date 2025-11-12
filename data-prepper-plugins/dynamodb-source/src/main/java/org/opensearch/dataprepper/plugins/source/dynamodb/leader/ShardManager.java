@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 
+import io.micrometer.core.instrument.DistributionSummary;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class ShardManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardManager.class);
+    static final String TOTAL_OPEN_SHARDS = "totalOpenShards";
 
     /**
      * Max number of shards to return in the DescribeStream API call, maximum 100.
@@ -47,14 +50,17 @@ public class ShardManager {
 
     private final DynamoDbStreamsClient streamsClient;
     private final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics;
+    private final DistributionSummary totalOpenShardCountDistributionSummary;
 
 
     public ShardManager(final DynamoDbStreamsClient streamsClient,
-                        final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics) {
+                        final DynamoDBSourceAggregateMetrics dynamoDBSourceAggregateMetrics,
+                        final PluginMetrics pluginMetrics) {
         this.streamsClient = streamsClient;
         this.dynamoDBSourceAggregateMetrics = dynamoDBSourceAggregateMetrics;
         streamMap = new HashMap<>();
         endingSequenceNumberMap = new HashMap<>();
+        this.totalOpenShardCountDistributionSummary = pluginMetrics.summary(TOTAL_OPEN_SHARDS);
     }
 
     /**
@@ -100,12 +106,16 @@ public class ShardManager {
             });
 
             if (streamInfo.getLastEvaluatedShardId() == null) {
-                endingSequenceNumberMap = shards.stream()
+                final List<Shard> closedShards = shards.stream()
                         .filter(shard -> shard.sequenceNumberRange().endingSequenceNumber() != null)
+                        .collect(Collectors.toList());
+                endingSequenceNumberMap = closedShards.stream()
                         .collect(Collectors.toMap(
                                 shard -> shard.shardId(),
                                 shard -> shard.sequenceNumberRange().endingSequenceNumber()
                         ));
+
+                totalOpenShardCountDistributionSummary.record(shards.size() - closedShards.size());
             }
             LOG.debug("New last evaluated shard ID is " + shards.get(shards.size() - 1).shardId());
             streamInfo.setLastEvaluatedShardId(shards.get(shards.size() - 1).shardId());

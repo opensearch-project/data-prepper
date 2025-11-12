@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,6 +47,9 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -478,6 +482,59 @@ class ShardConsumerTest {
             // Verify final acknowledgment set created and completed when shardIterator is null
             verify(finalAcknowledgementSet).complete();
 
+        }
+    }
+
+    @Test
+    void test_shard_has_no_records_null_with_last_shard_iterator_paginates_through_shard() throws Exception {
+        final AcknowledgementSet finalAcknowledgementSet = mock(AcknowledgementSet.class);
+        when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
+                .thenReturn(finalAcknowledgementSet);
+
+        final String lastShardIterator = UUID.randomUUID().toString();
+
+        // Set up response with null nextShardIterator to trigger end of shard
+        GetRecordsResponse response = GetRecordsResponse.builder()
+                .records(List.of())
+                .nextShardIterator(null)
+                .build();
+        final ArgumentCaptor<GetRecordsRequest> getRecordsRequest = ArgumentCaptor.forClass(GetRecordsRequest.class);
+        when(dynamoDbStreamsClient.getRecords(getRecordsRequest.capture())).thenReturn(response);
+
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            } else if (invocation.getMethod().getName().equals("shouldStop")) {
+                return false;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .lastShardIterator(lastShardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
+
+            shardConsumer.run();
+
+            // Verify acknowledgment set created for records with shardIterator == null (true)
+            verify(shardAcknowledgementManager).createAcknowledgmentSet(eq(streamPartition), eq(END_OF_SHARD), eq(true));
+            // Verify final acknowledgment set created and completed when shardIterator is null
+            verify(finalAcknowledgementSet).complete();
+
+            final List<GetRecordsRequest> requestWithLastShardIterator = getRecordsRequest.getAllValues();
+            assertThat(requestWithLastShardIterator, notNullValue());
+            assertThat(requestWithLastShardIterator.size(), equalTo(2));
+            assertThat(requestWithLastShardIterator.get(0).shardIterator(), equalTo(lastShardIterator));
+            assertThat(requestWithLastShardIterator.get(1).shardIterator(), equalTo(shardIterator));
         }
     }
     private List<Record> buildRecords(int count) {
