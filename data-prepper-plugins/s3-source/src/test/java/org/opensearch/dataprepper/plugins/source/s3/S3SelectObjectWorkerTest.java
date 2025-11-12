@@ -152,6 +152,7 @@ class S3SelectObjectWorkerTest {
         lenient().when(selectJsonOption.getType()).thenReturn(JSON_LINES_TYPE);
 
         given(s3ObjectRequest.getS3ObjectPluginMetrics()).willReturn(s3ObjectPluginMetrics);
+        lenient().when(s3ObjectPluginMetrics.getS3ObjectReadFailedCounter()).thenReturn(mock(Counter.class));
         bucketOwnerProvider = mock(BucketOwnerProvider.class);
         given(bucketOwnerProvider.getBucketOwner(any(String.class))).willReturn(Optional.of("my-bucket-1"));
         given(s3ObjectRequest.getBucketOwnerProvider()).willReturn(bucketOwnerProvider);

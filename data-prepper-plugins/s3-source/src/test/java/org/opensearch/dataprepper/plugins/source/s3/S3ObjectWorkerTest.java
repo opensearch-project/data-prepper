@@ -289,17 +289,33 @@ class S3ObjectWorkerTest {
     void processS3Object_codec_parse_exception() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectReadFailedCounter()).thenReturn(mock(Counter.class));
 
         doThrow(IOException.class).when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
 
         assertThrows(
-            IOException.class,
+            S3ReadFailedException.class,
             () -> createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
 
         final ArgumentCaptor<InputFile> inputFileArgumentCaptor = ArgumentCaptor.forClass(InputFile.class);
         verify(codec).parse(inputFileArgumentCaptor.capture(), any(DecompressionEngine.class), any(Consumer.class));
         final InputFile actualInputFile = inputFileArgumentCaptor.getValue();
         assertThat(actualInputFile, instanceOf(S3InputFile.class));
+    }
+
+    @Test
+    void processS3Object_increments_s3ObjectReadFailed_counter_when_codec_parse_fails() throws Exception {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
+        final Counter s3ObjectReadFailedCounter = mock(Counter.class);
+        when(s3ObjectPluginMetrics.getS3ObjectReadFailedCounter()).thenReturn(s3ObjectReadFailedCounter);
+
+        doThrow(IOException.class).when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
+
+        assertThrows(S3ReadFailedException.class, 
+            () -> createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
+
+        verify(s3ObjectReadFailedCounter, times(1)).increment();
     }
 
     @Test
@@ -415,6 +431,7 @@ class S3ObjectWorkerTest {
     @Test
     void processS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectReadFailedCounter()).thenReturn(mock(Counter.class));
 
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
 
@@ -423,13 +440,13 @@ class S3ObjectWorkerTest {
                 .when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
-        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
+        final S3ReadFailedException actualException = assertThrows(S3ReadFailedException.class, () -> objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
 
-        assertThat(actualException, sameInstance(expectedException));
+        assertThat(actualException.getCause(), sameInstance(expectedException));
 
         verify(s3ObjectsFailedCounter).increment();
         verifyNoInteractions(s3ObjectsSucceededCounter);
-        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+        assertThat(exceptionThrownByCallable, sameInstance(actualException));
     }
 
     @Test
