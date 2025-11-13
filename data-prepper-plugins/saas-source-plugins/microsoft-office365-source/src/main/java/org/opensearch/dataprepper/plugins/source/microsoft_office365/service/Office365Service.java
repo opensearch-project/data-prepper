@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365RestClient;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.exception.Office365Exception;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 
 import javax.inject.Named;
@@ -52,10 +52,10 @@ public class Office365Service {
                                              final Instant endTime,
                                              final String nextPageUri) {
         if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("startTime and endTime must not be null");
+            throw new SaaSCrawlerException("startTime and endTime must not be null", false);
         }
         if (logType == null) {
-            throw new IllegalArgumentException("logType must not be null");
+            throw new SaaSCrawlerException("logType must not be null", false);
         }
         try {
             // If pagination URI exists, use it directly
@@ -78,7 +78,7 @@ public class Office365Service {
             return response;
         } catch (Exception e) {
             windowRetryCounter.increment();
-            throw new Office365Exception(
+            throw new SaaSCrawlerException(
                     String.format("Failed to fetch logs for time window %s to %s for log type %s.",
                             startTime, endTime, logType), e, true);
         }

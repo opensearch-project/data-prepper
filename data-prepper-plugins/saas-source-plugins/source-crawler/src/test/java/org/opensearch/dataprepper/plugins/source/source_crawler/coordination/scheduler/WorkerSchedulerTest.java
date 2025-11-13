@@ -23,6 +23,10 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.par
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
+import io.micrometer.core.instrument.Counter;
+
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -35,9 +39,18 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+
+import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.WorkerScheduler.WORKER_PARTITIONS_FAILED;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.WorkerScheduler.WORKER_PARTITIONS_COMPLETED;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.WorkerScheduler.ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.WorkerScheduler.ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME;
 
 @ExtendWith(MockitoExtension.class)
 public class WorkerSchedulerTest {
@@ -258,5 +271,68 @@ public class WorkerSchedulerTest {
         
         // Verify that coordinator.completePartition was called (from the acknowledgement callback with true)
         verify(coordinator, times(1)).completePartition(eq(mockPartition));
+    }
+
+    @Test
+    void testRetryableAndNonRetryableSaaSCrawlerExceptions() throws InterruptedException {
+            // Given
+            Counter mockFailedCounter = mock(Counter.class);
+            Counter mockCompletedCounter = mock(Counter.class);
+            Counter mockAckSuccessCounter = mock(Counter.class);
+            Counter mockAckFailureCounter = mock(Counter.class);
+    
+            when(pluginMetrics.counter(WORKER_PARTITIONS_FAILED)).thenReturn(mockFailedCounter);
+            when(pluginMetrics.counter(WORKER_PARTITIONS_COMPLETED)).thenReturn(mockCompletedCounter);
+            when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME)).thenReturn(mockAckSuccessCounter);
+            when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME)).thenReturn(mockAckFailureCounter);;
+    
+            WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                    coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
+    
+            // Mock partition and state
+            DimensionalTimeSliceWorkerProgressState mockProgressState = new DimensionalTimeSliceWorkerProgressState();
+            mockProgressState.setPartitionCreationTime(Instant.now());
+            SaasSourcePartition mockPartition = org.mockito.Mockito.mock(SaasSourcePartition.class);
+            when(mockPartition.getProgressState()).thenReturn(Optional.of(mockProgressState));
+    
+            // Set up coordinator to return our mock partition
+            when(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                    .thenReturn(Optional.of(mockPartition))
+                    .thenReturn(Optional.empty());
+    
+            // Mock crawler to throw retryable exception
+            doThrow(new SaaSCrawlerException("Retryable error", true))
+                    .when(crawler).executePartition(any(), any(), any());
+    
+            // When
+            ExecutorService executorService = Executors.newSingleThreadExecutor();
+            executorService.submit(workerScheduler);
+    
+            Thread.sleep(500);
+            executorService.shutdownNow();
+    
+            // Then - Verify retryable exception handling
+            verify(coordinator, never()).saveProgressStateForPartition(any(), any());
+            verify(coordinator, never()).giveUpPartition(any());
+            verify(mockFailedCounter).increment();
+    
+            // Reset mocks for non-retryable test
+            when(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                    .thenReturn(Optional.of(mockPartition))
+                    .thenReturn(Optional.empty());
+            doThrow(new SaaSCrawlerException("Non-retryable error", false))
+                    .when(crawler).executePartition(any(), any(), any());
+    
+            // When - Run again with non-retryable exception
+            executorService = Executors.newSingleThreadExecutor();
+            executorService.submit(workerScheduler);
+    
+            Thread.sleep(500);
+            executorService.shutdownNow();
+    
+            // Then - Verify non-retryable exception handling
+            verify(coordinator, never()).saveProgressStateForPartition(any(), any());
+            verify(coordinator, never()).giveUpPartition(any());
+            verify(mockFailedCounter, times(2)).increment();
     }
 }
