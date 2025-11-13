@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -20,8 +21,10 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365So
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -269,6 +272,48 @@ class Office365ServiceTest {
         assertEquals("logType must not be null", exception.getMessage());
         assertFalse(exception.isRetryable());
      }
+
+    @Test
+    void testSearchAuditLogs_WithRange_AdjustsStartTime() {
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-11-09T21:30:00.00Z"), ZoneOffset.UTC);
+        Instant now = Instant.now(fixedClock);
+
+        // Create a time window that's beyond our configured range:
+        // Start time = current time - (4 days + 30 minutes)
+        // This simulates the crawler creating a partition that starts slightly beyond our range
+        Instant startTime = now.minus(Duration.ofDays(4))
+                .minus(Duration.ofMinutes(30));
+        // End time = start time + 1 hour
+        Instant endTime = startTime.plus(Duration.ofHours(1));
+
+        String logType = "Exchange";
+        int lookBackHours = 96; // Configure 4 days range limit
+
+        when(sourceConfig.getLookBackHours()).thenReturn(lookBackHours);
+        when(office365RestClient.searchAuditLogs(
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(new AuditLogsResponse(new ArrayList<>(), null));
+
+        office365Service.searchAuditLogs(logType, startTime, endTime, null);
+
+        // Capture the actual start time that was passed to the REST client
+        ArgumentCaptor<Instant> startTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(office365RestClient).searchAuditLogs(
+                eq(logType),
+                startTimeCaptor.capture(),
+                eq(endTime),
+                isNull()
+        );
+
+        // Verify that the service adjusted the start time correctly:
+        Instant capturedStartTime = startTimeCaptor.getValue();
+        Duration actualLookback = Duration.between(capturedStartTime, now);
+        assertEquals(96, actualLookback.toHours(),
+                "Adjusted start time should be exactly 96 hours ago");
+    }
 
     private Map<String, Object> createTestItem(String contentId, Instant contentCreated) {
         Map<String, Object> item = new HashMap<>();
