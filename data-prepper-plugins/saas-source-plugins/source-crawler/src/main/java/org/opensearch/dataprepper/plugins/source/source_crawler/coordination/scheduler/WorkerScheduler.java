@@ -12,7 +12,9 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -20,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.time.Instant;
 
 /**
  * Worker class for executing the partitioned work created while crawling a source.
@@ -75,10 +78,10 @@ public class WorkerScheduler implements Runnable {
         log.info("Worker thread started");
         log.info("Processing Partitions");
         while (!Thread.currentThread().isInterrupted()) {
+            Optional<EnhancedSourcePartition> partition = Optional.empty();
             try {
                 // Get the next available partition from the coordinator
-                Optional<EnhancedSourcePartition> partition =
-                        sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
+                partition = sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
                     processPartition(partition.get(), buffer);
@@ -94,8 +97,18 @@ public class WorkerScheduler implements Runnable {
                     }
                 }
             } catch (Exception e) {
-                // TODO: will be in a followup to handle retry strategy differently for non-retryable exceptions
-                backoffRetry(e);
+                this.parititionsFailedCounter.increment();
+                // always default to backoffRetry strategy
+                boolean shouldUseBackoffRetry = true;
+                if (e instanceof SaaSCrawlerException) {
+                    SaaSCrawlerException saasException = (SaaSCrawlerException) e;
+                    if (!saasException.isRetryable()) {
+                        shouldUseBackoffRetry = delayRetry(partition, e);
+                    }
+                }
+                if (shouldUseBackoffRetry) {
+                    backoffRetry(e);
+                }
             }
         }
         log.warn("SourceItemWorker Scheduler is interrupted, looks like shutdown has triggered");
@@ -106,12 +119,64 @@ public class WorkerScheduler implements Runnable {
      * @param e - exception thrown by workerScheduler
      */
     private void backoffRetry(Exception e) {
-        this.parititionsFailedCounter.increment();
-        log.error("Error processing partition", e);
+        log.error("[Retryable Exception] Error processing partition", e);
         try {
             Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
         } catch (InterruptedException ex) {
             log.warn("Thread interrupted while waiting to retry due to {}", ex.getMessage());
+        }
+    }
+
+    /**
+     * Delay retry by X Duration (current default = 1 day) for all non-retryble exceptions up to X days (current default = 30 days)
+     * @param sourcePartition - information on WorkerPartition state
+     * @param ex - exception thrown by workerScheduler
+     * @return boolean: true if we should fallback to backoffRetry
+     */
+    private boolean delayRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex) {
+        log.error("[Non-Retrayble Exception] Error processing worker partition. Will delay retry with the configured duration", ex);
+        try {
+            SaasSourcePartition workerPartition = (SaasSourcePartition) sourcePartition.get();
+            boolean isWorkerPartitionLeaseExtended = false;
+            if (workerPartition != null) {
+        SaasWorkerProgressState progressState = (SaasWorkerProgressState) workerPartition.getProgressState().get();
+                // TODO: ideally we should add partitionCreationTime for all type of SaasWorkerProgressState
+                if (progressState instanceof DimensionalTimeSliceWorkerProgressState) {
+                    DimensionalTimeSliceWorkerProgressState workerProgressState = (DimensionalTimeSliceWorkerProgressState) progressState;
+                    updateWorkerPartition(workerProgressState.getPartitionCreationTime(), workerPartition);
+                    isWorkerPartitionLeaseExtended = true;
+                }
+            }
+
+            // other SaasWorkerProgressState types should never use delayRetry()
+            // to be safe, fallback to default retry strategy
+            if (!isWorkerPartitionLeaseExtended) {
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Error updating workerPartition ", e);
+            // on exception, do not interrupt thread and retry again after sleep
+            return false;
+        }
+    }
+
+
+    /**
+     * Update the workerPartition if the partitionCreationTime <= max days to keep retrying (current default = 30 days) on nonretryable exceptions.
+     * Otherwise, give up the workerPartition.
+     * @param partitionCreationTime - timestamp in epoch when the worker partition was first created
+     * @param workerPartition - information on WorkerPartition state
+     */
+    private void updateWorkerPartition(Instant partitionCreationTime, SaasSourcePartition workerPartition) {
+        log.info("Updating workerPartition {}", workerPartition.getPartitionKey());
+        Duration age = Duration.between(partitionCreationTime, Instant.now());
+        if (age.compareTo(this.sourceConfig.getDurationToGiveUpRetry()) <= 0) {
+            log.info("Partition {} is within or equal to the configured max duration, scheduling retry", workerPartition.getPartitionKey());
+            sourceCoordinator.saveProgressStateForPartition(workerPartition, this.sourceConfig.getDurationToDelayRetry());
+        } else {
+            log.info("Partition {} is older than the configured max duration, giving up", workerPartition.getPartitionKey());
+            sourceCoordinator.giveUpPartition(workerPartition);
         }
     }
 
