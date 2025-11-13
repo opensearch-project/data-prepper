@@ -1,9 +1,36 @@
+ /*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+
+plugins {
+    id 'java'
+    id 'java-library'
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
 
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:common')
     implementation 'com.arpnetworking.metrics:prometheus-remote-protocol:1.0.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:otel-proto-common')
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -13,16 +40,26 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'software.amazon.awssdk:auth'
+    implementation 'io.prometheus:client:0.0.10'
     implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
-    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
+    implementation 'org.apache.httpcomponents.core5:httpcore5:5.3.3'
+    implementation 'io.github.acm19:aws-request-signing-apache-interceptor:3.0.0'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.2'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:acm'
     implementation 'com.github.scribejava:scribejava-core:8.3.3'
+    implementation project(':data-prepper-plugin-framework')
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-plugin-framework')
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    implementation libs.armeria.core
 }
 
 test {
@@ -45,6 +82,12 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
 }
 
+/*
+ * To run:
+ *    ./gradlew      data-prepper-plugins:prometheus-sink:integrationTest -Dtests.aws.region=<region> -Dtests.aws.role=<role> -Dtests.prometheus.url=<workspace-url> 
+ *    workspace-url looks like https://aps-workspaces.<region>.amazonaws.com/workspaces/<workspace-id>
+ *                  (do not include "api/v1/remote_write")
+ */
 task integrationTest(type: Test) {
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
@@ -52,8 +95,9 @@ task integrationTest(type: Test) {
     useJUnitPlatform()
 
     classpath = sourceSets.integrationTest.runtimeClasspath
-    systemProperty 'tests.prometheus.sink.http.endpoint', System.getProperty('tests.prometheus.sink.http.endpoint')
-
+    systemProperty 'tests.prometheus.url', System.getProperty('tests.prometheus.url')
+    systemProperty 'tests.aws.region', System.getProperty('tests.aws.region')
+    systemProperty 'tests.aws.role', System.getProperty('tests.aws.role')
     filter {
         includeTestsMatching '*IT'
     }

@@ -1,8 +1,12 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
+ /*
+  * Copyright OpenSearch Contributors
+  * SPDX-License-Identifier: Apache-2.0
+  *
+  * The OpenSearch Contributors require contributions made to
+  * this file be licensed under the Apache-2.0 license or a
+  * compatible open source license.
+  *
+  */
 package org.opensearch.dataprepper.common.sink;
 
 import java.time.Instant;
@@ -45,7 +49,7 @@ public class DefaultSinkBuffer implements SinkBuffer {
 
     @Override
     public boolean exceedsFlushTimeInterval() {
-        long curTime = Instant.now().toEpochMilli();
+        long curTime = System.currentTimeMillis();
         return (curTime - lastFlushedTimeMs >= flushIntervalMs);
     }
 
@@ -56,6 +60,9 @@ public class DefaultSinkBuffer implements SinkBuffer {
 
     @Override
     public SinkFlushableBuffer getFlushableBuffer(final SinkFlushContext sinkFlushContext) {
+        numEvents = 0;
+        currentRequestSize = 0L;
+        lastFlushedTimeMs = System.currentTimeMillis();
         return sinkBufferWriter.getBuffer(sinkFlushContext);
     }
 

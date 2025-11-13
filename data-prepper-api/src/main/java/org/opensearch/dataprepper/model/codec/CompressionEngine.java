@@ -10,4 +10,7 @@ import java.io.OutputStream;
 
 public interface CompressionEngine {
     OutputStream createOutputStream(OutputStream outputStream) throws IOException;
+    default byte[] compress(byte[] payload) throws IOException {
+        throw new RuntimeException("Unsupported Operation");
+    }
 }

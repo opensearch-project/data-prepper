@@ -1,7 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- */
+
+KEEPING IT FOR FUTURE USE
+
+
 package org.opensearch.dataprepper.plugins.sink.prometheus.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-/**
+ **
  * * This class handles Bearer Token Authentication
- */
+ *
 public class BearerTokenAuthPrometheusSinkHandler implements MultiAuthPrometheusSinkHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(BearerTokenAuthPrometheusSinkHandler.class);
@@ -49,3 +52,4 @@ public class BearerTokenAuthPrometheusSinkHandler implements MultiAuthPrometheus
         return httpAuthOptionsBuilder.build();
     }
 }
+ */
