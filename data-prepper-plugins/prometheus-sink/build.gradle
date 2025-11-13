@@ -40,13 +40,10 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'software.amazon.awssdk:auth'
-    implementation 'io.prometheus:client:0.0.10'
     implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
-    implementation 'org.apache.httpcomponents.core5:httpcore5:5.3.3'
-    implementation 'io.github.acm19:aws-request-signing-apache-interceptor:3.0.0'
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.2'
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
+    implementation 'org.xerial.snappy:snappy-java'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:sts'
