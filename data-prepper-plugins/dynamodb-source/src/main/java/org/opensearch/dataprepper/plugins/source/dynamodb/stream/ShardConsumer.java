@@ -406,9 +406,9 @@ public class ShardConsumer implements Runnable {
         if (lastShardIterator != null && !lastShardIterator.isEmpty()) {
             GetRecordsResponse response = callGetRecords(lastShardIterator);
             if (response.records().isEmpty()) {
-                // Empty shard
-                LOG.info("LastShardIterator is provided, but there is no Last Event Time, skip processing");
-                return true;
+                // There is no guarantee that the shard is empty just because there is no record at the endingSequenceNumber
+                LOG.info("LastShardIterator is provided, but there is no Last Event Time, paginating through for documents");
+                return false;
             }
 
             Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();

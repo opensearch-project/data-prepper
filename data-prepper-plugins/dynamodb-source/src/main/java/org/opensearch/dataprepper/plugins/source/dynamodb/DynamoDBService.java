@@ -77,7 +77,7 @@ public class DynamoDBService {
         s3Client = clientFactory.buildS3Client();
 
         // A shard manager is responsible to retrieve the shard information from streams.
-        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics);
+        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics, pluginMetrics);
         tableConfigs = sourceConfig.getTableConfigs();
         executor = Executors.newFixedThreadPool(4);
     }

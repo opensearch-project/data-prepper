@@ -6,11 +6,13 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
@@ -33,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.leader.ShardManager.TOTAL_OPEN_SHARDS;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +54,12 @@ class ShardManagerTest {
 
     @Mock
     private Counter streamApiInvocations;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private DistributionSummary distributionSummary;
 
     private ShardManager shardManager;
 
@@ -98,7 +107,9 @@ class ShardManagerTest {
                 .build();
 
         lenient().when(dynamoDbStreamsClient.describeStream(any(DescribeStreamRequest.class))).thenReturn(response);
-        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics);
+
+        when(pluginMetrics.summary(TOTAL_OPEN_SHARDS)).thenReturn(distributionSummary);
+        shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics, pluginMetrics);
 
         when(dynamoDBSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
     }
@@ -108,6 +119,8 @@ class ShardManagerTest {
         List<Shard> childShards = shardManager.runDiscovery(streamArn);
         assertThat(childShards, notNullValue());
         assertThat(childShards.size(), equalTo(6));
+
+        verify(distributionSummary).record(2);
 
         List<String> childShardIds1 = shardManager.findChildShardIds(streamArn, "shardId-001");
         assertThat(childShardIds1, notNullValue());
