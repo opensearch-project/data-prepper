@@ -60,6 +60,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
@@ -486,10 +487,12 @@ class ShardConsumerTest {
     }
 
     @Test
-    void test_shard_has_no_records_null_with_last_shard_iterator_paginates_through_shard() throws Exception {
+    void test_shard_has_no_records_null_with_last_shard_iterator_paginates_through_shard_and_exits_without_waiting_on_export() throws Exception {
         final AcknowledgementSet finalAcknowledgementSet = mock(AcknowledgementSet.class);
         when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
                 .thenReturn(finalAcknowledgementSet);
+
+        final StreamCheckpointer streamCheckpointer = mock(StreamCheckpointer.class);
 
         final String lastShardIterator = UUID.randomUUID().toString();
 
@@ -519,7 +522,8 @@ class ShardConsumerTest {
                         .streamPartition(streamPartition)
                         .tableInfo(tableInfo)
                         .startTime(null)
-                        .waitForExport(false)
+                        .checkpointer(streamCheckpointer)
+                        .waitForExport(true)
                         .build();
             }
 
@@ -535,6 +539,8 @@ class ShardConsumerTest {
             assertThat(requestWithLastShardIterator.size(), equalTo(2));
             assertThat(requestWithLastShardIterator.get(0).shardIterator(), equalTo(lastShardIterator));
             assertThat(requestWithLastShardIterator.get(1).shardIterator(), equalTo(shardIterator));
+
+            verifyNoInteractions(streamCheckpointer);
         }
     }
     private List<Record> buildRecords(int count) {
