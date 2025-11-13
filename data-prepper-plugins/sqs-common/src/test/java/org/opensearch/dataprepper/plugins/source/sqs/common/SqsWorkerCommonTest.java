@@ -251,17 +251,17 @@ class SqsWorkerCommonTest {
     void testRecordSqsException_404Status() {
         final SqsException sqsException = mock(SqsException.class);
         when(sqsException.statusCode()).thenReturn(404);
-        testRecordSqsException(sqsException, SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+        testRecordSqsException(sqsException, SqsWorkerCommon.SQS_RESOURCE_NOT_FOUND_METRIC_NAME);
     }
 
     @Test
     void testRecordSqsException_QueueDoesNotExistException() {
-        testRecordSqsException(mock(QueueDoesNotExistException.class), SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+        testRecordSqsException(mock(QueueDoesNotExistException.class), SqsWorkerCommon.SQS_RESOURCE_NOT_FOUND_METRIC_NAME);
     }
 
     @Test
     void testRecordSqsException_KmsNotFoundException() {
-        testRecordSqsException(mock(KmsNotFoundException.class), SqsWorkerCommon.SQS_QUEUE_NOT_FOUND_METRIC_NAME);
+        testRecordSqsException(mock(KmsNotFoundException.class), SqsWorkerCommon.SQS_RESOURCE_NOT_FOUND_METRIC_NAME);
     }
 
     @Test
