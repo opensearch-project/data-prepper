@@ -63,11 +63,11 @@ public class Office365Service {
                 return office365RestClient.searchAuditLogs(logType, startTime, endTime, nextPageUri);
             }
 
-            // Check and adjust start time for 7-day limit
+            // Adjust start time based on configured lookback hours
             Instant adjustedStartTime = startTime;
-            Instant sevenDaysAgo = Instant.now().minus(SEVEN_DAYS);
-            if (startTime.isBefore(sevenDaysAgo)) {
-                adjustedStartTime = sevenDaysAgo;
+            Instant lookBackHoursAgo = Instant.now().minus(Duration.ofHours(office365SourceConfig.getLookBackHours()));
+            if (startTime.isBefore(lookBackHoursAgo) && lookBackHoursAgo.isBefore(endTime)) {
+                adjustedStartTime = lookBackHoursAgo;
             }
 
             AuditLogsResponse response =
