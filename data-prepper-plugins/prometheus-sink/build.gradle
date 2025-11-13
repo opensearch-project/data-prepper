@@ -43,7 +43,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.2'
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.1'
+    implementation 'org.xerial.snappy:snappy-java'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:sts'
