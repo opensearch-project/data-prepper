@@ -22,6 +22,8 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
     implementation 'software.amazon.awssdk:s3'
+    implementation 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
     implementation libs.protobuf.util
     implementation libs.armeria.core
     implementation libs.armeria.grpc
