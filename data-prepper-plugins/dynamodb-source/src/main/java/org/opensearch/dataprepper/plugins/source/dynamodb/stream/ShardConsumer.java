@@ -340,10 +340,6 @@ public class ShardConsumer implements Runnable {
             LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
             throw new RuntimeException("Consuming shard was interrupted from shutdown");
         }
-
-        if (waitForExport) {
-            waitForExport();
-        }
     }
 
     /**
