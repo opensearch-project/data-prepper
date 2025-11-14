@@ -24,7 +24,6 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 
 public class ArmeriaHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);

@@ -206,6 +206,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
             interceptors.add(authProvider.getAuthenticationInterceptor());
         }
 
+        if (oTelLogsSourceConfig.enableUnframedRequests()) {
+            grpcServiceBuilder.enableUnframedRequests(true);
+        }
+
         final CreateServer.GRPCServiceConfig<?, ?> grpcServiceConfig = new CreateServer.GRPCServiceConfig<>(oTelLogsGrpcService);
         grpcServiceBuilder.addService(
                 path,
