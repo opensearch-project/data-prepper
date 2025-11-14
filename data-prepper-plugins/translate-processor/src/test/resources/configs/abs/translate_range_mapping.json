@@ -1,0 +1,18 @@
+{
+  "use_absolute_paths": true,
+  "mappings": [
+    {
+      "source": "sourceField",
+      "targets": [
+        {
+          "target": "targetField",
+          "map": {
+            "1-10": "mappedValue1",
+            "11-20": "mappedValue2",
+            "21-30": "mappedValue3"
+          }
+        }
+      ]
+    }
+  ]
+}
