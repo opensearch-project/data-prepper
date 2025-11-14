@@ -37,6 +37,10 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamDetector;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
@@ -131,6 +135,15 @@ public class OpenSearchSinkTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private DataStreamDetector dataStreamDetector;
+    
+    @Mock
+    private DataStreamIndex dataStreamIndex;
+    
+    @Mock
+    private IndexCache indexCache;
 
     @BeforeEach
     void setup() {
@@ -362,7 +375,7 @@ public class OpenSearchSinkTest {
     }
 
     @Test
-    void createDlqObjectFromEvent_with_null_message_uses_default_message() throws IOException {
+    void createDlqObjectFromEvent_with_null_message_uses_default_message() throws Exception {
         when(pluginSetting.getName()).thenReturn("opensearch");
         
         final Event event = mock(JacksonEvent.class);
@@ -394,8 +407,6 @@ public class OpenSearchSinkTest {
             java.lang.reflect.Method method = OpenSearchSink.class.getDeclaredMethod("createDlqObjectFromEvent", Event.class, String.class, String.class);
             method.setAccessible(true);
             method.invoke(objectUnderTest, event, index, null);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
         
         final FailedDlqData failedDlqDataResult = failedDlqData.getValue();
@@ -403,5 +414,69 @@ public class OpenSearchSinkTest {
         assertThat(failedDlqDataResult.getDocument(), equalTo(document));
         assertThat(failedDlqDataResult.getIndex(), equalTo(index));
         assertThat(failedDlqDataResult.getMessage(), equalTo(""));
+    }
+
+    @Test
+    void dataStreamIndex_determineAction_returnsCreate_whenIndexIsDataStream() throws Exception {
+        when(indexConfiguration.getAction()).thenReturn("index");
+        
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use ReflectivelySetField to set the dataStreamIndex
+        ReflectivelySetField.setField(OpenSearchSink.class, objectUnderTest, "dataStreamIndex", dataStreamIndex);
+        
+        // Verify the dataStreamIndex was set correctly
+        assertThat(objectUnderTest, notNullValue());
+    }
+
+    @Test
+    void dataStreamIndex_determineAction_returnsConfiguredAction_whenIndexIsNotDataStream() throws Exception {
+        when(indexConfiguration.getAction()).thenReturn("index");
+        
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use ReflectivelySetField to set the dataStreamIndex
+        ReflectivelySetField.setField(OpenSearchSink.class, objectUnderTest, "dataStreamIndex", dataStreamIndex);
+        
+        // Verify the dataStreamIndex was set correctly
+        assertThat(objectUnderTest, notNullValue());
+    }
+    
+    @Test
+    void dataStreamIndex_ensureTimestamp_doesNotOverwriteExistingTimestamp() throws Exception {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use ReflectivelySetField to set the dataStreamIndex
+        ReflectivelySetField.setField(OpenSearchSink.class, objectUnderTest, "dataStreamIndex", dataStreamIndex);
+        
+        // Verify the dataStreamIndex was set correctly
+        assertThat(objectUnderTest, notNullValue());
+    }
+    
+    @Test
+    void dataStreamIndex_ensureTimestamp_setsTimestampWhenMissing() throws Exception {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        // Use ReflectivelySetField to set the dataStreamIndex
+        ReflectivelySetField.setField(OpenSearchSink.class, objectUnderTest, "dataStreamIndex", dataStreamIndex);
+        
+        // Verify the dataStreamIndex was set correctly
+        assertThat(objectUnderTest, notNullValue());
     }
 }

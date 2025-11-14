@@ -61,6 +61,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperatio
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamDetector;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -150,6 +153,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExpressionEvaluator expressionEvaluator;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
+  private DataStreamDetector dataStreamDetector;
+  private DataStreamIndex dataStreamIndex;
+  private IndexCache indexCache;
 
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
@@ -305,6 +311,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
       queryExecutorService.submit(existingDocumentQueryManager);
     }
+
+    this.indexCache = new IndexCache();
+    this.dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
+    this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, openSearchSinkConfig.getIndexConfiguration());
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
@@ -483,6 +493,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       if (eventAction.contains("${")) {
           eventAction = event.formatString(eventAction, expressionEvaluator);
       }
+      
+      if (dataStreamDetector.isDataStream(indexName)) {
+        eventAction = dataStreamIndex.determineAction(eventAction, indexName);
+      }
       if (OpenSearchBulkActions.fromOptionValue(eventAction) == null) {
         LOG.error("Unknown action {}, skipping the event", eventAction);
         invalidActionErrorsCounter.increment();
@@ -498,6 +512,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperation bulkOperation;
 
       try {
+        dataStreamIndex.ensureTimestamp(event, indexName);
+        
         bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
       } catch (final Exception e) {
         LOG.error("An exception occurred while constructing the bulk operation for a document: ", e);
