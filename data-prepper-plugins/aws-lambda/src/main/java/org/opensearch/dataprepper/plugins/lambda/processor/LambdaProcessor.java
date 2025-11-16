@@ -35,9 +35,11 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
+import org.opensearch.dataprepper.plugins.lambda.common.StreamingLambdaHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -281,6 +283,14 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         if (recordsToLambda.size() == 0) {
             return resultRecords;
         }
+        // Check if streaming is enabled
+        if (lambdaProcessorConfig.getStreamingOptions() != null && 
+            lambdaProcessorConfig.getStreamingOptions().isEnabled() &&
+            lambdaProcessorConfig.getInvocationType() == InvocationType.STREAMING_RESPONSE) {
+            
+            return processWithStreaming(recordsToLambda, resultRecords);
+        }
+
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         try {
             // Check if circuit breaker is open - if so, wait until it closes
@@ -362,6 +372,73 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 LOG.info("Circuit breaker closed after {} retries. Resuming Lambda invocation.", retries);
             }
         }
+    }
+
+    private Collection<Record<Event>> processWithStreaming(
+            List<Record<Event>> recordsToLambda, 
+            List<Record<Event>> resultRecords) {
+        
+        try {
+            checkCircuitBreaker();
+        } catch (Exception e) {
+            LOG.error(NOISY, "Circuit breaker check failed", e);
+            numberOfRecordsFailedCounter.increment(recordsToLambda.size());
+            numberOfRequestsFailedCounter.increment();
+            resultRecords.addAll(addFailureTags(recordsToLambda));
+            return resultRecords;
+        }
+
+        InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
+        StreamingLambdaHandler streamingHandler = new StreamingLambdaHandler(lambdaAsyncClient, pluginFactory, responseCodec);
+        
+        // Create buffers for streaming
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferMap;
+        try {
+            bufferMap = LambdaCommonHandler.sendRecords(
+                    recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient, new OutputCodecContext());
+        } catch (Exception e) {
+            LOG.error(NOISY, "Error creating buffers for streaming", e);
+            numberOfRecordsFailedCounter.increment(recordsToLambda.size());
+            numberOfRequestsFailedCounter.increment();
+            resultRecords.addAll(addFailureTags(recordsToLambda));
+            return resultRecords;
+        }
+        
+        // Process each buffer with streaming
+        for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferMap.entrySet()) {
+            Buffer inputBuffer = entry.getKey();
+            
+            try {
+                CompletableFuture<List<Record<Event>>> streamingFuture = streamingHandler.invokeWithStreaming(
+                        lambdaProcessorConfig.getFunctionName(),
+                        inputBuffer,
+                        lambdaProcessorConfig.getStreamingOptions()
+                );
+                
+                List<Record<Event>> streamingRecords = streamingFuture.get();
+                resultRecords.addAll(streamingRecords);
+                
+                Duration latency = inputBuffer.stopLatencyWatch();
+                lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
+                
+                // Record response payload size (estimated from streaming records)
+                int estimatedResponseSize = streamingRecords.size() * 1024; // Rough estimate
+                responsePayloadMetric.record(estimatedResponseSize);
+                
+                numberOfRecordsSuccessCounter.increment(streamingRecords.size());
+                numberOfRequestsSuccessCounter.increment();
+                lambdaResponseRecordsCounter.increment(streamingRecords.size());
+                
+            } catch (Exception e) {
+                LOG.error(NOISY, "Error processing streaming Lambda response: {}", e.getMessage(), e);
+                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                numberOfRequestsFailedCounter.increment();
+                resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+            }
+        }
+        
+        return resultRecords;
     }
 
     /*
