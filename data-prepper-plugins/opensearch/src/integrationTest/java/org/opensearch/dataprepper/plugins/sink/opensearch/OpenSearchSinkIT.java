@@ -47,15 +47,11 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.sink.opensearch.BulkRetryStrategy;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
-import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
-import org.opensearch.dataprepper.plugins.sink.opensearch.RetryConfiguration;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;

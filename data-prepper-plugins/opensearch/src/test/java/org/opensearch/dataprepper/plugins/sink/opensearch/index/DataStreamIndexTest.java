@@ -80,7 +80,7 @@ class DataStreamIndexTest {
         
         dataStreamIndex.ensureTimestamp(event, "my-data-stream");
         
-        verify(event).put("@timestamp", testTime);
+        verify(event).put("@timestamp", testTime.toEpochMilli());
     }
     
     @Test
