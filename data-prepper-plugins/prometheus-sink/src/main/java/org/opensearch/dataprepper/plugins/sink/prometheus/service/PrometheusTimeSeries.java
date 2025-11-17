@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
-
 import com.arpnetworking.metrics.prometheus.Types.Label;
 import com.arpnetworking.metrics.prometheus.Types.Sample;
 import com.arpnetworking.metrics.prometheus.Types.TimeSeries;
@@ -32,8 +31,42 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PrometheusTimeSeries {
+import static org.apache.commons.lang3.StringUtils.stripEnd;
+import static org.apache.commons.lang3.StringUtils.stripStart;
+
+ public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
+    private static final Character UNDERSCORE = '_';
+
+    // See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/translator/prometheus
+    // for the following map and metric/label sanitization rules
+    private static final Map<String, String> otelToPrometheusUnitsMap = Map.ofEntries(
+            Map.entry("d",    "days"),
+            Map.entry("h",    "hours"),
+            Map.entry("min",  "minutes"),
+            Map.entry("s",    "seconds"),
+            Map.entry("ms",   "milliseconds"),
+            Map.entry("us",   "microseconds"),
+            Map.entry("ns",   "nanoseconds"),
+            Map.entry("By",   "bytes"),
+            Map.entry("KiBy", "kibibytes"),
+            Map.entry("MiBy", "mebibytes"),
+            Map.entry("GiBy", "gibibytes"),
+            Map.entry("TiBy", "tibibytes"),
+            Map.entry("KBy",  "kilobytes"),
+            Map.entry("MBy",  "megabytes"),
+            Map.entry("GBy",  "gigabytes"),
+            Map.entry("TBy",  "terabytes"),
+            Map.entry("V",    "volts"),
+            Map.entry("A",    "amperes"),
+            Map.entry("J",    "joules"),
+            Map.entry("W",    "watts"),
+            Map.entry("g",    "grams"),
+            Map.entry("Cel",  "celsius"),
+            Map.entry("Hz",   "hertz"),
+            Map.entry("%",    "percent"),
+            Map.entry("m",    "meters")
+    );
     private final String metricName;
     private long timestamp;
     private boolean sanitizeNames;
@@ -43,7 +76,7 @@ public class PrometheusTimeSeries {
 
     public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
         this.sanitizeNames = sanitizeNames;
-        metricName = sanitizeNames ? sanitizeMetricName(metric.getName()) : metric.getName();
+        metricName = sanitizeNames ? sanitizeMetricName(metric) : metric.getName();
         String time = metric.getTime();
         String startTime = metric.getStartTime();
         timestamp = (time != null) ? getTimeStampVal(time) : getTimeStampVal(startTime);
@@ -138,7 +171,7 @@ public class PrometheusTimeSeries {
     }
 
     public void addSumMetric(Sum sum) {
-        addTimeSeries("__name__", metricName + "_sum", sum.getValue());
+        addTimeSeries("__name__", metricName, sum.getValue());
     }
 
     public void addGaugeMetric(Gauge gauge) {
@@ -233,21 +266,57 @@ public class PrometheusTimeSeries {
         }
     }
 
-    private static String sanitizeMetricName(String name) {
-        return sanitizeName(name, true);  // metric names allow colon
-    }
+    // See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/translator/prometheus
+    static String sanitizeMetricName(final Metric metric) {
 
-    private static String sanitizeLabelName(String name) {
-        return sanitizeName(name, false); // label names do NOT allow colon
-    }
+        final String name = metric.getName();
+        final String unit = metric.getUnit();
+        final boolean isGauge = metric.getKind().equals(Metric.KIND.GAUGE.toString());
+        final boolean isCounter = metric.getKind().equals(Metric.KIND.SUM.toString()) &&
+                                 ((Sum)metric).isMonotonic() &&
+                                 ((Sum)metric).getAggregationTemporality().equals("AGGREGATION_TEMPORALITY_CUMULATIVE");
 
-    private static String sanitizeName(String name, boolean allowColon) {
-        StringBuilder sb = new StringBuilder(name.length());
-        for (int i = 0; i < name.length(); i++) {
-            sb.append(sanitizeChar(name.charAt(i), i == 0, allowColon));
+        String metricName = sanitizeName(name, true, false);  // metric names allow colon
+        String suffix = isCounter ? (UNDERSCORE+"total") : "";
+        if (unit.startsWith("{")) {
+            return metricName+suffix;
         }
 
-        return sb.toString();
+        if (unit.equals("1") && isGauge) {
+            return metricName+UNDERSCORE+"ratio";
+        }
+        String val = otelToPrometheusUnitsMap.get(unit);
+        if (val != null) {
+            return metricName+UNDERSCORE+val+suffix;
+        }
+        if (unit.contains("/")) {
+            String[] unitSplit = unit.split("/");
+            if (unitSplit.length == 2) {
+                String unit1 = otelToPrometheusUnitsMap.get(unitSplit[0]);
+                String unit2 = otelToPrometheusUnitsMap.get(unitSplit[1]);
+                if (unit1 != null && unit2 != null) {
+                    return metricName + UNDERSCORE + unit1 + UNDERSCORE + unit2+suffix;
+                }
+            }
+        }
+        return unit.equals("1") ? metricName+suffix : metricName+UNDERSCORE+unit+suffix;
+    }
+
+    static String sanitizeLabelName(final String name) {
+        return sanitizeName(name, false, true); // label names do NOT allow colon
+    }
+
+    static String sanitizeName(final String name, final boolean allowColon, final boolean isLabel) {
+        StringBuilder sb = new StringBuilder(name.length());
+        Character prevChar = null;
+        for (int i = 0; i < name.length(); i++) {
+            Character curChar = sanitizeChar(name.charAt(i), i == 0, allowColon);
+            if (isLabel || (curChar != UNDERSCORE || prevChar != UNDERSCORE)) {
+                sb.append(curChar);
+            }
+            prevChar = curChar;
+        }
+        return isLabel ? sb.toString() : stripEnd(stripStart(sb.toString(), "_"), "_");
     }
 
     private static char sanitizeChar(char c, boolean isFirst, boolean allowColon) {

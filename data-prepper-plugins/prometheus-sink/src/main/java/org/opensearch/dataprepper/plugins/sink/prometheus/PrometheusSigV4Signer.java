@@ -9,6 +9,7 @@
   */
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -41,14 +42,31 @@ class PrometheusSigV4Signer {
         this.region = config.getAwsConfig().getAwsRegion();
 
         this.config = config;
-        this.credentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
+        this.credentialsProvider = (config.getAwsConfig() != null) ?
+                awsCredentialsSupplier.getProvider(convertToCredentialOptions(config.getAwsConfig())) :
+                awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
+
+        /*
+        this.credentialsProvider = awsCredentialsProvider(AwsCredentialsOptions.builder()
                 .withRegion(region)
                 .withStsRoleArn(config.getAwsConfig().getAwsStsRoleArn())
                 .withStsExternalId(config.getAwsConfig().getAwsStsExternalId())
                 .build());
 
+         */
+
         this.endpointUri = URI.create(url);
     }
+
+    private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
+        return AwsCredentialsOptions.builder()
+                .withRegion(awsConfig.getAwsRegion())
+                .withStsRoleArn(awsConfig.getAwsStsRoleArn())
+                .withStsExternalId(awsConfig.getAwsStsExternalId())
+                .withStsHeaderOverrides(awsConfig.getAwsStsHeaderOverrides())
+                .build();
+    }
+
 
     /**
      * Constructs a SigV4 signer helper.

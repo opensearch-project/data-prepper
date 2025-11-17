@@ -17,8 +17,7 @@ import org.opensearch.dataprepper.common.sink.DefaultSinkBuffer;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.common.sink.ReentrantLockStrategy;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
@@ -33,24 +32,24 @@ import java.util.List;
 
 
 public class PrometheusSinkService extends DefaultSinkOutputStrategy {
-
+    static final String PLUGIN_NAME = "prometheus";
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusSinkService.class);
     public static final String PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER = "prometheusSinkRecordsNumberOfSuccessful";
 
     public static final String PROMETHEUS_SINK_RECORDS_FAILED_COUNTER = "prometheusSinkRecordsNumberOfFailed";
     private final PrometheusHttpSender httpSender;
-    private final PluginSetting pluginSetting;
+    private final PipelineDescription pipelineDescription;
     private final List<Record<Event>> dlqRecords;
     private final boolean sanitizeNames;
     private HeadlessPipeline dlqPipeline;
     private boolean dropIfNoDLQConfigured;
+    private String pluginName;
 
     public PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
                                  final SinkMetrics sinkMetrics,
                                  final PrometheusHttpSender httpSender,
                                  final HeadlessPipeline dlqPipeline,
-                                 final PluginMetrics pluginMetrics,
-                                 final PluginSetting pluginSetting) {
+                                 final PipelineDescription pipelineDescription) {
         super(new ReentrantLockStrategy(),
               new DefaultSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
                   prometheusSinkConfiguration.getThresholdConfig().getMaxRequestSizeBytes(),
@@ -63,7 +62,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
         this.dlqPipeline = dlqPipeline;
         this.dlqRecords = new ArrayList<>();
         this.httpSender = httpSender;
-        this.pluginSetting = pluginSetting;
+        this.pipelineDescription = pipelineDescription;
     }
 
     public void addFailedEventsToDLQ(final List<Event> events, final Throwable ex) {
@@ -104,8 +103,8 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
             }
             event.updateFailureMetadata()
                 .with("statusCode", statusCode)
-                .with("pluginName", pluginSetting.getName())
-                .with("pipelineName", pluginSetting.getPipelineName());
+                .with("pluginName", PLUGIN_NAME)
+                .with("pipelineName", pipelineDescription.getPipelineName());
             if (ex != null) {
                 event.updateFailureMetadata()
                     .with("message",  ex.getMessage());

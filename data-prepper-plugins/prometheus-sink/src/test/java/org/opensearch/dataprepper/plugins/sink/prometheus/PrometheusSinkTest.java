@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import static org.mockito.ArgumentMatchers.any;
+
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSinkService;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -14,7 +16,6 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
@@ -40,8 +41,6 @@ public class PrometheusSinkTest {
     PrometheusSink prometheusSink;
 
     private PluginSetting pluginSetting;
-    private PluginFactory pluginFactory;
-
     private PrometheusSinkConfiguration prometheusSinkConfiguration;
 
     private PipelineDescription pipelineDescription;
@@ -53,6 +52,8 @@ public class PrometheusSinkTest {
     private AwsCredentialsSupplier awsCredentialsSupplier;
     @Mock
     private AwsCredentialsProvider awsCredentialsProvider;
+    @Mock
+    private PrometheusSinkService prometheusSinkService;
 
     @Mock
     private Counter counter;
@@ -68,8 +69,8 @@ public class PrometheusSinkTest {
     @BeforeEach
     void setUp() {
         pluginSetting = mock(PluginSetting.class);
-        pluginFactory = mock(PluginFactory.class);
         pluginMetrics = mock(PluginMetrics.class);
+        prometheusSinkService = mock(PrometheusSinkService.class);
         prometheusSinkConfiguration = mock(PrometheusSinkConfiguration.class);
         pipelineDescription = mock(PipelineDescription.class);
         sinkContext = mock(SinkContext.class);
@@ -103,7 +104,7 @@ public class PrometheusSinkTest {
     }
 
     private PrometheusSink createObjectUnderTest() {
-        return new PrometheusSink(pluginSetting, pluginMetrics, pluginFactory, prometheusSinkConfiguration, awsCredentialsSupplier);
+        return new PrometheusSink(pluginSetting, pluginMetrics, pipelineDescription,  prometheusSinkConfiguration, awsCredentialsSupplier);
     }
     @Test
     void test_http_sink_plugin_isReady_positive() {
