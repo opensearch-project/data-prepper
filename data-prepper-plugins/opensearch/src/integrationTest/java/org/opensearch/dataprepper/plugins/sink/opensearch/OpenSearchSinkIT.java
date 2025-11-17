@@ -1678,71 +1678,23 @@ public class OpenSearchSinkIT {
             
             // Clear the index cache to force re-detection of data stream
             sink.indexCache.clearAll();
-            System.out.println("DEBUG: Index cache cleared after initialization");
             
             // Test that the data stream is detected
             final String testIdField = "someId";
             final String testId = "foo";
             final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
             
-            System.out.println("DEBUG: Outputting records to sink...");
-            System.out.println("DEBUG: Expected index name: " + dataStreamName);
-            
-            // Verify data stream is detected before writing
-            Request verifyRequest = new Request(HttpMethod.GET, "/_data_stream/" + dataStreamName);
-            Response verifyResponse = client.performRequest(verifyRequest);
-            System.out.println("DEBUG: Data stream exists before write: " + (verifyResponse.getStatusLine().getStatusCode() == 200));
-            
             sink.output(testRecords);
-            System.out.println("DEBUG: Records output complete, shutting down sink...");
             sink.shutdown();
-            System.out.println("DEBUG: Sink shutdown complete");
             
             // Wait for indexing to complete
             Thread.sleep(2000);
-            System.out.println("DEBUG: Wait complete, checking for documents...");
             
             // Verify the document was written to the data stream
-            System.out.println("DEBUG: Data stream name: " + dataStreamName);
-            System.out.println("DEBUG: Test record: " + testRecords.get(0).getData());
-            
-            // Check if data stream exists
-            Request checkRequest = new Request(HttpMethod.GET, "/_data_stream/" + dataStreamName);
-            Response checkResponse = client.performRequest(checkRequest);
-            System.out.println("DEBUG: Data stream exists: " + checkResponse.getStatusLine().getStatusCode());
-            System.out.println("DEBUG: Data stream info: " + EntityUtils.toString(checkResponse.getEntity()));
-            
-            // Check metrics for errors
-            final List<Measurement> documentErrors = MetricsTestUtil.getMeasurementList(
-                    new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                            .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
-            System.out.println("DEBUG: Document errors: " + (documentErrors.isEmpty() ? "none" : documentErrors.get(0).getValue()));
-            
-            final List<Measurement> documentsSuccess = MetricsTestUtil.getMeasurementList(
-                    new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                            .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
-            System.out.println("DEBUG: Documents success: " + (documentsSuccess.isEmpty() ? "none" : documentsSuccess.get(0).getValue()));
-            
-            // Check DLQ file for error details
-            if (new File(dlqFile).exists()) {
-                System.out.println("DEBUG: DLQ file contents:");
-                Files.lines(Paths.get(dlqFile)).forEach(line -> System.out.println("DLQ: " + line));
-            } else {
-                System.out.println("DEBUG: No DLQ file created");
-            }
-            
-            // The issue is that DataStreamDetector.isDataStream() is returning false
-            // This happens because the sink is initialized BEFORE the data stream is created
-            // So the cache has a negative result
-            
             final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
-            System.out.println("DEBUG: Number of documents found: " + retSources.size());
-            System.out.println("DEBUG: Documents: " + retSources);
             assertThat("Expected 1 document in data stream " + dataStreamName + " but found " + retSources.size(), 
                        retSources.size(), equalTo(1));
         } catch (Exception e) {
-            System.err.println("ERROR: Test failed with exception: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         } finally {
             // Clean up the data stream

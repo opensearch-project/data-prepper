@@ -40,16 +40,12 @@ public class DataStreamDetector {
      */
     public boolean isDataStream(final String indexName) {
         final Boolean cached = indexCache.getDataStreamResult(indexName);
-        LOG.info("isDataStream called for '{}', cached result: {}", indexName, cached);
         if (cached != null) {
-            LOG.info("Returning cached result for '{}': {}", indexName, cached);
             return cached;
         }
         
-        LOG.info("No cached result for '{}', checking OpenSearch...", indexName);
         final boolean result = checkDataStream(indexName);
         indexCache.putDataStreamResult(indexName, result);
-        LOG.info("Cached result for '{}': {}", indexName, result);
         return result;
     }
     
@@ -59,9 +55,7 @@ public class DataStreamDetector {
             final GetDataStreamResponse response = openSearchClient.indices().getDataStream(request);
             
             // If we get a response without exception, it's a data stream
-            final boolean isDataStream = response.dataStreams() != null && !response.dataStreams().isEmpty();
-            LOG.info("Data stream check for '{}': {}", indexName, isDataStream);
-            return isDataStream;
+            return response.dataStreams() != null && !response.dataStreams().isEmpty();
                     
         } catch (final IOException e) {
             // If we get a 404 or similar, it's not a data stream
