@@ -1676,9 +1676,6 @@ public class OpenSearchSinkIT {
             final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
             final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
             
-            // Clear the index cache to force re-detection of data stream
-            sink.indexCache.clearAll();
-            
             // Test that the data stream is detected
             final String testIdField = "someId";
             final String testId = "foo";
