@@ -38,8 +38,9 @@ import static org.apache.commons.lang3.StringUtils.stripStart;
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
     private static final Character UNDERSCORE = '_';
 
-    // See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/translator/prometheus
-    // for the following map and metric/label sanitization rules
+    /**
+     * @see https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/translator/prometheus
+     */ for the following map and metric/label sanitization rules
     private static final Map<String, String> otelToPrometheusUnitsMap = Map.ofEntries(
             Map.entry("d",    "days"),
             Map.entry("h",    "hours"),

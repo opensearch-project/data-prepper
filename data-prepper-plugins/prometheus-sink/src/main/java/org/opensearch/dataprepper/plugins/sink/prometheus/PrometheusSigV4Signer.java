@@ -42,23 +42,15 @@ class PrometheusSigV4Signer {
         this.region = config.getAwsConfig().getAwsRegion();
 
         this.config = config;
-        this.credentialsProvider = (config.getAwsConfig() != null) ?
-                awsCredentialsSupplier.getProvider(convertToCredentialOptions(config.getAwsConfig())) :
-                awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
-
-        /*
-        this.credentialsProvider = awsCredentialsProvider(AwsCredentialsOptions.builder()
-                .withRegion(region)
-                .withStsRoleArn(config.getAwsConfig().getAwsStsRoleArn())
-                .withStsExternalId(config.getAwsConfig().getAwsStsExternalId())
-                .build());
-
-         */
+        this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(config.getAwsConfig()));
 
         this.endpointUri = URI.create(url);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
+        if config.getAwsConfig() == null) {
+            return AwsCredentialsOptions.builder().build();
+        }
         return AwsCredentialsOptions.builder()
                 .withRegion(awsConfig.getAwsRegion())
                 .withStsRoleArn(awsConfig.getAwsStsRoleArn())
