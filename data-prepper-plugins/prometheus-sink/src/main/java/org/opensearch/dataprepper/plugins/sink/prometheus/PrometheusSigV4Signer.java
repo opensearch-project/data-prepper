@@ -48,7 +48,7 @@ class PrometheusSigV4Signer {
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
-        if config.getAwsConfig() == null) {
+        if (awsConfig == null) {
             return AwsCredentialsOptions.builder().build();
         }
         return AwsCredentialsOptions.builder()
