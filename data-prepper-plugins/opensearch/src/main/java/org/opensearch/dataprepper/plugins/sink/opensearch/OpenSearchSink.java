@@ -61,6 +61,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperatio
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamDetector;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DataStreamIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -150,6 +153,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExpressionEvaluator expressionEvaluator;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
+  private DataStreamDetector dataStreamDetector;
+  private DataStreamIndex dataStreamIndex;
+  IndexCache indexCache;
 
   private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
@@ -306,6 +312,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       queryExecutorService.submit(existingDocumentQueryManager);
     }
 
+    this.indexCache = new IndexCache();
+    this.dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
+    this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, openSearchSinkConfig.getIndexConfiguration());
+
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
@@ -436,7 +446,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
-      final SerializedJson document = getDocument(event);
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
@@ -446,6 +455,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
           continue;
       }
+      
+      dataStreamIndex.ensureTimestamp(event, indexName);
+      final SerializedJson document = getDocument(event);
 
       Long version = null;
       String versionExpressionEvaluationResult = null;
@@ -482,6 +494,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
       if (eventAction.contains("${")) {
           eventAction = event.formatString(eventAction, expressionEvaluator);
+      }
+      
+      if (dataStreamDetector.isDataStream(indexName)) {
+        eventAction = dataStreamIndex.determineAction(eventAction, indexName);
       }
       if (OpenSearchBulkActions.fromOptionValue(eventAction) == null) {
         LOG.error("Unknown action {}, skipping the event", eventAction);
