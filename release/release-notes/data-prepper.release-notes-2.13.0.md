@@ -1,12 +1,12 @@
-## 2025-11-19 Version 2.13.0
+## 2025-11-24 Version 2.13.0
 
 ---
 
-### Breaking Changes
-
-
 ### Features
 * Support Prometheus as a Sink storage (remote-write model) ([#3028](https://github.com/opensearch-project/data-prepper/issues/3028))
+* Support s3 scan for bucket across regions ([#4811](https://github.com/opensearch-project/data-prepper/issues/4811))
+* S3 source - allow cross region access ([#4470](https://github.com/opensearch-project/data-prepper/issues/4470))
+* Support for sending logs to Opensearch Data stream ([#2037](https://github.com/opensearch-project/data-prepper/issues/2037))
 
 
 ### Enhancements
@@ -21,28 +21,23 @@
 * Support alternative extension implementations ([#5792](https://github.com/opensearch-project/data-prepper/issues/5792))
 * Rename keys processor enhancements ([#5757](https://github.com/opensearch-project/data-prepper/issues/5757))
 * Support for Kafka consumer config: isolation.level ([#5896](https://github.com/opensearch-project/data-prepper/issues/5896))
-* Support s3 scan for bucket across regions ([#4811](https://github.com/opensearch-project/data-prepper/issues/4811))
-* S3 source - allow cross region access ([#4470](https://github.com/opensearch-project/data-prepper/issues/4470))
 * Allow extensions to depend upon other extensions ([#2825](https://github.com/opensearch-project/data-prepper/issues/2825))
 * Add EMF config that enables adding extra properties to the EMF record ([#6259](https://github.com/opensearch-project/data-prepper/pull/6259))
 
 
 ### Bug Fixes
 * S3 sink without path_prefix provided is failing to write ([#6090](https://github.com/opensearch-project/data-prepper/issues/6090))
-* [BUG] Lambda Processor ClassCastException with Aggregate Processor ([#6054](https://github.com/opensearch-project/data-prepper/issues/6054))
-* [BUG] Service Map does not rotate with multiple workers ([#5901](https://github.com/opensearch-project/data-prepper/issues/5901))
-* [BUG] LocalDBService fails to handle existing files during download ([#5899](https://github.com/opensearch-project/data-prepper/issues/5899))
-* [BUG] Creates and deletes in the same bulk request can result in 404 ([#5521](https://github.com/opensearch-project/data-prepper/issues/5521))
-* [BUG] Events are missing from S3 sink even with end-to-end acknowledgements ([#5413](https://github.com/opensearch-project/data-prepper/issues/5413))
-* [BUG] Data Prepper can not write to Opensearch Datastream  ([#2037](https://github.com/opensearch-project/data-prepper/issues/2037))
-* [BUG] Data Prepper Expression string starting in / is considered escaped Json Pointer ([#1188](https://github.com/opensearch-project/data-prepper/issues/1188))
+* Lambda Processor ClassCastException with Aggregate Processor ([#6054](https://github.com/opensearch-project/data-prepper/issues/6054))
+* LocalDBService fails to handle existing files during download ([#5899](https://github.com/opensearch-project/data-prepper/issues/5899))
+* Creates and deletes in the same bulk request can result in 404 ([#5521](https://github.com/opensearch-project/data-prepper/issues/5521))
+* Events are missing from S3 sink even with end-to-end acknowledgements ([#5413](https://github.com/opensearch-project/data-prepper/issues/5413))
+* Data Prepper Expression string starting in `/` is considered escaped Json Pointer ([#1188](https://github.com/opensearch-project/data-prepper/issues/1188))
 * Checkpoint acknowledgments for DynamoDB pipelines ([#4764](https://github.com/opensearch-project/data-prepper/issues/4764))
-* Fixes a regression in core where @SingleThread annotated processors are only running the last instance. ([#5902](https://github.com/opensearch-project/data-prepper/pull/5902))
 
 
 ### Security
 * aws-cdk-lib-2.190.0.tgz: 1 vulnerabilities (highest severity is: 3.1) - autoclosed ([#5928](https://github.com/opensearch-project/data-prepper/issues/5928))
-* [BUG] CVE-2024-7254 in com.google.protobuf:protobuf-java (caused by com.linecorp.armeria:armeria-grpc) ([#5890](https://github.com/opensearch-project/data-prepper/issues/5890))
+* CVE-2024-7254 in com.google.protobuf:protobuf-java (caused by com.linecorp.armeria:armeria-grpc) ([#5890](https://github.com/opensearch-project/data-prepper/issues/5890))
 * aws-cdk-lib-2.88.0.tgz: 1 vulnerabilities (highest severity is: 3.1) - autoclosed ([#5780](https://github.com/opensearch-project/data-prepper/issues/5780))
 * aws-cdk-lib-2.100.0.tgz: 2 vulnerabilities (highest severity is: 3.9) - autoclosed ([#5779](https://github.com/opensearch-project/data-prepper/issues/5779))
 
