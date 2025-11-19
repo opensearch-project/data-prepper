@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
@@ -99,6 +100,9 @@ public class KafkaSourceJsonTypeIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
+    @Mock
+    private PluginFactory pluginFactory;
+
     private KafkaSource kafkaSource;
 
     private Counter counter;
@@ -116,7 +120,7 @@ public class KafkaSourceJsonTypeIT {
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
-                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier);
+                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier, pluginFactory);
     }
 
     @BeforeEach
