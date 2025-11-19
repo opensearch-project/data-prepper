@@ -18,11 +18,14 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkThresholdConfig;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
+import org.opensearch.dataprepper.test.plugins.DataPrepperPluginTest;
+import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStandardTestSuite;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,7 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class PrometheusSinkTest {
+@DataPrepperPluginTest(pluginName = "prometheus", pluginType = Sink.class)
+public class PrometheusSinkTest extends BaseDataPrepperPluginStandardTestSuite {
 
     PrometheusSink prometheusSink;
 

@@ -62,6 +62,7 @@ public class ServiceMapRelationship {
         this.target = target;
         this.traceGroupName = traceGroupName;
         this.hashId = md5Hash();
+        System.out.println("----"+serviceName+"----"+kind+"----"+destination+"----"+target+"---"+traceGroupName);
     }
 
     /**
@@ -79,6 +80,9 @@ public class ServiceMapRelationship {
             final String domain,
             final String resource,
             final String traceGroupName) {
+
+        System.out.println("--DR--"+serviceName+"----"+spanKind+"----"+resource+"---dom--"+domain+"---"+traceGroupName);
+
         return new ServiceMapRelationship(serviceName, spanKind, new Endpoint(resource, domain), null, traceGroupName);
     }
 
@@ -97,6 +101,8 @@ public class ServiceMapRelationship {
             final String domain,
             final String resource,
             final String traceGroupName) {
+        System.out.println("-TR---"+serviceName+"----"+spanKind+"----"+resource+"---dom--"+domain+"---"+traceGroupName);
+
         return new ServiceMapRelationship(serviceName, spanKind, null, new Endpoint(resource, domain), traceGroupName);
     }
 

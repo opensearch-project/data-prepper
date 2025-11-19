@@ -150,6 +150,9 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         final Collection<Record<Event>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
         records.forEach(i -> processSpan((Span) i.getData(), batchStateData));
+        if (records.size() > 0) {
+            System.out.println("===="+batchStateData.size());
+        }
         try {
             currentWindow.putAll(batchStateData);
         } catch (RuntimeException e) {
@@ -165,6 +168,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             final String parentSpanId = span.getParentSpanId();
             final String spanKind = span.getKind();
             final byte[] traceId;
+
             try {
                 traceId = Hex.decodeHex(span.getTraceId());
             } catch (DecoderException e) {
@@ -207,6 +211,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             serviceDependencyRecords.addAll(iterateProcessorState(previousWindow));
             serviceDependencyRecords.addAll(iterateProcessorState(currentWindow));
             LOG.debug("Done evaluating service map edges");
+            System.out.println("Done evaluating service map edges");
 
             // Wait for all workers before rotating windows
             allThreadsCyclicBarrier.await();
