@@ -42,7 +42,7 @@ public class PrometheusSinkThresholdConfigurationTest {
         int testMaxEvents = random.nextInt(10) + 1;
         ReflectivelySetField.setField(PrometheusSinkThresholdConfig.class, thresholdConfig, "maxEvents", testMaxEvents);
         long testMaxRequestSize = random.nextInt(10)  + 1L;
-        ReflectivelySetField.setField(PrometheusSinkThresholdConfig.class, thresholdConfig, "maxRequestSize", testMaxRequestSize+"mb");
+        ReflectivelySetField.setField(PrometheusSinkThresholdConfig.class, thresholdConfig, "maxRequestSize", ByteCount.parse(testMaxRequestSize+"mb"));
         long testFlushInterval = (long)random.nextInt(10) + 1L;
         ReflectivelySetField.setField(PrometheusSinkThresholdConfig.class, thresholdConfig, "flushInterval", Duration.ofSeconds(testFlushInterval));
         assertThat(thresholdConfig.getMaxEvents(), equalTo(testMaxEvents));

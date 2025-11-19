@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
@@ -94,6 +95,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @ExtendWith(MockitoExtension.class)
 public class PrometheusSinkAMPIT {
+    private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final long NANO_MULTIPLIER = 1_000_000_000L;
     private static final int TEST_READ_BATCH_TIMEOUT = 500;
     private static final int TEST_PROCESSOR_THREADS = 1;
@@ -130,6 +132,8 @@ public class PrometheusSinkAMPIT {
     private EventHandle eventHandle;
     @Mock
     private Pipeline dlqPipeline;
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     private String awsRegion;
     private String awsRole;
@@ -146,6 +150,7 @@ public class PrometheusSinkAMPIT {
     private WebClient webClient;
     private PrometheusSinkThresholdConfig thresholdConfig;
 
+
     @BeforeEach
     void setUp() {
         webClient = WebClient.builder()
@@ -157,6 +162,7 @@ public class PrometheusSinkAMPIT {
                 .build();
 
         eventHandle = mock(EventHandle.class);
+        pipelineDescription = mock(PipelineDescription.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
         metricsInAMP = 0;
         testStartTime = Instant.now();
@@ -174,13 +180,11 @@ public class PrometheusSinkAMPIT {
         awsConfig = mock(AwsConfig.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
         when(pluginSetting.getName()).thenReturn("name");
-        
 
         metricsSuccessCounter = mock(Counter.class);
         metricsFailedCounter = mock(Counter.class);
         requestsSuccessCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
-
         summary = mock(DistributionSummary.class);
 
         when(pluginMetrics.counter(eq("sinkRequestsSucceeded"))).thenReturn(requestsSuccessCounter);
@@ -222,7 +226,7 @@ public class PrometheusSinkAMPIT {
     }
 
     private PrometheusSink createObjectUnderTest() {
-        return new PrometheusSink(pluginSetting, pluginMetrics, pluginFactory, prometheusSinkConfig, awsCredentialsSupplier);
+        return new PrometheusSink(pluginSetting, pluginMetrics, pipelineDescription, prometheusSinkConfig, awsCredentialsSupplier);
     }
 
     private void getMetricsFromAMP(final String metricName, final String qs) throws Exception {
@@ -242,7 +246,7 @@ public class PrometheusSinkAMPIT {
             queryStr = metricName+"|"+metricName+"_sum|"+metricName+"_count|attrKey1|attrKey2";
             query = "{__name__=~\""+queryStr+"\"}";
         } else if (qs.equals("sum")) {
-            queryStr = metricName+"|"+metricName+"_sum";
+            queryStr = metricName+"|"+metricName+"_total";
             query = "{__name__=~\""+queryStr+"\"}";
         } else {
             query = metricName;
@@ -263,6 +267,7 @@ public class PrometheusSinkAMPIT {
                 headersBuilder.add(k, v);
             });
         });
+
         HttpRequest request = HttpRequest.of(headersBuilder.build(), HttpData.ofAscii(getUrlQuery));
         webClient.execute(request).aggregate()
             .thenAccept(response -> {
@@ -328,6 +333,7 @@ public class PrometheusSinkAMPIT {
 
     @Test
     void TestSumMetricsFailuresWithDLQ() throws Exception {
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         dlqPipeline = mock(Pipeline.class);
         doAnswer(a -> {
             Collection<Record<Event>> records = (Collection<Record<Event>>)a.getArgument(0);
@@ -443,7 +449,7 @@ public class PrometheusSinkAMPIT {
                 .withStartTime(convertUnixNanosToISO8601(startTimeNanos))
                 .withIsMonotonic(true)
                 .withUnit("1")
-                .withAggregationTemporality("delta")
+                .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
                 .withResource(Map.of("attributes", Map.of("attrKey1", 1, "attrKey2", Map.of("attrKey3", "attrValue3"))))
                 .withValue((double)metricValue+i)
                 .withEventHandle(eventHandle)

@@ -52,6 +52,7 @@ dependencies {
     implementation project(':data-prepper-plugin-framework')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:plugin-test-framework')
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-plugin-framework')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
