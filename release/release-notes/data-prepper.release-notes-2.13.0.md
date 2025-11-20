@@ -3,26 +3,25 @@
 ---
 
 ### Features
-* Support Prometheus as a Sink storage (remote-write model) ([#3028](https://github.com/opensearch-project/data-prepper/issues/3028))
-* Support s3 scan for bucket across regions ([#4811](https://github.com/opensearch-project/data-prepper/issues/4811))
-* S3 source - allow cross region access ([#4470](https://github.com/opensearch-project/data-prepper/issues/4470))
-* Support for sending logs to Opensearch Data stream ([#2037](https://github.com/opensearch-project/data-prepper/issues/2037))
+* Support Prometheus as a sink (remote-write model) ([#3028](https://github.com/opensearch-project/data-prepper/issues/3028))
+* Support cross-region access for S3 buckets for both SQS and scan pipelines ([#4470](https://github.com/opensearch-project/data-prepper/issues/4470), [#4811](https://github.com/opensearch-project/data-prepper/issues/4811))
+* Support for sending logs to OpenSearch sata streams ([#2037](https://github.com/opensearch-project/data-prepper/issues/2037))
 
 
 ### Enhancements
-* DataPrepper S3-SQS source config should support data_selection similar to S3 Scan configs ([#6149](https://github.com/opensearch-project/data-prepper/issues/6149))
+* Delete entries processor enhancements using regular expressions ([#6087](https://github.com/opensearch-project/data-prepper/issues/6087))
+* DataPrepper S3-SQS source config should support `data_selection` similar to S3 Scan configs ([#6149](https://github.com/opensearch-project/data-prepper/issues/6149))
 * Support customer STS header overrides for default configuration ([#6078](https://github.com/opensearch-project/data-prepper/issues/6078))
 * Improve performance of Data Prepper expressions ([#6020](https://github.com/opensearch-project/data-prepper/issues/6020))
-* Add TokenPaginationCrawler for SAAS plugins ([#6007](https://github.com/opensearch-project/data-prepper/issues/6007))
-* Support jsonl file extension in S3 sink ([#5993](https://github.com/opensearch-project/data-prepper/issues/5993))
-* Support adding nested keys in each element for iterate_on with add_entries ([#5910](https://github.com/opensearch-project/data-prepper/issues/5910))
-* Support loading pipeline configurations ([#5917](https://github.com/opensearch-project/data-prepper/issues/5917))
-* [CloudWatch Logs sink] Support for HTTP headers ([#5905](https://github.com/opensearch-project/data-prepper/issues/5905))
+* Support `jsonl` file extension in S3 sink ([#5993](https://github.com/opensearch-project/data-prepper/issues/5993))
+* Support adding nested keys in each element for `iterate_on` with add_entries ([#5910](https://github.com/opensearch-project/data-prepper/issues/5910))
+* Support for HTTP headers in the CloudWatch Logs sink ([#5905](https://github.com/opensearch-project/data-prepper/issues/5905))
 * Support alternative extension implementations ([#5792](https://github.com/opensearch-project/data-prepper/issues/5792))
-* Rename keys processor enhancements ([#5757](https://github.com/opensearch-project/data-prepper/issues/5757))
-* Support for Kafka consumer config: isolation.level ([#5896](https://github.com/opensearch-project/data-prepper/issues/5896))
+* Rename keys processor can normalize keys ([#5757](https://github.com/opensearch-project/data-prepper/issues/5757))
+* Support for Kafka consumer config: `isolation.level` ([#5896](https://github.com/opensearch-project/data-prepper/issues/5896))
 * Allow extensions to depend upon other extensions ([#2825](https://github.com/opensearch-project/data-prepper/issues/2825))
 * Add EMF config that enables adding extra properties to the EMF record ([#6259](https://github.com/opensearch-project/data-prepper/pull/6259))
+* Add TokenPaginationCrawler for SAAS plugins ([#6007](https://github.com/opensearch-project/data-prepper/issues/6007))
 
 
 ### Bug Fixes
