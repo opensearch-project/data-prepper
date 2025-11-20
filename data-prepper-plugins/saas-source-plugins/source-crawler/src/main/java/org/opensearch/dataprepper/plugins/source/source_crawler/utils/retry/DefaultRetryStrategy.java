@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Default retry strategy with fixed backoff times
@@ -46,9 +47,9 @@ public class DefaultRetryStrategy implements RetryStrategy {
 
     @Override
     public long calculateSleepTime(Exception ex, int retryCount) {
-        HttpStatus statusCode = RetryStrategy.getStatusCode(ex).orElse(null);
+        Optional<HttpStatus> statusCode = RetryStrategy.getStatusCode(ex);
 
-        List<Integer> sleepTimes = (statusCode == HttpStatus.TOO_MANY_REQUESTS)
+        List<Integer> sleepTimes = (statusCode.isPresent() && statusCode.get() == HttpStatus.TOO_MANY_REQUESTS)
                 ? rateLimitRetrySleepTime
                 : retryAttemptSleepTime;
 

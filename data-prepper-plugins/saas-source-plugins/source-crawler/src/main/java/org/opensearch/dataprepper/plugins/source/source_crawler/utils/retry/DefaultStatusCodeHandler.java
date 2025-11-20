@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
@@ -24,14 +25,14 @@ public class DefaultStatusCodeHandler implements StatusCodeHandler {
     @Override
     public RetryDecision handleStatusCode(Exception ex, int retryCount,
                                           Runnable credentialRenewal) {
-        HttpStatus statusCode = RetryStrategy.getStatusCode(ex).orElse(null);
+        Optional<HttpStatus> statusCode = RetryStrategy.getStatusCode(ex);
         String statusMessage = ex.getMessage();
 
-        if (statusCode == null) {
+        if (statusCode.isEmpty()) {
             return RetryDecision.stop();
         }
 
-        switch (statusCode) {
+        switch (statusCode.get()) {
             case UNAUTHORIZED:
                 log.error(NOISY, "Token expired. Attempting to renew credentials.", ex);
                 credentialRenewal.run();
@@ -56,10 +57,10 @@ public class DefaultStatusCodeHandler implements StatusCodeHandler {
                 return RetryDecision.retry();
 
             default:
-                if (statusCode.is4xxClientError()) {
+                if (statusCode.get().is4xxClientError()) {
                     log.error(NOISY, "Client error: {}. Will not retry.", statusCode, ex);
                     return RetryDecision.stop();
-                } else if (statusCode.is5xxServerError()) {
+                } else if (statusCode.get().is5xxServerError()) {
                     log.error(NOISY, "Server error: {}. Will retry.", statusCode, ex);
                     return RetryDecision.retry();
                 } else {

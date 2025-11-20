@@ -12,28 +12,30 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
 import lombok.Getter;
 
+import java.util.Optional;
+
 /**
  * Encapsulates the decision of whether to retry or stop
  */
 @Getter
 public class RetryDecision {
     private final boolean shouldStop;
-    private final RuntimeException exception;
+    private final Optional<RuntimeException> exception;
 
-    private RetryDecision(boolean shouldStop, RuntimeException exception) {
+    private RetryDecision(boolean shouldStop, Optional<RuntimeException> exception) {
         this.shouldStop = shouldStop;
         this.exception = exception;
     }
 
     public static RetryDecision retry() {
-        return new RetryDecision(false, null);
+        return new RetryDecision(false, Optional.empty());
     }
 
     public static RetryDecision stop() {
-        return new RetryDecision(true, null);
+        return new RetryDecision(true, Optional.empty());
     }
 
     public static RetryDecision stopWithException(RuntimeException exception) {
-        return new RetryDecision(true, exception);
+        return new RetryDecision(true, Optional.ofNullable(exception));
     }
 }
