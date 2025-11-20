@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryDecision;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.StatusCodeHandler;
@@ -68,7 +69,7 @@ class RetryHandlerTest {
 
     @Test
     void executeWithRetry_WithNullOperation_ThrowsIllegalArgumentException() {
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(null, credentialRenewal));
 
         assertThat(exception.getMessage(), equalTo("Operation cannot be null"));
@@ -78,7 +79,7 @@ class RetryHandlerTest {
     void executeWithRetry_WithNullCredentialRenewal_ThrowsIllegalArgumentException() {
         final Supplier<String> operation = () -> "success";
 
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, null));
 
         assertThat(exception.getMessage(), equalTo("Credential renewal cannot be null"));

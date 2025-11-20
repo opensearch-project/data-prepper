@@ -22,13 +22,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -61,7 +61,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(false));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verify(credentialRenewal, times(1)).run();
     }
 
@@ -74,9 +74,9 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), notNullValue());
-        assertThat(decision.getException(), instanceOf(SecurityException.class));
-        assertThat(decision.getException().getMessage(),
+        assertThat(decision.getException().isPresent(), equalTo(true));
+        assertThat(decision.getException().get(), instanceOf(SecurityException.class));
+        assertThat(decision.getException().get().getMessage(),
                 equalTo("Access forbidden: 403 Forbidden"));
         verifyNoInteractions(credentialRenewal);
     }
@@ -90,7 +90,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verifyNoInteractions(credentialRenewal);
     }
 
@@ -103,7 +103,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(false));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verifyNoInteractions(credentialRenewal);
     }
 
@@ -116,7 +116,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(false));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verifyNoInteractions(credentialRenewal);
     }
 
@@ -128,7 +128,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verifyNoInteractions(credentialRenewal);
     }
 
@@ -153,7 +153,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(false));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
         verifyNoInteractions(credentialRenewal);
     }
 
@@ -267,7 +267,7 @@ class DefaultStatusCodeHandlerTest {
                 credentialRenewal);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException().getMessage(),
+        assertThat(decision.getException().get().getMessage(),
                 equalTo("Access forbidden: 403 Custom forbidden message"));
     }
 

@@ -18,6 +18,7 @@ import org.springframework.web.client.HttpServerErrorException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
@@ -56,21 +57,19 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
 
     @Override
     public long calculateSleepTime(Exception ex, int retryCount) {
-        HttpStatus statusCode = RetryStrategy.getStatusCode(ex).orElse(null);
+        Optional<HttpStatus> statusCode = RetryStrategy.getStatusCode(ex);
 
-        if (statusCode == HttpStatus.TOO_MANY_REQUESTS || statusCode == HttpStatus.FORBIDDEN
-                || statusCode == HttpStatus.SERVICE_UNAVAILABLE) {
-            Integer retryAfterSeconds = extractRetryAfterHeader(ex);
-            if (retryAfterSeconds != null) {
+        if (statusCode.isPresent() && isRateLimited(statusCode.get())) {
+            final Optional<Integer> retryAfterSeconds = extractRetryAfterHeader(ex);
+            if (retryAfterSeconds.isPresent()) {
                 log.info("Using retry-after header value: {} seconds (attempt {}/{})",
-                        retryAfterSeconds, retryCount + 1, getMaxRetries());
-                return retryAfterSeconds * RetryStrategy.SLEEP_TIME_MULTIPLIER_MS;
+                        retryAfterSeconds.get(), retryCount + 1, getMaxRetries());
+                return retryAfterSeconds.get() * RetryStrategy.SLEEP_TIME_MULTIPLIER_MS;
             }
         }
 
         // Fallback to fixed backoff
-        List<Integer> sleepTimes = (statusCode == HttpStatus.TOO_MANY_REQUESTS || statusCode == HttpStatus.FORBIDDEN
-                || statusCode == HttpStatus.SERVICE_UNAVAILABLE)
+        List<Integer> sleepTimes = (statusCode.isPresent() && isRateLimited(statusCode.get()))
                 ? rateLimitRetrySleepTime
                 : retryAttemptSleepTime;
 
@@ -84,7 +83,13 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
         return sleepTimeSeconds * RetryStrategy.SLEEP_TIME_MULTIPLIER_MS;
     }
 
-    private Integer extractRetryAfterHeader(Exception ex) {
+    private boolean isRateLimited(final HttpStatus status) {
+        return status == HttpStatus.TOO_MANY_REQUESTS ||
+                status == HttpStatus.FORBIDDEN ||
+                status == HttpStatus.SERVICE_UNAVAILABLE;
+    }
+
+    private Optional<Integer> extractRetryAfterHeader(Exception ex) {
         try {
             HttpHeaders headers = null;
             if (ex instanceof HttpClientErrorException) {
@@ -97,7 +102,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
                 String retryAfter = headers.getFirst(RETRY_AFTER);
                 if (retryAfter != null) {
                     int seconds = Integer.parseInt(retryAfter);
-                    return Math.max(seconds, 1);
+                    return Optional.of(Math.max(seconds, 1));
                 }
             }
             if (headers != null && headers.containsKey(RATE_LIMIT_REMAINING) && headers.containsKey(RATE_LIMIT_RESET)) {
@@ -108,13 +113,13 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
                     long resetSeconds = Long.parseLong(resetEpoch);
                     long nowSeconds = Instant.now().getEpochSecond();
                     long wait = resetSeconds - nowSeconds + 1;
-                    return (int) Math.max(wait, 1);
+                    return Optional.of((int) Math.max(wait, 1));
                 }
             }
         } catch (NumberFormatException e) {
             log.warn(NOISY, "Failed to parse retry-after header: {}", e.getMessage());
         }
-        return null;
+        return Optional.empty();
     }
 
 }

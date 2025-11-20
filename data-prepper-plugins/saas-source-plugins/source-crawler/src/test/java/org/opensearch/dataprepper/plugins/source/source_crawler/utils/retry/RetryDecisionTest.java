@@ -12,10 +12,10 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 
 class RetryDecisionTest {
 
@@ -25,7 +25,7 @@ class RetryDecisionTest {
 
         assertThat(decision, notNullValue());
         assertThat(decision.isShouldStop(), equalTo(false));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
     }
 
     @Test
@@ -34,7 +34,7 @@ class RetryDecisionTest {
 
         assertThat(decision, notNullValue());
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.empty()));
     }
 
     @Test
@@ -45,8 +45,8 @@ class RetryDecisionTest {
 
         assertThat(decision, notNullValue());
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), equalTo(exception));
-        assertThat(decision.getException().getMessage(), equalTo("Test exception"));
+        assertThat(decision.getException().get(), equalTo(exception));
+        assertThat(decision.getException().get().getMessage(), equalTo("Test exception"));
     }
 
     @Test
@@ -56,8 +56,8 @@ class RetryDecisionTest {
         final RetryDecision decision = RetryDecision.stopWithException(exception);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), equalTo(exception));
-        assertThat(decision.getException().getMessage(), equalTo("Access denied"));
+        assertThat(decision.getException().get(), equalTo(exception));
+        assertThat(decision.getException().get().getMessage(), equalTo("Access denied"));
     }
 
     @Test
@@ -66,7 +66,7 @@ class RetryDecisionTest {
 
         assertThat(decision, notNullValue());
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), nullValue());
+        assertThat(decision.getException(), equalTo(Optional.ofNullable(null)));
     }
 
     @Test
@@ -97,9 +97,9 @@ class RetryDecisionTest {
         final RetryDecision decision1 = RetryDecision.stopWithException(exception1);
         final RetryDecision decision2 = RetryDecision.stopWithException(exception2);
 
-        assertThat(decision1.getException(), equalTo(exception1));
-        assertThat(decision2.getException(), equalTo(exception2));
-        assertThat(decision1.getException() == decision2.getException(), equalTo(false));
+        assertThat(decision1.getException().get(), equalTo(exception1));
+        assertThat(decision2.getException().get(), equalTo(exception2));
+        assertThat(decision1.getException().get() == decision2.getException().get(), equalTo(false));
     }
 
     @Test
@@ -117,8 +117,8 @@ class RetryDecisionTest {
         final RetryDecision decisionWithException = RetryDecision.stopWithException(exception);
         final RetryDecision decisionWithoutException = RetryDecision.stop();
 
-        assertThat(decisionWithException.getException(), equalTo(exception));
-        assertThat(decisionWithoutException.getException(), nullValue());
+        assertThat(decisionWithException.getException().get(), equalTo(exception));
+        assertThat(decisionWithoutException.getException(), equalTo(Optional.empty()));
     }
 
     @Test
@@ -129,8 +129,8 @@ class RetryDecisionTest {
         final RetryDecision decision = RetryDecision.stopWithException(exception);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), equalTo(exception));
-        assertThat(decision.getException().getMessage(), equalTo("Invalid argument"));
+        assertThat(decision.getException().get(), equalTo(exception));
+        assertThat(decision.getException().get().getMessage(), equalTo("Invalid argument"));
     }
 
     @Test
@@ -141,8 +141,8 @@ class RetryDecisionTest {
         final RetryDecision decision = RetryDecision.stopWithException(exception);
 
         assertThat(decision.isShouldStop(), equalTo(true));
-        assertThat(decision.getException(), equalTo(exception));
-        assertThat(decision.getException().getCause(), equalTo(cause));
-        assertThat(decision.getException().getCause().getMessage(), equalTo("Root cause"));
+        assertThat(decision.getException().get(), equalTo(exception));
+        assertThat(decision.getException().get().getCause(), equalTo(cause));
+        assertThat(decision.getException().get().getCause().getMessage(), equalTo("Root cause"));
     }
 }

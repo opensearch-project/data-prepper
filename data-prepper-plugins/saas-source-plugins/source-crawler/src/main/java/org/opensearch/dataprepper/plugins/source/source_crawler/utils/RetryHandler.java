@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryDecision;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.StatusCodeHandler;
@@ -64,10 +65,10 @@ public class RetryHandler {
      */
     public <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal, Optional<Counter> failureCounter) {
         if (operation == null) {
-            throw new IllegalArgumentException("Operation cannot be null");
+            throw new SaaSCrawlerException("Operation cannot be null", false);
         }
         if (credentialRenewal == null) {
-            throw new IllegalArgumentException("Credential renewal cannot be null");
+            throw new SaaSCrawlerException("Credential renewal cannot be null", false);
         }
 
         final int maxRetries = retryStrategy.getMaxRetries();
@@ -84,9 +85,9 @@ public class RetryHandler {
                         ex, retryCount, credentialRenewal);
 
                 if (decision.isShouldStop()) {
-                    if (decision.getException() != null) {
-                        throw decision.getException();
-                    }
+                    decision.getException().ifPresent(e -> {
+                        throw e;
+                    });
                     throw ex;
                 }
 
