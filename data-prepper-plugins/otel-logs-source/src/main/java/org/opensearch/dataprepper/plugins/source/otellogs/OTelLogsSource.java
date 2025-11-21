@@ -15,10 +15,13 @@ import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
+import com.linecorp.armeria.server.throttling.ThrottlingService;
 
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
+import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -54,6 +57,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -66,6 +70,8 @@ import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 public class OTelLogsSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
     static final String SERVER_CONNECTIONS = "serverConnections";
+    static final String HEALTH_CHECK_PATH = "/health";
+    static final int MAX_PENDING_REQUESTS = 1024;
 
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private final String pipelineName;
@@ -108,15 +114,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         final SessionProtocol protocol = oTelLogsSourceConfig.isSsl() ? SessionProtocol.HTTPS : SessionProtocol.HTTP;
         final ServerBuilder serverBuilder = Server.builder().port(oTelLogsSourceConfig.getPort(), protocol);
         if (server == null) {
-            configureServer(serverBuilder);
-
-            final String transformedGrpcPath = oTelLogsSourceConfig.getPath().replace("${pipelineName}", pipelineName);
-            configureGrpcService(serverBuilder, buffer, transformedGrpcPath);
-
-            final String transformedHttpPath = oTelLogsSourceConfig.getHttpPath().replace("${pipelineName}", pipelineName);
-            configureHttpService(serverBuilder, buffer, transformedHttpPath);
-
-            server = serverBuilder.build();
+            server = createServer(serverBuilder, buffer);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
         try {
@@ -134,7 +132,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         LOG.info("Started otel_logs_source...");
     }
 
-    private void configureServer(ServerBuilder serverBuilder) {
+    private Server createServer(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
         serverBuilder.disableServerHeader();
         if (oTelLogsSourceConfig.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
@@ -163,18 +161,32 @@ public class OTelLogsSource implements Source<Record<Object>> {
             serverBuilder.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
         }
         final int threadCount = oTelLogsSourceConfig.getThreadCount();
-        serverBuilder.blockingTaskExecutor(new ScheduledThreadPoolExecutor(threadCount), true);
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount);
+        serverBuilder.blockingTaskExecutor(executor, true);
 
         if (oTelLogsSourceConfig.hasHealthCheck()) {
             LOG.info("HTTP source health check is enabled");
-            serverBuilder.service("/health", HealthCheckService.builder().longPolling(0).build());
+            serverBuilder.service(HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
+
+        configureGrpcService(serverBuilder, buffer);
+        configureHttpService(serverBuilder, buffer, executor.getQueue());
+
+        return serverBuilder.build();
     }
 
-    private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer, String path) {
+    private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer, BlockingQueue<Runnable> blockingQueue) {
+        final String path = oTelLogsSourceConfig.getHttpPath().replace("${pipelineName}", pipelineName);
+
         final ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100);
         final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
         final HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
+
+        final int maxPendingRequests = MAX_PENDING_REQUESTS;
+        final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(maxPendingRequests, blockingQueue);
+        final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
+        serverBuilder.decorator(path, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+
         if (CompressionOption.NONE.equals(oTelLogsSourceConfig.getCompression())) {
             serverBuilder.annotatedService(path, armeriaHttpService, httpExceptionHandler);
         } else {
@@ -186,7 +198,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer,  String path) {
+    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                 .builder()
                 .useClientTimeoutHeader(false)
@@ -210,6 +223,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
             grpcServiceBuilder.enableUnframedRequests(true);
         }
 
+        final String path = oTelLogsSourceConfig.getPath().replace("${pipelineName}", pipelineName);
         final CreateServer.GRPCServiceConfig<?, ?> grpcServiceConfig = new CreateServer.GRPCServiceConfig<>(oTelLogsGrpcService);
         grpcServiceBuilder.addService(
                 path,
