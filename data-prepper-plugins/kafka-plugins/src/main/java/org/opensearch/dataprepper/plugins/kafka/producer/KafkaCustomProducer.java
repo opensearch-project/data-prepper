@@ -17,6 +17,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -143,7 +144,9 @@ public class KafkaCustomProducer<T> {
     public void produceRecords(final Record<Event> record) throws Exception {
         bufferedEventHandles.add(record.getData().getEventHandle());
         Event event = getEvent(record);
-        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
+        final String key = StringUtils.isEmpty(kafkaProducerConfig.getPartitionKey()) ? 
+            null : 
+            event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {
             if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
                 publishJsonMessage(record, key);
