@@ -15,14 +15,17 @@ public class InvocationTypeTest {
     public void testFromStringWithValidValue() {
         assertEquals(InvocationType.REQUEST_RESPONSE, InvocationType.fromString("request-response"));
         assertEquals(InvocationType.EVENT, InvocationType.fromString("event"));
+        assertEquals(InvocationType.STREAMING_RESPONSE, InvocationType.fromString("streaming-response"));
     }
 
     @Test
     public void testGetValue() {
         assertEquals("request-response", InvocationType.REQUEST_RESPONSE.getUserInputValue());
         assertEquals("event", InvocationType.EVENT.getUserInputValue());
+        assertEquals("streaming-response", InvocationType.STREAMING_RESPONSE.getUserInputValue());
         assertEquals("RequestResponse", InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         assertEquals("Event", InvocationType.EVENT.getAwsLambdaValue());
+        assertEquals("RequestResponse", InvocationType.STREAMING_RESPONSE.getAwsLambdaValue());
     }
 }
 
