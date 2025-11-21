@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import static com.linecorp.armeria.common.HttpStatus.INSUFFICIENT_STORAGE;
 import static com.linecorp.armeria.common.HttpStatus.INTERNAL_SERVER_ERROR;
+import static com.linecorp.armeria.common.HttpStatus.REQUEST_ENTITY_TOO_LARGE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
@@ -14,6 +15,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -161,7 +163,6 @@ class OTelLogsSourceHttpTest {
         lenient().when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authenticationProvider);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        SOURCE = new OTelLogsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
     }
 
     @AfterEach
@@ -169,9 +170,13 @@ class OTelLogsSourceHttpTest {
         SOURCE.stop();
     }
 
-    private void configureObjectUnderTest() {
-        SOURCE = new OTelLogsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
-        assertTrue(SOURCE.getDecoder() instanceof OTelLogsDecoder);
+    private void configureSource() {
+        configureSource(createDefaultConfig());
+    }
+
+    private void configureSource(OTelLogsSourceConfig config) {
+        SOURCE = new OTelLogsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
+        assertInstanceOf(OTelLogsDecoder.class, SOURCE.getDecoder());
     }
 
     private RequestHeadersBuilder getDefaultRequestHeadersBuilder() {
@@ -186,10 +191,9 @@ class OTelLogsSourceHttpTest {
     @ParameterizedTest
     @MethodSource("getPathParams")
     void httpRequest_writesToBuffer_returnsSuccessfulResponse(String givenPath, String resolvedRequestPath) throws Exception {
-        OTelLogsSource source = new OTelLogsSource(createDefaultConfigBuilder()
-                .httpPath(givenPath)
-                .build(), pluginMetrics, pluginFactory, pipelineDescription);
-        source.start(buffer);
+        OTelLogsSourceConfig config = createDefaultConfigBuilder().httpPath(givenPath).build();
+        configureSource(config);
+        SOURCE.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
         WebClient.of().execute(
@@ -201,13 +205,12 @@ class OTelLogsSourceHttpTest {
             .join();
 
         verify(buffer).writeAll(any(), anyInt());
-        source.stop();
     }
 
     @Test
     void httpsRequest_requestIsProcessed_writesToBufferAndReturnsSuccessfulResponse() throws Exception {
-        OTelLogsSource source = new OTelLogsSource(createBuilderForConfigWithSsl().build(), pluginMetrics, pluginFactory, pipelineDescription);
-        source.start(buffer);
+        configureSource(createBuilderForConfigWithSsl().build());
+        SOURCE.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
         WebClient.builder()
@@ -221,7 +224,6 @@ class OTelLogsSourceHttpTest {
                 .join();
 
         verify(buffer).writeAll(any(), anyInt());
-        source.stop();
     }
 
     private static Stream<Arguments> getPathParams() {
@@ -233,6 +235,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_oneConnectionIsEstablished_metricsReflectCorrectConnectionCount() throws InvalidProtocolBufferException {
+        configureSource();
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder().build(), createJsonHttpPayload())
@@ -249,12 +252,8 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_payloadIsCompressed_returns200() throws IOException {
-        OTelLogsSource source = new OTelLogsSource(
-                createDefaultConfigBuilder().compression(CompressionOption.GZIP).build(),
-                pluginMetrics,
-                pluginFactory,
-                pipelineDescription);
-        source.start(buffer);
+        configureSource( createDefaultConfigBuilder().compression(CompressionOption.GZIP).build());
+        SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
                                 .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
@@ -263,9 +262,6 @@ class OTelLogsSourceHttpTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
-
-
-        source.stop();
     }
 
     @ParameterizedTest
@@ -274,8 +270,8 @@ class OTelLogsSourceHttpTest {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
         final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
-        final OTelLogsSource source = new OTelLogsSource(createConfigBuilderWithBasicAuth().build(), pluginMetrics, pluginFactory, pipelineDescription);
-        source.start(buffer);
+        configureSource(createConfigBuilderWithBasicAuth().build());
+        SOURCE.start(buffer);
 
         final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", givenUsername, givenPassword).getBytes(StandardCharsets.UTF_8));
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
@@ -287,7 +283,6 @@ class OTelLogsSourceHttpTest {
                 .join();
 
         verify(buffer, expectedBufferWrites).writeAll(any(), anyInt());
-        source.stop();
     }
 
     private static Stream<Arguments> getBasicAuthTestData() {
@@ -300,13 +295,8 @@ class OTelLogsSourceHttpTest {
     @ParameterizedTest
     @MethodSource("getHealthCheckParams")
     void healthCheckRequest_requestIsProcesses_returnsStatusCodeAccordingToConfig(boolean givenHealthCheckConfig, HttpStatus expectedStatus) throws IOException {
-        final OTelLogsSource source = new OTelLogsSource(
-                createDefaultConfigBuilder().healthCheck(givenHealthCheckConfig).build(),
-                pluginMetrics,
-                pluginFactory,
-                pipelineDescription
-        );
-        source.start(buffer);
+        configureSource(createDefaultConfigBuilder().healthCheck(givenHealthCheckConfig).build());
+        SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
                         .path("/health")
@@ -316,8 +306,6 @@ class OTelLogsSourceHttpTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, expectedStatus, throwable))
                 .join();
-
-        source.stop();
     }
 
     private static Stream<Arguments> getHealthCheckParams() {
@@ -329,6 +317,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void testStartWithEmptyBuffer() {
+        configureSource();
         assertThrows(IllegalStateException.class, () -> SOURCE.start(null));
     }
 
@@ -337,7 +326,7 @@ class OTelLogsSourceHttpTest {
     void httpRequest_writingToBufferThrowsAnException_correctHttpStatusIsReturned(
             final Class<Exception> bufferExceptionClass,
             final HttpStatus expectedStatus) throws Exception {
-        configureObjectUnderTest();
+        configureSource();
         SOURCE.start(buffer);
         doThrow(bufferExceptionClass)
                 .when(buffer)
@@ -353,17 +342,17 @@ class OTelLogsSourceHttpTest {
     }
 
     @Test
-    void httpRequest_requestBodyIsTooLarge_returns507() throws InvalidProtocolBufferException {
-        OTelLogsSource source = new OTelLogsSource(createDefaultConfigBuilder().maxRequestLength(ByteCount.ofBytes(4)).build(), pluginMetrics, pluginFactory, pipelineDescription);
-        source.start(buffer);
+    void httpRequest_requestBodyIsTooLarge_returns413() throws InvalidProtocolBufferException {
+        configureSource(createDefaultConfigBuilder().maxRequestLength(ByteCount.ofBytes(4)).build());
+        SOURCE.start(buffer);
 
         WebClient.of()
                 .execute(getDefaultRequestHeadersBuilder().build(), createJsonHttpPayload())
                 .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, INSUFFICIENT_STORAGE, throwable))
+                .whenComplete((response, throwable) -> {
+                    assertSecureResponseWithStatusCode(response, REQUEST_ENTITY_TOO_LARGE, throwable);
+                })
                 .join();
-
-        source.stop();
     }
 
     static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {

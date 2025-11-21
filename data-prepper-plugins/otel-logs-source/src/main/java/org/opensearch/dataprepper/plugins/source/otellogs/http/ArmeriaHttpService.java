@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
+import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
@@ -72,15 +73,15 @@ public class ArmeriaHttpService {
         try {
             logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
         } catch (Exception e) {
-            LOG.error("Failed to parse the request {} due to:", request, e);
+            LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse the request with error {}. Request body: {}", e, request);
             throw new BadRequestException(e.getMessage(), e);
         }
 
-        final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
         try {
             if (buffer.isByteBuffer()) {
                 buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
             } else {
+                final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
                 buffer.writeAll(records, bufferWriteTimeoutInMillis);
             }
         } catch (Exception e) {
