@@ -88,9 +88,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - image : "openjdk:11"
+          - image : "eclipse-temurin:11"
             archive: opensearch-data-prepper
-          - image : "openjdk:17"
+          - image : "eclipse-temurin:17"
             archive: opensearch-data-prepper
           - image : "ubuntu:latest"
             archive: opensearch-data-prepper-jdk
