@@ -95,7 +95,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
@@ -259,7 +258,7 @@ class OTelLogsSourceGrpcTest {
             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.addService(anyString(), any(ServerServiceDefinition.class), any())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.exceptionHandler(any(GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);
 
@@ -289,7 +288,7 @@ class OTelLogsSourceGrpcTest {
             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.addService(anyString(), any(ServerServiceDefinition.class), any())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.exceptionHandler(any(
                     GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);

@@ -67,7 +67,15 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'data-prepper-parallel-log',
                 'parallel-grok-substitute-e2e-pipeline.yml',
                 'data_prepper.yml'
-        )
+        ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceTest.testOtelLogsSourcePipelineEndToEnd*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-pipeline.yml',
+                'data_prepper.yml'
+        ),
 ]
 
 
@@ -138,7 +146,9 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
+    integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${targetOpenTelemetryVersion}"
     integrationTestImplementation libs.armeria.core
     integrationTestImplementation testLibs.awaitility
     integrationTestImplementation libs.opensearch.rhlc
+    integrationTestImplementation libs.protobuf.util
 }

@@ -177,9 +177,11 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
     private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer, BlockingQueue<Runnable> blockingQueue) {
         final String path = oTelLogsSourceConfig.getHttpPath().replace("${pipelineName}", pipelineName);
+        LOG.info("Configuring HTTP service under {} ", path);
+
 
         final ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100);
-        final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo();
+        final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null ? oTelLogsSourceConfig.getRetryInfo() : new RetryInfoConfig();
         final HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
         final int maxPendingRequests = MAX_PENDING_REQUESTS;
@@ -199,6 +201,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     }
 
     private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+        LOG.info("Configuring gRPC service");
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                 .builder()
@@ -223,15 +226,20 @@ public class OTelLogsSource implements Source<Record<Object>> {
             grpcServiceBuilder.enableUnframedRequests(true);
         }
 
-        final String path = oTelLogsSourceConfig.getPath().replace("${pipelineName}", pipelineName);
         final CreateServer.GRPCServiceConfig<?, ?> grpcServiceConfig = new CreateServer.GRPCServiceConfig<>(oTelLogsGrpcService);
-        grpcServiceBuilder.addService(
-                path,
-                ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors),
-                LogsServiceGrpc.getExportMethod());
+        if (oTelLogsSourceConfig.getPath() != null) {
+            final String path = oTelLogsSourceConfig.getPath().replace("${pipelineName}", pipelineName);
+            LOG.info("custom gRPC path: {} ", path);
+            grpcServiceBuilder.addService(
+                    path,
+                    ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors),
+                    LogsServiceGrpc.getExportMethod());
+        } else {
+            grpcServiceBuilder.addService(ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors));
+        }
 
         if (oTelLogsSourceConfig.hasHealthCheck()) {
-            LOG.info("Health check is enabled");
+            LOG.info("Health check for gRPC service is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
