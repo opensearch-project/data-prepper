@@ -32,7 +32,7 @@ public class WorkerScheduler implements Runnable {
     public static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
     public static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
     
-    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     private static final Logger log = LoggerFactory.getLogger(WorkerScheduler.class);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
     private static final Duration DEFAULT_SLEEP_DURATION_MILLIS = Duration.ofMillis(10000);
