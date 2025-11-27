@@ -22,6 +22,8 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.TokenPaginationCrawlerLeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Counter;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +44,9 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +67,8 @@ class LeaderOnlyTokenCrawlerTest {
     private AcknowledgementSet acknowledgementSet;
     @Mock
     private Buffer<Record<Event>> buffer;
+    @Mock
+    private PaginationCrawlerWorkerProgressState workerState;
 
     private LeaderOnlyTokenCrawler crawler;
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("CrawlerTest", "crawler");
@@ -241,6 +248,50 @@ class LeaderOnlyTokenCrawlerTest {
         verify(coordinator).createPartition(any());
     }
 
+    @Test
+    public void testExecutePartitionMetrics() {
+        reset(leaderPartition);
+
+        // mock timers and counters
+        Timer mockCrawlingTimer = mock(Timer.class);
+        Timer partitionWaitTimeTimer = mock(Timer.class);
+        Timer partitionProcessLatencyTimer = mock(Timer.class);
+        Timer mockBufferWriteTimer = mock(Timer.class);
+        Counter mockBatchesFailedCounter = mock(Counter.class);
+        Counter mockAcknowledgementSetSuccesses = mock(Counter.class);
+        Counter mockAcknowledgementSetFailures = mock(Counter.class);
+
+        // setup mock plugin metrics
+        PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
+        when(mockPluginMetrics.timer("crawlingTime")).thenReturn(mockCrawlingTimer);
+        when(mockPluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(mockPluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
+        when(mockPluginMetrics.timer("bufferWriteTime")).thenReturn(mockBufferWriteTimer);
+        when(mockPluginMetrics.counter("batchesFailed")).thenReturn(mockBatchesFailedCounter);
+        when(mockPluginMetrics.counter("acknowledgementSetSuccesses")).thenReturn(mockAcknowledgementSetSuccesses);
+        when(mockPluginMetrics.counter("acknowledgementSetFailures")).thenReturn(mockAcknowledgementSetFailures);
+
+        LeaderOnlyTokenCrawler testCrawler = new LeaderOnlyTokenCrawler(client, mockPluginMetrics);
+
+        // test executePartition with metrics
+        when(workerState.getExportStartTime()).thenReturn(Instant.now().minusSeconds(1));
+
+        // make latency timer execute the runnable so client.executePartition() gets called
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(partitionProcessLatencyTimer).record(any(Runnable.class));
+        
+        doNothing().when(partitionWaitTimeTimer).record(any(Duration.class));
+
+        testCrawler.executePartition(workerState, buffer, acknowledgementSet);
+
+        // verify metrics are recorded
+        verify(partitionProcessLatencyTimer).record(any(Runnable.class));
+        verify(partitionWaitTimeTimer).record(any(Duration.class));
+        verify(client).executePartition(workerState, buffer, acknowledgementSet);
+    }
 
     private List<ItemInfo> createTestItems(int count) {
         List<ItemInfo> items = new ArrayList<>();
