@@ -39,6 +39,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
 
     private static final String METRIC_BATCHES_FAILED = "batchesFailed";
     private static final String METRIC_BUFFER_WRITE_TIME = "bufferWriteTime";
+    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
 
@@ -55,6 +57,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
     private final Counter acknowledgementSetSuccesses;
     private final Counter acknowledgementSetFailures;
     private final Timer bufferWriteTimer;
+    private final Timer partitionWaitTimeTimer;
+    private final Timer partitionProcessLatencyTimer;
 
     private String lastToken;
     private Duration noAckTimeout;
@@ -67,6 +71,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
         this.batchesFailedCounter = pluginMetrics.counter(METRIC_BATCHES_FAILED);
         this.bufferWriteTimer = pluginMetrics.timer(METRIC_BUFFER_WRITE_TIME);
+        this.partitionWaitTimeTimer = pluginMetrics.timer(WORKER_PARTITION_WAIT_TIME);
+        this.partitionProcessLatencyTimer = pluginMetrics.timer(WORKER_PARTITION_PROCESS_LATENCY);
         this.acknowledgementSetSuccesses = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME);
         this.acknowledgementSetFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME);
         this.noAckTimeout = NO_ACK_TIME_OUT_SECONDS;
@@ -123,7 +129,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
 
     @Override
     public void executePartition(PaginationCrawlerWorkerProgressState state, Buffer buffer, AcknowledgementSet acknowledgementSet) {
-        client.executePartition(state, buffer, acknowledgementSet);
+        partitionWaitTimeTimer.record(Duration.between(state.getExportStartTime(), Instant.now()));
+        partitionProcessLatencyTimer.record(() -> client.executePartition(state, buffer, acknowledgementSet));
     }
 
     private List<ItemInfo> collectBatch(Iterator<ItemInfo> iterator) {
