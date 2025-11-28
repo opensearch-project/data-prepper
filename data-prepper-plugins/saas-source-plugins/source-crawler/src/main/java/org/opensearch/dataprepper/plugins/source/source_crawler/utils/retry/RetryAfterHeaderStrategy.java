@@ -33,6 +33,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
 
     private final List<Integer> retryAttemptSleepTime;
     private final List<Integer> rateLimitRetrySleepTime;
+    private final int maxRetries;
 
     /**
      * Constructor with default sleep times
@@ -40,6 +41,18 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     public RetryAfterHeaderStrategy() {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.maxRetries = RetryStrategy.MAX_RETRIES;
+    }
+
+    /**
+     * Constructor with custom max retries
+     *
+     * @param maxRetries Maximum number of retries
+     */
+    public RetryAfterHeaderStrategy(final int maxRetries) {
+        this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
+        this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.maxRetries = maxRetries;
     }
 
     /**
@@ -53,6 +66,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
         this.rateLimitRetrySleepTime = rateLimitRetrySleepTime != null
                 ? rateLimitRetrySleepTime
                 : RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.maxRetries = this.rateLimitRetrySleepTime.size();
     }
 
     @Override
@@ -81,6 +95,11 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
                 sleepTimeSeconds, retryCount + 1, getMaxRetries());
 
         return sleepTimeSeconds * RetryStrategy.SLEEP_TIME_MULTIPLIER_MS;
+    }
+
+    @Override
+    public int getMaxRetries() {
+        return maxRetries;
     }
 
     private boolean isRateLimited(final HttpStatus status) {

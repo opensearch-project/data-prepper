@@ -40,9 +40,7 @@ public interface RetryStrategy {
      *
      * @return Maximum number of retries
      */
-    default int getMaxRetries() {
-        return MAX_RETRIES;
-    }
+    int getMaxRetries();
 
     static Optional<HttpStatus> getStatusCode(final Exception ex) {
         if (ex instanceof HttpClientErrorException) {
