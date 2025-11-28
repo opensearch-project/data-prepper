@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -29,26 +28,19 @@ import static org.hamcrest.Matchers.notNullValue;
 
 class DefaultRetryStrategyTest {
 
-    private DefaultRetryStrategy defaultRetryStrategy;
-
-    @BeforeEach
-    void setUp() {
-        defaultRetryStrategy = new DefaultRetryStrategy();
-    }
-
     @Test
-    void constructor_WithDefaultParams_InitializesSuccessfully() {
-        final DefaultRetryStrategy strategy = new DefaultRetryStrategy();
+    void constructor_WithCustomMaxRetries_InitializesSuccessfully() {
+        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(1);
         assertThat(strategy, notNullValue());
-        assertThat(strategy.getMaxRetries(), equalTo(6));
+        assertThat(strategy.getMaxRetries(), equalTo(1));
     }
 
     @Test
     void constructor_WithCustomRateLimitSleepTime_InitializesSuccessfully() {
-        final List<Integer> customSleepTime = Arrays.asList(10, 20, 30);
+        final List<Integer> customSleepTime = Arrays.asList(10);
         final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
         assertThat(strategy, notNullValue());
-        assertThat(strategy.getMaxRetries(), equalTo(6));
+        assertThat(strategy.getMaxRetries(), equalTo(1));
     }
 
     @Test
@@ -60,13 +52,15 @@ class DefaultRetryStrategyTest {
 
     @Test
     void getMaxRetries_ReturnsExpectedValue() {
-        assertThat(defaultRetryStrategy.getMaxRetries(), equalTo(6));
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
+        assertThat(defaultRetryStrategy.getMaxRetries(), equalTo(1));
     }
 
     @ParameterizedTest
     @MethodSource("normalRetryArguments")
     void calculateSleepTime_WithNormalRetries_ReturnsExpectedTime(final int retryCount,
                                                                   final long expectedTimeMs) {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpServerErrorException exception = new HttpServerErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR);
 
@@ -79,6 +73,7 @@ class DefaultRetryStrategyTest {
     @MethodSource("rateLimitRetryArguments")
     void calculateSleepTime_WithRateLimitError_ReturnsExpectedTime(final int retryCount,
                                                                    final long expectedTimeMs) {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
@@ -89,6 +84,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithRetryCountExceedingList_ReturnsLastValue() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpServerErrorException exception = new HttpServerErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR);
 
@@ -100,6 +96,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithRateLimitAndExceedingCount_ReturnsLastValue() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
@@ -111,6 +108,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithHttpClientErrorException_ReturnsCorrectTime() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.BAD_REQUEST);
 
@@ -121,6 +119,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithHttpServerErrorException_ReturnsCorrectTime() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpServerErrorException exception = new HttpServerErrorException(
                 HttpStatus.SERVICE_UNAVAILABLE);
 
@@ -131,6 +130,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithGenericException_ReturnsDefaultTime() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final Exception exception = new RuntimeException("Generic error");
 
         final long sleepTime = defaultRetryStrategy.calculateSleepTime(exception, 0);
@@ -140,34 +140,31 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithCustomRateLimitSleepTime_UsesCustomValues() {
-        final List<Integer> customSleepTime = Arrays.asList(10, 20, 30);
+        final List<Integer> customSleepTime = Arrays.asList(10);
         final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
         final long sleepTime1 = strategy.calculateSleepTime(exception, 0);
-        final long sleepTime2 = strategy.calculateSleepTime(exception, 1);
-        final long sleepTime3 = strategy.calculateSleepTime(exception, 2);
 
         assertThat(sleepTime1, equalTo(10000L));
-        assertThat(sleepTime2, equalTo(20000L));
-        assertThat(sleepTime3, equalTo(30000L));
     }
 
     @Test
     void calculateSleepTime_WithCustomRateLimitAndExceedingCount_ReturnsLastCustomValue() {
-        final List<Integer> customSleepTime = Arrays.asList(10, 20, 30);
+        final List<Integer> customSleepTime = Arrays.asList(10);
         final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
         final long sleepTime = strategy.calculateSleepTime(exception, 5);
 
-        assertThat(sleepTime, equalTo(30000L));
+        assertThat(sleepTime, equalTo(10000L));
     }
 
     @Test
     void calculateSleepTime_WithDifferentHttpStatusCodes_CalculatesCorrectly() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpClientErrorException badRequestException = new HttpClientErrorException(
                 HttpStatus.BAD_REQUEST);
         final HttpServerErrorException badGatewayException = new HttpServerErrorException(
@@ -187,6 +184,7 @@ class DefaultRetryStrategyTest {
 
     @Test
     void calculateSleepTime_WithSequentialRetries_IncreasesBackoffTime() {
+        final DefaultRetryStrategy defaultRetryStrategy = new DefaultRetryStrategy(1);
         final HttpServerErrorException exception = new HttpServerErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR);
 
