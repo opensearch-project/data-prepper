@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,8 +22,11 @@ import java.util.Optional;
  */
 @Slf4j
 public class DefaultRetryStrategy implements RetryStrategy {
+    private static final List<HttpStatus> DEFAULT_RATE_LIMIT_STATUS_CODES = Arrays.asList(HttpStatus.TOO_MANY_REQUESTS);
+
     private final List<Integer> retryAttemptSleepTime;
     private final List<Integer> rateLimitRetrySleepTime;
+    private final List<HttpStatus> rateLimitStatusCodes;
     private final int maxRetries;
 
     /**
@@ -31,6 +35,7 @@ public class DefaultRetryStrategy implements RetryStrategy {
     public DefaultRetryStrategy() {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = RetryStrategy.MAX_RETRIES;
     }
 
@@ -42,20 +47,25 @@ public class DefaultRetryStrategy implements RetryStrategy {
     public DefaultRetryStrategy(final int maxRetries) {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = maxRetries;
     }
 
     /**
-     * Constructor with Custom sleep times for rate limit retries
+     * Constructor with Custom sleep times for rate limit retries and custom rate limit status codes
      *
      * @param rateLimitRetrySleepTime Custom sleep times for rate limit retries (in
      *                                seconds)
+     * @param rateLimitStatusCodes List of status codes that are considered rate limited
      */
-    public DefaultRetryStrategy(List<Integer> rateLimitRetrySleepTime) {
+    public DefaultRetryStrategy(List<Integer> rateLimitRetrySleepTime, List<HttpStatus> rateLimitStatusCodes) {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = rateLimitRetrySleepTime != null
                 ? rateLimitRetrySleepTime
                 : RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = rateLimitStatusCodes != null
+                ? rateLimitStatusCodes
+                : DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = this.rateLimitRetrySleepTime.size();
     }
 
@@ -63,7 +73,7 @@ public class DefaultRetryStrategy implements RetryStrategy {
     public long calculateSleepTime(Exception ex, int retryCount) {
         Optional<HttpStatus> statusCode = RetryStrategy.getStatusCode(ex);
 
-        List<Integer> sleepTimes = (statusCode.isPresent() && statusCode.get() == HttpStatus.TOO_MANY_REQUESTS)
+        List<Integer> sleepTimes = (statusCode.isPresent() && rateLimitStatusCodes.contains(statusCode.get()))
                 ? rateLimitRetrySleepTime
                 : retryAttemptSleepTime;
 

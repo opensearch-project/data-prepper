@@ -20,9 +20,9 @@ import java.util.Optional;
 @Getter
 public class RetryDecision {
     private final boolean shouldStop;
-    private final Optional<RuntimeException> exception;
+    private final Optional<Exception> exception;
 
-    private RetryDecision(boolean shouldStop, Optional<RuntimeException> exception) {
+    private RetryDecision(boolean shouldStop, Optional<Exception> exception) {
         this.shouldStop = shouldStop;
         this.exception = exception;
     }
@@ -35,7 +35,7 @@ public class RetryDecision {
         return new RetryDecision(true, Optional.empty());
     }
 
-    public static RetryDecision stopWithException(RuntimeException exception) {
+    public static RetryDecision stopWithException(Exception exception) {
         return new RetryDecision(true, Optional.ofNullable(exception));
     }
 }

@@ -11,7 +11,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.RetryHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
 import org.slf4j.Logger;

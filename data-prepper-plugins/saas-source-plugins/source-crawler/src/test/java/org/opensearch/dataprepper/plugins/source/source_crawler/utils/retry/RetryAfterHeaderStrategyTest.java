@@ -40,14 +40,14 @@ class RetryAfterHeaderStrategyTest {
     @Test
     void constructor_WithCustomRateLimitSleepTime_InitializesSuccessfully() {
         final List<Integer> customSleepTime = Arrays.asList(10);
-        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(customSleepTime);
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(customSleepTime,null);
         assertThat(strategy, notNullValue());
         assertThat(strategy.getMaxRetries(), equalTo(1));
     }
 
     @Test
     void constructor_WithNullRateLimitSleepTime_UsesDefaultValues() {
-        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(null);
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(null,null);
         assertThat(strategy, notNullValue());
         assertThat(strategy.getMaxRetries(), equalTo(6));
     }
@@ -136,7 +136,7 @@ class RetryAfterHeaderStrategyTest {
     @Test
     void calculateSleepTime_WithCustomRateLimitSleepTime_UsesCustomValues() {
         final List<Integer> customSleepTime = Arrays.asList(10);
-        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(customSleepTime);
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(customSleepTime, null);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
@@ -314,7 +314,7 @@ class RetryAfterHeaderStrategyTest {
         headers.set("X-RateLimit-Reset", String.valueOf(resetTime));
 
         final HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.FORBIDDEN, "Rate limit exceeded", headers, null, null);
+                HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded", headers, null, null);
 
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 
@@ -346,7 +346,7 @@ class RetryAfterHeaderStrategyTest {
         headers.set("X-RateLimit-Reset", String.valueOf(resetTime));
 
         final HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.FORBIDDEN, "Forbidden", headers, null, null);
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Request", headers, null, null);
 
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 
@@ -361,7 +361,7 @@ class RetryAfterHeaderStrategyTest {
         headers.set("X-RateLimit-Reset", "");
 
         final HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.FORBIDDEN, "Forbidden", headers, null, null);
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Request", headers, null, null);
 
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 
@@ -376,7 +376,7 @@ class RetryAfterHeaderStrategyTest {
         headers.set("X-RateLimit-Reset", "invalid-number");
 
         final HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.FORBIDDEN, "Forbidden", headers, null, null);
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Request", headers, null, null);
 
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 
@@ -409,7 +409,7 @@ class RetryAfterHeaderStrategyTest {
         headers.set("X-RateLimit-Reset", String.valueOf(resetTime));
 
         final HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.FORBIDDEN, "Rate limit exceeded", headers, null, null);
+                HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded", headers, null, null);
 
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 

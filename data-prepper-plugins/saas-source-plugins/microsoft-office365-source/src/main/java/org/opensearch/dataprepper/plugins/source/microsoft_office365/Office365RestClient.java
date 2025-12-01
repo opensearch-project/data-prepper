@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.RetryHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
 import org.springframework.core.ParameterizedTypeReference;

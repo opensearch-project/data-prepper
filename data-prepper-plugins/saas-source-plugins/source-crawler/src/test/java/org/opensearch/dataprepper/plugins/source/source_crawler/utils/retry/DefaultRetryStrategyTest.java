@@ -38,14 +38,14 @@ class DefaultRetryStrategyTest {
     @Test
     void constructor_WithCustomRateLimitSleepTime_InitializesSuccessfully() {
         final List<Integer> customSleepTime = Arrays.asList(10);
-        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
+        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime, null);
         assertThat(strategy, notNullValue());
         assertThat(strategy.getMaxRetries(), equalTo(1));
     }
 
     @Test
     void constructor_WithNullRateLimitSleepTime_UsesDefaultValues() {
-        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(null);
+        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(null, null);
         assertThat(strategy, notNullValue());
         assertThat(strategy.getMaxRetries(), equalTo(6));
     }
@@ -141,7 +141,7 @@ class DefaultRetryStrategyTest {
     @Test
     void calculateSleepTime_WithCustomRateLimitSleepTime_UsesCustomValues() {
         final List<Integer> customSleepTime = Arrays.asList(10);
-        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
+        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime, null);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 
@@ -153,7 +153,7 @@ class DefaultRetryStrategyTest {
     @Test
     void calculateSleepTime_WithCustomRateLimitAndExceedingCount_ReturnsLastCustomValue() {
         final List<Integer> customSleepTime = Arrays.asList(10);
-        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime);
+        final DefaultRetryStrategy strategy = new DefaultRetryStrategy(customSleepTime, null);
         final HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.TOO_MANY_REQUESTS);
 

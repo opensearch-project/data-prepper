@@ -8,14 +8,11 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
+package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryDecision;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryStrategy;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.StatusCodeHandler;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
@@ -86,7 +83,7 @@ public class RetryHandler {
 
                 if (decision.isShouldStop()) {
                     decision.getException().ifPresent(e -> {
-                        throw e;
+                        throw new SecurityException("Access forbidden: " + e.getMessage());
                     });
                     throw ex;
                 }

@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
+package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,9 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryDecision;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryStrategy;
-import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.StatusCodeHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -152,8 +149,7 @@ class RetryHandlerTest {
         final SecurityException exception = assertThrows(SecurityException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
-        assertThat(exception, equalTo(customException));
-        assertThat(exception.getMessage(), equalTo("Access denied"));
+        assertThat(exception.getMessage(), equalTo("Access forbidden: Access denied"));
     }
 
     @Test
