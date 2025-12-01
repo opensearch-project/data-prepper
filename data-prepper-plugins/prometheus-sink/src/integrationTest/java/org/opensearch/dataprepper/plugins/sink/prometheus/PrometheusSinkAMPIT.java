@@ -76,6 +76,7 @@ import static org.mockito.Mockito.lenient;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -119,6 +120,8 @@ public class PrometheusSinkAMPIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
     @Mock
+    private AwsCredentialsSupplier awsQueryCredentialsSupplier;
+    @Mock
     private Counter metricsSuccessCounter;
     @Mock
     private Counter metricsFailedCounter;
@@ -161,6 +164,8 @@ public class PrometheusSinkAMPIT {
 
                 .build();
 
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        awsQueryCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         eventHandle = mock(EventHandle.class);
         pipelineDescription = mock(PipelineDescription.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
@@ -204,6 +209,7 @@ public class PrometheusSinkAMPIT {
         String remoteWriteUrl = url + "api/v1/remote_write";
         queryUrl = url + "api/v1/query";
         when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        when(awsQueryCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
         thresholdConfig = mock(PrometheusSinkThresholdConfig.class);
         when(thresholdConfig.getMaxEvents()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
@@ -254,7 +260,7 @@ public class PrometheusSinkAMPIT {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String getUrlQuery = "query=" + query + "&start="+testStartTime+"&end="+endTime+"&step=1s";
         String getUrl = queryRangeUrl+"?query=" + encodedQuery + "&start="+testStartTime+"&end="+endTime+"&step=1s";
-        PrometheusSigV4Signer signer = new PrometheusSigV4Signer(awsCredentialsSupplier, prometheusSinkConfig, baseUrl + queryRangeUrl);
+        PrometheusSigV4Signer signer = new PrometheusSigV4Signer(awsQueryCredentialsSupplier, prometheusSinkConfig, baseUrl + queryRangeUrl);
         final SdkHttpFullRequest signedRequest = signer.signQueryRequest(getUrlQuery);
 
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
@@ -501,7 +507,7 @@ public class PrometheusSinkAMPIT {
     @Test
     void TestGaugeMetricsWithMaxRequestSizeLimitAndFlushTimeout() throws Exception {
 
-        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(220L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(300L);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(20L);
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getGaugeRecordList(NUM_RECORDS);
@@ -911,4 +917,25 @@ public class PrometheusSinkAMPIT {
         return records;
     }
 
+    @Test
+    void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
+
+        AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
+        when(thresholdConfig.getMaxEvents()).thenReturn(1);
+        PrometheusSink sink = createObjectUnderTest();
+        Collection<Record<Event>> records = getHistogramRecordList(NUM_RECORDS);
+        sink.doOutput(records);
+
+        long startTimeSeconds = testStartTime.getEpochSecond();
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> {
+                metricsInAMP = 0;
+                getMetricsFromAMP(histogramMetricName, "histogram");
+                assertThat(metricsInAMP, greaterThanOrEqualTo(1));
+        }));
+
+        verify(metricsSuccessCounter, times(0)).increment(NUM_RECORDS);
+    }
 } 

@@ -72,6 +72,9 @@ class PrometheusSigV4Signer {
     }
 
     SdkHttpFullRequest signQueryRequest(final String query) {
+        if (credentialsProvider == null || credentialsProvider.resolveCredentials() == null) {
+            return null;
+        }
         SdkHttpFullRequest unsignedRequest = SdkHttpFullRequest.builder()
                 .method(SdkHttpMethod.POST)
                 .uri(endpointUri)
@@ -93,6 +96,9 @@ class PrometheusSigV4Signer {
      * @return A signed {@link SdkHttpFullRequest} ready for transmission to the AWS OTLP endpoint
      */
     SdkHttpFullRequest signRequest(final SdkHttpFullRequest unsignedRequest) {
+        if (credentialsProvider == null || credentialsProvider.resolveCredentials() == null) {
+            return null;
+        }
         return signer.sign(unsignedRequest, Aws4SignerParams.builder()
                 .signingRegion(region)
                 .signingName(SERVICE_NAME)
