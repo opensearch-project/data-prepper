@@ -4,7 +4,7 @@
  */
 
 plugins {
-    id 'com.mgd.core.gradle.s3' version '1.2.1' apply false
+    id 'com.mgd.core.gradle.s3' version '3.0.2' apply false
 }
 
 apply from: file('build-resources.gradle')
