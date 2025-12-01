@@ -17,6 +17,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,9 +31,11 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     private static final String RATE_LIMIT_REMAINING = "X-RateLimit-Remaining";
     private static final String RATE_LIMIT_RESET = "X-RateLimit-Reset";
     private static final String RETRY_AFTER = "Retry-After";
+    private static final List<HttpStatus> DEFAULT_RATE_LIMIT_STATUS_CODES = Arrays.asList(HttpStatus.TOO_MANY_REQUESTS);
 
     private final List<Integer> retryAttemptSleepTime;
     private final List<Integer> rateLimitRetrySleepTime;
+    private final List<HttpStatus> rateLimitStatusCodes;
     private final int maxRetries;
 
     /**
@@ -41,6 +44,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     public RetryAfterHeaderStrategy() {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = RetryStrategy.MAX_RETRIES;
     }
 
@@ -52,20 +56,25 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     public RetryAfterHeaderStrategy(final int maxRetries) {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = maxRetries;
     }
 
     /**
-     * Constructor with Custom sleep times for rate limit retries
+     * Constructor with Custom sleep times for rate limit retries and custom rate limit status codes
      *
      * @param rateLimitRetrySleepTime Custom sleep times for rate limit retries (in
      *                                seconds)
+     * @param rateLimitStatusCodes List of status codes that are considered rate limited
      */
-    public RetryAfterHeaderStrategy(List<Integer> rateLimitRetrySleepTime) {
+    public RetryAfterHeaderStrategy(List<Integer> rateLimitRetrySleepTime, List<HttpStatus> rateLimitStatusCodes) {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = rateLimitRetrySleepTime != null
                 ? rateLimitRetrySleepTime
                 : RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
+        this.rateLimitStatusCodes = rateLimitStatusCodes != null
+                ? rateLimitStatusCodes
+                : DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = this.rateLimitRetrySleepTime.size();
     }
 
@@ -103,9 +112,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     }
 
     private boolean isRateLimited(final HttpStatus status) {
-        return status == HttpStatus.TOO_MANY_REQUESTS ||
-                status == HttpStatus.FORBIDDEN ||
-                status == HttpStatus.SERVICE_UNAVAILABLE;
+        return rateLimitStatusCodes.contains(status);
     }
 
     private Optional<Integer> extractRetryAfterHeader(Exception ex) {
