@@ -38,6 +38,8 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     @Getter
     private final ConcurrentLinkedQueue<RetryRecord> throttledRecords = new ConcurrentLinkedQueue<>();
     private final Lock processingLock;
+    private final long retryIntervalMillis;
+    private volatile long lastRetryTimestamp;
 
     private static final String BEDROCK_PAYLOAD_TEMPLATE = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://\"}}," +
             "\"jobName\": \"\", \"outputDataConfig\": {\"s3OutputDataConfig\": {\"s3Uri\": \"s3://\"}}}}";
@@ -46,6 +48,8 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.processingLock = new ReentrantLock();
+        this.retryIntervalMillis = mlProcessorConfig.getRetryIntervalSeconds() * 1000L;
+        this.lastRetryTimestamp = System.currentTimeMillis();
     }
 
     @Override
@@ -150,16 +154,39 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
 
     @Override
     public void addProcessedBatchRecordsToResults(List<Record<Event>> resultRecords) {
+        if (throttledRecords.isEmpty()) {
+            return;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        long timeSinceLastRetry = currentTime - lastRetryTimestamp;
+
+        if (timeSinceLastRetry < retryIntervalMillis) {
+            LOG.debug("Skipping retry processing. Only {}ms passed since last retry (need {}ms)",
+                    timeSinceLastRetry, retryIntervalMillis);
+            return;
+        }
+
         if (!processingLock.tryLock()) {
             LOG.debug("Another thread is currently processing results, skipping this attempt");
             return;
         }
 
         try {
+            if (throttledRecords.isEmpty()) {
+                LOG.debug("Queue became empty after acquiring lock, skipping timestamp update");
+                return;
+            }
+
+            LOG.info("Processing {} throttled records ({}s since last retry)",
+                    throttledRecords.size(), timeSinceLastRetry / 1000);
+
             processThrottledRecords(resultRecords);
         } catch (Exception e) {
             LOG.error("Error in batch processing throttled records. Error: {}", e.getMessage());
         } finally {
+            // Always update timestamp after a retry attempt (success or failure)
+            lastRetryTimestamp = currentTime;
             processingLock.unlock();
         }
     }

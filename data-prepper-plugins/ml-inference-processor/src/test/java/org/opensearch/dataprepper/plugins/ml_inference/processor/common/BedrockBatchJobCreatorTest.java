@@ -36,6 +36,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_INTERVAL;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_WINDOW;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
@@ -279,5 +280,104 @@ public class BedrockBatchJobCreatorTest {
             assertEquals(1, resultRecords.size());
             verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
         }
+    }
+
+    @Test
+    void testRetryInterval_SkipsRetryBeforeIntervalElapses() throws InterruptedException {
+        // Mock retry interval BEFORE creating the object
+        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(DEFAULT_RETRY_INTERVAL); // 1 second for testing
+
+        // Create object with mocked config
+        bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
+
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First attempt - gets throttled
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt - gets throttled
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Try to process immediately (should skip due to retry interval)
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify record is still in queue (not processed due to retry interval)
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(0, throttledRecord.getRetryCount()); // Not incremented because retry was skipped
+            assertTrue(resultRecords.isEmpty());
+        }
+    }
+
+    @Test
+    void testRetryInterval_ProcessesAfterIntervalElapses() throws InterruptedException {
+        // Mock retry interval BEFORE creating the object
+        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(1); // 1 second for testing
+
+        // Create object with mocked config
+        bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
+
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(1); // 1 second for testing
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First throttled, then success
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt - gets throttled
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Wait for retry interval to elapse
+            Thread.sleep(1100); // Wait 1.1 seconds
+
+            // Now retry should proceed
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify record was processed successfully
+            assertTrue(bedrockBatchJobCreator.getThrottledRecords().isEmpty());
+            assertEquals(1, resultRecords.size());
+            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
+        }
+    }
+
+    @Test
+    void testRetryInterval_EmptyQueueDoesNotUpdateTimestamp() throws Exception {
+        List<Record<Event>> resultRecords = new ArrayList<>();
+        
+        // Try to process with empty queue
+        long timestampBefore = getLastRetryTimestamp(bedrockBatchJobCreator);
+        bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+        long timestampAfter = getLastRetryTimestamp(bedrockBatchJobCreator);
+
+        // Verify timestamp was not updated (queue was empty)
+        assertEquals(timestampBefore, timestampAfter);
+    }
+
+    // Helper method to access private lastRetryTimestamp field using reflection
+    private long getLastRetryTimestamp(BedrockBatchJobCreator creator) throws Exception {
+        java.lang.reflect.Field field = BedrockBatchJobCreator.class.getDeclaredField("lastRetryTimestamp");
+        field.setAccessible(true);
+        return (long) field.get(creator);
     }
 }
