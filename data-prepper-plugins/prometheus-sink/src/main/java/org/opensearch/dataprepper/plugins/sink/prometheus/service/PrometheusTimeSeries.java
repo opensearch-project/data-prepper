@@ -33,6 +33,8 @@ import java.util.Map;
 
 public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
+    private static final int APPROXIMATE_PROTOBUF_LABEL_OVERHEAD = 8;
+    private static final int APPROXIMATE_PROTOBUF_SAMPLE_OVERHEAD = 2;
     private static final String UNDERSCORE = "_";
     private static final String TOTAL_SUFFIX = "_total";
     private static final String RATIO_SUFFIX = "_ratio";
@@ -87,22 +89,11 @@ public class PrometheusTimeSeries {
 
     public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
         this.sanitizeNames = sanitizeNames;
-    );
-
-    private final String metricName;
-    private final long timestamp;
-    private final boolean sanitizeNames;
-    private final List<TimeSeries> timeSeriesList;
-    private final List<Label> labels;
-    private int size;
-
-    public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
-        this.sanitizeNames = sanitizeNames;
         this.metricName = sanitizeNames ? sanitizeMetricName(metric) : metric.getName();
 
         String time = metric.getTime();
         String startTime = metric.getStartTime();
-        this.timestamp = (time != null) ? getTimeStampVal(time) : getTimeStampVal(startTime);
+        this.timestamp = (time != null) ? getTimestampVal(time) : getTimestampVal(startTime);
 
         this.timeSeriesList = new ArrayList<>();
         this.labels = new ArrayList<>();
@@ -157,11 +148,11 @@ public class PrometheusTimeSeries {
     }
 
     private int estimateLabelSize(String name, String value) {
-        return name.length() + value.length() + 8; // Approximate protobuf overhead
+        return name.length() + value.length() + APPROXIMATE_PROTOBUF_LABEL_OVERHEAD;
     }
 
     private void addTimeSeries(final String labelName, final String labelValue, final Double sampleValue) {
-        size += estimateLabelSize(labelName, labelValue) + 16; // Sample overhead
+        size += estimateLabelSize(labelName, labelValue) + APPROXIMATE_PROTOBUF_SAMPLE_OVERHEAD;
         timeSeriesList.add(TimeSeries.newBuilder()
                 .addAllLabels(labels)
                 .addLabels(Label.newBuilder().setName(labelName).setValue(labelValue).build())
@@ -171,7 +162,7 @@ public class PrometheusTimeSeries {
 
     private void addTimeSeries(final String metricName, final String labelName,
                               final String labelValue, final Double sampleValue) {
-        size += estimateLabelSize(NAME_LABEL, metricName) + estimateLabelSize(labelName, labelValue) + 16;
+        size += estimateLabelSize(NAME_LABEL, metricName) + estimateLabelSize(labelName, labelValue) + APPROXIMATE_PROTOBUF_SAMPLE_OVERHEAD;
         timeSeriesList.add(TimeSeries.newBuilder()
                 .addAllLabels(labels)
                 .addLabels(Label.newBuilder().setName(NAME_LABEL).setValue(metricName).build())
@@ -181,7 +172,7 @@ public class PrometheusTimeSeries {
     }
 
     public List<TimeSeries> getTimeSeriesList() { return timeSeriesList; }
-    public long getTimeStamp() { return timestamp; }
+    public long getTimestamp() { return timestamp; }
     public int getSize() { return size; }
 
     public void addSumMetric(Sum sum) {
@@ -346,7 +337,7 @@ public class PrometheusTimeSeries {
         return Character.isLetterOrDigit(c) ? c : '_';
     }
 
-    private static long getTimeStampVal(final String time) throws Exception {
+    private static long getTimestampVal(final String time) throws Exception {
         return Instant.parse(time).toEpochMilli();
     }
 }

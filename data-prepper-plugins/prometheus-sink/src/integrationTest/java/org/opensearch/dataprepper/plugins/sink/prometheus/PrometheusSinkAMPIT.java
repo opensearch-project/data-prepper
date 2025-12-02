@@ -209,7 +209,7 @@ public class PrometheusSinkAMPIT {
         String remoteWriteUrl = url + "api/v1/remote_write";
         queryUrl = url + "api/v1/query";
         when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
-        when(awsQueryCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        lenient().when(awsQueryCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
         thresholdConfig = mock(PrometheusSinkThresholdConfig.class);
         when(thresholdConfig.getMaxEvents()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
@@ -507,7 +507,7 @@ public class PrometheusSinkAMPIT {
     @Test
     void TestGaugeMetricsWithMaxRequestSizeLimitAndFlushTimeout() throws Exception {
 
-        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(300L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(220L);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(20L);
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getGaugeRecordList(NUM_RECORDS);
