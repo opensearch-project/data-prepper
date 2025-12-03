@@ -28,7 +28,11 @@ public class WorkerCommonUtils {
     static final Duration BACKOFF_ON_EXCEPTION = Duration.ofSeconds(60);
 
     static final long DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
-    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofMinutes(20);
+
+    // Set acknowledgment timeout to very high value to handle large indexes.
+    // In case of failure the retries will be handled by source coordination
+    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(1000);
+    static final Duration OWNERSHIP_TIMEOUT = Duration.ofMinutes(30);
     static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
     static final Duration MAX_BACKOFF = Duration.ofSeconds(60);
     static final int BACKOFF_RATE = 2;
@@ -64,7 +68,7 @@ public class WorkerCommonUtils {
                                               final SourcePartition<OpenSearchIndexProgressState> indexPartition,
                                               final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator) {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
-            sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+            sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), OWNERSHIP_TIMEOUT);
             acknowledgementSet.complete();
         } else {
             sourceCoordinator.closePartition(
