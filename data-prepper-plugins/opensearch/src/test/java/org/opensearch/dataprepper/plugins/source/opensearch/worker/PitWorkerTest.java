@@ -69,6 +69,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.EXTEND_KEEP_ALIVE_TIME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.STARTING_KEEP_ALIVE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.OWNERSHIP_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 public class PitWorkerTest {
@@ -316,7 +317,7 @@ public class PitWorkerTest {
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
-        doNothing().when(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        doNothing().when(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, OWNERSHIP_TIMEOUT);
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
                 Duration.ZERO, 1, true);
 
