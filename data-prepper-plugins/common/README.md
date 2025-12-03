@@ -35,6 +35,8 @@ A source plugin to read input data from the specified file path. The file source
 Temporarily, `type` can either be `event` or `string`. If you would like to use the file source for log analytics use cases like grok, 
   change this to `event`.
 
+* `compression` (String): The source file compression format, if any. Valid options are `none`, `gzip` and `snappy`. Default is `none`.
+
 ## `file` (sink)
 
 A sink plugin to write output data to the specified file path.
