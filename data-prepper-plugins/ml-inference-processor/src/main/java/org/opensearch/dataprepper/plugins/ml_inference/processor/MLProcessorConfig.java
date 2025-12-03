@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -33,9 +35,7 @@ import java.util.Map;
 public class MLProcessorConfig {
     private static final int DEFAULT_MAX_BATCH_SIZE = 100;
     public static final Duration DEFAULT_RETRY_WINDOW = Duration.ofMinutes(10);
-    public static final int DEFAULT_RETRY_INTERVAL = 60;    // default retry interval is 1 minute
-    private static final int MIN_RETRY_INTERVAL = 3;
-    public static final int MAX_RETRY_INTERVAL = 300;
+    public static final int DEFAULT_RETRY_INTERVAL_SECONDS = 60;    // default retry interval is 1 minute
 
     @JsonProperty("aws")
     @NotNull
@@ -92,9 +92,18 @@ public class MLProcessorConfig {
     @JsonProperty("retry_time_window")
     private Duration retryTimeWindow = DEFAULT_RETRY_WINDOW;
 
-    @JsonPropertyDescription("The retry interval for the throttled records. Default is 60s.")
-    @JsonProperty(value = "retry_interval_seconds", defaultValue = "" + DEFAULT_RETRY_INTERVAL)
-    private int retry_interval_seconds =  DEFAULT_RETRY_INTERVAL;
+    @JsonPropertyDescription("The retry interval for throttled records. " +
+            "Supports ISO_8601 duration notation (\"PT1M\", \"PT30S\") and simple notation (\"60s\", \"2m\"). " +
+            "Valid range: 3 seconds to 5 minutes. Default is 60 seconds.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "\"PT1M\"", description = "ISO-8601 format for 1 minute"),
+            @ExampleValues.Example(value = "\"60s\"", description = "Simple format for 60 seconds"),
+            @ExampleValues.Example(value = "\"2m\"", description = "Simple format for 2 minutes")
+    })
+    @JsonProperty("retry_interval")
+    @DurationMin(seconds = 3)
+    @DurationMax(seconds = 300)
+    private Duration retryInterval = Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS);
 
     @JsonProperty("dlq")
     private PluginModel dlq;
@@ -121,12 +130,5 @@ public class MLProcessorConfig {
 
     public Map<String, Object> getDlqPluginSetting() {
         return dlq != null ? dlq.getPluginSettings() : null;
-    }
-
-    public int getRetryIntervalSeconds() {
-        if (retry_interval_seconds < MIN_RETRY_INTERVAL || retry_interval_seconds > MAX_RETRY_INTERVAL) {
-            throw new IllegalArgumentException(String.format("retry interval for throttled records of %d seconds is not valid, valid range is %d - %d", retry_interval_seconds, MIN_RETRY_INTERVAL, MAX_RETRY_INTERVAL));
-        }
-        return retry_interval_seconds;
     }
 }

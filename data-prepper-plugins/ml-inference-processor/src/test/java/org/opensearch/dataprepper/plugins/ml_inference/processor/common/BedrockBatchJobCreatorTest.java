@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConf
 import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +37,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_INTERVAL;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_INTERVAL_SECONDS;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_WINDOW;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
@@ -285,7 +286,7 @@ public class BedrockBatchJobCreatorTest {
     @Test
     void testRetryInterval_SkipsRetryBeforeIntervalElapses() throws InterruptedException {
         // Mock retry interval BEFORE creating the object
-        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(DEFAULT_RETRY_INTERVAL); // 1 second for testing
+        when(mlProcessorConfig.getRetryInterval()).thenReturn(Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS)); // 1 second for testing
 
         // Create object with mocked config
         bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
@@ -323,7 +324,7 @@ public class BedrockBatchJobCreatorTest {
     @Test
     void testRetryInterval_ProcessesAfterIntervalElapses() throws InterruptedException {
         // Mock retry interval BEFORE creating the object
-        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(1); // 1 second for testing
+        when(mlProcessorConfig.getRetryInterval()).thenReturn(Duration.ofSeconds(1)); // 1 second for testing
 
         // Create object with mocked config
         bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
@@ -334,7 +335,6 @@ public class BedrockBatchJobCreatorTest {
         when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
                 .put("bucket", "test-bucket")
                 .put("key", "input.jsonl"));
-        when(mlProcessorConfig.getRetryIntervalSeconds()).thenReturn(1); // 1 second for testing
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
             // First throttled, then success

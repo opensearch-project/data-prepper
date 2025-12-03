@@ -48,7 +48,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.processingLock = new ReentrantLock();
-        this.retryIntervalMillis = mlProcessorConfig.getRetryIntervalSeconds() * 1000L;
+        this.retryIntervalMillis = mlProcessorConfig.getRetryInterval().toMillis();
         this.lastRetryTimestamp = System.currentTimeMillis();
     }
 
@@ -178,7 +178,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                 return;
             }
 
-            LOG.info("Processing {} throttled records ({}s since last retry)",
+            LOG.info(NOISY, "Processing {} throttled records ({}s since last retry)",
                     throttledRecords.size(), timeSinceLastRetry / 1000);
 
             processThrottledRecords(resultRecords);
