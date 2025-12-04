@@ -17,6 +17,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
@@ -59,6 +63,7 @@ public class Office365RestClient {
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final RetryHandler retryHandler;
     private final Office365AuthenticationInterface authConfig;
     private final Timer auditLogFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
@@ -89,6 +94,9 @@ public class Office365RestClient {
         this.searchResponseSizeSummary = pluginMetrics.summary(SEARCH_RESPONSE_SIZE);
 
         this.errorTypeMetricCounterMap = getErrorTypeMetricCounterMap(pluginMetrics);
+        this.retryHandler = new RetryHandler(
+                new DefaultRetryStrategy(),
+                new DefaultStatusCodeHandler());
     }
 
     /**
@@ -124,7 +132,7 @@ public class Office365RestClient {
                         authConfig.getTenantId(),
                         contentType);
 
-                RetryHandler.executeWithRetry(() -> {
+                retryHandler.executeWithRetry(() -> {
                     try {
                         headers.setBearerAuth(authConfig.getAccessToken());
                         apiCallsCounter.increment();
@@ -180,7 +188,7 @@ public class Office365RestClient {
 
         return searchCallLatencyTimer.record(() -> {
             try {
-                return RetryHandler.executeWithRetry(
+                return retryHandler.executeWithRetry(
                         () -> {
                             headers.setBearerAuth(authConfig.getAccessToken());
                             apiCallsCounter.increment();
@@ -207,7 +215,7 @@ public class Office365RestClient {
                             return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
                         authConfig::renewCredentials,
-                        searchRequestsFailedCounter
+                        Optional.of(searchRequestsFailedCounter)
                 );
             } catch (Exception e) {
                 publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
@@ -233,7 +241,7 @@ public class Office365RestClient {
 
         return auditLogFetchLatencyTimer.record(() -> {
             try {
-                String response = RetryHandler.executeWithRetry(() -> {
+                String response = retryHandler.executeWithRetry(() -> {
                     headers.setBearerAuth(authConfig.getAccessToken());
                     apiCallsCounter.increment();
                     ResponseEntity<String> responseEntity = restTemplate.exchange(
@@ -250,7 +258,7 @@ public class Office365RestClient {
                     }
 
                     return responseBody;
-                }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
+                }, authConfig::renewCredentials, Optional.of(auditLogRequestsFailedCounter));
                 auditLogRequestsSuccessCounter.increment();
                 return response;
             } catch (Exception e) {

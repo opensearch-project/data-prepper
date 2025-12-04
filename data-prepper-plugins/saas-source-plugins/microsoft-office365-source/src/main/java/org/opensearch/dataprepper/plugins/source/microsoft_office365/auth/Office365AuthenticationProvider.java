@@ -11,7 +11,9 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.RetryHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -40,6 +42,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             "&scope=%s";
     
     private final RestTemplate restTemplate = new RestTemplate();
+    private final RetryHandler retryHandler;
     private final String tenantId;
     private final Office365SourceConfig office365SourceConfig;
     private String accessToken;
@@ -53,6 +56,9 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     public Office365AuthenticationProvider(Office365SourceConfig config) {
         this.tenantId = config.getTenantId();
         this.office365SourceConfig = config;
+        this.retryHandler = new RetryHandler(
+                new DefaultRetryStrategy(),
+                new DefaultStatusCodeHandler());
     }
 
     @Override
@@ -76,7 +82,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
             String tokenEndpoint = String.format(TOKEN_URL, office365SourceConfig.getTenantId());
 
-            ResponseEntity<Map> response = RetryHandler.executeWithRetry(
+            ResponseEntity<Map> response = retryHandler.executeWithRetry(
                     () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
                     () -> {
                     } // No credential renewal for authentication endpoint
