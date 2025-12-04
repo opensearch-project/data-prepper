@@ -17,6 +17,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_GRPC_PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.time.Duration;
 
@@ -87,6 +89,8 @@ class OtelLogsSource_RetryInfoTest {
         when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
         when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
         when(oTelLogsSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+        when(oTelLogsSourceConfig.getHttpPath()).thenReturn(CONFIG_HTTP_PATH);
+        when(oTelLogsSourceConfig.getPath()).thenReturn(CONFIG_GRPC_PATH);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
