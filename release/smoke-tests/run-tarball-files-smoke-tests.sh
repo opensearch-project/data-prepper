@@ -193,7 +193,7 @@ fi
 
 if ! is_defined "${FROM_IMAGE}"
 then
-    export FROM_IMAGE="openjdk:11"
+    export FROM_IMAGE="eclipse-temurin:11"
 fi
 
 if ! is_defined "${TAR_NAME}"
