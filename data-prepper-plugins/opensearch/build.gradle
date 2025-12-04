@@ -47,7 +47,7 @@ dependencies {
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.17.8'
     testImplementation testLibs.slf4j.simple
     testImplementation project(path: ':data-prepper-test:test-common')
-    testImplementation 'org.wiremock:wiremock:3.10.0'
+    testImplementation 'org.wiremock:wiremock:3.13.2'
 }
 
 sourceSets {
