@@ -60,6 +60,14 @@ public abstract class LambdaCommonConfig {
   public boolean hasKeys() {
     return keys != null && keys.size() > 0;
   }
+  @JsonPropertyDescription("Streaming options for Lambda response streaming")
+  @JsonProperty("streaming")
+  @Valid
+  private StreamingOptions streamingOptions;
+
+  public StreamingOptions getStreamingOptions() {
+    return streamingOptions;
+  }
 
   public abstract InvocationType getInvocationType();
 
