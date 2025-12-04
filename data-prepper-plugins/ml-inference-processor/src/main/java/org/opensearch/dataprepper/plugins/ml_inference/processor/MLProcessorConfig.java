@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -33,6 +35,7 @@ import java.util.Map;
 public class MLProcessorConfig {
     private static final int DEFAULT_MAX_BATCH_SIZE = 100;
     public static final Duration DEFAULT_RETRY_WINDOW = Duration.ofMinutes(10);
+    public static final int DEFAULT_RETRY_INTERVAL_SECONDS = 60;    // default retry interval is 1 minute
 
     @JsonProperty("aws")
     @NotNull
@@ -88,6 +91,19 @@ public class MLProcessorConfig {
             + "Supports ISO_8601 notation Strings (\"PT20.345S\", \"PT15M\", etc.) as well as simple notation Strings for seconds (\"60s\") and milliseconds (\"1500ms\")")
     @JsonProperty("retry_time_window")
     private Duration retryTimeWindow = DEFAULT_RETRY_WINDOW;
+
+    @JsonPropertyDescription("The retry interval for throttled records. " +
+            "Supports ISO_8601 duration notation (\"PT1M\", \"PT30S\") and simple notation (\"60s\", \"2m\"). " +
+            "Valid range: 3 seconds to 5 minutes. Default is 60 seconds.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "\"PT1M\"", description = "ISO-8601 format for 1 minute"),
+            @ExampleValues.Example(value = "\"60s\"", description = "Simple format for 60 seconds"),
+            @ExampleValues.Example(value = "\"2m\"", description = "Simple format for 2 minutes")
+    })
+    @JsonProperty("retry_interval")
+    @DurationMin(seconds = 3)
+    @DurationMax(seconds = 300)
+    private Duration retryInterval = Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS);
 
     @JsonProperty("dlq")
     private PluginModel dlq;
