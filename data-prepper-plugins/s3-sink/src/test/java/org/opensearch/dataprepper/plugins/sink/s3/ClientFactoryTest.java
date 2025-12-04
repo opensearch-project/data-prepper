@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3;
@@ -25,8 +29,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ClientBuilder;
 
 import java.time.Duration;
 import java.util.Map;
@@ -62,56 +64,15 @@ class ClientFactoryTest {
     @Test
     void createS3AsyncClient_with_real_S3AsyncClient() {
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
-        final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
+        final S3AsyncClient s3Client = ClientFactory.createS3AsyncClient(s3SinkConfig, awsCredentialsSupplier);
 
         assertThat(s3Client, notNullValue());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"us-east-1", "us-west-2", "eu-central-1"})
-    void createS3Client_provides_correct_inputs(final String regionString) {
+    void createS3AsyncClient_with_client_options_returns_expected_client(final String regionString) {
         final Region region = Region.of(regionString);
-        final String stsRoleArn = UUID.randomUUID().toString();
-        final String externalId = UUID.randomUUID().toString();
-        final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
-        when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
-        when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(externalId);
-        when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
-
-        final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
-
-        final S3ClientBuilder s3ClientBuilder = mock(S3ClientBuilder.class);
-        when(s3ClientBuilder.region(region)).thenReturn(s3ClientBuilder);
-        when(s3ClientBuilder.credentialsProvider(any())).thenReturn(s3ClientBuilder);
-        when(s3ClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(s3ClientBuilder);
-        try(final MockedStatic<S3Client> s3ClientMockedStatic = mockStatic(S3Client.class)) {
-            s3ClientMockedStatic.when(S3Client::builder)
-                    .thenReturn(s3ClientBuilder);
-            ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
-        }
-
-        final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
-        verify(s3ClientBuilder).credentialsProvider(credentialsProviderArgumentCaptor.capture());
-
-        final AwsCredentialsProvider actualCredentialsProvider = credentialsProviderArgumentCaptor.getValue();
-
-        assertThat(actualCredentialsProvider, equalTo(expectedCredentialsProvider));
-
-        final ArgumentCaptor<AwsCredentialsOptions> optionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
-        verify(awsCredentialsSupplier).getProvider(optionsArgumentCaptor.capture());
-
-        final AwsCredentialsOptions actualCredentialsOptions = optionsArgumentCaptor.getValue();
-        assertThat(actualCredentialsOptions.getRegion(), equalTo(region));
-        assertThat(actualCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
-        assertThat(actualCredentialsOptions.getStsExternalId(), equalTo(externalId));
-        assertThat(actualCredentialsOptions.getStsHeaderOverrides(), equalTo(stsHeaderOverrides));
-    }
-
-    @Test
-    void createS3AsyncClient_with_client_options_returns_expected_client() {
-        final Region region = Region.of("us-east-1");
         final String stsRoleArn = UUID.randomUUID().toString();
         final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -125,6 +86,7 @@ class ClientFactoryTest {
 
         final S3AsyncClientBuilder s3AsyncClientBuilder = mock(S3AsyncClientBuilder.class);
         when(s3AsyncClientBuilder.region(region)).thenReturn(s3AsyncClientBuilder);
+        when(s3AsyncClientBuilder.crossRegionAccessEnabled(true)).thenReturn(s3AsyncClientBuilder);
         when(s3AsyncClientBuilder.credentialsProvider(any())).thenReturn(s3AsyncClientBuilder);
         when(s3AsyncClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(s3AsyncClientBuilder);
 
