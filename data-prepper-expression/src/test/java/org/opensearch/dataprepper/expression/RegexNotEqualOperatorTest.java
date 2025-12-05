@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -17,6 +18,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+
+import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
 class RegexNotEqualOperatorTest {
@@ -48,6 +51,18 @@ class RegexNotEqualOperatorTest {
     void testEvalValidArgs() {
         assertThat(objectUnderTest.evaluate("a", "a*"), is(false));
         assertThat(objectUnderTest.evaluate("a", "b*"), is(true));
+    }
+
+    @Test
+    void testEvalAdversarialArgs() {
+        Boolean result1 = Assertions.assertTimeoutPreemptively(Duration.ofMillis(1000), () -> {
+            return objectUnderTest.evaluate("a".repeat(256*1024) + "X", "(a+)+");
+        });
+        assertThat(result1, is(true));
+        Boolean result2 = Assertions.assertTimeoutPreemptively(Duration.ofMillis(1000), () -> {
+            return objectUnderTest.evaluate("ab".repeat(128*1024) + "X", "(a|ab)*");
+        });
+        assertThat(result2, is(true));
     }
 
     @Test

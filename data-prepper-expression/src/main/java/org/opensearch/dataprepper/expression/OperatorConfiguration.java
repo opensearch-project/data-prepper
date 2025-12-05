@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.expression;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.model.event.DataType;
 import org.springframework.context.annotation.Bean;
+import com.google.re2j.Pattern;
 
 import javax.inject.Named;
 import java.util.HashMap;
@@ -20,7 +21,8 @@ import java.util.function.Function;
 
 @Named
 class OperatorConfiguration {
-    public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
+
+    public final BiPredicate<Object, Object> regexEquals = (x, y) -> Pattern.compile((String) y).matcher((String) x).matches();
     public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
     public final BiPredicate<Object, Object> typeOf = (x, y) -> DataType.isSameType(x, (String)y);
