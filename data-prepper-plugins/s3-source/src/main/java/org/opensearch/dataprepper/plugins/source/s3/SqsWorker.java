@@ -469,19 +469,23 @@ public class SqsWorker implements Runnable {
     }
 
     private void recordSqsException(final AwsServiceException e) {
-        // AWS SQS emits some of their exceptions without the matching HTTP code. As we want to generate an aggregate version of
-        // these exceptions, we have to explicitly catch the type alongside the status code for the ones that leverage the status
-        // code (i.e. InvalidAddressException)
-        if (e.statusCode() == 403 ||
-                e instanceof KmsAccessDeniedException) {
-            sqsMessageAccessDeniedCounter.increment();
-        } else if (e.statusCode() == 404 ||
-                e instanceof QueueDoesNotExistException ||
-                e instanceof KmsNotFoundException) {
-            sqsResourceNotFoundCounter.increment();
-        } else if (e.isThrottlingException() ||
-                e instanceof KmsThrottledException) {
-            sqsMessageThrottledCounter.increment();
+        if (e instanceof SqsException) {
+            SqsException sqsException = (SqsException) e;
+            if (sqsException instanceof QueueDoesNotExistException ||
+                sqsException instanceof KmsNotFoundException) {
+                sqsResourceNotFoundCounter.increment();
+            } else if (sqsException instanceof KmsAccessDeniedException ||
+                       sqsException.statusCode() == 403) {
+                sqsMessageAccessDeniedCounter.increment();
+            } else if (sqsException instanceof KmsThrottledException ||
+                       sqsException.isThrottlingException()) {
+                sqsMessageThrottledCounter.increment();
+            }
+        } else if (e instanceof StsException) {
+            StsException stsException = (StsException) e;
+            if (stsException.statusCode() == 403) {
+                sqsMessageAccessDeniedCounter.increment();
+            }
         }
     }
 }
