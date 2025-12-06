@@ -45,6 +45,10 @@ import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sqs.model.KmsAccessDeniedException;
+import software.amazon.awssdk.services.sqs.model.KmsNotFoundException;
+import software.amazon.awssdk.services.sqs.model.KmsThrottledException;
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sts.model.StsException;
 
 import java.io.IOException;
@@ -853,20 +857,6 @@ class SqsWorkerTest {
         verify(accessDeniedCounter).increment();
     }
 
-    @Test
-    void processSqsMessages_increments_queue_not_found_metric_on_404_exception() {
-        final SqsException sqsException = mock(SqsException.class);
-        when(sqsException.statusCode()).thenReturn(404);
-        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(sqsException);
-        
-        final Counter queueNotFoundCounter = mock(Counter.class);
-        when(pluginMetrics.counter(SqsWorker.SQS_RESOURCE_NOT_FOUND_METRIC_NAME)).thenReturn(queueNotFoundCounter);
-
-        final SqsWorker sqsWorker = createObjectUnderTest();
-        sqsWorker.processSqsMessages();
-
-        verify(queueNotFoundCounter).increment();
-    }
 
     @Test
     void processSqsMessages_increments_throttled_metric_on_throttling_exception() {
@@ -881,6 +871,77 @@ class SqsWorkerTest {
         sqsWorker.processSqsMessages();
 
         verify(throttledCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_access_denied_metric_on_sts_403_exception() {
+        final StsException stsException = mock(StsException.class);
+        when(stsException.statusCode()).thenReturn(403);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(stsException);
+        
+        final Counter accessDeniedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME)).thenReturn(accessDeniedCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(accessDeniedCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_access_denied_metric_on_kms_access_denied_exception() {
+        final KmsAccessDeniedException kmsException = mock(KmsAccessDeniedException.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(kmsException);
+        
+        final Counter accessDeniedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME)).thenReturn(accessDeniedCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(accessDeniedCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_resource_not_found_metric_on_kms_not_found_exception() {
+        final KmsNotFoundException kmsException = mock(KmsNotFoundException.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(kmsException);
+        
+        final Counter resourceNotFoundCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_RESOURCE_NOT_FOUND_METRIC_NAME)).thenReturn(resourceNotFoundCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(resourceNotFoundCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_throttled_metric_on_kms_throttled_exception() {
+        final KmsThrottledException kmsException = mock(KmsThrottledException.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(kmsException);
+        
+        final Counter throttledCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGE_THROTTLED_METRIC_NAME)).thenReturn(throttledCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(throttledCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_increments_resource_not_found_metric_on_queue_does_not_exist_exception() {
+        final QueueDoesNotExistException sqsException = mock(QueueDoesNotExistException.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(sqsException);
+        
+        final Counter resourceNotFoundCounter = mock(Counter.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_RESOURCE_NOT_FOUND_METRIC_NAME)).thenReturn(resourceNotFoundCounter);
+
+        final SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.processSqsMessages();
+
+        verify(resourceNotFoundCounter).increment();
     }
 
     private static String createPutNotification(final Instant startTime) {
