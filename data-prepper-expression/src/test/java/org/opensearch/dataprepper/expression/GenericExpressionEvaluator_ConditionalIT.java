@@ -243,6 +243,7 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
+                arguments("subList(/list, 1, 2) != null", event("{\"list\": [0, 1, 2, 3]}"), true),
                 arguments("getEventType() == \"event\"",  longEvent, true),
                 arguments("getEventType() == \"LOG\"",  longEvent, false),
                 arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
@@ -317,16 +318,13 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("trueand/status_code", event("{\"status_code\": 200}")),
                 arguments("trueor/status_code", event("{\"status_code\": 200}")),
                 arguments("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
-                arguments("hasTags(10)", tagEvent),
                 arguments("hasTags("+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
-                arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
-                arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -338,13 +336,11 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/color in {\"\",blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/value in {22a2.0, 100}", event("{\"value\": 100}")),
                 arguments("/value in {222, 10a0}", event("{\"value\": 100}")),
-                arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
                 arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("getEventType() == \"test_event", tagEvent),
                 arguments("getEventType() == test_event\"", tagEvent)
-                
         );
     }
 
