@@ -16,7 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 import java.util.stream.Stream;
 
 public class TargetsParameterConfig {

@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 
 @DataPrepperPlugin(name = "select_entries", pluginType = Processor.class, pluginConfigurationType = SelectEntriesProcessorConfig.class)
 public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
