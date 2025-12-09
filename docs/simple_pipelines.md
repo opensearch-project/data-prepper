@@ -80,7 +80,7 @@ curl http://localhost:4900/list
 It will output a JSON response with the current pipelines:
 
 ```
-{"pipelines":[{"name":"simple-test-pipeline"}]}
+{"pipelines":[{"name":"simple-sample-pipeline"}]}
 ```
 
 
