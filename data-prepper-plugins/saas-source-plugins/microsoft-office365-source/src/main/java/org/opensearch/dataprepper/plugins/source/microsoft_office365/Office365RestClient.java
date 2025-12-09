@@ -10,7 +10,6 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -28,7 +27,6 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +35,12 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.getErrorTypeMetricCounterMap;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishErrorTypeMetricCounter;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishGetResponseSizeMetricInBytes;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishGetRequestsSuccessMetric;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideGetRequestsFailureCounter;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchResponseSizeMetricInBytes;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchRequestsSuccessMetric;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideSearchRequestFailureCounter;
 
 /**
  * REST client for interacting with Office 365 Management API.
@@ -46,15 +50,9 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.Met
 @Named
 public class Office365RestClient {
     private static final String AUDIT_LOG_FETCH_LATENCY = "auditLogFetchLatency";
-    private static final String AUDIT_LOG_RESPONSE_SIZE = "auditLogResponseSizeBytes";
-    private static final String AUDIT_LOG_REQUESTS_FAILED = "auditLogRequestsFailed";
-    private static final String AUDIT_LOG_REQUESTS_SUCCESS = "auditLogRequestsSuccess";
     private static final String API_CALLS = "apiCalls";
     private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
     private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
-    private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
-    private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
-    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
 
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
 
@@ -63,13 +61,8 @@ public class Office365RestClient {
     private final Timer auditLogFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final Counter auditLogsRequestedCounter;
-    private final Counter auditLogRequestsFailedCounter;
-    private final Counter auditLogRequestsSuccessCounter;
-    private final Counter searchRequestsFailedCounter;
-    private final Counter searchRequestsSuccessCounter;
     private final Counter apiCallsCounter;
-    private final DistributionSummary auditLogResponseSizeSummary;
-    private final DistributionSummary searchResponseSizeSummary;
+    private final PluginMetrics pluginMetrics;
 
     private Map<String, Counter> errorTypeMetricCounterMap;
 
@@ -77,17 +70,11 @@ public class Office365RestClient {
                                final PluginMetrics pluginMetrics) {
         // TODO: Abstract into a Office365PluginMetrics
         this.authConfig = authConfig;
+        this.pluginMetrics = pluginMetrics;
         this.auditLogFetchLatencyTimer = pluginMetrics.timer(AUDIT_LOG_FETCH_LATENCY);
         this.searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY);
         this.auditLogsRequestedCounter = pluginMetrics.counter(AUDIT_LOGS_REQUESTED);
-        this.auditLogRequestsFailedCounter = pluginMetrics.counter(AUDIT_LOG_REQUESTS_FAILED);
-        this.auditLogRequestsSuccessCounter = pluginMetrics.counter(AUDIT_LOG_REQUESTS_SUCCESS);
-        this.searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
-        this.searchRequestsSuccessCounter = pluginMetrics.counter(SEARCH_REQUESTS_SUCCESS);
         this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
-        this.auditLogResponseSizeSummary = pluginMetrics.summary(AUDIT_LOG_RESPONSE_SIZE);
-        this.searchResponseSizeSummary = pluginMetrics.summary(SEARCH_RESPONSE_SIZE);
-
         this.errorTypeMetricCounterMap = getErrorTypeMetricCounterMap(pluginMetrics);
     }
 
@@ -176,6 +163,7 @@ public class Office365RestClient {
                         startTime.toString(),
                         endTime.toString());
 
+        log.debug("Searching audit logs with URL: {}", url);
         final HttpHeaders headers = new HttpHeaders();
 
         return searchCallLatencyTimer.record(() -> {
@@ -191,8 +179,27 @@ public class Office365RestClient {
                                     new HttpEntity<>(headers),
                                     new ParameterizedTypeReference<>() {}
                             );
-                            // Record search request size.
-                            searchResponseSizeSummary.record(response.getHeaders().getContentLength());
+
+                            // Log response details
+                            List<Map<String, Object>> responseBody = response.getBody();
+                            if (responseBody == null) {
+                                log.debug("Search audit logs response is null for URL: {}", url);
+                            } else {
+                                log.debug("Search audit logs response received {} entries for URL: {}",
+                                        responseBody.size(), url);
+                                String responseStr = responseBody.toString();
+                                // Size protection for log limits.
+                                if (responseStr.length() > 10000) {
+                                    log.debug("Search audit logs response body (truncated to first 10000 chars): {}",
+                                            responseStr.substring(0, 10000) + "... [TRUNCATED - total length: " + responseStr.length() + "]");
+                                } else {
+                                    log.debug("Search audit logs response body: {}", responseBody);
+                                }
+                            }
+
+                            // Publish centralized search metrics
+                            publishSearchResponseSizeMetricInBytes(pluginMetrics, response);
+                            publishSearchRequestsSuccessMetric(pluginMetrics);
 
                             // Extract NextPageUri from response headers
                             List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
@@ -203,15 +210,15 @@ public class Office365RestClient {
                                 log.debug("Next page URI found: {}", nextPageUri);
                             }
 
-                            searchRequestsSuccessCounter.increment();
                             return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
                         authConfig::renewCredentials,
-                        searchRequestsFailedCounter
+                        provideSearchRequestFailureCounter(pluginMetrics)
                 );
             } catch (Exception e) {
                 publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
-                log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
+                log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
+                        contentType, url, e);
                 throw new SaaSCrawlerException("Failed to fetch audit logs", e, true);
             }
         });
@@ -228,6 +235,8 @@ public class Office365RestClient {
         if (!contentUri.startsWith(MANAGEMENT_API_BASE_URL)) {
             throw new SaaSCrawlerException("ContentUri must be from Office365 Management API: " + contentUri, false);
         }
+
+        log.debug("Getting audit log from content URI: {}", contentUri);
         auditLogsRequestedCounter.increment();
         final HttpHeaders headers = new HttpHeaders();
 
@@ -243,15 +252,28 @@ public class Office365RestClient {
                             String.class
                     );
 
-                    // Record audit log request size from response body
-                    String responseBody = responseEntity.getBody();
-                    if (responseBody != null) {
-                        auditLogResponseSizeSummary.record(responseBody.getBytes(StandardCharsets.UTF_8).length);
-                    }
+                    return responseEntity.getBody();
+                }, authConfig::renewCredentials, provideGetRequestsFailureCounter(pluginMetrics));
 
-                    return responseBody;
-                }, authConfig::renewCredentials, auditLogRequestsFailedCounter);
-                auditLogRequestsSuccessCounter.increment();
+                // Log response details
+                if (response == null) {
+                    log.debug("Get audit log response is null for content URI: {}", contentUri);
+                } else {
+                    log.debug("Get audit log response received {} characters for content URI: {}",
+                            response.length(), contentUri);
+                    // Size protection for log limits.
+                    if (response.length() > 10000) {
+                        log.debug("Get audit log response content (truncated to first 10000 chars): {}",
+                                response.substring(0, 10000) + "... [TRUNCATED - total length: " + response.length() + "]");
+                    } else {
+                        log.debug("Get audit log response content: {}", response);
+                    }
+                }
+
+                // Publish centralized GET request metrics
+                publishGetResponseSizeMetricInBytes(pluginMetrics, response);
+                publishGetRequestsSuccessMetric(pluginMetrics);
+
                 return response;
             } catch (Exception e) {
                 publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
