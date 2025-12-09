@@ -30,7 +30,7 @@ dependencyResolutionManagement {
         libs {
             version('slf4j', '2.0.6')
             library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
-            version('armeria', '1.32.5')
+            version('armeria', '1.34.1')
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
