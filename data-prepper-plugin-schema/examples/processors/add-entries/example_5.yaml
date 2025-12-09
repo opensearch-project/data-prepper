@@ -1,0 +1,5 @@
+processor:
+  - add_entries:
+      entries:
+        - key: "${/param_name}"
+          value_expression: "/param_value"

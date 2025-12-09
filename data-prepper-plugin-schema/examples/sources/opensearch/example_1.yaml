@@ -1,0 +1,7 @@
+opensearch-source-pipeline:
+source:
+ opensearch:
+   hosts: [ "https://localhost:9200" ]
+   username: "username"
+   password: "password"
+...

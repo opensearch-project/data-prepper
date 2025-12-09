@@ -1,0 +1,15 @@
+version: "2"
+cdc-pipeline:
+  source:
+    dynamodb:
+      tables:
+        - table_arn: "arn:aws:dynamodb:us-west-2:123456789012:table/table-a"
+          export:
+            s3_bucket: "test-bucket"
+            s3_prefix: "myprefix"
+          stream:
+            start_position: "LATEST" # Read latest data from streams (Default)
+            view_on_remove: NEW_IMAGE
+      aws:
+        region: "us-west-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/my-iam-role"

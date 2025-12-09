@@ -1,0 +1,13 @@
+opensearch-migration-pipeline:
+source:
+  opensearch:
+    hosts: [ "https://source-cluster:9200" ]
+    username: "username"
+    password: "password"
+sink:
+  - opensearch:
+      hosts: [ "https://sink-cluster:9200" ]
+      username: "username"
+      password: "password"
+      document_id: "${getMetadata(\"opensearch-document_id\")}"
+      index: "${getMetadata(\"opensearch-index\"}"

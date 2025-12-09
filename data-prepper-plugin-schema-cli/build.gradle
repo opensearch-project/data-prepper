@@ -4,7 +4,7 @@ plugins {
 }
 
 application {
-    mainClass = 'org.opensearch.dataprepper.schemas.DataPrepperPluginSchemaExecute'
+    mainClass = 'org.opensearch.dataprepper.plugin.schema.docs.DocumentationGeneratorCommand'
 }
 
 dependencies {
@@ -37,4 +37,10 @@ jacocoTestCoverageVerification {
             ])
         })
     }
+}
+
+
+task generatePluginDocs(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'org.opensearch.dataprepper.plugin.schema.docs.DocumentationGeneratorCommand'
 }

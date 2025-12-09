@@ -1,0 +1,15 @@
+pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - truncate:
+      entries:
+        - source_keys: ["message"]
+          length: 5
+          start_at: 8
+          truncate_when: '/id == 1'
+sink:
+  - stdout:
