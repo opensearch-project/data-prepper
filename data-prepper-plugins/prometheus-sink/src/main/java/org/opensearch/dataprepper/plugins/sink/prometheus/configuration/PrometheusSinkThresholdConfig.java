@@ -32,7 +32,7 @@ public class PrometheusSinkThresholdConfig {
     private int maxEvents = DEFAULT_MAX_EVENTS;
 
     @JsonProperty("max_request_size")
-    private String maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
+    private ByteCount maxRequestSize = ByteCount.parse(DEFAULT_MAX_REQUEST_SIZE);
 
     @JsonProperty("flush_interval")
     @DurationMin(seconds = 1)
@@ -44,7 +44,7 @@ public class PrometheusSinkThresholdConfig {
     }
 
     public long getMaxRequestSizeBytes() {
-        return ByteCount.parse(maxRequestSize).getBytes();
+        return maxRequestSize.getBytes();
     }
 
     public long getFlushInterval() {

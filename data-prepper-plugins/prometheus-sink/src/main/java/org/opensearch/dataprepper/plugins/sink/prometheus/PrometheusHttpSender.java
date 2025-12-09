@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ClientOptions;
+import com.google.common.annotations.VisibleForTesting;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +47,9 @@ public class PrometheusHttpSender {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusHttpSender.class);
     private static final int DEFAULT_MAX_REQUEST_SIZE = 1024*1024; // 1MB 
     private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 502, 503, 504);
+    private static final int BACKOFF_INITIAL_DELAY_MS = 100;
+    private static final int BACKOFF_MAX_DELAY_MS = 10_000;
+    private static final double BACKOFF_DEFAULT_JITTER = 0.2;
 
     private final PrometheusSigV4Signer signer;
     private final WebClient webClient;
@@ -61,14 +65,20 @@ public class PrometheusHttpSender {
      * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config The configuration for the Prometheus sink plugin.
      */
-    public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics, final long connectionTimeoutMillis, final long idleTimeoutMillis) {
+    public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics) {
+        this(awsCredentialsSupplier, buildWebClient(config), config, sinkMetrics);
+    }
+
+    @VisibleForTesting
+    public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull WebClient webClient, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics) {
         this.signer = config.getAwsConfig() != null ? new PrometheusSigV4Signer(awsCredentialsSupplier, config) : null;
-        this.webClient = buildWebClient(config);
+        this.webClient = webClient;
         this.compressionEngine = config.getEncoding().getCompressionEngine();
         this.sinkMetrics = sinkMetrics;
         this.config = config;
-        this.connectionTimeoutMillis = connectionTimeoutMillis;
-        this.idleTimeoutMillis = idleTimeoutMillis;
+        this.connectionTimeoutMillis = config.getConnectionTimeout().toMillis();
+        this.idleTimeoutMillis = config.getIdleTimeout().toMillis();
+
     }
 
     /**
@@ -86,7 +96,7 @@ public class PrometheusHttpSender {
     private static WebClient buildWebClient(final PrometheusSinkConfiguration config) {
         final RetryRuleWithContent<HttpResponse> retryRule = RetryRuleWithContent.<HttpResponse>builder()
                 .onStatus((ctx, status) -> RETRYABLE_STATUS_CODES.contains(status.code()))
-                .thenBackoff(Backoff.exponential(100, 10_000).withJitter(0.2));
+                .thenBackoff(Backoff.exponential(BACKOFF_INITIAL_DELAY_MS, BACKOFF_MAX_DELAY_MS).withJitter(BACKOFF_DEFAULT_JITTER));
 
         final long estimatedContentLimit = Math.max(1, DEFAULT_MAX_REQUEST_SIZE) * (config.getMaxRetries() + 1);
         final int safeContentLimit = (int) Math.min(estimatedContentLimit, Integer.MAX_VALUE);
@@ -117,6 +127,9 @@ public class PrometheusHttpSender {
             final byte[] compressedBufferData = compressionEngine.compress(payload);
 
             final HttpRequest request = buildHttpRequest(compressedBufferData);
+            if (request == null) {
+                return new PrometheusPushResult(false, 0);
+            }
             final long startTime = System.currentTimeMillis();
             
             // Execute request and wait for completion
@@ -125,7 +138,7 @@ public class PrometheusHttpSender {
                 .thenApply(response -> {
                     final long latency = System.currentTimeMillis() - startTime;
                     sinkMetrics.recordRequestSize(compressedBufferData.length);
-                    LOG.error("Response received in {}ms. Status: {}", latency, response.status());
+                    LOG.debug("Response received in {}ms. Status: {}", latency, response.status());
                     
                     int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
@@ -160,6 +173,9 @@ public class PrometheusHttpSender {
         SdkHttpFullRequest sdkHttpRequest = createSdkHttpRequest(config.getUrl(), payload);
         if (signer != null) {
             sdkHttpRequest = signer.signRequest(sdkHttpRequest);
+            if (sdkHttpRequest == null) {
+                return null;
+            }
         }
         
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
@@ -167,6 +183,7 @@ public class PrometheusHttpSender {
                 .scheme(sdkHttpRequest.getUri().getScheme())
                 .path(sdkHttpRequest.getUri().getRawPath())
                 .authority(sdkHttpRequest.getUri().getAuthority());
+
 
         // Preserve all original headers from the signed request without modification
         sdkHttpRequest.headers().forEach((k, vList) -> {

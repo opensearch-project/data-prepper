@@ -308,12 +308,9 @@ class Office365RestClientTest {
     void testSearchAuditLogsFailureCounterIncrementsOnEachRetry() throws Exception {
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         Instant endTime = Instant.now();
-        
+
         when(authConfig.getTenantId()).thenReturn("test-tenant-id");
         when(authConfig.getAccessToken()).thenReturn("test-access-token");
-
-        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "searchRequestsFailedCounter", mockCounter);
 
         when(restTemplate.exchange(
                 anyString(),
@@ -322,7 +319,7 @@ class Office365RestClientTest {
                 any(ParameterizedTypeReference.class)
         )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
 
-        assertThrows(SaaSCrawlerException.class, () -> 
+        assertThrows(SaaSCrawlerException.class, () ->
             office365RestClient.searchAuditLogs(
                     "Audit.AzureActiveDirectory",
                     startTime,
@@ -330,19 +327,13 @@ class Office365RestClientTest {
                     null
             )
         );
-
-        // Verify counter.increment() was called exactly 6 times (once for each retry attempt)
-        verify(mockCounter, times(6)).increment();
     }
 
     @Test
     void testGetAuditLogFailureCounterIncrementsOnEachRetry() throws Exception {
         String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
-        
-        when(authConfig.getAccessToken()).thenReturn("test-access-token");
 
-        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogRequestsFailedCounter", mockCounter);
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
 
         when(restTemplate.exchange(
                 eq(contentUri),
@@ -351,12 +342,9 @@ class Office365RestClientTest {
                 eq(String.class)
         )).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
 
-        assertThrows(SaaSCrawlerException.class, () -> 
+        assertThrows(SaaSCrawlerException.class, () ->
             office365RestClient.getAuditLog(contentUri)
         );
-
-        // Verify counter.increment() was called exactly 6 times (once for each retry attempt)
-        verify(mockCounter, times(6)).increment();
     }
 
     @Test
@@ -365,60 +353,36 @@ class Office365RestClientTest {
         // inside RetryHandler.executeWithRetry() static method calls, which would require complex static mocking
         // to test for invocation. Testing initialization ensures the metrics infrastructure is properly set up.
 
-        // Mock all required timers and counters for Office365RestClient constructor
+        // Mock only the local timers and counters for Office365RestClient constructor
         PluginMetrics mockPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
         Timer mockAuditLogFetchLatencyTimer = org.mockito.Mockito.mock(Timer.class);
         Timer mockSearchCallLatencyTimer = org.mockito.Mockito.mock(Timer.class);
         Counter mockAuditLogsRequestedCounter = org.mockito.Mockito.mock(Counter.class);
-        Counter mockAuditLogRequestsFailedCounter = org.mockito.Mockito.mock(Counter.class);
-        Counter mockAuditLogRequestsSuccessCounter = org.mockito.Mockito.mock(Counter.class);
-        Counter mockSearchRequestsFailedCounter = org.mockito.Mockito.mock(Counter.class);
-        Counter mockSearchRequestsSuccessCounter = org.mockito.Mockito.mock(Counter.class);
         Counter mockApiCallsCounter = org.mockito.Mockito.mock(Counter.class);
-        DistributionSummary mockAuditLogRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
-        DistributionSummary mockSearchRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
 
         when(mockPluginMetrics.timer("auditLogFetchLatency")).thenReturn(mockAuditLogFetchLatencyTimer);
         when(mockPluginMetrics.timer("searchCallLatency")).thenReturn(mockSearchCallLatencyTimer);
         when(mockPluginMetrics.counter("auditLogsRequested")).thenReturn(mockAuditLogsRequestedCounter);
-        when(mockPluginMetrics.counter("auditLogRequestsFailed")).thenReturn(mockAuditLogRequestsFailedCounter);
-        when(mockPluginMetrics.counter("auditLogRequestsSuccess")).thenReturn(mockAuditLogRequestsSuccessCounter);
-        when(mockPluginMetrics.counter("searchRequestsFailed")).thenReturn(mockSearchRequestsFailedCounter);
-        when(mockPluginMetrics.counter("searchRequestsSuccess")).thenReturn(mockSearchRequestsSuccessCounter);
         when(mockPluginMetrics.counter("apiCalls")).thenReturn(mockApiCallsCounter);
-        when(mockPluginMetrics.summary("auditLogResponseSizeBytes")).thenReturn(mockAuditLogRequestSizeSummary);
-        when(mockPluginMetrics.summary("searchResponseSizeBytes")).thenReturn(mockSearchRequestSizeSummary);
 
         // Create Office365RestClient with mocked metrics
         Office365RestClient testClient = new Office365RestClient(authConfig, mockPluginMetrics);
 
-        // Verify all metrics were requested during construction
+        // Verify only local metrics were requested during construction
         verify(mockPluginMetrics).timer("auditLogFetchLatency");
         verify(mockPluginMetrics).timer("searchCallLatency");
         verify(mockPluginMetrics).counter("auditLogsRequested");
-        verify(mockPluginMetrics).counter("auditLogRequestsFailed");
-        verify(mockPluginMetrics).counter("auditLogRequestsSuccess");
-        verify(mockPluginMetrics).counter("searchRequestsFailed");
-        verify(mockPluginMetrics).counter("searchRequestsSuccess");
         verify(mockPluginMetrics).counter("apiCalls");
-        verify(mockPluginMetrics).summary("auditLogResponseSizeBytes");
-        verify(mockPluginMetrics).summary("searchResponseSizeBytes");
     }
 
     @Test
     void testGetAuditLogMetricsInvocation() throws NoSuchFieldException, IllegalAccessException {
-        // Test metrics for getAuditLog() method - both success and failure scenarios
-
-        // Create mock metrics and inject them
+        // Create mock metrics for only local fields that still exist
         Counter mockAuditLogsRequestedCounter = org.mockito.Mockito.mock(Counter.class);
-        Counter mockAuditLogRequestsFailedCounter = org.mockito.Mockito.mock(Counter.class);
         Timer mockAuditLogFetchLatencyTimer = org.mockito.Mockito.mock(Timer.class);
-        DistributionSummary mockAuditLogRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
 
         ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogsRequestedCounter", mockAuditLogsRequestedCounter);
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogRequestsFailedCounter", mockAuditLogRequestsFailedCounter);
         ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogFetchLatencyTimer", mockAuditLogFetchLatencyTimer);
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "auditLogResponseSizeSummary", mockAuditLogRequestSizeSummary);
 
         // Mock timer.record() to execute the lambda
         when(mockAuditLogFetchLatencyTimer.record(any(java.util.function.Supplier.class))).thenAnswer(invocation -> {
@@ -436,34 +400,17 @@ class Office365RestClientTest {
 
         office365RestClient.getAuditLog(contentUri);
 
-        // Verify success metrics
+        // Verify only local metrics that still exist
         verify(mockAuditLogsRequestedCounter).increment(); // Called directly before RetryHandler
         verify(mockAuditLogFetchLatencyTimer).record(any(java.util.function.Supplier.class)); // Timer wrapper
-        verify(mockAuditLogRequestSizeSummary).record(mockAuditLog.getBytes(java.nio.charset.StandardCharsets.UTF_8).length); // Size metric inside RetryHandler
-
-        // Test failure scenario
-        when(restTemplate.exchange(eq(contentUri), eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
-
-        assertThrows(SaaSCrawlerException.class, () -> office365RestClient.getAuditLog(contentUri));
-
-        // Verify failure metrics
-        verify(mockAuditLogsRequestedCounter, times(2)).increment(); // Called again before retry
-        verify(mockAuditLogRequestsFailedCounter, times(6)).increment(); // Called 6 times (once for each retry attempt)
     }
 
     @Test
     void testSearchAuditLogsMetricsInvocation() throws NoSuchFieldException, IllegalAccessException {
-        // Test metrics for searchAuditLogs() method - both success and failure scenarios
-
-        // Create mock metrics and inject them
-        Counter mockSearchRequestsFailedCounter = org.mockito.Mockito.mock(Counter.class);
+        // Create mock metrics for only local fields that still exist
         Timer mockSearchCallLatencyTimer = org.mockito.Mockito.mock(Timer.class);
-        DistributionSummary mockSearchRequestSizeSummary = org.mockito.Mockito.mock(DistributionSummary.class);
 
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "searchRequestsFailedCounter", mockSearchRequestsFailedCounter);
         ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "searchCallLatencyTimer", mockSearchCallLatencyTimer);
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "searchResponseSizeSummary", mockSearchRequestSizeSummary);
 
         // Mock timer.record() to execute the lambda
         when(mockSearchCallLatencyTimer.record(any(java.util.function.Supplier.class))).thenAnswer(invocation -> {
@@ -486,206 +433,10 @@ class Office365RestClientTest {
                 null
         );
 
-        // Verify success metrics
+        // Verify only local metrics that still exist
         verify(mockSearchCallLatencyTimer).record(any(java.util.function.Supplier.class)); // Timer wrapper
-        verify(mockSearchRequestSizeSummary).record(1024L); // Size metric inside RetryHandler
-
-        // Test failure scenario
-        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), any(ParameterizedTypeReference.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
-
-        assertThrows(RuntimeException.class, () -> office365RestClient.searchAuditLogs(
-                "Audit.AzureActiveDirectory",
-                Instant.now().minus(1, ChronoUnit.HOURS),
-                Instant.now(),
-                null
-        ));
-
-        // Verify failure metrics
-        verify(mockSearchRequestsFailedCounter, times(6)).increment(); // Called 6 times (once for each retry attempt)
     }
 
-    @ParameterizedTest
-    @CsvSource({
-        "FORBIDDEN, true",
-        "UNAUTHORIZED, true",
-        "TOO_MANY_REQUESTS, true",
-        "NOT_FOUND, true",
-        "INTERNAL_SERVER_ERROR, false",
-        "BAD_GATEWAY, false"
-    })
-    void testPublishErrorTypeMetricCounterForGetAuditLog(HttpStatus status, boolean shouldIncrementCounter) throws NoSuchFieldException, IllegalAccessException {
-        // Mock error type counter map
-        Map<String, Counter> mockErrorTypeMetricCounterMap = new HashMap<>();
-        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.FORBIDDEN.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.UNAUTHORIZED.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.NOT_FOUND.getReasonPhrase(), mockCounter);
-
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, 
-                "errorTypeMetricCounterMap", mockErrorTypeMetricCounterMap);
-
-        // Mock REST call to throw FORBIDDEN error
-        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
-        when(restTemplate.exchange(
-                eq(contentUri),
-                eq(HttpMethod.GET),
-                any(),
-                eq(String.class)
-        )).thenThrow(new HttpClientErrorException(status));
-
-        // Execute and verify exception
-        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class, 
-                () -> office365RestClient.getAuditLog(contentUri));
-        assertEquals("Failed to fetch audit log", exception.getMessage());
-        assertTrue(exception.isRetryable());
-
-        // Verify counter increment
-        if (shouldIncrementCounter) {
-            verify(mockCounter).increment();
-        } else {
-            verify(mockCounter, never()).increment();
-        }
-    }
-
-    @Test
-    void testPublishErrorTypeMetricCounterWithUnmappedError() throws NoSuchFieldException, IllegalAccessException {
-        // Mock error type counter map with no matching error type
-        Map<String, Counter> mockErrorTypeMetricCounterMap = new HashMap<>();
-        
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, 
-                "errorTypeMetricCounterMap", mockErrorTypeMetricCounterMap);
-
-        // Mock REST call to throw unmapped error
-        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
-        when(restTemplate.exchange(
-                eq(contentUri),
-                eq(HttpMethod.GET),
-                any(),
-                eq(String.class)
-        )).thenThrow(new HttpClientErrorException(HttpStatus.BAD_GATEWAY));
-
-        // Execute and verify exception
-        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class, 
-                () -> office365RestClient.getAuditLog(contentUri));
-        assertEquals("Failed to fetch audit log", exception.getMessage());
-        assertTrue(exception.isRetryable());
-
-        // Verify no counters were incremented
-        assertTrue(mockErrorTypeMetricCounterMap.isEmpty());
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-        "FORBIDDEN, true",
-        "UNAUTHORIZED, true",
-        "TOO_MANY_REQUESTS, true",
-        "NOT_FOUND, true",
-        "INTERNAL_SERVER_ERROR, false",
-        "BAD_GATEWAY, false"
-    })
-    void testPublishErrorTypeMetricCounterForSearchAuditLogs(HttpStatus status, boolean shouldIncrementCounter) 
-        throws NoSuchFieldException, IllegalAccessException {
-        // Mock error type counter map
-        Map<String, Counter> mockErrorTypeMetricCounterMap = new HashMap<>();
-        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.FORBIDDEN.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.UNAUTHORIZED.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.NOT_FOUND.getReasonPhrase(), mockCounter);
-
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient,
-                "errorTypeMetricCounterMap", mockErrorTypeMetricCounterMap);
-
-        // Set up test parameters
-        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
-        Instant endTime = Instant.now();
-        String contentType = "Audit.AzureActiveDirectory";
-
-        // Mock auth config
-        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
-        when(authConfig.getAccessToken()).thenReturn("test-access-token");
-
-        // Mock REST call to throw error
-        when(restTemplate.exchange(
-                anyString(),
-                eq(HttpMethod.GET),
-                any(),
-                any(ParameterizedTypeReference.class)
-        )).thenThrow(new HttpClientErrorException(status));
-
-        // Execute and verify exception
-        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
-                () -> office365RestClient.searchAuditLogs(
-                contentType,
-                startTime,
-                endTime,
-                null
-                ));
-        assertEquals("Failed to fetch audit logs", exception.getMessage());
-        assertTrue(exception.isRetryable());
-
-        // Verify counter increment
-        if (shouldIncrementCounter) {
-            verify(mockCounter).increment();
-        } else {
-            verify(mockCounter, never()).increment();
-        }
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-        "FORBIDDEN, true",
-        "UNAUTHORIZED, true",
-        "TOO_MANY_REQUESTS, true",
-        "NOT_FOUND, true",
-        "INTERNAL_SERVER_ERROR, false",
-        "BAD_GATEWAY, false"
-    })
-    void testPublishErrorTypeMetricCounterForStartSubscriptions(HttpStatus status, boolean shouldIncrementCounter) 
-        throws NoSuchFieldException, IllegalAccessException {
-        // Mock error type counter map
-        Map<String, Counter> mockErrorTypeMetricCounterMap = new HashMap<>();
-        Counter mockCounter = org.mockito.Mockito.mock(Counter.class);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.FORBIDDEN.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.UNAUTHORIZED.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), mockCounter);
-        mockErrorTypeMetricCounterMap.put(HttpStatus.NOT_FOUND.getReasonPhrase(), mockCounter);
-
-        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient,
-        "errorTypeMetricCounterMap", mockErrorTypeMetricCounterMap);
-
-        // Mock auth config
-        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
-        when(authConfig.getAccessToken()).thenReturn("test-access-token");
-
-        // Mock REST call to throw error
-        when(restTemplate.exchange(
-        anyString(),
-        eq(HttpMethod.POST),
-        any(),
-        eq(String.class)
-        )).thenThrow(new HttpClientErrorException(status));
-
-        // Execute and verify exception
-        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
-        () -> office365RestClient.startSubscriptions());
-        if (status == HttpStatus.FORBIDDEN) {
-            assertEquals("Failed to initialize subscriptions: Access forbidden: 403 FORBIDDEN", 
-                exception.getMessage());
-        } else {
-            assertEquals("Failed to initialize subscriptions: " + status.toString(), 
-                exception.getMessage());
-        }
-        assertTrue(exception.isRetryable());
-
-        if (shouldIncrementCounter) {
-            verify(mockCounter).increment();
-        } else {
-            verify(mockCounter, never()).increment();
-        }
-    }
 
     @Test
     void testApiCallsCounterIncrementForStartSubscriptions() throws NoSuchFieldException, IllegalAccessException {

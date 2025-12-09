@@ -1638,6 +1638,80 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    @DisabledIf(value = "isDataStreamNotSupported", disabledReason = "Data streams require OpenSearch 1.3.0+")
+    public void testDataStreamDetection() throws IOException, InterruptedException {
+        final String dataStreamName = "test-data-stream-" + UUID.randomUUID();
+        final String templateName = dataStreamName + "-template";
+        final File tempDirectory = Files.createTempDirectory("").toFile();
+        final String dlqFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
+        
+        try {
+            // Create an index template for the data stream first
+            final Request createTemplateRequest = new Request(HttpMethod.PUT, "/_index_template/" + templateName);
+            final String templateBody = "{" +
+                    "\"index_patterns\": [\"" + dataStreamName + "\"]," +
+                    "\"data_stream\": {}," +
+                    "\"template\": {" +
+                    "\"mappings\": {" +
+                    "\"properties\": {" +
+                    "\"@timestamp\": {\"type\": \"date\"}" +
+                    "}" +
+                    "}" +
+                    "}" +
+                    "}";
+            createTemplateRequest.setJsonEntity(templateBody);
+            client.performRequest(createTemplateRequest);
+            
+            // Create a data stream
+            final Request createDataStreamRequest = new Request(HttpMethod.PUT, "/_data_stream/" + dataStreamName);
+            client.performRequest(createDataStreamRequest);
+            
+            // Initialize sink AFTER creating the data stream so detection works
+            Map<String, Object> metadata = initializeConfigurationMetadata(null, dataStreamName, null);
+            metadata.put(RetryConfiguration.DLQ_FILE, dlqFile);
+            final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+            final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+            
+            // Test that the data stream is detected
+            final String testIdField = "someId";
+            final String testId = "foo";
+            final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+            
+            sink.output(testRecords);
+            sink.shutdown();
+            
+            // Wait for indexing to complete
+            Thread.sleep(2000);
+            
+            // Verify the document was written to the data stream
+            final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
+            assertThat("Expected 1 document in data stream " + dataStreamName + " but found " + retSources.size(), 
+                       retSources.size(), equalTo(1));
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            // Clean up the data stream
+            final Request deleteDataStreamRequest = new Request(HttpMethod.DELETE, "/_data_stream/" + dataStreamName);
+            try {
+                client.performRequest(deleteDataStreamRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            // Clean up the index template
+            final Request deleteTemplateRequest = new Request(HttpMethod.DELETE, "/_index_template/" + templateName);
+            try {
+                client.performRequest(deleteTemplateRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            // Clean up DLQ
+            FileUtils.deleteQuietly(tempDirectory);
+        }
+    }
+
+    @Test
     @Timeout(value = 1, unit = TimeUnit.MINUTES)
     @DisabledIf(value = "isES6",
             disabledReason = "PUT _opendistro/_security/api/roles/<role-id> request could not be parsed in ES 6.")
@@ -1960,6 +2034,96 @@ public class OpenSearchSinkIT {
 
     private static boolean isES6() {
         return DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(OpenSearchIntegrationHelper.getVersion()) >= 0;
+    }
+
+    private static boolean isDataStreamNotSupported() {
+        // Data streams require OpenSearch 1.3.0+
+        return OpenSearchIntegrationHelper.getVersion().compareTo(DeclaredOpenSearchVersion.parse("opensearch:1.3.0")) < 0;
+    }
+
+    @Test
+    @DisabledIf(value = "isDataStreamNotSupported", disabledReason = "Data streams require OpenSearch 1.3.0+")
+    public void testDataStreamFirstWriteWinsBehavior() throws IOException, InterruptedException {
+        final String dataStreamName = "test-first-write-wins-" + UUID.randomUUID();
+        final String templateName = dataStreamName + "-template";
+        final File tempDirectory = Files.createTempDirectory("").toFile();
+        final String dlqFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
+        
+        try {
+            // Create an index template for the data stream
+            final Request createTemplateRequest = new Request(HttpMethod.PUT, "/_index_template/" + templateName);
+            final String templateBody = "{" +
+                    "\"index_patterns\": [\"" + dataStreamName + "\"]," +
+                    "\"data_stream\": {}," +
+                    "\"template\": {" +
+                    "\"mappings\": {" +
+                    "\"properties\": {" +
+                    "\"@timestamp\": {\"type\": \"date\"}," +
+                    "\"value\": {\"type\": \"keyword\"}" +
+                    "}" +
+                    "}" +
+                    "}" +
+                    "}";
+            createTemplateRequest.setJsonEntity(templateBody);
+            client.performRequest(createTemplateRequest);
+            
+            // Create the data stream
+            final Request createDataStreamRequest = new Request(HttpMethod.PUT, "/_data_stream/" + dataStreamName);
+            client.performRequest(createDataStreamRequest);
+            
+            // Initialize sink with document_id configuration
+            final String testIdField = "someId";
+            final String testId = "duplicate-id";
+            Map<String, Object> metadata = initializeConfigurationMetadata(null, dataStreamName, null);
+            metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+            metadata.put(RetryConfiguration.DLQ_FILE, dlqFile);
+            final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+            final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+            
+            // Write first document with value "first"
+            final String firstDoc = "{\"" + testIdField + "\": \"" + testId + "\", \"value\": \"first\"}";
+            final List<Record<Event>> firstRecords = Collections.singletonList(jsonStringToRecord(firstDoc));
+            sink.output(firstRecords);
+            
+            // Wait for indexing
+            Thread.sleep(1000);
+            
+            // Write second document with same ID but value "second"
+            final String secondDoc = "{\"" + testIdField + "\": \"" + testId + "\", \"value\": \"second\"}";
+            final List<Record<Event>> secondRecords = Collections.singletonList(jsonStringToRecord(secondDoc));
+            sink.output(secondRecords);
+            
+            sink.shutdown();
+            
+            // Wait for indexing to complete
+            Thread.sleep(2000);
+            
+            // Verify only one document exists
+            final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
+            assertThat("Expected exactly 1 document due to first-write-wins", retSources.size(), equalTo(1));
+            
+            // Verify the document has the FIRST value (first-write-wins)
+            final Map<String, Object> document = retSources.get(0);
+            assertThat("Expected first write to win", document.get("value"), equalTo("first"));
+            
+        } finally {
+            // Clean up
+            final Request deleteDataStreamRequest = new Request(HttpMethod.DELETE, "/_data_stream/" + dataStreamName);
+            try {
+                client.performRequest(deleteDataStreamRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            final Request deleteTemplateRequest = new Request(HttpMethod.DELETE, "/_index_template/" + templateName);
+            try {
+                client.performRequest(deleteTemplateRequest);
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+            
+            FileUtils.deleteQuietly(tempDirectory);
+        }
     }
 
     private static Stream<Object> getAttributeTestSpecialAndExtremeValues() {

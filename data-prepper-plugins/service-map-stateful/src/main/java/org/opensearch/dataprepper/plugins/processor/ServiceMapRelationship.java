@@ -79,6 +79,8 @@ public class ServiceMapRelationship {
             final String domain,
             final String resource,
             final String traceGroupName) {
+
+
         return new ServiceMapRelationship(serviceName, spanKind, new Endpoint(resource, domain), null, traceGroupName);
     }
 
@@ -97,6 +99,7 @@ public class ServiceMapRelationship {
             final String domain,
             final String resource,
             final String traceGroupName) {
+
         return new ServiceMapRelationship(serviceName, spanKind, null, new Endpoint(resource, domain), traceGroupName);
     }
 

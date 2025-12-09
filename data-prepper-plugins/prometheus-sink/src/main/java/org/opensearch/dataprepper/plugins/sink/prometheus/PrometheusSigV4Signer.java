@@ -9,6 +9,7 @@
   */
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -41,14 +42,23 @@ class PrometheusSigV4Signer {
         this.region = config.getAwsConfig().getAwsRegion();
 
         this.config = config;
-        this.credentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
-                .withRegion(region)
-                .withStsRoleArn(config.getAwsConfig().getAwsStsRoleArn())
-                .withStsExternalId(config.getAwsConfig().getAwsStsExternalId())
-                .build());
+        this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(config.getAwsConfig()));
 
         this.endpointUri = URI.create(url);
     }
+
+    private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
+        if (awsConfig == null) {
+            return AwsCredentialsOptions.builder().build();
+        }
+        return AwsCredentialsOptions.builder()
+                .withRegion(awsConfig.getAwsRegion())
+                .withStsRoleArn(awsConfig.getAwsStsRoleArn())
+                .withStsExternalId(awsConfig.getAwsStsExternalId())
+                .withStsHeaderOverrides(awsConfig.getAwsStsHeaderOverrides())
+                .build();
+    }
+
 
     /**
      * Constructs a SigV4 signer helper.
@@ -62,6 +72,9 @@ class PrometheusSigV4Signer {
     }
 
     SdkHttpFullRequest signQueryRequest(final String query) {
+        if (credentialsProvider == null || credentialsProvider.resolveCredentials() == null) {
+            return null;
+        }
         SdkHttpFullRequest unsignedRequest = SdkHttpFullRequest.builder()
                 .method(SdkHttpMethod.POST)
                 .uri(endpointUri)
@@ -83,6 +96,9 @@ class PrometheusSigV4Signer {
      * @return A signed {@link SdkHttpFullRequest} ready for transmission to the AWS OTLP endpoint
      */
     SdkHttpFullRequest signRequest(final SdkHttpFullRequest unsignedRequest) {
+        if (credentialsProvider == null || credentialsProvider.resolveCredentials() == null) {
+            return null;
+        }
         return signer.sign(unsignedRequest, Aws4SignerParams.builder()
                 .signingRegion(region)
                 .signingName(SERVICE_NAME)

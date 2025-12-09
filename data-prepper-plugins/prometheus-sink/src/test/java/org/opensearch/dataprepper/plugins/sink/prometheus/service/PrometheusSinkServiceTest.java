@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -50,7 +50,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class PrometheusSinkServiceTest {
 
     private static final String TEST_PIPELINE_NAME = "testPipeline";
-    private static final String TEST_PLUGIN_NAME = "testPipeline";
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
         
 
@@ -75,7 +74,7 @@ public class PrometheusSinkServiceTest {
 
     private HeadlessPipeline dlqPipeline;
 
-    private PluginSetting pluginSetting;
+    private PipelineDescription pipelineDescription;
 
     private PluginMetrics pluginMetrics;
     
@@ -100,9 +99,8 @@ public class PrometheusSinkServiceTest {
         this.sinkMetrics = mock(SinkMetrics.class);
         eventHandle = mock(EventHandle.class);
         this.prometheusSinkConfiguration = objectMapper.readValue(SINK_YAML,PrometheusSinkConfiguration.class);
-        this.pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        when(pluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
+        this.pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         this.awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         this.prometheusSinkRecordsSuccessCounter = mock(Counter.class);
         this.prometheusSinkRecordsFailedCounter = mock(Counter.class);
@@ -117,8 +115,7 @@ public class PrometheusSinkServiceTest {
                 sinkMetrics,
                 httpSender,
                 dlqPipeline,
-                pluginMetrics,
-                pluginSetting);
+                pipelineDescription);
     }
 
     @Test
@@ -144,7 +141,7 @@ public class PrometheusSinkServiceTest {
             for (final Record<Event> record : records) {
                 Event event = record.getData();
                 assertThat(event.get("_failure_metadata/statusCode", Integer.class), equalTo(410));
-                assertThat(event.get("_failure_metadata/pluginName", String.class), equalTo(TEST_PLUGIN_NAME));
+                assertThat(event.get("_failure_metadata/pluginName", String.class), equalTo(PrometheusSinkService.PLUGIN_NAME));
                 assertThat(event.get("_failure_metadata/pipelineName", String.class), equalTo(TEST_PIPELINE_NAME));
                 event.getEventHandle().release(true);
             }

@@ -165,6 +165,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             final String parentSpanId = span.getParentSpanId();
             final String spanKind = span.getKind();
             final byte[] traceId;
+
             try {
                 traceId = Hex.decodeHex(span.getTraceId());
             } catch (DecoderException e) {

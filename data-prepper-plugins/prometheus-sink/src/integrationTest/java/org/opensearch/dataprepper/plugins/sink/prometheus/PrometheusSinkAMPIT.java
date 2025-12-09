@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
@@ -75,6 +76,7 @@ import static org.mockito.Mockito.lenient;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -94,6 +96,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @ExtendWith(MockitoExtension.class)
 public class PrometheusSinkAMPIT {
+    private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final long NANO_MULTIPLIER = 1_000_000_000L;
     private static final int TEST_READ_BATCH_TIMEOUT = 500;
     private static final int TEST_PROCESSOR_THREADS = 1;
@@ -117,6 +120,8 @@ public class PrometheusSinkAMPIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
     @Mock
+    private AwsCredentialsSupplier awsQueryCredentialsSupplier;
+    @Mock
     private Counter metricsSuccessCounter;
     @Mock
     private Counter metricsFailedCounter;
@@ -130,6 +135,8 @@ public class PrometheusSinkAMPIT {
     private EventHandle eventHandle;
     @Mock
     private Pipeline dlqPipeline;
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     private String awsRegion;
     private String awsRole;
@@ -146,6 +153,7 @@ public class PrometheusSinkAMPIT {
     private WebClient webClient;
     private PrometheusSinkThresholdConfig thresholdConfig;
 
+
     @BeforeEach
     void setUp() {
         webClient = WebClient.builder()
@@ -156,7 +164,10 @@ public class PrometheusSinkAMPIT {
 
                 .build();
 
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        awsQueryCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         eventHandle = mock(EventHandle.class);
+        pipelineDescription = mock(PipelineDescription.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
         metricsInAMP = 0;
         testStartTime = Instant.now();
@@ -174,13 +185,11 @@ public class PrometheusSinkAMPIT {
         awsConfig = mock(AwsConfig.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
         when(pluginSetting.getName()).thenReturn("name");
-        
 
         metricsSuccessCounter = mock(Counter.class);
         metricsFailedCounter = mock(Counter.class);
         requestsSuccessCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
-
         summary = mock(DistributionSummary.class);
 
         when(pluginMetrics.counter(eq("sinkRequestsSucceeded"))).thenReturn(requestsSuccessCounter);
@@ -200,6 +209,7 @@ public class PrometheusSinkAMPIT {
         String remoteWriteUrl = url + "api/v1/remote_write";
         queryUrl = url + "api/v1/query";
         when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        lenient().when(awsQueryCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
         thresholdConfig = mock(PrometheusSinkThresholdConfig.class);
         when(thresholdConfig.getMaxEvents()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
@@ -222,7 +232,7 @@ public class PrometheusSinkAMPIT {
     }
 
     private PrometheusSink createObjectUnderTest() {
-        return new PrometheusSink(pluginSetting, pluginMetrics, pluginFactory, prometheusSinkConfig, awsCredentialsSupplier);
+        return new PrometheusSink(pluginSetting, pluginMetrics, pipelineDescription, prometheusSinkConfig, awsCredentialsSupplier);
     }
 
     private void getMetricsFromAMP(final String metricName, final String qs) throws Exception {
@@ -242,7 +252,7 @@ public class PrometheusSinkAMPIT {
             queryStr = metricName+"|"+metricName+"_sum|"+metricName+"_count|attrKey1|attrKey2";
             query = "{__name__=~\""+queryStr+"\"}";
         } else if (qs.equals("sum")) {
-            queryStr = metricName+"|"+metricName+"_sum";
+            queryStr = metricName+"|"+metricName+"_total";
             query = "{__name__=~\""+queryStr+"\"}";
         } else {
             query = metricName;
@@ -250,7 +260,7 @@ public class PrometheusSinkAMPIT {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String getUrlQuery = "query=" + query + "&start="+testStartTime+"&end="+endTime+"&step=1s";
         String getUrl = queryRangeUrl+"?query=" + encodedQuery + "&start="+testStartTime+"&end="+endTime+"&step=1s";
-        PrometheusSigV4Signer signer = new PrometheusSigV4Signer(awsCredentialsSupplier, prometheusSinkConfig, baseUrl + queryRangeUrl);
+        PrometheusSigV4Signer signer = new PrometheusSigV4Signer(awsQueryCredentialsSupplier, prometheusSinkConfig, baseUrl + queryRangeUrl);
         final SdkHttpFullRequest signedRequest = signer.signQueryRequest(getUrlQuery);
 
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
@@ -263,6 +273,7 @@ public class PrometheusSinkAMPIT {
                 headersBuilder.add(k, v);
             });
         });
+
         HttpRequest request = HttpRequest.of(headersBuilder.build(), HttpData.ofAscii(getUrlQuery));
         webClient.execute(request).aggregate()
             .thenAccept(response -> {
@@ -328,6 +339,7 @@ public class PrometheusSinkAMPIT {
 
     @Test
     void TestSumMetricsFailuresWithDLQ() throws Exception {
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         dlqPipeline = mock(Pipeline.class);
         doAnswer(a -> {
             Collection<Record<Event>> records = (Collection<Record<Event>>)a.getArgument(0);
@@ -443,7 +455,7 @@ public class PrometheusSinkAMPIT {
                 .withStartTime(convertUnixNanosToISO8601(startTimeNanos))
                 .withIsMonotonic(true)
                 .withUnit("1")
-                .withAggregationTemporality("delta")
+                .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
                 .withResource(Map.of("attributes", Map.of("attrKey1", 1, "attrKey2", Map.of("attrKey3", "attrValue3"))))
                 .withValue((double)metricValue+i)
                 .withEventHandle(eventHandle)
@@ -905,4 +917,25 @@ public class PrometheusSinkAMPIT {
         return records;
     }
 
+    @Test
+    void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
+
+        AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
+        when(thresholdConfig.getMaxEvents()).thenReturn(1);
+        PrometheusSink sink = createObjectUnderTest();
+        Collection<Record<Event>> records = getHistogramRecordList(NUM_RECORDS);
+        sink.doOutput(records);
+
+        long startTimeSeconds = testStartTime.getEpochSecond();
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> {
+                metricsInAMP = 0;
+                getMetricsFromAMP(histogramMetricName, "histogram");
+                assertThat(metricsInAMP, greaterThanOrEqualTo(1));
+        }));
+
+        verify(metricsSuccessCounter, times(0)).increment(NUM_RECORDS);
+    }
 } 

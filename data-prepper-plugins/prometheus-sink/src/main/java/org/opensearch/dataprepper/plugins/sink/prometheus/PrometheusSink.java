@@ -21,9 +21,9 @@ import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
@@ -48,7 +48,7 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
     @DataPrepperPluginConstructor
     public PrometheusSink(final PluginSetting pluginSetting,
                     final PluginMetrics pluginMetrics,
-                    final PluginFactory pluginFactory,
+                    final PipelineDescription pipelineDescription,
                     final PrometheusSinkConfiguration prometheusSinkConfiguration,
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
@@ -58,9 +58,7 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         Region region = (awsConfig != null) ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
       
         sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Metric");
-        httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics,
-                prometheusSinkConfiguration.getConnectionTimeout().toMillis(),
-                prometheusSinkConfiguration.getIdleTimeout().toMillis());
+        httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics);
 
         PrometheusSinkThresholdConfig thresholdConfig = prometheusSinkConfiguration.getThresholdConfig();
 
@@ -69,8 +67,7 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
                 sinkMetrics,
                 httpSender,
                 getFailurePipeline(),
-                pluginMetrics,
-                pluginSetting);
+                pipelineDescription);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
