@@ -57,7 +57,7 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
         Region region = (awsConfig != null) ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
       
-        sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Metric");
+        sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Event");
         httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics);
 
         PrometheusSinkThresholdConfig thresholdConfig = prometheusSinkConfiguration.getThresholdConfig();
