@@ -252,8 +252,8 @@ class CloudWatchLogsServiceTest {
     }
 
      private Record<Event> getLargeRecord(long size) {
-        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.randomAlphabetic((int)size))).withEventHandle(eventHandle).build();
+        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.insecure().nextAlphabetic((int)size))).withEventHandle(eventHandle).build();
 
         return new Record<>(event);
-    }   
+    }
 }
