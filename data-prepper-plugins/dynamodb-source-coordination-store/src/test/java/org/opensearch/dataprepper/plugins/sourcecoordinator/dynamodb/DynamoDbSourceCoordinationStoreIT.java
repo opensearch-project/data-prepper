@@ -14,6 +14,7 @@ import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,7 +43,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -263,6 +263,7 @@ class DynamoDbSourceCoordinationStoreIT {
         assertThat(getItem.getExpirationTime(), lessThanOrEqualTo(Instant.now().getEpochSecond()));
     }
 
+    @Disabled("This test is flaky on the current version of DynamoDB Local. However, newer versions require JDK 17+.")
     @Test
     void tryAcquireAvailablePartition_gets_first_unassigned_partition() throws InterruptedException {
         final DynamoDbSourceCoordinationStore objectUnderTest = createObjectUnderTest();
