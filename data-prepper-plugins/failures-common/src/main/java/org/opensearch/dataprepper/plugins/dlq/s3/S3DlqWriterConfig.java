@@ -36,6 +36,7 @@ public class S3DlqWriterConfig {
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
     private static final String S3_PREFIX = "s3://";
+    private static final boolean FORCE_PATH_STYLE = false;
 
     @JsonProperty("bucket")
     @NotEmpty
@@ -49,6 +50,9 @@ public class S3DlqWriterConfig {
     @JsonProperty("region")
     @Size(min = 1, message = "region cannot be empty string")
     private String region = DEFAULT_AWS_REGION;
+
+    @JsonProperty("force_path_style")
+    private boolean forcePathStyle = FORCE_PATH_STYLE;
 
     @JsonProperty("sts_role_arn")
     @Size(min = 20, max = 2048, message = "sts_role_arn length should be between 1 and 2048 characters")
@@ -74,6 +78,10 @@ public class S3DlqWriterConfig {
 
     public String getKeyPathPrefix() {
         return keyPathPrefix;
+    }
+
+    public boolean getForcePathStyle() {
+        return forcePathStyle;
     }
 
     public Region getRegion() {
@@ -135,6 +143,7 @@ public class S3DlqWriterConfig {
     public S3Client getS3Client() {
         return S3Client.builder()
             .region(this.getRegion())
+            .forcePathStyle(this.getForcePathStyle())
             .credentialsProvider(this.getAwsCredentialsProvider())
             .overrideConfiguration(ClientOverrideConfiguration.builder()
                 .retryPolicy(RetryPolicy.builder().numRetries(MAX_NUMBER_OF_RETRIES).build())

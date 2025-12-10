@@ -39,6 +39,11 @@ class DlqPushHandlerTest {
 
     private static final String KEY_PATH_PREFIX_VALUE = "dlq/";
 
+    private static final String FORCE_PATH_STYLE = "force_path_style";
+
+    private static final boolean FORCE_PATH_STYLE_TRUE = true;
+    private static final boolean FORCE_PATH_STYLE_FALSE = false;
+
     private static final String PIPELINE_NAME = "log-pipeline";
 
     private static final String DLQ_FILE = "local_dlq_file";
@@ -76,6 +81,48 @@ class DlqPushHandlerTest {
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
         SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
         dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE);
+
+        PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+        dlqPushHandler.perform(pluginSetting, failedDlqData);
+        Assertions.assertNotNull(pluginFactory);
+        verify(dlqWriter).write(anyList(), anyString(), anyString());
+    }
+
+    @Test
+    void perform_for_dlq_s3_success_forcepathstyle_true() throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put(BUCKET,BUCKET_VALUE);
+        props.put(KEY_PATH_PREFIX,KEY_PATH_PREFIX_VALUE);
+        props.put(FORCE_PATH_STYLE,FORCE_PATH_STYLE_TRUE);
+
+        when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
+
+        when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
+        doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
+        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE,FORCE_PATH_STYLE_TRUE);
+
+        PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+        dlqPushHandler.perform(pluginSetting, failedDlqData);
+        Assertions.assertNotNull(pluginFactory);
+        verify(dlqWriter).write(anyList(), anyString(), anyString());
+    }
+
+    @Test
+    void perform_for_dlq_s3_success_forcepathstyle_false() throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put(BUCKET,BUCKET_VALUE);
+        props.put(KEY_PATH_PREFIX,KEY_PATH_PREFIX_VALUE);
+        props.put(FORCE_PATH_STYLE,FORCE_PATH_STYLE_FALSE);
+
+        when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
+
+        when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
+        doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
+        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE,FORCE_PATH_STYLE_FALSE);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
         pluginSetting.setPipelineName(PIPELINE_NAME);
