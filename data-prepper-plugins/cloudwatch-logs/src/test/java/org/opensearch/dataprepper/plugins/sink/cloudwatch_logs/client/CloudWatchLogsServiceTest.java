@@ -12,7 +12,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.InMemoryBufferFactory;
@@ -20,8 +22,6 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
-import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.model.log.JacksonLog;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,13 +31,13 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class CloudWatchLogsServiceTest {
     private static final int LARGE_THREAD_COUNT = 1000;
@@ -95,8 +95,10 @@ class CloudWatchLogsServiceTest {
 
     Collection<Record<Event>> getSampleRecordsOfLargerSize() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        int messageSize = (int) (thresholdConfig.getMaxRequestSizeBytes() / 24);
         for (int i = 0; i < thresholdConfig.getBatchSize() * 2; i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("a".repeat((int) (thresholdConfig.getMaxRequestSizeBytes()/24)));
+            JacksonEvent mockJacksonEvent =
+                    (JacksonEvent) JacksonEvent.fromMessage(RandomStringUtils.insecure().nextAlphabetic(messageSize));
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
@@ -105,8 +107,10 @@ class CloudWatchLogsServiceTest {
 
     Collection<Record<Event>> getSampleRecordsOfLimitSize() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        int messageSize = (int) thresholdConfig.getMaxEventSizeBytes();
         for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage".repeat((int) thresholdConfig.getMaxEventSizeBytes()));
+            JacksonEvent mockJacksonEvent =
+                    (JacksonEvent) JacksonEvent.fromMessage(RandomStringUtils.insecure().nextAlphabetic(messageSize));
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
 
