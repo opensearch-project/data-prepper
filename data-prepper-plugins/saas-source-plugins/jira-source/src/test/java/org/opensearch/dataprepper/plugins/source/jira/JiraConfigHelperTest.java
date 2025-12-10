@@ -126,7 +126,7 @@ public class JiraConfigHelperTest {
     void testValidateConfig() {
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
+        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
         when(jiraSourceConfig.getAuthType()).thenReturn("fakeType");
@@ -135,7 +135,7 @@ public class JiraConfigHelperTest {
 
     @Test
     void testValidateConfigBasic() {
-        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
+        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
         when(jiraSourceConfig.getAuthType()).thenReturn(BASIC);
         when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
@@ -154,7 +154,7 @@ public class JiraConfigHelperTest {
 
     @Test
     void testValidateConfigOauth2() {
-        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
+        when(jiraSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
         when(jiraSourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
