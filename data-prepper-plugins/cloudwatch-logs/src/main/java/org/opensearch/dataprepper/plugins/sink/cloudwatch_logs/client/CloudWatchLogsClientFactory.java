@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
@@ -64,8 +65,12 @@ public final class CloudWatchLogsClientFactory {
     }
 
     private static ClientOverrideConfiguration createOverrideConfiguration(final Map<String, String> customHeaders) {
+        final RetryPolicy retryPolicy = RetryPolicy.builder()
+                .numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS)
+                .build();
+
         final ClientOverrideConfiguration.Builder configBuilder = ClientOverrideConfiguration.builder()
-                .retryPolicy(r -> r.numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS));
+                .retryPolicy(retryPolicy);
 
         customHeaders.forEach(configBuilder::putHeader);
 
