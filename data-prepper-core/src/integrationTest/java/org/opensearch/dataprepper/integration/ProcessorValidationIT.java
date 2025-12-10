@@ -211,6 +211,12 @@ class ProcessorValidationIT {
     }
 
     private static void verifySingleThreadUsage() {
+        // Wait for all processor instances to be registered (one per worker)
+        await().atMost(WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(
+                        SingleThreadEventsTrackingTestProcessor.getProcessors().size(),
+                        equalTo(4)));
+
         List<SingleThreadEventsTrackingTestProcessor> singleThreadProcessors = SingleThreadEventsTrackingTestProcessor.getProcessors();
         assertThat(singleThreadProcessors.size(), equalTo(4));
         assertAll(
