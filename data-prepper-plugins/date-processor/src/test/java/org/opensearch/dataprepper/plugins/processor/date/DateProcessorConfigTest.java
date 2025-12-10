@@ -71,7 +71,8 @@ class DateProcessorConfigTest {
 
         @Test
         void testValidAndInvalidOutputFormats() throws NoSuchFieldException, IllegalAccessException {
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", random);
+            // Use a string with invalid pattern characters (] and [ are reserved and will always fail)
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "invalid[pattern]format");
             assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
 
             setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_second");
