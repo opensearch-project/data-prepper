@@ -108,12 +108,18 @@ public class DateProcessorConfig {
         }
 
         public static boolean isValidPattern(final String pattern) {
+            // Check for valid epoch patterns first
             if (pattern.equals("epoch_second") ||
                 pattern.equals("epoch_milli") ||
                 pattern.equals("epoch_micro") ||
                 pattern.equals("epoch_nano")) {
                     return true;
             }
+            // Reject any other pattern starting with "epoch_" as invalid
+            if (pattern.startsWith("epoch_")) {
+                return false;
+            }
+            // Validate as DateTimeFormatter pattern
             try {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
                 return true;
