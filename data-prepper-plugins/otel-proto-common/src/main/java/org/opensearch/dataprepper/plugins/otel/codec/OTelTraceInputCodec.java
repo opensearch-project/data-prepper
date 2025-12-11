@@ -19,20 +19,20 @@ import java.util.function.Consumer;
 public class OTelTraceInputCodec extends OTelProtoOpensearchCodec.OTelProtoDecoder implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceInputCodec.class);
     private final OTelTraceInputCodecConfig codecConfig;
-    private final ObjectMapper jacksonMapper = new ObjectMapper();
+    private final OtelTraceJsonDecoder decoder;
 
     @DataPrepperPluginConstructor
     public OTelTraceInputCodec(final OTelTraceInputCodecConfig codecConfig) {
         LOG.info("OTelTraceInputCodec initialization");
         this.codecConfig = codecConfig;
+        decoder = new OtelTraceJsonDecoder();
     }
 
     @Override
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
-        OTelLogsFormatOption format = codecConfig.getFormat();
+        OTelFormatOption format = codecConfig.getFormat();
 
-        if (format == OTelLogsFormatOption.JSON) {
-            OtelTraceJsonDecoder decoder = new OtelTraceJsonDecoder();
+        if (format == OTelFormatOption.JSON) {
             decoder.parse(inputStream, Instant.now(), eventConsumer);
         }
     }
