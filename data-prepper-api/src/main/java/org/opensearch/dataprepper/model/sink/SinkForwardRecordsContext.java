@@ -48,5 +48,9 @@ public class SinkForwardRecordsContext {
     public List<Record<Event>> getRecords() {
         return records;
     }
+
+    public void clearRecords() {
+        records.clear();
+    }
 }
 
