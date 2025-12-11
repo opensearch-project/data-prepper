@@ -69,23 +69,28 @@ class DateProcessorConfigTest {
             assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(false));
         }
 
-        @Test
-        void testValidAndInvalidOutputFormats() throws NoSuchFieldException, IllegalAccessException {
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", random);
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
+        @ParameterizedTest
+        @ValueSource(strings = {
+            "epoch_second",
+            "epoch_milli",
+            "epoch_nano",
+            "epoch_micro",
+            "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnXXX"
+        })
+        void testValidOutputFormats(String outputFormat) throws NoSuchFieldException, IllegalAccessException {
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", outputFormat);
+            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
+        }
 
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_second");
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_milli");
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_nano");
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_micro");
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "epoch_xyz");
+        @ParameterizedTest
+        @ValueSource(strings = {
+            "invalid[pattern]format",
+            "epoch_xyz",
+            "epoch_invalid"
+        })
+        void testInvalidOutputFormats(String outputFormat) throws NoSuchFieldException, IllegalAccessException {
+            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", outputFormat);
             assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(false));
-            setField(DateProcessorConfig.class, dateProcessorConfig, "outputFormat", "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnXXX");
-            assertThat(dateProcessorConfig.isValidOutputFormat(), equalTo(true));
         }
 
         @Test
