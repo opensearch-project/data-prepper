@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.slf4j.Logger;
@@ -43,6 +44,12 @@ public class MetricsHelper {
     private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
     private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
 
+
+    // other metric names
+    private static final String LOGS_REQUESTED = "logsRequested";
+    private static final String GET_REQUEST_LATENCY = "getRequestLatency";
+    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
+    private static final String TOTAL_API_REQUESTS = "totalApiRequests";
 
     // other errors in crawlerClient
     public static final String REQUEST_ERRORS = "requestErrors";
@@ -264,5 +271,61 @@ public class MetricsHelper {
     public static Counter provideGetRequestsFailureCounter(PluginMetrics pluginMetrics) {
         Counter failureCounter = pluginMetrics.counter(GET_REQUESTS_FAILED);
         return failureCounter;
+    }
+
+    /**
+     * Provides the logs requested counter to be incremented by the caller when audit/activity logs are requested.
+     *
+     * This method provides access to the counter that tracks the total number of logs requested
+     * from external APIs. This metric helps monitor API usage patterns, request volumes,
+     * and system load for capacity planning and performance analysis.
+     *
+     * @param pluginMetrics the PluginMetrics instance used to create and manage the counter
+     * @return the logs requested counter to be incremented by caller
+     */
+    public static Counter provideLogsRequestedCounter(PluginMetrics pluginMetrics) {
+        return pluginMetrics.counter(LOGS_REQUESTED);
+    }
+
+    /**
+     * Provides the GET request latency timer for measuring individual GET API call performance.
+     *
+     * This method provides access to the timer that measures the latency of individual GET requests
+     * to external APIs. This metric helps monitor API response times, identify performance bottlenecks,
+     * and track SLA compliance for individual resource retrieval operations.
+     *
+     * @param pluginMetrics the PluginMetrics instance used to create and manage the timer
+     * @return the GET request latency timer to be used by caller for timing operations
+     */
+    public static Timer provideGetRequestLatencyTimer(PluginMetrics pluginMetrics) {
+        return pluginMetrics.timer(GET_REQUEST_LATENCY);
+    }
+
+    /**
+     * Provides the search call latency timer for measuring search/query API call performance.
+     *
+     * This method provides access to the timer that measures the latency of search/query requests
+     * to external APIs. This metric helps monitor API response times for batch operations,
+     * identify performance issues with search queries, and track SLA compliance for data retrieval.
+     *
+     * @param pluginMetrics the PluginMetrics instance used to create and manage the timer
+     * @return the search call latency timer to be used by caller for timing operations
+     */
+    public static Timer provideSearchCallLatencyTimer(PluginMetrics pluginMetrics) {
+        return pluginMetrics.timer(SEARCH_CALL_LATENCY);
+    }
+
+    /**
+     * Provides the total API requests counter to be incremented by the caller for each API call made.
+     *
+     * This method provides access to the counter that tracks the total number of API requests made
+     * to external services. This metric helps monitor overall API usage patterns, request volumes,
+     * and system load for capacity planning and rate limiting considerations.
+     *
+     * @param pluginMetrics the PluginMetrics instance used to create and manage the counter
+     * @return the total API requests counter to be incremented by caller
+     */
+    public static Counter provideApiRequestsCounter(PluginMetrics pluginMetrics) {
+        return pluginMetrics.counter(TOTAL_API_REQUESTS);
     }
 }

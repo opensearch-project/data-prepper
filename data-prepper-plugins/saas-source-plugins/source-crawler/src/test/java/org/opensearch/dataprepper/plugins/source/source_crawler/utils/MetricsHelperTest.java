@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -44,7 +46,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class MetricsHelperTest {
+class MetricsHelperTest {
+
+    // Private test constants - duplicated from MetricsHelper for test isolation
+    private static final String REQUEST_ACCESS_DENIED = "requestAccessDenied";
+    private static final String REQUEST_THROTTLED = "requestThrottled";
+    private static final String RESOURCE_NOT_FOUND = "resourceNotFound";
+    private static final String GET_REQUESTS_FAILED = "getRequestsFailed";
+    private static final String GET_REQUESTS_SUCCESS = "getRequestsSuccess";
+    private static final String GET_RESPONSE_SIZE = "getResponseSizeBytes";
+    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
+    private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
+    private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
+    private static final String LOGS_REQUESTED = "logsRequested";
+    private static final String GET_REQUEST_LATENCY = "getRequestLatency";
+    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
+    private static final String TOTAL_API_REQUESTS = "totalApiRequests";
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -55,10 +72,14 @@ public class MetricsHelperTest {
     @Mock
     private DistributionSummary mockDistributionSummary;
 
+    @Mock
+    private Timer mockTimer;
+
     @BeforeEach
     void setUp() {
         lenient().when(pluginMetrics.counter(anyString())).thenReturn(mockCounter);
         lenient().when(pluginMetrics.summary(anyString())).thenReturn(mockDistributionSummary);
+        lenient().when(pluginMetrics.timer(anyString())).thenReturn(mockTimer);
     }
 
     @Test
@@ -77,9 +98,9 @@ public class MetricsHelperTest {
         result.values().forEach(counter -> assertEquals(mockCounter, counter));
 
         // requestAccessDenied is called twice for FORBIDDEN and UNAUTHORIZED
-        verify(pluginMetrics, times(2)).counter("requestAccessDenied");
-        verify(pluginMetrics).counter("requestThrottled");
-        verify(pluginMetrics).counter("resourceNotFound");
+        verify(pluginMetrics, times(2)).counter(REQUEST_ACCESS_DENIED);
+        verify(pluginMetrics).counter(REQUEST_THROTTLED);
+        verify(pluginMetrics).counter(RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -198,10 +219,10 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> metricMethods() {
         return Stream.of(
-                Arguments.of("search", "searchResponseSizeBytes",
+                Arguments.of("search", SEARCH_RESPONSE_SIZE,
                         (BiConsumer<PluginMetrics, ResponseEntity<?>>) MetricsHelper::publishSearchResponseSizeMetricInBytes,
                         (BiConsumer<PluginMetrics, String>) MetricsHelper::publishSearchResponseSizeMetricInBytes),
-                Arguments.of("get", "getResponseSizeBytes",
+                Arguments.of("get", GET_RESPONSE_SIZE,
                         (BiConsumer<PluginMetrics, ResponseEntity<?>>) MetricsHelper::publishGetResponseSizeMetricInBytes,
                         (BiConsumer<PluginMetrics, String>) MetricsHelper::publishGetResponseSizeMetricInBytes)
         );
@@ -273,8 +294,8 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> successMetricMethods() {
         return Stream.of(
-                Arguments.of("search", "searchRequestsSuccess"),
-                Arguments.of("get", "getRequestsSuccess")
+                Arguments.of("search", SEARCH_REQUESTS_SUCCESS),
+                Arguments.of("get", GET_REQUESTS_SUCCESS)
         );
     }
 
@@ -295,8 +316,8 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> failureCounterMethods() {
         return Stream.of(
-                Arguments.of("search", "searchRequestsFailed"),
-                Arguments.of("get", "getRequestsFailed")
+                Arguments.of("search", SEARCH_REQUESTS_FAILED),
+                Arguments.of("get", GET_REQUESTS_FAILED)
         );
     }
 
@@ -321,8 +342,8 @@ public class MetricsHelperTest {
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, getResponseEntity);
 
         // Verify both method types use their respective metric names
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
 
         // Test with different ResponseEntity generic types
         HttpHeaders genericHeaders = new HttpHeaders();
@@ -356,7 +377,7 @@ public class MetricsHelperTest {
         // This should work with the new ResponseEntity<?> overload
         MetricsHelper.publishSearchResponseSizeMetricInBytes(pluginMetrics, genericResponse);
 
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(3000L);
     }
 
@@ -380,7 +401,7 @@ public class MetricsHelperTest {
         // This should work with the new ResponseEntity<?> overload
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, genericResponse);
 
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(1500L);
     }
 
@@ -393,7 +414,7 @@ public class MetricsHelperTest {
 
         // Test null response
         MetricsHelper.publishSearchResponseSizeMetricInBytes(pluginMetrics, (ResponseEntity<?>) null);
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(-1L);
 
         reset(mockDistributionSummary);
@@ -411,7 +432,7 @@ public class MetricsHelperTest {
 
         // Test GET request with null
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, (ResponseEntity<?>) null);
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(-1L);
     }
 
@@ -444,5 +465,138 @@ public class MetricsHelperTest {
 
         // Verify all calls recorded the same Content-Length header value
         verify(mockDistributionSummary, times(6)).record(4000L);
+    }
+
+    // Functional tests demonstrating proper usage of the provided metrics
+    // Note: These tests supersede basic provider tests as they verify both creation AND functionality
+
+    @Test
+    void testLogsRequestedCounterFunctionality() {
+        Counter counter = MetricsHelper.provideLogsRequestedCounter(pluginMetrics);
+
+        // Test increment functionality
+        counter.increment();
+        counter.increment(5);
+
+        verify(mockCounter).increment();
+        verify(mockCounter).increment(5);
+
+        // Verify metric name
+        verify(pluginMetrics).counter(LOGS_REQUESTED);
+    }
+
+    @Test
+    void testGetRequestLatencyTimerFunctionality() {
+        Timer timer = MetricsHelper.provideGetRequestLatencyTimer(pluginMetrics);
+
+        // Test timer.record() with supplier (common usage pattern)
+        String result = timer.record(() -> "test-result");
+
+        verify(mockTimer).record(any(java.util.function.Supplier.class));
+
+        // Verify metric name
+        verify(pluginMetrics).timer(GET_REQUEST_LATENCY);
+    }
+
+    @Test
+    void testSearchCallLatencyTimerFunctionality() {
+        Timer timer = MetricsHelper.provideSearchCallLatencyTimer(pluginMetrics);
+
+        // Test timer.record() with supplier (common usage pattern)
+        String result = timer.record(() -> "search-result");
+
+        verify(mockTimer).record(any(java.util.function.Supplier.class));
+
+        // Verify metric name
+        verify(pluginMetrics).timer(SEARCH_CALL_LATENCY);
+    }
+
+    @ParameterizedTest(name = "Functional test for {0} provider method")
+    @MethodSource("functionalTestMethods")
+    void testProviderMethodsFunctionalUsage(String methodType, String expectedMetricName) {
+        if ("counter".equals(methodType)) {
+            Counter counter = MetricsHelper.provideLogsRequestedCounter(pluginMetrics);
+
+            // Demonstrate typical usage patterns
+            counter.increment();
+            counter.increment(3);
+
+            verify(mockCounter).increment();
+            verify(mockCounter).increment(3);
+            verify(pluginMetrics).counter(expectedMetricName);
+
+        } else { // timer
+            Timer timer = "getRequestLatency".equals(expectedMetricName) ?
+                    MetricsHelper.provideGetRequestLatencyTimer(pluginMetrics) :
+                    MetricsHelper.provideSearchCallLatencyTimer(pluginMetrics);
+
+            // Demonstrate typical usage patterns
+            timer.record(() -> "operation-result");
+            timer.record(java.time.Duration.ofMillis(100));
+
+            verify(mockTimer).record(any(java.util.function.Supplier.class));
+            verify(mockTimer).record(java.time.Duration.ofMillis(100));
+            verify(pluginMetrics).timer(expectedMetricName);
+        }
+    }
+
+    static Stream<Arguments> functionalTestMethods() {
+        return Stream.of(
+                Arguments.of("counter", LOGS_REQUESTED),
+                Arguments.of("timer", GET_REQUEST_LATENCY),
+                Arguments.of("timer", SEARCH_CALL_LATENCY)
+        );
+    }
+
+    @Test
+    void testProvideApiRequestsCounterFunctionality() {
+        Counter counter = MetricsHelper.provideApiRequestsCounter(pluginMetrics);
+
+        // Test increment functionality
+        counter.increment();
+        counter.increment(3);
+
+        verify(mockCounter).increment();
+        verify(mockCounter).increment(3);
+
+        // Verify metric name
+        verify(pluginMetrics).counter(TOTAL_API_REQUESTS);
+    }
+
+    @Test
+    void testUsagePatternExamples() {
+        // Demonstrate realistic usage patterns that would be used in Office365RestClient
+
+        // Counter usage examples
+        Counter logsCounter = MetricsHelper.provideLogsRequestedCounter(pluginMetrics);
+        logsCounter.increment(); // Increment when a log is requested
+        
+        Counter apiCounter = MetricsHelper.provideApiRequestsCounter(pluginMetrics);
+        apiCounter.increment(); // Increment for each API call made
+
+        // Timer usage examples
+        Timer getTimer = MetricsHelper.provideGetRequestLatencyTimer(pluginMetrics);
+        Timer searchTimer = MetricsHelper.provideSearchCallLatencyTimer(pluginMetrics);
+
+        // Typical timer usage with lambda (measuring operation duration)
+        String getResult = getTimer.record(() -> {
+            // Simulate GET operation
+            return "audit-log-content";
+        });
+
+        String searchResult = searchTimer.record(() -> {
+            // Simulate search operation
+            return "search-results";
+        });
+
+        // Verify all interactions
+        verify(mockCounter, times(2)).increment(); // Two counter increments
+        verify(mockTimer, times(2)).record(any(java.util.function.Supplier.class));
+
+        // Verify correct metric names were used
+        verify(pluginMetrics).counter(LOGS_REQUESTED);
+        verify(pluginMetrics).counter(TOTAL_API_REQUESTS);
+        verify(pluginMetrics).timer(GET_REQUEST_LATENCY);
+        verify(pluginMetrics).timer(SEARCH_CALL_LATENCY);
     }
 }
