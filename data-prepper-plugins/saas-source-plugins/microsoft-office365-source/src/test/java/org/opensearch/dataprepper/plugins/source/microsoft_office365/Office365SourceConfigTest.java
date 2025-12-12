@@ -101,4 +101,10 @@ class Office365SourceConfigTest {
 
         assertEquals(0, config.getLookBackHours());
     }
+
+    @Test
+    void testDefaultDurationValues() {
+        assertEquals(Duration.ofDays(30), config.getDurationToGiveUpRetry());
+        assertEquals(Duration.ofDays(1), config.getDurationToDelayRetry());
+    }
 }
