@@ -10,7 +10,6 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
@@ -41,6 +40,10 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.Met
 import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchResponseSizeMetricInBytes;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchRequestsSuccessMetric;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideSearchRequestFailureCounter;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideLogsRequestedCounter;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideGetRequestLatencyTimer;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideSearchCallLatencyTimer;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideApiRequestsCounter;
 
 /**
  * REST client for interacting with Office 365 Management API.
@@ -49,32 +52,19 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.Met
 @Slf4j
 @Named
 public class Office365RestClient {
-    private static final String AUDIT_LOG_FETCH_LATENCY = "auditLogFetchLatency";
-    private static final String API_CALLS = "apiCalls";
-    private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
-    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
-
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final Office365AuthenticationInterface authConfig;
-    private final Timer auditLogFetchLatencyTimer;
-    private final Timer searchCallLatencyTimer;
-    private final Counter auditLogsRequestedCounter;
-    private final Counter apiCallsCounter;
     private final PluginMetrics pluginMetrics;
 
     private Map<String, Counter> errorTypeMetricCounterMap;
 
     public Office365RestClient(final Office365AuthenticationInterface authConfig,
                                final PluginMetrics pluginMetrics) {
-        // TODO: Abstract into a Office365PluginMetrics
         this.authConfig = authConfig;
         this.pluginMetrics = pluginMetrics;
-        this.auditLogFetchLatencyTimer = pluginMetrics.timer(AUDIT_LOG_FETCH_LATENCY);
-        this.searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY);
-        this.auditLogsRequestedCounter = pluginMetrics.counter(AUDIT_LOGS_REQUESTED);
-        this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
+
         this.errorTypeMetricCounterMap = getErrorTypeMetricCounterMap(pluginMetrics);
     }
 
@@ -114,7 +104,7 @@ public class Office365RestClient {
                 RetryHandler.executeWithRetry(() -> {
                     try {
                         headers.setBearerAuth(authConfig.getAccessToken());
-                        apiCallsCounter.increment();
+                        provideApiRequestsCounter(pluginMetrics).increment();
                         ResponseEntity<String> response = restTemplate.exchange(
                                 url,
                                 HttpMethod.POST,
@@ -166,12 +156,12 @@ public class Office365RestClient {
         log.debug("Searching audit logs with URL: {}", url);
         final HttpHeaders headers = new HttpHeaders();
 
-        return searchCallLatencyTimer.record(() -> {
+        return provideSearchCallLatencyTimer(pluginMetrics).record(() -> {
             try {
                 return RetryHandler.executeWithRetry(
                         () -> {
                             headers.setBearerAuth(authConfig.getAccessToken());
-                            apiCallsCounter.increment();
+                            provideApiRequestsCounter(pluginMetrics).increment();
 
                             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                                     url,
@@ -237,14 +227,14 @@ public class Office365RestClient {
         }
 
         log.debug("Getting audit log from content URI: {}", contentUri);
-        auditLogsRequestedCounter.increment();
+        provideLogsRequestedCounter(pluginMetrics).increment();
         final HttpHeaders headers = new HttpHeaders();
 
-        return auditLogFetchLatencyTimer.record(() -> {
+        return provideGetRequestLatencyTimer(pluginMetrics).record(() -> {
             try {
                 String response = RetryHandler.executeWithRetry(() -> {
                     headers.setBearerAuth(authConfig.getAccessToken());
-                    apiCallsCounter.increment();
+                    provideApiRequestsCounter(pluginMetrics).increment();
                     ResponseEntity<String> responseEntity = restTemplate.exchange(
                             contentUri,
                             HttpMethod.GET,
