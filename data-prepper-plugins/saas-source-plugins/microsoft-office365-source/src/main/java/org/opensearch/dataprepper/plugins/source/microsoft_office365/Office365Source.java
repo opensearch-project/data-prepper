@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -37,7 +36,6 @@ import java.time.Instant;
 
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.PLUGIN_NAME;
 
-@Experimental
 @DataPrepperPlugin(name = PLUGIN_NAME,
         pluginType = Source.class,
         pluginConfigurationType = Office365SourceConfig.class,
