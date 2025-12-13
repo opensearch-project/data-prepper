@@ -66,5 +66,7 @@ public class SinkForwardRecordsContextTest {
         sinkForwardRecordsContext.addRecords(List.of(record2, record3));
         List<Record<Event>> records = sinkForwardRecordsContext.getRecords();
         assertThat(records.size(), equalTo(3));
+        sinkForwardRecordsContext.clearRecords();
+        assertThat(sinkForwardRecordsContext.getRecords().size(), equalTo(0));
     }
 }
