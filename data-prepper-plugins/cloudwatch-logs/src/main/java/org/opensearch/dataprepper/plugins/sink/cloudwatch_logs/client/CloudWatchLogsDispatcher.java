@@ -142,6 +142,9 @@ public class CloudWatchLogsDispatcher {
                         LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
                         cloudWatchLogsMetrics.increaseRequestFailCounter(1);
                         failCount++;
+                        if (failCount % 5 == 0) {
+                            cloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
+                        }
                         final long delayMillis = backoff.nextDelayMillis(failCount);
                         if (delayMillis > 0) {
                             Thread.sleep(delayMillis);
