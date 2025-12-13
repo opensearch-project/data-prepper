@@ -152,6 +152,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private final SinkContext sinkContext;
   private final ExpressionEvaluator expressionEvaluator;
+  private final boolean useEventInBulkOperation;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
   private DataStreamDetector dataStreamDetector;
@@ -185,6 +186,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
     this.expressionEvaluator = expressionEvaluator;
     this.pipeline = pipelineDescription.getPipelineName();
+    this.useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -528,7 +530,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final String queryTermKey = openSearchSinkConfig.getIndexConfiguration().getQueryTerm();
       final String termValue = queryTermKey != null ?
               event.get(queryTermKey, String.class) : null;
-      BulkOperationWrapper bulkOperationWrapper = getFailurePipeline() != null ?
+      BulkOperationWrapper bulkOperationWrapper = (useEventInBulkOperation) ?
               new BulkOperationWrapper(bulkOperation, event, serializedJsonNode, termValue) :
               new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode, termValue);
 
@@ -749,7 +751,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             .withPipelineName(pipeline)
             .withPluginId(PLUGIN_NAME);
 
-    if (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0) {
+    if (useEventInBulkOperation) {
       builder.withEvent(event);
     } else {
       builder.withEventHandle(event.getEventHandle());
