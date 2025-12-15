@@ -16,6 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +61,8 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -587,6 +590,88 @@ public class KafkaCustomConsumerTest {
             Assertions.assertEquals(topicPartition.topic(), topic);
             Assertions.assertEquals(103L, offsetAndMetadata.offset());
         });
+    }
+
+    @Test
+    public void testCommitOffsets_RebalanceInProgressException_DoesNotClearOffsets() throws Exception {
+        String topic = topicConfig.getName();
+        TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
+        when(topicConfig.getAutoCommit()).thenReturn(false);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumerRecords = createPlainTextRecords(topic, 100L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        doThrow(new RebalanceInProgressException("Rebalance in progress"))
+            .when(kafkaConsumer).commitSync(anyMap());
+
+        consumer.consumeRecords();
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsBeforeCommit = new HashMap<>(consumer.getOffsetsToCommit());
+        Assertions.assertFalse(offsetsBeforeCommit.isEmpty(), "Offsets should be populated after consuming records");
+        Assertions.assertEquals(102L, offsetsBeforeCommit.get(topicPartition).offset());
+
+        Thread testThread = new Thread(() -> {
+            try {
+                java.lang.reflect.Method method = consumer.getClass().getDeclaredMethod("commitOffsets", boolean.class);
+                method.setAccessible(true);
+                method.invoke(consumer, true);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        testThread.start();
+        testThread.join(5000);
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
+        Assertions.assertFalse(offsetsAfterFailedCommit.isEmpty(),
+            "Offsets should NOT be cleared after RebalanceInProgressException");
+        Assertions.assertEquals(offsetsBeforeCommit.get(topicPartition).offset(),
+            offsetsAfterFailedCommit.get(topicPartition).offset(),
+            "Offset value should remain unchanged for retry after rebalance completes");
+    }
+
+    @Test
+    public void testCommitOffsets_OtherException_ClearsOffsets() throws Exception {
+        String topic = topicConfig.getName();
+        TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+
+        when(topicConfig.getAutoCommit()).thenReturn(false);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumerRecords = createPlainTextRecords(topic, 100L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        doThrow(new RuntimeException("Generic commit failure"))
+            .when(kafkaConsumer).commitSync(anyMap());
+
+        consumer.consumeRecords();
+
+        Assertions.assertFalse(consumer.getOffsetsToCommit().isEmpty(),
+            "Offsets should be populated after consuming records");
+
+        Thread testThread = new Thread(() -> {
+            try {
+                java.lang.reflect.Method method = consumer.getClass().getDeclaredMethod("commitOffsets", boolean.class);
+                method.setAccessible(true);
+                method.invoke(consumer, true);
+            } catch (Exception e) {
+            }
+        });
+        testThread.start();
+        testThread.join(5000);
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
+        Assertions.assertTrue(offsetsAfterFailedCommit.isEmpty(),
+            "Offsets should be cleared after non-rebalance exception");
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {

@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.TopicPartition;
@@ -354,11 +355,15 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             offsetsToCommit.forEach(((partition, offset) -> updateCommitCountMetric(partition, offset)));
             try {
                 consumer.commitSync(offsetsToCommit);
+                lastCommitTime = currentTimeMillis;
+            } catch (final RebalanceInProgressException ex) {
+                LOG.error("Failed to commit offsets in topic {} due to rebalance in progress", topicName, ex);
+                return;
             } catch (Exception e) {
                 LOG.error("Failed to commit offsets in topic {}", topicName, e);
             }
+
             offsetsToCommit.clear();
-            lastCommitTime = currentTimeMillis;
         }
     }
 
