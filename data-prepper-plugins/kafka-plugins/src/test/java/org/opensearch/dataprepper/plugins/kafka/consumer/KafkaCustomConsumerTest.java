@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -52,7 +55,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -62,8 +67,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -230,14 +235,15 @@ public class KafkaCustomConsumerTest {
         assertThat(consumer.getRecordTimeStamp(consumerRecord3, nowMs), equalTo(nowMs));
     }
 
-    @Test
-    public void testBufferOverflowPauseResume() throws InterruptedException, Exception {
+    @ParameterizedTest
+    @MethodSource("provideExceptionsFromBufferWrite")
+    public void testBufferOverflowPauseResume(final Exception bufferException) throws InterruptedException, Exception {
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic, 0L);
         doAnswer((i)-> {
             if (!paused && !resumed)
-                throw new SizeOverflowException("size overflow");
+                throw bufferException;
             buffer.writeAll(i.getArgument(0), i.getArgument(1));
             return null;
         }).when(mockBuffer).writeAll(any(), anyInt());
@@ -689,6 +695,12 @@ public class KafkaCustomConsumerTest {
         ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
         records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
+    }
+
+    private static Stream<Arguments> provideExceptionsFromBufferWrite() {
+        return Stream.of(
+                Arguments.of(new SizeOverflowException("size overflow")),
+                Arguments.of(new TimeoutException()));
     }
 }
 
