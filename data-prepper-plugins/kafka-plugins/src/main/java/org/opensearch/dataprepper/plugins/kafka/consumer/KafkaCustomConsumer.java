@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
@@ -46,6 +47,7 @@ import software.amazon.awssdk.services.glue.model.AccessDeniedException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -103,6 +105,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
+    private final InputCodec inputCodec;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -114,7 +117,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate,
-                               final CompressionOption compressionConfig) {
+                               final CompressionOption compressionConfig,
+                               final InputCodec inputCodec) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -142,6 +146,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.inputCodec = inputCodec;
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
     }
 
@@ -155,7 +160,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE);
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE, null);
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -577,6 +582,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         Record<Event> record = new Record<>(event);
                         processRecord(acknowledgementSet, record);
                     }
+                } else if (inputCodec != null) {
+                    if (consumerRecord.value() == null){
+                        LOG.error("Record has no value");
+                        continue;
+                    }
+                    InputStream stream = new ByteArrayInputStream(consumerRecord.value().toString().getBytes(StandardCharsets.UTF_8));
+                    inputCodec.parse(stream, (record) -> processRecord(acknowledgementSet, record));
                 } else {
                     Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                     if (record != null) {

@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
@@ -79,6 +80,9 @@ public class ConfluentKafkaProducerConsumerIT {
 
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
+
+    @Mock
+    private PluginFactory pluginFactory;
 
     private KafkaSource kafkaSource;
     private TopicConsumerConfig topicConfig;
@@ -170,7 +174,7 @@ public class ConfluentKafkaProducerConsumerIT {
 
     public void consumeRecords(String servers) {
         kafkaSource = new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
-                null, pluginConfigObservable, awsCredentialsSupplier);
+                null, pluginConfigObservable, awsCredentialsSupplier, pluginFactory);
         kafkaSource.start(buffer);
     }
 

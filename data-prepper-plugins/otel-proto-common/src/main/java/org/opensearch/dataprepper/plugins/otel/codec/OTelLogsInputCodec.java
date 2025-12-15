@@ -24,11 +24,11 @@ public class OTelLogsInputCodec implements InputCodec {
     @DataPrepperPluginConstructor
     public OTelLogsInputCodec(final OTelLogsInputCodecConfig config) {
         Objects.requireNonNull(config);
-        OTelLogsFormatOption format = config.getFormat();
+        OTelFormatOption format = config.getFormat();
         OTelOutputFormat otelFormat = config.getOTelOutputFormat();
-        if (format == OTelLogsFormatOption.JSON) {
+        if (format == OTelFormatOption.JSON) {
             decoder = new OTelLogsJsonDecoder(otelFormat);
-        } else if (format == OTelLogsFormatOption.PROTOBUF) {
+        } else if (format == OTelFormatOption.PROTOBUF) {
             decoder = new OTelLogsProtoBufDecoder(otelFormat, config.getLengthPrefixedEncoding());
         } else {
             throw new RuntimeException("The codec " + config.getFormat() + " is not supported.");

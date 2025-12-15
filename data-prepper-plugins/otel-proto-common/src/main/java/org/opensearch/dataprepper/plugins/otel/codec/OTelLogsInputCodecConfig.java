@@ -18,13 +18,13 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 @JsonClassDescription("The <code>otel_logs</code> codec parses log files in S3 that follow the OpenTelemetry Protocol Specification. " +
         "It creates a Data Prepper log event for each log record along with the resource attributes in the file.")
 public class OTelLogsInputCodecConfig {
-    static final OTelLogsFormatOption DEFAULT_FORMAT = OTelLogsFormatOption.JSON;
+    static final OTelFormatOption DEFAULT_FORMAT = OTelFormatOption.JSON;
     static final OTelOutputFormat DEFAULT_OTEL_FORMAT = OTelOutputFormat.OPENSEARCH;
     
     @JsonProperty(value = "format", defaultValue = "json")
     @JsonPropertyDescription("Specifies the format of the OTel logs.")
     @NotNull
-    private OTelLogsFormatOption format = DEFAULT_FORMAT;
+    private OTelFormatOption format = DEFAULT_FORMAT;
  
     @JsonProperty(value = "otel_format", defaultValue = "opensearch")
     @JsonPropertyDescription("Specifies the format of the OTel Output.")
@@ -35,7 +35,7 @@ public class OTelLogsInputCodecConfig {
     @JsonPropertyDescription("Specifies if the length precedes the data in otlp_proto format")
     private boolean lengthPrefixedEncoding;
 
-    public OTelLogsFormatOption getFormat() {
+    public OTelFormatOption getFormat() {
          return format;
     }
 

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -54,6 +55,14 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
 
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
+
+    @JsonProperty("codec")
+    private PluginModel codec;
+
+
+    public PluginModel getCodec() {
+        return codec;
+    }
 
     public String getClientDnsLookup() {
         return clientDnsLookup;

@@ -21,23 +21,23 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-class OTelLogsFormatOptionTest {
+class OTelFormatOptionTest {
     @ParameterizedTest
-    @EnumSource(OTelLogsFormatOption.class)
-    void fromFormatName_returns_expected_value(final OTelLogsFormatOption formatOption) {
-        assertThat(OTelLogsFormatOption.fromFormatName(formatOption.getFormatName()), equalTo(formatOption));
+    @EnumSource(OTelFormatOption.class)
+    void fromFormatName_returns_expected_value(final OTelFormatOption formatOption) {
+        assertThat(OTelFormatOption.fromFormatName(formatOption.getFormatName()), equalTo(formatOption));
     }
 
     @ParameterizedTest
-    @EnumSource(OTelLogsFormatOption.class)
-    void getFormatName_returns_non_empty_string_for_all_types(final OTelLogsFormatOption formatOption) {
+    @EnumSource(OTelFormatOption.class)
+    void getFormatName_returns_non_empty_string_for_all_types(final OTelFormatOption formatOption) {
         assertThat(formatOption.getFormatName(), notNullValue());
         assertThat(formatOption.getFormatName(), not(emptyString()));
     }
 
     @ParameterizedTest
     @ArgumentsSource(OTelLogsFormatOptionToKnownName.class)
-    void getFormatName_returns_expected_name(final OTelLogsFormatOption formatOption, final String expectedString) {
+    void getFormatName_returns_expected_name(final OTelFormatOption formatOption, final String expectedString) {
         assertThat(formatOption.getFormatName(), equalTo(expectedString));
     }
 
@@ -45,7 +45,7 @@ class OTelLogsFormatOptionTest {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) {
             return Stream.of(
-                    arguments(OTelLogsFormatOption.JSON, "json")
+                    arguments(OTelFormatOption.JSON, "json")
             );
         }
     }
