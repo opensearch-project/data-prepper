@@ -153,11 +153,14 @@ public class OpenSearchSinkIT {
     private PluginConfigObservable pluginConfigObservable;
 
     public OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
+        sinkContext = mock(SinkContext.class);
+        when(sinkContext.getTagsTargetKey()).thenReturn(null);
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -850,7 +853,7 @@ public class OpenSearchSinkIT {
     }
 
     @Test
-    public void testForwardingRecords() throws IOException, InterruptedException {
+    public void testOutputForwardsCreatedDocumentsToAPipeline() throws IOException, InterruptedException {
         HeadlessPipeline forwardPipeline1 = mock(HeadlessPipeline.class);
         Map<String, HeadlessPipeline> forwardPipelineMap = Map.of("fwd_pipeline1", forwardPipeline1);
         final String testIndexAlias = "test-alias";
@@ -1288,7 +1291,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(openSearchSinkConfig, null, true);
+        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(openSearchSinkConfig, Map.of(), true);
         sink.output(testRecords);
 
         final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);

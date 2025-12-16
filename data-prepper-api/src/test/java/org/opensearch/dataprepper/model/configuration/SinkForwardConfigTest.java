@@ -27,7 +27,7 @@ public class SinkForwardConfigTest {
     }
 
     @Test
-    void testCustomValues() {
+    void pipelines_lsit_with_one_pipeline_succeeds() {
         List<String> pipelines = List.of("pipeline1");
         Map<String, Object> withData = mock(Map.class);
         Map<String, Object> withMetadata = mock(Map.class);
@@ -38,11 +38,16 @@ public class SinkForwardConfigTest {
     }
 
     @Test
-    void testInvalidValues() {
+    void pipelines_list_with_two_or_more_pipelines_throws_exception() {
         List<String> pipelines = List.of("pipeline1", "pipeline2");
         Map<String, Object> withData = mock(Map.class);
         Map<String, Object> withMetadata = mock(Map.class);
-        assertThrows(RuntimeException.class, ()->new SinkForwardConfig(pipelines, withData, withMetadata));
+        assertThrows(IllegalArgumentException.class, ()->new SinkForwardConfig(pipelines, withData, withMetadata));
+    }
+
+    @Test
+    void empty_pipelines_list_throws_exception() {
+        assertThrows(IllegalArgumentException.class, ()->new SinkForwardConfig(List.of(), Map.of(), Map.of()));
     }
 }
 

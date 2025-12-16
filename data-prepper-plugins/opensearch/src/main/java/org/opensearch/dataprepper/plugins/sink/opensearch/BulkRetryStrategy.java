@@ -364,10 +364,7 @@ public final class BulkRetryStrategy {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
             sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
-            List<BulkOperationWrapper> successfulOperations = new ArrayList<>();
-            for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
-                successfulOperations.add(bulkOperation);
-            }
+            List<BulkOperationWrapper> successfulOperations = new ArrayList<>(bulkRequestForRetry.getOperations());
             successfulOperationsHandler.accept(successfulOperations);
             final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
             documentsDuplicates.increment(totalDuplicateDocuments);
@@ -391,7 +388,7 @@ public final class BulkRetryStrategy {
             final AccumulatingBulkRequest requestToReissue = bulkRequestSupplier.get();
             final ImmutableList.Builder<FailedBulkOperation> nonRetryableFailures = ImmutableList.builder();
             int index = 0;
-            List<BulkOperationWrapper> successfulOperations = new ArrayList<>();
+            List<BulkOperationWrapper> successfulOperations = new ArrayList<>(response.items().size());
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 BulkOperationWrapper bulkOperation =
                         (BulkOperationWrapper)request.getOperationAt(index);
@@ -439,7 +436,7 @@ public final class BulkRetryStrategy {
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> accumulatingBulkRequest, final List<BulkResponseItem> itemResponses) {
         assert accumulatingBulkRequest.getOperationsCount() == itemResponses.size();
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
-        final List<BulkOperationWrapper> successfulOperations = new ArrayList<>();
+        final List<BulkOperationWrapper> successfulOperations = new ArrayList<>(itemResponses.size());
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);

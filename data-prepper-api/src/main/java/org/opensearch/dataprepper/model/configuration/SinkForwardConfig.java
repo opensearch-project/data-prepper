@@ -31,7 +31,7 @@ public class SinkForwardConfig {
         @JsonProperty("with_data") final Map<String, Object> withData,
         @JsonProperty("with_metadata") final Map<String, Object> withMetadata) {
         if (pipelineNames.size() != 1) {
-            throw new RuntimeException("Supports only one forwarding pipeline");
+            throw new IllegalArgumentException("Supports only one forwarding pipeline");
         }
         this.pipelineNames = pipelineNames;
         this.withData = withData;

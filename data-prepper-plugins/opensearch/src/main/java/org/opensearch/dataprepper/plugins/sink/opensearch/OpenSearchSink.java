@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -598,11 +599,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void successfulOperationsHandler(final List<BulkOperationWrapper> successfulOperations) {
+  @VisibleForTesting
+  void successfulOperationsHandler(final List<BulkOperationWrapper> successfulOperations) {
     if (successfulOperations.size() == 0) {
         return;
     }
-    final boolean shouldForward = sinkContext.getForwardToPipelines().size() > 0;
     if (sinkContext.getForwardToPipelines().size() == 0) {
       for (final BulkOperationWrapper bulkOperation: successfulOperations) {
         if (bulkOperation.getEvent() != null) {
