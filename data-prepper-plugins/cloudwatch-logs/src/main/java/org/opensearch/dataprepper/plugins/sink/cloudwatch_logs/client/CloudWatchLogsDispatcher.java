@@ -107,6 +107,7 @@ public class CloudWatchLogsDispatcher {
     @Builder
     protected static class Uploader implements Runnable {
         static final long INITIAL_DELAY_MS = 50;
+        static final int MULTIPLE_FAILURES_METRIC_COUNT = 5;
         static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
         private final CloudWatchLogsClient cloudWatchLogsClient;
         private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
@@ -141,8 +142,7 @@ public class CloudWatchLogsDispatcher {
                         failureMessage = e.getMessage();
                         LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
                         cloudWatchLogsMetrics.increaseRequestFailCounter(1);
-                        failCount++;
-                        if (failCount % 5 == 0) {
+                        if (++failCount % MULTIPLE_FAILURES_METRIC_COUNT == 0) {
                             cloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
                         }
                         final long delayMillis = backoff.nextDelayMillis(failCount);
