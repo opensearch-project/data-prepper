@@ -129,6 +129,16 @@ public class BulkRetryStrategyTests {
         return new BulkRetryStrategy(
                 requestFunction,
                 logFailure,
+                (operations) -> {
+                    for (BulkOperationWrapper operation: operations) {
+                        if (operation.getEvent() != null) {
+                            operation.getEvent().getEventHandle().release(true);
+                        }
+                        if (operation.getEventHandle() != null) {
+                            operation.getEventHandle().release(true);
+                        }
+                    }
+                },
                 pluginMetrics,
                 Integer.MAX_VALUE,
                 bulkRequestSupplier,
@@ -146,6 +156,16 @@ public class BulkRetryStrategyTests {
         return new BulkRetryStrategy(
                 requestFunction,
                 logFailure,
+                (operations) -> {
+                    for (BulkOperationWrapper operation: operations) {
+                        if (operation.getEvent() != null) {
+                            operation.getEvent().getEventHandle().release(true);
+                        }
+                        if (operation.getEventHandle() != null) {
+                            operation.getEventHandle().release(true);
+                        }
+                    }
+                },
                 pluginMetrics,
                 maxRetries,
                 bulkRequestSupplier,
@@ -164,6 +184,16 @@ public class BulkRetryStrategyTests {
         return new BulkRetryStrategy(
                 requestFunction,
                 logFailure,
+                (operations) -> {
+                    for (BulkOperationWrapper operation: operations) {
+                        if (operation.getEvent() != null) {
+                            operation.getEvent().getEventHandle().release(true);
+                        }
+                        if (operation.getEventHandle() != null) {
+                            operation.getEventHandle().release(true);
+                        }
+                    }
+                },
                 pluginMetrics,
                 maxRetries,
                 bulkRequestSupplier,
