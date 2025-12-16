@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -41,6 +42,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
@@ -151,6 +153,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private final SinkContext sinkContext;
   private final ExpressionEvaluator expressionEvaluator;
+  private final boolean useEventInBulkOperation;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
   private DataStreamDetector dataStreamDetector;
@@ -167,6 +170,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExecutorService queryExecutorService;
 
   private final int processWorkerThreads;
+  private final SinkForwardRecordsContext sinkForwardRecordsContext;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
@@ -180,8 +184,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.processWorkerThreads = pipelineDescription.getNumberOfProcessWorkers();
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+    sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
     this.expressionEvaluator = expressionEvaluator;
     this.pipeline = pipelineDescription.getPipelineName();
+    this.useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -300,6 +306,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             () -> openSearchClientRefresher.get());
     bulkRetryStrategy = new BulkRetryStrategy(bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
+            this::successfulOperationsHandler,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
@@ -524,7 +531,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final String queryTermKey = openSearchSinkConfig.getIndexConfiguration().getQueryTerm();
       final String termValue = queryTermKey != null ?
               event.get(queryTermKey, String.class) : null;
-      BulkOperationWrapper bulkOperationWrapper = getFailurePipeline() != null ?
+      BulkOperationWrapper bulkOperationWrapper = (useEventInBulkOperation) ?
               new BulkOperationWrapper(bulkOperation, event, serializedJsonNode, termValue) :
               new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode, termValue);
 
@@ -590,6 +597,27 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         Thread.currentThread().interrupt();
       }
     });
+  }
+
+  @VisibleForTesting
+  void successfulOperationsHandler(final List<BulkOperationWrapper> successfulOperations) {
+    if (successfulOperations.size() == 0) {
+        return;
+    }
+    if (sinkContext.getForwardToPipelines().size() == 0) {
+      for (final BulkOperationWrapper bulkOperation: successfulOperations) {
+        if (bulkOperation.getEvent() != null) {
+            bulkOperation.getEvent().getEventHandle().release(true);
+        } else {
+            bulkOperation.getEventHandle().release(true);
+        }
+      }
+      return;
+    }
+    for (final BulkOperationWrapper bulkOperation: successfulOperations) {
+      sinkForwardRecordsContext.addRecord(new Record<>(bulkOperation.getEvent()));
+    }
+    sinkContext.forwardRecords(sinkForwardRecordsContext, null, null);
   }
 
   private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
@@ -724,7 +752,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             .withPipelineName(pipeline)
             .withPluginId(PLUGIN_NAME);
 
-    if (getFailurePipeline() != null) {
+    if (useEventInBulkOperation) {
       builder.withEvent(event);
     } else {
       builder.withEventHandle(event.getEventHandle());
