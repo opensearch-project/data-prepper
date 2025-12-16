@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -31,7 +32,7 @@ public class SinkForwardConfig {
         @JsonProperty("with_data") final Map<String, Object> withData,
         @JsonProperty("with_metadata") final Map<String, Object> withMetadata) {
         if (pipelineNames.size() != 1) {
-            throw new IllegalArgumentException("Supports only one forwarding pipeline");
+            throw new InvalidPluginConfigurationException("Supports only one forwarding pipeline");
         }
         this.pipelineNames = pipelineNames;
         this.withData = withData;

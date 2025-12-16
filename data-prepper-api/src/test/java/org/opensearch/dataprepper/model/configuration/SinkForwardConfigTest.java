@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -42,12 +43,12 @@ public class SinkForwardConfigTest {
         List<String> pipelines = List.of("pipeline1", "pipeline2");
         Map<String, Object> withData = mock(Map.class);
         Map<String, Object> withMetadata = mock(Map.class);
-        assertThrows(IllegalArgumentException.class, ()->new SinkForwardConfig(pipelines, withData, withMetadata));
+        assertThrows(InvalidPluginConfigurationException.class, ()->new SinkForwardConfig(pipelines, withData, withMetadata));
     }
 
     @Test
     void empty_pipelines_list_throws_exception() {
-        assertThrows(IllegalArgumentException.class, ()->new SinkForwardConfig(List.of(), Map.of(), Map.of()));
+        assertThrows(InvalidPluginConfigurationException.class, ()->new SinkForwardConfig(List.of(), Map.of(), Map.of()));
     }
 }
 
