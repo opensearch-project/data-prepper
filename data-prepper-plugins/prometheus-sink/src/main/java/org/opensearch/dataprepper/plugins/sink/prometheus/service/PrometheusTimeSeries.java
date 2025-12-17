@@ -102,6 +102,14 @@ public class PrometheusTimeSeries {
         processResourceAndScopeAttributes(metric);
     }
 
+    public long getTimeStamp() {
+        return timestamp;
+    }
+
+    public String getMetricName() {
+        return metricName;
+    }
+
     private void processAttributes(Map<String, Object> attributesMap, String prefix) {
         if (attributesMap == null) return;
 
