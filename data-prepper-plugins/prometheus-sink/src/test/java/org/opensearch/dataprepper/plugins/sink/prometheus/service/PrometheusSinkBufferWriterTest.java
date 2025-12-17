@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
-import org.opensearch.dataprepper.common.sink.SinkFlushContext;
 import org.opensearch.dataprepper.model.metric.Gauge;
 import org.opensearch.dataprepper.model.event.Event;
 
