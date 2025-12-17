@@ -66,7 +66,7 @@ dependencyResolutionManagement {
             library('parquet-avro', 'org.apache.parquet', 'parquet-avro').versionRef('parquet')
             library('parquet-column', 'org.apache.parquet', 'parquet-column').versionRef('parquet')
             library('parquet-hadoop', 'org.apache.parquet', 'parquet-hadoop').versionRef('parquet')
-            version('hadoop', '3.4.0')
+            version('hadoop', '3.4.2')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
             version('avro', '1.11.4')
