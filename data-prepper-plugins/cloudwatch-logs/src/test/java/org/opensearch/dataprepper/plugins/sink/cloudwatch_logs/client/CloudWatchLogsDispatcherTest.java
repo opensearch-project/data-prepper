@@ -68,14 +68,14 @@ class CloudWatchLogsDispatcherTest {
         return eventHandles;
     }
 
-    CloudWatchLogsDispatcher getCloudWatchLogsDispatcher() {
+    CloudWatchLogsDispatcher getCloudWatchLogsDispatcher(int retryCount) {
         return CloudWatchLogsDispatcher.builder()
                 .cloudWatchLogsClient(mockCloudWatchLogsClient)
                 .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
                 .executor(mockExecutor)
                 .logGroup(LOG_GROUP)
                 .logStream(LOG_STREAM)
-                .retryCount(RETRY_COUNT)
+                .retryCount(retryCount)
                 .dropIfDlqNotConfigured(true)
                 .build();
     }
@@ -88,7 +88,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_valid_input_log_events_SHOULD_call_executor() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
@@ -105,7 +105,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_too_old_events_SHOULD_not_release_old_events() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
@@ -134,7 +134,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_too_new_events_SHOULD_not_release_new_events() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
@@ -164,7 +164,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_both_old_and_new_rejected_events_SHOULD_only_release_valid_events() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
@@ -197,7 +197,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_client_exception_SHOULD_retry() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -214,8 +214,26 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
+    void GIVEN_cloudwatch_exception_SHOULD_retry_forever() {
+        final int TEST_RETRY_COUNT = CloudWatchLogsDispatcher.Uploader.MULTIPLE_FAILURES_METRIC_COUNT+1;
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(TEST_RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+            .thenThrow(CloudWatchLogsException.class);
+        List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(TEST_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(0)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestMultiFailCounter(1);
+    }
+
+    @Test
     void GIVEN_cloudwatch_exception_SHOULD_retry() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -233,7 +251,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_max_retries_exceeded_SHOULD_not_release_events() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))

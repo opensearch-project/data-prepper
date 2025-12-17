@@ -8,26 +8,34 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsClientFactory;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsDispatcher;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.regions.Region;
+
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,12 +44,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CloudWatchLogsSinkTest {
+    private static int TEST_MAX_RETRIES = 3;
     private PluginSetting mockPluginSetting;
     private PluginMetrics mockPluginMetrics;
     private PluginFactory mockPluginFactory;
@@ -57,6 +67,7 @@ class CloudWatchLogsSinkTest {
     private static final String TEST_PLUGIN_NAME = "testPluginName";
     private static final String TEST_PIPELINE_NAME = "testPipelineName";
     private static final String TEST_BUFFER_TYPE = "in_memory";
+    private int numRetries;
     @BeforeEach
     void setUp() {
         mockPluginSetting = mock(PluginSetting.class);
@@ -73,12 +84,13 @@ class CloudWatchLogsSinkTest {
         DistributionSummary summary = mock(DistributionSummary.class);
         when(mockPluginMetrics.summary(anyString())).thenReturn(summary);
 
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
         when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(mockAwsConfig);
         when(mockCloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(new HashMap<>());
         when(mockCloudWatchLogsSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
         when(mockCloudWatchLogsSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
-        when(mockCloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
+        when(mockCloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(TEST_MAX_RETRIES);
         when(mockCloudWatchLogsSinkConfig.getWorkers()).thenReturn(10);
 
         when(mockPluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
@@ -167,17 +179,17 @@ class CloudWatchLogsSinkTest {
     void WHEN_header_overrides_is_empty_THEN_empty_map_is_passed_to_client_factory() {
         Map<String, String> emptyHeaders = new HashMap<>();
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(emptyHeaders);
-        
+
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
                             any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
-            
+
             mockedStatic.verify(() -> CloudWatchLogsClientFactory.createCwlClient(
-                    eq(mockAwsConfig), 
-                    eq(mockCredentialSupplier), 
+                    eq(mockAwsConfig),
+                    eq(mockCredentialSupplier),
                     eq(emptyHeaders),
                     any()));
         }
@@ -186,17 +198,17 @@ class CloudWatchLogsSinkTest {
     @Test
     void WHEN_header_overrides_is_provided_THEN_headers_are_passed_to_client_factory() {
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
-        
+
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
                             any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
-            
+
             mockedStatic.verify(() -> CloudWatchLogsClientFactory.createCwlClient(
-                    eq(mockAwsConfig), 
-                    eq(mockCredentialSupplier), 
+                    eq(mockAwsConfig),
+                    eq(mockCredentialSupplier),
                     eq(mockHeaderOverrides),
                     any()));
         }
@@ -205,7 +217,7 @@ class CloudWatchLogsSinkTest {
     @Test
     void WHEN_sink_initialization_with_header_overrides_THEN_sink_is_ready() {
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
-        
+
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
                             any(AwsCredentialsSupplier.class), any(), any()))
@@ -213,8 +225,59 @@ class CloudWatchLogsSinkTest {
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
-            
+
             assertTrue(testCloudWatchSink.isReady());
         }
     }
+
+    @Test
+    void WHEN_sink_has_no_dlq_config_THEN_retries_set_to_maxint() {
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                numRetries = (int)context.arguments().get(7);
+            });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+            dispatcherMock.close();
+
+        }
+        assertThat(numRetries, equalTo(Integer.MAX_VALUE));
+    }
+
+    @Test
+    void WHEN_sink_has_dlq_config_THEN_retries_set_to_user_configured_value() {
+        PluginModel dlqConfig = mock(PluginModel.class);
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+        when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn("role");
+
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                numRetries = (int)context.arguments().get(7);
+            });
+            final MockedConstruction<DlqPushHandler> dlqMock =
+                mockConstruction(DlqPushHandler.class, (mock, context) -> {
+                });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+            dispatcherMock.close();
+        }
+        assertThat(numRetries, equalTo(TEST_MAX_RETRIES));
+    }
+
 }

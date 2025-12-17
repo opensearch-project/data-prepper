@@ -94,7 +94,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .dropIfDlqNotConfigured(true)
                 .logGroup(cloudWatchLogsSinkConfig.getLogGroup())
                 .logStream(cloudWatchLogsSinkConfig.getLogStream())
-                .retryCount(cloudWatchLogsSinkConfig.getMaxRetries())
+                .retryCount(dlqPushHandler == null ? Integer.MAX_VALUE : cloudWatchLogsSinkConfig.getMaxRetries())
                 .executor(executor)
                 .build();
 
