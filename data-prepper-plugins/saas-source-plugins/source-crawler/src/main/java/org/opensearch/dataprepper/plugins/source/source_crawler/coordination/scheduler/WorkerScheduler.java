@@ -99,14 +99,14 @@ public class WorkerScheduler implements Runnable {
             } catch (Exception e) {
                 this.parititionsFailedCounter.increment();
                 // always default to backoffRetry strategy
-                boolean shouldUseBackoffRetry = true;
+                boolean shouldLocalRetry = true;
                 if (e instanceof SaaSCrawlerException) {
                     SaaSCrawlerException saasException = (SaaSCrawlerException) e;
                     if (!saasException.isRetryable()) {
-                        shouldUseBackoffRetry = delayRetry(partition, e);
+                        shouldLocalRetry = delayWorkerPartitionRetry(partition, e);
                     }
                 }
-                if (shouldUseBackoffRetry) {
+                if (shouldLocalRetry) {
                     backoffRetry(e);
                 }
             }
@@ -115,7 +115,7 @@ public class WorkerScheduler implements Runnable {
     }
 
     /**
-     * Default behaviour of backoff retry workerScheduler by sleeping RETRY_BACKOFF_ON_EXCEPTION_MILLIS
+     * Default behaviour of backoffRetry workerScheduler by sleeping RETRY_BACKOFF_ON_EXCEPTION_MILLIS
      * @param e - exception thrown by workerScheduler
      */
     private void backoffRetry(Exception e) {
@@ -128,32 +128,29 @@ public class WorkerScheduler implements Runnable {
     }
 
     /**
-     * Delay retry by X Duration (current default = 1 day) for all non-retryble exceptions up to X days (current default = 30 days)
+     * Delay retry on a workerPartition by X Duration (current default = 1 day) for all non-retryble exceptions up to X days (current default = 30 days)
      * @param sourcePartition - information on WorkerPartition state
      * @param ex - exception thrown by workerScheduler
-     * @return boolean: true if we should fallback to backoffRetry
+     * @return boolean: true if we should fallback to localRetry
      */
-    private boolean delayRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex) {
+    private boolean delayWorkerPartitionRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex) {
         log.error("[Non-Retryable Exception] Error processing worker partition. Will delay retry with the configured duration", ex);
         try {
             SaasSourcePartition workerPartition = (SaasSourcePartition) sourcePartition.get();
-            boolean isWorkerPartitionLeaseExtended = false;
+            boolean shouldLocalRetry = true;
             if (workerPartition != null) {
                 SaasWorkerProgressState progressState = (SaasWorkerProgressState) workerPartition.getProgressState().get();
                 // TODO: ideally we should add partitionCreationTime for all type of SaasWorkerProgressState
                 if (progressState instanceof DimensionalTimeSliceWorkerProgressState) {
                     DimensionalTimeSliceWorkerProgressState workerProgressState = (DimensionalTimeSliceWorkerProgressState) progressState;
                     updateWorkerPartition(workerProgressState.getPartitionCreationTime(), workerPartition);
-                    isWorkerPartitionLeaseExtended = true;
+                    shouldLocalRetry = false;
                 }
             }
 
-            // other SaasWorkerProgressState types (not DimensionalTimeSliceWorkerProgressState) should never use delayRetry()
+            // other SaasWorkerProgressState types (not DimensionalTimeSliceWorkerProgressState) should never use delayWorkerPartitionRetry()
             // to be safe, fallback to default retry strategy
-            if (!isWorkerPartitionLeaseExtended) {
-                return true;
-            }
-            return false;
+            return shouldLocalRetry;
         } catch (Exception e) {
             log.error("Error updating workerPartition ", e);
             // on exception, do not interrupt thread and retry again

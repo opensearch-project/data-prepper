@@ -28,11 +28,13 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
@@ -114,6 +116,7 @@ public final class BulkRetryStrategy {
 
     private final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction;
     private final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure;
+    private final Consumer<List<BulkOperationWrapper>> successfulOperationsHandler;
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
@@ -158,6 +161,7 @@ public final class BulkRetryStrategy {
 
     public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
+                             final Consumer<List<BulkOperationWrapper>> successfulOperationsHandler,
                              final PluginMetrics pluginMetrics,
                              final int maxRetries,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
@@ -167,6 +171,7 @@ public final class BulkRetryStrategy {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
+        this.successfulOperationsHandler = successfulOperationsHandler;
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
         this.maxRetries = maxRetries;
@@ -359,9 +364,8 @@ public final class BulkRetryStrategy {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
             sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
-            for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
-                bulkOperation.releaseEventHandle(true);
-            }
+            List<BulkOperationWrapper> successfulOperations = new ArrayList<>(bulkRequestForRetry.getOperations());
+            successfulOperationsHandler.accept(successfulOperations);
             final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
             documentsDuplicates.increment(totalDuplicateDocuments);
         }
@@ -384,6 +388,7 @@ public final class BulkRetryStrategy {
             final AccumulatingBulkRequest requestToReissue = bulkRequestSupplier.get();
             final ImmutableList.Builder<FailedBulkOperation> nonRetryableFailures = ImmutableList.builder();
             int index = 0;
+            List<BulkOperationWrapper> successfulOperations = new ArrayList<>(response.items().size());
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 BulkOperationWrapper bulkOperation =
                         (BulkOperationWrapper)request.getOperationAt(index);
@@ -399,6 +404,8 @@ public final class BulkRetryStrategy {
                     } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
+                        // This is not a successfully sent document, so do not add to "successfulOperations"
+                        // and just release the eventHandle
                         bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
@@ -413,10 +420,11 @@ public final class BulkRetryStrategy {
                     if(isDuplicateDocument(bulkItemResponse)) {
                         documentsDuplicates.increment();
                     }
-                    bulkOperation.releaseEventHandle(true);
+                    successfulOperations.add(bulkOperation);
                 }
                 index++;
             }
+            successfulOperationsHandler.accept(successfulOperations);
             final ImmutableList<FailedBulkOperation> failedBulkOperations = nonRetryableFailures.build();
             if(!failedBulkOperations.isEmpty()) {
                 logFailure.accept(failedBulkOperations, null);
@@ -428,6 +436,7 @@ public final class BulkRetryStrategy {
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> accumulatingBulkRequest, final List<BulkResponseItem> itemResponses) {
         assert accumulatingBulkRequest.getOperationsCount() == itemResponses.size();
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
+        final List<BulkOperationWrapper> successfulOperations = new ArrayList<>(itemResponses.size());
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
@@ -435,6 +444,8 @@ public final class BulkRetryStrategy {
                 if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
+                    // This is not a successfully sent document, so do not add to "successfulOperations"
+                    // and just release the eventHandle
                     bulkOperation.releaseEventHandle(true);
                 } else {
                     failures.add(FailedBulkOperation.builder()
@@ -449,9 +460,10 @@ public final class BulkRetryStrategy {
                 if(isDuplicateDocument(bulkItemResponse)) {
                     documentsDuplicates.increment();
                 }
-                bulkOperation.releaseEventHandle(true);
+                successfulOperations.add(bulkOperation);
             }
         }
+        successfulOperationsHandler.accept(successfulOperations);
         logFailure.accept(failures.build(), null);
     }
 

@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -94,6 +95,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -151,21 +153,25 @@ public class OpenSearchSinkIT {
     private PluginConfigObservable pluginConfigObservable;
 
     public OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
+        sinkContext = mock(SinkContext.class);
+        when(sinkContext.getTagsTargetKey()).thenReturn(null);
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }
         return sink;
     }
 
-    public OpenSearchSink createObjectUnderTestWithSinkContext(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
+    public OpenSearchSink createObjectUnderTestWithSinkContext(OpenSearchSinkConfig openSearchSinkConfig, final Map<String, HeadlessPipeline> forwardPipelineMap, boolean doInitialize) {
         sinkContext = mock(SinkContext.class);
         testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
+        when(sinkContext.getForwardToPipelines()).thenReturn(forwardPipelineMap);
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
@@ -847,6 +853,36 @@ public class OpenSearchSinkIT {
     }
 
     @Test
+    public void testOutputForwardsCreatedDocumentsToAPipeline() throws IOException, InterruptedException {
+        HeadlessPipeline forwardPipeline1 = mock(HeadlessPipeline.class);
+        Map<String, HeadlessPipeline> forwardPipelineMap = Map.of("fwd_pipeline1", forwardPipeline1);
+        final String testIndexAlias = "test-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(openSearchSinkConfig, forwardPipelineMap, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+        verify(sinkContext).forwardRecords(any(), eq(null), eq(null));
+    }
+
+    @Test
     public void testOutputCustomIndex() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
@@ -1255,7 +1291,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(openSearchSinkConfig, true);
+        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(openSearchSinkConfig, Map.of(), true);
         sink.output(testRecords);
 
         final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);

@@ -24,6 +24,8 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -47,7 +49,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -228,6 +232,69 @@ public class OpenSearchSinkTest {
         objectUnderTest.initialize();
         objectUnderTest.initialize();
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void test_sink_successful_records_handling_without_forwarding_pipelines_bulk_operations_with_event_handles() throws Exception {
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
+        final EventHandle eventHandle = mock(EventHandle.class);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        BulkOperationWrapper op1 = mock(BulkOperationWrapper.class);
+        BulkOperationWrapper op2 = mock(BulkOperationWrapper.class);
+        when(op1.getEvent()).thenReturn(null);
+        when(op2.getEvent()).thenReturn(null);
+        when(op1.getEventHandle()).thenReturn(eventHandle);
+        when(op2.getEventHandle()).thenReturn(eventHandle);
+        List<BulkOperationWrapper> operationsList = new ArrayList<>();
+        operationsList.add(op1);
+        operationsList.add(op2);
+        objectUnderTest.successfulOperationsHandler(operationsList);
+        verify(eventHandle, times(2)).release(eq(true));
+        
+    }
+
+    @Test
+    void test_sink_successful_records_handling_with_forwarding_pipelines() throws Exception {
+        HeadlessPipeline forwardPipeline = mock(HeadlessPipeline.class);
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of("fwd_pipeline", forwardPipeline));
+        final EventHandle eventHandle = mock(EventHandle.class);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        BulkOperationWrapper op1 = mock(BulkOperationWrapper.class);
+        BulkOperationWrapper op2 = mock(BulkOperationWrapper.class);
+        Event event = mock(Event.class);
+        when(op1.getEvent()).thenReturn(event);
+        when(op2.getEvent()).thenReturn(event);
+        List<BulkOperationWrapper> operationsList = new ArrayList<>();
+        operationsList.add(op1);
+        operationsList.add(op2);
+        objectUnderTest.successfulOperationsHandler(operationsList);
+        verify(eventHandle, times(0)).release(eq(true));
+        verify(op1, times(1)).getEvent();
+        verify(op2, times(1)).getEvent();
+        verify(sinkContext, times(1)).forwardRecords(any(SinkForwardRecordsContext.class), eq(null), eq(null));
+        
+    }
+
+ 
+    @Test
+    void test_sink_successful_records_handling_without_forwarding_pipelines_bulk_operations_with_events() throws Exception {
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
+        final EventHandle eventHandle = mock(EventHandle.class);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        BulkOperationWrapper op1 = mock(BulkOperationWrapper.class);
+        BulkOperationWrapper op2 = mock(BulkOperationWrapper.class);
+        Event event = mock(Event.class);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        when(op1.getEvent()).thenReturn(event);
+        when(op2.getEvent()).thenReturn(event);
+        List<BulkOperationWrapper> operationsList = new ArrayList<>();
+        operationsList.add(op1);
+        operationsList.add(op2);
+        objectUnderTest.successfulOperationsHandler(operationsList);
+        verify(eventHandle, times(2)).release(eq(true));
+        verify(op1, times(0)).getEventHandle();
+        verify(op2, times(0)).getEventHandle();
+        
     }
 
     @Test

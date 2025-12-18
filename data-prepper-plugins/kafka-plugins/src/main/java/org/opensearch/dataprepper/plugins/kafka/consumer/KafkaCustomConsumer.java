@@ -17,12 +17,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -69,8 +69,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
-    private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
     private static final int RETRY_ON_EXCEPTION_SLEEP_MS = 1000;
+    private static final int BUFFER_WRITE_TIMEOUT = 2000;
     static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
@@ -80,7 +80,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final TopicConsumerConfig topicConfig;
     private MessageFormat schema;
     private boolean paused;
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final Buffer<Record<Event>> buffer;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
@@ -122,7 +121,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.paused = false;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
-        this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * RETRY_ON_EXCEPTION_SLEEP_MS);
+        this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * (RETRY_ON_EXCEPTION_SLEEP_MS + BUFFER_WRITE_TIMEOUT));
         this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
@@ -136,8 +135,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.partitionCommitTrackerMap = new HashMap<>();
         this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());
         this.schema = MessageFormat.getByMessageFormatByName(schemaType);
-        Duration bufferTimeout = Duration.ofSeconds(1);
-        this.bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
@@ -354,11 +351,15 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             offsetsToCommit.forEach(((partition, offset) -> updateCommitCountMetric(partition, offset)));
             try {
                 consumer.commitSync(offsetsToCommit);
+                lastCommitTime = currentTimeMillis;
+            } catch (final RebalanceInProgressException ex) {
+                LOG.error("Failed to commit offsets in topic {} due to rebalance in progress", topicName, ex);
+                return;
             } catch (Exception e) {
                 LOG.error("Failed to commit offsets in topic {}", topicName, e);
             }
+
             offsetsToCommit.clear();
-            lastCommitTime = currentTimeMillis;
         }
     }
 
@@ -487,23 +488,19 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return new Record<Event>(event);
     }
 
-    private void processRecord(final AcknowledgementSet acknowledgementSet, final Record<Event> record) {
+    private void processRecords(final AcknowledgementSet acknowledgementSet, final List<Record<Event>> eventRecords) {
         // Always add record to acknowledgementSet before adding to
         // buffer because another thread may take and process
         // buffer contents before the event record is added
         // to acknowledgement set
         if (acknowledgementSet != null) {
-            acknowledgementSet.add(record.getData());
+            eventRecords.forEach(record -> acknowledgementSet.add(record.getData()));
         }
         long numRetries = 0;
         while (true) {
             LOG.debug("In while loop for processing records, paused = {}", paused);
             try {
-                if (numRetries == 0) {
-                    bufferAccumulator.add(record);
-                } else {
-                    bufferAccumulator.flush();
-                }
+                buffer.writeAll(eventRecords, BUFFER_WRITE_TIMEOUT);
                 break;
             } catch (Exception e) {
                 if (!paused && numRetries++ > maxRetriesOnException) {
@@ -554,6 +551,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             }
 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
+            final List<Record<Event>> eventRecords = new ArrayList<>();
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 if (schema == MessageFormat.BYTES) {
                     InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
@@ -562,23 +560,23 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     if(byteDecoder != null) {
                         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
-                            processRecord(acknowledgementSet, record);
-                        });
+                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), eventRecords::add);
                     } else {
                         JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
 
                         Event event = JacksonLog.builder().withData(jsonNode).build();
                         Record<Event> record = new Record<>(event);
-                        processRecord(acknowledgementSet, record);
+                        eventRecords.add(record);
                     }
                 } else {
                     Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                     if (record != null) {
-                        processRecord(acknowledgementSet, record);
+                        eventRecords.add(record);
                     }
                 }
             }
+
+            processRecords(acknowledgementSet, eventRecords);
 
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
             long firstOffset = partitionRecords.get(0).offset();
