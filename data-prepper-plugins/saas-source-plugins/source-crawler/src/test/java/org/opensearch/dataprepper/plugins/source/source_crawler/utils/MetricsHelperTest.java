@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +45,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class MetricsHelperTest {
+class MetricsHelperTest {
+
+    // Private test constants - duplicated from MetricsHelper for test isolation
+    private static final String REQUEST_ACCESS_DENIED = "requestAccessDenied";
+    private static final String REQUEST_THROTTLED = "requestThrottled";
+    private static final String RESOURCE_NOT_FOUND = "resourceNotFound";
+    private static final String GET_REQUESTS_FAILED = "getRequestsFailed";
+    private static final String GET_REQUESTS_SUCCESS = "getRequestsSuccess";
+    private static final String GET_RESPONSE_SIZE = "getResponseSizeBytes";
+    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
+    private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
+    private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -55,10 +67,14 @@ public class MetricsHelperTest {
     @Mock
     private DistributionSummary mockDistributionSummary;
 
+    @Mock
+    private Timer mockTimer;
+
     @BeforeEach
     void setUp() {
         lenient().when(pluginMetrics.counter(anyString())).thenReturn(mockCounter);
         lenient().when(pluginMetrics.summary(anyString())).thenReturn(mockDistributionSummary);
+        lenient().when(pluginMetrics.timer(anyString())).thenReturn(mockTimer);
     }
 
     @Test
@@ -77,9 +93,9 @@ public class MetricsHelperTest {
         result.values().forEach(counter -> assertEquals(mockCounter, counter));
 
         // requestAccessDenied is called twice for FORBIDDEN and UNAUTHORIZED
-        verify(pluginMetrics, times(2)).counter("requestAccessDenied");
-        verify(pluginMetrics).counter("requestThrottled");
-        verify(pluginMetrics).counter("resourceNotFound");
+        verify(pluginMetrics, times(2)).counter(REQUEST_ACCESS_DENIED);
+        verify(pluginMetrics).counter(REQUEST_THROTTLED);
+        verify(pluginMetrics).counter(RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -198,10 +214,10 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> metricMethods() {
         return Stream.of(
-                Arguments.of("search", "searchResponseSizeBytes",
+                Arguments.of("search", SEARCH_RESPONSE_SIZE,
                         (BiConsumer<PluginMetrics, ResponseEntity<?>>) MetricsHelper::publishSearchResponseSizeMetricInBytes,
                         (BiConsumer<PluginMetrics, String>) MetricsHelper::publishSearchResponseSizeMetricInBytes),
-                Arguments.of("get", "getResponseSizeBytes",
+                Arguments.of("get", GET_RESPONSE_SIZE,
                         (BiConsumer<PluginMetrics, ResponseEntity<?>>) MetricsHelper::publishGetResponseSizeMetricInBytes,
                         (BiConsumer<PluginMetrics, String>) MetricsHelper::publishGetResponseSizeMetricInBytes)
         );
@@ -273,8 +289,8 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> successMetricMethods() {
         return Stream.of(
-                Arguments.of("search", "searchRequestsSuccess"),
-                Arguments.of("get", "getRequestsSuccess")
+                Arguments.of("search", SEARCH_REQUESTS_SUCCESS),
+                Arguments.of("get", GET_REQUESTS_SUCCESS)
         );
     }
 
@@ -295,8 +311,8 @@ public class MetricsHelperTest {
 
     static Stream<Arguments> failureCounterMethods() {
         return Stream.of(
-                Arguments.of("search", "searchRequestsFailed"),
-                Arguments.of("get", "getRequestsFailed")
+                Arguments.of("search", SEARCH_REQUESTS_FAILED),
+                Arguments.of("get", GET_REQUESTS_FAILED)
         );
     }
 
@@ -321,8 +337,8 @@ public class MetricsHelperTest {
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, getResponseEntity);
 
         // Verify both method types use their respective metric names
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
 
         // Test with different ResponseEntity generic types
         HttpHeaders genericHeaders = new HttpHeaders();
@@ -356,7 +372,7 @@ public class MetricsHelperTest {
         // This should work with the new ResponseEntity<?> overload
         MetricsHelper.publishSearchResponseSizeMetricInBytes(pluginMetrics, genericResponse);
 
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(3000L);
     }
 
@@ -380,7 +396,7 @@ public class MetricsHelperTest {
         // This should work with the new ResponseEntity<?> overload
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, genericResponse);
 
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(1500L);
     }
 
@@ -393,7 +409,7 @@ public class MetricsHelperTest {
 
         // Test null response
         MetricsHelper.publishSearchResponseSizeMetricInBytes(pluginMetrics, (ResponseEntity<?>) null);
-        verify(pluginMetrics).summary("searchResponseSizeBytes");
+        verify(pluginMetrics).summary(SEARCH_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(-1L);
 
         reset(mockDistributionSummary);
@@ -411,7 +427,7 @@ public class MetricsHelperTest {
 
         // Test GET request with null
         MetricsHelper.publishGetResponseSizeMetricInBytes(pluginMetrics, (ResponseEntity<?>) null);
-        verify(pluginMetrics).summary("getResponseSizeBytes");
+        verify(pluginMetrics).summary(GET_RESPONSE_SIZE);
         verify(mockDistributionSummary).record(-1L);
     }
 
