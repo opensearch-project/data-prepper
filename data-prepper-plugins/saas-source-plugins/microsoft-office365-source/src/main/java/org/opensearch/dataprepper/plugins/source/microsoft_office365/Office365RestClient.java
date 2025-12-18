@@ -10,12 +10,12 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
@@ -33,18 +33,9 @@ import javax.inject.Named;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.getErrorTypeMetricCounterMap;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishErrorTypeMetricCounter;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishGetResponseSizeMetricInBytes;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishGetRequestsSuccessMetric;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideGetRequestsFailureCounter;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchResponseSizeMetricInBytes;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.publishSearchRequestsSuccessMetric;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.provideSearchRequestFailureCounter;
 
 /**
  * REST client for interacting with Office 365 Management API.
@@ -53,34 +44,21 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.Met
 @Slf4j
 @Named
 public class Office365RestClient {
-    private static final String AUDIT_LOG_FETCH_LATENCY = "auditLogFetchLatency";
-    private static final String API_CALLS = "apiCalls";
-    private static final String AUDIT_LOGS_REQUESTED = "auditLogsRequested";
-    private static final String SEARCH_CALL_LATENCY = "searchCallLatency";
-
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
+    private static final String API_CALLS = "apiCalls";
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final RetryHandler retryHandler;
     private final Office365AuthenticationInterface authConfig;
-    private final Timer auditLogFetchLatencyTimer;
-    private final Timer searchCallLatencyTimer;
-    private final Counter auditLogsRequestedCounter;
+    private final VendorAPIMetricsRecorder metricsRecorder;
     private final Counter apiCallsCounter;
-    private final PluginMetrics pluginMetrics;
-
-    private Map<String, Counter> errorTypeMetricCounterMap;
 
     public Office365RestClient(final Office365AuthenticationInterface authConfig,
-                               final PluginMetrics pluginMetrics) {
-        // TODO: Abstract into a Office365PluginMetrics
+                               final PluginMetrics pluginMetrics,
+                               final VendorAPIMetricsRecorder metricsRecorder) {
         this.authConfig = authConfig;
-        this.pluginMetrics = pluginMetrics;
-        this.auditLogFetchLatencyTimer = pluginMetrics.timer(AUDIT_LOG_FETCH_LATENCY);
-        this.searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY);
-        this.auditLogsRequestedCounter = pluginMetrics.counter(AUDIT_LOGS_REQUESTED);
+        this.metricsRecorder = metricsRecorder;
         this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
-        this.errorTypeMetricCounterMap = getErrorTypeMetricCounterMap(pluginMetrics);
         this.retryHandler = new RetryHandler(
                 new DefaultRetryStrategy(),
                 new DefaultStatusCodeHandler());
@@ -93,7 +71,6 @@ public class Office365RestClient {
         log.info("Starting Office 365 subscriptions for audit logs");
         try {
             HttpHeaders headers = new HttpHeaders();
-
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // TODO: Only start the subscriptions only if the call commented
@@ -141,7 +118,7 @@ public class Office365RestClient {
                 }, authConfig::renewCredentials);
             }
         } catch (Exception e) {
-            publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
+            metricsRecorder.recordError(e);
             log.error(NOISY, "Failed to initialize subscriptions", e);
             throw new SaaSCrawlerException("Failed to initialize subscriptions: " + e.getMessage(), e, true);
         }
@@ -174,12 +151,12 @@ public class Office365RestClient {
         log.debug("Searching audit logs with URL: {}", url);
         final HttpHeaders headers = new HttpHeaders();
 
-        return searchCallLatencyTimer.record(() -> {
+        return metricsRecorder.recordSearchLatency(() -> {
             try {
                 return retryHandler.executeWithRetry(
                         () -> {
                             headers.setBearerAuth(authConfig.getAccessToken());
-                            apiCallsCounter.increment();
+                            metricsRecorder.recordDataApiRequest();
 
                             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                                     url,
@@ -205,9 +182,8 @@ public class Office365RestClient {
                                 }
                             }
 
-                            // Publish centralized search metrics
-                            publishSearchResponseSizeMetricInBytes(pluginMetrics, response);
-                            publishSearchRequestsSuccessMetric(pluginMetrics);
+                            metricsRecorder.recordSearchResponseSize(response);
+                            metricsRecorder.recordSearchSuccess();
 
                             // Extract NextPageUri from response headers
                             List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
@@ -221,10 +197,11 @@ public class Office365RestClient {
                             return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
                         authConfig::renewCredentials,
-                        Optional.of(provideSearchRequestFailureCounter(pluginMetrics))
+                        metricsRecorder::recordSearchFailure
                 );
             } catch (Exception e) {
-                publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
+                metricsRecorder.recordError(e);
+                metricsRecorder.recordSearchFailure();
                 log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
                         contentType, url, e);
                 throw new SaaSCrawlerException("Failed to fetch audit logs", e, true);
@@ -245,14 +222,14 @@ public class Office365RestClient {
         }
 
         log.debug("Getting audit log from content URI: {}", contentUri);
-        auditLogsRequestedCounter.increment();
+        metricsRecorder.recordLogsRequested();
         final HttpHeaders headers = new HttpHeaders();
 
-        return auditLogFetchLatencyTimer.record(() -> {
+        return metricsRecorder.recordGetLatency(() -> {
             try {
                 String response = retryHandler.executeWithRetry(() -> {
                     headers.setBearerAuth(authConfig.getAccessToken());
-                    apiCallsCounter.increment();
+                    metricsRecorder.recordDataApiRequest();
                     ResponseEntity<String> responseEntity = restTemplate.exchange(
                             contentUri,
                             HttpMethod.GET,
@@ -261,7 +238,7 @@ public class Office365RestClient {
                     );
 
                     return responseEntity.getBody();
-                }, authConfig::renewCredentials, Optional.of(provideGetRequestsFailureCounter(pluginMetrics)));
+                }, authConfig::renewCredentials, metricsRecorder::recordGetFailure);
 
                 // Log response details
                 if (response == null) {
@@ -278,13 +255,13 @@ public class Office365RestClient {
                     }
                 }
 
-                // Publish centralized GET request metrics
-                publishGetResponseSizeMetricInBytes(pluginMetrics, response);
-                publishGetRequestsSuccessMetric(pluginMetrics);
+                metricsRecorder.recordGetResponseSize(response);
+                metricsRecorder.recordGetSuccess();
 
                 return response;
             } catch (Exception e) {
-                publishErrorTypeMetricCounter(e, this.errorTypeMetricCounterMap);
+                metricsRecorder.recordError(e);
+                metricsRecorder.recordGetFailure();
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
                 throw new SaaSCrawlerException("Failed to fetch audit log", e, true);
             }
