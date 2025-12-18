@@ -10,13 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry;
 
-import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
-import java.util.Optional;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -37,7 +35,7 @@ public class RetryHandler {
 
     /**
      * Executes the given operation with retry logic, optional credential renewal,
-     * and failure counter.
+     * and failure handler.
      *
      * @param operation         The operation to execute.
      * @param credentialRenewal The action to renew credentials if needed.
@@ -46,21 +44,21 @@ public class RetryHandler {
      * @return The result of the operation.
      */
     public <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal) {
-        return executeWithRetry(operation, credentialRenewal, Optional.empty());
+        return executeWithRetry(operation, credentialRenewal, null);
     }
 
     /**
      * Executes the given operation with retry logic, optional credential renewal,
-     * and failure counter.
+     * and failure handler.
      *
      * @param operation         The operation to execute.
      * @param credentialRenewal The action to renew credentials if needed.
-     * @param failureCounter    The counter to increment on each failed attempt
+     * @param failureHandler    The handler to run on each failed attempt
      *                          (optional).
      * @param <T>               The return type of the operation.
      * @return The result of the operation.
      */
-    public <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal, Optional<Counter> failureCounter) {
+    public <T> T executeWithRetry(Supplier<T> operation, Runnable credentialRenewal, Runnable failureHandler) {
         if (operation == null) {
             throw new SaaSCrawlerException("Operation cannot be null", false);
         }
@@ -97,8 +95,8 @@ public class RetryHandler {
                 long sleepTimeMs = retryStrategy.calculateSleepTime(ex, retryCount);
                 sleep(sleepTimeMs);
             } finally {
-                if (!operationSucceeded) {
-                    failureCounter.ifPresent(Counter::increment);
+                if (!operationSucceeded && failureHandler != null) {
+                    failureHandler.run();
                 }
             }
             retryCount++;

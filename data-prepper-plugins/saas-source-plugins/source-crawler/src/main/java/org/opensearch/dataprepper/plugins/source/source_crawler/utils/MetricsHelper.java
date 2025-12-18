@@ -43,7 +43,6 @@ public class MetricsHelper {
     private static final String SEARCH_REQUESTS_SUCCESS = "searchRequestsSuccess";
     private static final String SEARCH_RESPONSE_SIZE = "searchResponseSizeBytes";
 
-
     // other errors in crawlerClient
     public static final String REQUEST_ERRORS = "requestErrors";
 
