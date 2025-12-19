@@ -22,12 +22,15 @@ import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 @ExtendWith(MockitoExtension.class)
 class JsonSchemaConverterTest {
@@ -230,10 +233,60 @@ class JsonSchemaConverterTest {
         assertThat(defsNode, instanceOf(ObjectNode.class));
     }
 
+    @Test
+    void convertIntoJsonSchema_withMapField_shouldNotCreateDefinition() throws JsonProcessingException {
+        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
+                Collections.emptyList(), pluginProvider);
+        final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfigWithMap.class);
+        
+        if (jsonSchemaNode.has("$defs")) {
+            final JsonNode defsNode = jsonSchemaNode.get("$defs");
+            assertThat(defsNode.toString(), not(containsString("Map(")));
+        }
+        
+        final JsonNode properties = jsonSchemaNode.get("properties");
+        assertThat(properties, notNullValue());
+        final JsonNode mapField = properties.get("mapField");
+        assertThat(mapField, notNullValue());
+        assertThat(mapField.get("type").asText(), is("object"));
+    }
+
+    @Test
+    void convertIntoJsonSchema_withNestedMapField_shouldNotCreateDefinition() throws JsonProcessingException {
+        final JsonSchemaConverter jsonSchemaConverter = createObjectUnderTest(
+                Collections.emptyList(), pluginProvider);
+        final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfigWithNestedMap.class);
+        
+        if (jsonSchemaNode.has("$defs")) {
+            final JsonNode defsNode = jsonSchemaNode.get("$defs");
+            assertThat(defsNode.toString(), not(containsString("Map(")));
+        }
+        
+        final JsonNode properties = jsonSchemaNode.get("properties");
+        assertThat(properties, notNullValue());
+        final JsonNode nestedMapField = properties.get("nestedMap");
+        assertThat(nestedMapField, notNullValue());
+        assertThat(nestedMapField.get("type").asText(), is("object"));
+    }
+
     @JsonClassDescription("Test config with nested object")
     static class TestConfigWithNestedObject {
         @JsonProperty("nested_list")
         private List<NestedObject> nestedList;
+    }
+
+    @JsonClassDescription("Test config with map field")
+    static class TestConfigWithMap {
+        @JsonProperty("map_field")
+        private Map<String, String> mapField;
+    }
+
+    @JsonClassDescription("Test config with nested map field")
+    static class TestConfigWithNestedMap {
+        @JsonProperty("nested_map")
+        private Map<String, List<String>> nestedMap;
     }
 
     static class NestedObject {

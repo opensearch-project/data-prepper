@@ -23,15 +23,19 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
 import org.opensearch.dataprepper.plugin.PluginProvider;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
+import org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 public class JsonSchemaConverterIT {
     static final String PROPERTIES_KEY = "properties";
@@ -163,6 +167,47 @@ public class JsonSchemaConverterIT {
         public String getStringValueWithTwoExamples() {
             return stringValueWithTwoExamples;
         }
+    }
+
+    @Nested
+    class MapTypeTests {
+        @Test
+        void testMapFieldsDoNotCreateDefinitions() throws JsonProcessingException {
+            final ObjectNode jsonSchemaNode = objectUnderTest.convertIntoJsonSchema(
+                    SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfigWithMapFields.class);
+
+            if (jsonSchemaNode.has("$defs")) {
+                final JsonNode defsNode = jsonSchemaNode.get("$defs");
+                assertThat(defsNode.toString(), not(containsString("Map(")));
+            }
+
+            final JsonNode properties = jsonSchemaNode.get("properties");
+            assertThat(properties.get("simple_map").get("type").asText(), is("object"));
+            assertThat(properties.get("nested_map").get("type").asText(), is("object"));
+        }
+
+        @Test
+        void testGrokProcessorMapFieldsAreInline() throws JsonProcessingException {
+            final ObjectNode jsonSchemaNode = objectUnderTest.convertIntoJsonSchema(
+                    SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, GrokProcessorConfig.class);
+
+            final JsonNode matchField = jsonSchemaNode.get("properties").get("match");
+            assertThat(matchField.get("type").asText(), is("object"));
+
+            if (jsonSchemaNode.has("$defs")) {
+                final JsonNode defsNode = jsonSchemaNode.get("$defs");
+                assertThat(defsNode.toString(), not(containsString("Map(")));
+            }
+        }
+    }
+
+    @JsonClassDescription("Test config with map fields")
+    static class TestConfigWithMapFields {
+        @JsonProperty("simple_map")
+        private Map<String, String> simpleMap;
+
+        @JsonProperty("nested_map")
+        private Map<String, List<String>> nestedMap;
     }
 
     @JsonClassDescription("test config with nested object")

@@ -17,6 +17,7 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.SchemaGeneratorGeneralConfigPart;
 import com.github.victools.jsonschema.generator.SchemaKeyword;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.generator.CustomDefinition;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.event.EventKey;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -69,6 +71,7 @@ public class JsonSchemaConverter {
         resolveDependentRequiresFields(scopeSchemaGeneratorConfigPart);
         overrideDataPrepperPluginTypeAttribute(configBuilder.forTypesInGeneral(), schemaVersion, optionPreset);
         overrideTypeAttributeWithConditionalRequired(configBuilder.forTypesInGeneral());
+        overrideMapTypesAsObjects(configBuilder.forTypesInGeneral());
         resolveDataPrepperTypes(scopeSchemaGeneratorConfigPart);
         scopeSchemaGeneratorConfigPart.withInstanceAttributeOverride(new ExampleValuesInstanceAttributeOverride());
 
@@ -145,6 +148,19 @@ public class JsonSchemaConverter {
                     ifThenElseArrayNode.add(ifThenElseNode);
                 });
             }
+        });
+    }
+
+    private void overrideMapTypesAsObjects(
+            final SchemaGeneratorGeneralConfigPart schemaGeneratorGeneralConfigPart) {
+        schemaGeneratorGeneralConfigPart.withCustomDefinitionProvider((javaType, context) -> {
+            if (javaType.isInstanceOf(Map.class)) {
+                final SchemaGeneratorConfig config = context.getGeneratorConfig();
+                final ObjectNode objectSchema = config.createObjectNode()
+                        .put(config.getKeyword(SchemaKeyword.TAG_TYPE), config.getKeyword(SchemaKeyword.TAG_TYPE_OBJECT));
+                return new CustomDefinition(objectSchema, true);
+            }
+            return null;
         });
     }
 
