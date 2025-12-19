@@ -216,4 +216,28 @@ class JsonSchemaConverterTest {
 
         private EventKey testAttributeEventKey;
     }
+
+    @Test
+    void testConvertIntoJsonSchemaWithUseDefinitions() throws JsonProcessingException {
+        final JsonSchemaConverterConfig config = new JsonSchemaConverterConfig(true);
+        final JsonSchemaConverter jsonSchemaConverter = new JsonSchemaConverter(
+                Collections.emptyList(), pluginProvider, config);
+        final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestConfigWithNestedObject.class);
+        
+        assertThat(jsonSchemaNode.has("$defs"), is(true));
+        final JsonNode defsNode = jsonSchemaNode.get("$defs");
+        assertThat(defsNode, instanceOf(ObjectNode.class));
+    }
+
+    @JsonClassDescription("Test config with nested object")
+    static class TestConfigWithNestedObject {
+        @JsonProperty("nested_list")
+        private List<NestedObject> nestedList;
+    }
+
+    static class NestedObject {
+        @JsonProperty("field")
+        private String field;
+    }
 }

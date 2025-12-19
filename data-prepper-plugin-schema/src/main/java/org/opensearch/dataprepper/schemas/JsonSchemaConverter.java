@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.victools.jsonschema.generator.FieldScope;
 import com.github.victools.jsonschema.generator.Module;
+import com.github.victools.jsonschema.generator.Option;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
@@ -38,10 +39,16 @@ public class JsonSchemaConverter {
     static final String DEPRECATED_SINCE_KEY = "deprecated";
     private final List<Module> jsonSchemaGeneratorModules;
     private final PluginProvider pluginProvider;
+    private final JsonSchemaConverterConfig config;
 
     public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules, final PluginProvider pluginProvider) {
+        this(jsonSchemaGeneratorModules, pluginProvider, JsonSchemaConverterConfig.defaultConfig());
+    }
+
+    public JsonSchemaConverter(final List<Module> jsonSchemaGeneratorModules, final PluginProvider pluginProvider, final JsonSchemaConverterConfig config) {
         this.jsonSchemaGeneratorModules = jsonSchemaGeneratorModules;
         this.pluginProvider = pluginProvider;
+        this.config = config;
     }
 
     public ObjectNode convertIntoJsonSchema(
@@ -49,6 +56,11 @@ public class JsonSchemaConverter {
             throws JsonProcessingException {
         final SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
                 schemaVersion, optionPreset);
+        
+        if (config.isUseDefinitions()) {
+            configBuilder.with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
+        }
+        
         loadJsonSchemaGeneratorModules(configBuilder);
         final SchemaGeneratorConfigPart<FieldScope> scopeSchemaGeneratorConfigPart = configBuilder.forFields();
         overrideInstanceAttributeWithDeprecated(scopeSchemaGeneratorConfigPart);
@@ -60,8 +72,8 @@ public class JsonSchemaConverter {
         resolveDataPrepperTypes(scopeSchemaGeneratorConfigPart);
         scopeSchemaGeneratorConfigPart.withInstanceAttributeOverride(new ExampleValuesInstanceAttributeOverride());
 
-        final SchemaGeneratorConfig config = configBuilder.build();
-        final SchemaGenerator generator = new SchemaGenerator(config);
+        final SchemaGeneratorConfig generatorConfig = configBuilder.build();
+        final SchemaGenerator generator = new SchemaGenerator(generatorConfig);
 
         return generator.generateSchema(clazz);
     }
