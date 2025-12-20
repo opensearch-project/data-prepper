@@ -127,6 +127,9 @@ public class PrometheusHttpSender {
             final byte[] compressedBufferData = compressionEngine.compress(payload);
 
             final HttpRequest request = buildHttpRequest(compressedBufferData);
+            if (request == null) {
+                return new PrometheusPushResult(false, 0);
+            }
             final long startTime = System.currentTimeMillis();
             
             // Execute request and wait for completion
@@ -170,6 +173,9 @@ public class PrometheusHttpSender {
         SdkHttpFullRequest sdkHttpRequest = createSdkHttpRequest(config.getUrl(), payload);
         if (signer != null) {
             sdkHttpRequest = signer.signRequest(sdkHttpRequest);
+            if (sdkHttpRequest == null) {
+                return null;
+            }
         }
         
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()

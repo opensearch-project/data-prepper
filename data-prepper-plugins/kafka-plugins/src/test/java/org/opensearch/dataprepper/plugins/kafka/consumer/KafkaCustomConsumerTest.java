@@ -16,11 +16,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -51,7 +55,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -60,7 +66,9 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -227,14 +235,15 @@ public class KafkaCustomConsumerTest {
         assertThat(consumer.getRecordTimeStamp(consumerRecord3, nowMs), equalTo(nowMs));
     }
 
-    @Test
-    public void testBufferOverflowPauseResume() throws InterruptedException, Exception {
+    @ParameterizedTest
+    @MethodSource("provideExceptionsFromBufferWrite")
+    public void testBufferOverflowPauseResume(final Exception bufferException) throws InterruptedException, Exception {
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic, 0L);
         doAnswer((i)-> {
             if (!paused && !resumed)
-                throw new SizeOverflowException("size overflow");
+                throw bufferException;
             buffer.writeAll(i.getArgument(0), i.getArgument(1));
             return null;
         }).when(mockBuffer).writeAll(any(), anyInt());
@@ -589,6 +598,88 @@ public class KafkaCustomConsumerTest {
         });
     }
 
+    @Test
+    public void testCommitOffsets_RebalanceInProgressException_DoesNotClearOffsets() throws Exception {
+        String topic = topicConfig.getName();
+        TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
+        when(topicConfig.getAutoCommit()).thenReturn(false);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumerRecords = createPlainTextRecords(topic, 100L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        doThrow(new RebalanceInProgressException("Rebalance in progress"))
+            .when(kafkaConsumer).commitSync(anyMap());
+
+        consumer.consumeRecords();
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsBeforeCommit = new HashMap<>(consumer.getOffsetsToCommit());
+        Assertions.assertFalse(offsetsBeforeCommit.isEmpty(), "Offsets should be populated after consuming records");
+        Assertions.assertEquals(102L, offsetsBeforeCommit.get(topicPartition).offset());
+
+        Thread testThread = new Thread(() -> {
+            try {
+                java.lang.reflect.Method method = consumer.getClass().getDeclaredMethod("commitOffsets", boolean.class);
+                method.setAccessible(true);
+                method.invoke(consumer, true);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        testThread.start();
+        testThread.join(5000);
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
+        Assertions.assertFalse(offsetsAfterFailedCommit.isEmpty(),
+            "Offsets should NOT be cleared after RebalanceInProgressException");
+        Assertions.assertEquals(offsetsBeforeCommit.get(topicPartition).offset(),
+            offsetsAfterFailedCommit.get(topicPartition).offset(),
+            "Offset value should remain unchanged for retry after rebalance completes");
+    }
+
+    @Test
+    public void testCommitOffsets_OtherException_ClearsOffsets() throws Exception {
+        String topic = topicConfig.getName();
+        TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+
+        when(topicConfig.getAutoCommit()).thenReturn(false);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumerRecords = createPlainTextRecords(topic, 100L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        doThrow(new RuntimeException("Generic commit failure"))
+            .when(kafkaConsumer).commitSync(anyMap());
+
+        consumer.consumeRecords();
+
+        Assertions.assertFalse(consumer.getOffsetsToCommit().isEmpty(),
+            "Offsets should be populated after consuming records");
+
+        Thread testThread = new Thread(() -> {
+            try {
+                java.lang.reflect.Method method = consumer.getClass().getDeclaredMethod("commitOffsets", boolean.class);
+                method.setAccessible(true);
+                method.invoke(consumer, true);
+            } catch (Exception e) {
+            }
+        });
+        testThread.start();
+        testThread.join(5000);
+
+        Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
+        Assertions.assertTrue(offsetsAfterFailedCommit.isEmpty(),
+            "Offsets should be cleared after non-rebalance exception");
+    }
+
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
         Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
         ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, startOffset, testKey1, testValue1);
@@ -604,6 +695,12 @@ public class KafkaCustomConsumerTest {
         ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
         records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
+    }
+
+    private static Stream<Arguments> provideExceptionsFromBufferWrite() {
+        return Stream.of(
+                Arguments.of(new SizeOverflowException("size overflow")),
+                Arguments.of(new TimeoutException()));
     }
 }
 

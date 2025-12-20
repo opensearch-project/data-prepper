@@ -38,8 +38,8 @@ You can also customize what it tests against. The `-i` parameter specifies a bas
 The values for `-t` are `opensearch-data-prepper` or `opensearch-data-prepper-jdk`.
 
 ```shell
-./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:11 -t opensearch-data-prepper
-./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:17 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i eclipse-temurin:11 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i eclipse-temurin:17 -t opensearch-data-prepper
 ./release/smoke-tests/run-tarball-files-smoke-tests.sh -i ubuntu:latest -t opensearch-data-prepper-jdk
 ```
 

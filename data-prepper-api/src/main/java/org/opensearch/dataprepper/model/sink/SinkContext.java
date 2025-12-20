@@ -97,6 +97,7 @@ public class SinkContext {
         for (Map.Entry<String, HeadlessPipeline> entry: forwardToPipelines.entrySet()) {
             entry.getValue().sendEvents(records);
         }
+        sinkForwardRecordsContext.clearRecords();
         return true;
     }
 

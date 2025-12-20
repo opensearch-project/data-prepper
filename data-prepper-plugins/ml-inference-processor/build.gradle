@@ -13,6 +13,7 @@ dependencies {
     implementation 'org.json:json'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.projectlombok:lombok:1.18.22'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
     implementation 'software.amazon.awssdk:s3'
     testImplementation project(':data-prepper-test:test-event')
