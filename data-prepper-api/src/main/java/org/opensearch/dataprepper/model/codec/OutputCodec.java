@@ -121,6 +121,7 @@ public interface OutputCodec {
      * this method get called from {@link Sink} to estimate size of event in {@link OutputStream}
      *
      * @param event        event Record event
+     * @param codecContext the output codec context for configuration and metadata
      * @return long        size of the serialized event
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
      */

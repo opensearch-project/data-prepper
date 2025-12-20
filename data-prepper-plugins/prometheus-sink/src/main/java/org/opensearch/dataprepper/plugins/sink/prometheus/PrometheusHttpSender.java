@@ -65,6 +65,7 @@ public class PrometheusHttpSender {
      *
      * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config The configuration for the Prometheus sink plugin.
+     * @param sinkMetrics The sink metrics for recording request information
      */
     public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics) {
         this(awsCredentialsSupplier, buildWebClient(config), config, sinkMetrics);
@@ -121,6 +122,7 @@ public class PrometheusHttpSender {
      * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
      *
      * @param payload - batch the batch of spans to send
+     * @return PrometheusPushResult containing the success status and response code
      */
     public PrometheusPushResult pushToEndpoint(final byte[] payload) {
         PrometheusPushResult result;

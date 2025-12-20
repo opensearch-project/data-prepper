@@ -11,6 +11,8 @@ package org.opensearch.dataprepper.plugins.encryption;
 public interface EncryptedDataKeyWriter {
     /**
      * Writes encrypted data key into storage.
+     * @param encryptedDataKey the encrypted data key to write to storage
+     * @throws Exception if an error occurs while writing the encrypted data key
      */
     void writeEncryptedDataKey(String encryptedDataKey) throws Exception;
 }
