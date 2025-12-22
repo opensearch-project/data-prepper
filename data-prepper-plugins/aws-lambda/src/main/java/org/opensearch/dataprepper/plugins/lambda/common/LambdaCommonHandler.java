@@ -20,7 +20,6 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
