@@ -40,8 +40,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
     // In general, newly generated events become queryable after 30 ~ 120 second
     protected static final long WAIT_SECONDS_BEFORE_PARTITION_CREATION = 300;
     private static final String DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED = "DimensionalTimeSliceWorkerPartitionsCreated";
-    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
-    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
+    private static final String WORKER_PARTITION_WAIT_TIME = "workerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "workerPartitionProcessLatency";
     private static final Duration HOUR_DURATION = Duration.ofHours(1);
 
     private final CrawlerClient client;
