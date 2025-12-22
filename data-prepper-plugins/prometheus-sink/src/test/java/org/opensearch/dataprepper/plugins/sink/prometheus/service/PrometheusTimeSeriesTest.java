@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
 import java.util.stream.Stream;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -24,8 +25,14 @@ import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.Gauge;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.Sum;
+import org.opensearch.dataprepper.model.metric.Summary;
+import org.opensearch.dataprepper.model.metric.Quantile;
+import org.opensearch.dataprepper.model.metric.DefaultQuantile;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
 import org.opensearch.dataprepper.model.metric.Bucket;
 
@@ -33,8 +40,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class PrometheusTimeSeriesTest {
+    private static final Map<String, Object> TEST_ATTR_MAP = Map.of("attrKey1", 1, "attrKey2", Map.of("attrKey3", "attrValue3"));
+    private static final Map<String, Object> TEST_SCOPE_MAP = Map.of("attributes", Map.of("scopeAttrKey", "scopeAttrValue"));
+    private static final Map<String, Object> TEST_RESOURCE_MAP = Map.of("attributes", Map.of("rscAttrKey", "rscAttrValue"));
+    private static final String TEST_ATTR_MAP_STR1 = "attrKey2_attrKey3 attrValue3 attrKey1 1 ";
+    private static final String TEST_ATTR_MAP_STR2 = "attrKey1 1 attrKey2_attrKey3 attrValue3 ";
+    private static final String TEST_SCOPE_MAP_STR = "scope_scopeAttrKey scopeAttrValue ";
+    private static final String TEST_RESOURCE_MAP_STR = "resource_rscAttrKey rscAttrValue ";
     @ParameterizedTest
     @MethodSource("getLabelNames")
     public void testSanitizationOfLabelNames(final String labelName, final String expectedMetricName) {
@@ -107,6 +122,95 @@ public class PrometheusTimeSeriesTest {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("getGaugeMetricDifferentUnitTypes")
+    public void testGaugeMetricKey(String unit, String expectedUnitName) throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Gauge gauge = createGaugeMetric(name, unit);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true);
+        final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(gauge);
+
+        String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        String expectedKey2 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getCommonMetricDifferentUnitTypes")
+    public void testSumMetricKey(String unit, String expectedUnitName) throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, unit, true, "AGGREGATION_TEMPORALITY_CUMULATIVE");
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true);
+        final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+
+        String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        String expectedKey2 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getCommonMetricDifferentUnitTypes")
+    public void testSumMetricNonMonotonicKey(String unit, String expectedUnitName) throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, unit, false, "AGGREGATION_TEMPORALITY_DELTA");
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true);
+        final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+
+        String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        String expectedKey2 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getCommonMetricDifferentUnitTypes")
+    public void testSummaryMetricKey(String unit, String expectedUnitName) throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Summary summary = createSummaryMetric(name, unit);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(summary, true);
+        final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(summary);
+
+        String expectedKey1 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        String expectedKey2 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getCommonMetricDifferentUnitTypes")
+    public void testHistogramMetricKey(String unit, String expectedUnitName) throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Histogram histogram = createHistogramMetric(name, unit);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true);
+        final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(histogram);
+
+        String expectedKey1 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        String expectedKey2 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
+        assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    private Summary createSummaryMetric(final String name, final String unit) {
+        List<Quantile> quantiles = Arrays.asList(
+            new DefaultQuantile(0.5d, 10d),
+            new DefaultQuantile(0.75d, 20d),
+            new DefaultQuantile(0.9d, 30d),
+            new DefaultQuantile(0.99d, 5d)
+        );
+        return JacksonSummary.builder()
+            .withName(name)
+            .withDescription("Test Summary Metric")
+            .withTimeReceived(Instant.now())
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
+            .withUnit(unit)
+            .withSum(50d)
+            .withCount(10L)
+            .withQuantilesValueCount(4)
+            .withQuantiles(quantiles)
+            .withAttributes(TEST_ATTR_MAP)
+            .withScope(TEST_SCOPE_MAP)
+            .withResource(TEST_RESOURCE_MAP)
+            .build(false);
+    }
+
     private Histogram createHistogramMetric(final String name, final String unit) {
         final List<Bucket> TEST_BUCKETS = Arrays.asList(
                 new DefaultBucket(Double.NEGATIVE_INFINITY, 5.0, 2222L),
@@ -133,6 +237,35 @@ public class PrometheusTimeSeriesTest {
             .withBuckets(TEST_BUCKETS)
             .withBucketCountsList(TEST_BUCKET_COUNTS_LIST)
             .withExplicitBoundsList(TEST_EXPLICIT_BOUNDS_LIST)
+            .withAttributes(TEST_ATTR_MAP)
+            .withScope(TEST_SCOPE_MAP)
+            .withResource(TEST_RESOURCE_MAP)
+            .build(false);
+    }
+
+    private ExponentialHistogram createExponentialHistogramMetric(final String name, final String unit) {
+        int scale = 1;
+        final List<Long> TEST_POSITIVE_COUNTS = Arrays.asList(1L, 3L, 5L);
+        final List<Long> TEST_NEGATIVE_COUNTS = Arrays.asList(4L, 8L, 2L, 6L);
+        return JacksonExponentialHistogram.builder()
+            .withName(name)
+            .withDescription("Test Exponential Histogram Metric")
+            .withTimeReceived(Instant.now())
+            .withTime(Instant.now().plusSeconds(10).toString())
+            .withStartTime(Instant.now().plusSeconds(5).toString())
+            .withUnit(unit)
+            .withSum(50d)
+            .withCount(10)
+            .withScale(scale)
+            .withPositiveOffset(-1)
+            .withNegativeOffset(2)
+            .withZeroCount(3)
+            .withAggregationTemporality("cumulative")
+            .withPositive(TEST_POSITIVE_COUNTS)
+            .withNegative(TEST_NEGATIVE_COUNTS)
+            .withAttributes(TEST_ATTR_MAP)
+            .withScope(TEST_SCOPE_MAP)
+            .withResource(TEST_RESOURCE_MAP)
             .build(false);
     }
 
@@ -147,6 +280,9 @@ public class PrometheusTimeSeriesTest {
             .withUnit(unit)
             .withAggregationTemporality(aggregationTemporality)
             .withValue(1.0d)
+            .withAttributes(TEST_ATTR_MAP)
+            .withScope(TEST_SCOPE_MAP)
+            .withResource(TEST_RESOURCE_MAP)
             .build(false);
     }
 
@@ -159,6 +295,9 @@ public class PrometheusTimeSeriesTest {
             .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit(unit)
             .withValue(1.0d)
+            .withAttributes(TEST_ATTR_MAP)
+            .withScope(TEST_SCOPE_MAP)
+            .withResource(TEST_RESOURCE_MAP)
             .build(false);
     }
 

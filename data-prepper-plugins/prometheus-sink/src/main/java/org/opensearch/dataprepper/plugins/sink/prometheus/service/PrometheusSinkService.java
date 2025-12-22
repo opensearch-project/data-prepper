@@ -13,7 +13,6 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.opensearch.dataprepper.common.sink.DefaultSinkOutputStrategy;
-import org.opensearch.dataprepper.common.sink.DefaultSinkBuffer;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.common.sink.ReentrantLockStrategy;
@@ -29,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 
 public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     static final String PLUGIN_NAME = "prometheus";
@@ -51,10 +49,10 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
                                  final HeadlessPipeline dlqPipeline,
                                  final PipelineDescription pipelineDescription) {
         super(new ReentrantLockStrategy(),
-              new DefaultSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
+              new PrometheusSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
                   prometheusSinkConfiguration.getThresholdConfig().getMaxRequestSizeBytes(),
                   prometheusSinkConfiguration.getThresholdConfig().getFlushIntervalMs(),
-                  new PrometheusSinkBufferWriter(sinkMetrics)),
+                  new PrometheusSinkBufferWriter(prometheusSinkConfiguration, sinkMetrics)),
               new PrometheusSinkFlushContext(httpSender),
               sinkMetrics);
         sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
@@ -81,7 +79,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     }
 
     public void flushDlqList() {
-        if (dlqRecords.size() == 0) {
+        if (dlqRecords.isEmpty()) {
             return;
         }
         if (dlqPipeline != null) {

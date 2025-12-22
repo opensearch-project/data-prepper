@@ -34,6 +34,7 @@ public class PrometheusSinkConfiguration {
     private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_IDLE_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_OUT_OF_ORDER_WINDOW = Duration.ofSeconds(5);
 
     @JsonProperty("aws")
     @NotNull
@@ -43,6 +44,9 @@ public class PrometheusSinkConfiguration {
     @NotNull
     @JsonProperty("url")
     private String url;
+
+    @JsonProperty("out_of_order_window")
+    private Duration outOfOrderWindow = DEFAULT_OUT_OF_ORDER_WINDOW;
 
     @JsonProperty("max_retries")
     private int maxRetries = DEFAULT_MAX_RETRIES;
@@ -106,6 +110,10 @@ public class PrometheusSinkConfiguration {
 
     public String getContentType() {
         return contentType;
+    }
+
+    public Duration getOutOfOrderWindow() {
+        return outOfOrderWindow;
     }
 
     public String getRemoteWriteVersion() {
