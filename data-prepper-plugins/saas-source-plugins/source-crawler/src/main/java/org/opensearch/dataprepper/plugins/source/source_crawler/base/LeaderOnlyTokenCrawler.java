@@ -123,6 +123,9 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
 
     @Override
     public void executePartition(PaginationCrawlerWorkerProgressState state, Buffer buffer, AcknowledgementSet acknowledgementSet) {
+        String firstToken = !state.getItemIds().isEmpty() ? state.getItemIds().get(0) : "";
+        String lastToken = !state.getItemIds().isEmpty() ? state.getItemIds().get(state.getItemIds().size()-1) : "";
+        log.debug("Processing partition - FirstToken: {}, LastToken: {}", firstToken, lastToken);
         client.executePartition(state, buffer, acknowledgementSet);
     }
 
@@ -140,6 +143,10 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
     private void processBatch(List<ItemInfo> batch,
                               LeaderPartition leaderPartition,
                               EnhancedSourceCoordinator coordinator) {
+        String firstToken = !batch.isEmpty() ? batch.get(0).getItemId() : "(No First Token in this batch)";
+        String lastToken = !batch.isEmpty() ? batch.get(batch.size()-1).getItemId() : "(No Last Token in this batch)";
+        log.debug("Processing batch - FirstToken: {}, LastToken: {}", firstToken, lastToken);
+
         if (acknowledgementsEnabled) {
             AtomicBoolean ackReceived = new AtomicBoolean(false);
             long createTimestamp = System.currentTimeMillis();
