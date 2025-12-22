@@ -39,8 +39,8 @@ public class LeaderOnlyTokenCrawler implements Crawler<PaginationCrawlerWorkerPr
 
     private static final String METRIC_BATCHES_FAILED = "batchesFailed";
     private static final String METRIC_BUFFER_WRITE_TIME = "bufferWriteTime";
-    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
-    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
+    private static final String WORKER_PARTITION_WAIT_TIME = "workerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "workerPartitionProcessLatency";
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
 

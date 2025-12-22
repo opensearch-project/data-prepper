@@ -33,8 +33,8 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
     private static final int batchSize = 50;
     private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
     private static final String INVALID_PAGINATION_ITEMS = "invalidPaginationItems";
-    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
-    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
+    private static final String WORKER_PARTITION_WAIT_TIME = "workerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "workerPartitionProcessLatency";
     private final Timer crawlingTimer;
     private final Timer partitionWaitTimeTimer;
     private final Timer partitionProcessLatencyTimer;
