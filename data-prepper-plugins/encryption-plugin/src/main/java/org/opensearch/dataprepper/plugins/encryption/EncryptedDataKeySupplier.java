@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 public interface EncryptedDataKeySupplier {
     /**
      * Retrieve the current encrypted data key.
+     * @return the current encrypted data key as a String
      */
     String retrieveValue();
 

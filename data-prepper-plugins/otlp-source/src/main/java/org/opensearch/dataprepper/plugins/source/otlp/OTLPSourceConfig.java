@@ -208,6 +208,7 @@ public class OTLPSourceConfig {
    * Validation via @DurationMax ensures this is safe.
    * Casting to int is necessary because ServerConfiguration method signature
    * requires it.
+   * @return the request timeout in milliseconds as an integer
    */
   public int getRequestTimeoutInMillis() {
     return (int) requestTimeout.toMillis();
