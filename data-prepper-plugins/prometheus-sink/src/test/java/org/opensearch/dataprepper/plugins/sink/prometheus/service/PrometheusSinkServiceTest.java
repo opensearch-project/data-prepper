@@ -51,7 +51,6 @@ public class PrometheusSinkServiceTest {
 
     private static final String TEST_PIPELINE_NAME = "testPipeline";
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
-        
 
     private static final String SINK_YAML =
             "        url: \"http://localhost:8080/test\"\n" +
@@ -59,6 +58,7 @@ public class PrometheusSinkServiceTest {
             "          max_events: 2\n" +
             "          flush_interval: 10\n"+
             "        connection_timeout: 10\n"+
+            "        out_of_order_window: 0\n" +
             "        idle_timeout: 10\n"+
             "        aws:\n" +
             "          region: \"us-east-2\"\n" +
@@ -77,7 +77,7 @@ public class PrometheusSinkServiceTest {
     private PipelineDescription pipelineDescription;
 
     private PluginMetrics pluginMetrics;
-    
+
     private SinkMetrics sinkMetrics;
 
     private PrometheusHttpSender httpSender;
@@ -122,14 +122,30 @@ public class PrometheusSinkServiceTest {
     void prometheusSinkServiceTestSuccessfulOutput() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
-        JacksonGauge gauge1 = createGaugeMetric("gauge1");
-        JacksonGauge gauge2 = createGaugeMetric("gauge2");
+        JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
+        JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
         assertDoesNotThrow(() -> { objectUnderTest.output(records);});
         verify(sinkMetrics, times(1)).incrementRequestsSuccessCounter(any(Integer.class));
         verify(sinkMetrics, times(1)).incrementEventsSuccessCounter(any(Integer.class));
         verify(eventHandle, times(2)).release(eq(true));
-        
+    }
+
+    @Test
+    void prometheusSinkServiceTestSuccessfulOutputWithWindow1() throws NoSuchFieldException, IllegalAccessException, IOException {
+        String newYaml = SINK_YAML.replace("out_of_order_window: 0", "out_of_order_window: 1");
+        this.prometheusSinkConfiguration = objectMapper.readValue(newYaml,PrometheusSinkConfiguration.class);
+        when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        Instant t = Instant.now();
+        JacksonGauge gauge1 = createGaugeMetric("gauge1", t);
+        JacksonGauge gauge2 = createGaugeMetric("gauge1", t.plusMillis(100));
+        JacksonGauge gauge3 = createGaugeMetric("gauge1", t.plusSeconds(20));
+        Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2), new Record<>(gauge3));
+        assertDoesNotThrow(() -> { objectUnderTest.output(records);});
+        verify(sinkMetrics, times(1)).incrementRequestsSuccessCounter(any(Integer.class));
+        verify(sinkMetrics, times(1)).incrementEventsSuccessCounter(any(Integer.class));
+        verify(eventHandle, times(2)).release(eq(true));
     }
 
     @Test
@@ -149,22 +165,21 @@ public class PrometheusSinkServiceTest {
         }).when(dlqPipeline).sendEvents(any(Collection.class));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
         objectUnderTest.setDlqPipeline(dlqPipeline);
-        JacksonGauge gauge1 = createGaugeMetric("gauge1");
-        JacksonGauge gauge2 = createGaugeMetric("gauge2");
+        JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
+        JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
         assertDoesNotThrow(() -> { objectUnderTest.output(records);});
         verify(sinkMetrics, times(1)).incrementRequestsFailedCounter(any(Integer.class));
         verify(sinkMetrics, times(1)).incrementEventsFailedCounter(any(Integer.class));
         verify(eventHandle, times(2)).release(eq(true));
-        
     }
 
     @Test
     void prometheusSinkServiceTestFailedOutputWithNoDLQ() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(false, 410));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
-        JacksonGauge gauge1 = createGaugeMetric("gauge1");
-        JacksonGauge gauge2 = createGaugeMetric("gauge2");
+        JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
+        JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
         assertDoesNotThrow(() -> { objectUnderTest.output(records);});
         verify(sinkMetrics, times(1)).incrementRequestsFailedCounter(any(Integer.class));
@@ -176,8 +191,8 @@ public class PrometheusSinkServiceTest {
     void prometheusSinkServiceTestWithExceptionInHttpSender() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenThrow(new RuntimeException("exception"));
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
-        JacksonGauge gauge1 = createGaugeMetric("gauge1");
-        JacksonGauge gauge2 = createGaugeMetric("gauge2");
+        JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
+        JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
         assertDoesNotThrow(() -> { objectUnderTest.output(records);});
         verify(sinkMetrics, times(1)).incrementRequestsFailedCounter(any(Integer.class));
@@ -194,12 +209,15 @@ public class PrometheusSinkServiceTest {
         objectUnderTest.output(records);
     }
 
-    private JacksonGauge createGaugeMetric(final String name) {
+    private JacksonGauge createGaugeMetric(final String name, Instant t) {
+        if (t == null) {
+            t = Instant.now().plusSeconds(10);
+        }
         return JacksonGauge.builder()
             .withName(name)
             .withDescription("Test Gauge Metric")
             .withTimeReceived(Instant.now())
-            .withTime(Instant.now().plusSeconds(10).toString())
+            .withTime(t.toString())
             .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit("1")
             .withValue(1.0d)

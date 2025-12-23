@@ -33,6 +33,9 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
         long startTime = System.nanoTime();
         // getFlushableBuffer() should return the buffer contents
         SinkFlushableBuffer flushableBuffer = sinkBuffer.getFlushableBuffer(sinkFlushContext);
+        if (flushableBuffer == null) {
+            return;
+        }
         List<Event> events = flushableBuffer.getEvents();
         try {      
             SinkFlushResult flushResult = flushableBuffer.flush();

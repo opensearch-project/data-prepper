@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -83,8 +85,9 @@ public class PrometheusTimeSeries {
     private long timestamp;
     private boolean sanitizeNames;
     private List<TimeSeries> timeSeriesList;
-    private List<Label> labels;
-    private int size;
+    private List<Label> baseLabels;
+    private long baseLabelsSize;
+    private int seriesSize;
 
     public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
         this.sanitizeNames = sanitizeNames;
@@ -95,92 +98,115 @@ public class PrometheusTimeSeries {
         this.timestamp = (time != null) ? getTimestampVal(time) : getTimestampVal(startTime);
 
         this.timeSeriesList = new ArrayList<>();
-        this.labels = new ArrayList<>();
+        this.baseLabels = new ArrayList<>();
+        this.seriesSize = 0;
 
         // Process all attributes in one pass
-        processAttributes(metric.getAttributes(), "");
-        processResourceAndScopeAttributes(metric);
+        baseLabelsSize = processAttributes(metric.getAttributes(), "");
+        baseLabelsSize += processResourceAndScopeAttributes(metric);
+
+        if (metric instanceof Gauge) {
+            addGaugeMetric((Gauge)metric);
+        } else if (metric instanceof Sum) {
+            addSumMetric((Sum)metric);
+        } else if (metric instanceof Summary) {
+            addSummaryMetric((Summary)metric);
+        } else if (metric instanceof Histogram) {
+            addHistogramMetric((Histogram)metric);
+        } else if (metric instanceof ExponentialHistogram) {
+            addExponentialHistogramMetric((ExponentialHistogram)metric);
+        } else {
+            throw new RuntimeException("Unknown Metric");
+        }
     }
 
-    public long getTimeStamp() {
-        return timestamp;
+    public String getMetricKey() {
+        StringBuilder result = new StringBuilder();
+        for (final Label l : timeSeriesList.get(0).getLabelsList()) {
+            result.append(l.getName()).append(" ").append(l.getValue()).append(" ");
+        }
+        return result.toString();
     }
 
     public String getMetricName() {
         return metricName;
     }
 
-    private void processAttributes(Map<String, Object> attributesMap, String prefix) {
-        if (attributesMap == null) return;
+    private long processAttributes(Map<String, Object> attributesMap, String prefix) {
+        long size = 0L;
+        if (attributesMap != null) {
+            for (Map.Entry<String, Object> entry : attributesMap.entrySet()) {
+                String key = prefix.isEmpty() ? entry.getKey() : prefix + entry.getKey();
+                Object value = entry.getValue();
 
-        for (Map.Entry<String, Object> entry : attributesMap.entrySet()) {
-            String key = prefix.isEmpty() ? entry.getKey() : prefix + entry.getKey();
-            Object value = entry.getValue();
-
-            if (value instanceof Map) {
-                processAttributes((Map<String, Object>) value, key + UNDERSCORE);
-            } else {
-                addLabel(key, value);
+                if (value instanceof Map) {
+                    processAttributes((Map<String, Object>) value, key + UNDERSCORE);
+                } else {
+                    size += addLabel(key, value);
+                }
             }
         }
+        return size;
     }
 
-    private void processResourceAndScopeAttributes(Metric metric) {
+    private long processResourceAndScopeAttributes(Metric metric) {
+        long size = 0L;
         try {
             if (metric.getResource() != null) {
                 Map<String, Object> resourceAttributes = (Map<String, Object>) metric.getResource().get("attributes");
-                processAttributes(resourceAttributes, RESOURCE_PREFIX);
+                size += processAttributes(resourceAttributes, RESOURCE_PREFIX);
             }
             if (metric.getScope() != null) {
                 Map<String, Object> scopeAttributes = (Map<String, Object>) metric.getScope().get("attributes");
-                processAttributes(scopeAttributes, SCOPE_PREFIX);
+                size += processAttributes(scopeAttributes, SCOPE_PREFIX);
             }
         } catch (Exception e) {
             LOG.warn("Failed to get resource/scope attributes", e);
         }
+        return size;
     }
 
-    private void addLabel(String name, final Object value) {
+    private long addLabel(String name, final Object value) {
         if (sanitizeNames) {
             name = sanitizeLabelName(name);
         }
-        addLabelSanitized(name, value);
+        return addLabelSanitized(name, value);
     }
 
-    private void addLabelSanitized(final String name, final Object value) {
+    private long addLabelSanitized(final String name, final Object value) {
         String valueStr = (value instanceof String) ? (String) value : String.valueOf(value);
         Label label = Label.newBuilder().setName(name).setValue(valueStr).build();
-        labels.add(label);
-        size += estimateLabelSize(name, valueStr);
+        baseLabels.add(label);
+        return estimateLabelSize(name, valueStr);
     }
 
-    private int estimateLabelSize(String name, String value) {
-        return name.length() + value.length() + APPROXIMATE_PROTOBUF_LABEL_OVERHEAD;
+    private long estimateLabelSize(String name, String value) {
+        return (long)name.length() + value.length() + APPROXIMATE_PROTOBUF_LABEL_OVERHEAD;
     }
 
     private void addTimeSeries(final String labelName, final String labelValue, final Double sampleValue) {
-        size += estimateLabelSize(labelName, labelValue) + APPROXIMATE_PROTOBUF_SAMPLE_OVERHEAD;
-        timeSeriesList.add(TimeSeries.newBuilder()
-                .addAllLabels(labels)
-                .addLabels(Label.newBuilder().setName(labelName).setValue(labelValue).build())
-                .addSamples(Sample.newBuilder().setValue(sampleValue).setTimestamp(timestamp).build())
-                .build());
+        addTimeSeries(labelName, labelValue, null, null, sampleValue);
     }
 
-    private void addTimeSeries(final String metricName, final String labelName,
-                              final String labelValue, final Double sampleValue) {
-        size += estimateLabelSize(NAME_LABEL, metricName) + estimateLabelSize(labelName, labelValue) + APPROXIMATE_PROTOBUF_SAMPLE_OVERHEAD;
-        timeSeriesList.add(TimeSeries.newBuilder()
+    private void addTimeSeries(final String labelName, final String labelValue, final String labelName2, final String labelValue2, final Double sampleValue) {
+        List<Label> labels = new ArrayList<>(baseLabels.size() + 2);
+        labels.addAll(baseLabels);
+        labels.add(Label.newBuilder().setName(labelName).setValue(labelValue).build());
+        if (labelName2 != null) {
+            labels.add(Label.newBuilder().setName(labelName2).setValue(labelValue2).build());
+        }
+        Collections.sort(labels, Comparator.comparing(Label::getName));
+        TimeSeries ts = TimeSeries.newBuilder()
                 .addAllLabels(labels)
-                .addLabels(Label.newBuilder().setName(NAME_LABEL).setValue(metricName).build())
-                .addLabels(Label.newBuilder().setName(labelName).setValue(labelValue).build())
                 .addSamples(Sample.newBuilder().setValue(sampleValue).setTimestamp(timestamp).build())
-                .build());
+                .build();
+        seriesSize += ts.getSerializedSize();
+        timeSeriesList.add(ts);
     }
 
     public List<TimeSeries> getTimeSeriesList() { return timeSeriesList; }
     public long getTimestamp() { return timestamp; }
-    public int getSize() { return size; }
+    public int getSize() { return seriesSize; }
 
     public void addSumMetric(Sum sum) {
         addTimeSeries(NAME_LABEL, metricName, sum.getValue());
@@ -191,9 +217,11 @@ public class PrometheusTimeSeries {
     }
 
     public void addSummaryMetric(Summary summary) {
+        addTimeSeries(NAME_LABEL, metricName + COUNT_SUFFIX, (double) summary.getCount());
+        addTimeSeries(NAME_LABEL, metricName + SUM_SUFFIX, (double) summary.getSum());
         List<? extends Quantile> quantiles = summary.getQuantiles();
         for (Quantile quantile : quantiles) {
-            addTimeSeries(metricName, QUANTILE_LABEL, quantile.getQuantile().toString(), (double) quantile.getValue());
+            addTimeSeries(NAME_LABEL, metricName, QUANTILE_LABEL, quantile.getQuantile().toString(), (double) quantile.getValue());
         }
     }
 
@@ -213,11 +241,10 @@ public class PrometheusTimeSeries {
         List<Double> explicitBounds = histogram.getExplicitBoundsList();
         List<Long> bucketCounts = histogram.getBucketCountsList();
         if (explicitBounds != null && bucketCounts != null) {
-            addLabelSanitized(NAME_LABEL, metricName + BUCKET_SUFFIX);
             int lastIndex = bucketCounts.size() - 1;
             for (int i = 0; i < bucketCounts.size(); i++) {
                 String labelValue = (i == lastIndex) ? PLUS_INF : explicitBounds.get(i).toString();
-                addTimeSeries(LE_LABEL, labelValue, (double) bucketCounts.get(i));
+                addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, labelValue, (double) bucketCounts.get(i));
             }
         }
     }
@@ -248,18 +275,16 @@ public class PrometheusTimeSeries {
         boolean negativeBucketsPresent = (negativeBucketCounts != null) && (negativeOffset != null);
 
         if (positiveBucketsPresent || negativeBucketsPresent) {
-            addLabelSanitized(NAME_LABEL, metricName + BUCKET_SUFFIX);
-
             if (positiveBucketsPresent) {
                 for (int i = 0; i < positiveBucketCounts.size(); i++) {
                     double bound = calculateBucketBound(i + positiveOffset + 1, scale);
-                    addTimeSeries(LE_LABEL, Double.toString(bound), (double) positiveBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, Double.toString(bound), (double) positiveBucketCounts.get(i));
                 }
             }
             if (negativeBucketsPresent) {
                 for (int i = 0; i < negativeBucketCounts.size(); i++) {
                     double bound = -calculateBucketBound(i + negativeOffset + 1, scale);
-                    addTimeSeries(GE_LABEL, Double.toString(bound), (double) negativeBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) negativeBucketCounts.get(i));
                 }
             }
         }
