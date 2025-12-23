@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
@@ -45,6 +46,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     private final RetryHandler retryHandler;
     private final String tenantId;
     private final Office365SourceConfig office365SourceConfig;
+    private final VendorAPIMetricsRecorder metricsRecorder;
     private String accessToken;
     private final Object lock = new Object();
     private final Object accessTokenFetchLock = new Object();
@@ -53,12 +55,13 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     @Getter
     private Instant expireTime = Instant.ofEpochMilli(0);
 
-    public Office365AuthenticationProvider(Office365SourceConfig config) {
+    public Office365AuthenticationProvider(Office365SourceConfig config, VendorAPIMetricsRecorder metricsRecorder) {
         this.tenantId = config.getTenantId();
         this.office365SourceConfig = config;
         this.retryHandler = new RetryHandler(
                 new DefaultRetryStrategy(),
                 new DefaultStatusCodeHandler());
+        this.metricsRecorder = metricsRecorder;
     }
 
     @Override
@@ -82,22 +85,37 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
             String tokenEndpoint = String.format(TOKEN_URL, office365SourceConfig.getTenantId());
 
-            ResponseEntity<Map> response = retryHandler.executeWithRetry(
-                    () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
-                    () -> {
-                    } // No credential renewal for authentication endpoint
-            );
+            try {
+                // Record authentication latency and execute the request
+                ResponseEntity<Map> response = metricsRecorder.recordAuthLatency(() -> 
+                    retryHandler.executeWithRetry(
+                        () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
+                        () -> {
+                        } // No credential renewal for authentication endpoint
+                    )
+                );
 
-            Map<String, Object> tokenResponse = response.getBody();
+                Map<String, Object> tokenResponse = response.getBody();
 
-            if (tokenResponse == null || tokenResponse.get("access_token") == null) {
-                throw new IllegalStateException("Invalid token response: missing access_token");
+                if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+                    throw new IllegalStateException("Invalid token response: missing access_token");
+                }
+
+                this.accessToken = (String) tokenResponse.get("access_token");
+                int expiresIn = (int) tokenResponse.get("expires_in");
+                this.expireTime = Instant.now().plusSeconds(expiresIn);
+                
+                // Record successful authentication
+                metricsRecorder.recordAuthSuccess();
+                
+                log.info("Received new access token. Expires in {} seconds", expiresIn);
+            } catch (Exception e) {
+                // Record authentication failure and specific error details
+                metricsRecorder.recordAuthFailure();
+                metricsRecorder.recordError(e);
+                log.error("Failed to renew Office 365 credentials", e);
+                throw e;
             }
-
-            this.accessToken = (String) tokenResponse.get("access_token");
-            int expiresIn = (int) tokenResponse.get("expires_in");
-            this.expireTime = Instant.now().plusSeconds(expiresIn);
-            log.info("Received new access token. Expires in {} seconds", expiresIn);
         }
     }
 
