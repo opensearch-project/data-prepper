@@ -84,6 +84,14 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'otel-logs-source-pipeline.yml',
                 'data_prepper.yml'
         ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceGrpcUnframedRequestsEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source grpc service with unframed requests enabled.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceTest.testOtelLogsSourceWithUnframedRequestsPipelineEndToEnd*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-unframed-requests-pipeline.yml',
+                'data_prepper.yml'
+        ),
 ]
 
 

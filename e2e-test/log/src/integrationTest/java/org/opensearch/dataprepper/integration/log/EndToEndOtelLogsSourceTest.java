@@ -56,10 +56,18 @@ public class EndToEndOtelLogsSourceTest {
 
     @Test
     public void testOtelLogsSourcePipelineEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs();
+        ingestLogs("/otel-logs-pipeline/logs");
 
         searchForLogsAndAssert();
     }
+
+    @Test
+    public void testOtelLogsSourceWithUnframedRequestsPipelineEndToEnd() throws InvalidProtocolBufferException {
+        ingestLogs("/opentelemetry.proto.collector.logs.v1.LogsService/Export");
+
+        searchForLogsAndAssert();
+    }
+
 
     private HttpData createOtelLogsHttpRequest() throws InvalidProtocolBufferException {
         ExportLogsServiceRequest exportLogsServiceRequest = ExportLogsServiceRequest.newBuilder().addResourceLogs(
@@ -101,12 +109,12 @@ public class EndToEndOtelLogsSourceTest {
                 .createClient(null);
     }
 
-    private void ingestLogs() throws InvalidProtocolBufferException {
+    private void ingestLogs(String path) throws InvalidProtocolBufferException {
         RequestHeaders headers = RequestHeaders.builder()
                 .scheme(SessionProtocol.HTTP)
                 .authority(String.format("127.0.0.1:%d", SOURCE_PORT))
                 .method(HttpMethod.POST)
-                .path("/otel-logs-pipeline/logs")
+                .path(path)
                 .contentType(MediaType.JSON_UTF_8)
                 .build();
 
