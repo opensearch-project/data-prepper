@@ -28,21 +28,109 @@ public class DimensionalTimeSliceLeaderProgressStateTest {
         String json = "{\n" +
                 "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceLeaderProgressState\",\n" +
                 "  \"last_poll_time\": \"2024-10-20T02:27:15.717Z\",\n" +
-                "  \"remaining_hours\": 24\n" +
+                "  \"remaining_minutes\": 1440\n" +
                 "}";
 
         DimensionalTimeSliceLeaderProgressState state = objectMapper.readValue(json, DimensionalTimeSliceLeaderProgressState.class);
         assertEquals(Instant.parse("2024-10-20T02:27:15.717Z"), state.getLastPollTime());
-        assertEquals(24, state.getRemainingHours());
+        assertEquals(1440, state.getRemainingMinutes());
     }
 
     @Test
     void testConstructor_setsValuesCorrectly() {
         Instant now = Instant.now();
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, 48);
+        long remainingMinutes = 2880;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, remainingMinutes);
 
         assertNotNull(state);
         assertEquals(now, state.getLastPollTime());
-        assertEquals(48, state.getRemainingHours());
+        assertEquals(2880, state.getRemainingMinutes());
+    }
+
+    @Test
+    void testConstructor_withSubHourMinutes() {
+        Instant now = Instant.now();
+        long remainingMinutes = 15;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, remainingMinutes);
+
+        assertNotNull(state);
+        assertEquals(now, state.getLastPollTime());
+        assertEquals(15, state.getRemainingMinutes());
+    }
+
+    @Test
+    void testConstructor_withZeroMinutes() {
+        Instant now = Instant.now();
+        long remainingMinutes = 0;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, remainingMinutes);
+
+        assertNotNull(state);
+        assertEquals(now, state.getLastPollTime());
+        assertEquals(0, state.getRemainingMinutes());
+    }
+
+    @Test
+    void testBackwardCompatibility_getRemainingHoursFromMinutes() {
+        Instant now = Instant.now();
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, 150L);
+
+        assertEquals(150, state.getRemainingMinutes());
+        assertEquals(2, state.getRemainingHours());
+    }
+
+    @Test
+    void testBackwardCompatibility_getRemainingHoursFromSubHourMinutes() {
+        Instant now = Instant.now();
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, 30L);
+
+        assertEquals(30, state.getRemainingMinutes());
+        assertEquals(0, state.getRemainingHours());
+    }
+
+    @Test
+    void testBackwardCompatibility_intHoursConstructor() {
+        Instant now = Instant.now();
+        int hoursFromLegacyConnector = 2;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, hoursFromLegacyConnector);
+
+        assertNotNull(state);
+        assertEquals(now, state.getLastPollTime());
+        assertEquals(120, state.getRemainingMinutes());
+        assertEquals(2, state.getRemainingHours());
+    }
+
+    @Test
+    void testBackwardCompatibility_intHoursConstructor_24Hours() {
+        Instant now = Instant.now();
+        int hoursFromLegacyConnector = 24;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, hoursFromLegacyConnector);
+
+        assertEquals(1440, state.getRemainingMinutes());
+        assertEquals(24, state.getRemainingHours());
+    }
+
+    @Test
+    void testBackwardCompatibility_intHoursConstructor_zeroHours() {
+        Instant now = Instant.now();
+        int hoursFromLegacyConnector = 0;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(now, hoursFromLegacyConnector);
+
+        assertEquals(0, state.getRemainingMinutes());
+        assertEquals(0, state.getRemainingHours());
+    }
+
+    @Test
+    void testConstructorOverloading_longMinutesVsIntHours() {
+        Instant now = Instant.now();
+
+        long minutesValue = 120L;
+        DimensionalTimeSliceLeaderProgressState stateFromMinutes = new DimensionalTimeSliceLeaderProgressState(now, minutesValue);
+        assertEquals(120, stateFromMinutes.getRemainingMinutes());
+
+        int hoursValue = 2;
+        DimensionalTimeSliceLeaderProgressState stateFromHours = new DimensionalTimeSliceLeaderProgressState(now, hoursValue);
+        assertEquals(120, stateFromHours.getRemainingMinutes());
+
+        assertEquals(stateFromMinutes.getRemainingMinutes(), stateFromHours.getRemainingMinutes());
     }
 }

@@ -31,6 +31,7 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.base.Dime
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -124,15 +125,15 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_initialTimeInTheFirst5MinutesOfTheHOur() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION -1);
-        int lookbackHours = 2;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackHours);
+        long lookbackMinutes = 120;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
 
         assertNotNull(latest);
-        // Expecting (lookbackHours + 1) * LOG_TYPES.size() partitions
-        int expectedPartitions = (lookbackHours) * LOG_TYPES.size();
+        // Expecting (lookbackMinutes/60 + 1) * LOG_TYPES.size() partitions
+        int expectedPartitions = 2 * LOG_TYPES.size();
         verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
         verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
         verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
@@ -144,8 +145,8 @@ public class DimensionalTimeSliceCrawlerTest {
         for (int i = 0; i < LOG_TYPES.size(); i++) {
             DimensionalTimeSliceWorkerProgressState workerState =
                     (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
-            assertEquals(latestHour.minus(Duration.ofHours(lookbackHours)), workerState.getStartTime());
-            assertEquals(latestHour.minus(Duration.ofHours(lookbackHours - 1)), workerState.getEndTime());
+            assertEquals(latestHour.minus(Duration.ofHours(2)), workerState.getStartTime());
+            assertEquals(latestHour.minus(Duration.ofHours(1)), workerState.getEndTime());
             assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
         }
 
@@ -163,15 +164,15 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_initialTimeNotInTheFirst5MinutesOfTheHOur() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
-        int lookbackHours = 2;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackHours);
+        long lookbackMinutes = 120;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
 
         assertNotNull(latest);
-        // Expecting (lookbackHours + 1) * LOG_TYPES.size() partitions
-        int expectedPartitions = (lookbackHours + 1) * LOG_TYPES.size();
+        // Expecting (lookbackMinutes/60 + 1) * LOG_TYPES.size() partitions
+        int expectedPartitions = 3 * LOG_TYPES.size();
         verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
         verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
         verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
@@ -183,8 +184,8 @@ public class DimensionalTimeSliceCrawlerTest {
         for (int i = 0; i < LOG_TYPES.size(); i++) {
             DimensionalTimeSliceWorkerProgressState workerState =
                     (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
-            assertEquals(latestHour.minus(Duration.ofHours(lookbackHours)), workerState.getStartTime());
-            assertEquals(latestHour.minus(Duration.ofHours(lookbackHours - 1)), workerState.getEndTime());
+            assertEquals(latestHour.minus(Duration.ofHours(2)), workerState.getStartTime());
+            assertEquals(latestHour.minus(Duration.ofHours(1)), workerState.getEndTime());
             assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
         }
 
@@ -265,6 +266,303 @@ public class DimensionalTimeSliceCrawlerTest {
         DimensionalTimeSliceCrawler newCrawler = new DimensionalTimeSliceCrawler(client, pluginMetrics);
         assertThrows(NullPointerException.class, () -> {
             newCrawler.initialize(null);
+        });
+    }
+    @Test
+    void testCrawl_withSubHourHistoricalSync_15Minutes() {
+        Instant initialTime = Instant.now();
+        long lookbackMinutes = 15;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(initialTime.minus(Duration.ofMinutes(15)), workerState.getStartTime());
+            assertEquals(initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION), workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withSubHourHistoricalSync_30Minutes() {
+        Instant initialTime = Instant.now();
+        long lookbackMinutes = 30;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(initialTime.minus(Duration.ofMinutes(30)), workerState.getStartTime());
+            assertEquals(initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION), workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withSubHourHistoricalSync_45Minutes() {
+        Instant initialTime = Instant.now();
+        long lookbackMinutes = 45;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(initialTime.minus(Duration.ofMinutes(45)), workerState.getStartTime());
+            assertEquals(initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION), workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withIncrementalSync_exactly5MinutesAgo() {
+        Instant lastPollTime = Instant.now().minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, 0);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+
+        verify(coordinator, never()).createPartition(partitionCaptor.capture());
+        verify(coordinator, never()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, never()).increment();
+        assertEquals(lastPollTime, latest);
+    }
+
+    @Test
+    void testCrawl_withHistoricalSync_exactly1Hour() {
+        Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
+        long lookbackMinutes = 60;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+
+        int expectedPartitions = 2 * LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(latestHour.minus(Duration.ofHours(1)), workerState.getStartTime());
+            assertEquals(latestHour, workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+
+        for (int i = LOG_TYPES.size(); i < LOG_TYPES.size() * 2; i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(latestHour, workerState.getStartTime());
+            assertEquals(initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION), workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i - LOG_TYPES.size()), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withHistoricalSync_3Hours() {
+        Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
+        long lookbackMinutes = 180;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+        int expectedPartitions = 4 * LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+    }
+
+    @Test
+    void testCrawl_withHistoricalSync_withExtraMinutes() {
+        Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
+        long lookbackMinutes = 125;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+        int expectedPartitions = 3 * LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        DimensionalTimeSliceWorkerProgressState firstWorkerState =
+                (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(0).getProgressState().get();
+        assertEquals(latestHour.minus(Duration.ofHours(2)).minus(Duration.ofMinutes(5)), firstWorkerState.getStartTime());
+        assertEquals(latestHour.minus(Duration.ofHours(1)), firstWorkerState.getEndTime());
+    }
+
+    @Test
+    void testCrawl_withSubHourHistoricalSync_verySmallRange() {
+        Instant initialTime = Instant.now();
+        long lookbackMinutes = 3;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(initialTime.minus(Duration.ofMinutes(3)), workerState.getStartTime());
+            assertEquals(initialTime, workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withSubHourHistoricalSync_exactly5Minutes() {
+        Instant initialTime = Instant.now();
+        long lookbackMinutes = 5;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(initialTime.minus(Duration.ofMinutes(5)), workerState.getStartTime());
+            assertEquals(initialTime, workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCrawl_withHistoricalSync_latestModifiedTimeEqualsLatestHour() {
+        Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        long lookbackMinutes = 60;
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        LeaderPartition leaderPartition = new LeaderPartition(state);
+
+        Instant latest = crawler.crawl(leaderPartition, coordinator);
+
+        assertNotNull(latest);
+        int expectedPartitions = LOG_TYPES.size();
+        verify(coordinator, times(expectedPartitions)).createPartition(partitionCaptor.capture());
+        verify(coordinator, atLeastOnce()).saveProgressStateForPartition(eq(leaderPartition), any());
+        verify(partitionsCreatedCounter, times(expectedPartitions)).increment();
+
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+        assertEquals(expectedPartitions, createdPartitions.size());
+
+        for (int i = 0; i < LOG_TYPES.size(); i++) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) createdPartitions.get(i).getProgressState().get();
+            assertEquals(latestHour.minus(Duration.ofHours(1)), workerState.getStartTime());
+            assertEquals(latestHour, workerState.getEndTime());
+            assertEquals(LOG_TYPES.get(i), workerState.getDimensionType());
+        }
+    }
+
+    @Test
+    void testCreateWorkerPartitionsForDimensionTypes_setsPartitionCreationTime() {
+        Instant start = Instant.parse("2024-10-30T00:00:00Z");
+        Instant end = start.plus(Duration.ofHours(1));
+        Instant beforeCreation = Instant.now();
+
+        crawler.createWorkerPartitionsForDimensionTypes(start, end, coordinator);
+
+        verify(coordinator, times(LOG_TYPES.size())).createPartition(partitionCaptor.capture());
+        List<SaasSourcePartition> createdPartitions = partitionCaptor.getAllValues();
+
+        Instant afterCreation = Instant.now();
+
+        for (SaasSourcePartition partition : createdPartitions) {
+            DimensionalTimeSliceWorkerProgressState workerState =
+                    (DimensionalTimeSliceWorkerProgressState) partition.getProgressState().get();
+            assertNotNull(workerState.getPartitionCreationTime());
+
+            assertTrue(workerState.getPartitionCreationTime().isAfter(beforeCreation.minusSeconds(1)));
+            assertTrue(workerState.getPartitionCreationTime().isBefore(afterCreation.plusSeconds(1)));
+        }
+    }
+
+
+    @Test
+    void testInitialize_withEmptyList() {
+        DimensionalTimeSliceCrawler newCrawler = new DimensionalTimeSliceCrawler(client, pluginMetrics);
+        List<String> emptyList = Arrays.asList();
+        newCrawler.initialize(emptyList);
+        assertThrows(IllegalStateException.class, () -> {
+            newCrawler.initialize(emptyList);
         });
     }
 }

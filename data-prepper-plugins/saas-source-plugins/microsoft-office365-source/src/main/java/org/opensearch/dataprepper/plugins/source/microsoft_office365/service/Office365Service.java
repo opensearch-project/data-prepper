@@ -63,11 +63,11 @@ public class Office365Service {
                 return office365RestClient.searchAuditLogs(logType, startTime, endTime, nextPageUri);
             }
 
-            // Adjust start time based on configured lookback hours
+            // Adjust start time based on configured lookback period (supports minute-level granularity)
             Instant adjustedStartTime = startTime;
-            Instant lookBackHoursAgo = Instant.now().minus(Duration.ofHours(office365SourceConfig.getLookBackHours()));
-            if (startTime.isBefore(lookBackHoursAgo) && lookBackHoursAgo.isBefore(endTime)) {
-                adjustedStartTime = lookBackHoursAgo;
+            Instant lookBackTimeAgo = Instant.now().minus(Duration.ofMinutes(office365SourceConfig.getLookBackMinutes()));
+            if (startTime.isBefore(lookBackTimeAgo) && lookBackTimeAgo.isBefore(endTime)) {
+                adjustedStartTime = lookBackTimeAgo;
             }
 
             AuditLogsResponse response =

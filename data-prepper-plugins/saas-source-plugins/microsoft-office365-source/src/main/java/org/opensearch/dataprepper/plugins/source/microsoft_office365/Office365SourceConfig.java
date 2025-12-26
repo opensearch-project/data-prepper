@@ -60,10 +60,25 @@ public class Office365SourceConfig implements CrawlerSourceConfig {
     private Duration range;
 
     /**
+     * Gets the look back range as minutes for the crawler framework.
+     * This method supports minute-level granularity for historical pulls.
+     *
+     * @return the number of minutes to look back, or 0 if no range is specified
+     */
+    public long getLookBackMinutes() {
+        if (range == null || range.isZero() || range.isNegative()) {
+            return 0;
+        }
+        return range.toMinutes();
+    }
+
+    /**
      * Gets the look back range as hours for compatibility with existing crawler framework.
      *
      * @return the number of hours to look back, or 0 if no range is specified
+     * @deprecated Use {@link #getLookBackMinutes()} for minute-level granularity support
      */
+    @Deprecated
     public int getLookBackHours() {
         if (range == null || range.toHours() <= 0) {
             return 0;

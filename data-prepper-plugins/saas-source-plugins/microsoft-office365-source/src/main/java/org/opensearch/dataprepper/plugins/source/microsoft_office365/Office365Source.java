@@ -93,7 +93,7 @@ public class Office365Source extends CrawlerSourcePlugin {
 
     @Override
     protected LeaderProgressState createLeaderProgressState() {
-        return new DimensionalTimeSliceLeaderProgressState(Instant.now(), office365SourceConfig.getLookBackHours());
+        return new DimensionalTimeSliceLeaderProgressState(Instant.now(), office365SourceConfig.getLookBackMinutes());
     }
 
     @Override

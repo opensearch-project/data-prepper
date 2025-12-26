@@ -79,7 +79,7 @@ class Office365SourceConfigTest {
     void testDefaultValues() {
         assertFalse(config.isAcknowledgments());
         assertEquals(4, config.getNumberOfWorkers());
-        assertEquals(0, config.getLookBackHours());
+        assertEquals(0, config.getLookBackMinutes());
     }
 
     @Test
@@ -99,7 +99,67 @@ class Office365SourceConfigTest {
         Duration negativeDuration = Duration.ofDays(-1);
         setField(config, "range", negativeDuration);
 
+        assertEquals(0, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_withMinuteRange() throws Exception {
+        Duration fifteenMinutes = Duration.ofMinutes(15);
+        setField(config, "range", fifteenMinutes);
+
+        // getLookBackHours should return 0 for sub-hour range
         assertEquals(0, config.getLookBackHours());
+        // getLookBackMinutes should return 15
+        assertEquals(15, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_with30MinuteRange() throws Exception {
+        Duration thirtyMinutes = Duration.ofMinutes(30);
+        setField(config, "range", thirtyMinutes);
+
+        // getLookBackHours should return 0 for sub-hour range
+        assertEquals(0, config.getLookBackHours());
+        // getLookBackMinutes should return 30
+        assertEquals(30, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_with45MinuteRange() throws Exception {
+        Duration fortyFiveMinutes = Duration.ofMinutes(45);
+        setField(config, "range", fortyFiveMinutes);
+
+        // getLookBackHours should return 0 for sub-hour range
+        assertEquals(0, config.getLookBackHours());
+        // getLookBackMinutes should return 45
+        assertEquals(45, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_withHourRange() throws Exception {
+        Duration twoHours = Duration.ofHours(2);
+        setField(config, "range", twoHours);
+
+        assertEquals(2, config.getLookBackHours());
+        assertEquals(120, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_withDayRange() throws Exception {
+        Duration oneDay = Duration.ofDays(1);
+        setField(config, "range", oneDay);
+
+        assertEquals(24, config.getLookBackHours());
+        assertEquals(1440, config.getLookBackMinutes());
+    }
+
+    @Test
+    void testGetLookBackMinutes_withZeroRange() throws Exception {
+        Duration zeroDuration = Duration.ZERO;
+        setField(config, "range", zeroDuration);
+
+        assertEquals(0, config.getLookBackHours());
+        assertEquals(0, config.getLookBackMinutes());
     }
 
     @Test
