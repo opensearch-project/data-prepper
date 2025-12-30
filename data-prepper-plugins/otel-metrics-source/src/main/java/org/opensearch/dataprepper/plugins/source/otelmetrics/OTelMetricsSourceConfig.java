@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
+import java.util.Set;
+
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
@@ -23,6 +25,8 @@ public class OTelMetricsSourceConfig {
     static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
     static final String HEALTH_CHECK_SERVICE = "health_check_service";
+    static final String OUTPUT_FORMAT = "output_format";
+    static final String BUFFER_PARTITION_KEYS = "buffer_partition_keys";
     static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
     static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     static final String SSL_KEY_FILE = "sslKeyFile";
@@ -46,6 +50,8 @@ public class OTelMetricsSourceConfig {
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
+    private static final String NAME_KEY = "name";
+    private static final String SERVICE_NAME_KEY = "service_name";
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -69,8 +75,11 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(SSL)
     private boolean ssl = DEFAULT_SSL;
 
-    @JsonProperty("output_format")
+    @JsonProperty(OUTPUT_FORMAT)
     private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
+
+    @JsonProperty(BUFFER_PARTITION_KEYS)
+    private Set<String> bufferPartitionKeys = null;
 
     @JsonProperty(USE_ACM_CERT_FOR_SSL)
     private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -115,6 +124,17 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
+
+    @AssertTrue(message = "buffer_partition_keys only supports 'name' and 'service_name'. 'name' is mandatory")
+    boolean isBufferKeysValid() {
+        if (bufferPartitionKeys == null) {
+            return true;
+        }
+
+        return bufferPartitionKeys.contains(NAME_KEY) &&
+           (bufferPartitionKeys.size() == 1 || (bufferPartitionKeys.size() == 2
+                && bufferPartitionKeys.contains(SERVICE_NAME_KEY)));
+    }
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -166,6 +186,10 @@ public class OTelMetricsSourceConfig {
 
     public boolean hasHealthCheck() {
         return healthCheck;
+    }
+
+    public Set<String> getBufferPartitionKeys() {
+        return bufferPartitionKeys;
     }
 
     public boolean enableHttpHealthCheck() {

@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImplBase {
@@ -49,15 +51,18 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final Counter recordsDroppedCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private final Set<String> bufferPartitionKeys;
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
+                                  final Set<String> bufferPartitionKeys,
                                   final PluginMetrics pluginMetrics,
                                   final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
 
+        this.bufferPartitionKeys = bufferPartitionKeys;
         if (metricsPrefix != null) {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
             successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
@@ -96,7 +101,15 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         try {
             if (buffer.isByteBuffer()) {
-                buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+                if (bufferPartitionKeys != null && !bufferPartitionKeys.isEmpty()) {
+                    Map<String, ExportMetricsServiceRequest> requestsMap =
+                        oTelProtoDecoder.splitExportMetricsServiceRequestByKeys(request, bufferPartitionKeys);
+                    for (Map.Entry<String, ExportMetricsServiceRequest> entry: requestsMap.entrySet()) {
+                        buffer.writeBytes(entry.getValue().toByteArray(), entry.getKey(), bufferWriteTimeoutInMillis);
+                    }
+                } else {
+                    buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
+                }
             } else {
                 Collection<Record<? extends Metric>> metrics;
 

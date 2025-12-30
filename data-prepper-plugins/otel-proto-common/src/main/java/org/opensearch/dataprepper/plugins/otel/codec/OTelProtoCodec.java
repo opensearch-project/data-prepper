@@ -9,6 +9,9 @@ import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import org.apache.commons.codec.DecoderException;
 
 import org.opensearch.dataprepper.model.metric.Metric;
@@ -19,8 +22,12 @@ import org.opensearch.dataprepper.model.trace.Span;
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -30,12 +37,104 @@ public interface OTelProtoCodec {
     public static final int DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE = 10;
 
     public interface OTelProtoDecoder {
+        public static final String SERVICE_NAME = "service.name";
+        public static final String SERVICE_NAME_KEY = "service_name";
 
         List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest, final Instant timeReceived);
 
         Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequestByTraceId(final ExportTraceServiceRequest exportTraceServiceRequest);
 
+        static Optional<String> getServiceName(final Resource resource) {
+            return resource.getAttributesList().stream().filter(
+                    keyValue -> keyValue.getKey().equals(SERVICE_NAME)
+                            && !keyValue.getValue().getStringValue().isEmpty()
+            ).findFirst().map(i -> i.getValue().getStringValue());
+        }
+
         List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived);
+        default Map<String, ExportMetricsServiceRequest> splitExportMetricsServiceRequestByKeys(final ExportMetricsServiceRequest request, final Set<String> keys) {
+            Map<String, ExportMetricsServiceRequest> result = new HashMap<>();
+            Map<String, ExportMetricsServiceRequest.Builder> resultBuilderMap = new HashMap<>();
+            for (ResourceMetrics resourceMetrics : request.getResourceMetricsList()) {
+                for (Map.Entry<String, ResourceMetrics> entry: splitResourceMetricsByKeys(resourceMetrics, keys).entrySet()) {
+                    String key = entry.getKey();
+
+                    if (resultBuilderMap.containsKey(key)) {
+                        resultBuilderMap.get(key).addResourceMetrics(entry.getValue());
+                    } else {
+                        resultBuilderMap.put(key, ExportMetricsServiceRequest.newBuilder().addResourceMetrics(entry.getValue()));
+                    }
+                }
+            }
+            for (Map.Entry<String, ExportMetricsServiceRequest.Builder> entry: resultBuilderMap.entrySet()) {
+                result.put(entry.getKey(), entry.getValue().build());
+            }
+            return result;
+        }
+
+        private Map<String, ResourceMetrics> splitResourceMetricsByKeys(final ResourceMetrics resourceMetrics, final Set<String> keys) {
+            final Resource resource = resourceMetrics.getResource();
+            String entryKeyPrefix = "";
+            if (keys.contains(SERVICE_NAME_KEY)) {
+                entryKeyPrefix = getServiceName(resource).orElse("");
+                entryKeyPrefix += ":";
+            }
+            final boolean hasResource = resourceMetrics.hasResource();
+            Map<String, ResourceMetrics> result = new HashMap<>();
+            Map<String, ResourceMetrics.Builder> resultBuilderMap = new HashMap<>();
+
+            if (!resourceMetrics.getScopeMetricsList().isEmpty()) {
+                for (Map.Entry<String, List<ScopeMetrics>> entry: splitScopeMetricsByKeys(resourceMetrics.getScopeMetricsList(), entryKeyPrefix).entrySet()) {
+                    ResourceMetrics.Builder resourceMetricsBuilder = ResourceMetrics.newBuilder().addAllScopeMetrics(entry.getValue());
+                    if (hasResource) {
+                        resourceMetricsBuilder.setResource(resource);
+                    }
+                    resultBuilderMap.put(entry.getKey(), resourceMetricsBuilder);
+                }
+            }
+
+            for (Map.Entry<String, ResourceMetrics.Builder> entry: resultBuilderMap.entrySet()) {
+                result.put(entry.getKey(), entry.getValue().build());
+            }
+            return result;
+        }
+
+        private Map<String, List<ScopeMetrics>> splitScopeMetricsByKeys(final List<ScopeMetrics> scopeMetricsList, final String prefix) {
+            Map<String, List<ScopeMetrics>> result = new HashMap<>();
+            for (ScopeMetrics sm: scopeMetricsList) {
+                final boolean hasScope = sm.hasScope();
+                final io.opentelemetry.proto.common.v1.InstrumentationScope scope = sm.getScope();
+                for (Map.Entry<String, List<io.opentelemetry.proto.metrics.v1.Metric>> entry: splitMetricsByKeys(sm.getMetricsList(), prefix).entrySet()) {
+                    ScopeMetrics.Builder scopeMetricsBuilder = ScopeMetrics.newBuilder().addAllMetrics(entry.getValue());
+                    if (hasScope) {
+                        scopeMetricsBuilder.setScope(scope);
+                    }
+                    String key = entry.getKey();
+                    if (!result.containsKey(key)) {
+                        result.put(key, new ArrayList<>());
+                    }
+                    result.get(key).add(scopeMetricsBuilder.build());
+                }
+            }
+            return result;
+        }
+
+        private Map<String, List<io.opentelemetry.proto.metrics.v1.Metric>> splitMetricsByKeys(final List<io.opentelemetry.proto.metrics.v1.Metric> metrics, final String prefix) {
+            Map<String, List<io.opentelemetry.proto.metrics.v1.Metric>> result = new HashMap<>();
+            for (io.opentelemetry.proto.metrics.v1.Metric metric: metrics) {
+                String key = prefix+metric.getName();
+                List<io.opentelemetry.proto.metrics.v1.Metric> metricList;
+                if (result.containsKey(key)) {
+                    metricList = result.get(key);
+                } else {
+                    metricList = new ArrayList<>();
+                    result.put(key, metricList);
+                }
+                metricList.add(metric);
+            }
+            return result;
+        }
+
         default Collection<Record<? extends Metric>> parseExportMetricsServiceRequest(
                             final ExportMetricsServiceRequest request,
                             final Instant timeReceived) {
