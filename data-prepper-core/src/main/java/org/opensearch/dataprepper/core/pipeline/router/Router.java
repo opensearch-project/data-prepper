@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,8 @@ public class Router {
         Objects.requireNonNull(dataFlowComponents);
         Objects.requireNonNull(componentRecordsConsumer);
 
+        final Map<Object, Collection<Record>> componentRecords = new HashMap<>();
+
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
 
         boolean allRecordsRouted = false;
@@ -61,8 +64,12 @@ public class Router {
                         recordsUnRouted.remove(record);
                     }
                 }
-                componentRecordsConsumer.accept(component, records);
+                componentRecords.put((C)component, records);
             });
+        }
+
+        for (Map.Entry<Object, Collection<Record>> entry : componentRecords.entrySet()) {
+            componentRecordsConsumer.accept((C)entry.getKey(), entry.getValue());
         }
 
         if (recordsUnRouted != null) {
