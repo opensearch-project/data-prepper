@@ -255,22 +255,21 @@ public class KafkaSecurityConfigurer {
                     .region(Region.of(awsConfig.getRegion()))
                     .credentialsProvider(mskCredentialsProvider)
                     .build();
+            AssumeRoleRequest.Builder assumeRequestBuilder = AssumeRoleRequest
+                    .builder()
+                    .roleArn(awsConfig.getStsRoleArn())
+                    .roleSessionName(sessionName);
+            Map<String, String> headers = awsConfig.getAwsStsHeaderOverrides();
+            if (Objects.nonNull(headers)) {
+                assumeRequestBuilder.overrideConfiguration(configuration -> {
+                    headers.forEach(configuration::putHeader);
+                });
+            }
             mskCredentialsProvider = StsAssumeRoleCredentialsProvider
                     .builder()
                     .stsClient(stsClient)
-                    .refreshRequest(
-                            AssumeRoleRequest
-                                    .builder()
-                                    .roleArn(awsConfig.getStsRoleArn())
-                                    .roleSessionName(sessionName)
-                                    .overrideConfiguration(configuration -> {
-                                        Map<String, String> headers = awsConfig.getAwsStsHeaderOverrides();
-                                        if (headers != null) {
-                                            headers.forEach(configuration::putHeader);
-                                        }
-                                    })
-                                    .build()
-                    ).build();
+                    .refreshRequest(assumeRequestBuilder.build())
+                    .build();
         }
     }
 
