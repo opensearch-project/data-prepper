@@ -210,6 +210,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     }
 
     <T> ConsumerRecords<String, T> doPoll() throws Exception {
+            topicMetrics.recordTimeBetweenPolls();
             ConsumerRecords<String, T> records =
                     consumer.poll(Duration.ofMillis(topicConfig.getThreadWaitingTime().toMillis()/2));
             return records;
