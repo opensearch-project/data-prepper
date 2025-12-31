@@ -263,6 +263,12 @@ public class KafkaSecurityConfigurer {
                                     .builder()
                                     .roleArn(awsConfig.getStsRoleArn())
                                     .roleSessionName(sessionName)
+                                    .overrideConfiguration(configuration -> {
+                                        Map<String, String> headers = awsConfig.getAwsStsHeaderOverrides();
+                                        if (headers != null) {
+                                            headers.forEach(configuration::putHeader);
+                                        }
+                                    })
                                     .build()
                     ).build();
         }

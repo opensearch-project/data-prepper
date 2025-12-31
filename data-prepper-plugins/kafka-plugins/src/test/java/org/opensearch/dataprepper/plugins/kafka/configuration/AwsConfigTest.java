@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -36,6 +37,10 @@ class AwsConfigTest {
         final String testRegion = RandomStringUtils.randomAlphabetic(8);
         reflectivelySetField(awsConfig, "region", testRegion);
         assertThat(awsConfig.getRegion(), equalTo(testRegion));
+
+        final Map<String, String> testStsHeaderOverrides = Map.of("header1", "value1", "header2", "value2");
+        reflectivelySetField(awsConfig, "awsStsHeaderOverrides", testStsHeaderOverrides);
+        assertThat(awsConfig.getAwsStsHeaderOverrides(), equalTo(testStsHeaderOverrides));
     }
 
     private void reflectivelySetField(final AwsConfig awsConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {

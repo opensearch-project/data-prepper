@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -345,6 +346,24 @@ public class KafkaSecurityConfigurerTest {
                 properties, kafkaConnectionConfig, pluginConfigObservable);
         assertThat(properties.isEmpty(), is(true));
         verifyNoInteractions(pluginConfigObservable);
+    }
+
+    @Test
+    void testSetAuthPropertiesWithStsHeaderOverrides() throws IOException {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-role.yaml");
+        
+        try (MockedStatic<StsAssumeRoleCredentialsProvider> mockedProvider = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+            final StsAssumeRoleCredentialsProvider.Builder mockBuilder = mock(StsAssumeRoleCredentialsProvider.Builder.class);
+            when(mockBuilder.stsClient(any())).thenReturn(mockBuilder);
+            when(mockBuilder.refreshRequest(any(AssumeRoleRequest.class))).thenReturn(mockBuilder);
+            when(mockBuilder.build()).thenReturn(stsAssumeRoleCredentialsProvider);
+            mockedProvider.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(mockBuilder);
+            
+            KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+            
+            verify(mockBuilder).refreshRequest(any(AssumeRoleRequest.class));
+        }
     }
 
     private KafkaSourceConfig createKafkaSinkConfig(final String fileName) throws IOException {
