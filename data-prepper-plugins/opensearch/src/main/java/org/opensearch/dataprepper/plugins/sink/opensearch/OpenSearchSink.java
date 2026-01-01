@@ -78,6 +78,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -676,25 +677,25 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
       if (bulkRequest != null && bulkRequest.getOperationsCount() > 0) {
         LOG.info("Flushing bulk request with {} operations for thread {}", bulkRequest.getOperationsCount(), threadId);
-		long retryTime = 0;
+		Duration retryTime = Duration.ZERO;
         boolean success = false;
-        while (!success && retryTime <= FLUSH_TIMEOUT_WAIT_MS) {
+        while (!success && retryTime.toMillis() <= FLUSH_TIMEOUT_WAIT_MS) {
           try {
             flushBatch(bulkRequest);
             success = true;
             LOG.info("Successfully flushed bulk request for thread {}", threadId);
           } catch (Exception e) {
-            LOG.warn("Error flushing bulk request during shutdown retrying in 1 Seconds, remaining time: {}sec", (FLUSH_TIMEOUT_WAIT_MS - retryTime)/1000, e);
+            LOG.warn("Error flushing bulk request during shutdown retrying in 1 Seconds, remaining time: {}sec", (FLUSH_TIMEOUT_WAIT_MS - retryTime.toMillis())/1000, e);
             try {
               	Thread.sleep( 1000L);
-				retryTime += 1000L;
+				retryTime = retryTime.plusMillis(1000L);
             } catch (InterruptedException ie) {
               Thread.currentThread().interrupt();
               LOG.warn("Interrupted while waiting to retry bulk flush");
               break;
             }
           }
-        }
+		}
       }
     }
 
