@@ -26,7 +26,7 @@ public class OTelMetricsSourceConfig {
     static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
     static final String HEALTH_CHECK_SERVICE = "health_check_service";
     static final String OUTPUT_FORMAT = "output_format";
-    static final String BUFFER_PARTITION_KEYS = "buffer_partition_keys";
+    static final String BUFFER_PARTITION_KEYS = "partition_keys";
     static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
     static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     static final String SSL_KEY_FILE = "sslKeyFile";
@@ -79,6 +79,7 @@ public class OTelMetricsSourceConfig {
     private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
 
     @JsonProperty(BUFFER_PARTITION_KEYS)
+    @Size(min = 1, max = 2, message = "partition_keys must contain 1 or 2 elements")
     private Set<String> bufferPartitionKeys = null;
 
     @JsonProperty(USE_ACM_CERT_FOR_SSL)
