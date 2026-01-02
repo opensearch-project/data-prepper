@@ -43,6 +43,18 @@ class AwsConfigTest {
         assertThat(awsConfig.getAwsStsHeaderOverrides(), equalTo(testStsHeaderOverrides));
     }
 
+    @Test
+    void testStsHeaderOverridesValidation_hasMaxSizeConstraint() throws NoSuchFieldException {
+        // Verify that the sts_header_overrides field has the @Size(max = 5) validation annotation
+        final Field field = AwsConfig.class.getDeclaredField("awsStsHeaderOverrides");
+        final jakarta.validation.constraints.Size sizeAnnotation = field.getAnnotation(jakarta.validation.constraints.Size.class);
+        
+        assertThat("sts_header_overrides field should have @Size annotation", sizeAnnotation != null, equalTo(true));
+        assertThat("sts_header_overrides should have max size of 5", sizeAnnotation.max(), equalTo(5));
+        assertThat("sts_header_overrides validation message should be correct", 
+                   sizeAnnotation.message(), equalTo("sts_header_overrides supports a maximum of 5 headers to override"));
+    }
+
     private void reflectivelySetField(final AwsConfig awsConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
         final Field field = AwsConfig.class.getDeclaredField(fieldName);
         try {

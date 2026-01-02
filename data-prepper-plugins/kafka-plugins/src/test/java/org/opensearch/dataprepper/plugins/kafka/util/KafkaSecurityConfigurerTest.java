@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
@@ -44,11 +45,13 @@ import java.util.UUID;
 
 import static org.apache.kafka.common.config.SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.hasKey;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -372,15 +375,34 @@ public class KafkaSecurityConfigurerTest {
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-role-with-headers.yaml");
         
         try (MockedStatic<StsAssumeRoleCredentialsProvider> mockedProvider = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
-            final StsAssumeRoleCredentialsProvider.Builder mockBuilder = mock(StsAssumeRoleCredentialsProvider.Builder.class);
-            when(mockBuilder.stsClient(any())).thenReturn(mockBuilder);
-            when(mockBuilder.refreshRequest(any(AssumeRoleRequest.class))).thenReturn(mockBuilder);
-            when(mockBuilder.build()).thenReturn(stsAssumeRoleCredentialsProvider);
-            mockedProvider.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(mockBuilder);
+            final StsAssumeRoleCredentialsProvider.Builder stsCredentialsProviderBuilder = mock(StsAssumeRoleCredentialsProvider.Builder.class);
+            when(stsCredentialsProviderBuilder.stsClient(any())).thenReturn(stsCredentialsProviderBuilder);
+            when(stsCredentialsProviderBuilder.refreshRequest(any(AssumeRoleRequest.class))).thenReturn(stsCredentialsProviderBuilder);
+            when(stsCredentialsProviderBuilder.build()).thenReturn(stsAssumeRoleCredentialsProvider);
+            mockedProvider.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
             
             KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
-            
-            verify(mockBuilder).refreshRequest(any(AssumeRoleRequest.class));
+
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(actualAssumeRoleRequest.overrideConfiguration(), notNullValue());
+            assertThat(actualAssumeRoleRequest.overrideConfiguration().isPresent(), equalTo(true));
+            final AwsRequestOverrideConfiguration overrideConfiguration = actualAssumeRoleRequest.overrideConfiguration().get();
+            assertThat(overrideConfiguration.headers(), notNullValue());
+            assertThat(overrideConfiguration.headers().size(), equalTo(2));
+            final String headerName1 = "X-Custom-Header";
+            final String headerValue1 = "custom-value";
+            final String headerName2 = "X-Another-Header";
+            final String headerValue2 = "another-value";
+            assertThat(overrideConfiguration.headers(), hasKey(headerName1));
+            assertThat(overrideConfiguration.headers(), hasKey(headerName2));
+            assertThat(overrideConfiguration.headers().get(headerName1), notNullValue());
+            assertThat(overrideConfiguration.headers().get(headerName1).size(), equalTo(1));
+            assertThat(overrideConfiguration.headers().get(headerName1), hasItem(headerValue1));
+            assertThat(overrideConfiguration.headers().get(headerName2), notNullValue());
+            assertThat(overrideConfiguration.headers().get(headerName2).size(), equalTo(1));
+            assertThat(overrideConfiguration.headers().get(headerName2), hasItem(headerValue2));
         }
     }
 
