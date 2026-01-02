@@ -53,23 +53,19 @@ public interface OTelProtoCodec {
 
         List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived);
         default Map<String, ExportMetricsServiceRequest> splitExportMetricsServiceRequestByKeys(final ExportMetricsServiceRequest request, final Set<String> keys) {
-            Map<String, ExportMetricsServiceRequest> result = new HashMap<>();
-            Map<String, ExportMetricsServiceRequest.Builder> resultBuilderMap = new HashMap<>();
-            for (ResourceMetrics resourceMetrics : request.getResourceMetricsList()) {
-                for (Map.Entry<String, ResourceMetrics> entry: splitResourceMetricsByKeys(resourceMetrics, keys).entrySet()) {
-                    String key = entry.getKey();
+            Map<String, ExportMetricsServiceRequest.Builder> builderMap = new HashMap<>();
 
-                    if (resultBuilderMap.containsKey(key)) {
-                        resultBuilderMap.get(key).addResourceMetrics(entry.getValue());
-                    } else {
-                        resultBuilderMap.put(key, ExportMetricsServiceRequest.newBuilder().addResourceMetrics(entry.getValue()));
-                    }
-                }
-            }
-            for (Map.Entry<String, ExportMetricsServiceRequest.Builder> entry: resultBuilderMap.entrySet()) {
-                result.put(entry.getKey(), entry.getValue().build());
-            }
-            return result;
+            request.getResourceMetricsList().forEach(resourceMetrics ->
+                splitResourceMetricsByKeys(resourceMetrics, keys).forEach((key, value) ->
+                    builderMap.computeIfAbsent(key, k -> ExportMetricsServiceRequest.newBuilder())
+                             .addResourceMetrics(value)
+                )
+            );
+
+            return builderMap.entrySet().stream()
+                    .collect(HashMap::new,
+                            (map, entry) -> map.put(entry.getKey(), entry.getValue().build()),
+                            HashMap::putAll);
         }
 
         private Map<String, ResourceMetrics> splitResourceMetricsByKeys(final ResourceMetrics resourceMetrics, final Set<String> keys) {
