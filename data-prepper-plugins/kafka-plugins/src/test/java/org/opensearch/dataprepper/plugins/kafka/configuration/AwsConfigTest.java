@@ -55,6 +55,37 @@ class AwsConfigTest {
                    sizeAnnotation.message(), equalTo("sts_header_overrides supports a maximum of 5 headers to override"));
     }
 
+    @Test
+    void testToCredentialsOptions_withoutStsHeaderOverrides() throws NoSuchFieldException, IllegalAccessException {
+        final String testRegion = "us-east-1";
+        final String testStsRoleArn = "arn:aws:iam::123456789012:role/test-role";
+
+        reflectivelySetField(awsConfig, "region", testRegion);
+        reflectivelySetField(awsConfig, "stsRoleArn", testStsRoleArn);
+
+        final org.opensearch.dataprepper.aws.api.AwsCredentialsOptions result = awsConfig.toCredentialsOptions();
+
+        assertThat(result.getRegion().toString(), equalTo(testRegion));
+        assertThat(result.getStsRoleArn(), equalTo(testStsRoleArn));
+    }
+
+    @Test
+    void testToCredentialsOptions_withStsHeaderOverrides() throws NoSuchFieldException, IllegalAccessException {
+        final String testRegion = "us-east-1";
+        final String testStsRoleArn = "arn:aws:iam::123456789012:role/test-role";
+
+        reflectivelySetField(awsConfig, "region", testRegion);
+        reflectivelySetField(awsConfig, "stsRoleArn", testStsRoleArn);
+        final Map<String, String> testStsHeaderOverrides = Map.of("header1", "value1", "header2", "value2");
+        reflectivelySetField(awsConfig, "awsStsHeaderOverrides", testStsHeaderOverrides);
+
+        final org.opensearch.dataprepper.aws.api.AwsCredentialsOptions result = awsConfig.toCredentialsOptions();
+
+        assertThat(result.getRegion().toString(), equalTo(testRegion));
+        assertThat(result.getStsRoleArn(), equalTo(testStsRoleArn));
+        assertThat(result.getStsHeaderOverrides(), equalTo(testStsHeaderOverrides));
+    }
+
     private void reflectivelySetField(final AwsConfig awsConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
         final Field field = AwsConfig.class.getDeclaredField(fieldName);
         try {
