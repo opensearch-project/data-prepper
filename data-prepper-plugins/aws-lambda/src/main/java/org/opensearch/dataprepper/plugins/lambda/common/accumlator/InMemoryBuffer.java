@@ -40,6 +40,8 @@ public class InMemoryBuffer implements Buffer {
     private int eventCount;
     private long payloadRequestSize;
     private List<String> keys;
+    private boolean codecStarted;
+    private boolean codecCompleted;
 
 
     public InMemoryBuffer(String batchOptionKeyName) {
@@ -56,6 +58,8 @@ public class InMemoryBuffer implements Buffer {
         eventCount = 0;
         payloadRequestSize = 0;
         payloadResponseSize = 0;
+        codecStarted = false;
+        codecCompleted = false;
         // Setup request codec
         JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
         jsonOutputCodecConfig.setKeyName(batchOptionKeyName);
@@ -79,6 +83,7 @@ public class InMemoryBuffer implements Buffer {
         try {
             if (eventCount == 0) {
                 requestCodec.start(this.byteArrayOutputStream, event, this.outputCodecContext);
+                codecStarted = true;
             }
             requestCodec.writeEvent(event, this.byteArrayOutputStream);
         } catch (IOException e) {
@@ -115,7 +120,11 @@ public class InMemoryBuffer implements Buffer {
         }
 
         try {
-            requestCodec.complete(this.byteArrayOutputStream);
+            // Only call complete if we actually started the codec and haven't completed it yet
+            if (codecStarted && !codecCompleted) {
+                requestCodec.complete(this.byteArrayOutputStream);
+                codecCompleted = true;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -159,4 +168,3 @@ public class InMemoryBuffer implements Buffer {
         return payloadRequestSize;
     }
 }
-
