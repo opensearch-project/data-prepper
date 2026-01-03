@@ -113,7 +113,12 @@ public class NumericTypeHandlerTest {
 
                 // BIT tests
                 Arguments.of(MySQLDataType.BIT, "bit_col", BitSet.valueOf(new byte[]{ 4, 3, 2, 1 }), new BigInteger("16909060")), // BitSet interprets the bytes in little-endian order
-                Arguments.of(MySQLDataType.BIT, "bit_col", Map.of("bytes", new byte[]{ 1, 2, 3, 4 }), new BigInteger("16909060")) // Direct BigInteger interprets the bytes in big-endian order.
+                Arguments.of(MySQLDataType.BIT, "bit_col", Map.of("bytes", new byte[]{ 1, 2, 3, 4 }), new BigInteger("16909060")), // Direct BigInteger interprets the bytes in big-endian order.
+
+                //DECIMAL tests represented as byte arrays
+                Arguments.of(MySQLDataType.DECIMAL, "decimal_col", new ArrayList<>(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)), new BigDecimal("1339673755198158349044581307228491536")),
+                Arguments.of(MySQLDataType.DECIMAL, "decimal_col", Map.of("bytes", new byte[]{1, 2, 3, 4}), new BigDecimal("16909060")),
+                Arguments.of(MySQLDataType.DECIMAL, "decimal_col", new byte[]{1, 35, 69, 103, -119, -85, -51, -17}, new BigDecimal("81985529216486895"))
         );
     }
 

@@ -4,6 +4,7 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTyp
 import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -39,7 +40,13 @@ public class NumericTypeHandler implements MySQLDataTypeHandler {
         }
 
         if (value instanceof Number) {
-            return (Number)value;
+            return (Number) value;
+        }
+
+        if (columnType.isDecimal()) {
+            if (value instanceof byte[] || value instanceof Map || value instanceof ArrayList<?>) {
+                return handleByteArray(value);
+            }
         }
 
         throw new IllegalArgumentException("Unsupported value type. The value is of type: " + value.getClass());
@@ -107,4 +114,29 @@ public class NumericTypeHandler implements MySQLDataTypeHandler {
         }
         return result;
     }
+
+    private Number handleByteArray(final Object value) {
+        if (value instanceof byte[]) {
+            return new BigDecimal(new BigInteger((byte[]) value));
+        }
+
+        if (value instanceof Map) {
+            Object data = ((Map<?, ?>)value).get(BYTES_KEY);
+            if (data instanceof byte[]) {
+                return new BigDecimal(new BigInteger((byte[]) data));
+            }
+        }
+
+        if (value instanceof ArrayList<?>) {
+            ArrayList<?> list = (ArrayList<?>) value;
+            byte[] bytes = new byte[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                bytes[i] = ((Number) list.get(i)).byteValue();
+            }
+            return new BigDecimal(new BigInteger(bytes));
+        }
+
+        throw new IllegalArgumentException("Unsupported byte array value type: " + value.getClass());
+    }
+
 }
