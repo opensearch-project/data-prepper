@@ -38,6 +38,7 @@ public class HashRing implements Consumer<List<Endpoint>> {
     private final PeerListProvider peerListProvider;
 
     private TreeMap<BigInteger, String> hashServerMap = new TreeMap<>();
+    private int peerCount = 0;
 
     public HashRing(final PeerListProvider peerListProvider, final int numVirtualNodes) {
         Objects.requireNonNull(peerListProvider);
@@ -77,6 +78,10 @@ public class HashRing implements Consumer<List<Endpoint>> {
         }
     }
 
+    public int getPeerCount() {
+        return peerCount;
+    }
+
     @Override
     public void accept(final List<Endpoint> endpoints) {
         buildHashServerMap();
@@ -92,6 +97,7 @@ public class HashRing implements Consumer<List<Endpoint>> {
         }
 
         this.hashServerMap = newHashValueMap;
+        this.peerCount = endpoints.size();
     }
 
     private void addServerIpToHashMap(final String serverIp, final Map<BigInteger, String> targetMap) {

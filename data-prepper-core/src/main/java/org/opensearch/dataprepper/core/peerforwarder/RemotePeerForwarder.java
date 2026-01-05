@@ -22,12 +22,10 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +54,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Set<String> identificationKeys;
     final ConcurrentHashMap<String, LinkedBlockingQueue<Record<Event>>> peerBatchingQueueMap;
     private final ConcurrentHashMap<String, Long> peerBatchingLastFlushTimeMap;
+    private final ConcurrentHashMap<String, Boolean> localAddressCache;
 
     private final Counter recordsActuallyProcessedLocallyCounter;
     private final Counter recordsToBeProcessedLocallyCounter;
@@ -99,6 +98,7 @@ class RemotePeerForwarder implements PeerForwarder {
         this.pipelineWorkerThreads = pipelineWorkerThreads;
         peerBatchingQueueMap = new ConcurrentHashMap<>();
         peerBatchingLastFlushTimeMap = new ConcurrentHashMap<>();
+        localAddressCache = new ConcurrentHashMap<>();
         
         recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
         recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
@@ -149,13 +149,13 @@ class RemotePeerForwarder implements PeerForwarder {
             final Collection<Record<Event>> records,
             final Set<String> identificationKeys
     ) {
-        final Map<String, List<Record<Event>>> groupedRecords = new HashMap<>();
+        final Map<String, List<Record<Event>>> groupedRecords = new HashMap<>(hashRing.getPeerCount());
 
         // group records based on IP address calculated by HashRing
         for (final Record<Event> record : records) {
             final Event event = record.getData();
 
-            final List<String> identificationKeyValues = new LinkedList<>();
+            final List<String> identificationKeyValues = new ArrayList<>(identificationKeys.size());
             int numMissingIdentificationKeys = 0;
             for (final String identificationKey : identificationKeys) {
                 final Object identificationKeyValue = event.get(identificationKey, Object.class);
@@ -178,21 +178,23 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private boolean isAddressDefinedLocally(final String address) {
-        final InetAddress inetAddress;
-        try {
-            inetAddress = InetAddress.getByName(address);
-        } catch (final UnknownHostException e) {
-            return false;
-        }
-        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
-            return true;
-        } else {
+        return localAddressCache.computeIfAbsent(address, addr -> {
+            final InetAddress inetAddress;
             try {
-                return NetworkInterface.getByInetAddress(inetAddress) != null;
-            } catch (final SocketException e) {
+                inetAddress = InetAddress.getByName(addr);
+            } catch (final UnknownHostException e) {
                 return false;
             }
-        }
+            if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
+                return true;
+            } else {
+                try {
+                    return NetworkInterface.getByInetAddress(inetAddress) != null;
+                } catch (final SocketException e) {
+                    return false;
+                }
+            }
+        });
     }
 
     private List<Record<Event>> batchRecordsForForwarding(final String destinationIp, final List<Record<Event>> records) {
@@ -294,12 +296,14 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private boolean shouldFlushBatch(final String destinationIp) {
-        final long currentTime = System.currentTimeMillis();
-        final long millisSinceLastFlush = currentTime - peerBatchingLastFlushTimeMap.getOrDefault(destinationIp, System.currentTimeMillis());
-        final Duration durationSinceLastFlush = Duration.of(millisSinceLastFlush, ChronoUnit.MILLIS);
+        final LinkedBlockingQueue<Record<Event>> queue = peerBatchingQueueMap.get(destinationIp);
+        if (queue.size() >= forwardingBatchSize) {
+            return true;
+        }
 
-        final boolean shouldFlushDueToTimeout = durationSinceLastFlush.compareTo(forwardingBatchTimeout) >= 0;
-        return shouldFlushDueToTimeout || peerBatchingQueueMap.get(destinationIp).size() >= forwardingBatchSize;
+        final long currentTime = System.currentTimeMillis();
+        final long millisSinceLastFlush = currentTime - peerBatchingLastFlushTimeMap.getOrDefault(destinationIp, currentTime);
+        return millisSinceLastFlush >= forwardingBatchTimeout.toMillis();
     }
 
     void processFailedRequestsLocally(final AggregatedHttpResponse httpResponse, final Collection<Record<Event>> records) {

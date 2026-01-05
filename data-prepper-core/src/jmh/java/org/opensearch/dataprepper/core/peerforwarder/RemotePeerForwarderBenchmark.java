@@ -57,7 +57,7 @@ public class RemotePeerForwarderBenchmark {
     private static final int BATCH_DELAY = 100;
     private static final int FAILED_FORWARDING_REQUEST_LOCAL_WRITE_TIMEOUT = 100;
     private static final int FORWARDING_BATCH_SIZE = BATCH_SIZE;
-    private static final int FORWARDING_BATCH_QUEUE_DEPTH = 3;
+    private static final int FORWARDING_BATCH_QUEUE_DEPTH = 25;
     private static final Duration FORWARDING_BATCH_TIMEOUT = Duration.ofMillis(800);
     private static final int PIPELINE_WORKER_THREADS = 8;
     private static final int HASH_RING_VIRTUAL_NODES = 128;
