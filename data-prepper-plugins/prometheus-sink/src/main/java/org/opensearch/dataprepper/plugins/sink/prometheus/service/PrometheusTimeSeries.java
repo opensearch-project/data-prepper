@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 import com.arpnetworking.metrics.prometheus.Types.Label;
 import com.arpnetworking.metrics.prometheus.Types.Sample;
 import com.arpnetworking.metrics.prometheus.Types.TimeSeries;
@@ -161,7 +163,7 @@ public class PrometheusTimeSeries {
                 size += processAttributes(scopeAttributes, SCOPE_PREFIX);
             }
         } catch (Exception e) {
-            LOG.warn("Failed to get resource/scope attributes", e);
+            LOG.warn(NOISY, "Failed to get resource/scope attributes", e);
         }
         return size;
     }
