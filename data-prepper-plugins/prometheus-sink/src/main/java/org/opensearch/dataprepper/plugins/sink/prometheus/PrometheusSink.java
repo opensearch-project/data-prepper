@@ -66,7 +66,6 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
                 prometheusSinkConfiguration,
                 sinkMetrics,
                 httpSender,
-                getFailurePipeline(),
                 pipelineDescription);
     }
 
@@ -87,6 +86,7 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
     @Override
     public void doInitialize() {
         sinkInitialized = Boolean.TRUE;
+        prometheusSinkService.setDlqPipeline(getFailurePipeline());
     }
 
     @VisibleForTesting

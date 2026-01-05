@@ -109,19 +109,18 @@ public class PrometheusSinkServiceTest {
 
     }
 
-    PrometheusSinkService createObjectUnderTest(final PrometheusSinkConfiguration prometheusSinkConfig, final HeadlessPipeline dlqPipeline) {
+    PrometheusSinkService createObjectUnderTest(final PrometheusSinkConfiguration prometheusSinkConfig) {
         return new PrometheusSinkService(
                 prometheusSinkConfig,
                 sinkMetrics,
                 httpSender,
-                dlqPipeline,
                 pipelineDescription);
     }
 
     @Test
     void prometheusSinkServiceTestSuccessfulOutput() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
         JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
@@ -136,7 +135,7 @@ public class PrometheusSinkServiceTest {
         String newYaml = SINK_YAML.replace("out_of_order_window: 0", "out_of_order_window: 1");
         this.prometheusSinkConfiguration = objectMapper.readValue(newYaml,PrometheusSinkConfiguration.class);
         when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(true, 0));
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         Instant t = Instant.now();
         JacksonGauge gauge1 = createGaugeMetric("gauge1", t);
         JacksonGauge gauge2 = createGaugeMetric("gauge1", t.plusMillis(100));
@@ -163,7 +162,7 @@ public class PrometheusSinkServiceTest {
             }
             return null;
         }).when(dlqPipeline).sendEvents(any(Collection.class));
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         objectUnderTest.setDlqPipeline(dlqPipeline);
         JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
         JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
@@ -177,7 +176,7 @@ public class PrometheusSinkServiceTest {
     @Test
     void prometheusSinkServiceTestFailedOutputWithNoDLQ() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenReturn(new PrometheusPushResult(false, 410));
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
         JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
@@ -190,7 +189,7 @@ public class PrometheusSinkServiceTest {
     @Test
     void prometheusSinkServiceTestWithExceptionInHttpSender() throws NoSuchFieldException, IllegalAccessException {
         when(httpSender.pushToEndpoint(any())).thenThrow(new RuntimeException("exception"));
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         JacksonGauge gauge1 = createGaugeMetric("gauge1", null);
         JacksonGauge gauge2 = createGaugeMetric("gauge2", null);
         Collection<Record<Event>> records = List.of(new Record<>(gauge1), new Record<>(gauge2));
@@ -204,7 +203,7 @@ public class PrometheusSinkServiceTest {
 
     @Test
     void prometheus_sink_service_test_output_with_zero_record() throws NoSuchFieldException, IllegalAccessException {
-        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration, null);
+        final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         Collection<Record<Event>> records = List.of();
         objectUnderTest.output(records);
     }

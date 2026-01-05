@@ -9,6 +9,7 @@
   */
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import com.google.common.annotations.VisibleForTesting;
 import software.amazon.awssdk.utils.Pair;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class PrometheusSinkBufferWriterEntry {
 
         entries.put(time, bufferEntry);
         if (entries.size() > maxEntries) {
-            LOG.warn("Number of entries exceeded maxEntries");
+            LOG.warn(NOISY, "Number of entries exceeded maxEntries");
             return false;
         }
         return true;
