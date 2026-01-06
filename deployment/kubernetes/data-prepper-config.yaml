@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-prepper-config
+  namespace: opensearch
+data:
+  pipelines.yaml: |
+    simple-pipeline:
+      source:
+        http:
+          port: 2021
+      sink:
+        - stdout:
