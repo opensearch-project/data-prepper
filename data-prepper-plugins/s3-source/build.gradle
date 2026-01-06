@@ -12,6 +12,7 @@ dependencies {
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:sqs-common')
+    implementation project(':data-prepper-plugins:s3-common')
 
     implementation libs.armeria.core
     implementation 'io.micrometer:micrometer-core'

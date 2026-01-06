@@ -1,14 +1,19 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
-package org.opensearch.dataprepper.plugins.source.s3.configuration;
+package org.opensearch.dataprepper.plugins.s3.common.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
-import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.arns.Arn;
 
 import java.util.Map;
 import java.util.Optional;
@@ -68,4 +73,3 @@ public class AwsAuthenticationOptions {
         return awsStsHeaderOverrides;
     }
 }
-
