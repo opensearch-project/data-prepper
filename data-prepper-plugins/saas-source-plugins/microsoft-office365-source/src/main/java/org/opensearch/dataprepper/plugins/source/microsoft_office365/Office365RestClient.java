@@ -9,9 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
-import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
@@ -45,20 +43,15 @@ import static org.opensearch.dataprepper.plugins.source.microsoft_office365.util
 @Named
 public class Office365RestClient {
     private static final String MANAGEMENT_API_BASE_URL = "https://manage.office.com/api/v1.0/";
-    private static final String API_CALLS = "apiCalls";
-
     private final RestTemplate restTemplate = new RestTemplate();
     private final RetryHandler retryHandler;
     private final Office365AuthenticationInterface authConfig;
     private final VendorAPIMetricsRecorder metricsRecorder;
-    private final Counter apiCallsCounter;
 
     public Office365RestClient(final Office365AuthenticationInterface authConfig,
-                               final PluginMetrics pluginMetrics,
                                final VendorAPIMetricsRecorder metricsRecorder) {
         this.authConfig = authConfig;
         this.metricsRecorder = metricsRecorder;
-        this.apiCallsCounter = pluginMetrics.counter(API_CALLS);
         this.retryHandler = new RetryHandler(
                 new DefaultRetryStrategy(),
                 new DefaultStatusCodeHandler());
@@ -69,59 +62,66 @@ public class Office365RestClient {
      */
     public void startSubscriptions() {
         log.info("Starting Office 365 subscriptions for audit logs");
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+        
+        metricsRecorder.recordSubscriptionLatency(() -> {
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // TODO: Only start the subscriptions only if the call commented
-            //  out below doesn't return all the audit log types
-            // Check current subscriptions
-//            final String SUBSCRIPTION_LIST_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/list";
-//            String listUrl = String.format(SUBSCRIPTION_LIST_URL, authConfig.getTenantId());
-//
-//            ResponseEntity<String> listResponse = restTemplate.exchange(
-//                    listUrl,
-//                    HttpMethod.GET,
-//                    new HttpEntity<>(headers),
-//                    String.class
-//            );
-//            log.debug("Current subscriptions: {}", listResponse.getBody());
+                // TODO: Only start the subscriptions only if the call commented
+                // out below doesn't return all the audit log types
+                // Check current subscriptions
+                // final String SUBSCRIPTION_LIST_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/list";
+                // String listUrl = String.format(SUBSCRIPTION_LIST_URL, authConfig.getTenantId());
+                //
+                // ResponseEntity<String> listResponse = restTemplate.exchange(
+                //         listUrl,
+                //         HttpMethod.GET,
+                //         new HttpEntity<>(headers),
+                //         String.class
+                // );
+                // log.debug("Current subscriptions: {}", listResponse.getBody());
 
-            // Start subscriptions for each content type
-            headers.setContentLength(0);
+                // Start subscriptions for each content type
+                headers.setContentLength(0);
 
-            for (String contentType : CONTENT_TYPES) {
-                final String SUBSCRIPTION_START_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/start?contentType=%s";
-                String url = String.format(SUBSCRIPTION_START_URL,
-                        authConfig.getTenantId(),
-                        contentType);
+                for (String contentType : CONTENT_TYPES) {
+                    final String SUBSCRIPTION_START_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/start?contentType=%s";
+                    String url = String.format(SUBSCRIPTION_START_URL,
+                            authConfig.getTenantId(),
+                            contentType);
 
-                retryHandler.executeWithRetry(() -> {
-                    try {
-                        headers.setBearerAuth(authConfig.getAccessToken());
-                        apiCallsCounter.increment();
-                        ResponseEntity<String> response = restTemplate.exchange(
-                                url,
-                                HttpMethod.POST,
-                                new HttpEntity<>(headers),
-                                String.class
-                        );
-                        log.debug("Started subscription for {}: {}", contentType, response.getBody());
-                        return response;
-                    } catch (HttpClientErrorException | HttpServerErrorException e) {
-                        if (e.getResponseBodyAsString().contains("AF20024")) {
-                            log.debug("Subscription for {} is already enabled", contentType);
-                            return null;
+                    retryHandler.executeWithRetry(() -> {
+                        try {
+                            headers.setBearerAuth(authConfig.getAccessToken());
+                            metricsRecorder.recordSubscriptionCall();
+                            
+                            ResponseEntity<String> response = restTemplate.exchange(
+                                    url,
+                                    HttpMethod.POST,
+                                    new HttpEntity<>(headers),
+                                    String.class
+                            );
+                            log.debug("Started subscription for {}: {}", contentType, response.getBody());
+                            return response;
+                        } catch (HttpClientErrorException | HttpServerErrorException e) {
+                            if (e.getResponseBodyAsString().contains("AF20024")) {
+                                log.debug("Subscription for {} is already enabled", contentType);
+                                return null;
+                            }
+                            throw e;
                         }
-                        throw e;
-                    }
-                }, authConfig::renewCredentials);
+                    }, authConfig::renewCredentials, metricsRecorder::recordSubscriptionFailure);
+                }
+                
+                metricsRecorder.recordSubscriptionSuccess();
+                return null;
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Failed to initialize subscriptions", e);
+                throw new SaaSCrawlerException("Failed to initialize subscriptions: " + e.getMessage(), e, true);
             }
-        } catch (Exception e) {
-            metricsRecorder.recordError(e);
-            log.error(NOISY, "Failed to initialize subscriptions", e);
-            throw new SaaSCrawlerException("Failed to initialize subscriptions: " + e.getMessage(), e, true);
-        }
+        });
     }
 
     /**

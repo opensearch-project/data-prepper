@@ -23,6 +23,7 @@ import java.util.function.Supplier;
  * - Search operations: latency, success/failure rates, and response sizes
  * - Get/retrieval operations: latency, success/failure rates, and response sizes  
  * - Authentication operations: latency, success/failure rates
+ * - Subscription operations: latency, success/failure rates, and call counts
  * - General API operations: request counts, logs requested, error categorization
  * 
  * Most methods return void for efficient standalone usage. The error() method supports chaining for error handling scenarios.
@@ -45,6 +46,12 @@ public class VendorAPIMetricsRecorder {
     private final Counter authSuccessCounter;
     private final Counter authFailureCounter;
     private final Timer authLatencyTimer;
+
+    // Subscription operation metrics
+    private final Counter subscriptionSuccessCounter;
+    private final Counter subscriptionFailureCounter;
+    private final Timer subscriptionLatencyTimer;
+    private final Counter subscriptionCallsCounter;
 
     // Shared metrics
     private final Counter totalDataApiRequestsCounter;
@@ -81,6 +88,12 @@ public class VendorAPIMetricsRecorder {
         this.authSuccessCounter = pluginMetrics.counter("authenticationRequestsSuccess");
         this.authFailureCounter = pluginMetrics.counter("authenticationRequestsFailed");
         this.authLatencyTimer = pluginMetrics.timer("authenticationRequestLatency");
+
+        // Subscription metrics
+        this.subscriptionSuccessCounter = pluginMetrics.counter("startSubscriptionRequestsSuccess");
+        this.subscriptionFailureCounter = pluginMetrics.counter("startSubscriptionRequestsFailed");
+        this.subscriptionLatencyTimer = pluginMetrics.timer("startSubscriptionRequestLatency");
+        this.subscriptionCallsCounter = pluginMetrics.counter("startSubscriptionApiCalls");
 
         // Shared metrics
         this.totalDataApiRequestsCounter = pluginMetrics.counter("totalDataApiRequests");
@@ -202,6 +215,31 @@ public class VendorAPIMetricsRecorder {
 
     public void recordAuthLatency(Duration duration) {
         authLatencyTimer.record(duration);
+    }
+
+    // Subscription operation methods
+    public void recordSubscriptionSuccess() {
+        subscriptionSuccessCounter.increment();
+    }
+
+    public void recordSubscriptionFailure() {
+        subscriptionFailureCounter.increment();
+    }
+
+    public <T> T recordSubscriptionLatency(Supplier<T> operation) {
+        return subscriptionLatencyTimer.record(operation);
+    }
+
+    public void recordSubscriptionLatency(Runnable operation) {
+        subscriptionLatencyTimer.record(operation);
+    }
+
+    public void recordSubscriptionLatency(Duration duration) {
+        subscriptionLatencyTimer.record(duration);
+    }
+
+    public void recordSubscriptionCall() {
+        subscriptionCallsCounter.increment();
     }
 
     // Shared operation methods

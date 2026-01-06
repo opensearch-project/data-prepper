@@ -13,11 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.micrometer.core.instrument.Counter;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
@@ -71,11 +69,7 @@ class Office365RestClientTest {
     @Mock
     private Office365AuthenticationInterface authConfig;
     @Mock
-    private PluginMetrics pluginMetrics;
-    @Mock
     private VendorAPIMetricsRecorder metricsRecorder;
-    @Mock
-    private Counter apiCallsCounter;
 
     private Office365RestClient office365RestClient;
 
@@ -85,6 +79,7 @@ class Office365RestClientTest {
         lenient().when(metricsRecorder.recordAuthLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         lenient().when(metricsRecorder.recordSearchLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         lenient().when(metricsRecorder.recordGetLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
+        lenient().when(metricsRecorder.recordSubscriptionLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         
         // Setup Runnable overload mocks - execute the runnable when called
         lenient().doAnswer(invocation -> {
@@ -105,12 +100,15 @@ class Office365RestClientTest {
             return null;
         }).when(metricsRecorder).recordGetLatency(any(Runnable.class));
         
-        // Void methods don't need stubbing - Mockito handles them automatically
+        lenient().doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0, Runnable.class);
+            runnable.run();
+            return null;
+        }).when(metricsRecorder).recordSubscriptionLatency(any(Runnable.class));
         
-        // Mock the counter creation
-        when(pluginMetrics.counter("apiCalls")).thenReturn(apiCallsCounter);
+        // Void methods don't need stubbing - Mockito handles them automatically
 
-        office365RestClient = new Office365RestClient(authConfig, pluginMetrics, metricsRecorder);
+        office365RestClient = new Office365RestClient(authConfig, metricsRecorder);
         ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "restTemplate", restTemplate);
     }
 
@@ -407,6 +405,87 @@ class Office365RestClientTest {
         assertEquals(2, requestTokens.size(), "Should have made two requests");
         assertEquals("Bearer token-0", requestTokens.get(0), "First request should use token-0");
         assertEquals("Bearer token-1", requestTokens.get(1), "Second request should use token-1");
+    }
+
+    /**
+     * Tests that VendorAPIMetricsRecorder records subscription metrics correctly.
+     * Verifies that subscription success, call count, and latency metrics are recorded during successful subscriptions.
+     */
+    @Test
+    void testStartSubscriptionsRecordsMetrics() {
+        when(authConfig.getTenantId()).thenReturn("test-tenant");
+        when(authConfig.getAccessToken()).thenReturn("test-token");
+        
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
+        
+        // Verify that VendorAPIMetricsRecorder subscription methods were called
+        // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions 
+        // get compiled to specific classes that are difficult to match in tests
+        // Just verify the other metrics are recorded correctly
+        verify(metricsRecorder).recordSubscriptionSuccess();
+        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall();
+    }
+
+    /**
+     * Tests that VendorAPIMetricsRecorder records failure metrics correctly.
+     * Verifies that subscription failure metrics are recorded when subscriptions fail.
+     */
+    @Test
+    void testStartSubscriptionsRecordsFailureMetrics() {
+        when(authConfig.getTenantId()).thenReturn("test-tenant");
+        when(authConfig.getAccessToken()).thenReturn("test-token");
+        
+        HttpClientErrorException exception = new HttpClientErrorException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Server Error",
+                "{\"error\":\"server_error\"}".getBytes(),
+                null
+        );
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
+                .thenThrow(exception)
+                .thenThrow(exception)  // Retry
+                .thenThrow(exception); // Final retry
+
+        assertThrows(SaaSCrawlerException.class, () -> office365RestClient.startSubscriptions());
+        
+        // Verify that failure metrics were recorded
+        // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions
+        // get compiled to specific classes that are difficult to match in tests
+        // The retry handler calls recordSubscriptionFailure() for each retry attempt.
+        // With 6 content types and multiple retries per content type, we expect multiple failure calls
+        verify(metricsRecorder, times(6)).recordSubscriptionFailure();
+    }
+
+    /**
+     * Tests that VendorAPIMetricsRecorder handles AF20024 errors properly.
+     * Verifies that AF20024 errors (subscription already exists) are treated as success for metrics.
+     */
+    @Test
+    void testStartSubscriptionsAF20024RecordsSuccessMetrics() {
+        when(authConfig.getTenantId()).thenReturn("test-tenant");
+        when(authConfig.getAccessToken()).thenReturn("test-token");
+        
+        HttpClientErrorException af20024Exception = new HttpClientErrorException(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "{\"error\":\"AF20024\"}".getBytes(),
+                null
+        );
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
+                .thenThrow(af20024Exception);
+
+        assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
+        
+        // Verify that success metrics were recorded despite the AF20024 errors
+        // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions
+        // get compiled to specific classes that are difficult to match in tests  
+        // Just verify the other metrics are recorded correctly
+        verify(metricsRecorder).recordSubscriptionSuccess();
+        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall();
     }
 
 }
