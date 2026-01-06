@@ -87,6 +87,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
 
     @Override
     public void executePartition(DimensionalTimeSliceWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
+        log.info("Processing partition - DimensionType: {}, TimeRange: {} to {}", 
+                 state.getDimensionType(), state.getStartTime(), state.getEndTime());
         partitionWaitTimeTimer.record(Duration.between(state.getPartitionCreationTime(), Instant.now()));
         partitionProcessLatencyTimer.record(() -> client.executePartition(state, buffer, acknowledgementSet));
     }
