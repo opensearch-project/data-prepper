@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 public interface EncryptionRotationHandler {
     /**
      * Retrieves encryption configuration ID.
+     * @return the encryption configuration ID
      */
     String getEncryptionId();
 

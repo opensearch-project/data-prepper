@@ -27,6 +27,7 @@ public class BufferSerializationFactory implements SerializationFactory {
      * the {@link org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory}.
      *
      * @param innerSerializationFactory The serialization factory for the inner data.
+     * @param encryptionSupplier The encryption supplier for handling encryption engines
      */
     public BufferSerializationFactory(final SerializationFactory innerSerializationFactory,
                                       final EncryptionSupplier encryptionSupplier) {

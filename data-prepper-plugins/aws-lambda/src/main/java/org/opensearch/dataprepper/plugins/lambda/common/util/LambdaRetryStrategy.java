@@ -82,6 +82,8 @@ public final class LambdaRetryStrategy {
 
     /**
      * Determines if this is definitely NOT retryable (client error or permanent failure).
+     * @param response the Lambda invoke response to check
+     * @return true if the response indicates a non-retryable error, false otherwise
      */
     public static boolean isNonRetryable(final InvokeResponse response) {
         if(response == null) return false;
@@ -95,10 +97,11 @@ public final class LambdaRetryStrategy {
     /**
      * For convenience, you can create more fine-grained checks or
      * direct set membership checks (e.g. isBadRequest(...), isTimeout(...)) if you want.
+     * @param response the Lambda invoke response to check
+     * @return true if the response indicates a timeout error, false otherwise
      */
     public static boolean isTimeoutError(final InvokeResponse response) {
         return TIMEOUT_ERRORS.contains(response.statusCode());
     }
 
 }
-
