@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.core.peerforwarder;
@@ -20,6 +25,7 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
@@ -36,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -64,6 +72,7 @@ public class RemotePeerForwarderBenchmark {
 
     private RemotePeerForwarder peerForwarder;
     private Collection<Record<Event>> testRecords;
+    private ScheduledExecutorService networkLatencySimulator;
 
     @Param({"1", "2", "4"})
     private int nodeCount;
@@ -71,13 +80,34 @@ public class RemotePeerForwarderBenchmark {
     @Param({"100", "1000", "5000", "50000"})
     private int recordCount;
 
+    @Param({"0", "2", "5"})
+    private int networkLatencyMs;
+
     @Setup(Level.Trial)
     public void setup() {
+        // Create a thread pool for simulating network latency
+        networkLatencySimulator = Executors.newScheduledThreadPool(PIPELINE_WORKER_THREADS * 2);
+
         PeerForwarderClient mockClient = mock(PeerForwarderClient.class);
+        
         when(mockClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString()))
-            .thenReturn(CompletableFuture.completedFuture(
-                AggregatedHttpResponse.of(HttpStatus.OK)));
-PeerListProvider peerListProvider = createPeerListProvider(nodeCount);
+            .thenAnswer(invocation -> {
+                CompletableFuture<AggregatedHttpResponse> future = new CompletableFuture<>();                
+                if (networkLatencyMs == 0) {
+                    future.complete(AggregatedHttpResponse.of(HttpStatus.OK));
+                } else {
+                    // Simulate network latency
+                    networkLatencySimulator.schedule(
+                        () -> future.complete(AggregatedHttpResponse.of(HttpStatus.OK)),
+                        networkLatencyMs,
+                        TimeUnit.MILLISECONDS
+                    );
+                }
+                
+                return future;
+            });
+
+        PeerListProvider peerListProvider = createPeerListProvider(nodeCount);
         HashRing hashRing = new HashRing(peerListProvider, HASH_RING_VIRTUAL_NODES);
 
         PeerForwarderReceiveBuffer<Record<Event>> buffer =
@@ -96,6 +126,21 @@ PeerListProvider peerListProvider = createPeerListProvider(nodeCount);
         );
 
         testRecords = generateTestRecords(recordCount, nodeCount);
+    }
+
+    @TearDown(Level.Trial)
+    public void teardown() {
+        if (networkLatencySimulator != null) {
+            networkLatencySimulator.shutdown();
+            try {
+                if (!networkLatencySimulator.awaitTermination(5, TimeUnit.SECONDS)) {
+                    networkLatencySimulator.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                networkLatencySimulator.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     @Benchmark

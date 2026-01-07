@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 class RemotePeerForwarder implements PeerForwarder {
@@ -234,52 +233,38 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private void forwardBatchedRecords() {
-        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = new HashMap<>();
         peerBatchingQueueMap.forEach((ipAddress, records) -> {
-            futuresMap.putAll(forwardRecordsForIp(ipAddress));
-        });
-
-        final CompletableFuture<Void> compositeFuture = CompletableFuture.allOf(futuresMap.keySet().toArray(CompletableFuture[]::new));
-        try {
-            compositeFuture.get();
-        } catch (final ExecutionException | InterruptedException e) {
-            LOG.debug("Caught exception getting results of composite forwarding future.", e);
-        }
-
-        futuresMap.forEach((key, value) -> {
-            AggregatedHttpResponse httpResponse;
-            try {
-                httpResponse = key.get();
-            } catch (final ExecutionException | InterruptedException e) {
-                LOG.warn("Unable to send request to peer, processing locally.", e);
-                httpResponse = null;
-            }
-
-            processFailedRequestsLocally(httpResponse, value);
+            forwardRecordsForIpAsync(ipAddress);
         });
     }
 
-    private Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> forwardRecordsForIp(final String destinationIp) {
-        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> forwardingRequestsMap = new HashMap<>();
-
+    private void forwardRecordsForIpAsync(final String destinationIp) {
         List<Record<Event>> recordsToForward = getRecordsToForward(destinationIp);
         while (!recordsToForward.isEmpty()) {
+            final List<Record<Event>> currentBatch = recordsToForward;
             try {
                 final CompletableFuture<AggregatedHttpResponse> responseFuture =
-                        peerForwarderClient.serializeRecordsAndSendHttpRequest(recordsToForward, destinationIp, pluginId, pipelineName);
-                forwardingRequestsMap.put(responseFuture, recordsToForward);
-                for (Record<Event> record: recordsToForward) {
+                        peerForwarderClient.serializeRecordsAndSendHttpRequest(currentBatch, destinationIp, pluginId, pipelineName);
+
+                // Process response asynchronously without blocking
+                responseFuture
+                    .exceptionally(throwable -> {
+                        LOG.warn("Unable to send request to peer, processing locally.", throwable);
+                        return null;
+                    })
+                    .thenAccept(httpResponse -> processFailedRequestsLocally(httpResponse, currentBatch));
+
+                // Release event handles immediately after submitting
+                for (Record<Event> record: currentBatch) {
                     Event event = record.getData();
                     event.getEventHandle().release(true);
                 }
             } catch (final Exception e) {
                 LOG.warn("Unable to submit request for forwarding, processing locally.", e);
-                processFailedRequestsLocally(null, recordsToForward);
+                processFailedRequestsLocally(null, currentBatch);
             }
             recordsToForward = getRecordsToForward(destinationIp);
         }
-
-        return forwardingRequestsMap;
     }
 
     private List<Record<Event>> getRecordsToForward(final String destinationIp) {
