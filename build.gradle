@@ -247,6 +247,10 @@ subprojects {
                 details.because 'Use the defined JUnit of the Data Prepper project to ensure consistent versions.'
             }
         }
+        resolutionStrategy.capabilitiesResolution.withCapability('org.lz4:lz4-java') {
+            select('org.lz4:lz4-java:0')
+            because 'Prefer the official org.lz4 artifact over the relocated at.yawk.lz4 version'
+        }
     }
 
     test {
