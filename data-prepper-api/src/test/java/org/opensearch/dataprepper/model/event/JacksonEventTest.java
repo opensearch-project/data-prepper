@@ -701,6 +701,29 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testDelete_withSlashInFieldName_jsonPointerEscaping() {
+        final Map<String, Object> dataWithSlash = new HashMap<>();
+        dataWithSlash.put("foo/bar", "allow");
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(dataWithSlash)
+                .build();
+
+        // Verify the field exists before deletion
+        assertThat(event.get("foo~1bar", String.class), is(equalTo("allow")));
+        assertThat(event.containsKey("foo~1bar"), is(true));
+
+        event.delete("foo~1bar");
+
+        // Verify the field is actually deleted
+        assertThat(event.get("foo~1bar", String.class), is(nullValue()));
+        assertThat(event.containsKey("foo~1bar"), is(false));
+        
+        // Verify the event is now empty
+        assertThat(event.toMap().size(), is(0));
+    }
+
+    @Test
     public void testContainsKeyReturnsTrueForEmptyStringKey() {
         assertThat(event.containsKey(""), is(true));
     }
