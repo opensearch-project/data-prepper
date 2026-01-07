@@ -25,8 +25,12 @@ import java.util.function.Supplier;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +68,16 @@ class VendorAPIMetricsRecorderTest {
     @Mock
     private Timer authLatencyTimer;
 
+    // Subscription metrics
+    @Mock
+    private Counter subscriptionSuccessCounter;
+    @Mock
+    private Counter subscriptionFailureCounter;
+    @Mock
+    private Timer subscriptionLatencyTimer;
+    @Mock
+    private Counter subscriptionCallsCounter;
+
     // Shared metrics
     @Mock
     private Counter totalDataApiRequestsCounter;
@@ -99,6 +113,12 @@ class VendorAPIMetricsRecorderTest {
         when(pluginMetrics.counter("authenticationRequestsFailed")).thenReturn(authFailureCounter);
         when(pluginMetrics.timer("authenticationRequestLatency")).thenReturn(authLatencyTimer);
 
+        // Setup subscription metrics mocks
+        when(pluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(subscriptionSuccessCounter);
+        when(pluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(subscriptionFailureCounter);
+        when(pluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(subscriptionLatencyTimer);
+        when(pluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(subscriptionCallsCounter);
+
         // Setup shared metrics mocks
         when(pluginMetrics.counter("totalDataApiRequests")).thenReturn(totalDataApiRequestsCounter);
         when(pluginMetrics.counter("logsRequested")).thenReturn(logsRequestedCounter);
@@ -131,6 +151,12 @@ class VendorAPIMetricsRecorderTest {
         verify(pluginMetrics).counter("authenticationRequestsSuccess");
         verify(pluginMetrics).counter("authenticationRequestsFailed");
         verify(pluginMetrics).timer("authenticationRequestLatency");
+
+        // Verify subscription metrics creation
+        verify(pluginMetrics).counter("startSubscriptionRequestsSuccess");
+        verify(pluginMetrics).counter("startSubscriptionRequestsFailed");
+        verify(pluginMetrics).timer("startSubscriptionRequestLatency");
+        verify(pluginMetrics).counter("startSubscriptionApiCalls");
 
         // Verify shared metrics creation
         verify(pluginMetrics).counter("totalDataApiRequests");
@@ -182,6 +208,59 @@ class VendorAPIMetricsRecorderTest {
         recorder.recordAuthFailure();
         
         verify(authFailureCounter).increment();
+    }
+
+    // Subscription metrics tests
+
+    @Test
+    void recordSubscriptionSuccess_IncrementsSubscriptionSuccessCounter() {
+        recorder.recordSubscriptionSuccess();
+        
+        verify(subscriptionSuccessCounter).increment();
+    }
+
+    @Test
+    void recordSubscriptionFailure_IncrementsSubscriptionFailureCounter() {
+        recorder.recordSubscriptionFailure();
+        
+        verify(subscriptionFailureCounter).increment();
+    }
+
+    @Test
+    void recordSubscriptionCall_IncrementsSubscriptionCallsCounter() {
+        recorder.recordSubscriptionCall();
+        
+        verify(subscriptionCallsCounter).increment();
+    }
+
+    @Test
+    void recordSubscriptionLatency_WithSupplier_RecordsLatencyAndReturnsResult() {
+        String expectedResult = "subscription result";
+        Supplier<String> operation = () -> expectedResult;
+        when(subscriptionLatencyTimer.record(any(Supplier.class))).thenReturn(expectedResult);
+        
+        String result = recorder.recordSubscriptionLatency(operation);
+        
+        verify(subscriptionLatencyTimer).record(eq(operation));
+        assertThat(result, equalTo(expectedResult));
+    }
+
+    @Test
+    void recordSubscriptionLatency_WithRunnable_RecordsLatency() {
+        Runnable operation = () -> { /* void operation */ };
+        
+        recorder.recordSubscriptionLatency(operation);
+        
+        verify(subscriptionLatencyTimer).record(eq(operation));
+    }
+
+    @Test
+    void recordSubscriptionLatency_WithDuration_RecordsLatency() {
+        Duration duration = Duration.ofMillis(100);
+        
+        recorder.recordSubscriptionLatency(duration);
+        
+        verify(subscriptionLatencyTimer).record(duration);
     }
 
     @Test
@@ -368,10 +447,12 @@ class VendorAPIMetricsRecorderTest {
         recorder.recordSearchSuccess();
         recorder.recordGetSuccess();
         recorder.recordAuthSuccess();
+        recorder.recordSubscriptionSuccess();
         
         verify(searchSuccessCounter).increment();
         verify(getSuccessCounter).increment();
         verify(authSuccessCounter).increment();
+        verify(subscriptionSuccessCounter).increment();
     }
 
     // Edge case tests for comprehensive coverage
@@ -502,5 +583,132 @@ class VendorAPIMetricsRecorderTest {
         verify(requestAccessDeniedCounter, org.mockito.Mockito.never()).increment();
         verify(requestThrottledCounter, org.mockito.Mockito.never()).increment();
         verify(resourceNotFoundCounter, org.mockito.Mockito.never()).increment();
+    }
+
+    @Test
+    void recordSubscriptionSuccessMultiple() {
+        recorder.recordSubscriptionSuccess();
+        recorder.recordSubscriptionSuccess();
+        recorder.recordSubscriptionSuccess();
+
+        verify(subscriptionSuccessCounter, times(3)).increment();
+    }
+
+    @Test
+    void recordSubscriptionFailureMultiple() {
+        recorder.recordSubscriptionFailure();
+        recorder.recordSubscriptionFailure();
+
+        verify(subscriptionFailureCounter, times(2)).increment();
+    }
+
+    @Test
+    void recordSubscriptionLatencyWithIntegerSupplier() {
+        Supplier<Integer> operation = () -> 42;
+        when(subscriptionLatencyTimer.record(operation)).thenReturn(42);
+
+        Integer result = recorder.recordSubscriptionLatency(operation);
+
+        assertEquals(42, result);
+        verify(subscriptionLatencyTimer, times(1)).record(operation);
+    }
+
+    @Test
+    void recordSubscriptionLatencyWithMultipleDurations() {
+        Duration duration1 = Duration.ofMillis(50);
+        Duration duration2 = Duration.ofMillis(150);
+        Duration duration3 = Duration.ofMillis(200);
+
+        recorder.recordSubscriptionLatency(duration1);
+        recorder.recordSubscriptionLatency(duration2);
+        recorder.recordSubscriptionLatency(duration3);
+
+        verify(subscriptionLatencyTimer, times(1)).record(duration1);
+        verify(subscriptionLatencyTimer, times(1)).record(duration2);
+        verify(subscriptionLatencyTimer, times(1)).record(duration3);
+    }
+
+    @Test
+    void recordSubscriptionCallMultiple() {
+        recorder.recordSubscriptionCall();
+        recorder.recordSubscriptionCall();
+        recorder.recordSubscriptionCall();
+        recorder.recordSubscriptionCall();
+
+        verify(subscriptionCallsCounter, times(4)).increment();
+    }
+
+    @Test
+    void mixedSubscriptionMetricsScenario() {
+        // Record various subscription metrics
+        recorder.recordSubscriptionSuccess();
+        recorder.recordSubscriptionFailure();
+        recorder.recordSubscriptionCall();
+        recorder.recordSubscriptionCall();
+
+        // Verify all metrics were recorded correctly
+        verify(subscriptionSuccessCounter, times(1)).increment();
+        verify(subscriptionFailureCounter, times(1)).increment();
+        verify(subscriptionCallsCounter, times(2)).increment();
+    }
+
+    @Test
+    void recordSubscriptionLatencySuccessfulOperation() {
+        Supplier<String> operation = () -> "success";
+        String result = "success";
+        when(subscriptionLatencyTimer.record(operation)).thenReturn(result);
+
+        String returnedResult = recorder.recordSubscriptionLatency(operation);
+
+        assertEquals(result, returnedResult);
+        verify(subscriptionLatencyTimer, times(1)).record(operation);
+    }
+
+    @Test
+    void realisticSubscriptionMetricsScenario() {
+        // Simulate 10 subscription operations with mixed success/failure
+        for (int i = 0; i < 10; i++) {
+            recorder.recordSubscriptionCall();
+            if (i % 2 == 0) {
+                recorder.recordSubscriptionSuccess();
+            } else {
+                recorder.recordSubscriptionFailure();
+            }
+        }
+
+        // Verify metrics
+        verify(subscriptionCallsCounter, times(10)).increment();
+        verify(subscriptionSuccessCounter, times(5)).increment(); // Even indices: 0,2,4,6,8
+        verify(subscriptionFailureCounter, times(5)).increment();  // Odd indices: 1,3,5,7,9
+    }
+
+    @Test
+    void recordSubscriptionLatencyPropagatesExceptions() {
+        Supplier<String> failingOperation = () -> {
+            throw new RuntimeException("Test exception");
+        };
+
+        // Configure the mock timer to actually execute the supplier and propagate the exception
+        when(subscriptionLatencyTimer.record(failingOperation)).thenThrow(new RuntimeException("Test exception"));
+
+        assertThrows(RuntimeException.class, () -> {
+            recorder.recordSubscriptionLatency(failingOperation);
+        });
+
+        // Timer should still be called even if the operation fails
+        verify(subscriptionLatencyTimer, times(1)).record(failingOperation);
+    }
+
+    @Test
+    void recordSubscriptionLatencyWithNullDuration() {
+        // Duration should not be null in normal usage, but testing robustness
+        Duration nullDuration = null;
+
+        // Configure the mock timer to throw NPE when null duration is passed
+        doThrow(new NullPointerException()).when(subscriptionLatencyTimer).record(nullDuration);
+
+        assertThrows(NullPointerException.class, () -> {
+            recorder.recordSubscriptionLatency(nullDuration);
+        });
     }
 }
