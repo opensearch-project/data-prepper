@@ -17,7 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
-import com.linecorp.armeria.server.annotation.Consumes;
+import com.linecorp.armeria.server.annotation.ConsumesJson;
+import com.linecorp.armeria.server.annotation.ConsumesProtobuf;
 import com.linecorp.armeria.server.annotation.Post;
 
 import io.micrometer.core.instrument.Counter;
@@ -57,7 +58,8 @@ public class ArmeriaHttpService {
 
     // no path provided. Will be set by config.
     @Post("")
-    @Consumes(value = "application/json")
+    @ConsumesJson
+    @ConsumesProtobuf
     public ExportLogsServiceResponse exportLog(ExportLogsServiceRequest request) {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());

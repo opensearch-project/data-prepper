@@ -56,20 +56,27 @@ public class EndToEndOtelLogsSourceTest {
 
     @Test
     public void testOtelLogsSourcePipelineEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs("/otel-logs-pipeline/logs");
+        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsJsonRequest());
 
         searchForLogsAndAssert();
     }
 
     @Test
     public void testOtelLogsSourceWithUnframedRequestsPipelineEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs("/opentelemetry.proto.collector.logs.v1.LogsService/Export");
+        ingestLogs("/opentelemetry.proto.collector.logs.v1.LogsService/Export", createOtelLogsJsonRequest());
+
+        searchForLogsAndAssert();
+    }
+
+    @Test
+    public void testOtelLogsSourcePipelineWithProtobufPayloadEndToEnd() throws InvalidProtocolBufferException {
+        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsProtobufRequest());
 
         searchForLogsAndAssert();
     }
 
 
-    private HttpData createOtelLogsHttpRequest() throws InvalidProtocolBufferException {
+    private HttpData createOtelLogsJsonRequest() throws InvalidProtocolBufferException {
         ExportLogsServiceRequest exportLogsServiceRequest = ExportLogsServiceRequest.newBuilder().addResourceLogs(
                 ResourceLogs.newBuilder()
                         .addScopeLogs(ScopeLogs.newBuilder()
@@ -84,6 +91,23 @@ public class EndToEndOtelLogsSourceTest {
         ).build();
 
         return HttpData.copyOf(JsonFormat.printer().print(exportLogsServiceRequest).getBytes());
+    }
+
+    private HttpData createOtelLogsProtobufRequest() throws InvalidProtocolBufferException {
+        ExportLogsServiceRequest exportLogsServiceRequest = ExportLogsServiceRequest.newBuilder().addResourceLogs(
+                ResourceLogs.newBuilder()
+                        .addScopeLogs(ScopeLogs.newBuilder()
+                                .addLogRecords(LogRecord.newBuilder()
+                                        .setBody(AnyValue.newBuilder().setStringValue(apacheLogFaker.generateRandomCommonApacheLog()).build())
+                                        .setSeverityNumberValue(1)
+                                        .setTimeUnixNano(System.currentTimeMillis() * 1_000_000)
+                                        .setTraceId(ByteString.copyFromUtf8("trace-id"))
+                                        .setSpanId(ByteString.copyFromUtf8("span-id")
+                                        )).build()
+                        )
+        ).build();
+
+        return HttpData.copyOf(exportLogsServiceRequest.toByteArray());
     }
 
     private void searchForLogsAndAssert() {
@@ -109,7 +133,7 @@ public class EndToEndOtelLogsSourceTest {
                 .createClient(null);
     }
 
-    private void ingestLogs(String path) throws InvalidProtocolBufferException {
+    private void ingestLogs(String path, HttpData payload) throws InvalidProtocolBufferException {
         RequestHeaders headers = RequestHeaders.builder()
                 .scheme(SessionProtocol.HTTP)
                 .authority(String.format("127.0.0.1:%d", SOURCE_PORT))
@@ -118,7 +142,7 @@ public class EndToEndOtelLogsSourceTest {
                 .contentType(MediaType.JSON_UTF_8)
                 .build();
 
-        WebClient.of().execute(headers, createOtelLogsHttpRequest())
+        WebClient.of().execute(headers, payload)
                 .aggregate()
                 .whenComplete((i, ex) -> assertThat(i.status(), is(HttpStatus.OK)))
                 .join();
