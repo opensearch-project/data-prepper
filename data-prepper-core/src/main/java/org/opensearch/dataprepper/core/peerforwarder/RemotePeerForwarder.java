@@ -54,6 +54,7 @@ class RemotePeerForwarder implements PeerForwarder {
     final ConcurrentHashMap<String, LinkedBlockingQueue<Record<Event>>> peerBatchingQueueMap;
     private final ConcurrentHashMap<String, Long> peerBatchingLastFlushTimeMap;
     private final ConcurrentHashMap<String, Boolean> localAddressCache;
+    private volatile boolean expectSubstantialBatch;
 
     private final Counter recordsActuallyProcessedLocallyCounter;
     private final Counter recordsToBeProcessedLocallyCounter;
@@ -98,6 +99,7 @@ class RemotePeerForwarder implements PeerForwarder {
         peerBatchingQueueMap = new ConcurrentHashMap<>();
         peerBatchingLastFlushTimeMap = new ConcurrentHashMap<>();
         localAddressCache = new ConcurrentHashMap<>();
+        expectSubstantialBatch = true;
         
         recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
         recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
@@ -133,10 +135,18 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     public Collection<Record<Event>> receiveRecords() {
-        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = peerForwarderReceiveBuffer.read(batchDelay);
+        // Adaptive timeout: use non-blocking (0ms) or configured delay based on expected batch size
+        final int timeout = expectSubstantialBatch ? 0 : batchDelay;
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = peerForwarderReceiveBuffer.read(timeout);
 
         final Collection<Record<Event>> records = readResult.getKey();
         final CheckpointState checkpointState = readResult.getValue();
+
+        // Heuristic: expect substantial batches only if we're receiving more than 50% of forwarding batch size.
+        // - When true: use non-blocking reads (0ms) to maximize throughput during high-load periods
+        // - When false: use configured batchDelay to accumulate records and prevent fragmentation
+        final int minBatchSizeForNonBlocking = forwardingBatchSize / 2;
+        expectSubstantialBatch = records.size() >= minBatchSizeForNonBlocking;
 
         // Checkpoint the current batch read from the buffer after reading from buffer
         peerForwarderReceiveBuffer.checkpoint(checkpointState);
