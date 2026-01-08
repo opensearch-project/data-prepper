@@ -79,6 +79,10 @@ public class KinesisSourceConfig {
     @Getter
     @JsonProperty("initialization_backoff_time")
     private Duration initializationBackoffTime = DEFAULT_INITIALIZATION_BACKOFF_TIME;
+
+    @Getter
+    @JsonProperty("metrics")
+    private boolean metrics = false;
 }
 
 
