@@ -20,6 +20,9 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultStatusCodeHandler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -73,6 +76,8 @@ class Office365RestClientTest {
 
     private Office365RestClient office365RestClient;
 
+    private static final int CUSTOM_MAX_RETRIES = 1;
+
     @BeforeEach
     void setUp() throws NoSuchFieldException, IllegalAccessException {
         // Setup VendorAPIMetricsRecorder method mocks - use lenient to avoid unnecessary stubbing errors
@@ -110,6 +115,12 @@ class Office365RestClientTest {
 
         office365RestClient = new Office365RestClient(authConfig, metricsRecorder);
         ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "restTemplate", restTemplate);
+
+        // Optionally replace RetryHandler with custom one (1 retry) for faster test execution
+        RetryHandler customRetryHandler = new RetryHandler(
+                new DefaultRetryStrategy(CUSTOM_MAX_RETRIES),
+                new DefaultStatusCodeHandler());
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "retryHandler", customRetryHandler);
     }
 
     /**
@@ -363,10 +374,17 @@ class Office365RestClientTest {
      * Verifies that failed authentication triggers credential renewal and retry succeeds.
      */
     @Test
-    void testTokenRenewal() {
+    void testTokenRenewal() throws NoSuchFieldException, IllegalAccessException {
         // Setup
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         Instant endTime = Instant.now();
+
+        // Override retry handler to allow at least 2 attempts for token renewal test
+        RetryHandler tokenRenewalRetryHandler = new RetryHandler(
+                new DefaultRetryStrategy(2), // Need at least 2 attempts for token renewal scenario
+                new DefaultStatusCodeHandler());
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "retryHandler",
+                tokenRenewalRetryHandler);
 
         List<String> tokensUsed = new ArrayList<>();
         List<String> requestTokens = new ArrayList<>();
