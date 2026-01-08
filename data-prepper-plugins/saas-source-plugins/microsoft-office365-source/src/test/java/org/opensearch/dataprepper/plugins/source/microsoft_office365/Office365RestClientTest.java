@@ -473,9 +473,8 @@ class Office365RestClientTest {
         // Verify that failure metrics were recorded
         // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions
         // get compiled to specific classes that are difficult to match in tests
-        // The retry handler calls recordSubscriptionFailure() for each retry attempt.
-        // With 6 content types and multiple retries per content type, we expect multiple failure calls
-        verify(metricsRecorder, times(6)).recordSubscriptionFailure();
+        // The retry handler calls recordSubscriptionFailure() once after all retries are exhausted
+        verify(metricsRecorder, times(1)).recordSubscriptionFailure();
     }
 
     /**
