@@ -39,6 +39,7 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.pipeline.parser.InvalidPipelineConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
@@ -394,6 +395,23 @@ class PipelineTransformerTests {
         assertTrue(failurePipeline.getSource() instanceof HeadlessPipelineSource);
         assertThat(((HeadlessPipelineSource)failurePipeline.getSource()).getAcknowledgementsEnabled(), equalTo(false));
     }
+
+    @Test
+    void testPipelineConfigWithOnlyHeadlessPipelines() {
+        mockDataPrepperConfigurationAccesses();
+        final String configFile = TestDataProvider.INVALID_ONLY_HEADLESS_PIPELINES_CONFIG_FILE;
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(configFile);
+        assertThrows(InvalidPipelineConfigurationException.class, () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
+    }
+
+    @Test
+    void testPipelineConfigWithHeadlessPipelinesAndSubPipelines() {
+        mockDataPrepperConfigurationAccesses();
+        final String configFile = TestDataProvider.INVALID_ONLY_HEADLESS_AND_SUBPIPELINES_CONFIG_FILE;
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(configFile);
+        assertThrows(InvalidPipelineConfigurationException.class, () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
+    }
+
 
     @Test
     void testMultipleProcessors() {
