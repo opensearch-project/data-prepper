@@ -264,8 +264,8 @@ class LeaderOnlyTokenCrawlerTest {
         // setup mock plugin metrics
         PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
         when(mockPluginMetrics.timer("crawlingTime")).thenReturn(mockCrawlingTimer);
-        when(mockPluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
-        when(mockPluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
+        when(mockPluginMetrics.timer("workerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(mockPluginMetrics.timer("workerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
         when(mockPluginMetrics.timer("bufferWriteTime")).thenReturn(mockBufferWriteTimer);
         when(mockPluginMetrics.counter("batchesFailed")).thenReturn(mockBatchesFailedCounter);
         when(mockPluginMetrics.counter("acknowledgementSetSuccesses")).thenReturn(mockAcknowledgementSetSuccesses);

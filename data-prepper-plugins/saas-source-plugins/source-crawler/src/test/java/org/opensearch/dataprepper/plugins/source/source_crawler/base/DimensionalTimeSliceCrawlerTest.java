@@ -75,8 +75,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @BeforeEach
     void setUp() {
         when(pluginMetrics.counter(anyString())).thenReturn(partitionsCreatedCounter);
-        when(pluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
-        when(pluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
+        when(pluginMetrics.timer("workerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(pluginMetrics.timer("workerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
         crawler = new DimensionalTimeSliceCrawler(client, pluginMetrics);
         crawler.initialize(LOG_TYPES);
     }
