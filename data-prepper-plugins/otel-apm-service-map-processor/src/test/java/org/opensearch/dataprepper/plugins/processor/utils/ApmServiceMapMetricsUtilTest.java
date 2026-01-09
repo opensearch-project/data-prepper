@@ -5,22 +5,19 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
-import org.opensearch.dataprepper.model.metric.DefaultExemplar;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.metric.Exemplar;
-import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonStandardHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.plugins.processor.model.internal.ClientSpanDecoration;
 import org.opensearch.dataprepper.plugins.processor.model.internal.HistogramBuckets;
 import org.opensearch.dataprepper.plugins.processor.model.internal.MetricAggregationState;
 import org.opensearch.dataprepper.plugins.processor.model.internal.MetricKey;
 import org.opensearch.dataprepper.plugins.processor.model.internal.SpanStateData;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,11 +28,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor.getTimeNanos;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class ApmServiceMapMetricsUtilTest {
@@ -368,7 +367,7 @@ class ApmServiceMapMetricsUtilTest {
 
         // Then
         assertNotNull(metric);
-        assertTrue(metric instanceof JacksonSum);
+        assertInstanceOf(JacksonSum.class, metric);
         assertEquals(metricName, metric.getName());
         assertEquals(description, metric.getDescription());
         assertNotNull(metric.getAttributes());
@@ -628,7 +627,7 @@ class ApmServiceMapMetricsUtilTest {
         List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
         
         // Then
-        assertTrue(metrics.size() > 0);
+        assertFalse(metrics.isEmpty());
         // Verify metrics are sorted by timestamp - compare the first few metrics
         if (metrics.size() >= 2) {
             String firstTimestamp = metrics.get(0).getTime();
