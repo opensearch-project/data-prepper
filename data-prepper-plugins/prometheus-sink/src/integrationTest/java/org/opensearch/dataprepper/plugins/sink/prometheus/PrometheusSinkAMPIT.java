@@ -218,7 +218,7 @@ public class PrometheusSinkAMPIT {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(60L);
         prometheusSinkConfig = mock(PrometheusSinkConfiguration.class);
         when(prometheusSinkConfig.getMaxRetries()).thenReturn(5);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(0));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(0));
         when(prometheusSinkConfig.getSanitizeNames()).thenReturn(false);
         when(prometheusSinkConfig.getUrl()).thenReturn(remoteWriteUrl);
         when(prometheusSinkConfig.getContentType()).thenReturn("application/x-protobuf");
@@ -299,7 +299,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestSumMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
         PrometheusSink sink = createObjectUnderTest();
         long startTimeSeconds = testStartTime.getEpochSecond();
         Instant time = Instant.now();
@@ -407,7 +407,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestSumMetricsFailuresWithoutDLQ(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
         when(thresholdConfig.getMaxEvents()).thenReturn(1);
         PrometheusSink sink = createObjectUnderTest();
 
@@ -488,7 +488,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestGaugeMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
 
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getGaugeRecordList(NUM_RECORDS);
@@ -532,7 +532,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestGaugeMetricsWithMaxRequestSizeLimitAndFlushTimeout(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
 
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(220L);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(20L);
@@ -604,7 +604,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestSummaryMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
 
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getSummaryRecordList(NUM_RECORDS);
@@ -716,7 +716,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestHistogramMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
 
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getHistogramRecordList(NUM_RECORDS);
@@ -783,7 +783,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     void TestExponentialHistogramMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
 
         PrometheusSink sink = createObjectUnderTest();
         Collection<Record<Event>> records = getExponentialHistogramRecordList(NUM_RECORDS);
@@ -853,7 +853,7 @@ public class PrometheusSinkAMPIT {
     @ValueSource(ints = {0, 2, 5})
     public void TestMultipleMetrics(final int window) throws Exception {
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(6L);
-        when(prometheusSinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(window));
+        when(prometheusSinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(window));
         when(thresholdConfig.getMaxEvents()).thenReturn(1);
         long startTimeSeconds = testStartTime.getEpochSecond();
         PrometheusSink sink = createObjectUnderTest();

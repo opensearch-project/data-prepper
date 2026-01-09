@@ -57,7 +57,7 @@ public class PrometheusSinkBufferWriterTest {
         when(sinkThresholdConfig.getMaxEvents()).thenReturn(3);
         when(sinkThresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
         when(sinkConfig.getThresholdConfig()).thenReturn(sinkThresholdConfig);
-        when(sinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(0));
+        when(sinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(0));
         sinkFlushContext = mock(PrometheusSinkFlushContext.class);
         gauge1 = createGaugeMetric("gauge1", Instant.now(), 1.0d);
         prometheusSinkBufferEntry = new PrometheusSinkBufferEntry(gauge1, true);
@@ -126,7 +126,7 @@ public class PrometheusSinkBufferWriterTest {
     public void testGetBufferWithMultipleMetrics() throws Exception {
         when(sinkThresholdConfig.getMaxEvents()).thenReturn(5);
         when(sinkThresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
-        when(sinkConfig.getOutOfOrderWindow()).thenReturn(Duration.ofSeconds(3));
+        when(sinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(3));
         prometheusSinkBufferWriter = createObjectUnderTest();
         Instant t1 = Instant.now();
         Instant t2 = t1.minusSeconds(3);
