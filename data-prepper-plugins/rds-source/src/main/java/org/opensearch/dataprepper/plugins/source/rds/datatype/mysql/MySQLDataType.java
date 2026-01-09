@@ -129,6 +129,8 @@ public enum MySQLDataType {
         return this == MySQLDataType.BIGINT_UNSIGNED;
     }
 
+    public boolean isDecimal() { return this == MySQLDataType.DECIMAL; }
+
     public boolean isBit() {
         return this == MySQLDataType.BIT;
     }
