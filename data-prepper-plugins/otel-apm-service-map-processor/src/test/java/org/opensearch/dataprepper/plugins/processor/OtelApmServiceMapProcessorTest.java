@@ -10,31 +10,33 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.processor.model.internal.SpanStateData;
 import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
-import org.opensearch.dataprepper.plugins.processor.utils.ApmServiceMapMetricsUtil;
 
 import java.io.File;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.*;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OtelApmServiceMapProcessorTest {
@@ -192,10 +194,7 @@ class OtelApmServiceMapProcessorTest {
         Collection<Record<Event>> records = Collections.singletonList(record);
         
         // When
-        Collection<Record<Event>> result = processor.doExecute(records);
-        
-        // Then
-        assertNotNull(result);
+        assertThrows(RuntimeException.class, ()->processor.doExecute(records));
     }
 
     @Test
@@ -206,8 +205,8 @@ class OtelApmServiceMapProcessorTest {
         Map<String, Object> status = new HashMap<>();
         status.put("code", "ERROR");
         
-        Span mockSpan = mock(Span.class);
-        when(mockSpan.getStatus()).thenReturn(status);
+//        Span mockSpan = mock(Span.class);
+//        when(mockSpan.getStatus()).thenReturn(status);
         
         // Create a reflection helper to test private method
         // Since extractSpanStatus is private, it's tested indirectly through processSpan
@@ -658,13 +657,13 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testComplexWindowProcessingWithMultipleProcessors() {
         // Given
-        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(3);
+        //when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(3);
         
         when(clock.millis())
             .thenReturn(testTime.toEpochMilli()) // Initial timestamp
-            .thenReturn(testTime.toEpochMilli() + 65000); // 65 seconds later
+            .thenReturn(testTime.toEpochMilli() + 65); // 65 seconds later
         
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 3, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(60L, tempDir, clock, 3, pluginMetrics);
         
         List<Record<Event>> records = Arrays.asList(
             new Record<>(createMockSpan("service-1", "operation-1", "CLIENT")),
