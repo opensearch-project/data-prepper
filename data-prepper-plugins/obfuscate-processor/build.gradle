@@ -3,6 +3,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.google.re2j:re2j:1.8'
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-test:test-event') 
 }
