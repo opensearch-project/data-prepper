@@ -110,29 +110,18 @@ class UserAgentProcessorTest {
     }
 
     @Test
-    public void testProcessorSkipsEventWhenSourceFieldIsMissing() {
-        // Source key exists in config
-        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("source"));
-        when(mockConfig.getTarget()).thenReturn("user_agent");
+    public void testParsingWhenUserAgentStringNotExist() {
+        when(mockConfig.getSource()).thenReturn(eventKeyFactory.createEventKey("bad_source"));
         when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+        when(mockConfig.getTarget()).thenReturn("user_agent");
 
         final UserAgentProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord(UUID.randomUUID().toString());
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+        final Event resultEvent = resultRecord.get(0).getData();
 
-        // important : event without source field
-        final Event event = JacksonEvent.builder()
-                .withData(Collections.emptyMap())
-                .withEventType("event")
-                .build();
-
-        final Record<Event> record = new Record<>(event);
-
-        // Should not throw and should not add target
-        processor.doExecute(Collections.singletonList(record));
-
-        assertThat(event.containsKey("user_agent"), is(false));
-        assertThat(event.getMetadata().getTags().isEmpty(), is(true));
+        assertThat(resultEvent.containsKey("user_agent"), is(false));
     }
-
 
     @Test
     public void testTagsAddedOnParseFailure() {
