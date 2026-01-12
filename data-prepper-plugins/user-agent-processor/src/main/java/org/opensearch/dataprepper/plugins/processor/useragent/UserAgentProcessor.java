@@ -55,14 +55,12 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
             try {
                 final String userAgentStr = event.get(sourceKey, String.class);
 
-                // FIX : Skip processing if source field is missing
                 if (userAgentStr == null) {
                     throw new IllegalArgumentException(
                             "User agent source field [" + sourceKey + "] is missing or null");
                 }
 
                 final Client clientInfo = this.userAgentParser.parse(userAgentStr);
-
 
                 final Map<String, Object> parsedUserAgent = getParsedUserAgent(clientInfo);
                 if (!config.getExcludeOriginal()) {
