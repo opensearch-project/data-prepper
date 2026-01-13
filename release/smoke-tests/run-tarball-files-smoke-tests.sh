@@ -1,7 +1,13 @@
 #!/bin/bash
 
+#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
 
 set -e
 
@@ -34,6 +40,11 @@ function usage() {
     echo -e "Required arguments:"
     echo -e "-v DATA_PREPPER_VERSION\tSpecify the Data Prepper build version to test such as '1.3.0-SNAPSHOT'."
     echo -e ""
+    echo -e "Optional arguments:"
+    echo -e "-a ARCHITECTURE\tSpecify the architecture to test (x64 or arm64). Default is x64."
+    echo -e "-i FROM_IMAGE\tSpecify the base Docker image to use. Default is eclipse-temurin:11."
+    echo -e "-t TAR_NAME\tSpecify the tar name prefix (opensearch-data-prepper or opensearch-data-prepper-jdk). Default is opensearch-data-prepper."
+    echo -e ""
     echo -e "Only one of the following argument sets can be used:"
     echo -e "Smoke test local file arguments:"
     echo -e "-d TAR_DIR\tSpecify local directory containing tarball files to be smoke tested."
@@ -48,6 +59,8 @@ function usage() {
     echo -e "--------------------------------------------------------------------------"
     echo -e "Examples, run from repo root directory"
     echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -d release/archives/linux/build/distributions\""
+    echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -a arm64 -d release/archives/linux/build/distributions\""
+    echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -a arm64 -t opensearch-data-prepper-jdk -d release/archives/linux/build/distributions\""
     echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -b staging-bucket -n 1\""
     echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -u https://staging.opensearch.org -n 1\""
     echo -e ""
@@ -112,7 +125,7 @@ function get_url_tar() {
 }
 
 function run_smoke_test() {
-    export BUILD_NAME="${TAR_NAME}-${DATA_PREPPER_VERSION}-linux-x64"
+    export BUILD_NAME="${TAR_NAME}-${DATA_PREPPER_VERSION}-linux-${ARCHITECTURE}"
     export TAR_FILE="${BUILD_NAME}.tar.gz"
 
     case $TAR_SOURCE_TYPE in
@@ -142,8 +155,9 @@ function run_smoke_test() {
     cd "${CURRENT_DIR}" || exit
 }
 
-while getopts "b:d:hi:n:t:u:v:" arg; do
+while getopts "a:b:d:hi:n:t:u:v:" arg; do
     case $arg in
+        a) export ARCHITECTURE=$OPTARG;;
         b) export BUCKET_NAME=$OPTARG;;
         d) export TAR_DIR=$OPTARG;;
         h) usage;;
@@ -199,6 +213,18 @@ fi
 if ! is_defined "${TAR_NAME}"
 then
     export TAR_NAME="opensearch-data-prepper"
+fi
+
+if ! is_defined "${ARCHITECTURE}"
+then
+    export ARCHITECTURE="x64"
+fi
+
+# Set Docker platform based on architecture
+if [ "${ARCHITECTURE}" = "arm64" ]; then
+    export PLATFORM="linux/arm64"
+else
+    export PLATFORM="linux/amd64"
 fi
 
 

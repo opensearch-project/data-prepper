@@ -1,16 +1,20 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 //preferably try to main the alphabetical order
 ext {
     architectures = [
-            linux: ['x64']
+            linux: ['x64', 'arm64']
     ]
     jdkSources = [
             linux_x64: 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/OpenJDK17U-jdk_x64_linux_hotspot_17.0.16_8.tar.gz',
-            linux_arm64: 'https://hg.openjdk.java.net/aarch64-port/jdk8/archive/tip.tar.gz'
+            linux_arm64: 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.17%2B10/OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.17_10.tar.gz'
     ]
     awsResources = [
             default_region: 'us-east-1',
