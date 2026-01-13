@@ -58,7 +58,7 @@ public class PrometheusSinkServiceTest {
             "          max_events: 2\n" +
             "          flush_interval: 10\n"+
             "        connection_timeout: 10\n"+
-            "        out_of_order_window: 0\n" +
+            "        out_of_order_time_window: 0\n" +
             "        idle_timeout: 10\n"+
             "        aws:\n" +
             "          region: \"us-east-2\"\n" +

@@ -40,7 +40,7 @@ public class PrometheusSinkBufferWriter implements SinkBufferWriter {
     public PrometheusSinkBufferWriter(final PrometheusSinkConfiguration sinkConfig, final SinkMetrics sinkMetrics) {
         this.buffer = new HashMap<>();
         this.sinkMetrics = sinkMetrics;
-        this.outOfOrderWindowMillis = sinkConfig.getOutOfOrderWindow().toMillis();
+        this.outOfOrderWindowMillis = sinkConfig.getOutOfOrderTimeWindow().toMillis();
         this.maxEvents = sinkConfig.getThresholdConfig().getMaxEvents();
         this.maxRequestSize = sinkConfig.getThresholdConfig().getMaxRequestSizeBytes();
     }
