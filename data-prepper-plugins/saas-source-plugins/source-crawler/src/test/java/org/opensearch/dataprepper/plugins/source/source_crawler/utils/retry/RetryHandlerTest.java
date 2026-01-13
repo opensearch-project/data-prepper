@@ -48,6 +48,8 @@ class RetryHandlerTest {
     private StatusCodeHandler statusCodeHandler;
     @Mock
     private Runnable credentialRenewal;
+    @Mock
+    private Runnable failureHandler;
     private RetryHandler retryHandler;
 
     @BeforeEach
@@ -340,5 +342,98 @@ class RetryHandlerTest {
         assertThat(exception.getStatusCode(), equalTo(HttpStatus.INTERNAL_SERVER_ERROR));
         verify(statusCodeHandler, times(2)).handleStatusCode(any(HttpServerErrorException.class),
                 anyInt(), eq(credentialRenewal));
+    }
+
+    // Tests for failureHandler functionality
+    @Test
+    void executeWithRetry_WithFailureHandler_CallsFailureHandlerOnEachFailure() {
+        final AtomicInteger attemptCount = new AtomicInteger(0);
+        final Supplier<String> operation = () -> {
+            if (attemptCount.getAndIncrement() < 2) {
+                throw new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE);
+            }
+            return "success";
+        };
+
+        when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
+                eq(credentialRenewal))).thenReturn(RetryDecision.retry());
+
+        final String result = retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler);
+
+        assertThat(result, equalTo("success"));
+        verify(failureHandler, times(2)).run(); // Called on first 2 failed attempts
+    }
+
+    @Test
+    void executeWithRetry_WithFailureHandler_DoesNotCallOnSuccess() {
+        final String expectedResult = "success";
+        final Supplier<String> operation = () -> expectedResult;
+
+        final String result = retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler);
+
+        assertThat(result, equalTo(expectedResult));
+        verify(failureHandler, never()).run(); // Should not be called on success
+    }
+
+    @Test
+    void executeWithRetry_WithNullFailureHandler_DoesNotThrowException() {
+        final AtomicInteger attemptCount = new AtomicInteger(0);
+        final Supplier<String> operation = () -> {
+            if (attemptCount.getAndIncrement() < 1) {
+                throw new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE);
+            }
+            return "success";
+        };
+
+        when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
+                eq(credentialRenewal))).thenReturn(RetryDecision.retry());
+
+        final String result = retryHandler.executeWithRetry(operation, credentialRenewal, null);
+
+        assertThat(result, equalTo("success")); // Should succeed without NPE
+    }
+
+    @Test
+    void executeWithRetry_WithFailureHandlerAndMaxRetries_CallsFailureHandlerCorrectTimes() {
+        final Supplier<String> operation = () -> {
+            throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR);
+        };
+
+        when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
+                eq(credentialRenewal))).thenReturn(RetryDecision.retry());
+
+        assertThrows(HttpServerErrorException.class,
+                () -> retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler));
+
+        verify(failureHandler, times(MAX_RETRIES)).run(); // Called exactly MAX_RETRIES times
+    }
+
+    @Test
+    void executeWithRetry_WithFailureHandlerAndNonRetryableError_CallsFailureHandlerOnce() {
+        final HttpClientErrorException clientException = new HttpClientErrorException(
+                HttpStatus.BAD_REQUEST, "Bad Request");
+        final Supplier<String> operation = () -> {
+            throw clientException;
+        };
+
+        when(statusCodeHandler.handleStatusCode(eq(clientException), eq(0),
+                eq(credentialRenewal))).thenReturn(RetryDecision.stop());
+
+        assertThrows(HttpClientErrorException.class,
+                () -> retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler));
+
+        verify(failureHandler, times(1)).run(); // Called once before stopping
+    }
+
+    @Test
+    void executeWithRetry_TwoParameterOverload_CallsThreeParameterWithNullFailureHandler() {
+        final String expectedResult = "success";
+        final Supplier<String> operation = () -> expectedResult;
+
+        final String result = retryHandler.executeWithRetry(operation, credentialRenewal);
+
+        assertThat(result, equalTo(expectedResult));
+        // This test verifies the two-parameter overload works correctly by calling
+        // the three-parameter version with null failureHandler (no NPE should occur)
     }
 }

@@ -22,16 +22,19 @@ import java.time.Duration;
 public interface EncryptionEngineConfiguration {
     /**
      * Represents the type of the encryption engine.
+     * @return the name of the encryption engine type
      */
     String name();
 
     /**
      * Whether encrypted data key rotation is enabled.
+     * @return true if rotation is enabled, false otherwise
      */
     boolean rotationEnabled();
 
     /**
      * Retrieves the rotation interval.
+     * @return the rotation interval as a Duration
      */
     Duration getRotationInterval();
 }

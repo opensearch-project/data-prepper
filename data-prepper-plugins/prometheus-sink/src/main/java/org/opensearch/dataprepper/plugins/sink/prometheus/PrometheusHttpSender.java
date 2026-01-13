@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.client.retry.Backoff;
@@ -64,6 +65,7 @@ public class PrometheusHttpSender {
      *
      * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config The configuration for the Prometheus sink plugin.
+     * @param sinkMetrics The sink metrics for recording request information
      */
     public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics) {
         this(awsCredentialsSupplier, buildWebClient(config), config, sinkMetrics);
@@ -120,6 +122,7 @@ public class PrometheusHttpSender {
      * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
      *
      * @param payload - batch the batch of spans to send
+     * @return PrometheusPushResult containing the success status and response code
      */
     public PrometheusPushResult pushToEndpoint(final byte[] payload) {
         PrometheusPushResult result;
@@ -145,12 +148,12 @@ public class PrometheusHttpSender {
                     return new PrometheusPushResult(handleResponse(statusCode, responseBytes), statusCode);
                 })
                 .exceptionally(throwable -> {
-                    LOG.error("Request failed", throwable);
+                    LOG.error(NOISY, "Request failed", throwable);
                     return new PrometheusPushResult(false, 0);
                 })
                 .join();  // Wait for completion
         } catch (Exception e) {
-            LOG.error("Failed to execute request", e);
+            LOG.error(NOISY, "Failed to execute request", e);
             result = new PrometheusPushResult(false, 0);
         }
         return result;
@@ -210,7 +213,7 @@ public class PrometheusHttpSender {
                 ? new String(responseBytes, StandardCharsets.UTF_8)
                 : "<no body>";
 
-        LOG.error("Non-successful Prometheus server response. Status: {}, Response: {}",
+        LOG.error(NOISY, "Non-successful Prometheus server response. Status: {}, Response: {}",
                     statusCode, responseBody);
         return false;
     }

@@ -24,6 +24,8 @@ import java.time.Duration;
 import java.util.Optional;
 import java.time.Instant;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * Worker class for executing the partitioned work created while crawling a source.
  * Each SAAS source will provide their own specific source extraction logic.
@@ -169,7 +171,7 @@ public class WorkerScheduler implements Runnable {
         log.info("Updating workerPartition {}", workerPartition.getPartitionKey());
         Duration age = Duration.between(partitionCreationTime, Instant.now());
         if (age.compareTo(this.sourceConfig.getDurationToGiveUpRetry()) <= 0) {
-            log.info("Partition {} is within or equal to the configured max duration, scheduling retry", workerPartition.getPartitionKey());
+            log.info(NOISY, "Partition {} is within or equal to the configured max duration, scheduling retry", workerPartition.getPartitionKey());
             sourceCoordinator.saveProgressStateForPartition(workerPartition, this.sourceConfig.getDurationToDelayRetry());
         } else {
             log.info("Partition {} is older than the configured max duration, giving up", workerPartition.getPartitionKey());

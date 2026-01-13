@@ -85,6 +85,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
+                    oTelMetricsSourceConfig.getBufferPartitionKeys(),
                     pluginMetrics,
                     null
             );
