@@ -1,7 +1,13 @@
 #!/bin/bash
 
+#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
 
 set -e
 
@@ -31,6 +37,7 @@ if [ -z "${SMOKE_IMAGE_NAME}" ]; then
 fi
 
 docker build \
+    --platform="${PLATFORM:-linux/amd64}" \
     --build-arg BUILD_NAME="${BUILD_NAME}" \
     --build-arg DATA_PREPPER_VERSION="${DATA_PREPPER_VERSION}" \
     --build-arg DOCKER_FILE_DIR="${DOCKER_FILE_DIR}" \
