@@ -15,8 +15,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectPluginMetrics;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 

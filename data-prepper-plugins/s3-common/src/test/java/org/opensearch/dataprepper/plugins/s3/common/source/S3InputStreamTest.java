@@ -1,4 +1,14 @@
-package org.opensearch.dataprepper.plugins.source.s3;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+package org.opensearch.dataprepper.plugins.s3.common.source;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -10,7 +20,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -197,8 +207,7 @@ class S3InputStreamTest {
     @MethodSource("retryableExceptions")
     void testReadSucceedsAfterRetries(final Class<? extends Exception> retryableExceptionClass) throws IOException {
         InputStream mockInputStream = mock(InputStream.class);
-        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
-            .thenReturn(mockInputStream);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(mockInputStream);
 
         when(mockInputStream.read())
             .thenThrow(retryableExceptionClass)
@@ -222,8 +231,7 @@ class S3InputStreamTest {
     @MethodSource("retryableExceptions")
     void testReadFailsAfterRetries(final Class<? extends Exception> retryableExceptionClass) throws IOException {
         InputStream mockInputStream = mock(InputStream.class);
-        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
-            .thenReturn(mockInputStream);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(mockInputStream);
 
         when(mockInputStream.read()).thenThrow(retryableExceptionClass);
 
@@ -235,7 +243,7 @@ class S3InputStreamTest {
         verify(mockInputStream, times(RETRIES + 1)).read();
         verify(mockInputStream, times(RETRIES + 2)).close();
         verify(s3Client, times(RETRIES + 2))
-            .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
+                .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
     }
 
     @Test
@@ -277,8 +285,7 @@ class S3InputStreamTest {
         throws IOException
     {
         InputStream mockInputStream = mock(InputStream.class);
-        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
-            .thenReturn(mockInputStream);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(mockInputStream);
 
         when(mockInputStream.readAllBytes())
             .thenThrow(retryableExceptionClass)
@@ -304,8 +311,7 @@ class S3InputStreamTest {
         throws IOException
     {
         InputStream mockInputStream = mock(InputStream.class);
-        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
-            .thenReturn(mockInputStream);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(mockInputStream);
 
         when(mockInputStream.readAllBytes()).thenThrow(retryableExceptionClass);
 
@@ -542,8 +548,8 @@ class S3InputStreamTest {
     void testS3ObjectsFailedNotFoundCounter() {
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenThrow(
             S3Exception.builder()
-                .statusCode(HttpStatusCode.NOT_FOUND)
-                .build());
+                    .statusCode(HttpStatusCode.NOT_FOUND)
+                    .build());
 
         final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
@@ -555,8 +561,8 @@ class S3InputStreamTest {
     void testS3ObjectsFailedAccessDeniedCounter() {
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenThrow(
             S3Exception.builder()
-                .statusCode(HttpStatusCode.FORBIDDEN)
-                .build());
+                    .statusCode(HttpStatusCode.FORBIDDEN)
+                    .build());
 
         final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
@@ -568,7 +574,7 @@ class S3InputStreamTest {
     void testS3ObjectsThrottledCounter() {
         S3Exception throttledException = mock(S3Exception.class);
         when(throttledException.isThrottlingException()).thenReturn(true);
-        
+
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenThrow(throttledException);
 
         final S3InputStream s3InputStream = createObjectUnderTest();

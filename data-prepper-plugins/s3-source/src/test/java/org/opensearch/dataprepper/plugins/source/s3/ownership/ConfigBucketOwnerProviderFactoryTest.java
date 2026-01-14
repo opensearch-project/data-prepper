@@ -14,8 +14,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig;
-import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.MappedBucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.NoOwnershipBucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.StaticBucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.config.AwsAuthenticationOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 

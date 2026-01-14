@@ -1,4 +1,14 @@
-package org.opensearch.dataprepper.plugins.source.s3;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+package org.opensearch.dataprepper.plugins.s3.common.source;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteStreams;
@@ -8,7 +18,7 @@ import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedSupplier;
 import org.apache.http.ConnectionClosedException;
 import org.apache.parquet.io.SeekableInputStream;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.ResponseTransformer;

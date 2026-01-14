@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 
 import java.util.UUID;
 import java.util.stream.Stream;

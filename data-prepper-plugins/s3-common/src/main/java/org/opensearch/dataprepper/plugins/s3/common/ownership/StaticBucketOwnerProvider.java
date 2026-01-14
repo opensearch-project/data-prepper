@@ -1,18 +1,19 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
-package org.opensearch.dataprepper.plugins.source.s3.ownership;
+package org.opensearch.dataprepper.plugins.s3.common.ownership;
 
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * An implementation of {@link BucketOwnerProvider} which provides the
- * same owner for all buckets.
- */
-class StaticBucketOwnerProvider implements BucketOwnerProvider {
+public class StaticBucketOwnerProvider implements BucketOwnerProvider {
     private final String accountId;
 
     public StaticBucketOwnerProvider(final String accountId) {

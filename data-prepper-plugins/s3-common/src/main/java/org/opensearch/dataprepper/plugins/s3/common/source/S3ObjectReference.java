@@ -1,9 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
-package org.opensearch.dataprepper.plugins.source.s3;
+package org.opensearch.dataprepper.plugins.s3.common.source;
+
+import lombok.Getter;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -11,8 +18,10 @@ import java.util.Optional;
 /**
  * Reference to an S3 object.
  */
-class S3ObjectReference {
+public class S3ObjectReference {
+    @Getter
     private final String bucketName;
+    @Getter
     private final String key;
     private final String owner;
 
@@ -22,18 +31,10 @@ class S3ObjectReference {
         this.owner = owner;
     }
 
-    static Builder bucketAndKey(final String bucketName, final String key) {
+    public static Builder bucketAndKey(final String bucketName, final String key) {
         Objects.requireNonNull(bucketName, "bucketName must be non null");
         Objects.requireNonNull(key, "key must be non null");
         return new Builder(bucketName, key);
-    }
-
-    String getBucketName() {
-        return bucketName;
-    }
-
-    String getKey() {
-        return key;
     }
 
     Optional<String> getBucketOwner() {

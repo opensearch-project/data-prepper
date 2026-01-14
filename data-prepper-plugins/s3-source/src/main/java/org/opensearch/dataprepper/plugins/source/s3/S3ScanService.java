@@ -8,8 +8,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
