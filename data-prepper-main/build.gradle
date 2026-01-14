@@ -5,6 +5,7 @@
 
 plugins {
     id 'data-prepper.publish'
+    id 'com.google.cloud.tools.jib' version '3.4.5'
 }
 
 sourceSets {
@@ -52,3 +53,32 @@ artifacts {
     allDependencyJars(jar)
 }
 
+
+jib {
+    from {
+        image = 'amazoncorretto:21-al2023'
+        platforms {
+            platform {
+                architecture = 'amd64'
+                os = 'linux'
+            }
+            platform {
+                architecture = 'arm64'
+                os = 'linux'
+            }
+        }
+
+    }
+    to {
+        image = "${project.rootProject.name}:${project.version}"
+    }
+    container {
+        mainClass = 'org.opensearch.dataprepper.DataPrepperExecute'
+        environment = [
+                'ENV_CONFIG_FILEPATH': '/usr/share/data-prepper/config/data-prepper-config.yaml',
+                'ENV_PIPELINE_FILEPATH': '/usr/share/data-prepper/pipelines/pipelines.yaml'
+        ]
+        // jvmFlags = ['-Xms512m', '-Xmx1024m']
+        // ports = ['8080']
+    }
+}
