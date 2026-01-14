@@ -1,25 +1,117 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
-plugins {
-    id 'com.palantir.docker' version '0.35.0'
+def supportedArchitectures = architectures.get('linux') as String[]
+
+class DockerBuildxTask extends Exec {
+    @Input
+    String platform
+    
+    @Input
+    String tag
+    
+    @Input
+    boolean push = false
+    
+    @TaskAction
+    @Override
+    protected void exec() {
+        def args = [
+            'docker', 'buildx', 'build',
+            '--platform', platform,
+            '--build-arg', 'CONFIG_FILEPATH=/usr/share/data-prepper/config/data-prepper-config.yaml',
+            '--build-arg', 'PIPELINE_FILEPATH=/usr/share/data-prepper/pipelines/pipelines.yaml',
+            '-t', tag
+        ]
+        
+        if (push) {
+            args << '--push'
+        } else if (!platform.contains(',')) {
+            // Only use --load for single-arch builds
+            args << '--load'
+        }
+        
+        args << '.'
+        
+        commandLine args
+        super.exec()
+    }
 }
 
-docker {
-    name "${project.rootProject.name}:${project.version}"
-    tag "${project.rootProject.name}", "${project.version}"
-    files project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFile.get().asFile
-    files "${project.projectDir}/config/default-data-prepper-config.yaml", "${project.projectDir}/config/default-keystore.p12"
-    files 'adoptium.repo'
-    buildArgs(['ARCHIVE_FILE' : project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get(),
-               'ARCHIVE_FILE_UNPACKED' : project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get().replace('.tar.gz', ''),
-               'CONFIG_FILEPATH' : '/usr/share/data-prepper/config/data-prepper-config.yaml',
-               'PIPELINE_FILEPATH' : '/usr/share/data-prepper/pipelines/pipelines.yaml'])
-    dockerfile file('Dockerfile')
+tasks.register('dockerBuildxSetup', Exec) {
+    commandLine 'docker', 'buildx', 'create', '--name', 'data-prepper-builder', '--use'
+    ignoreExitValue = true
 }
 
-dockerPrepare.dependsOn ':release:releasePrerequisites'
-dockerPrepare.dependsOn ':release:archives:linux:linuxx64DistTar'
-dockerPush.dependsOn docker
+tasks.register('dockerPrepare') {
+    dependsOn ':release:releasePrerequisites'
+    supportedArchitectures.each { arch ->
+        dependsOn ":release:archives:linux:linux${arch}DistTar"
+    }
+
+    doLast {
+        supportedArchitectures.each { arch ->
+            def archiveTask = project(':release:archives:linux').tasks.getByName("linux${arch}DistTar")
+            def dockerArch = arch == 'x64' ? 'amd64' : arch
+            def sourceFile = archiveTask.archiveFile.get().asFile
+            def targetFile = new File("${buildDir}/docker", sourceFile.name.replace("-linux-${arch}", "-linux-${dockerArch}"))
+
+            copy {
+                from sourceFile
+                into "${buildDir}/docker"
+                rename { targetFile.name }
+            }
+        }
+        copy {
+            from "${project.projectDir}/config/default-data-prepper-config.yaml",
+                    "${project.projectDir}/config/default-keystore.p12",
+                    'adoptium.repo',
+                    'Dockerfile'
+            into "${buildDir}/docker"
+        }
+    }
+}
+
+tasks.register('docker', DockerBuildxTask) {
+    dependsOn dockerPrepare
+    workingDir "${buildDir}/docker"
+
+    def currentArch = System.getProperty("os.arch")
+    platform = currentArch == 'aarch64' ? 'linux/arm64' : 'linux/amd64'
+    tag = "${project.rootProject.name}:${project.version}"
+    push = false
+}
+
+tasks.register('dockerMultiArchitecture', DockerBuildxTask) {
+    dependsOn dockerPrepare, dockerBuildxSetup
+    workingDir "${buildDir}/docker"
+
+    platform = supportedArchitectures.collect { arch ->
+        arch == 'x64' ? 'linux/amd64' : "linux/${arch}"
+    }.join(',')
+    tag = "${project.rootProject.name}:${project.version}"
+    push = false
+}
+
+tasks.register('dockerPush', Exec) {
+    dependsOn docker
+
+    commandLine 'docker', 'push', "${project.rootProject.name}:${project.version}"
+}
+
+tasks.register('dockerMultiArchitecturePush', DockerBuildxTask) {
+    dependsOn dockerPrepare, dockerBuildxSetup
+    workingDir "${buildDir}/docker"
+
+    platform = supportedArchitectures.collect { arch ->
+        arch == 'x64' ? 'linux/amd64' : "linux/${arch}"
+    }.join(',')
+    tag = project.findProperty('dockerRepository') ?: "${project.rootProject.name}:${project.version}"
+    push = true
+}
