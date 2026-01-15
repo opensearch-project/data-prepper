@@ -1,0 +1,19 @@
+Add read timeout configuration for AWS Lambda plugin
+
+- Add read_timeout field to ClientOptions with default 60s
+- Configure NettyNioAsyncHttpClient with read timeout
+- Enables configurable read timeout for Lambda function calls
+
+Signed-off by Aiswarya Rao <aiswarao@amazon.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Thu Jan 15 00:25:47 2026 +0000
+#
+# On branch add-lambda-readtimeout
+# Changes to be committed:
+#	modified:   data-prepper-plugins/aws-lambda/README.md
+#	modified:   data-prepper-plugins/aws-lambda/src/main/java/org/opensearch/dataprepper/plugins/lambda/common/client/LambdaClientFactory.java
+#	modified:   data-prepper-plugins/aws-lambda/src/main/java/org/opensearch/dataprepper/plugins/lambda/common/config/ClientOptions.java
+#
