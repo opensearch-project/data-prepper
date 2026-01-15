@@ -27,15 +27,20 @@ public final class LambdaClientFactory {
             awsCredentialsOptions);
     final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
 
+    NettyNioAsyncHttpClient.Builder httpClientBuilder = NettyNioAsyncHttpClient.builder()
+            .maxConcurrency(clientOptions.getMaxConcurrency())
+            .connectionTimeout(clientOptions.getConnectionTimeout());
+
+    if (clientOptions.getReadTimeout() != null) {
+      httpClientBuilder.readTimeout(clientOptions.getReadTimeout());
+    }
+
     return LambdaAsyncClient.builder()
             .region(awsAuthenticationOptions.getAwsRegion())
             .credentialsProvider(awsCredentialsProvider)
             .overrideConfiguration(
                     createOverrideConfiguration(clientOptions, awsSdkMetrics))
-            .httpClient(NettyNioAsyncHttpClient.builder()
-                    .maxConcurrency(clientOptions.getMaxConcurrency())
-                    .connectionTimeout(clientOptions.getConnectionTimeout())
-                    .readTimeout(clientOptions.getReadTimeout()).build())
+            .httpClient(httpClientBuilder.build())
             .build();
   }
 
@@ -56,11 +61,16 @@ public final class LambdaClientFactory {
             .backoffStrategy(backoffStrategy)
             .build();
 
-    return ClientOverrideConfiguration.builder()
+    ClientOverrideConfiguration.Builder configBuilder = ClientOverrideConfiguration.builder()
             .retryPolicy(customRetryPolicy)
             .addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics))
-            .apiCallTimeout(clientOptions.getApiCallTimeout())
-            .build();
+            .apiCallTimeout(clientOptions.getApiCallTimeout());
+
+    if (clientOptions.getApiCallAttemptTimeout() != null) {
+      configBuilder.apiCallAttemptTimeout(clientOptions.getApiCallAttemptTimeout());
+    }
+
+    return configBuilder.build();
   }
 
   public static AwsCredentialsOptions convertToCredentialsOptions(

@@ -24,13 +24,17 @@ public class ClientOptions {
     @JsonProperty("api_call_timeout")
     private Duration apiCallTimeout = DEFAULT_API_TIMEOUT;
 
+    @JsonPropertyDescription("api call attempt timeout defines the time sdk waits for a single attempt before timing out")
+    @JsonProperty("api_call_attempt_timeout")
+    private Duration apiCallAttemptTimeout;
+
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("connection_timeout")
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
     @JsonPropertyDescription("read timeout defines the time sdk waits for data to be read from an established connection")
     @JsonProperty("read_timeout")
-    private Duration readTimeout = DEFAULT_READ_TIMEOUT;
+    private Duration readTimeout;
 
     @JsonPropertyDescription("max concurrency defined from the client side")
     @JsonProperty("max_concurrency")
