@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 /**
@@ -24,10 +25,10 @@ public class ServiceConnection {
 
     @JsonProperty("eventType")
     private final String eventType;
-    
+
     @JsonProperty("timestamp")
-    private final Instant timestamp;
-    
+    private final String timestamp;
+
     @JsonProperty("hashCode")
     private final String hashCodeString;
 
@@ -35,7 +36,7 @@ public class ServiceConnection {
         this.service = service;
         this.remoteService = remoteService;
         this.eventType = SERVICE_CONNECTION;
-        this.timestamp = timestamp;
+        this.timestamp = DateTimeFormatter.ISO_INSTANT.format(timestamp);
         this.hashCodeString = String.valueOf(Objects.hash(service, remoteService, eventType));
     }
 
@@ -51,7 +52,7 @@ public class ServiceConnection {
         return eventType;
     }
 
-    public Instant getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
