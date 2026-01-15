@@ -10,52 +10,52 @@
 
 package org.opensearch.dataprepper.integration.backward;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpMethod;
-import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.RequestHeaders;
-import com.linecorp.armeria.common.SessionProtocol;
-import org.junit.Assert;
-import org.junit.Test;
-import org.opensearch.action.admin.indices.refresh.RefreshRequest;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import org.opensearch.search.SearchHits;
-import org.opensearch.search.builder.SearchSourceBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+ import com.fasterxml.jackson.core.JsonProcessingException;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.linecorp.armeria.client.WebClient;
+ import com.linecorp.armeria.common.HttpData;
+ import com.linecorp.armeria.common.HttpMethod;
+ import com.linecorp.armeria.common.HttpStatus;
+ import com.linecorp.armeria.common.MediaType;
+ import com.linecorp.armeria.common.RequestHeaders;
+ import com.linecorp.armeria.common.SessionProtocol;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.opensearch.action.admin.indices.refresh.RefreshRequest;
+ import org.opensearch.action.search.SearchRequest;
+ import org.opensearch.action.search.SearchResponse;
+ import org.opensearch.client.RequestOptions;
+ import org.opensearch.client.RestHighLevelClient;
+ import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+ import org.opensearch.search.SearchHits;
+ import org.opensearch.search.builder.SearchSourceBuilder;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.UUID;
+ import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasKey;
-import static org.mockito.Mockito.mock;
+ import static org.awaitility.Awaitility.await;
+ import static org.hamcrest.CoreMatchers.is;
+ import static org.hamcrest.MatcherAssert.assertThat;
+ import static org.hamcrest.Matchers.hasKey;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Kafka Backward Compatibility End-to-End Test
+ * Kafka Buffer Backward Compatibility End-to-End Test
  *
  * This test verifies that the current build of Data Prepper can successfully read
  * and process messages written to Kafka by a previous released version.
  *
  * Test Scenario:
  * 1. Phase 1 - Write with Released Version:
- *    - Released Data Prepper (2.10.0) receives HTTP requests
+ *    - Released Data Prepper (latest version 2) receives HTTP requests
  *    - Writes 2 test records to Kafka buffer
  *
  * 2. Phase 2 - Read with Current Build:
@@ -69,16 +69,22 @@ import static org.mockito.Mockito.mock;
  *
  * Note: Gradle manages container lifecycle. Test only handles sending data and verification.
  */
-public class KafkaBackwardCompatibilityTest {
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaBackwardCompatibilityTest.class);
+public class KafkaBufferBackwardCompatibilityTest {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaBufferBackwardCompatibilityTest.class);
 
     private static final int WRITER_HTTP_PORT = 2021;
-    private static final String TEST_INDEX_NAME = "backward-compat-test-index";
+    private static final String TEST_INDEX_NAME = "kafka-buffer-backward-compatibility-test-index";
     private static final String MESSAGE_KEY = "message";
-    private static final String TEST_VALUE_1 = "test-record-1-from-released-version";
-    private static final String TEST_VALUE_2 = "test-record-2-from-released-version";
+    private String testValue1;
+    private String testValue2;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setup() {
+        testValue1 = UUID.randomUUID().toString();
+        testValue2 = UUID.randomUUID().toString();
+    }
 
     @Test
     public void testBackwardCompatibility() throws Exception {
@@ -88,11 +94,11 @@ public class KafkaBackwardCompatibilityTest {
 
         // Phase 1: Send data to released Data Prepper (writer)
         LOG.info("Phase 1: Sending test records to released Data Prepper...");
-        sendHttpRequest(generateTestData(TEST_VALUE_1), WRITER_HTTP_PORT);
-        LOG.info("Sent record 1: {}", TEST_VALUE_1);
+        sendHttpRequest(generateTestData(testValue1), WRITER_HTTP_PORT);
+        LOG.info("Sent record 1: {}", testValue1);
 
-        sendHttpRequest(generateTestData(TEST_VALUE_2), WRITER_HTTP_PORT);
-        LOG.info("Sent record 2: {}", TEST_VALUE_2);
+        sendHttpRequest(generateTestData(testValue2), WRITER_HTTP_PORT);
+        LOG.info("Sent record 2: {}", testValue2);
 
         // Phase 2: Current Data Prepper automatically reads from Kafka (already running)
         LOG.info("Phase 2: Current Data Prepper is reading from Kafka...");
@@ -123,12 +129,12 @@ public class KafkaBackwardCompatibilityTest {
             final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
 
             LOG.info("Found {} documents in OpenSearch", foundSources.size());
-            Assert.assertEquals("Expected exactly 2 documents in OpenSearch", 2, foundSources.size());
+            assertEquals(2, foundSources.size(), "Expected exactly 2 documents in OpenSearch");
             retrievedDocs.addAll(foundSources);
         });
 
         // Verify the content of retrieved documents
-        Assert.assertEquals("Should have exactly 2 documents", 2, retrievedDocs.size());
+        assertEquals(2, retrievedDocs.size(), "Should have exactly 2 documents");
 
         LOG.info("Verifying document contents...");
         boolean foundRecord1 = false;
@@ -141,9 +147,9 @@ public class KafkaBackwardCompatibilityTest {
             String message = (String) doc.get(MESSAGE_KEY);
             LOG.info("Found document with message: {}", message);
 
-            if (TEST_VALUE_1.equals(message)) {
+            if (testValue1.equals(message)) {
                 foundRecord1 = true;
-            } else if (TEST_VALUE_2.equals(message)) {
+            } else if (testValue2.equals(message)) {
                 foundRecord2 = true;
             }
         }
@@ -160,8 +166,7 @@ public class KafkaBackwardCompatibilityTest {
         builder.withUsername("admin");
         builder.withPassword("admin");
         builder.withInsecure(true);
-        final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        return builder.build().createClient(awsCredentialsSupplier);
+        return builder.build().createClient(null);
     }
 
     private void sendHttpRequest(final HttpData httpData, int port) {

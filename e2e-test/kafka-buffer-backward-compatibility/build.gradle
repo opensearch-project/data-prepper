@@ -18,19 +18,19 @@ import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
  * IMPORTANT: This test intentionally does NOT use the parent's dataPrepperDockerImage
  * because it needs to test backward compatibility with a RELEASED version.
  *
- * Writer: Uses released opensearchproject/data-prepper:2.10.0
- * Reader: Uses locally built :release:docker:docker (always Docker, all Java versions test with docker)
+ * Writer: Uses released opensearchproject/data-prepper:2 (always Docker, all Java versions test with docker)
+ * Reader: Uses locally built :release:docker:docker
  */
 
 /**
- * Kafka Backward Compatibility End-to-End Test
+ * Kafka Buffer Backward Compatibility End-to-End Test
  *
  * This test verifies backward compatibility between Data Prepper versions
  * by writing data with a released version and reading with the current build.
  */
 
-def RELEASED_VERSION = project.hasProperty('backwardCompatVersion') ?
-    project.getProperty('backwardCompatVersion') : '2.10.0'
+def RELEASED_VERSION = project.hasProperty('releasedVersion') ?
+    project.getProperty('releasedVersion') : '2'
 def KAFKA_VERSION = '7.8.0'
 def WRITER_PIPELINE_YAML = 'writer-pipeline.yaml'
 def READER_PIPELINE_YAML = 'reader-pipeline.yaml'
@@ -50,7 +50,7 @@ tasks.register('pullKafkaImage', DockerPullImage) {
 tasks.register('createKafkaContainer', DockerCreateContainer) {
     dependsOn pullKafkaImage
     dependsOn createDataPrepperNetwork
-    containerName = 'kafka-backward-compat'
+    containerName = 'kafka-buffer-backward-compatibility'
     exposePorts('tcp', [9092, 9093])
     hostConfig.portBindings = ['9092:9092', '9093:9093']
     hostConfig.network = createDataPrepperNetwork.getNetworkName()
@@ -157,13 +157,13 @@ tasks.register('removeCurrentDataPrepperContainer', DockerRemoveContainer) {
 }
 
 // Clean up tasks - remove any existing containers/networks before starting
-tasks.register('cleanupKafkaBackwardCompatTest') {
+tasks.register('cleanupKafkaBufferBackwardCompatibilityTest') {
     group = 'verification'
     description = 'Cleans up containers and network from previous test runs'
 
     doLast {
         // Clean up containers
-        ['kafka-backward-compat', 'data-prepper-writer', 'data-prepper-reader'].each { containerName ->
+        ['kafka-buffer-backward-compatibility', 'data-prepper-writer', 'data-prepper-reader'].each { containerName ->
             try {
                 exec {
                     commandLine 'docker', 'stop', containerName
@@ -191,8 +191,10 @@ tasks.register('cleanupKafkaBackwardCompatTest') {
 }
 
 // Main test task
-tasks.register('kafkaBackwardCompatibilityTest', Test) {
-    dependsOn cleanupKafkaBackwardCompatTest
+tasks.register('kafkaBufferBackwardCompatibilityTest', Test) {
+    useJUnitPlatform()
+
+    dependsOn cleanupKafkaBufferBackwardCompatibilityTest
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     dependsOn startKafkaContainer
@@ -204,18 +206,18 @@ tasks.register('kafkaBackwardCompatibilityTest', Test) {
         sleep(20 * 1000)
     }
 
-    description = 'Runs Kafka backward compatibility end-to-end test'
+    description = 'Runs Kafka buffer backward compatibility end-to-end test'
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching 'org.opensearch.dataprepper.integration.backward.KafkaBackwardCompatibilityTest.*'
+        includeTestsMatching 'org.opensearch.dataprepper.integration.backward.KafkaBufferBackwardCompatibilityTest.*'
     }
 
     // Pass version to test
-    if (project.hasProperty('backwardCompatVersion')) {
-        systemProperty 'backwardCompatVersion', project.getProperty('backwardCompatVersion')
+    if (project.hasProperty('releasedVersion')) {
+        systemProperty 'releasedVersion', project.getProperty('releasedVersion')
     }
 
     finalizedBy stopOpenSearchDockerContainer

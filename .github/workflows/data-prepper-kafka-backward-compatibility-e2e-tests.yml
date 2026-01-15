@@ -26,4 +26,4 @@ jobs:
       - name: Checkout Data Prepper
         uses: actions/checkout@v2
       - name: Run Kafka backward compatibility end-to-end tests with Gradle
-        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:kafka-backward-compatibility:kafkaBackwardCompatibilityTest
+        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:kafka-buffer-backward-compatibility:kafkaBufferBackwardCompatibilityTest

@@ -208,4 +208,4 @@ include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
 include 'data-prepper-plugins:otlp-sink'
 
 
-include 'e2e-test:kafka-backward-compatibility'
+include 'e2e-test:kafka-buffer-backward-compatibility'

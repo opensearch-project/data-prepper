@@ -8,7 +8,7 @@ This test verifies that the current build of Data Prepper can successfully read 
 
 ### Phase 1: Write with Released Version
 1. Start Kafka container
-2. Start **released** Data Prepper from Docker Hub (e.g., `opensearchproject/data-prepper:2.10.0`)
+2. Start **released** Data Prepper from Docker Hub (e.g., `opensearchproject/data-prepper:2`)
 3. Send 2 test records via HTTP endpoint
 4. Records are written to Kafka buffer using the released version's format
 5. Stop the released Data Prepper container
@@ -33,7 +33,7 @@ This test verifies that the current build of Data Prepper can successfully read 
 
 ```bash
 # From the repository root
-./gradlew :e2e-test:kafka-backward-compatibility:kafkaBackwardCompatibilityTest
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:kafkaBufferBackwardCompatibilityTest
 ```
 
 ### Run with Specific Version
@@ -41,15 +41,15 @@ This test verifies that the current build of Data Prepper can successfully read 
 You can test backward compatibility with a specific Data Prepper version:
 
 ```bash
-./gradlew :e2e-test:kafka-backward-compatibility:kafkaBackwardCompatibilityTest \
-  -PbackwardCompatVersion=2.9.0
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:kafkaBufferBackwardCompatibilityTest \
+  -PreleasedVersion=2.9.0
 ```
 
 ## Test Components
 
 ### Docker Containers
 
-1. **Kafka** (`kafka-backward-compat-test`)
+1. **Kafka** (`kafka-buffer-backward-compatibility-test`)
    - Confluent Kafka 3.6.0
    - KRaft mode (no ZooKeeper)
    - Port: 9092
@@ -74,16 +74,16 @@ You can test backward compatibility with a specific Data Prepper version:
 
 ## What This Tests
 
-✅ **Kafka message format compatibility**
+**Kafka message format compatibility**
 - Protobuf serialization format
 - Message envelope structure
 - Field naming and types
 
-✅ **Consumer offset management**
+**Consumer offset management**
 - Offset commits and reads
 - Consumer group handling
 
-✅ **Data integrity**
+**Data integrity**
 - Messages written by old version can be read by new version
 - No data loss or corruption
 - Field values preserved correctly
@@ -94,7 +94,7 @@ You can test backward compatibility with a specific Data Prepper version:
 
 ```bash
 # Kafka logs
-docker logs kafka-backward-compat-test
+docker logs kafka-buffer-backward-compatibility-test
 
 # Released Data Prepper logs
 docker logs data-prepper-writer
@@ -110,30 +110,30 @@ docker logs node-0.example.com
 
 ```bash
 # Start Kafka manually
-./gradlew :e2e-test:kafka-backward-compatibility:startKafkaDockerContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:startKafkaDockerContainer
 
 # Start released Data Prepper manually
-./gradlew :e2e-test:kafka-backward-compatibility:startReleasedDataPrepperContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:startReleasedDataPrepperContainer
 
 # Start current Data Prepper manually
-./gradlew :e2e-test:kafka-backward-compatibility:startCurrentDataPrepperContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:startCurrentDataPrepperContainer
 
 # Stop all
-./gradlew :e2e-test:kafka-backward-compatibility:stopKafkaDockerContainer
-./gradlew :e2e-test:kafka-backward-compatibility:stopReleasedDataPrepperContainer
-./gradlew :e2e-test:kafka-backward-compatibility:stopCurrentDataPrepperContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:stopKafkaDockerContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:stopReleasedDataPrepperContainer
+./gradlew :e2e-test:kafka-buffer-backward-compatibility:stopCurrentDataPrepperContainer
 ```
 
 ### Check Kafka Topics
 
 ```bash
-docker exec kafka-backward-compat-test kafka-topics --list --bootstrap-server localhost:9092
+docker exec kafka-buffer-backward-compatibility-test kafka-topics --list --bootstrap-server localhost:9092
 ```
 
 ### Query OpenSearch Directly
 
 ```bash
-curl -k -u admin:admin "https://localhost:9200/backward-compat-test-index/_search?pretty"
+curl -k -u admin:admin "https://localhost:9200/kafka-backward-compatibility-test-index/_search?pretty"
 ```
 
 ## Expected Behavior
@@ -142,19 +142,11 @@ When the test passes:
 1. Released Data Prepper successfully writes 2 messages to Kafka
 2. Current Data Prepper successfully reads both messages from Kafka
 3. Both messages appear in OpenSearch with correct content
-4. Test completes with ✅ SUCCESS message
-
-## CI/CD Integration
-
-This test should be run:
-- ✅ Before releasing new versions
-- ✅ When making changes to Kafka buffer serialization
-- ✅ When upgrading Kafka client libraries
-- ✅ As part of the release candidate verification process
+4. Test completes with SUCCESS message
 
 ## Notes
 
 - The test uses **unencrypted** Kafka messages for simplicity
 - If you need to test encrypted backward compatibility, modify the pipeline configs to enable encryption
-- The released version can be configured via `-PbackwardCompatVersion` property
-- Default released version is `2.10.0` (configured in `build.gradle`)
+- The released version can be configured via `-PreleasedVersion` property
+- Default released version is `2` (configured in `build.gradle`)

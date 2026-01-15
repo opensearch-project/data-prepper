@@ -8,9 +8,9 @@ test-http-to-kafka-pipeline:
   buffer:
     kafka:
       topics:
-        - name: backward-compat-test-topic
-          group_id: backward-compat-writer-group
-          create_topic: true
+        - name: buffer-backward-compatibility-test-topic
+          group_id: backward-compatibility-writer-group
+          create_topic: false
       bootstrap_servers:
         - "kafka:9092"
       encryption:

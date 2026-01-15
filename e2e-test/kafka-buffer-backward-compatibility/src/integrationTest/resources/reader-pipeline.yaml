@@ -7,8 +7,8 @@ test-http-to-kafka-pipeline:
   buffer:
     kafka:
       topics:
-        - name: backward-compat-test-topic
-          group_id: backward-compat-reader-group
+        - name: buffer-backward-compatibility-test-topic
+          group_id: backward-compatibility-reader-group
       bootstrap_servers:
         - "kafka:9092"
       encryption:
@@ -25,4 +25,4 @@ test-http-to-kafka-pipeline:
         username: "admin"
         password: "admin"
         insecure: true
-        index: "backward-compat-test-index"
+        index: "kafka-buffer-backward-compatibility-test-index"
