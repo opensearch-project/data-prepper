@@ -34,7 +34,8 @@ public final class LambdaClientFactory {
                     createOverrideConfiguration(clientOptions, awsSdkMetrics))
             .httpClient(NettyNioAsyncHttpClient.builder()
                     .maxConcurrency(clientOptions.getMaxConcurrency())
-                    .connectionTimeout(clientOptions.getConnectionTimeout()).build())
+                    .connectionTimeout(clientOptions.getConnectionTimeout())
+                    .readTimeout(clientOptions.getReadTimeout()).build())
             .build();
   }
 

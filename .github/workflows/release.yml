@@ -47,9 +47,6 @@ jobs:
     - name: Build Maven Artifacts
       run: ./gradlew publishAllPublicationsToMavenRepository
 
-    - name: Build Docker Image
-      run: ./gradlew :release:docker:docker
-
     - name: Upload Archives to Archives Bucket
       run: ./gradlew :release:archives:uploadArchives -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
 
@@ -63,10 +60,8 @@ jobs:
         registry: public.ecr.aws
       env:
         AWS_REGION: us-east-1
-    - name: Push Image to Staging ECR
-      run: |
-        docker tag opensearch-data-prepper:${{ env.version }} ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
-        docker push ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+    - name: Build and Push Multi-Architecture Docker Image to Staging ECR
+      run: ./gradlew :release:docker:dockerMultiArchitecture -PdockerRepository=${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
 
   validate-docker:
     runs-on: ubuntu-latest

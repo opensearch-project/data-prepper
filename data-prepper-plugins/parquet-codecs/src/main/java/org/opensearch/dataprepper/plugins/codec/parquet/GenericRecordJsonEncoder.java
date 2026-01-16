@@ -21,6 +21,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericEnumSymbol;
+import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.commons.text.StringEscapeUtils;
@@ -84,8 +85,8 @@ public class GenericRecordJsonEncoder {
                 if (fieldSchema.getType() == Schema.Type.UNION) {
                     for (Schema s : fieldSchema.getTypes()) {
                         if (s.getType() != Schema.Type.NULL) {
-                            if (s.getType() == Schema.Type.BYTES &&
-                                    s.getLogicalType() instanceof LogicalTypes.Decimal) {
+                            if ((s.getType() == Schema.Type.BYTES || s.getType() == Schema.Type.FIXED)
+                                    && s.getLogicalType() instanceof LogicalTypes.Decimal) {
                                 serialize(logicalTypeConverter.apply(getField(datum, f.name(), f.pos())), buffer, seenObjects, ((LogicalTypes.Decimal) s.getLogicalType()).getScale());
                                 serializedDecimal = true;
                                 break;
@@ -172,7 +173,22 @@ public class GenericRecordJsonEncoder {
             buffer.append("\"");
             buffer.append(datum);
             buffer.append("\"");
-        } else if (datum instanceof GenericData) {
+        } else if (datum instanceof GenericFixed ) {
+            GenericFixed fixed = (GenericFixed) datum;
+            byte[] bytes = fixed.bytes();
+            if (decimalScale != null) {
+                BigInteger unscaledValue = new BigInteger(bytes);
+                BigDecimal decimal = new BigDecimal(unscaledValue, decimalScale);
+                buffer.append(decimal.toString());
+            }
+            //Fallback mechanism
+            else {
+                buffer.append("{\"bytes\": \"");
+                writeEscapedString(new String(bytes, StandardCharsets.ISO_8859_1), buffer);
+                buffer.append("\"}");
+            }
+        }
+        else if (datum instanceof GenericData) {
             if (seenObjects.containsKey(datum)) {
                 buffer.append(TOSTRING_CIRCULAR_REFERENCE_ERROR_TEXT);
                 return;

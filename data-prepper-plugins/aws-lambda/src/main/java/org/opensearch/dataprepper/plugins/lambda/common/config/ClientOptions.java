@@ -11,6 +11,7 @@ public class ClientOptions {
     public static final int DEFAULT_CONNECTION_RETRIES = 3;
     public static final int DEFAULT_MAXIMUM_CONCURRENCY = 200;
     public static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
+    public static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(60);
     public static final Duration DEFAULT_API_TIMEOUT = Duration.ofSeconds(60);
     public static final Duration DEFAULT_BASE_DELAY = Duration.ofMillis(100);
     public static final Duration DEFAULT_MAX_BACKOFF = Duration.ofSeconds(20);
@@ -26,6 +27,10 @@ public class ClientOptions {
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("connection_timeout")
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
+
+    @JsonPropertyDescription("read timeout defines the time sdk waits for data to be read from an established connection")
+    @JsonProperty("read_timeout")
+    private Duration readTimeout = DEFAULT_READ_TIMEOUT;
 
     @JsonPropertyDescription("max concurrency defined from the client side")
     @JsonProperty("max_concurrency")
