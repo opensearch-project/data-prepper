@@ -16,6 +16,11 @@ lambda-pipeline:
         max_retries: 3
         invocation_type: "RequestResponse"
         payload_model: "batch_event"
+        client:
+            connection_timeout: 60s
+            read_timeout: 60s
+            api_call_timeout: 60s
+            max_retries: 3
         batch:
             key_name: "osi_key"
             threshold:
@@ -96,6 +101,11 @@ lambda-pipeline:
             sts_role_arn: "<arn>"
         function_name: "uploadToS3Lambda"
         max_retries: 3
+        client:
+            connection_timeout: 60s
+            read_timeout: 60s
+            api_call_timeout: 60s
+            max_retries: 3
         batch:
             key_name: "osi_key"
             threshold:
