@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
 public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory<ElasticsearchClient> {
@@ -122,6 +123,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                         SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
                         SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
                 )
+                .version(true)
                 .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
                 if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
@@ -161,6 +163,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
                     .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
+                    .version(true)
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final ElasticsearchException e) {
             if (isDueToNoIndexFound(e)) {
@@ -233,6 +236,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
                     )
+                    .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
@@ -295,7 +299,10 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         return searchResponse.hits().hits().stream()
                 .map(hit -> JacksonEvent.builder()
                         .withData(hit.source())
-                        .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                        .withEventMetadataAttributes(
+                                Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(),
+                                        INDEX_METADATA_ATTRIBUTE_NAME, hit.index(),
+                                        DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
                         .withEventType(EventType.DOCUMENT.toString()).build())
                 .collect(Collectors.toList());
     }

@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
 public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<OpenSearchClient> {
@@ -120,6 +121,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
                     )
+                    .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
@@ -157,6 +159,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
                     .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
                     .size(createScrollRequest.getSize())
+                    .version(true)
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final OpenSearchException e) {
             if (isDueToNoIndexFound(e)) {
@@ -227,6 +230,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
                             SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
                     )
+                    .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
@@ -294,7 +298,10 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
         return searchResponse.hits().hits().stream()
                 .map(hit -> JacksonEvent.builder()
                         .withData(hit.source())
-                        .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                        .withEventMetadataAttributes(
+                                Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(),
+                                        INDEX_METADATA_ATTRIBUTE_NAME, hit.index(),
+                                        DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
                         .withEventType(EventType.DOCUMENT.toString()).build())
                 .collect(Collectors.toList());
     }
