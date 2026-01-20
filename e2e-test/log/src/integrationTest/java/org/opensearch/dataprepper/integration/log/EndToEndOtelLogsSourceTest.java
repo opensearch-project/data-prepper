@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.integration.log;
 
+import static com.linecorp.armeria.common.MediaType.JSON_UTF_8;
+import static com.linecorp.armeria.common.MediaType.PROTOBUF;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -56,21 +58,21 @@ public class EndToEndOtelLogsSourceTest {
 
     @Test
     public void testOtelLogsSourcePipelineEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsJsonRequest());
+        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsJsonRequest(), JSON_UTF_8);
 
         searchForLogsAndAssert();
     }
 
     @Test
     public void testOtelLogsSourceWithUnframedRequestsPipelineEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs("/opentelemetry.proto.collector.logs.v1.LogsService/Export", createOtelLogsJsonRequest());
+        ingestLogs("/opentelemetry.proto.collector.logs.v1.LogsService/Export", createOtelLogsJsonRequest(), JSON_UTF_8);
 
         searchForLogsAndAssert();
     }
 
     @Test
     public void testOtelLogsSourcePipelineWithProtobufPayloadEndToEnd() throws InvalidProtocolBufferException {
-        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsProtobufRequest());
+        ingestLogs("/otel-logs-pipeline/logs", createOtelLogsProtobufRequest(), PROTOBUF);
 
         searchForLogsAndAssert();
     }
@@ -133,13 +135,13 @@ public class EndToEndOtelLogsSourceTest {
                 .createClient(null);
     }
 
-    private void ingestLogs(String path, HttpData payload) throws InvalidProtocolBufferException {
+    private void ingestLogs(String path, HttpData payload, MediaType mediaType) throws InvalidProtocolBufferException {
         RequestHeaders headers = RequestHeaders.builder()
                 .scheme(SessionProtocol.HTTP)
                 .authority(String.format("127.0.0.1:%d", SOURCE_PORT))
                 .method(HttpMethod.POST)
                 .path(path)
-                .contentType(MediaType.JSON_UTF_8)
+                .contentType(mediaType)
                 .build();
 
         WebClient.of().execute(headers, payload)
