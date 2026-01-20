@@ -200,7 +200,7 @@ public class KinesisService {
                             kinesisSourceConfig.getPollingConfig().getIdleTimeBetweenReads().toMillis()));
         }
 
-        MetricsConfig metricsConfig = kinesisSourceConfig.isMetrics()
+        MetricsConfig metricsConfig = kinesisSourceConfig.isKclMetricsEnabled()
                 ? configsBuilder.metricsConfig()
                 : configsBuilder.metricsConfig().metricsFactory(new NullMetricsFactory());
 

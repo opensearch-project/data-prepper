@@ -9,5 +9,5 @@ source:
     aws:
       sts_role_arn: "arn:aws:iam::123456789012:role/OSI-PipelineRole"
       region: "us-east-1"
-    metrics: true
+    kcl_metrics_enabled: true
 

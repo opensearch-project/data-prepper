@@ -262,7 +262,7 @@ public class KinesisServiceTest {
 
     @Test
     void testCreateSchedulerUsesNullMetricsFactoryWhenMetricsDisabled() {
-        when(kinesisSourceConfig.isMetrics()).thenReturn(false);
+        when(kinesisSourceConfig.isKclMetricsEnabled()).thenReturn(false);
         KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
@@ -274,7 +274,7 @@ public class KinesisServiceTest {
 
     @Test
     void testCreateSchedulerUsesCloudWatchMetricsFactoryWhenMetricsEnabled() {
-        when(kinesisSourceConfig.isMetrics()).thenReturn(true);
+        when(kinesisSourceConfig.isKclMetricsEnabled()).thenReturn(true);
         KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
                 pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
         Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);

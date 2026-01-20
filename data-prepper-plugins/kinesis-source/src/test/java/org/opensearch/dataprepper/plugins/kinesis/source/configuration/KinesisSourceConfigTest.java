@@ -82,7 +82,7 @@ public class KinesisSourceConfigTest {
         assertEquals(KinesisSourceConfig.DEFAULT_MAX_INITIALIZATION_ATTEMPTS, kinesisSourceConfig.getMaxInitializationAttempts());
         assertEquals(KinesisSourceConfig.DEFAULT_INITIALIZATION_BACKOFF_TIME, kinesisSourceConfig.getInitializationBackoffTime());
         assertTrue(kinesisSourceConfig.isAcknowledgments());
-        assertFalse(kinesisSourceConfig.isMetrics());
+        assertTrue(kinesisSourceConfig.isKclMetricsEnabled());
         assertEquals(KinesisSourceConfig.DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT, kinesisSourceConfig.getShardAcknowledgmentTimeout());
         assertThat(kinesisSourceConfig.getAwsAuthenticationConfig(), notNullValue());
         assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion(), Region.US_EAST_1);
@@ -116,7 +116,7 @@ public class KinesisSourceConfigTest {
         assertEquals(KinesisSourceConfig.DEFAULT_MAX_INITIALIZATION_ATTEMPTS, kinesisSourceConfig.getMaxInitializationAttempts());
         assertEquals(KinesisSourceConfig.DEFAULT_INITIALIZATION_BACKOFF_TIME, kinesisSourceConfig.getInitializationBackoffTime());
         assertFalse(kinesisSourceConfig.isAcknowledgments());
-        assertFalse(kinesisSourceConfig.isMetrics());
+        assertTrue(kinesisSourceConfig.isKclMetricsEnabled());
         assertEquals(KinesisSourceConfig.DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT, kinesisSourceConfig.getShardAcknowledgmentTimeout());
         assertThat(kinesisSourceConfig.getAwsAuthenticationConfig(), notNullValue());
         assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion(), Region.US_EAST_1);
@@ -243,7 +243,7 @@ public class KinesisSourceConfigTest {
     void testSourceConfigWithMetricsEnabled() {
 
         assertThat(kinesisSourceConfig, notNullValue());
-        assertTrue(kinesisSourceConfig.isMetrics());
+        assertTrue(kinesisSourceConfig.isKclMetricsEnabled());
         assertEquals(KinesisSourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, kinesisSourceConfig.getNumberOfRecordsToAccumulate());
         assertEquals(KinesisSourceConfig.DEFAULT_TIME_OUT_IN_MILLIS, kinesisSourceConfig.getBufferTimeout());
         assertFalse(kinesisSourceConfig.isAcknowledgments());
