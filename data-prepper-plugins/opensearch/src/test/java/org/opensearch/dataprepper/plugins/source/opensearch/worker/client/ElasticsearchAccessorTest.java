@@ -67,6 +67,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.INDEX_NOT_FOUND_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.PIT_RESOURCE_LIMIT_ERROR_TYPE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 
 @ExtendWith(MockitoExtension.class)
 public class ElasticsearchAccessorTest {
@@ -127,11 +128,13 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
+        when(secondHit.version()).thenReturn(2L);
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -148,6 +151,14 @@ public class ElasticsearchAccessorTest {
         assertThat(createScrollResponse.getScrollId(), equalTo(scrollId));
         assertThat(createScrollResponse.getDocuments(), notNullValue());
         assertThat(createScrollResponse.getDocuments().size(), equalTo(2));
+        assertThat(createScrollResponse.getDocuments().get(0), notNullValue());
+        assertThat(createScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(createScrollResponse.getDocuments().get(1), notNullValue());
+        assertThat(createScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @Test
@@ -452,12 +463,14 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
         when(secondHit.sort()).thenReturn(searchAfter);
+        when(secondHit.version()).thenReturn(2L);
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -476,6 +489,14 @@ public class ElasticsearchAccessorTest {
         assertThat(searchWithSearchAfterResults.getDocuments().size(), equalTo(2));
 
         assertThat(searchWithSearchAfterResults.getNextSearchAfter(), equalTo(secondHit.sort()));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @ParameterizedTest
@@ -502,12 +523,14 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(index);
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(index);
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
         when(secondHit.sort()).thenReturn(searchAfter);
+        when(secondHit.version()).thenReturn(2L);
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -524,8 +547,16 @@ public class ElasticsearchAccessorTest {
         assertThat(searchWithSearchAfterResults, notNullValue());
         assertThat(searchWithSearchAfterResults.getDocuments(), notNullValue());
         assertThat(searchWithSearchAfterResults.getDocuments().size(), equalTo(2));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
 
         assertThat(searchWithSearchAfterResults.getNextSearchAfter(), equalTo(secondHit.sort()));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @Test
@@ -544,11 +575,13 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
+        when(secondHit.version()).thenReturn(2L);
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -567,5 +600,9 @@ public class ElasticsearchAccessorTest {
         assertThat(searchScrollResponse.getDocuments(), notNullValue());
         assertThat(searchScrollResponse.getDocuments().size(), equalTo(2));
         assertThat(searchScrollResponse.getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollResponse.getDocuments().get(0), notNullValue());
+        assertThat(searchScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchScrollResponse.getDocuments().get(1), notNullValue());
+        assertThat(searchScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
     }
 }
