@@ -183,6 +183,9 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
             }
         } while (searchWithSearchAfterResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
+        LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
+                searchWithSearchAfterResults.getDocuments().size(), searchConfiguration.getBatchSize());
+
         try {
             bufferAccumulator.flush();
         } catch (final Exception e) {
