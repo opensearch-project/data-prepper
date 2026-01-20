@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -191,6 +192,23 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         // Initialize response codec once to avoid per-invocation overhead
         this.responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
+        
+        // Validate reconstruct-document configuration
+        if (lambdaProcessorConfig.getStreamingOptions() != null &&
+            lambdaProcessorConfig.getStreamingOptions().getResponseHandling() == ResponseHandling.RECONSTRUCT_DOCUMENT) {
+            
+            int eventCount = lambdaProcessorConfig.getBatchOptions().getThresholdOptions().getEventCount();
+            if (eventCount > 1) {
+                String errorMessage = String.format(
+                    "Invalid configuration: When using streaming with response_handling: 'reconstruct-document', " +
+                    "batch.threshold.event_count must be set to 1. Multi-event batching with reconstruct-document " +
+                    "is not currently supported. Current event_count value: %d.",
+                    eventCount
+                );
+                LOG.error(errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
         
         // Initialize appropriate Lambda invoker based on configuration (Strategy Pattern)
         if (lambdaProcessorConfig.getStreamingOptions() != null && 

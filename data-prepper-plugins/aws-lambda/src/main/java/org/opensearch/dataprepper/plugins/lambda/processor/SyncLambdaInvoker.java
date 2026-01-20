@@ -18,9 +18,11 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
+import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -89,14 +91,30 @@ public class SyncLambdaInvoker implements LambdaInvoker {
                     processor.responsePayloadMetric.record(response.payload().asByteArray().length);
                 }
 
-            } catch (Exception e) {
-                LOG.error(NOISY, e.getMessage(), e);
-                if (e instanceof LambdaException &&
-                        e.getMessage() != null &&
-                        e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)) {
+            } catch (ResourceNotFoundException e) {
+                // Expected exception: Lambda function not found
+                LOG.error(NOISY, "Lambda function not found: {}", e.getMessage());
+                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                processor.numberOfRequestsFailedCounter.increment();
+                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
+            } catch (LambdaException e) {
+                // Expected exception: Access denied, invalid parameters, throttling, payload limit, etc.
+                LOG.error(NOISY, "Lambda invocation failed: {}", e.getMessage());
+                if (e.getMessage() != null && e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)) {
                     processor.batchExceedingThresholdCounter.increment();
                 }
-                /* fall through */
+                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                processor.numberOfRequestsFailedCounter.increment();
+                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
+            } catch (AwsServiceException e) {
+                // Expected exception: General AWS service errors (credentials, permissions, etc.)
+                LOG.error(NOISY, "AWS service error during Lambda invocation: {}", e.getMessage());
+                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                processor.numberOfRequestsFailedCounter.increment();
+                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
+            } catch (Exception e) {
+                // Unexpected exception: Coding issues, null pointers, parsing errors, etc.
+                LOG.error(NOISY, "Unexpected error processing Lambda response.", e);
                 processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
                 processor.numberOfRequestsFailedCounter.increment();
                 resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));

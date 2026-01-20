@@ -94,6 +94,9 @@ public class StreamingLambdaHandler {
                                 LOG.error("Error writing chunk to response stream", e);
                                 resultFuture.completeExceptionally(e);
                             }
+                        } else {
+                            // Other events (e.g., InvokeComplete) are handled by onComplete()
+                            LOG.debug("Ignoring non-payload Lambda stream event: {}", event.getClass().getSimpleName());
                         }
                     });
                 })
