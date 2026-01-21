@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.io.IOException;
@@ -18,6 +19,7 @@ public interface S3ObjectHandler {
     /**
      * Process S3 object content using S3 object reference and pushing to buffer
      * @param s3ObjectReference Contains bucket and s3 object details
+     * @param dataSelection Data selection configuration for filtering S3 objects
      * @param acknowledgementSet acknowledgement set for the object
      * @param sourceCoordinator source coordinator
      * @param partitionKey partition key

@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -47,6 +49,7 @@ public class KinesisSourceConfigTest {
     private static final String PIPELINE_CONFIG_STREAM_ARN_ENABLED = "pipeline_with_stream_arn_config.yaml";
     private static final String PIPELINE_CONFIG_STREAM_ARN_CONSUMER_ARN_ENABLED = "pipeline_with_stream_arn_consumer_arn_config.yaml";
     private static final String PIPELINE_CONFIG_WITH_METRICS_ENABLED = "pipeline_with_metrics_enabled.yaml";
+    private static final String PIPELINE_CONFIG_WITH_INITIAL_POSITION_AT_TIMESTAMP = "pipeline_with_initial_position_at_timestamp_config.yaml";
     private static final Duration MINIMAL_CHECKPOINT_INTERVAL = Duration.ofMillis(2 * 60 * 1000); // 2 minute
 
     KinesisSourceConfig kinesisSourceConfig;
@@ -259,4 +262,47 @@ public class KinesisSourceConfigTest {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
         }
     }
+    @Tag(PIPELINE_CONFIG_WITH_INITIAL_POSITION_AT_TIMESTAMP)
+    void testSourceConfigWithInitialPositionAtTimestamp() {
+
+        assertThat(kinesisSourceConfig, notNullValue());
+        assertEquals(KinesisSourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, kinesisSourceConfig.getNumberOfRecordsToAccumulate());
+        assertEquals(KinesisSourceConfig.DEFAULT_TIME_OUT_IN_MILLIS, kinesisSourceConfig.getBufferTimeout());
+        assertEquals(KinesisSourceConfig.DEFAULT_MAX_INITIALIZATION_ATTEMPTS, kinesisSourceConfig.getMaxInitializationAttempts());
+        assertEquals(KinesisSourceConfig.DEFAULT_INITIALIZATION_BACKOFF_TIME, kinesisSourceConfig.getInitializationBackoffTime());
+        assertFalse(kinesisSourceConfig.isAcknowledgments());
+        assertEquals(KinesisSourceConfig.DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT, kinesisSourceConfig.getShardAcknowledgmentTimeout());
+        assertThat(kinesisSourceConfig.getAwsAuthenticationConfig(), notNullValue());
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion(), Region.US_EAST_1);
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn(), "arn:aws:iam::123456789012:role/OSI-PipelineRole");
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsExternalId());
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsHeaderOverrides());
+        assertNotNull(kinesisSourceConfig.getCodec());
+        List<KinesisStreamConfig> streamConfigs = kinesisSourceConfig.getStreams();
+        assertEquals(kinesisSourceConfig.getConsumerStrategy(), ConsumerStrategy.ENHANCED_FAN_OUT);
+
+        assertEquals(streamConfigs.size(), 2);
+
+        Map<String, KinesisStreamConfig> streamConfigMap = streamConfigs.stream()
+                .collect(Collectors.toMap(KinesisStreamConfig::getName, config -> config));
+
+        assertEquals(2, streamConfigMap.size());
+
+        KinesisStreamConfig stream1 = streamConfigMap.get("stream-1");
+        assertNotNull(stream1);
+        assertNull(stream1.getStreamArn());
+        assertNull(stream1.getConsumerArn());
+        assertEquals(InitialPositionInStream.AT_TIMESTAMP, stream1.getInitialPosition());
+        assertEquals(Duration.parse("P3DT12H"), stream1.getRange());
+        assertNull(stream1.getInitialTimestamp());
+
+        KinesisStreamConfig stream2 = streamConfigMap.get("stream-2");
+        assertNotNull(stream2);
+        assertNull(stream2.getStreamArn());
+        assertNull(stream2.getConsumerArn());
+        assertEquals(InitialPositionInStream.AT_TIMESTAMP, stream2.getInitialPosition());
+        assertNull(stream2.getRange());
+        assertEquals(LocalDateTime.parse("2024-01-15T10:30:00"), stream2.getInitialTimestamp());
+    }
+
 }

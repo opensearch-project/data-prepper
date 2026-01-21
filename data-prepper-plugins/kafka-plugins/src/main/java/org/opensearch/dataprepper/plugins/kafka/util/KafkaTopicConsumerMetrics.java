@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaTopicConsumerMetrics {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicConsumerMetrics.class);
@@ -30,6 +32,7 @@ public class KafkaTopicConsumerMetrics {
     static final String NUMBER_OF_RECORDS_COMMITTED = "numberOfRecordsCommitted";
     static final String NUMBER_OF_RECORDS_CONSUMED = "numberOfRecordsConsumed";
     static final String NUMBER_OF_BYTES_CONSUMED = "numberOfBytesConsumed";
+    static final String ACTUAL_POLL_INTERVAL = "actualPollInterval";
 
     private final String topicName;
     private long updateTime;
@@ -46,6 +49,8 @@ public class KafkaTopicConsumerMetrics {
     private final Counter numberOfRecordsCommitted;
     private final Counter numberOfRecordsConsumed;
     private final Counter numberOfBytesConsumed;
+    private final Timer timeBetweenPollCalls;
+    private Instant lastPollTime;
 
     public KafkaTopicConsumerMetrics(final String topicName, final PluginMetrics pluginMetrics,
                                      final boolean topicNameInMetrics) {
@@ -64,6 +69,8 @@ public class KafkaTopicConsumerMetrics {
         this.numberOfPollAuthErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POLL_AUTH_ERRORS, topicNameInMetrics));
         this.numberOfPositiveAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS, topicNameInMetrics));
         this.numberOfNegativeAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS, topicNameInMetrics));
+        this.timeBetweenPollCalls = pluginMetrics.timer(getTopicMetricName(ACTUAL_POLL_INTERVAL, topicNameInMetrics));
+        lastPollTime = Instant.now();
     }
 
     private void initializeMetricNamesMap(final boolean topicNameInMetrics) {
@@ -166,6 +173,12 @@ public class KafkaTopicConsumerMetrics {
 
     public Counter getNumberOfPositiveAcknowledgements() {
         return numberOfPositiveAcknowledgements;
+    }
+
+    public void recordTimeBetweenPolls() {
+        final long timeBetweenPolls = Instant.now().toEpochMilli() - lastPollTime.toEpochMilli();
+        timeBetweenPollCalls.record(timeBetweenPolls, TimeUnit.MILLISECONDS);
+        lastPollTime = Instant.now();
     }
 
     private String getTopicMetricName(final String metricName, final boolean topicNameInMetrics) {

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;

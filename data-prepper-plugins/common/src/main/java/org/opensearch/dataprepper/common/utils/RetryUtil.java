@@ -37,6 +37,9 @@ public class RetryUtil {
 
     /**
      * Retry with exponential backoff, using default values.
+     * @param task The runnable task to execute with retry logic
+     * @param log The logger instance for logging retry attempts and failures
+     * @return true if the task succeeded within the retry attempts, false otherwise
      */
     public static boolean retryWithBackoff(Runnable task, Logger log) {
         return retryWithBackoff(task, DEFAULT_BASE_DELAY_MS, DEFAULT_MAX_DELAY_MS, DEFAULT_MAX_RETRIES, log);
@@ -44,6 +47,12 @@ public class RetryUtil {
 
     /**
      * Retry with exponential backoff, allowing custom delay and retry values.
+     * @param task The runnable task to execute with retry logic
+     * @param baseDelayMs The base delay in milliseconds for the first retry
+     * @param maxDelayMs The maximum delay in milliseconds between retries
+     * @param maxRetries The maximum number of retry attempts
+     * @param log The logger instance for logging retry attempts and failures
+     * @return true if the task succeeded within the retry attempts, false otherwise
      */
     public static boolean retryWithBackoff(Runnable task, long baseDelayMs, long maxDelayMs, int maxRetries, Logger log) {
         RetryResult result = retryWithBackoffInternal(task, baseDelayMs, maxDelayMs, maxRetries, e -> true, log);
@@ -52,6 +61,9 @@ public class RetryUtil {
 
     /**
      * Retry with exponential backoff, returning detailed result.
+     * @param task The runnable task to execute with retry logic
+     * @param log The logger instance for logging retry attempts and failures
+     * @return RetryResult containing success status, last exception, and number of attempts made
      */
     public static RetryResult retryWithBackoffWithResult(Runnable task, Logger log) {
         return retryWithBackoffInternal(task, DEFAULT_BASE_DELAY_MS, DEFAULT_MAX_DELAY_MS, DEFAULT_MAX_RETRIES, e -> true, log);

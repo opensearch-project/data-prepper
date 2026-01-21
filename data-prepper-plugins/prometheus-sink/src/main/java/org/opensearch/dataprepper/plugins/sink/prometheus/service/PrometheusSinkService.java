@@ -10,10 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import org.opensearch.dataprepper.common.sink.DefaultSinkOutputStrategy;
-import org.opensearch.dataprepper.common.sink.DefaultSinkBuffer;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.common.sink.ReentrantLockStrategy;
@@ -23,17 +20,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-
 public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     static final String PLUGIN_NAME = "prometheus";
-    private static final Logger LOG = LoggerFactory.getLogger(PrometheusSinkService.class);
     public static final String PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER = "prometheusSinkRecordsNumberOfSuccessful";
 
     public static final String PROMETHEUS_SINK_RECORDS_FAILED_COUNTER = "prometheusSinkRecordsNumberOfFailed";
@@ -48,18 +41,16 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     public PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
                                  final SinkMetrics sinkMetrics,
                                  final PrometheusHttpSender httpSender,
-                                 final HeadlessPipeline dlqPipeline,
                                  final PipelineDescription pipelineDescription) {
         super(new ReentrantLockStrategy(),
-              new DefaultSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
+              new PrometheusSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
                   prometheusSinkConfiguration.getThresholdConfig().getMaxRequestSizeBytes(),
                   prometheusSinkConfiguration.getThresholdConfig().getFlushIntervalMs(),
-                  new PrometheusSinkBufferWriter(sinkMetrics)),
+                  new PrometheusSinkBufferWriter(prometheusSinkConfiguration, sinkMetrics)),
               new PrometheusSinkFlushContext(httpSender),
               sinkMetrics);
         sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
         this.dropIfNoDLQConfigured = false;
-        this.dlqPipeline = dlqPipeline;
         this.dlqRecords = new ArrayList<>();
         this.httpSender = httpSender;
         this.pipelineDescription = pipelineDescription;
@@ -75,13 +66,12 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
         return new PrometheusSinkBufferEntry(event, sanitizeNames);
     }
 
-    @VisibleForTesting
     public void setDlqPipeline(HeadlessPipeline pipeline) {
         this.dlqPipeline = pipeline;
     }
 
     public void flushDlqList() {
-        if (dlqRecords.size() == 0) {
+        if (dlqRecords.isEmpty()) {
             return;
         }
         if (dlqPipeline != null) {

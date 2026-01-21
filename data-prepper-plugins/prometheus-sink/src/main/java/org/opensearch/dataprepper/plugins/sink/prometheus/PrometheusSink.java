@@ -13,10 +13,6 @@ package org.opensearch.dataprepper.plugins.sink.prometheus;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.aws.api.AwsConfig;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
-import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkThresholdConfig;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -32,7 +28,6 @@ import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.common.sink.DefaultSinkMetrics;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSinkService;
-import software.amazon.awssdk.regions.Region;
 
 import java.util.Collection;
 
@@ -42,8 +37,8 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
 
     private volatile boolean sinkInitialized;
     private final PrometheusSinkService prometheusSinkService;
-    private PrometheusHttpSender httpSender;
-    private SinkMetrics sinkMetrics;
+    private final PrometheusHttpSender httpSender;
+    private final SinkMetrics sinkMetrics;
 
     @DataPrepperPluginConstructor
     public PrometheusSink(final PluginSetting pluginSetting,
@@ -52,31 +47,16 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
                     final PrometheusSinkConfiguration prometheusSinkConfiguration,
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
-        this.sinkInitialized = Boolean.FALSE;
-        AwsConfig awsConfig = prometheusSinkConfiguration.getAwsConfig();
-        final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
-        Region region = (awsConfig != null) ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
-      
+        this.sinkInitialized = false;
+
         sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Metric");
         httpSender = new PrometheusHttpSender(awsCredentialsSupplier, prometheusSinkConfiguration, sinkMetrics);
-
-        PrometheusSinkThresholdConfig thresholdConfig = prometheusSinkConfiguration.getThresholdConfig();
 
         this.prometheusSinkService = new PrometheusSinkService(
                 prometheusSinkConfiguration,
                 sinkMetrics,
                 httpSender,
-                getFailurePipeline(),
                 pipelineDescription);
-    }
-
-    private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
-        return AwsCredentialsOptions.builder()
-                .withRegion(awsConfig.getAwsRegion())
-                .withStsRoleArn(awsConfig.getAwsStsRoleArn())
-                .withStsExternalId(awsConfig.getAwsStsExternalId())
-                .withStsHeaderOverrides(awsConfig.getAwsStsHeaderOverrides())
-                .build();
     }
 
     @Override
@@ -86,11 +66,12 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doInitialize() {
-        sinkInitialized = Boolean.TRUE;
+        sinkInitialized = true;
+        prometheusSinkService.setDlqPipeline(getFailurePipeline());
     }
 
     @VisibleForTesting
-    void setDlqPipeline(HeadlessPipeline dlqPipeline) {
+    void setDlqPipeline(final HeadlessPipeline dlqPipeline) {
         prometheusSinkService.setDlqPipeline(dlqPipeline);
     }
 

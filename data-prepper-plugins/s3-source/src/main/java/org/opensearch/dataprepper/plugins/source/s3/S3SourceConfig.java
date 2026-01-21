@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Max;
 import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.s3.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationTypeOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;

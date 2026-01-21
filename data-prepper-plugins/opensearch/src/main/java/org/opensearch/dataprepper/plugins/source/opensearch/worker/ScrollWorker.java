@@ -188,6 +188,9 @@ public class ScrollWorker implements SearchWorker {
             } while (searchScrollResponse.getDocuments().size() == batchSize);
         }
 
+        LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
+                searchScrollResponse.getDocuments().size(), batchSize);
+
         deleteScroll(createScrollResponse.getScrollId());
 
         try {

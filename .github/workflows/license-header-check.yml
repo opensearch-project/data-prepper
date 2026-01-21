@@ -1,0 +1,117 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+# Performs a license header check on new files.
+# It will comment on PRs if it finds violations.
+
+name: License Header Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  license-header-check:
+    runs-on: ubuntu-latest
+    name: Check License Headers on New Files
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          
+      - name: Run License Header Check
+        id: license-check
+        run: |
+          python .github/scripts/get-new-files.py | python .github/scripts/check-license-headers.py
+          
+      - name: Comment on PR
+        if: failure() && steps.license-check.outputs.violations != ''
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const violations = process.env.VIOLATIONS;
+            
+            const body = [
+              '## ⚠️ License Header Violations Found',
+              '',
+              'The following newly added files are missing required license headers:',
+              '',
+              violations,
+              '',
+              'Please add the appropriate license header to each file and push your changes.',
+              '',
+              '**See the license header requirements:** https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md#license-headers'
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('License Header Violations Found')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+        env:
+          VIOLATIONS: ${{ steps.license-check.outputs.violations }}
+          
+      - name: Update PR comment (all violations resolved)
+        if: success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              (comment.body.includes('License Header Violations Found') || comment.body.includes('License Header Check Passed'))
+            );
+            
+            if (botComment) {
+              const successBody = [
+                '## ✅ License Header Check Passed',
+                '',
+                'All newly added files have proper license headers. Great work! 🎉'
+              ].join('\n');
+              
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: successBody
+              });
+            }

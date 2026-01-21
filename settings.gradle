@@ -192,6 +192,7 @@ include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:aws-lambda'
 include 'data-prepper-plugins:ml-inference-processor'
+include 'data-prepper-plugins:s3-common'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'
@@ -206,3 +207,5 @@ include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
 include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
 include 'data-prepper-plugins:otlp-sink'
 
+
+include 'e2e-test:kafka-buffer-backward-compatibility'

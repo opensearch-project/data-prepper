@@ -10,6 +10,7 @@ import com.google.protobuf.ByteString;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.OTelProtoDecoder.getServiceName;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -90,7 +91,6 @@ public class OTelProtoStandardCodec {
 
     private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
     private static final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
-    protected static final String SERVICE_NAME = "service.name";
     static final String ATTRIBUTES_KEY = "attributes";
     static final String STATUS_CODE_KEY = "code";
     static final String STATUS_MESSAGE_KEY = "message";
@@ -469,13 +469,6 @@ public class OTelProtoStandardCodec {
 
         protected String getTimeISO8601(final io.opentelemetry.proto.trace.v1.Span.Event event) {
             return convertUnixNanosToISO8601(event.getTimeUnixNano());
-        }
-
-        protected Optional<String> getServiceName(final Resource resource) {
-            return resource.getAttributesList().stream().filter(
-                    keyValue -> keyValue.getKey().equals(SERVICE_NAME)
-                            && !keyValue.getValue().getStringValue().isEmpty()
-            ).findFirst().map(i -> i.getValue().getStringValue());
         }
 
         @Override
@@ -1039,14 +1032,6 @@ public class OTelProtoStandardCodec {
     public static String getTimeISO8601(final NumberDataPoint ndp) {
         return convertUnixNanosToISO8601(ndp.getTimeUnixNano());
     }
-
-    public static Optional<String> getServiceName(final Resource resource) {
-        return resource.getAttributesList().stream()
-                .filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME) && !keyValue.getValue().getStringValue().isEmpty())
-                .findFirst()
-                .map(i -> i.getValue().getStringValue());
-    }
-
 
     public static Map<String, Object> mergeAllAttributes(final Collection<Map<String, Object>> attributes) {
         return attributes.stream()

@@ -70,6 +70,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -327,6 +328,8 @@ public class KafkaCustomConsumerTest {
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
+
+        verify(topicMetrics).recordTimeBetweenPolls();
     }
 
     @Test
@@ -377,6 +380,8 @@ public class KafkaCustomConsumerTest {
         });
         // This counter should not be incremented with acknowledgements
         Assertions.assertEquals(consumer.getNumRecordsCommitted(), 0L);
+
+        verify(topicMetrics).recordTimeBetweenPolls();
     }
 
     @Test
@@ -420,6 +425,8 @@ public class KafkaCustomConsumerTest {
         consumer.processAcknowledgedOffsets();
         offsetsToCommit = consumer.getOffsetsToCommit();
         Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        verify(topicMetrics).recordTimeBetweenPolls();
     }
 
     @Test
@@ -458,6 +465,8 @@ public class KafkaCustomConsumerTest {
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
+
+        verify(topicMetrics).recordTimeBetweenPolls();
     }
 
     @Test
