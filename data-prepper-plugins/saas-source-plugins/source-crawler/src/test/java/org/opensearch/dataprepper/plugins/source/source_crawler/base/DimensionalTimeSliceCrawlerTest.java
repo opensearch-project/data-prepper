@@ -85,7 +85,7 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withIncrementalSync_lastModificationTimeBefore5MinutesAgo() {
         Instant lastPollTime = Instant.now().minusSeconds(400);
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, 0);
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, Instant.now());
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -110,7 +110,7 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withIncrementalSync_lastModificationTimeAfter5MinutesAgo() {
         Instant lastPollTime = Instant.now().minusSeconds(10);
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, 0);
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, Instant.now());
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -125,8 +125,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_initialTimeInTheFirst5MinutesOfTheHOur() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION -1);
-        long lookbackMinutes = 120;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(120));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -164,8 +164,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_initialTimeNotInTheFirst5MinutesOfTheHOur() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
-        long lookbackMinutes = 120;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(120));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -212,7 +212,6 @@ public class DimensionalTimeSliceCrawlerTest {
     void createWorkerPartitionsForDimensionTypes() {
         Instant start = Instant.parse("2024-10-30T00:00:00Z");
         Instant end = start.plus(Duration.ofHours(1));
-        String logType = "Exchange";
 
         crawler.createWorkerPartitionsForDimensionTypes(start, end, coordinator);
 
@@ -271,8 +270,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withSubHourHistoricalSync_15Minutes() {
         Instant initialTime = Instant.now();
-        long lookbackMinutes = 15;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(15));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -299,8 +298,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withSubHourHistoricalSync_30Minutes() {
         Instant initialTime = Instant.now();
-        long lookbackMinutes = 30;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(30));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -327,8 +326,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withSubHourHistoricalSync_45Minutes() {
         Instant initialTime = Instant.now();
-        long lookbackMinutes = 45;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(45));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -354,8 +353,8 @@ public class DimensionalTimeSliceCrawlerTest {
 
     @Test
     void testCrawl_withIncrementalSync_exactly5MinutesAgo() {
-        Instant lastPollTime = Instant.now().minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, 0);
+        Instant lastPollTime = Instant.now().minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION - 1);
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(lastPollTime, lastPollTime.plus(Duration.ofMinutes(4)));
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -372,8 +371,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_exactly1Hour() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
-        long lookbackMinutes = 60;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(60));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -409,8 +408,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_3Hours() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
-        long lookbackMinutes = 180;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(180));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -429,8 +428,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_withExtraMinutes() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION + 1);
-        long lookbackMinutes = 125;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(125));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -453,8 +452,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withSubHourHistoricalSync_verySmallRange() {
         Instant initialTime = Instant.now();
-        long lookbackMinutes = 3;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(3));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -480,8 +479,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testCrawl_withSubHourHistoricalSync_exactly5Minutes() {
         Instant initialTime = Instant.now();
-        long lookbackMinutes = 5;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(5));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
@@ -508,8 +507,8 @@ public class DimensionalTimeSliceCrawlerTest {
     void testCrawl_withHistoricalSync_latestModifiedTimeEqualsLatestHour() {
         Instant latestHour = Instant.now().truncatedTo(ChronoUnit.HOURS);
         Instant initialTime = latestHour.plusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
-        long lookbackMinutes = 60;
-        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackMinutes);
+        Instant lookbackDuration = initialTime.minus(Duration.ofMinutes(60));
+        DimensionalTimeSliceLeaderProgressState state = new DimensionalTimeSliceLeaderProgressState(initialTime, lookbackDuration);
         LeaderPartition leaderPartition = new LeaderPartition(state);
 
         Instant latest = crawler.crawl(leaderPartition, coordinator);
