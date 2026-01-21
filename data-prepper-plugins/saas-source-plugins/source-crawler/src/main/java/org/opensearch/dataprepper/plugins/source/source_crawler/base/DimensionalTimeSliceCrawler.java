@@ -100,7 +100,9 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
 
-        if (leaderProgressState.getRemainingMinutes() == 0) {
+        Instant remainingDuration = leaderProgressState.getRemainingDuration();
+        Instant lastPollTime = leaderProgressState.getLastPollTime();
+        if (remainingDuration.equals(lastPollTime)) {
             return createPartitionsForIncrementalSync(leaderPartition, coordinator);
         } else {
             return createPartitionsForHistoricalPull(leaderPartition, coordinator);
@@ -116,9 +118,10 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
                                                       EnhancedSourceCoordinator coordinator) {
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
-        long remainingMinutes = leaderProgressState.getRemainingMinutes();
         Instant initialTime = leaderProgressState.getLastPollTime();
         Instant latestModifiedTime = initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        Instant remainingDuration = leaderProgressState.getRemainingDuration();
+        long remainingMinutes = Duration.between(remainingDuration, initialTime).toMinutes();
 
         // For sub-hour time ranges (less than 60 minutes), create a single partition
         if (remainingMinutes < MINUTES_PER_HOUR) {
@@ -133,7 +136,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
             }
 
             createWorkerPartitionsForDimensionTypes(startTime, endTime, coordinator);
-            updateLeaderProgressState(leaderPartition, 0, endTime, coordinator);
+            updateLeaderProgressState(leaderPartition, endTime, coordinator);
             return endTime;
         }
 
@@ -164,7 +167,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
             createWorkerPartitionsForDimensionTypes(latestHour.minus(Duration.ofHours(1)), latestModifiedTime, coordinator);
         }
 
-        updateLeaderProgressState(leaderPartition, 0, latestModifiedTime, coordinator);
+        updateLeaderProgressState(leaderPartition, latestModifiedTime, coordinator);
 
         return latestModifiedTime;
     }
@@ -183,7 +186,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
             // Create one partition from lastPollTime to latestModifiedTime for each type
             createWorkerPartitionsForDimensionTypes(lastPollTime, latestModifiedTime, coordinator);
 
-            updateLeaderProgressState(leaderPartition, 0, latestModifiedTime, coordinator);
+            updateLeaderProgressState(leaderPartition, latestModifiedTime, coordinator);
             return latestModifiedTime;
         }
 
@@ -205,16 +208,15 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
     }
 
     /**
-     * Updates the leader progress state with the latest poll timestamp and remaining minutes.
+     * Updates the leader progress state with the latest poll timestamp and remaining duration.
      * This method also persists the updated state in the source coordinator.
      */
     private void updateLeaderProgressState(LeaderPartition leaderPartition,
-                                           long remainingMinutes,
                                            Instant updatedPollTime,
                                            EnhancedSourceCoordinator coordinator) {
         DimensionalTimeSliceLeaderProgressState state =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
-        state.setRemainingMinutes(remainingMinutes);
+        state.setRemainingDuration(updatedPollTime);
         state.setLastPollTime(updatedPollTime);
         leaderPartition.setLeaderProgressState(state);
         coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);

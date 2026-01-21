@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,7 @@ class Office365ServiceTest {
     @BeforeEach
     void setUp() {
         office365Service = new Office365Service(sourceConfig, office365RestClient, pluginMetrics);
+        lenient().when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(Instant.now().minus(Duration.ofDays(365)));
     }
 
     @Test
@@ -184,7 +186,7 @@ class Office365ServiceTest {
         Instant endTime = Instant.now();
         String logType = "Exchange";
 
-        when(office365RestClient.searchAuditLogs(
+        lenient().when(office365RestClient.searchAuditLogs(
                 any(), any(), any(), any()
         )).thenThrow(new RuntimeException("API Error"));
 
@@ -288,8 +290,8 @@ class Office365ServiceTest {
 
         String logType = "Exchange";
         long lookBackMinutes = 96 * 60; // Configure 4 days range limit
-
-        when(sourceConfig.getLookBackMinutes()).thenReturn(lookBackMinutes);
+        Instant lookBackDuration = now.minus(Duration.ofMinutes(lookBackMinutes));
+        when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(lookBackDuration);
         when(office365RestClient.searchAuditLogs(
                 any(String.class),
                 any(Instant.class),
@@ -325,8 +327,9 @@ class Office365ServiceTest {
 
         String logType = "Exchange";
         long lookBackMinutes = 30L;
+        Instant lookBackDuration = now.minus(Duration.ofMinutes(lookBackMinutes));
 
-        when(sourceConfig.getLookBackMinutes()).thenReturn(lookBackMinutes);
+        when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(lookBackDuration);
         when(office365RestClient.searchAuditLogs(
                 any(String.class),
                 any(Instant.class),

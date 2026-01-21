@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Authen
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.time.Duration;
+import java.time.Instant;
 
 /**
  * Configuration class for Office 365 source plugin.
@@ -60,30 +61,16 @@ public class Office365SourceConfig implements CrawlerSourceConfig {
     private Duration range;
 
     /**
-     * Gets the look back range as minutes for the crawler framework.
+     * Gets the look back duration as an Instant representing the start time for historical data collection.
      * This method supports minute-level granularity for historical pulls.
      *
-     * @return the number of minutes to look back, or 0 if no range is specified
+     * @return the Instant representing how far back to look, or current time if no range is specified
      */
-    public long getLookBackMinutes() {
+    public Instant getLookBackDuration(Instant lastPollTime) {
         if (range == null || range.isZero() || range.isNegative()) {
-            return 0;
+            return lastPollTime;
         }
-        return range.toMinutes();
-    }
-
-    /**
-     * Gets the look back range as hours for compatibility with existing crawler framework.
-     *
-     * @return the number of hours to look back, or 0 if no range is specified
-     * @deprecated Use {@link #getLookBackMinutes()} for minute-level granularity support
-     */
-    @Deprecated
-    public int getLookBackHours() {
-        if (range == null || range.toHours() <= 0) {
-            return 0;
-        }
-        return (int) range.toHours();
+        return lastPollTime.minus(range);
     }
 
     @Override

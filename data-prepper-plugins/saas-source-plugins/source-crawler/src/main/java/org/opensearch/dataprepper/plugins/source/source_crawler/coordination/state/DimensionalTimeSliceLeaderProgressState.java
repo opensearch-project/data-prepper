@@ -7,16 +7,17 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.Data;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 
+import java.time.Duration;
 import java.time.Instant;
 
 /**
  * Leader progress state for dimensional time slice crawler.
- * Supports minute-level granularity for historical pulls.
+ * Uses Instant-based remainingDuration for precise time-based historical pulls.
  *
- * <p>Backward Compatibility: This class supports deserialization of both:
+ * <p>Backward Compatibility: This class supports deserialization of legacy formats:
  * <ul>
- *   <li>New format: {@code remaining_minutes} (long) - preferred</li>
- *   <li>Old format: {@code remaining_hours} (int) - automatically converted to minutes</li>
+ *   <li>Preferred format: {@code remaining_duration} (Instant)</li>
+ *   <li>Legacy format: {@code remaining_hours} (int) - automatically converted to remainingDuration</li>
  * </ul>
  */
 @Data
@@ -27,43 +28,28 @@ public class DimensionalTimeSliceLeaderProgressState implements LeaderProgressSt
     @JsonProperty("last_poll_time")
     private Instant lastPollTime;
 
-    @JsonProperty("remaining_minutes")
-    private long remainingMinutes;
+    @JsonProperty("remaining_duration")
+    private Instant remainingDuration;
 
 
     /**
      * Primary constructor supporting both new and legacy formats.
      *
      * @param lastPollTime the last poll timestamp
-     * @param remainingMinutes the remaining minutes for historical pull (new format)
-     * @param remainingHours the remaining hours for historical pull (legacy format, converted to minutes)
+     * @param remainingDuration the remaining duration as Instant (preferred format)
      */
     @JsonCreator
     public DimensionalTimeSliceLeaderProgressState(
             @JsonProperty("last_poll_time") final Instant lastPollTime,
-            @JsonProperty("remaining_minutes") Long remainingMinutes,
-            @JsonProperty("remaining_hours") Integer remainingHours) {
+            @JsonProperty("remaining_duration") Instant remainingDuration) {
         this.lastPollTime = lastPollTime;
 
-        // Prefer remaining_minutes if provided, otherwise convert from remaining_hours
-        if (remainingMinutes != null) {
-            this.remainingMinutes = remainingMinutes;
-        } else if (remainingHours != null) {
-            // Backward compatibility: convert hours to minutes
-            this.remainingMinutes = remainingHours * MINUTES_PER_HOUR;
+        // Prefer remaining_duration (Instant) if provided
+        if (remainingDuration != null && remainingDuration.isBefore(lastPollTime)) {
+            this.remainingDuration = remainingDuration;
         } else {
-            this.remainingMinutes = 0;
+            this.remainingDuration = lastPollTime;
         }
-    }
-
-    /**
-     * Convenience constructor for creating new state with minutes.
-     *
-     * @param lastPollTime the last poll timestamp
-     * @param remainingMinutes the remaining minutes for historical pull
-     */
-    public DimensionalTimeSliceLeaderProgressState(final Instant lastPollTime, long remainingMinutes) {
-        this(lastPollTime, remainingMinutes, null);
     }
 
     /**
@@ -71,30 +57,35 @@ public class DimensionalTimeSliceLeaderProgressState implements LeaderProgressSt
      * This constructor is specifically for external connectors that use getLookBackHours()
      * which returns an int representing hours.
      *
-     * <p>Note: Java would auto-promote int to long for the minutes constructor,
-     * so we need this explicit int constructor to maintain backward compatibility
-     * with connectors passing hours.
-     *
      * @param lastPollTime the last poll timestamp
-     * @param remainingHours the remaining hours for historical pull (will be converted to minutes)
-     * @deprecated Use the long constructor with minutes directly for new implementations
+     * @param remainingHours the remaining hours for historical pull (will be converted to remainingDuration)
      */
-    @Deprecated
     public DimensionalTimeSliceLeaderProgressState(final Instant lastPollTime, int remainingHours) {
-        this(lastPollTime, null, remainingHours);
+        this.lastPollTime = lastPollTime;
+        long minutes = remainingHours * MINUTES_PER_HOUR;
+        if (minutes > 0) {
+            this.remainingDuration = lastPollTime.minus(Duration.ofMinutes(minutes));
+        } else {
+            this.remainingDuration = lastPollTime;
+        }
     }
 
     /**
      * Backward compatibility setter for legacy remaining_hours field.
-     * Converts hours to minutes when deserializing old checkpoint data.
+     * Converts hours to remainingDuration when deserializing old checkpoint data.
      *
-     * @param remainingHours the remaining hours (will be converted to minutes)
+     * @param remainingHours the remaining hours (will be converted to remainingDuration)
      */
     @JsonSetter("remaining_hours")
     public void setRemainingHours(int remainingHours) {
-        // Only set if remainingMinutes hasn't been set yet (prefer minutes to hours)
-        if (this.remainingMinutes == 0) {
-            this.remainingMinutes = remainingHours * MINUTES_PER_HOUR;
+        if (this.remainingDuration == null || this.remainingDuration.equals(this.lastPollTime)) {
+            // Only set if remainingDuration hasn't been set yet (prefer remainingDuration to hours)
+            long minutes = remainingHours * MINUTES_PER_HOUR;
+            if (minutes > 0 && this.lastPollTime != null) {
+                this.remainingDuration = this.lastPollTime.minus(Duration.ofMinutes(minutes));
+            } else if (this.lastPollTime != null) {
+                this.remainingDuration = this.lastPollTime;
+            }
         }
     }
 
@@ -102,11 +93,15 @@ public class DimensionalTimeSliceLeaderProgressState implements LeaderProgressSt
      * Provides backward compatible getter for remaining hours.
      *
      * @return the remaining time in hours (rounded down from minutes)
-     * @deprecated Use {@link #getRemainingMinutes()} for minute-level granularity
+     * @deprecated Use {@link #getRemainingDuration()} for Instant-based granularity
      */
     @Deprecated
     @JsonIgnore
     public int getRemainingHours() {
-        return (int) (remainingMinutes / MINUTES_PER_HOUR);
+        if (remainingDuration != null && lastPollTime != null && remainingDuration.isBefore(lastPollTime)) {
+            long minutes = Duration.between(remainingDuration, lastPollTime).toMinutes();
+            return (int) (minutes / MINUTES_PER_HOUR);
+        }
+        return 0;
     }
 }
