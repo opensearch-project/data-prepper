@@ -26,7 +26,6 @@ public class SinkForwardConfig {
     @JsonProperty("with_data")
     Map<String, Object> withData;
 
-    @JsonCreator
     public SinkForwardConfig() {
     }
 
