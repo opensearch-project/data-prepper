@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.pipeline;
@@ -55,6 +59,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +67,10 @@ class PipelineRunnerTest {
     private static final int BUFFER_READ_TIMEOUT_MILLIS = 1000;
     private static final String MOCK_PIPELINE_NAME = "Test-Pipeline";
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter counter;
     @Mock
     Pipeline pipeline;
     @Mock
@@ -91,12 +100,19 @@ class PipelineRunnerTest {
     }
 
     private PipelineRunnerImpl createObjectUnderTest() {
-        return new PipelineRunnerImpl(pipeline, processorProvider);
+        try (final MockedStatic<PluginMetrics> pluginMetricsStatic = mockStatic(PluginMetrics.class)) {
+            pluginMetricsStatic.when(() -> PluginMetrics.fromNames("PipelineRunner", pipeline.getName()))
+                    .thenReturn(pluginMetrics);
+
+            return new PipelineRunnerImpl(pipeline, processorProvider);
+        }
     }
 
     @BeforeEach
     void setUp() {
         processors = List.of(processor);
+
+        when(pluginMetrics.counter(any())).thenReturn(counter);
     }
 
     @Nested
@@ -118,6 +134,8 @@ class PipelineRunnerTest {
             PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
             pipelineRunner.processAcknowledgements(inputEvents, outputRecords);
             verify(defaultEventHandle).release(true);
+
+            verifyNoInteractions(counter);
         }
 
         @Test
@@ -134,6 +152,8 @@ class PipelineRunnerTest {
             pipelineRunner.processAcknowledgements(inputEvents, outputRecords);
             verify(defaultEventHandle).release(true);
             assertNotSame(event, differentEvent);
+
+            verifyNoInteractions(counter);
         }
 
         @Test
@@ -148,6 +168,8 @@ class PipelineRunnerTest {
             PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
             pipelineRunner.processAcknowledgements(inputEvents, outputRecords);
             verify(defaultEventHandle, never()).release(true);
+
+            verifyNoInteractions(counter);
         }
 
         @Test
@@ -156,18 +178,20 @@ class PipelineRunnerTest {
             Collection<Record<Event>> outputRecords = List.of(record);
             when(event.getEventHandle()).thenReturn(eventHandle);
 
-            try (MockedStatic<PluginMetrics> pluginMetricsStatic = mockStatic(PluginMetrics.class)) {
-                final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
-                final Counter counter = mock(Counter.class);
-                when(pluginMetrics.counter(any())).thenReturn(counter);
-                pluginMetricsStatic.when(() -> PluginMetrics.fromNames("PipelineRunner", pipeline.getName()))
-                        .thenReturn(pluginMetrics);
+            assertDoesNotThrow(() -> createObjectUnderTest().processAcknowledgements(inputEvents, outputRecords));
+            verify(counter, atLeastOnce()).increment();
+        }
 
-                PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
-                assertDoesNotThrow(() -> pipelineRunner.processAcknowledgements(inputEvents, outputRecords));
+        @Test
+        void testProcessAcknowledgementsInvalidEventHandleIncrementsCounter2() {
+            Record<Event> eventRecord = mock(Record.class);
+            when(eventRecord.getData()).thenReturn(event);
+            List<Event> inputEvents = List.of(event);
+            Collection<Record<Event>> outputRecords = List.of(record, eventRecord);
+            when(event.getEventHandle()).thenReturn(eventHandle);
 
-                verify(counter, atLeastOnce()).increment();
-            }
+            assertDoesNotThrow(() -> createObjectUnderTest().processAcknowledgements(inputEvents, outputRecords));
+            verifyNoInteractions(counter);
         }
     }
 
