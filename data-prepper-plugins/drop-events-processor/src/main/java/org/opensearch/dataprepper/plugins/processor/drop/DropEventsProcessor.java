@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.processor.drop;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -24,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-@SingleThread
 @DataPrepperPlugin(name = "drop_events", pluginType = Processor.class, pluginConfigurationType = DropEventProcessorConfig.class)
 public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
