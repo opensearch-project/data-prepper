@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.pipeline;
@@ -15,7 +19,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
@@ -33,8 +36,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineRunnerImpl.class);
     private static final String INVALID_EVENT_HANDLES = "invalidEventHandles";
     private boolean isEmptyRecordsLogged = false;
-    @VisibleForTesting
-    final Counter invalidEventHandlesCounter;
+    private final Counter invalidEventHandlesCounter;
     private final Pipeline pipeline;
     private final PluginMetrics pluginMetrics;
     private final ProcessorProvider processorProvider;
@@ -75,18 +77,19 @@ public class PipelineRunnerImpl implements PipelineRunner {
     }
 
     @VisibleForTesting
-    void processAcknowledgements(List<Event> inputEvents, Collection<Record<Event>> outputRecords) {
-        Set<Event> outputEventsSet = outputRecords.stream().map(Record::getData).collect(Collectors.toSet());
+    void processAcknowledgements(final List<Event> inputEvents, final Collection<Record<Event>> outputRecords) {
+        final Set<Event> outputEventsSet = outputRecords.stream().map(Record::getData).collect(Collectors.toSet());
         // For each event in the input events list that is not present in the output events, send positive acknowledgement, if acknowledgements are enabled for it
         inputEvents.forEach(event -> {
-            EventHandle eventHandle = event.getEventHandle();
-            if (eventHandle != null && eventHandle instanceof DefaultEventHandle) {
-                InternalEventHandle internalEventHandle = (InternalEventHandle) eventHandle;
+            final EventHandle eventHandle = event.getEventHandle();
+            if (eventHandle != null) {
                 if (!outputEventsSet.contains(event)) {
-                    eventHandle.release(true);
+                    if (eventHandle instanceof DefaultEventHandle) {
+                        eventHandle.release(true);
+                    } else {
+                        invalidEventHandlesCounter.increment();
+                    }
                 }
-            } else if (eventHandle != null) {
-                invalidEventHandlesCounter.increment();
             }
         });
     }
