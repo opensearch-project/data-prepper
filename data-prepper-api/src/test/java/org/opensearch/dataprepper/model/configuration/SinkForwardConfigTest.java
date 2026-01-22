@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.junit.jupiter.api.Test;
 
@@ -53,6 +54,15 @@ public class SinkForwardConfigTest {
     @Test
     void empty_pipelines_list_throws_exception() {
         assertThrows(InvalidPluginConfigurationException.class, ()->new SinkForwardConfig(List.of(), Map.of(), Map.of()));
+    }
+
+    @Test
+    void jackson_deserialization_succeeds() throws Exception {
+        String json = "{\"pipelines\":[\"pipeline1\"],\"with_data\":{\"key\":\"value\"},\"with_metadata\":{\"meta\":\"data\"}}";
+        ObjectMapper mapper = new ObjectMapper();
+        SinkForwardConfig config = mapper.readValue(json, SinkForwardConfig.class);
+        assertThat(config.getPipelineNames().size(), equalTo(1));
+        assertThat(config.getPipelineNames().get(0), equalTo("pipeline1"));
     }
 }
 
