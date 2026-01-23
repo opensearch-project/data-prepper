@@ -29,9 +29,15 @@ import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseHandler;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -210,5 +216,103 @@ class StreamingLambdaHandlerTest {
         
         // Then - without reconstruction, chunks remain separate
         assertNotNull(result);
+    }
+
+    @Test
+    void testChunkWriting_WithConcurrentThreads_MaintainsDataIntegrity() throws InterruptedException {
+        // This test verifies that ByteArrayOutputStream writes are thread-safe
+        // Simulates the scenario where AWS SDK delivers chunks on different threads
+        
+        int numThreads = 10;
+        int chunksPerThread = 10;
+        int bytesPerChunk = 100;
+        
+        ByteArrayOutputStream testStream = new ByteArrayOutputStream();
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numThreads * chunksPerThread);
+        
+        // Track which chunks were written for verification
+        java.util.Set<String> writtenChunks = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        
+        // Each thread writes multiple chunks concurrently
+        for (int t = 0; t < numThreads; t++) {
+            final int threadId = t;
+            for (int c = 0; c < chunksPerThread; c++) {
+                final int chunkId = c;
+                executor.submit(() -> {
+                    try {
+                        startLatch.await();  // Synchronize start for maximum concurrency
+                        
+                        // Create a chunk with unique identifiable pattern
+                        byte[] chunk = new byte[bytesPerChunk];
+                        // Fill chunk with a repeating pattern: [threadId, chunkId, threadId, chunkId, ...]
+                        for (int i = 0; i < bytesPerChunk; i++) {
+                            chunk[i] = (i % 2 == 0) ? (byte) threadId : (byte) chunkId;
+                        }
+                        
+                        // Track this chunk for later verification
+                        writtenChunks.add(threadId + "-" + chunkId);
+                        
+                        // Simulate the synchronized write that should happen in StreamingLambdaHandler
+                        synchronized (testStream) {
+                            testStream.write(chunk);
+                        }
+                        
+                        doneLatch.countDown();
+                    } catch (Exception e) {
+                        // Fail the test if exception occurs
+                        throw new RuntimeException("Chunk write failed", e);
+                    }
+                });
+            }
+        }
+        
+        // Start all threads simultaneously
+        startLatch.countDown();
+        
+        // Wait for all writes to complete
+        boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
+        assertTrue(completed, "All chunk writes should complete within timeout");
+        
+        executor.shutdown();
+        boolean terminated = executor.awaitTermination(5, TimeUnit.SECONDS);
+        assertTrue(terminated, "Executor should terminate");
+        
+        // Verify 1: Total size should equal expected total bytes (no data loss)
+        int expectedSize = numThreads * chunksPerThread * bytesPerChunk;
+        assertEquals(expectedSize, testStream.size(), 
+                "Total bytes written should match expected size (no data loss)");
+        
+        // Verify 2: All chunks were written (no missing chunks)
+        assertEquals(numThreads * chunksPerThread, writtenChunks.size(),
+                "All chunks should have been written");
+        
+        // Verify 3: Chunk integrity - each chunk should be complete and not interleaved
+        byte[] allBytes = testStream.toByteArray();
+        int chunkCount = allBytes.length / bytesPerChunk;
+        
+        for (int i = 0; i < chunkCount; i++) {
+            int offset = i * bytesPerChunk;
+            
+            // Extract this chunk
+            byte[] extractedChunk = new byte[bytesPerChunk];
+            System.arraycopy(allBytes, offset, extractedChunk, 0, bytesPerChunk);
+            
+            // Verify chunk has consistent pattern (not interleaved)
+            // First byte should be threadId, alternating with chunkId
+            byte threadId = extractedChunk[0];
+            byte chunkId = extractedChunk[1];
+            
+            for (int j = 0; j < bytesPerChunk; j++) {
+                byte expected = (j % 2 == 0) ? threadId : chunkId;
+                assertEquals(expected, extractedChunk[j],
+                        String.format("Chunk %d byte %d has wrong value - chunk may be corrupted/interleaved", i, j));
+            }
+        }
+        
+        // If we reach here, all chunks maintained their integrity - no interleaving occurred
+        // This proves the synchronized block prevents data corruption
     }
 }

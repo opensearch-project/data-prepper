@@ -88,7 +88,11 @@ public class StreamingLambdaHandler {
                             try {
                                 // DefaultPayloadChunk should have payload() method
                                 byte[] chunkBytes = chunk.payload().asByteArray();
-                                responseStream.write(chunkBytes);
+                                // Synchronize access to ByteArrayOutputStream as it's not thread-safe
+                                // AWS SDK may deliver chunks on different threads
+                                synchronized (responseStream) {
+                                    responseStream.write(chunkBytes);
+                                }
                                 LOG.debug("Received chunk of size: {} bytes", chunkBytes.length);
                             } catch (IOException e) {
                                 LOG.error("Error writing chunk to response stream", e);
@@ -173,6 +177,11 @@ public class StreamingLambdaHandler {
      * All chunks from the streaming response are merged into one Event,
      * matching the original input event count.
      * 
+     * <p>The reconstructed event retains the original event's EventHandle, enabling proper end-to-end
+     * acknowledgement tracking. Chunks are treated as transport-level fragments (due to Lambda's 
+     * response size limits) and are not tracked separately in the acknowledgement system - only the 
+     * final reconstructed event is acknowledged downstream.</p>
+     * 
      * @param parsedRecords All chunks parsed from the streaming response
      * @param inputBuffer Original input buffer
      * @return List containing the reconstructed document(s)
@@ -193,8 +202,21 @@ public class StreamingLambdaHandler {
             return parsedRecords;
         }
 
-        // For now, merge all chunks into the first original record
-        // This handles the common case: 1 input event → multiple chunks → 1 reconstructed event
+        // Defensive check: reconstruct-document requires exactly 1 event per buffer
+        // This should be enforced by validation in LambdaProcessor, but we check here to prevent silent failures
+        if (originalRecords.size() != 1) {
+            String errorMsg = String.format(
+                "reconstruct-document mode requires exactly 1 event per buffer, found %d events. " +
+                "This should have been prevented by configuration validation. " +
+                "Please ensure batch.threshold.event_count is set to 1.",
+                originalRecords.size()
+            );
+            LOG.error(errorMsg);
+            throw new IllegalStateException(errorMsg);
+        }
+
+        // Merge all chunks into the single original record
+        // This handles: 1 input event → multiple chunks → 1 reconstructed event
         Event reconstructedEvent = originalRecords.get(0).getData();
         
         // Merge all parsed chunks into the reconstructed event
