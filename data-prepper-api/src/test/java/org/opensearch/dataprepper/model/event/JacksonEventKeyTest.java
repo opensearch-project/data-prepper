@@ -57,7 +57,7 @@ class JacksonEventKeyTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "inv(alid",
+            "inv&alid",
             "getMetadata(\"test_key\")"
     })
     void constructor_throws_with_invalid_key(final String key) {
@@ -156,7 +156,7 @@ class JacksonEventKeyTest {
     @CsvSource(value = {
             "test_key, true",
             "/test_key, true",
-            "inv(alid, false",
+            "inv(alid, true",
             "getMetadata(\"test_key\"), false",
             "key.with.dot, true",
             "key-with-hyphen, true",
@@ -168,7 +168,9 @@ class JacksonEventKeyTest {
             " key_with_space_prefix, true",
             "key_with_space_suffix , true",
             "$key_with_dollar_prefix, true",
-            "key_with_dollar_suffix$, true"
+            "key_with_dollar_suffix$, true",
+            "key%with%percent, true",
+            "key:with:colon, true"
     })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEventKey.isValidEventKey(key), equalTo(isValid));
@@ -213,9 +215,14 @@ class JacksonEventKeyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
-    public void testReplaceInvalidKeyChars(final String key) {
-        assertThat(JacksonEventKey.replaceInvalidCharacters(key), equalTo("key_1"));
+    @CsvSource(value = {
+            "key&1, key_1",
+            "key^1, key_1",
+            "key%1, key%1",
+            "key_1, key_1"
+    })
+    public void testReplaceInvalidKeyChars(final String key, final String expected) {
+        assertThat(JacksonEventKey.replaceInvalidCharacters(key), equalTo(expected));
         assertThat(JacksonEventKey.replaceInvalidCharacters(null), equalTo(null));
     }
 
