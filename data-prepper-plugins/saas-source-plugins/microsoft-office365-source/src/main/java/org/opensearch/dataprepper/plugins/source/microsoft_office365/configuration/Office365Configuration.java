@@ -33,14 +33,15 @@ import org.springframework.context.annotation.Configuration;
 public class Office365Configuration {
 
     /**
-     * Creates VendorAPIMetricsRecorder with unified metrics for all operations.
+     * Creates VendorAPIMetricsRecorder with subscription metrics disabled.
+     * Subscription metrics are disabled by default to reduce metrics overhead.
      * 
      * @param pluginMetrics The system plugin metrics instance
-     * @return Configured VendorAPIMetricsRecorder
+     * @return Configured VendorAPIMetricsRecorder with subscription metrics disabled
      */
     @Bean
     public VendorAPIMetricsRecorder vendorAPIMetricsRecorder(PluginMetrics pluginMetrics) {
-        return new VendorAPIMetricsRecorder(pluginMetrics);
+        return new VendorAPIMetricsRecorder(pluginMetrics, true); // Subscription metrics disabled
     }
 
     /**
