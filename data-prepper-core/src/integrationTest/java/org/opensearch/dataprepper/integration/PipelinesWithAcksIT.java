@@ -33,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @FixMethodOrder()
 class PipelinesWithAcksIT {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);
+    private static final int NUM_RECORDS = 100;
+    private static final int WAIT_TIME_MS = 60000;
     private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";
     private static final String SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/simple-test.yaml";
     private static final String TWO_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-pipelines-test.yaml";
@@ -71,7 +73,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 1;
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
@@ -84,14 +86,13 @@ class PipelinesWithAcksIT {
     @Test
     void simple_pipeline_with_multiple_records() {
         setUp(SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), equalTo(NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -99,14 +100,13 @@ class PipelinesWithAcksIT {
     @Test
     void two_pipelines_with_multiple_records() {
         setUp(TWO_PIPELINES_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), equalTo(NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -114,14 +114,13 @@ class PipelinesWithAcksIT {
     @Test
     void three_pipelines_with_multiple_records() {
         setUp(THREE_PIPELINES_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), equalTo(NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -132,7 +131,7 @@ class PipelinesWithAcksIT {
         final int numRecords = 2;
         inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, numRecords);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
                     assertNotNull(inMemorySourceAccessor);
                     assertNotNull(inMemorySourceAccessor.getAckReceived());
@@ -145,14 +144,13 @@ class PipelinesWithAcksIT {
     @Test
     void three_pipelines_with_route_and_multiple_records() {
         setUp(THREE_PIPELINES_WITH_ROUTE_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), lessThanOrEqualTo(numRecords));
+            assertThat(outputRecords.size(), lessThanOrEqualTo(NUM_RECORDS));
         });
         assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
     }
@@ -160,15 +158,14 @@ class PipelinesWithAcksIT {
     @Test
     void three_pipelines_with_default_route_and_multiple_records() {
         setUp(THREE_PIPELINES_WITH_DEFAULT_ROUTE_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 10;
 
-        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submitWithStatus(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(2*numRecords));
+            assertThat(outputRecords.size(), equalTo(2*NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -176,14 +173,13 @@ class PipelinesWithAcksIT {
     @Test
     void two_parallel_pipelines_multiple_records() {
         setUp(TWO_PARALLEL_PIPELINES_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(2*numRecords));
+            assertThat(outputRecords.size(), equalTo(2*NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -191,14 +187,13 @@ class PipelinesWithAcksIT {
     @Test
     void three_pipelines_multi_sink_multiple_records() {
         setUp(THREE_PIPELINES_MULTI_SINK_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(3*numRecords));
+            assertThat(outputRecords.size(), equalTo(3*NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -206,14 +201,13 @@ class PipelinesWithAcksIT {
     @Test
     void one_pipeline_three_sinks_multiple_records() {
         setUp(ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(3*numRecords));
+            assertThat(outputRecords.size(), equalTo(3*NUM_RECORDS));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }
@@ -221,14 +215,13 @@ class PipelinesWithAcksIT {
     @Test
     void one_pipeline_ack_expiry_multiple_records() {
         setUp(ONE_PIPELINE_ACK_EXPIRY_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
           .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(numRecords));
+            assertThat(outputRecords.size(), equalTo(NUM_RECORDS));
         });
         assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(null));
     }
@@ -236,15 +229,14 @@ class PipelinesWithAcksIT {
     @Test
     void one_pipeline_three_sinks_negative_ack_multiple_records() {
         setUp(ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST);
-        final int numRecords = 100;
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, numRecords);
+        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, NUM_RECORDS);
         inMemorySinkAccessor.setResult(false);
 
-        await().atMost(40000, TimeUnit.MILLISECONDS)
+        await().atMost(WAIT_TIME_MS, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
-            assertThat(outputRecords.size(), equalTo(3*numRecords));
+            assertThat(outputRecords.size(), equalTo(3*NUM_RECORDS));
         });
         assertFalse(inMemorySourceAccessor.getAckReceived());
     }
