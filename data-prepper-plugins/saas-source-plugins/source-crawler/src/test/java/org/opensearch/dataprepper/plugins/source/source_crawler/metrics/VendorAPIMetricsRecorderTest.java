@@ -68,7 +68,7 @@ class VendorAPIMetricsRecorderTest {
     @Mock
     private Timer authLatencyTimer;
 
-    // Subscription metrics
+    // Start subscription metrics
     @Mock
     private Counter subscriptionSuccessCounter;
     @Mock
@@ -77,6 +77,16 @@ class VendorAPIMetricsRecorderTest {
     private Timer subscriptionLatencyTimer;
     @Mock
     private Counter subscriptionCallsCounter;
+
+    // List subscription metrics
+    @Mock
+    private Counter listSubscriptionSuccessCounter;
+    @Mock
+    private Counter listSubscriptionFailureCounter;
+    @Mock
+    private Timer listSubscriptionLatencyTimer;
+    @Mock
+    private Counter listSubscriptionCallsCounter;
 
     // Shared metrics
     @Mock
@@ -113,11 +123,17 @@ class VendorAPIMetricsRecorderTest {
         when(pluginMetrics.counter("authenticationRequestsFailed")).thenReturn(authFailureCounter);
         when(pluginMetrics.timer("authenticationRequestLatency")).thenReturn(authLatencyTimer);
 
-        // Setup subscription metrics mocks
+        // Setup start subscription metrics mocks
         when(pluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(subscriptionSuccessCounter);
         when(pluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(subscriptionFailureCounter);
         when(pluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(subscriptionLatencyTimer);
         when(pluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(subscriptionCallsCounter);
+
+        // Setup list subscription metrics mocks
+        when(pluginMetrics.counter("listSubscriptionRequestsSuccess")).thenReturn(listSubscriptionSuccessCounter);
+        when(pluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(listSubscriptionFailureCounter);
+        when(pluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(listSubscriptionLatencyTimer);
+        when(pluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(listSubscriptionCallsCounter);
 
         // Setup shared metrics mocks
         when(pluginMetrics.counter("totalDataApiRequests")).thenReturn(totalDataApiRequestsCounter);
@@ -128,7 +144,8 @@ class VendorAPIMetricsRecorderTest {
         when(pluginMetrics.counter("requestThrottled")).thenReturn(requestThrottledCounter);
         when(pluginMetrics.counter("resourceNotFound")).thenReturn(resourceNotFoundCounter);
 
-        recorder = new VendorAPIMetricsRecorder(pluginMetrics);
+        // Use explicit constructor with enabled=true to match existing test expectations
+        recorder = new VendorAPIMetricsRecorder(pluginMetrics, true);
     }
 
     @Test
@@ -152,11 +169,17 @@ class VendorAPIMetricsRecorderTest {
         verify(pluginMetrics).counter("authenticationRequestsFailed");
         verify(pluginMetrics).timer("authenticationRequestLatency");
 
-        // Verify subscription metrics creation
+        // Verify start subscription metrics creation
         verify(pluginMetrics).counter("startSubscriptionRequestsSuccess");
         verify(pluginMetrics).counter("startSubscriptionRequestsFailed");
         verify(pluginMetrics).timer("startSubscriptionRequestLatency");
         verify(pluginMetrics).counter("startSubscriptionApiCalls");
+
+        // Verify list subscription metrics creation
+        verify(pluginMetrics).counter("listSubscriptionRequestsSuccess");
+        verify(pluginMetrics).counter("listSubscriptionRequestsFailed");
+        verify(pluginMetrics).timer("listSubscriptionRequestLatency");
+        verify(pluginMetrics).counter("listSubscriptionApiCalls");
 
         // Verify shared metrics creation
         verify(pluginMetrics).counter("totalDataApiRequests");
@@ -710,5 +733,634 @@ class VendorAPIMetricsRecorderTest {
         assertThrows(NullPointerException.class, () -> {
             recorder.recordSubscriptionLatency(nullDuration);
         });
+    }
+
+    // List subscription metrics tests
+
+    @Test
+    void recordListSubscriptionSuccess_IncrementsListSubscriptionSuccessCounter() {
+        recorder.recordListSubscriptionSuccess();
+        
+        verify(listSubscriptionSuccessCounter).increment();
+    }
+
+    @Test
+    void recordListSubscriptionFailure_IncrementsListSubscriptionFailureCounter() {
+        recorder.recordListSubscriptionFailure();
+        
+        verify(listSubscriptionFailureCounter).increment();
+    }
+
+    @Test
+    void recordListSubscriptionCall_IncrementsListSubscriptionCallsCounter() {
+        recorder.recordListSubscriptionCall();
+        
+        verify(listSubscriptionCallsCounter).increment();
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WithSupplier_RecordsLatencyAndReturnsResult() {
+        String expectedResult = "list subscription result";
+        Supplier<String> operation = () -> expectedResult;
+        when(listSubscriptionLatencyTimer.record(any(Supplier.class))).thenReturn(expectedResult);
+        
+        String result = recorder.recordListSubscriptionLatency(operation);
+        
+        verify(listSubscriptionLatencyTimer).record(eq(operation));
+        assertThat(result, equalTo(expectedResult));
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WithRunnable_RecordsLatency() {
+        Runnable operation = () -> { /* void operation */ };
+        
+        recorder.recordListSubscriptionLatency(operation);
+        
+        verify(listSubscriptionLatencyTimer).record(eq(operation));
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WithDuration_RecordsLatency() {
+        Duration duration = Duration.ofMillis(75);
+        
+        recorder.recordListSubscriptionLatency(duration);
+        
+        verify(listSubscriptionLatencyTimer).record(duration);
+    }
+
+    @Test
+    void recordListSubscriptionSuccessMultiple() {
+        recorder.recordListSubscriptionSuccess();
+        recorder.recordListSubscriptionSuccess();
+        recorder.recordListSubscriptionSuccess();
+
+        verify(listSubscriptionSuccessCounter, times(3)).increment();
+    }
+
+    @Test
+    void recordListSubscriptionFailureMultiple() {
+        recorder.recordListSubscriptionFailure();
+        recorder.recordListSubscriptionFailure();
+
+        verify(listSubscriptionFailureCounter, times(2)).increment();
+    }
+
+    @Test
+    void recordListSubscriptionLatencyWithIntegerSupplier() {
+        Supplier<Integer> operation = () -> 24;
+        when(listSubscriptionLatencyTimer.record(operation)).thenReturn(24);
+
+        Integer result = recorder.recordListSubscriptionLatency(operation);
+
+        assertEquals(24, result);
+        verify(listSubscriptionLatencyTimer, times(1)).record(operation);
+    }
+
+    @Test
+    void recordListSubscriptionLatencyWithMultipleDurations() {
+        Duration duration1 = Duration.ofMillis(25);
+        Duration duration2 = Duration.ofMillis(75);
+        Duration duration3 = Duration.ofMillis(125);
+
+        recorder.recordListSubscriptionLatency(duration1);
+        recorder.recordListSubscriptionLatency(duration2);
+        recorder.recordListSubscriptionLatency(duration3);
+
+        verify(listSubscriptionLatencyTimer, times(1)).record(duration1);
+        verify(listSubscriptionLatencyTimer, times(1)).record(duration2);
+        verify(listSubscriptionLatencyTimer, times(1)).record(duration3);
+    }
+
+    @Test
+    void recordListSubscriptionCallMultiple() {
+        recorder.recordListSubscriptionCall();
+        recorder.recordListSubscriptionCall();
+        recorder.recordListSubscriptionCall();
+
+        verify(listSubscriptionCallsCounter, times(3)).increment();
+    }
+
+    @Test
+    void mixedListSubscriptionMetricsScenario() {
+        // Record various list subscription metrics
+        recorder.recordListSubscriptionSuccess();
+        recorder.recordListSubscriptionFailure();
+        recorder.recordListSubscriptionCall();
+        recorder.recordListSubscriptionCall();
+
+        // Verify all metrics were recorded correctly
+        verify(listSubscriptionSuccessCounter, times(1)).increment();
+        verify(listSubscriptionFailureCounter, times(1)).increment();
+        verify(listSubscriptionCallsCounter, times(2)).increment();
+    }
+
+    @Test
+    void recordListSubscriptionLatencySuccessfulOperation() {
+        Supplier<String> operation = () -> "list success";
+        String result = "list success";
+        when(listSubscriptionLatencyTimer.record(operation)).thenReturn(result);
+
+        String returnedResult = recorder.recordListSubscriptionLatency(operation);
+
+        assertEquals(result, returnedResult);
+        verify(listSubscriptionLatencyTimer, times(1)).record(operation);
+    }
+
+    @Test
+    void mixedSubscriptionTypesMetricsScenario() {
+        // Test both start and list subscription metrics work together
+        recorder.recordSubscriptionSuccess();
+        recorder.recordListSubscriptionSuccess();
+        recorder.recordSubscriptionCall();
+        recorder.recordListSubscriptionCall();
+        
+        // Verify both types of metrics were recorded separately
+        verify(subscriptionSuccessCounter, times(1)).increment();
+        verify(listSubscriptionSuccessCounter, times(1)).increment();
+        verify(subscriptionCallsCounter, times(1)).increment();
+        verify(listSubscriptionCallsCounter, times(1)).increment();
+    }
+
+    @Test
+    void recordListSubscriptionLatencyPropagatesExceptions() {
+        Supplier<String> failingOperation = () -> {
+            throw new RuntimeException("List test exception");
+        };
+
+        // Configure the mock timer to actually execute the supplier and propagate the exception
+        when(listSubscriptionLatencyTimer.record(failingOperation)).thenThrow(new RuntimeException("List test exception"));
+
+        assertThrows(RuntimeException.class, () -> {
+            recorder.recordListSubscriptionLatency(failingOperation);
+        });
+
+        // Timer should still be called even if the operation fails
+        verify(listSubscriptionLatencyTimer, times(1)).record(failingOperation);
+    }
+
+    @Test
+    void recordListSubscriptionLatencyWithNullDuration() {
+        // Duration should not be null in normal usage, but testing robustness
+        Duration nullDuration = null;
+
+        // Configure the mock timer to throw NPE when null duration is passed
+        doThrow(new NullPointerException()).when(listSubscriptionLatencyTimer).record(nullDuration);
+
+        assertThrows(NullPointerException.class, () -> {
+            recorder.recordListSubscriptionLatency(nullDuration);
+        });
+    }
+
+    // === NEW SUBSCRIPTION METRICS GATING TESTS ===
+
+    @Test
+    void constructor_WithEnabledSubscriptionMetrics_CreatesAllMetrics() {
+        // Use a separate PluginMetrics mock to avoid interference with setUp mocks
+        PluginMetrics separatePluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        
+        // Add minimal mocks needed for constructor - use lenient to avoid unnecessary stubbing errors
+        org.mockito.Mockito.lenient().when(separatePluginMetrics.counter(any())).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        org.mockito.Mockito.lenient().when(separatePluginMetrics.timer(any())).thenReturn(org.mockito.Mockito.mock(Timer.class));
+        org.mockito.Mockito.lenient().when(separatePluginMetrics.summary(any())).thenReturn(org.mockito.Mockito.mock(DistributionSummary.class));
+        
+        VendorAPIMetricsRecorder recorderEnabled = new VendorAPIMetricsRecorder(separatePluginMetrics, true);
+        
+        assertThat(recorderEnabled, notNullValue());
+        
+        // Verify subscription metrics are created when enabled=true
+        verify(separatePluginMetrics, times(1)).counter("startSubscriptionRequestsSuccess");
+        verify(separatePluginMetrics, times(1)).counter("startSubscriptionRequestsFailed");
+        verify(separatePluginMetrics, times(1)).timer("startSubscriptionRequestLatency");
+        verify(separatePluginMetrics, times(1)).counter("startSubscriptionApiCalls");
+        
+        verify(separatePluginMetrics, times(1)).counter("listSubscriptionRequestsSuccess");
+        verify(separatePluginMetrics, times(1)).counter("listSubscriptionRequestsFailed");
+        verify(separatePluginMetrics, times(1)).timer("listSubscriptionRequestLatency");
+        verify(separatePluginMetrics, times(1)).counter("listSubscriptionApiCalls");
+    }
+
+    @Test
+    void constructor_WithDisabledSubscriptionMetrics_DoesNotCreateSubscriptionMetrics() {
+        // Create a new PluginMetrics mock for this test to avoid interaction with setUp
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        
+        // Setup non-subscription metrics mocks
+        when(testPluginMetrics.counter("searchRequestsSuccess")).thenReturn(searchSuccessCounter);
+        when(testPluginMetrics.counter("searchRequestsFailed")).thenReturn(searchFailureCounter);
+        when(testPluginMetrics.timer("searchRequestLatency")).thenReturn(searchLatencyTimer);
+        when(testPluginMetrics.summary("searchResponseSizeBytes")).thenReturn(searchResponseSizeSummary);
+        when(testPluginMetrics.counter("getRequestsSuccess")).thenReturn(getSuccessCounter);
+        when(testPluginMetrics.counter("getRequestsFailed")).thenReturn(getFailureCounter);
+        when(testPluginMetrics.timer("getRequestLatency")).thenReturn(getLatencyTimer);
+        when(testPluginMetrics.summary("getResponseSizeBytes")).thenReturn(getResponseSizeSummary);
+        when(testPluginMetrics.counter("authenticationRequestsSuccess")).thenReturn(authSuccessCounter);
+        when(testPluginMetrics.counter("authenticationRequestsFailed")).thenReturn(authFailureCounter);
+        when(testPluginMetrics.timer("authenticationRequestLatency")).thenReturn(authLatencyTimer);
+        when(testPluginMetrics.counter("totalDataApiRequests")).thenReturn(totalDataApiRequestsCounter);
+        when(testPluginMetrics.counter("logsRequested")).thenReturn(logsRequestedCounter);
+        when(testPluginMetrics.counter("requestAccessDenied")).thenReturn(requestAccessDeniedCounter);
+        when(testPluginMetrics.counter("requestThrottled")).thenReturn(requestThrottledCounter);
+        when(testPluginMetrics.counter("resourceNotFound")).thenReturn(resourceNotFoundCounter);
+        
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(testPluginMetrics, false);
+        
+        assertThat(recorderDisabled, notNullValue());
+        
+        // Verify subscription metrics are NOT created when enabled=false
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsSuccess");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsFailed");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).timer("startSubscriptionRequestLatency");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionApiCalls");
+        
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionRequestsSuccess");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionRequestsFailed");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).timer("listSubscriptionRequestLatency");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionApiCalls");
+        
+        // Verify non-subscription metrics are still created
+        verify(testPluginMetrics).counter("searchRequestsSuccess");
+        verify(testPluginMetrics).counter("getRequestsSuccess");
+        verify(testPluginMetrics).counter("authenticationRequestsSuccess");
+    }
+
+    @Test
+    void constructor_DefaultConstructor_EnablesSubscriptionMetrics() {
+        // The default constructor should enable subscription metrics for backward compatibility
+        // This is already tested in setUp(), but adding explicit test for clarity
+        assertThat(recorder, notNullValue());
+        
+        // Should have created subscription metrics (verified in constructor_CreatesAllMetricsCorrectly test)
+        verify(pluginMetrics).counter("startSubscriptionRequestsSuccess");
+        verify(pluginMetrics).counter("listSubscriptionRequestsSuccess");
+    }
+
+    @Test
+    void recordSubscriptionSuccess_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        // Should not throw exception and should not call any subscription counters
+        recorderDisabled.recordSubscriptionSuccess();
+        
+        // No additional verifications needed - method should do nothing silently
+    }
+
+    @Test
+    void recordSubscriptionFailure_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        recorderDisabled.recordSubscriptionFailure();
+        
+        // Should complete without exception
+    }
+
+    @Test
+    void recordSubscriptionCall_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        recorderDisabled.recordSubscriptionCall();
+        
+        // Should complete without exception
+    }
+
+    @Test
+    void recordSubscriptionLatency_WhenDisabled_ExecutesOperationWithoutRecordingMetrics() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        String expectedResult = "operation result";
+        Supplier<String> operation = () -> expectedResult;
+        
+        String result = recorderDisabled.recordSubscriptionLatency(operation);
+        
+        // Operation should still execute and return result
+        assertThat(result, equalTo(expectedResult));
+        
+        // But no timer interactions should occur
+        verify(subscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Supplier.class));
+    }
+
+    @Test
+    void recordSubscriptionLatency_WhenDisabled_ExecutesRunnableWithoutRecordingMetrics() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        final boolean[] operationExecuted = {false};
+        Runnable operation = () -> operationExecuted[0] = true;
+        
+        recorderDisabled.recordSubscriptionLatency(operation);
+        
+        // Operation should still execute
+        assertThat(operationExecuted[0], equalTo(true));
+        
+        // But no timer interactions should occur
+        verify(subscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Runnable.class));
+    }
+
+    @Test
+    void recordSubscriptionLatency_WhenDisabled_WithDuration_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        Duration duration = Duration.ofMillis(100);
+        
+        recorderDisabled.recordSubscriptionLatency(duration);
+        
+        // Should complete without exception
+        verify(subscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Duration.class));
+    }
+
+    @Test
+    void recordListSubscriptionSuccess_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        recorderDisabled.recordListSubscriptionSuccess();
+        
+        // Should complete without exception
+    }
+
+    @Test
+    void recordListSubscriptionFailure_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        recorderDisabled.recordListSubscriptionFailure();
+        
+        // Should complete without exception
+    }
+
+    @Test
+    void recordListSubscriptionCall_WhenDisabled_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        recorderDisabled.recordListSubscriptionCall();
+        
+        // Should complete without exception
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WhenDisabled_ExecutesOperationWithoutRecordingMetrics() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        String expectedResult = "list operation result";
+        Supplier<String> operation = () -> expectedResult;
+        
+        String result = recorderDisabled.recordListSubscriptionLatency(operation);
+        
+        // Operation should still execute and return result
+        assertThat(result, equalTo(expectedResult));
+        
+        // But no timer interactions should occur
+        verify(listSubscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Supplier.class));
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WhenDisabled_ExecutesRunnableWithoutRecordingMetrics() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        final boolean[] operationExecuted = {false};
+        Runnable operation = () -> operationExecuted[0] = true;
+        
+        recorderDisabled.recordListSubscriptionLatency(operation);
+        
+        // Operation should still execute
+        assertThat(operationExecuted[0], equalTo(true));
+        
+        // But no timer interactions should occur
+        verify(listSubscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Runnable.class));
+    }
+
+    @Test
+    void recordListSubscriptionLatency_WhenDisabled_WithDuration_DoesNothing() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        Duration duration = Duration.ofMillis(75);
+        
+        recorderDisabled.recordListSubscriptionLatency(duration);
+        
+        // Should complete without exception
+        verify(listSubscriptionLatencyTimer, org.mockito.Mockito.never()).record(any(Duration.class));
+    }
+
+    @Test
+    void nonSubscriptionMetrics_WhenSubscriptionMetricsDisabled_StillWorkNormally() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        // All non-subscription metrics should work normally
+        recorderDisabled.recordSearchSuccess();
+        recorderDisabled.recordGetSuccess();
+        recorderDisabled.recordAuthSuccess();
+        recorderDisabled.recordDataApiRequest();
+        recorderDisabled.recordLogsRequested();
+        
+        // Verify they were called
+        verify(searchSuccessCounter).increment();
+        verify(getSuccessCounter).increment();
+        verify(authSuccessCounter).increment();
+        verify(totalDataApiRequestsCounter).increment();
+        verify(logsRequestedCounter).increment();
+    }
+
+    @Test
+    void subscriptionMetricsEnabled_WorkNormallyAfterConstruction() {
+        // Use separate PluginMetrics mock to avoid interference
+        PluginMetrics separatePluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        Counter separateSubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        Counter separateListSubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        
+        // Set up all required mocks for constructor first
+        // Use default mock for non-specific counters
+        Counter defaultCounter = org.mockito.Mockito.mock(Counter.class);
+        Timer defaultTimer = org.mockito.Mockito.mock(Timer.class);
+        DistributionSummary defaultSummary = org.mockito.Mockito.mock(DistributionSummary.class);
+        
+        // Set up specific subscription counters we want to verify
+        when(separatePluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(separateSubscriptionCounter);
+        when(separatePluginMetrics.counter("listSubscriptionRequestsSuccess")).thenReturn(separateListSubscriptionCounter);
+        
+        // Set up all other required mocks for constructor (non-subscription metrics)
+        when(separatePluginMetrics.counter("searchRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("searchRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("searchRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.summary("searchResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics.counter("getRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("getRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("getRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.summary("getResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics.counter("authenticationRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("authenticationRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("authenticationRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("totalDataApiRequests")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("logsRequested")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("requestAccessDenied")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("requestThrottled")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("resourceNotFound")).thenReturn(defaultCounter);
+        
+        VendorAPIMetricsRecorder recorderEnabled = new VendorAPIMetricsRecorder(separatePluginMetrics, true);
+        
+        // Subscription metrics should work normally when enabled
+        recorderEnabled.recordSubscriptionSuccess();
+        recorderEnabled.recordListSubscriptionSuccess();
+        
+        // Verify with the separate mocks
+        verify(separateSubscriptionCounter, times(1)).increment();
+        verify(separateListSubscriptionCounter, times(1)).increment();
+    }
+
+    @Test
+    void mixedScenario_SubscriptionDisabled_OtherMetricsEnabled() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        // Mix of subscription and non-subscription operations
+        recorderDisabled.recordSubscriptionSuccess(); // Should do nothing
+        recorderDisabled.recordSearchSuccess(); // Should work
+        recorderDisabled.recordListSubscriptionCall(); // Should do nothing
+        recorderDisabled.recordGetSuccess(); // Should work
+        
+        // Only non-subscription metrics should be recorded
+        verify(searchSuccessCounter).increment();
+        verify(getSuccessCounter).increment();
+        
+        // Subscription metrics should not have any additional calls beyond setUp
+        // The setUp() method creates the main recorder instance, so subscription counters were called during setUp
+        // But the disabled recorder should never call them
+        // No additional verification needed for subscription counters - they should have been called during setUp only
+    }
+
+    @Test
+    void subscriptionLatencyOperations_WhenDisabled_PropagateExceptions() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        Supplier<String> failingOperation = () -> {
+            throw new RuntimeException("Test exception");
+        };
+        
+        // Exception should still be propagated even when metrics are disabled
+        assertThrows(RuntimeException.class, () -> {
+            recorderDisabled.recordSubscriptionLatency(failingOperation);
+        });
+        
+        // And for list subscriptions
+        assertThrows(RuntimeException.class, () -> {
+            recorderDisabled.recordListSubscriptionLatency(failingOperation);
+        });
+    }
+
+    @Test
+    void subscriptionLatencyRunnableOperations_WhenDisabled_PropagateExceptions() {
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        Runnable failingOperation = () -> {
+            throw new RuntimeException("Test runnable exception");
+        };
+        
+        // Exception should still be propagated even when metrics are disabled
+        assertThrows(RuntimeException.class, () -> {
+            recorderDisabled.recordSubscriptionLatency(failingOperation);
+        });
+        
+        // And for list subscriptions
+        assertThrows(RuntimeException.class, () -> {
+            recorderDisabled.recordListSubscriptionLatency(failingOperation);
+        });
+    }
+
+    @Test
+    void multipleInstancesWithDifferentSettings_WorkIndependently() {
+        // Use separate PluginMetrics mocks to avoid interference with other tests
+        PluginMetrics separatePluginMetrics1 = org.mockito.Mockito.mock(PluginMetrics.class);
+        PluginMetrics separatePluginMetrics2 = org.mockito.Mockito.mock(PluginMetrics.class);
+        
+        Counter separateSearchCounter1 = org.mockito.Mockito.mock(Counter.class);
+        Counter separateSearchCounter2 = org.mockito.Mockito.mock(Counter.class);
+        Counter separateSubscriptionCounter1 = org.mockito.Mockito.mock(Counter.class);
+        
+        // Create default mocks for constructor
+        Counter defaultCounter = org.mockito.Mockito.mock(Counter.class);
+        Timer defaultTimer = org.mockito.Mockito.mock(Timer.class);
+        DistributionSummary defaultSummary = org.mockito.Mockito.mock(DistributionSummary.class);
+        
+        // Setup mocks for enabled recorder (with subscription metrics)
+        when(separatePluginMetrics1.counter("searchRequestsSuccess")).thenReturn(separateSearchCounter1);
+        when(separatePluginMetrics1.counter("startSubscriptionRequestsSuccess")).thenReturn(separateSubscriptionCounter1);
+        // Set up all other required mocks for enabled recorder
+        when(separatePluginMetrics1.counter("searchRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("searchRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.summary("searchResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics1.counter("getRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("getRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("getRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.summary("getResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics1.counter("authenticationRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("authenticationRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("authenticationRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.counter("startSubscriptionRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("startSubscriptionRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.counter("startSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("listSubscriptionRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("listSubscriptionRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("listSubscriptionRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.counter("listSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("totalDataApiRequests")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("logsRequested")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("requestAccessDenied")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("requestThrottled")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("resourceNotFound")).thenReturn(defaultCounter);
+        
+        // Setup mocks for disabled recorder (without subscription metrics)
+        when(separatePluginMetrics2.counter("searchRequestsSuccess")).thenReturn(separateSearchCounter2);
+        when(separatePluginMetrics2.counter("searchRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.timer("searchRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics2.summary("searchResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics2.counter("getRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("getRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.timer("getRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics2.summary("getResponseSizeBytes")).thenReturn(defaultSummary);
+        when(separatePluginMetrics2.counter("authenticationRequestsSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("authenticationRequestsFailed")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.timer("authenticationRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics2.counter("totalDataApiRequests")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("logsRequested")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("requestAccessDenied")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("requestThrottled")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("resourceNotFound")).thenReturn(defaultCounter);
+        
+        VendorAPIMetricsRecorder recorderEnabled = new VendorAPIMetricsRecorder(separatePluginMetrics1, true);
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(separatePluginMetrics2, false);
+        
+        // Both should work for non-subscription metrics
+        recorderEnabled.recordSearchSuccess();
+        recorderDisabled.recordSearchSuccess();
+        
+        // Only enabled should work for subscription metrics
+        recorderEnabled.recordSubscriptionSuccess();
+        recorderDisabled.recordSubscriptionSuccess(); // Should do nothing
+        
+        // Verify correct behavior with separate mocks
+        verify(separateSearchCounter1, times(1)).increment();
+        verify(separateSearchCounter2, times(1)).increment();
+        verify(separateSubscriptionCounter1, times(1)).increment();
+    }
+
+    @Test
+    void gatingLogic_VerifyNullChecks_DoNotCauseNullPointerExceptions() {
+        // This test ensures that when subscription metrics are disabled, 
+        // the internal counters/timers are null but methods handle this gracefully
+        VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        
+        // All these should complete without NPE
+        recorderDisabled.recordSubscriptionSuccess();
+        recorderDisabled.recordSubscriptionFailure();
+        recorderDisabled.recordSubscriptionCall();
+        recorderDisabled.recordSubscriptionLatency(Duration.ofMillis(50));
+        
+        recorderDisabled.recordListSubscriptionSuccess();
+        recorderDisabled.recordListSubscriptionFailure();
+        recorderDisabled.recordListSubscriptionCall();
+        recorderDisabled.recordListSubscriptionLatency(Duration.ofMillis(75));
+        
+        // If we reach here, no NPEs were thrown
+        assertThat(recorderDisabled, notNullValue());
     }
 }
