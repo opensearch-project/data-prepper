@@ -10,10 +10,12 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365.configuration;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365RestClient;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationProvider;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,5 +73,21 @@ public class Office365Configuration {
             Office365AuthenticationInterface authConfig,
             VendorAPIMetricsRecorder vendorAPIMetricsRecorder) {
         return new Office365RestClient(authConfig, vendorAPIMetricsRecorder);
+    }
+
+    /**
+     * Creates Office365CrawlerClient with unified metrics recorder.
+     * 
+     * @param service The Office 365 service 
+     * @param sourceConfig The Office 365 source configuration
+     * @param metricsRecorder The unified metrics recorder
+     * @return Configured Office365CrawlerClient
+     */
+    @Bean
+    public Office365CrawlerClient office365CrawlerClient(
+            Office365Service service,
+            Office365SourceConfig sourceConfig,
+            VendorAPIMetricsRecorder metricsRecorder) {
+        return new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
     }
 }
