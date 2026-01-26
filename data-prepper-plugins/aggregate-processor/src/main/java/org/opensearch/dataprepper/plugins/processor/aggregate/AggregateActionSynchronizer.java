@@ -92,6 +92,7 @@ class AggregateActionSynchronizer {
         handleEventForGroupLock.lock();
         try {
             LOG.debug("Start critical section in handleEventForGroup");
+            aggregateGroup.attachToEventAcknowledgementSet(event);
             handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {

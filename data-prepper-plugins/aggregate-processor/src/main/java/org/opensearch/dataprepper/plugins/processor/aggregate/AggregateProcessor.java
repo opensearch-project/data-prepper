@@ -97,10 +97,8 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         return pluginFactory.loadPlugin(AggregateAction.class, actionPluginSetting);
     }
 
-    AggregateGroup getAggregateGroupForEvent(final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap, final Event event) {
-        AggregateGroup aggregateGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
-        aggregateGroup.attachToEventAcknowledgementSet(event);
-        return aggregateGroup;
+    private AggregateGroup getAggregateGroupForEvent(final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap) {
+        return aggregateGroupManager.getAggregateGroup(identificationKeysMap);
     }
 
     @Override
@@ -134,7 +132,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
             final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
-            final AggregateGroup aggregateGroupForEvent = getAggregateGroupForEvent(identificationKeysMap, event);
+            final AggregateGroup aggregateGroupForEvent = getAggregateGroupForEvent(identificationKeysMap);
 
             final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
 
