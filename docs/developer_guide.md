@@ -256,5 +256,6 @@ which includes a summary of the results.
 We have the following pages for specific development guidance on the topics:
 
 * [Plugin Development](plugin_development.md)
+* [Debugging Data Prepper](debugging.md)
 * [Error Handling](error_handling.md)
 * [Logs](logs.md)
