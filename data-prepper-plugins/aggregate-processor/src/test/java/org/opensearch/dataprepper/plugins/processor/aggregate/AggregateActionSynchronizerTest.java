@@ -158,10 +158,11 @@ public class AggregateActionSynchronizerTest {
 
         final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationKeysMap, aggregateGroup);
 
-        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, aggregateGroupManager);
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateGroup, aggregateAction, aggregateGroupManager);
         inOrder.verify(concludeGroupLock).lock();
         inOrder.verify(concludeGroupLock).unlock();
         inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateGroup).attachToEventAcknowledgementSet(event);
         inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
         inOrder.verify(aggregateGroupManager).putGroupWithHash(identificationKeysMap, aggregateGroup);
         inOrder.verify(handleEventForGroupLock).unlock();
