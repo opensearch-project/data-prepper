@@ -88,6 +88,20 @@ class VendorAPIMetricsRecorderTest {
     @Mock
     private Counter listSubscriptionCallsCounter;
 
+    // Buffer metrics
+    @Mock
+    private Timer bufferWriteLatencyTimer;
+    @Mock
+    private Counter bufferWriteAttemptsCounter;
+    @Mock
+    private Counter bufferWriteSuccessCounter;
+    @Mock
+    private Counter bufferWriteRetrySuccessCounter;
+    @Mock
+    private Counter bufferWriteRetryAttemptsCounter;
+    @Mock
+    private Counter bufferWriteFailuresCounter;
+
     // Shared metrics
     @Mock
     private Counter totalDataApiRequestsCounter;
@@ -101,6 +115,10 @@ class VendorAPIMetricsRecorderTest {
     private Counter requestThrottledCounter;
     @Mock
     private Counter resourceNotFoundCounter;
+    @Mock
+    private Counter nonRetryableErrorsCounter;
+    @Mock
+    private Counter retryableErrorsCounter;
 
     private VendorAPIMetricsRecorder recorder;
 
@@ -135,6 +153,14 @@ class VendorAPIMetricsRecorderTest {
         when(pluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(listSubscriptionLatencyTimer);
         when(pluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(listSubscriptionCallsCounter);
 
+        // Setup buffer metrics mocks
+        when(pluginMetrics.timer("bufferWriteLatency")).thenReturn(bufferWriteLatencyTimer);
+        when(pluginMetrics.counter("bufferWriteAttempts")).thenReturn(bufferWriteAttemptsCounter);
+        when(pluginMetrics.counter("bufferWriteSuccess")).thenReturn(bufferWriteSuccessCounter);
+        when(pluginMetrics.counter("bufferWriteRetrySuccess")).thenReturn(bufferWriteRetrySuccessCounter);
+        when(pluginMetrics.counter("bufferWriteRetryAttempts")).thenReturn(bufferWriteRetryAttemptsCounter);
+        when(pluginMetrics.counter("bufferWriteFailures")).thenReturn(bufferWriteFailuresCounter);
+
         // Setup shared metrics mocks
         when(pluginMetrics.counter("totalDataApiRequests")).thenReturn(totalDataApiRequestsCounter);
         when(pluginMetrics.counter("logsRequested")).thenReturn(logsRequestedCounter);
@@ -143,6 +169,8 @@ class VendorAPIMetricsRecorderTest {
         when(pluginMetrics.counter("requestAccessDenied")).thenReturn(requestAccessDeniedCounter);
         when(pluginMetrics.counter("requestThrottled")).thenReturn(requestThrottledCounter);
         when(pluginMetrics.counter("resourceNotFound")).thenReturn(resourceNotFoundCounter);
+        when(pluginMetrics.counter("nonRetryableErrors")).thenReturn(nonRetryableErrorsCounter);
+        when(pluginMetrics.counter("retryableErrors")).thenReturn(retryableErrorsCounter);
 
         // Use explicit constructor with enabled=true to match existing test expectations
         recorder = new VendorAPIMetricsRecorder(pluginMetrics, true);
@@ -181,6 +209,14 @@ class VendorAPIMetricsRecorderTest {
         verify(pluginMetrics).timer("listSubscriptionRequestLatency");
         verify(pluginMetrics).counter("listSubscriptionApiCalls");
 
+        // Verify buffer metrics creation
+        verify(pluginMetrics).timer("bufferWriteLatency");
+        verify(pluginMetrics).counter("bufferWriteAttempts");
+        verify(pluginMetrics).counter("bufferWriteSuccess");
+        verify(pluginMetrics).counter("bufferWriteRetrySuccess");
+        verify(pluginMetrics).counter("bufferWriteRetryAttempts");
+        verify(pluginMetrics).counter("bufferWriteFailures");
+
         // Verify shared metrics creation
         verify(pluginMetrics).counter("totalDataApiRequests");
         verify(pluginMetrics).counter("logsRequested");
@@ -189,6 +225,8 @@ class VendorAPIMetricsRecorderTest {
         verify(pluginMetrics).counter("requestAccessDenied");
         verify(pluginMetrics).counter("requestThrottled");
         verify(pluginMetrics).counter("resourceNotFound");
+        verify(pluginMetrics).counter("nonRetryableErrors");
+        verify(pluginMetrics).counter("retryableErrors");
     }
 
     @Test
@@ -447,6 +485,54 @@ class VendorAPIMetricsRecorderTest {
         recorder.recordLogsRequested();
         
         verify(logsRequestedCounter).increment();
+    }
+
+    @Test
+    void recordLogsRequested_WithCount_IncrementsLogsRequestedCounterByCount() {
+        int logCount = 5;
+        
+        recorder.recordLogsRequested(logCount);
+        
+        verify(logsRequestedCounter).increment(logCount);
+    }
+
+    @Test
+    void recordLogsRequested_WithZeroCount_IncrementsLogsRequestedCounterByZero() {
+        int logCount = 0;
+        
+        recorder.recordLogsRequested(logCount);
+        
+        verify(logsRequestedCounter).increment(logCount);
+    }
+
+    @Test
+    void recordLogsRequested_WithLargeCount_IncrementsLogsRequestedCounterByLargeCount() {
+        int logCount = 1000;
+        
+        recorder.recordLogsRequested(logCount);
+        
+        verify(logsRequestedCounter).increment(logCount);
+    }
+
+    @Test
+    void recordLogsRequested_WithMultipleCounts_IncrementsLogsRequestedCounterCorrectly() {
+        recorder.recordLogsRequested(3);
+        recorder.recordLogsRequested(7);
+        recorder.recordLogsRequested(2);
+        
+        verify(logsRequestedCounter).increment(3);
+        verify(logsRequestedCounter).increment(7);
+        verify(logsRequestedCounter).increment(2);
+    }
+
+    @Test
+    void recordLogsRequested_MixedWithParameterlessMethod_BothIncrementsWork() {
+        recorder.recordLogsRequested(); // No parameter - increments by 1
+        recorder.recordLogsRequested(10); // With parameter - increments by 10
+        recorder.recordLogsRequested(); // No parameter - increments by 1 again
+        
+        verify(logsRequestedCounter, times(2)).increment(); // Called twice without parameters
+        verify(logsRequestedCounter, times(1)).increment(10); // Called once with parameter
     }
 
 
@@ -767,6 +853,54 @@ class VendorAPIMetricsRecorderTest {
         String result = recorder.recordListSubscriptionLatency(operation);
         
         verify(listSubscriptionLatencyTimer).record(eq(operation));
+    }
+
+    // Buffer metrics tests
+
+    @Test
+    void recordBufferWriteAttempt_IncrementsBufferWriteAttemptsCounter() {
+        recorder.recordBufferWriteAttempt();
+        
+        verify(bufferWriteAttemptsCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteSuccess_IncrementsBufferWriteSuccessCounter() {
+        recorder.recordBufferWriteSuccess();
+        
+        verify(bufferWriteSuccessCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteRetrySuccess_IncrementsBufferWriteRetrySuccessCounter() {
+        recorder.recordBufferWriteRetrySuccess();
+        
+        verify(bufferWriteRetrySuccessCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteRetryAttempt_IncrementsBufferWriteRetryAttemptsCounter() {
+        recorder.recordBufferWriteRetryAttempt();
+        
+        verify(bufferWriteRetryAttemptsCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteFailure_IncrementsBufferWriteFailuresCounter() {
+        recorder.recordBufferWriteFailure();
+        
+        verify(bufferWriteFailuresCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteLatency_WithSupplier_RecordsLatencyAndReturnsResult() {
+        String expectedResult = "buffer write result";
+        Supplier<String> operation = () -> expectedResult;
+        when(bufferWriteLatencyTimer.record(any(Supplier.class))).thenReturn(expectedResult);
+        
+        String result = recorder.recordBufferWriteLatency(operation);
+        
+        verify(bufferWriteLatencyTimer).record(eq(operation));
         assertThat(result, equalTo(expectedResult));
     }
 
@@ -898,8 +1032,167 @@ class VendorAPIMetricsRecorderTest {
         verify(listSubscriptionLatencyTimer, times(1)).record(failingOperation);
     }
 
+
     @Test
-    void recordListSubscriptionLatencyWithNullDuration() {
+    void recordBufferWriteLatency_WithRunnable_RecordsLatency() {
+        Runnable operation = () -> { /* void buffer write operation */ };
+        
+        recorder.recordBufferWriteLatency(operation);
+        
+        verify(bufferWriteLatencyTimer).record(eq(operation));
+    }
+
+    @Test
+    void recordBufferWriteLatency_WithDuration_RecordsLatency() {
+        Duration duration = Duration.ofMillis(150);
+        
+        recorder.recordBufferWriteLatency(duration);
+        
+        verify(bufferWriteLatencyTimer).record(duration);
+    }
+
+    @Test
+    void recordNonRetryableError_IncrementsNonRetryableErrorsCounter() {
+        recorder.recordNonRetryableError();
+        
+        verify(nonRetryableErrorsCounter).increment();
+    }
+
+    @Test
+    void recordRetryableError_IncrementsRetryableErrorsCounter() {
+        recorder.recordRetryableError();
+        
+        verify(retryableErrorsCounter).increment();
+    }
+
+    @Test
+    void recordBufferWriteLatencyWithIntegerSupplier() {
+        Supplier<Integer> operation = () -> 100;
+        when(bufferWriteLatencyTimer.record(operation)).thenReturn(100);
+
+        Integer result = recorder.recordBufferWriteLatency(operation);
+
+        assertEquals(100, result);
+        verify(bufferWriteLatencyTimer, times(1)).record(operation);
+    }
+
+    @Test
+    void recordBufferWriteLatencyWithMultipleDurations() {
+        Duration duration1 = Duration.ofMillis(100);
+        Duration duration2 = Duration.ofMillis(250);
+        Duration duration3 = Duration.ofMillis(400);
+
+        recorder.recordBufferWriteLatency(duration1);
+        recorder.recordBufferWriteLatency(duration2);
+        recorder.recordBufferWriteLatency(duration3);
+
+        verify(bufferWriteLatencyTimer, times(1)).record(duration1);
+        verify(bufferWriteLatencyTimer, times(1)).record(duration2);
+        verify(bufferWriteLatencyTimer, times(1)).record(duration3);
+    }
+
+    @Test
+    void recordMultipleBufferWriteAttempts() {
+        recorder.recordBufferWriteAttempt();
+        recorder.recordBufferWriteAttempt();
+        recorder.recordBufferWriteAttempt();
+
+        verify(bufferWriteAttemptsCounter, times(3)).increment();
+    }
+
+    @Test
+    void recordMultipleBufferWriteSuccesses() {
+        recorder.recordBufferWriteSuccess();
+        recorder.recordBufferWriteSuccess();
+
+        verify(bufferWriteSuccessCounter, times(2)).increment();
+    }
+
+    @Test
+    void recordMultipleBufferWriteFailures() {
+        recorder.recordBufferWriteFailure();
+        recorder.recordBufferWriteFailure();
+        recorder.recordBufferWriteFailure();
+        recorder.recordBufferWriteFailure();
+
+        verify(bufferWriteFailuresCounter, times(4)).increment();
+    }
+
+    @Test
+    void recordMultipleErrorCategorizations() {
+        recorder.recordRetryableError();
+        recorder.recordRetryableError();
+        recorder.recordNonRetryableError();
+
+        verify(retryableErrorsCounter, times(2)).increment();
+        verify(nonRetryableErrorsCounter, times(1)).increment();
+    }
+
+    @Test
+    void realisticBufferWriteScenario() {
+        // Simulate buffer write operations with retries
+        recorder.recordBufferWriteAttempt();  // Initial attempt
+        recorder.recordBufferWriteRetryAttempt();  // First retry
+        recorder.recordBufferWriteRetryAttempt();  // Second retry
+        recorder.recordBufferWriteRetrySuccess();  // Success on retry
+
+        verify(bufferWriteAttemptsCounter, times(1)).increment();
+        verify(bufferWriteRetryAttemptsCounter, times(2)).increment();
+        verify(bufferWriteRetrySuccessCounter, times(1)).increment();
+        verify(bufferWriteSuccessCounter, times(0)).increment(); // No direct success
+        verify(bufferWriteFailuresCounter, times(0)).increment(); // No final failure
+    }
+
+    @Test
+    void realisticBufferWriteFailureScenario() {
+        // Simulate buffer write operations that ultimately fail
+        recorder.recordBufferWriteAttempt();  // Initial attempt
+        recorder.recordBufferWriteRetryAttempt();  // First retry
+        recorder.recordBufferWriteRetryAttempt();  // Second retry
+        recorder.recordBufferWriteRetryAttempt();  // Third retry
+        recorder.recordBufferWriteFailure();  // Ultimate failure
+
+        verify(bufferWriteAttemptsCounter, times(1)).increment();
+        verify(bufferWriteRetryAttemptsCounter, times(3)).increment();
+        verify(bufferWriteFailuresCounter, times(1)).increment();
+        verify(bufferWriteSuccessCounter, times(0)).increment();
+        verify(bufferWriteRetrySuccessCounter, times(0)).increment();
+    }
+
+    @Test
+    void mixedBufferAndErrorMetricsScenario() {
+        // Record various buffer and error metrics
+        recorder.recordBufferWriteAttempt();
+        recorder.recordBufferWriteSuccess();
+        recorder.recordRetryableError();
+        recorder.recordNonRetryableError();
+
+        // Verify all metrics were recorded correctly
+        verify(bufferWriteAttemptsCounter, times(1)).increment();
+        verify(bufferWriteSuccessCounter, times(1)).increment();
+        verify(retryableErrorsCounter, times(1)).increment();
+        verify(nonRetryableErrorsCounter, times(1)).increment();
+    }
+
+    @Test
+    void recordBufferWriteLatencyPropagatesExceptions() {
+        Supplier<String> failingOperation = () -> {
+            throw new RuntimeException("Buffer write exception");
+        };
+
+        // Configure the mock timer to propagate the exception
+        when(bufferWriteLatencyTimer.record(failingOperation)).thenThrow(new RuntimeException("Buffer write exception"));
+
+        assertThrows(RuntimeException.class, () -> {
+            recorder.recordBufferWriteLatency(failingOperation);
+        });
+
+        // Timer should still be called even if the operation fails
+        verify(bufferWriteLatencyTimer, times(1)).record(failingOperation);
+    }
+
+    @Test
+    void recordBufferWriteLatencyWithNullDuration() {
         // Duration should not be null in normal usage, but testing robustness
         Duration nullDuration = null;
 
@@ -956,11 +1249,19 @@ class VendorAPIMetricsRecorderTest {
         when(testPluginMetrics.counter("authenticationRequestsSuccess")).thenReturn(authSuccessCounter);
         when(testPluginMetrics.counter("authenticationRequestsFailed")).thenReturn(authFailureCounter);
         when(testPluginMetrics.timer("authenticationRequestLatency")).thenReturn(authLatencyTimer);
+        when(testPluginMetrics.timer("bufferWriteLatency")).thenReturn(bufferWriteLatencyTimer);
+        when(testPluginMetrics.counter("bufferWriteAttempts")).thenReturn(bufferWriteAttemptsCounter);
+        when(testPluginMetrics.counter("bufferWriteSuccess")).thenReturn(bufferWriteSuccessCounter);
+        when(testPluginMetrics.counter("bufferWriteRetrySuccess")).thenReturn(bufferWriteRetrySuccessCounter);
+        when(testPluginMetrics.counter("bufferWriteRetryAttempts")).thenReturn(bufferWriteRetryAttemptsCounter);
+        when(testPluginMetrics.counter("bufferWriteFailures")).thenReturn(bufferWriteFailuresCounter);
         when(testPluginMetrics.counter("totalDataApiRequests")).thenReturn(totalDataApiRequestsCounter);
         when(testPluginMetrics.counter("logsRequested")).thenReturn(logsRequestedCounter);
         when(testPluginMetrics.counter("requestAccessDenied")).thenReturn(requestAccessDeniedCounter);
         when(testPluginMetrics.counter("requestThrottled")).thenReturn(requestThrottledCounter);
         when(testPluginMetrics.counter("resourceNotFound")).thenReturn(resourceNotFoundCounter);
+        when(testPluginMetrics.counter("nonRetryableErrors")).thenReturn(nonRetryableErrorsCounter);
+        when(testPluginMetrics.counter("retryableErrors")).thenReturn(retryableErrorsCounter);
         
         VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(testPluginMetrics, false);
         
@@ -1191,11 +1492,19 @@ class VendorAPIMetricsRecorderTest {
         when(separatePluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(defaultCounter);
         when(separatePluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(defaultTimer);
         when(separatePluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.timer("bufferWriteLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics.counter("bufferWriteAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("bufferWriteSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("bufferWriteRetrySuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("bufferWriteRetryAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("bufferWriteFailures")).thenReturn(defaultCounter);
         when(separatePluginMetrics.counter("totalDataApiRequests")).thenReturn(defaultCounter);
         when(separatePluginMetrics.counter("logsRequested")).thenReturn(defaultCounter);
         when(separatePluginMetrics.counter("requestAccessDenied")).thenReturn(defaultCounter);
         when(separatePluginMetrics.counter("requestThrottled")).thenReturn(defaultCounter);
         when(separatePluginMetrics.counter("resourceNotFound")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("nonRetryableErrors")).thenReturn(defaultCounter);
+        when(separatePluginMetrics.counter("retryableErrors")).thenReturn(defaultCounter);
         
         VendorAPIMetricsRecorder recorderEnabled = new VendorAPIMetricsRecorder(separatePluginMetrics, true);
         
@@ -1302,11 +1611,19 @@ class VendorAPIMetricsRecorderTest {
         when(separatePluginMetrics1.counter("listSubscriptionRequestsFailed")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.timer("listSubscriptionRequestLatency")).thenReturn(defaultTimer);
         when(separatePluginMetrics1.counter("listSubscriptionApiCalls")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.timer("bufferWriteLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics1.counter("bufferWriteAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("bufferWriteSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("bufferWriteRetrySuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("bufferWriteRetryAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("bufferWriteFailures")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.counter("totalDataApiRequests")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.counter("logsRequested")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.counter("requestAccessDenied")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.counter("requestThrottled")).thenReturn(defaultCounter);
         when(separatePluginMetrics1.counter("resourceNotFound")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("nonRetryableErrors")).thenReturn(defaultCounter);
+        when(separatePluginMetrics1.counter("retryableErrors")).thenReturn(defaultCounter);
         
         // Setup mocks for disabled recorder (without subscription metrics)
         when(separatePluginMetrics2.counter("searchRequestsSuccess")).thenReturn(separateSearchCounter2);
@@ -1320,11 +1637,19 @@ class VendorAPIMetricsRecorderTest {
         when(separatePluginMetrics2.counter("authenticationRequestsSuccess")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("authenticationRequestsFailed")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.timer("authenticationRequestLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics2.timer("bufferWriteLatency")).thenReturn(defaultTimer);
+        when(separatePluginMetrics2.counter("bufferWriteAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("bufferWriteSuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("bufferWriteRetrySuccess")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("bufferWriteRetryAttempts")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("bufferWriteFailures")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("totalDataApiRequests")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("logsRequested")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("requestAccessDenied")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("requestThrottled")).thenReturn(defaultCounter);
         when(separatePluginMetrics2.counter("resourceNotFound")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("nonRetryableErrors")).thenReturn(defaultCounter);
+        when(separatePluginMetrics2.counter("retryableErrors")).thenReturn(defaultCounter);
         
         VendorAPIMetricsRecorder recorderEnabled = new VendorAPIMetricsRecorder(separatePluginMetrics1, true);
         VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(separatePluginMetrics2, false);
@@ -1348,6 +1673,7 @@ class VendorAPIMetricsRecorderTest {
         // This test ensures that when subscription metrics are disabled, 
         // the internal counters/timers are null but methods handle this gracefully
         VendorAPIMetricsRecorder recorderDisabled = new VendorAPIMetricsRecorder(pluginMetrics, false);
+        Duration nullDuration = null;
         
         // All these should complete without NPE
         recorderDisabled.recordSubscriptionSuccess();
@@ -1362,5 +1688,29 @@ class VendorAPIMetricsRecorderTest {
         
         // If we reach here, no NPEs were thrown
         assertThat(recorderDisabled, notNullValue());
+
+        doThrow(new NullPointerException()).when(bufferWriteLatencyTimer).record(nullDuration);
+
+        assertThrows(NullPointerException.class, () -> {
+            recorder.recordBufferWriteLatency(nullDuration);
+        });
+    }
+
+    @Test
+    void mixedOperationsIncludingBuffer_WorkCorrectly() {
+        // Test that we can use different operation types including buffer metrics
+        recorder.recordSearchSuccess();
+        recorder.recordGetSuccess();
+        recorder.recordAuthSuccess();
+        recorder.recordSubscriptionSuccess();
+        recorder.recordBufferWriteSuccess();
+        recorder.recordRetryableError();
+
+        verify(searchSuccessCounter).increment();
+        verify(getSuccessCounter).increment();
+        verify(authSuccessCounter).increment();
+        verify(subscriptionSuccessCounter).increment();
+        verify(bufferWriteSuccessCounter).increment();
+        verify(retryableErrorsCounter).increment();
     }
 }
