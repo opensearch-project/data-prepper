@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
@@ -27,6 +28,7 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class AggregateGroupManagerTest {
@@ -46,7 +48,7 @@ public class AggregateGroupManagerTest {
     }
 
     private AggregateGroupManager createObjectUnderTest() {
-        return new AggregateGroupManager(TEST_GROUP_DURATION);
+        return new AggregateGroupManager(TEST_GROUP_DURATION, false);
     }
 
     @Test
@@ -144,5 +146,30 @@ public class AggregateGroupManagerTest {
             assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude1));
             assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude1));
         }
+    }
+
+    @Test
+    void closeGroup_with_acknowledge_on_conclude_releases_event_handle() {
+        aggregateGroupManager = new AggregateGroupManager(TEST_GROUP_DURATION, true);
+
+        final AggregateGroup group = mock(AggregateGroup.class);
+        final EventHandle eventHandle = mock(EventHandle.class);
+        when(group.getEventHandle()).thenReturn(eventHandle);
+
+        aggregateGroupManager.closeGroup(identificationKeysMap, group);
+
+        verify(eventHandle).release(true);
+        verify(group).resetGroup();
+    }
+
+    @Test
+    void closeGroup_without_acknowledge_on_conclude_does_not_release_event_handle() {
+        aggregateGroupManager = new AggregateGroupManager(TEST_GROUP_DURATION, false);
+
+        final AggregateGroup group = mock(AggregateGroup.class);
+
+        aggregateGroupManager.closeGroup(identificationKeysMap, group);
+
+        verify(group).resetGroup();
     }
 }

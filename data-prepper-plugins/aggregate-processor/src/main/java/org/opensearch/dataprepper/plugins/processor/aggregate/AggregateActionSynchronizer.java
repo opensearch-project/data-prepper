@@ -46,11 +46,17 @@ class AggregateActionSynchronizer {
     private final AggregateAction aggregateAction;
     private final AggregateGroupManager aggregateGroupManager;
 
+    private final boolean disableGroupAcknowledgments;
+
     private static final Logger LOG = LoggerFactory.getLogger(AggregateActionSynchronizer.class);
 
-    private AggregateActionSynchronizer(final AggregateAction aggregateAction, final AggregateGroupManager aggregateGroupManager, final PluginMetrics pluginMetrics) {
+    private AggregateActionSynchronizer(final AggregateAction aggregateAction,
+                                        final AggregateGroupManager aggregateGroupManager,
+                                        final PluginMetrics pluginMetrics,
+                                        final AggregateProcessorConfig aggregateProcessorConfig) {
         this.aggregateAction = aggregateAction;
         this.aggregateGroupManager = aggregateGroupManager;
+        this.disableGroupAcknowledgments = aggregateProcessorConfig.getDisableGroupAcknowledgments();
 
         this.actionHandleEventsProcessingErrors = pluginMetrics.counter(ACTION_HANDLE_EVENTS_PROCESSING_ERRORS);
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
@@ -92,7 +98,9 @@ class AggregateActionSynchronizer {
         handleEventForGroupLock.lock();
         try {
             LOG.debug("Start critical section in handleEventForGroup");
-            aggregateGroup.attachToEventAcknowledgementSet(event);
+            if (!disableGroupAcknowledgments) {
+                aggregateGroup.attachToEventAcknowledgementSet(event);
+            }
             handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
@@ -107,8 +115,11 @@ class AggregateActionSynchronizer {
     }
 
     static class AggregateActionSynchronizerProvider {
-        public AggregateActionSynchronizer provide(final AggregateAction aggregateAction, final AggregateGroupManager aggregateGroupManager, final PluginMetrics pluginMetrics) {
-            return new AggregateActionSynchronizer(aggregateAction, aggregateGroupManager, pluginMetrics);
+        public AggregateActionSynchronizer provide(final AggregateAction aggregateAction,
+                                                   final AggregateGroupManager aggregateGroupManager,
+                                                   final PluginMetrics pluginMetrics,
+                                                   final AggregateProcessorConfig aggregateProcessorConfig) {
+            return new AggregateActionSynchronizer(aggregateAction, aggregateGroupManager, pluginMetrics, aggregateProcessorConfig);
         }
     }
 }
