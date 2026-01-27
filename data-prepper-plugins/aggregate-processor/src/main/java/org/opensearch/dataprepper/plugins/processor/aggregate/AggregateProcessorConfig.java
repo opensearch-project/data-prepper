@@ -81,6 +81,14 @@ public class AggregateProcessorConfig {
     })
     private String whenCondition;
 
+    @JsonPropertyDescription("When set to true, releases the group's event handle when the group concludes. " +
+            "This sacrifices true end-to-end acknowledgments for aggregated events but prevents reprocessing.")
+    @JsonProperty("acknowledge_on_conclude")
+    private Boolean acknowledgeOnConclude = false;
+
+    @JsonProperty("disable_group_acknowledgments")
+    private Boolean disableGroupAcknowledgments = false;
+
     public List<String> getIdentificationKeys() {
         return identificationKeys;
     }
@@ -111,5 +119,13 @@ public class AggregateProcessorConfig {
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }
+
+    public Boolean getAcknowledgeOnConclude() {
+        return acknowledgeOnConclude;
+    }
+
+    public Boolean getDisableGroupAcknowledgments() {
+        return disableGroupAcknowledgments;
+    }
 
 }
