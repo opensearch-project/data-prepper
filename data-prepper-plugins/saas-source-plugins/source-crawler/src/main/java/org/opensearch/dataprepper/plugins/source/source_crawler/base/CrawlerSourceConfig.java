@@ -45,4 +45,14 @@ public interface CrawlerSourceConfig {
     default Duration getDurationToDelayRetry() {
         return DEFAULT_MAX_DURATION_TO_DELAY_RETRY;
     }
+
+    /**
+     * Gets the lease interval for the leader scheduler.
+     * Defaults to 1 minute if not overridden.
+     *
+     * @return Duration for lease interval
+     */
+    default Duration getLeaseInterval() {
+        return Duration.ofMinutes(1);
+    }
 }

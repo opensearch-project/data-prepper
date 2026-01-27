@@ -21,10 +21,17 @@ import java.util.function.Supplier;
  * 
  * This class provides a unified interface for recording metrics across different types of vendor API operations:
  * - Search operations: latency, success/failure rates, and response sizes
- * - Get/retrieval operations: latency, success/failure rates, and response sizes  
+ * - Get/retrieval operations: latency, success/failure rates, and response sizes
  * - Authentication operations: latency, success/failure rates
  * - Subscription operations: latency, success/failure rates, and call counts
  * - General API operations: request counts, logs requested, error categorization
+ * 
+ * <h3>Subscription Metrics Gating</h3>
+ * The subscription metrics collection can be controlled via the constructor parameter. This gating mechanism 
+ * is introduced to allow subscription metrics for vendors that support them while reducing overhead for 
+ * vendors that don't require these vendor-dependent metrics. When disabled, subscription metrics are not 
+ * created and method calls become no-ops, providing significant performance benefits for vendors that don't 
+ * utilize subscription-based operations.
  * 
  * Most methods return void for efficient standalone usage. The error() method supports chaining for error handling scenarios.
  */
@@ -36,7 +43,7 @@ public class VendorAPIMetricsRecorder {
     private final Timer searchLatencyTimer;
     private final DistributionSummary searchResponseSizeSummary;
 
-    // Get operation metrics  
+    // Get operation metrics
     private final Counter getSuccessCounter;
     private final Counter getFailureCounter;
     private final Timer getLatencyTimer;
@@ -47,31 +54,59 @@ public class VendorAPIMetricsRecorder {
     private final Counter authFailureCounter;
     private final Timer authLatencyTimer;
 
-    // Subscription operation metrics
+    // Start subscription operation metrics
     private final Counter subscriptionSuccessCounter;
     private final Counter subscriptionFailureCounter;
     private final Timer subscriptionLatencyTimer;
     private final Counter subscriptionCallsCounter;
 
+    // List subscription operation metrics
+    private final Counter listSubscriptionSuccessCounter;
+    private final Counter listSubscriptionFailureCounter;
+    private final Timer listSubscriptionLatencyTimer;
+    private final Counter listSubscriptionCallsCounter;
+
+    private final Timer bufferWriteLatencyTimer;
+    private final Counter bufferWriteAttemptsCounter;
+    private final Counter bufferWriteSuccessCounter;
+    private final Counter bufferWriteRetrySuccessCounter;
+    private final Counter bufferWriteRetryAttemptsCounter;
+    private final Counter bufferWriteFailuresCounter;
+
     // Shared metrics
     private final Counter totalDataApiRequestsCounter;
     private final Counter logsRequestedCounter;
-    
+
     // Error metrics
     private final Counter requestAccessDeniedCounter;
     private final Counter requestThrottledCounter;
     private final Counter resourceNotFoundCounter;
+    private final Counter nonRetryableErrorsCounter;
+    private final Counter retryableErrorsCounter;
     
     private final PluginMetrics pluginMetrics;
+    private final boolean enableSubscriptionMetrics;
 
     /**
      * Creates a unified VendorAPIMetricsRecorder with all operation types.
+     * Subscription metrics are enabled by default for backward compatibility.
      * 
      * @param pluginMetrics The plugin metrics instance
      */
     public VendorAPIMetricsRecorder(PluginMetrics pluginMetrics) {
+        this(pluginMetrics, false);
+    }
+
+    /**
+     * Creates a unified VendorAPIMetricsRecorder with configurable subscription metrics.
+     * 
+     * @param pluginMetrics The plugin metrics instance
+     * @param enableSubscriptionMetrics Whether to enable subscription metrics collection
+     */
+    public VendorAPIMetricsRecorder(PluginMetrics pluginMetrics, boolean enableSubscriptionMetrics) {
         this.pluginMetrics = pluginMetrics;
-        
+        this.enableSubscriptionMetrics = enableSubscriptionMetrics;
+
         // Search metrics
         this.searchSuccessCounter = pluginMetrics.counter("searchRequestsSuccess");
         this.searchFailureCounter = pluginMetrics.counter("searchRequestsFailed");
@@ -84,25 +119,54 @@ public class VendorAPIMetricsRecorder {
         this.getLatencyTimer = pluginMetrics.timer("getRequestLatency");
         this.getResponseSizeSummary = pluginMetrics.summary("getResponseSizeBytes");
 
-        // Auth metrics  
+        // Auth metrics
         this.authSuccessCounter = pluginMetrics.counter("authenticationRequestsSuccess");
         this.authFailureCounter = pluginMetrics.counter("authenticationRequestsFailed");
         this.authLatencyTimer = pluginMetrics.timer("authenticationRequestLatency");
 
-        // Subscription metrics
-        this.subscriptionSuccessCounter = pluginMetrics.counter("startSubscriptionRequestsSuccess");
-        this.subscriptionFailureCounter = pluginMetrics.counter("startSubscriptionRequestsFailed");
-        this.subscriptionLatencyTimer = pluginMetrics.timer("startSubscriptionRequestLatency");
-        this.subscriptionCallsCounter = pluginMetrics.counter("startSubscriptionApiCalls");
+        // Conditionally initialize subscription metrics based on enableSubscriptionMetrics flag
+        if (enableSubscriptionMetrics) {
+            // Start subscription metrics
+            this.subscriptionSuccessCounter = pluginMetrics.counter("startSubscriptionRequestsSuccess");
+            this.subscriptionFailureCounter = pluginMetrics.counter("startSubscriptionRequestsFailed");
+            this.subscriptionLatencyTimer = pluginMetrics.timer("startSubscriptionRequestLatency");
+            this.subscriptionCallsCounter = pluginMetrics.counter("startSubscriptionApiCalls");
+
+            // List subscription metrics
+            this.listSubscriptionSuccessCounter = pluginMetrics.counter("listSubscriptionRequestsSuccess");
+            this.listSubscriptionFailureCounter = pluginMetrics.counter("listSubscriptionRequestsFailed");
+            this.listSubscriptionLatencyTimer = pluginMetrics.timer("listSubscriptionRequestLatency");
+            this.listSubscriptionCallsCounter = pluginMetrics.counter("listSubscriptionApiCalls");
+        } else {
+            // Use no-op implementations when subscription metrics are disabled
+            this.subscriptionSuccessCounter = null;
+            this.subscriptionFailureCounter = null;
+            this.subscriptionLatencyTimer = null;
+            this.subscriptionCallsCounter = null;
+
+            this.listSubscriptionSuccessCounter = null;
+            this.listSubscriptionFailureCounter = null;
+            this.listSubscriptionLatencyTimer = null;
+            this.listSubscriptionCallsCounter = null;
+        }
+
+        this.bufferWriteLatencyTimer = pluginMetrics.timer("bufferWriteLatency");
+        this.bufferWriteAttemptsCounter = pluginMetrics.counter("bufferWriteAttempts");
+        this.bufferWriteSuccessCounter = pluginMetrics.counter("bufferWriteSuccess");
+        this.bufferWriteRetrySuccessCounter = pluginMetrics.counter("bufferWriteRetrySuccess");
+        this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter("bufferWriteRetryAttempts");
+        this.bufferWriteFailuresCounter = pluginMetrics.counter("bufferWriteFailures");
 
         // Shared metrics
         this.totalDataApiRequestsCounter = pluginMetrics.counter("totalDataApiRequests");
         this.logsRequestedCounter = pluginMetrics.counter("logsRequested");
-        
+
         // Error metrics
         this.requestAccessDeniedCounter = pluginMetrics.counter("requestAccessDenied");
         this.requestThrottledCounter = pluginMetrics.counter("requestThrottled");
         this.resourceNotFoundCounter = pluginMetrics.counter("resourceNotFound");
+        this.nonRetryableErrorsCounter = pluginMetrics.counter("nonRetryableErrors");
+        this.retryableErrorsCounter = pluginMetrics.counter("retryableErrors");
     }
 
     // Search operation methods
@@ -219,27 +283,88 @@ public class VendorAPIMetricsRecorder {
 
     // Subscription operation methods
     public void recordSubscriptionSuccess() {
-        subscriptionSuccessCounter.increment();
+        if (enableSubscriptionMetrics && subscriptionSuccessCounter != null) {
+            subscriptionSuccessCounter.increment();
+        }
     }
 
     public void recordSubscriptionFailure() {
-        subscriptionFailureCounter.increment();
+        if (enableSubscriptionMetrics && subscriptionFailureCounter != null) {
+            subscriptionFailureCounter.increment();
+        }
     }
 
     public <T> T recordSubscriptionLatency(Supplier<T> operation) {
-        return subscriptionLatencyTimer.record(operation);
+        if (enableSubscriptionMetrics && subscriptionLatencyTimer != null) {
+            return subscriptionLatencyTimer.record(operation);
+        } else {
+            // Execute operation without recording metrics
+            return operation.get();
+        }
     }
 
     public void recordSubscriptionLatency(Runnable operation) {
-        subscriptionLatencyTimer.record(operation);
+        if (enableSubscriptionMetrics && subscriptionLatencyTimer != null) {
+            subscriptionLatencyTimer.record(operation);
+        } else {
+            // Execute operation without recording metrics
+            operation.run();
+        }
     }
 
     public void recordSubscriptionLatency(Duration duration) {
-        subscriptionLatencyTimer.record(duration);
+        if (enableSubscriptionMetrics && subscriptionLatencyTimer != null) {
+            subscriptionLatencyTimer.record(duration);
+        }
     }
 
     public void recordSubscriptionCall() {
-        subscriptionCallsCounter.increment();
+        if (enableSubscriptionMetrics && subscriptionCallsCounter != null) {
+            subscriptionCallsCounter.increment();
+        }
+    }
+
+    // List subscription operation methods
+    public void recordListSubscriptionSuccess() {
+        if (enableSubscriptionMetrics && listSubscriptionSuccessCounter != null) {
+            listSubscriptionSuccessCounter.increment();
+        }
+    }
+
+    public void recordListSubscriptionFailure() {
+        if (enableSubscriptionMetrics && listSubscriptionFailureCounter != null) {
+            listSubscriptionFailureCounter.increment();
+        }
+    }
+
+    public <T> T recordListSubscriptionLatency(Supplier<T> operation) {
+        if (enableSubscriptionMetrics && listSubscriptionLatencyTimer != null) {
+            return listSubscriptionLatencyTimer.record(operation);
+        } else {
+            // Execute operation without recording metrics
+            return operation.get();
+        }
+    }
+
+    public void recordListSubscriptionLatency(Runnable operation) {
+        if (enableSubscriptionMetrics && listSubscriptionLatencyTimer != null) {
+            listSubscriptionLatencyTimer.record(operation);
+        } else {
+            // Execute operation without recording metrics
+            operation.run();
+        }
+    }
+
+    public void recordListSubscriptionLatency(Duration duration) {
+        if (enableSubscriptionMetrics && listSubscriptionLatencyTimer != null) {
+            listSubscriptionLatencyTimer.record(duration);
+        }
+    }
+
+    public void recordListSubscriptionCall() {
+        if (enableSubscriptionMetrics && listSubscriptionCallsCounter != null) {
+            listSubscriptionCallsCounter.increment();
+        }
     }
 
     // Shared operation methods
@@ -249,6 +374,50 @@ public class VendorAPIMetricsRecorder {
 
     public void recordLogsRequested() {
         logsRequestedCounter.increment();
+    }
+
+    public void recordLogsRequested(int count) {
+        logsRequestedCounter.increment(count);
+    }
+
+    public void recordBufferWriteAttempt() {
+        bufferWriteAttemptsCounter.increment();
+    }
+
+    public void recordBufferWriteSuccess() {
+        bufferWriteSuccessCounter.increment();
+    }
+
+    public void recordBufferWriteRetrySuccess() {
+        bufferWriteRetrySuccessCounter.increment();
+    }
+
+    public void recordBufferWriteRetryAttempt() {
+        bufferWriteRetryAttemptsCounter.increment();
+    }
+
+    public void recordBufferWriteFailure() {
+        bufferWriteFailuresCounter.increment();
+    }
+
+    public <T> T recordBufferWriteLatency(Supplier<T> operation) {
+        return bufferWriteLatencyTimer.record(operation);
+    }
+
+    public void recordBufferWriteLatency(Runnable operation) {
+        bufferWriteLatencyTimer.record(operation);
+    }
+
+    public void recordBufferWriteLatency(Duration duration) {
+        bufferWriteLatencyTimer.record(duration);
+    }
+
+    public void recordNonRetryableError() {
+        nonRetryableErrorsCounter.increment();
+    }
+
+    public void recordRetryableError() {
+        retryableErrorsCounter.increment();
     }
 
     /**
