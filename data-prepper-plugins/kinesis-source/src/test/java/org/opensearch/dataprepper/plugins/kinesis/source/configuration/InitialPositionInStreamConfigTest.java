@@ -35,4 +35,13 @@ public class InitialPositionInStreamConfigTest {
         assertEquals(initialPositionInStreamConfig.getPositionInStream(), InitialPositionInStream.TRIM_HORIZON);
     }
 
+    @Test
+    void testInitialPositionGetByNameAtTimestamp() {
+        final InitialPositionInStreamConfig initialPositionInStreamConfig = InitialPositionInStreamConfig.fromPositionValue("at_timestamp");
+        assertEquals(initialPositionInStreamConfig, InitialPositionInStreamConfig.AT_TIMESTAMP);
+        assertEquals(initialPositionInStreamConfig.toString(), "at_timestamp");
+        assertEquals(initialPositionInStreamConfig.getPosition(), "at_timestamp");
+        assertEquals(initialPositionInStreamConfig.getPositionInStream(), InitialPositionInStream.AT_TIMESTAMP);
+    }
+
 }

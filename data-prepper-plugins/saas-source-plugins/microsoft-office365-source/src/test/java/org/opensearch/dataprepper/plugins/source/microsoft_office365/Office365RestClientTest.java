@@ -85,6 +85,7 @@ class Office365RestClientTest {
         lenient().when(metricsRecorder.recordSearchLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         lenient().when(metricsRecorder.recordGetLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         lenient().when(metricsRecorder.recordSubscriptionLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
+        lenient().when(metricsRecorder.recordListSubscriptionLatency(any(java.util.function.Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0, java.util.function.Supplier.class).get());
         
         // Setup Runnable overload mocks - execute the runnable when called
         lenient().doAnswer(invocation -> {
@@ -124,21 +125,158 @@ class Office365RestClientTest {
     }
 
     /**
-     * Tests successful subscription creation for all Office 365 content types.
-     * Verifies that POST requests are made for each content type and no exceptions are thrown.
+     * Tests successful subscription creation for all Office 365 content types when all are disabled.
+     * Verifies that listSubscriptions is called first, then POST requests are made for each content type.
      */
     @Test
     void testStartSubscriptionsSuccess() {
-        when(authConfig.getTenantId()).thenReturn("test-tenant");
-        when(authConfig.getAccessToken()).thenReturn("test-token");
-        
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as disabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
+
+        // Mock startSubscription calls
         ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
                 .thenReturn(mockResponse);
 
         assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
-        
+
+        // Verify list was called once
+        ArgumentCaptor<String> listUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(1)).exchange(
+                listUrlCaptor.capture(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        );
+        assertTrue(listUrlCaptor.getValue().contains("/subscriptions/list"));
+
+        // Verify start was called for all content types
+        ArgumentCaptor<String> startUrlCaptor = ArgumentCaptor.forClass(String.class);
         verify(restTemplate, times(CONTENT_TYPES.length)).exchange(
+                startUrlCaptor.capture(),
+                eq(HttpMethod.POST),
+                any(),
+                eq(String.class)
+        );
+        assertTrue(startUrlCaptor.getAllValues().stream().allMatch(url -> url.contains("/subscriptions/start")));
+    }
+
+    /**
+     * Tests intelligent subscription logic when some subscriptions are already enabled.
+     * Verifies that only disabled subscriptions are started.
+     */
+    @Test
+    void testStartSubscriptionsPartiallyEnabled() {
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return some subscriptions as enabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (int i = 0; i < CONTENT_TYPES.length; i++) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", CONTENT_TYPES[i]);
+            // First two are enabled, rest are disabled
+            subscription.put("status", i < 2 ? "enabled" : "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
+
+        // Mock startSubscription calls
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(),
+                eq(String.class)
+        )).thenReturn(mockResponse);
+
+        assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
+
+        // Verify list was called once
+        ArgumentCaptor<String> listUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(1)).exchange(
+                listUrlCaptor.capture(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        );
+        assertTrue(listUrlCaptor.getValue().contains("/subscriptions/list"));
+
+        // Verify start was called only for disabled content types (CONTENT_TYPES.length - 2)
+        ArgumentCaptor<String> startUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(CONTENT_TYPES.length - 2)).exchange(
+                startUrlCaptor.capture(),
+                eq(HttpMethod.POST),
+                any(),
+                eq(String.class)
+        );
+        assertTrue(startUrlCaptor.getAllValues().stream().allMatch(url -> url.contains("/subscriptions/start")));
+    }
+
+    /**
+     * Tests intelligent subscription logic when all subscriptions are already enabled.
+     * Verifies that no start subscription calls are made.
+     */
+    @Test
+    void testStartSubscriptionsAllEnabled() {
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as enabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "enabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
+
+        assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
+
+        // Verify list was called once
+        ArgumentCaptor<String> listUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(1)).exchange(
+                listUrlCaptor.capture(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        );
+        assertTrue(listUrlCaptor.getValue().contains("/subscriptions/list"));
+
+        // Verify start was never called since all are enabled
+        verify(restTemplate, times(0)).exchange(
                 anyString(),
                 eq(HttpMethod.POST),
                 any(),
@@ -147,13 +285,81 @@ class Office365RestClientTest {
     }
 
     /**
+     * Tests fallback behavior when listSubscriptions fails.
+     * Verifies that all subscriptions are started as fallback when listing fails.
+     */
+    @Test
+    void testStartSubscriptionsListFailsFallbackToAll() {
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to throw an exception (with retries handled by RetryHandler)
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        // Mock startSubscription calls to succeed
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(),
+                eq(String.class)
+        )).thenReturn(mockResponse);
+
+        // Should not throw exception, should fall back to starting all
+        assertDoesNotThrow(() -> office365RestClient.startSubscriptions());
+
+        // Verify list was attempted - With CUSTOM_MAX_RETRIES = 1, RetryHandler makes 1 call total
+        ArgumentCaptor<String> listUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(1)).exchange( // RetryHandler does 1 attempt with our custom config
+                listUrlCaptor.capture(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        );
+        assertTrue(listUrlCaptor.getValue().contains("/subscriptions/list"));
+
+        // Verify start was called for all content types as fallback
+        ArgumentCaptor<String> startUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(restTemplate, times(CONTENT_TYPES.length)).exchange(
+                startUrlCaptor.capture(),
+                eq(HttpMethod.POST),
+                any(),
+                eq(String.class)
+        );
+        assertTrue(startUrlCaptor.getAllValues().stream().allMatch(url -> url.contains("/subscriptions/start")));
+    }
+
+    /**
      * Tests handling of AF20024 error code when subscriptions are already enabled.
      * Verifies that this specific error is treated as success and doesn't throw an exception.
      */
     @Test
     void testStartSubscriptionsAlreadyEnabled() {
-        when(authConfig.getTenantId()).thenReturn("test-tenant");
-        when(authConfig.getAccessToken()).thenReturn("test-token");
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as disabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
         
         HttpClientErrorException af20024Exception = new HttpClientErrorException(
                 HttpStatus.BAD_REQUEST,
@@ -431,8 +637,25 @@ class Office365RestClientTest {
      */
     @Test
     void testStartSubscriptionsRecordsMetrics() {
-        when(authConfig.getTenantId()).thenReturn("test-tenant");
-        when(authConfig.getAccessToken()).thenReturn("test-token");
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as disabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
         
         ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"status\":\"enabled\"}", HttpStatus.OK);
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
@@ -444,8 +667,10 @@ class Office365RestClientTest {
         // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions 
         // get compiled to specific classes that are difficult to match in tests
         // Just verify the other metrics are recorded correctly
-        verify(metricsRecorder).recordSubscriptionSuccess();
-        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall();
+        verify(metricsRecorder, times(1)).recordListSubscriptionSuccess(); // List operation
+        verify(metricsRecorder, times(1)).recordListSubscriptionCall(); // List API call
+        verify(metricsRecorder, times(1)).recordSubscriptionSuccess(); // Overall operation
+        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall(); // Start API calls
     }
 
     /**
@@ -454,8 +679,25 @@ class Office365RestClientTest {
      */
     @Test
     void testStartSubscriptionsRecordsFailureMetrics() {
-        when(authConfig.getTenantId()).thenReturn("test-tenant");
-        when(authConfig.getAccessToken()).thenReturn("test-token");
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as disabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
         
         HttpClientErrorException exception = new HttpClientErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -465,8 +707,7 @@ class Office365RestClientTest {
         );
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
                 .thenThrow(exception)
-                .thenThrow(exception)  // Retry
-                .thenThrow(exception); // Final retry
+                .thenThrow(exception); // Retry
 
         assertThrows(SaaSCrawlerException.class, () -> office365RestClient.startSubscriptions());
         
@@ -483,8 +724,25 @@ class Office365RestClientTest {
      */
     @Test
     void testStartSubscriptionsAF20024RecordsSuccessMetrics() {
-        when(authConfig.getTenantId()).thenReturn("test-tenant");
-        when(authConfig.getAccessToken()).thenReturn("test-token");
+        // Mock auth config
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenReturn("test-access-token");
+
+        // Mock listSubscriptions to return all subscriptions as disabled
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
         
         HttpClientErrorException af20024Exception = new HttpClientErrorException(
                 HttpStatus.BAD_REQUEST,
@@ -501,8 +759,10 @@ class Office365RestClientTest {
         // Note: We skip verifying recordSubscriptionLatency parameter since lambda expressions
         // get compiled to specific classes that are difficult to match in tests  
         // Just verify the other metrics are recorded correctly
-        verify(metricsRecorder).recordSubscriptionSuccess();
-        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall();
+        verify(metricsRecorder, times(1)).recordListSubscriptionSuccess(); // List operation
+        verify(metricsRecorder, times(1)).recordListSubscriptionCall(); // List API call
+        verify(metricsRecorder, times(1)).recordSubscriptionSuccess(); // Overall operation
+        verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall(); // Start API calls
     }
 
 }

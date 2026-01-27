@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.junit.jupiter.api.AfterEach;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -50,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -156,6 +158,11 @@ public class AggregateProcessorTest {
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
         when(pluginMetrics.counter(MetricNames.RECORDS_OUT)).thenReturn(recordsOut);
         when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(timeElapsed);
+    }
+
+    @AfterEach
+    void processorDoesNotAttachEventsDirectly() {
+        verify(aggregateGroup, never()).attachToEventAcknowledgementSet(any());
     }
 
     @Test

@@ -29,12 +29,56 @@ If your plugin requires no arguments, it can use a default constructor which wil
 Additionally, the plugin framework can create a plugin using a single parameter constructor with
 a single parameter of type `PluginSetting`. This behavior is deprecated and planned for removal.
 
-## Deploying Maven Artifacts
+## Maven artifacts
 
 If you are developing a plugin in another Gradle project your project will depend on at least the `data-prepper-api` project.
-You can deploy this artifact locally so that you can add it as a dependency in your other project.
+The Data Prepper maintainers publish Data Prepper libraries to Maven Central.
 
-Run the following command:
+All Maven artifacts are published to the `org.opensearch.dataprepper` group id. 
+
+```
+org.opensearch.dataprepper:data-prepper-api:2.13.0
+```
+
+As a plugin developer, you should also consider using `org.opensearch.dataprepper.test:plugin-test-framework` to test your plugin.
+
+For example, to use in Gradle:
+
+```groovy
+dependencies {
+    implementation 'org.opensearch.dataprepper:data-prepper-api:2.13.0'
+    testImplementation 'org.opensearch.dataprepper.test:plugin-test-framework:2.13.0'
+}
+```
+
+Browse using Maven Central:
+
+* https://repo1.maven.org/maven2/org/opensearch/dataprepper/
+
+### Nightly snapshots
+
+Data Prepper Maven artifacts release nightly snapshot builds.
+
+The Maven repository is:
+* `https://central.sonatype.com/repository/maven-snapshots`
+
+For example, to use in Gradle:
+
+```groovy
+repositories {
+    // Other repositories such as mavenCentral()
+    maven {
+        name = "Snapshots"
+        url = "https://central.sonatype.com/repository/maven-snapshots"
+    }
+}
+```
+
+### Deploying Maven artifacts from local
+
+You can deploy Data Prepper artifacts locally so that you can add add any local changes as a dependency in your plugin project.
+
+From the Data Prepper repository, run the following command:
 
 ```
 ./gradlew publishToMavenLocal
@@ -42,3 +86,5 @@ Run the following command:
 
 The Maven artifacts will then be available in your local Maven repository. In standard environments
 they will be available at `${USER}/.m2/repository/org/opensearch/dataprepper/`.
+
+Be sure to enable `mavenLocal()` as a repository in your plugin's build project.
