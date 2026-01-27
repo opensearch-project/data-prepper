@@ -28,3 +28,4 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | David Powers           | [dapowers87](https://github.com/dapowers87)           | Amazon      |
 | Shivani Shukla         | [sshivanii](https://github.com/sshivanii)             | Amazon      |
 | Phill Treddenick       | [treddeni-amazon](https://github.com/treddeni-amazon) | Amazon      |
+| Qi Chen                | [chenqi0805](https://github.com/chenqi0805)           | Amazon      |
