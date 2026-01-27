@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor;
@@ -39,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,14 +73,13 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final Logger LOG = LoggerFactory.getLogger(OtelApmServiceMapProcessor.class);
     private static final String EVENT_TYPE_OTEL_APM_SERVICE_MAP = "OTelAPMServiceMap";
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
-    private static final Integer TO_MILLIS = 1_000;
     private static final String SPAN_KIND_SERVER = "SPAN_KIND_SERVER";
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
 
     // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger processorsCreated = new AtomicInteger(0);
-    private static long previousTimestamp;
-    private static long windowDurationMillis;
+    private static Instant previousTimestamp;
+    private static Duration windowDuration;
     private static CyclicBarrier allThreadsCyclicBarrier;
 
     private static volatile MapDbProcessorState<Collection<SpanStateData>> previousWindow;
@@ -91,7 +96,7 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             final OtelApmServiceMapProcessorConfig config,
             final PluginMetrics pluginMetrics,
             final PipelineDescription pipelineDescription) {
-        this((long) config.getWindowDuration() * TO_MILLIS,
+        this(config.getWindowDuration(),
                 new File(config.getDbPath()),
                 Clock.systemUTC(),
                 pipelineDescription.getNumberOfProcessWorkers(),
@@ -99,15 +104,15 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 config.getGroupByAttributes());
     }
 
-    OtelApmServiceMapProcessor(final long windowDurationMillis,
+    OtelApmServiceMapProcessor(final Duration windowDuration,
                                final File databasePath,
                                final Clock clock,
                                final int processWorkers,
                                final PluginMetrics pluginMetrics) {
-        this(windowDurationMillis, databasePath, clock, processWorkers, pluginMetrics, Collections.emptyList());
+        this(windowDuration, databasePath, clock, processWorkers, pluginMetrics, Collections.emptyList());
     }
 
-    OtelApmServiceMapProcessor(final long windowDurationMillis,
+    OtelApmServiceMapProcessor(final Duration windowDuration,
                                final File databasePath,
                                final Clock clock,
                                final int processWorkers,
@@ -121,8 +126,8 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         this.thisProcessorId = processorsCreated.getAndIncrement();
 
         if (isMasterInstance()) {
-            previousTimestamp = OtelApmServiceMapProcessor.clock.millis();
-            OtelApmServiceMapProcessor.windowDurationMillis = windowDurationMillis;
+            previousTimestamp = OtelApmServiceMapProcessor.clock.instant();
+            OtelApmServiceMapProcessor.windowDuration = windowDuration;
             OtelApmServiceMapProcessor.dbPath = createPath(databasePath);
 
             currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
@@ -170,7 +175,7 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     public void prepareForShutdown() {
-        previousTimestamp = 0L;
+        previousTimestamp = Instant.EPOCH;
     }
 
     @Override
@@ -455,7 +460,7 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         nextWindow = tempWindow;
         nextWindow.clear();
 
-        previousTimestamp = clock.millis();
+        previousTimestamp = clock.instant();
         LOG.debug("Done rotating APM service map windows - All metrics cleared for new window");
     }
 
@@ -470,10 +475,8 @@ public class OtelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      * @return Boolean indicating whether the window duration has lapsed
      */
     private boolean windowDurationHasPassed() {
-        if ((clock.millis() - previousTimestamp) >= windowDurationMillis) {
-            return true;
-        }
-        return false;
+        final Duration elapsed = Duration.between(previousTimestamp, clock.instant());
+        return elapsed.compareTo(windowDuration) >= 0;
     }
 
     /**
