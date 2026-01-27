@@ -12,11 +12,3 @@ dependencies {
     implementation libs.commons.codec
     testImplementation project(':data-prepper-test:test-common')
 }
-
-test {
-    useJUnitPlatform()
-}
-
-jacocoTestReport {
-    dependsOn test
-}

@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor;
@@ -21,6 +26,7 @@ import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
 
 import java.io.File;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
@@ -69,8 +75,8 @@ class OtelApmServiceMapProcessorTest {
     void setUp() {
         lenient().when(clock.instant()).thenReturn(testTime);
         lenient().when(clock.millis()).thenReturn(testTime.toEpochMilli());
-        
-        lenient().when(config.getWindowDuration()).thenReturn(60);
+
+        lenient().when(config.getWindowDuration()).thenReturn(Duration.ofSeconds(60));
         lenient().when(config.getDbPath()).thenReturn(tempDir.getAbsolutePath());
         lenient().when(config.getGroupByAttributes()).thenReturn(Collections.emptyList());
         
@@ -83,7 +89,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testDoExecuteWithNoWindowDurationPassed() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-operation", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -99,11 +105,11 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testDoExecuteWithWindowDurationPassed() {
         // Given
-        when(clock.millis())
-            .thenReturn(testTime.toEpochMilli()) // Initial timestamp
-            .thenReturn(testTime.toEpochMilli() + 65000); // 65 seconds later
-        
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        when(clock.instant())
+            .thenReturn(testTime) // Initial timestamp
+            .thenReturn(testTime.plusSeconds(65)); // 65 seconds later
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-operation", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -119,7 +125,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessSpanWithValidSpan() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-operation", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -135,7 +141,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessSpanWithNullServiceName() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan(null, "test-operation", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -152,7 +158,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessSpanWithEmptyServiceName() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("", "test-operation", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -168,7 +174,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessSpanWithClientSpanKind() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("client-service", "client-operation", "CLIENT");
         Record<Event> record = new Record<>(mockSpan);
@@ -184,7 +190,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessSpanWithExceptionHandling() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = mock(Span.class);
         when(mockSpan.getServiceName()).thenReturn("test-service");
@@ -200,7 +206,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanStatus() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Map<String, Object> status = new HashMap<>();
         status.put("code", "ERROR");
@@ -223,7 +229,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanStatusWithNullStatus() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getStatus()).thenReturn(null);
@@ -241,7 +247,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanStatusWithEmptyStatus() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getStatus()).thenReturn(Collections.emptyMap());
@@ -259,7 +265,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanStatusWithException() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getStatus()).thenThrow(new RuntimeException("Status extraction error"));
@@ -277,7 +283,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanAttributesWithValidAttributes() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("http.method", "GET");
@@ -303,7 +309,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractSpanAttributesWithException() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getAttributes()).thenThrow(new RuntimeException("Attributes extraction error"));
@@ -322,7 +328,7 @@ class OtelApmServiceMapProcessorTest {
     void testExtractGroupByAttributesWithValidAttributes() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment", "service.namespace");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Map<String, Object> resourceAttributes = new HashMap<>();
         resourceAttributes.put("deployment.environment", "production");
@@ -349,7 +355,7 @@ class OtelApmServiceMapProcessorTest {
     void testExtractGroupByAttributesWithNullResource() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getResource()).thenReturn(null);
@@ -367,7 +373,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testExtractGroupByAttributesWithEmptyGroupByList() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, Collections.emptyList());
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, Collections.emptyList());
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
@@ -384,7 +390,7 @@ class OtelApmServiceMapProcessorTest {
     void testExtractGroupByAttributesWithException() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getResource()).thenThrow(new RuntimeException("Resource extraction error"));
@@ -402,11 +408,11 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testWindowDurationHasPassed() {
         // Given
-        when(clock.millis())
-            .thenReturn(1000L) // Initial time
-            .thenReturn(61000L); // 61 seconds later
-        
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        when(clock.instant())
+            .thenReturn(Instant.ofEpochMilli(1000L)) // Initial time
+            .thenReturn(Instant.ofEpochMilli(61000L)); // 61 seconds later
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // Create a span to process
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
@@ -423,11 +429,11 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testWindowDurationNotPassed() {
         // Given
-        when(clock.millis())
-            .thenReturn(1000L) // Initial time
-            .thenReturn(30000L); // 30 seconds later
-        
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        when(clock.instant())
+            .thenReturn(Instant.ofEpochMilli(1000L)) // Initial time
+            .thenReturn(Instant.ofEpochMilli(30000L)); // 30 seconds later
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // Create a span to process
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
@@ -444,10 +450,10 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testIsMasterInstance() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When - Create another instance (should not be master)
-        OtelApmServiceMapProcessor processor2 = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        OtelApmServiceMapProcessor processor2 = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // Then
         // Both should work without issues (testing internal master logic)
@@ -458,7 +464,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testGetSpansDbSize() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         double size = processor.getSpansDbSize();
@@ -470,7 +476,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testGetSpansDbCount() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         double count = processor.getSpansDbCount();
@@ -482,7 +488,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testGetIdentificationKeys() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         Collection<String> keys = processor.getIdentificationKeys();
@@ -495,7 +501,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testPrepareForShutdown() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         processor.prepareForShutdown();
@@ -507,7 +513,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testIsReadyForShutdown() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         boolean ready = processor.isReadyForShutdown();
@@ -519,7 +525,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testShutdown() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When
         processor.shutdown();
@@ -531,7 +537,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testMultipleSpansProcessing() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         List<Record<Event>> records = Arrays.asList(
             new Record<>(createMockSpan("service1", "op1", "CLIENT")),
@@ -549,7 +555,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithNullDuration() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getDurationInNanos()).thenReturn(null);
@@ -567,7 +573,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithZeroDuration() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getDurationInNanos()).thenReturn(0L);
@@ -585,7 +591,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithEmptyParentSpanId() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getParentSpanId()).thenReturn("");
@@ -603,7 +609,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithInvalidHexSpanId() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getSpanId()).thenReturn("invalid-hex");
@@ -621,7 +627,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithNullEndTime() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getEndTime()).thenReturn(null);
@@ -639,7 +645,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanWithInvalidEndTime() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getEndTime()).thenReturn("invalid-timestamp");
@@ -658,12 +664,12 @@ class OtelApmServiceMapProcessorTest {
     void testComplexWindowProcessingWithMultipleProcessors() {
         // Given
         //when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(3);
-        
-        when(clock.millis())
-            .thenReturn(testTime.toEpochMilli()) // Initial timestamp
-            .thenReturn(testTime.toEpochMilli() + 65); // 65 seconds later
-        
-        processor = new OtelApmServiceMapProcessor(60L, tempDir, clock, 3, pluginMetrics);
+
+        when(clock.instant())
+            .thenReturn(testTime) // Initial timestamp
+            .thenReturn(testTime.plusMillis(65)); // 65 milliseconds later
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofMillis(60), tempDir, clock, 3, pluginMetrics);
         
         List<Record<Event>> records = Arrays.asList(
             new Record<>(createMockSpan("service-1", "operation-1", "CLIENT")),
@@ -681,11 +687,11 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithComplexTraceRelationships() {
         // Given
-        when(clock.millis())
-            .thenReturn(testTime.toEpochMilli()) // Initial timestamp
-            .thenReturn(testTime.toEpochMilli() + 65000); // 65 seconds later
-        
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        when(clock.instant())
+            .thenReturn(testTime) // Initial timestamp
+            .thenReturn(testTime.plusSeconds(65)); // 65 seconds later
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // Create a complex trace with parent-child relationships
         Span parentSpan = createMockSpanWithIds("parent-service", "parent-op", "SERVER", 
@@ -711,12 +717,12 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testWindowProcessingWithInterruptedException() {
         // Given
-        when(clock.millis())
-            .thenReturn(testTime.toEpochMilli()) // Initial timestamp
-            .thenReturn(testTime.toEpochMilli() + 65000); // 65 seconds later
-        
+        when(clock.instant())
+            .thenReturn(testTime) // Initial timestamp
+            .thenReturn(testTime.plusSeconds(65)); // 65 seconds later
+
         // Mock the processor to throw InterruptedException during barrier wait
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics) {
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics) {
             @Override
             public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
                 // Override to simulate barrier exception
@@ -742,7 +748,7 @@ class OtelApmServiceMapProcessorTest {
     void testGroupByAttributesWithNestedResourceStructure() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment", "k8s.namespace.name", "service.version");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Map<String, Object> nestedAttributes = new HashMap<>();
         nestedAttributes.put("deployment.environment", "production");
@@ -771,7 +777,7 @@ class OtelApmServiceMapProcessorTest {
     void testGroupByAttributesWithNonMapResourceAttributes() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Map<String, Object> resource = new HashMap<>();
         resource.put("attributes", "not-a-map"); // Invalid structure
@@ -792,7 +798,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testGetAnchorTimestampFromSpanWithValidEndTime() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getEndTime()).thenReturn("2021-01-01T12:30:45.123Z");
@@ -810,7 +816,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testGetAnchorTimestampFromSpanWithEmptyEndTime() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
         when(mockSpan.getEndTime()).thenReturn("");
@@ -828,7 +834,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithHttpStatusCodeAttributes() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("http.response.status_code", 404);
@@ -851,7 +857,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithStatusCodeInStatus() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Map<String, Object> status = new HashMap<>();
         status.put("code", 2); // ERROR status code
@@ -873,7 +879,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithNullStatusCode() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Map<String, Object> status = new HashMap<>();
         status.put("code", null);
@@ -895,7 +901,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithMixedSpanKinds() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         List<Record<Event>> records = Arrays.asList(
             new Record<>(createMockSpan("producer-service", "send-message", "PRODUCER")),
@@ -915,7 +921,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithVeryLongDuration() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("slow-service", "slow-operation", "SERVER");
         when(mockSpan.getDurationInNanos()).thenReturn(Long.MAX_VALUE);
@@ -933,7 +939,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testSpanProcessingWithNegativeDuration() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         Span mockSpan = createMockSpan("negative-duration-service", "negative-op", "SERVER");
         when(mockSpan.getDurationInNanos()).thenReturn(-1000L);
@@ -952,7 +958,7 @@ class OtelApmServiceMapProcessorTest {
     void testComplexResourceWithMultipleLevels() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment");
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics, groupByAttributes);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics, groupByAttributes);
         
         Map<String, Object> nestedResource = new HashMap<>();
         nestedResource.put("deployment.environment", "staging");
@@ -980,7 +986,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessingEmptyRecordCollection() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         Collection<Record<Event>> emptyRecords = Collections.emptyList();
         
         // When
@@ -994,7 +1000,7 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testProcessingNullRecordCollection() {
         // Given
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When/Then
         assertThrows(NullPointerException.class, () -> {
@@ -1005,9 +1011,9 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testStaticProcessorsCreatedCounter() {
         // Given - Create multiple processors to test static counter
-        processor = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
-        OtelApmServiceMapProcessor processor2 = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
-        OtelApmServiceMapProcessor processor3 = new OtelApmServiceMapProcessor(60000L, tempDir, clock, 1, pluginMetrics);
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
+        OtelApmServiceMapProcessor processor2 = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
+        OtelApmServiceMapProcessor processor3 = new OtelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, pluginMetrics);
         
         // When - Create spans for each processor
         Span mockSpan1 = createMockSpan("service-1", "op-1", "SERVER");
@@ -1023,12 +1029,12 @@ class OtelApmServiceMapProcessorTest {
     @Test
     void testWindowProcessingWithCustomWindowDuration() {
         // Given - Use a very short window duration
-        when(clock.millis())
-            .thenReturn(1000L) // Initial time
-            .thenReturn(1001L) // Just 1 millisecond later
-            .thenReturn(2001L); // 1001ms later (window passed)
-        
-        processor = new OtelApmServiceMapProcessor(1000L, tempDir, clock, 1, pluginMetrics); // 1 second window
+        when(clock.instant())
+            .thenReturn(Instant.ofEpochMilli(1000L)) // Initial time
+            .thenReturn(Instant.ofEpochMilli(1001L)) // Just 1 millisecond later
+            .thenReturn(Instant.ofEpochMilli(2001L)); // 1001ms later (window passed)
+
+        processor = new OtelApmServiceMapProcessor(Duration.ofSeconds(1), tempDir, clock, 1, pluginMetrics); // 1 second window
         
         Span mockSpan = createMockSpan("fast-service", "fast-op", "SERVER");
         Record<Event> record = new Record<>(mockSpan);
