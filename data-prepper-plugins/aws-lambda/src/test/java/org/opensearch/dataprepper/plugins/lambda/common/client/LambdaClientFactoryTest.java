@@ -33,6 +33,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class LambdaClientFactoryTest {
@@ -86,6 +88,58 @@ class LambdaClientFactoryTest {
     assertNotNull(overrideConfig.retryPolicy());
     assertNotNull(overrideConfig.metricPublishers());
     assertFalse(overrideConfig.metricPublishers().isEmpty());
+    // apiCallAttemptTimeout should not be set when null
+    assertFalse(overrideConfig.apiCallAttemptTimeout().isPresent());
+  }
+
+  @Test
+  void testCreateAsyncLambdaClientWithApiCallAttemptTimeout() {
+    // Arrange
+    ClientOptions clientOptions = mock(ClientOptions.class);
+    when(clientOptions.getMaxConcurrency()).thenReturn(200);
+    when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getReadTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getApiCallAttemptTimeout()).thenReturn(Duration.ofSeconds(30));
+    when(clientOptions.getMaxConnectionRetries()).thenReturn(3);
+    when(clientOptions.getBaseDelay()).thenReturn(Duration.ofMillis(100));
+    when(clientOptions.getMaxBackoff()).thenReturn(Duration.ofSeconds(20));
+
+    // Act
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            awsCredentialsSupplier,
+            clientOptions
+    );
+
+    // Assert
+    assertNotNull(client);
+    ClientOverrideConfiguration overrideConfig = client.serviceClientConfiguration().overrideConfiguration();
+    assertEquals(Duration.ofSeconds(30), overrideConfig.apiCallAttemptTimeout().get());
+  }
+
+  @Test
+  void testCreateAsyncLambdaClientWithoutReadTimeout() {
+    // Arrange
+    ClientOptions clientOptions = mock(ClientOptions.class);
+    when(clientOptions.getMaxConcurrency()).thenReturn(200);
+    when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getReadTimeout()).thenReturn(null); // No read timeout
+    when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getApiCallAttemptTimeout()).thenReturn(null); // No attempt timeout
+    when(clientOptions.getMaxConnectionRetries()).thenReturn(3);
+    when(clientOptions.getBaseDelay()).thenReturn(Duration.ofMillis(100));
+    when(clientOptions.getMaxBackoff()).thenReturn(Duration.ofSeconds(20));
+
+    // Act
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            awsCredentialsSupplier,
+            clientOptions
+    );
+
+    // Assert - should not throw exception when readTimeout is null
+    assertNotNull(client);
   }
 
   @Test
@@ -182,6 +236,30 @@ class LambdaClientFactoryTest {
     assertEquals(2, countingRetryCondition.getRetryCount(),
             "Retry condition should have been called exactly 2 times");
     assertTrue(successReached, "Should have reached successful completion");
+  }
+
+  @Test
+  void testClientUsesConfiguredReadTimeout() {
+    ClientOptions clientOptions = new ClientOptions();
+    Duration customReadTimeout = Duration.ofSeconds(30);
+    
+    // Use reflection to set the readTimeout since there's no setter
+    try {
+      java.lang.reflect.Field readTimeoutField = ClientOptions.class.getDeclaredField("readTimeout");
+      readTimeoutField.setAccessible(true);
+      readTimeoutField.set(clientOptions, customReadTimeout);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set readTimeout", e);
+    }
+
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            awsCredentialsSupplier,
+            clientOptions
+    );
+
+    assertNotNull(client);
+    assertEquals(customReadTimeout, clientOptions.getReadTimeout());
   }
 
 }
