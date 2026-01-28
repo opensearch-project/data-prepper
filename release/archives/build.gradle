@@ -194,3 +194,27 @@ task buildTar {
 task buildArchives {
     dependsOn buildTar
 }
+
+ext {
+    getCurrentArchitecture = {
+        def osArch = System.getProperty("os.arch")
+        return osArch == "aarch64" || osArch == "arm64" ? "arm64" : "x64"
+    }
+    
+    getCurrentPlatformDistTask = { platform ->
+        def arch = getCurrentArchitecture()
+        return ":release:archives:${platform}:${platform}${arch}DistTar"
+    }
+    
+    getCurrentPlatformDistFile = { platform ->
+        def arch = getCurrentArchitecture()
+        def taskName = "${platform}${arch}DistTar"
+        return project(":release:archives:${platform}").tasks.getByName(taskName).archiveFile.get().asFile
+    }
+    
+    getCurrentPlatformDistFileName = { platform ->
+        def arch = getCurrentArchitecture()
+        def taskName = "${platform}${arch}DistTar"
+        return project(":release:archives:${platform}").tasks.getByName(taskName).archiveFileName.get()
+    }
+}

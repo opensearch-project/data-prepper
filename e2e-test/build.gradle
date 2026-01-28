@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 
@@ -54,22 +58,24 @@ subprojects {
     }
 
     tasks.register('copyDataPrepperArchive', Copy) {
-        dependsOn ':release:archives:linux:linuxx64DistTar'
+        def distTask = project(':release:archives').ext.getCurrentPlatformDistTask('linux')
+        dependsOn distTask
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        from project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFile.get().asFile
+        from project(':release:archives').ext.getCurrentPlatformDistFile('linux')
         into("${project.buildDir}/docker/")
     }
 
     tasks.register('createDataPrepperDockerFile', Dockerfile) {
         dependsOn copyDataPrepperArchive
-        dependsOn ':release:archives:linux:linuxx64DistTar'
+        def distTask = project(':release:archives').ext.getCurrentPlatformDistTask('linux')
+        dependsOn distTask
         destFile = project.file('build/docker/Dockerfile')
 
         from(dataPrepperBaseImage)
         runCommand('useradd -u 1012 -M -U -d / -s /sbin/nologin -c "Data Prepper Test" data_prepper_test')
         runCommand('mkdir -p /var/log/data-prepper')
-        addFile(project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get(), '/usr/share')
-        runCommand("mv /usr/share/${project(':release:archives:linux').tasks.getByName('linuxx64DistTar').archiveFileName.get().replace('.tar.gz', '')} /usr/share/data-prepper")
+        addFile(project(':release:archives').ext.getCurrentPlatformDistFileName('linux'), '/usr/share')
+        runCommand("mv /usr/share/${project(':release:archives').ext.getCurrentPlatformDistFileName('linux').replace('.tar.gz', '')} /usr/share/data-prepper")
         runCommand('chown -R 1012:1012 /usr/share/data-prepper /var/log/data-prepper')
         user('data_prepper_test')
         workingDir('/usr/share/data-prepper')
