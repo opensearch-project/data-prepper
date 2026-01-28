@@ -37,10 +37,15 @@ public class IndexConstants {
   public static final String ISM_ROLLOVER_ALIAS_SETTING = "opendistro.index_state_management.rollover_alias";
   // TODO: extract out version number into version enum
   public static final String SERVICE_MAP_DEFAULT_TEMPLATE_FILE = "otel-v1-apm-service-map-index-template.json";
+  public static final String OTEL_APM_SERVICE_MAP_TEMPLATE_FILE = "otel-v2-apm-service-map-index-template.json";
+  public static final String OTEL_APM_SERVICE_MAP_ISM_POLICY = "otel-v2-apm-service-map-policy";
+  public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_NO_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-no-ism-template.json";
+  public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-with-ism-template.json";
 
   static {
     // TODO: extract out version number into version enum
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_SERVICE_MAP, "otel-v1-apm-service-map");
+    TYPE_TO_DEFAULT_ALIAS.put(IndexType.OTEL_APM_SERVICE_MAP, "otel-v2-apm-service-map");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW, "otel-v1-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_PLAIN, "otel-v1-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS, "logs-otel-v1");

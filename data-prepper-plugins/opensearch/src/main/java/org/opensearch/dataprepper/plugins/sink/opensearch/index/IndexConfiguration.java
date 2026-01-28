@@ -168,6 +168,8 @@ public class IndexConfiguration {
             documentId = "${traceId}/${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentId = "${hashId}";
+        } else if (indexType.equals(IndexType.OTEL_APM_SERVICE_MAP)) {
+            documentId = "${hashCode}";
         }
         this.documentIdField = documentIdField;
         this.documentId = documentId;
@@ -434,6 +436,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_STANDARD_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.OTEL_APM_SERVICE_MAP)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.OTEL_APM_SERVICE_MAP_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS_PLAIN)) {

@@ -1,0 +1,146 @@
+{
+  "version": 0,
+  "index_patterns": ["otel-v2-apm-service-map*"],
+  "template": {
+    "mappings": {
+      "date_detection": false,
+      "dynamic_templates": [
+      {
+        "long_service_group_by_attributes": {
+          "path_match": "service.groupByAttributes.*",
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "long"
+          }
+        }
+      },
+      {
+        "double_service_group_by_attributes": {
+          "path_match": "service.groupByAttributes.*",
+          "match_mapping_type": "double",
+          "mapping": {
+            "type": "double"
+          }
+        }
+      },
+      {
+        "string_service_group_by_attributes": {
+          "path_match": "service.groupByAttributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "ignore_above": 256,
+            "type": "keyword"
+          }
+        }
+      },
+      {
+        "long_operation_remote_service_group_by_attributes": {
+          "path_match": "operation.remoteService.groupByAttributes.*",
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "long"
+          }
+        }
+      },
+      {
+        "double_operation_remote_service_group_by_attributes": {
+          "path_match": "operation.remoteService.groupByAttributes.*",
+          "match_mapping_type": "double",
+          "mapping": {
+            "type": "double"
+          }
+        }
+      },
+      {
+        "string_operation_remote_service_group_by_attributes": {
+          "path_match": "operation.remoteService.groupByAttributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "ignore_above": 256,
+            "type": "keyword"
+          }
+        }
+      }
+    ],
+    "_source": {
+      "enabled": true
+    },
+    "properties": {
+      "eventType": {
+        "type": "keyword"
+      },
+      "hashCode": {
+        "type": "keyword"
+      },
+      "operation": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "remoteOperationName": {
+            "type": "keyword"
+          },
+          "remoteService": {
+            "properties": {
+              "groupByAttributes": {
+                "type": "object",
+                "dynamic": "true"
+              },
+              "keyAttributes": {
+                "properties": {
+                  "environment": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "remoteService": {
+        "properties": {
+          "groupByAttributes": {
+            "type": "object",
+            "dynamic": "true"
+          },
+          "keyAttributes": {
+            "properties": {
+              "environment": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "service": {
+        "properties": {
+          "groupByAttributes": {
+            "type": "object",
+            "dynamic": "true"
+          },
+          "keyAttributes": {
+            "properties": {
+              "environment": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+  }
+}
