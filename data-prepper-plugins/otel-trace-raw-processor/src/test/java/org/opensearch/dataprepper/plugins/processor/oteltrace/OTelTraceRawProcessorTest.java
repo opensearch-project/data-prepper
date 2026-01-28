@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
-import org.opensearch.dataprepper.plugins.processor.oteltrace.util.OTelSpanDerivationUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -222,72 +221,6 @@ class OTelTraceRawProcessorTest {
     }
 
     @Test
-    void testServerSpansReceiveDerivedAttributes() {
-        final Collection<Record<Span>> processedRecords = oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
-
-        // Find SERVER spans and verify they have derived attributes
-        boolean foundServerSpan = false;
-        for (Record<Span> record : processedRecords) {
-            final Span span = record.getData();
-            if ("SERVER".equals(span.getKind())) {
-                foundServerSpan = true;
-                final Map<String, Object> attributes = span.getAttributes();
-                
-                // Check that all derived attributes are present
-                assertTrue(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_FAULT_ATTRIBUTE), 
-                          "SERVER span should have derived.fault attribute");
-                assertTrue(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_ERROR_ATTRIBUTE), 
-                          "SERVER span should have derived.error attribute");
-                assertTrue(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_OPERATION_ATTRIBUTE), 
-                          "SERVER span should have derived.operation attribute");
-                assertTrue(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE), 
-                          "SERVER span should have derived.environment attribute");
-                
-                // Check that derived attribute values are valid
-                final String fault = (String) attributes.get(OTelSpanDerivationUtil.DERIVED_FAULT_ATTRIBUTE);
-                final String error = (String) attributes.get(OTelSpanDerivationUtil.DERIVED_ERROR_ATTRIBUTE);
-                final String operation = (String) attributes.get(OTelSpanDerivationUtil.DERIVED_OPERATION_ATTRIBUTE);
-                final String environment = (String) attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE);
-                
-                assertTrue("0".equals(fault) || "1".equals(fault), "derived.fault should be 0 or 1");
-                assertTrue("0".equals(error) || "1".equals(error), "derived.error should be 0 or 1");
-                assertTrue(operation != null && !operation.isEmpty(), "derived.operation should not be empty");
-                assertTrue(environment != null && !environment.isEmpty(), "derived.environment should not be empty");
-            }
-        }
-        
-        // Only run the test if we actually found SERVER spans in the test data
-        if (foundServerSpan) {
-            // Test passed - we verified at least one SERVER span
-        } else {
-            // Skip this test if no SERVER spans in test data - this is expected for existing test data
-            assertTrue(true, "No SERVER spans found in test data - test not applicable");
-        }
-    }
-
-    @Test
-    void testNonServerSpansDoNotReceiveDerivedAttributes() {
-        final Collection<Record<Span>> processedRecords = oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
-
-        // Verify that non-SERVER spans do not have derived attributes
-        for (Record<Span> record : processedRecords) {
-            final Span span = record.getData();
-            if (!"SERVER".equals(span.getKind())) {
-                final Map<String, Object> attributes = span.getAttributes();
-                
-                assertFalse(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_FAULT_ATTRIBUTE), 
-                           "Non-SERVER span should not have derived.fault attribute");
-                assertFalse(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_ERROR_ATTRIBUTE), 
-                           "Non-SERVER span should not have derived.error attribute");  
-                assertFalse(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_OPERATION_ATTRIBUTE), 
-                           "Non-SERVER span should not have derived.operation attribute");
-                assertFalse(attributes.containsKey(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE), 
-                           "Non-SERVER span should not have derived.environment attribute");
-            }
-        }
-    }
-
-    @Test
     void testMetricsOnTraceGroup() {
         ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
         ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
@@ -430,3 +363,4 @@ class OTelTraceRawProcessorTest {
         return count;
     }
 }
+

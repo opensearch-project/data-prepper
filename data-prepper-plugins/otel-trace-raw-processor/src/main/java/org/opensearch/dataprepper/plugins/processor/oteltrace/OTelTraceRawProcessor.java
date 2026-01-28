@@ -19,7 +19,6 @@ import org.opensearch.dataprepper.model.trace.Span;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
-import org.opensearch.dataprepper.plugins.processor.oteltrace.util.OTelSpanDerivationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,9 +92,6 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         }
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
-
-        // Derive server span attributes (fault, error, operation, environment)
-        OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
 
         return processedSpans.stream().map(Record::new).collect(Collectors.toList());
     }
