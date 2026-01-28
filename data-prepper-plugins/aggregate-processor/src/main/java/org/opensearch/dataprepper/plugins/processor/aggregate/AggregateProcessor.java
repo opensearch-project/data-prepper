@@ -105,21 +105,23 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         final List<Record<Event>> recordsOut = new LinkedList<>();
 
-        final List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
-        for (final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry : groupsToConclude) {
-            final AggregateActionOutput actionOutput = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
+        synchronized (this) {
+            final List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
+            for (final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry : groupsToConclude) {
+                final AggregateActionOutput actionOutput = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
-            final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
-            if (concludeGroupEvents != null && !concludeGroupEvents.isEmpty()) {
-                concludeGroupEvents.stream().forEach((event) -> {
-                    if (aggregatedEventsTag != null) {
-                        event.getMetadata().addTags(List.of(aggregatedEventsTag));
-                    }
-                    recordsOut.add(new Record(event));
-                    actionConcludeGroupEventsOutCounter.increment();
-                });
-            } else {
-                actionConcludeGroupEventsDroppedCounter.increment();
+                final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
+                if (concludeGroupEvents != null && !concludeGroupEvents.isEmpty()) {
+                    concludeGroupEvents.stream().forEach((event) -> {
+                        if (aggregatedEventsTag != null) {
+                            event.getMetadata().addTags(List.of(aggregatedEventsTag));
+                        }
+                        recordsOut.add(new Record(event));
+                        actionConcludeGroupEventsOutCounter.increment();
+                    });
+                } else {
+                    actionConcludeGroupEventsDroppedCounter.increment();
+                }
             }
         }
 
@@ -132,9 +134,12 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
             final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
-            final AggregateGroup aggregateGroupForEvent = getAggregateGroupForEvent(identificationKeysMap);
+            final AggregateActionResponse handleEventResponse;
+            synchronized (this) {
+                final AggregateGroup aggregateGroupForEvent = getAggregateGroupForEvent(identificationKeysMap);
 
-            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
+                handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
+            }
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
