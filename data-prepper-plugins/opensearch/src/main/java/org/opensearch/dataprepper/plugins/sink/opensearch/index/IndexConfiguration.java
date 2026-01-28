@@ -168,8 +168,6 @@ public class IndexConfiguration {
             documentId = "${traceId}/${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentId = "${hashId}";
-        } else if (indexType.equals(IndexType.OTEL_APM_SERVICE_MAP)) {
-            documentId = "${hashCode}";
         }
         this.documentIdField = documentIdField;
         this.documentId = documentId;
