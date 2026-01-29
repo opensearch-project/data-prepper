@@ -8,7 +8,8 @@ import java.util.Map;
 
 public enum InvocationType {
     REQUEST_RESPONSE("request-response", "RequestResponse"),
-    EVENT("event", "Event");
+    EVENT("event", "Event"),
+    STREAMING_RESPONSE("streaming-response", "RequestResponse");
 
     private final String userInputValue;
     private final String awsLambdaValue;

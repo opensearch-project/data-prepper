@@ -28,35 +28,28 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
-import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
-
-import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-import software.amazon.awssdk.services.lambda.model.LambdaException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -93,17 +86,17 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     final LambdaProcessorConfig lambdaProcessorConfig;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
-    private final Counter numberOfRecordsSuccessCounter;
-    private final Counter numberOfRecordsFailedCounter;
-    private final Counter numberOfRequestsSuccessCounter;
-    private final Counter numberOfRequestsFailedCounter;
-    private final Counter lambdaResponseRecordsCounter;
-    private final Counter batchExceedingThresholdCounter;
-    private final Timer lambdaLatencyMetric;
+    final Counter numberOfRecordsSuccessCounter;
+    final Counter numberOfRecordsFailedCounter;
+    final Counter numberOfRequestsSuccessCounter;
+    final Counter numberOfRequestsFailedCounter;
+    final Counter lambdaResponseRecordsCounter;
+    final Counter batchExceedingThresholdCounter;
+    final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
-    private final LambdaAsyncClient lambdaAsyncClient;
-    private final DistributionSummary requestPayloadMetric;
-    private final DistributionSummary responsePayloadMetric;
+    final LambdaAsyncClient lambdaAsyncClient;
+    final DistributionSummary requestPayloadMetric;
+    final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
     private final CircuitBreaker circuitBreaker;
@@ -112,6 +105,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final LambdaProcessorConfig.CacheConfig cacheConfig;
 
     private LambdaResponseMode responseMode;
+    
+    // Reusable codec instance to avoid per-invocation creation overhead
+    private final InputCodec responseCodec;
+    
+    // Strategy pattern for Lambda invocation (streaming vs synchronous)
+    private final LambdaInvoker lambdaInvoker;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
@@ -191,6 +190,42 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             this.responseStrategy = new AggregateResponseEventHandlingStrategy();
         }
 
+        // Initialize response codec once to avoid per-invocation overhead
+        this.responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
+        
+        // Validate reconstruct-document configuration
+        if (lambdaProcessorConfig.getStreamingOptions() != null &&
+            lambdaProcessorConfig.getStreamingOptions().getResponseHandling() == ResponseHandling.RECONSTRUCT_DOCUMENT) {
+            
+            int eventCount = lambdaProcessorConfig.getBatchOptions().getThresholdOptions().getEventCount();
+            if (eventCount > 1) {
+                String errorMessage = String.format(
+                    "Invalid configuration: When using streaming with response_handling: 'reconstruct-document', " +
+                    "batch.threshold.event_count must be set to 1. Multi-event batching with reconstruct-document " +
+                    "is not currently supported. Current event_count value: %d.",
+                    eventCount
+                );
+                LOG.error(errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+        
+        // Initialize appropriate Lambda invoker based on configuration (Strategy Pattern)
+        if (lambdaProcessorConfig.getStreamingOptions() != null && 
+            lambdaProcessorConfig.getStreamingOptions().isEnabled() &&
+            lambdaProcessorConfig.getInvocationType() == InvocationType.STREAMING_RESPONSE) {
+            this.lambdaInvoker = new StreamingLambdaInvoker(
+                    lambdaProcessorConfig,
+                    lambdaAsyncClient,
+                    responseCodec,
+                    this);
+        } else {
+            this.lambdaInvoker = new SyncLambdaInvoker(
+                    lambdaProcessorConfig,
+                    lambdaAsyncClient,
+                    responseCodec,
+                    this);
+        }
     }
 
     private Cache<LambdaCacheKey, Event> createCache(LambdaProcessorConfig.CacheConfig cacheConfig) {
@@ -281,57 +316,20 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         if (recordsToLambda.size() == 0) {
             return resultRecords;
         }
-        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
+        
+        // Check if circuit breaker is open - if so, wait until it closes
         try {
-            // Check if circuit breaker is open - if so, wait until it closes
             checkCircuitBreaker();
-            bufferToFutureMap = LambdaCommonHandler.sendRecords(
-                    recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
-                    new OutputCodecContext());
         } catch (Exception e) {
-            //NOTE: Ideally we should never hit this at least due to lambda invocation failure.
-            // All lambda exceptions will reflect only when handling future.join() per request
-            LOG.error(NOISY, "Error while batching and sending records to Lambda", e);
+            LOG.error(NOISY, "Circuit breaker check failed", e);
             numberOfRecordsFailedCounter.increment(recordsToLambda.size());
             numberOfRequestsFailedCounter.increment();
             resultRecords.addAll(addFailureTags(recordsToLambda));
+            return resultRecords;
         }
-
-        for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
-            CompletableFuture<InvokeResponse> future = entry.getValue();
-            Buffer inputBuffer = entry.getKey();
-            try {
-                InvokeResponse response = future.join();
-                Duration latency = inputBuffer.stopLatencyWatch();
-                lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-                requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
-                if (!isSuccess(response)) {
-                    String errorMessage = String.format("Lambda invoke failed with status code %s error %s ",
-                            response.statusCode(), response.payload().asUtf8String());
-                    throw new RuntimeException(errorMessage);
-                }
-
-                resultRecords.addAll(convertLambdaResponseToEvent(inputBuffer, response));
-                numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
-                numberOfRequestsSuccessCounter.increment();
-                if (response.payload() != null) {
-                    responsePayloadMetric.record(response.payload().asByteArray().length);
-                }
-
-            } catch (Exception e) {
-                LOG.error(NOISY, e.getMessage(), e);
-                if (e instanceof LambdaException &&
-                        e.getMessage() != null &&
-                        e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)) {
-                    batchExceedingThresholdCounter.increment();
-                }
-                /* fall through */
-                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
-            }
-        }
-        return resultRecords;
+        
+        // Use the strategy pattern - invoker handles streaming vs sync logic
+        return lambdaInvoker.invoke(recordsToLambda, resultRecords);
     }
 
     private void checkCircuitBreaker() {
@@ -369,9 +367,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * 1. If response has an array, we assume that we split the individual events.
      * 2. If it is not an array, then create one event per response.
      */
-    List<Record<Event>> convertLambdaResponseToEvent(Buffer flushedBuffer,
-                                                     final InvokeResponse lambdaResponse) throws IOException {
-        InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
+    public List<Record<Event>> convertLambdaResponseToEvent(Buffer flushedBuffer,
+                                                             final InvokeResponse lambdaResponse) throws IOException {
+        // Use the reusable response codec instance created during construction
         List<Record<Event>> originalRecords = flushedBuffer.getRecords();
 
         List<Event> parsedEvents = new ArrayList<>();
@@ -406,7 +404,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * If one event in the Buffer fails, we consider that the entire
      * Batch fails and tag each event in that Batch.
      */
-    private List<Record<Event>> addFailureTags(List<Record<Event>> records) {
+    List<Record<Event>> addFailureTags(List<Record<Event>> records) {
         if (tagsOnFailure == null || tagsOnFailure.isEmpty()) {
             return records;
         }
