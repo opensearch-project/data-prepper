@@ -59,6 +59,10 @@ public class IndexManagerFactory {
                 indexManager = new TraceAnalyticsServiceMapIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
+            case OTEL_APM_SERVICE_MAP:
+                indexManager = new OTelAPMServiceMapIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+                break;
             case LOG_ANALYTICS:
             case LOG_ANALYTICS_PLAIN:
                 indexManager = new LogAnalyticsIndexManager(
@@ -146,6 +150,19 @@ public class IndexManagerFactory {
                                                     final ClusterSettingsParser clusterSettingsParser,
                                                     final TemplateStrategy templateStrategy,
                                                     final String indexAlias) {
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
+        }
+    }
+
+    private static class OTelAPMServiceMapIndexManager extends AbstractIndexManager {
+
+        public OTelAPMServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
+                                            final OpenSearchClient openSearchClient,
+                                            final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                            final ClusterSettingsParser clusterSettingsParser,
+                                            final TemplateStrategy templateStrategy,
+                                            final String indexAlias) {
             super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
             this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
         }
