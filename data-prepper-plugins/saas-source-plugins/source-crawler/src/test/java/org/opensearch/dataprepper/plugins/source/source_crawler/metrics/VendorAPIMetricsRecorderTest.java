@@ -1713,4 +1713,250 @@ class VendorAPIMetricsRecorderTest {
         verify(bufferWriteSuccessCounter).increment();
         verify(retryableErrorsCounter).increment();
     }
+
+    // === NEW SETTER METHOD AND LAZY INITIALIZATION TESTS ===
+
+    @Test
+    void enableSubscriptionMetrics_WithDefaultConstructor_EnablesSubscriptionMetricsLazily() {
+        // Use separate PluginMetrics mock for clean testing
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        // Create recorder with default constructor (subscription metrics disabled)
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Verify subscription metrics are NOT created initially
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsSuccess");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionRequestsSuccess");
+        
+        // Setup subscription metric mocks for lazy initialization
+        Counter lazySubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        Counter lazyListSubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        when(testPluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(lazySubscriptionCounter);
+        when(testPluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(org.mockito.Mockito.mock(Timer.class));
+        when(testPluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.counter("listSubscriptionRequestsSuccess")).thenReturn(lazyListSubscriptionCounter);
+        when(testPluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(org.mockito.Mockito.mock(Timer.class));
+        when(testPluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        
+        // Enable subscription metrics
+        testRecorder.enableSubscriptionMetrics();
+        
+        // Verify subscription metrics are now created
+        verify(testPluginMetrics).counter("startSubscriptionRequestsSuccess");
+        verify(testPluginMetrics).counter("startSubscriptionRequestsFailed");
+        verify(testPluginMetrics).timer("startSubscriptionRequestLatency");
+        verify(testPluginMetrics).counter("startSubscriptionApiCalls");
+        verify(testPluginMetrics).counter("listSubscriptionRequestsSuccess");
+        verify(testPluginMetrics).counter("listSubscriptionRequestsFailed");
+        verify(testPluginMetrics).timer("listSubscriptionRequestLatency");
+        verify(testPluginMetrics).counter("listSubscriptionApiCalls");
+        
+        // Test that subscription metrics now work
+        testRecorder.recordSubscriptionSuccess();
+        testRecorder.recordListSubscriptionSuccess();
+        
+        verify(lazySubscriptionCounter).increment();
+        verify(lazyListSubscriptionCounter).increment();
+    }
+
+    @Test
+    void enableSubscriptionMetrics_WhenAlreadyEnabled_DoesNotReinitialize() {
+        // Use existing recorder which has subscription metrics enabled in setUp
+        
+        // Reset the mock to count only new interactions
+        org.mockito.Mockito.reset(pluginMetrics);
+        
+        // Call enableSubscriptionMetrics when already enabled
+        recorder.enableSubscriptionMetrics();
+        
+        // Should not create metrics again
+        verify(pluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsSuccess");
+        verify(pluginMetrics, org.mockito.Mockito.never()).timer("startSubscriptionRequestLatency");
+        verify(pluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionRequestsSuccess");
+        verify(pluginMetrics, org.mockito.Mockito.never()).timer("listSubscriptionRequestLatency");
+    }
+
+    @Test
+    void enableSubscriptionMetrics_MultipleEnableCalls_OnlyInitializesOnce() {
+        // Use separate PluginMetrics mock for clean testing
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Setup subscription metric mocks
+        when(testPluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(org.mockito.Mockito.mock(Timer.class));
+        when(testPluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.counter("listSubscriptionRequestsSuccess")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(org.mockito.Mockito.mock(Timer.class));
+        when(testPluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        
+        // Call enable multiple times
+        testRecorder.enableSubscriptionMetrics();
+        testRecorder.enableSubscriptionMetrics();
+        testRecorder.enableSubscriptionMetrics();
+        
+        // Verify metrics were only created once
+        verify(testPluginMetrics, times(1)).counter("startSubscriptionRequestsSuccess");
+        verify(testPluginMetrics, times(1)).counter("listSubscriptionRequestsSuccess");
+    }
+
+    @Test
+    void subscriptionOperations_BeforeEnable_DoNothing() {
+        // Use separate PluginMetrics mock for clean testing
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Try subscription operations before enabling - should not create metrics
+        testRecorder.recordSubscriptionSuccess();
+        testRecorder.recordSubscriptionFailure();
+        testRecorder.recordSubscriptionCall();
+        testRecorder.recordListSubscriptionSuccess();
+        testRecorder.recordListSubscriptionFailure();
+        testRecorder.recordListSubscriptionCall();
+        
+        // Verify no subscription metrics were created
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsSuccess");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("listSubscriptionRequestsSuccess");
+    }
+
+    @Test
+    void subscriptionLatencyOperations_BeforeEnable_ExecuteWithoutMetrics() {
+        // Use separate PluginMetrics mock for clean testing
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Test supplier operations still execute
+        String expectedResult = "test result";
+        Supplier<String> operation = () -> expectedResult;
+        
+        String result1 = testRecorder.recordSubscriptionLatency(operation);
+        String result2 = testRecorder.recordListSubscriptionLatency(operation);
+        
+        assertThat(result1, equalTo(expectedResult));
+        assertThat(result2, equalTo(expectedResult));
+        
+        // Test runnable operations still execute
+        final boolean[] operationExecuted = {false, false};
+        Runnable runnableOperation1 = () -> operationExecuted[0] = true;
+        Runnable runnableOperation2 = () -> operationExecuted[1] = true;
+        
+        testRecorder.recordSubscriptionLatency(runnableOperation1);
+        testRecorder.recordListSubscriptionLatency(runnableOperation2);
+        
+        assertThat(operationExecuted[0], equalTo(true));
+        assertThat(operationExecuted[1], equalTo(true));
+        
+        // Verify no metrics were created
+        verify(testPluginMetrics, org.mockito.Mockito.never()).timer("startSubscriptionRequestLatency");
+        verify(testPluginMetrics, org.mockito.Mockito.never()).timer("listSubscriptionRequestLatency");
+    }
+
+    @Test
+    void subscriptionOperations_AfterEnable_Work() {
+        // Use separate PluginMetrics mock for clean testing
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Setup subscription metric mocks
+        Counter lazySubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        Counter lazyListSubscriptionCounter = org.mockito.Mockito.mock(Counter.class);
+        Timer lazySubscriptionTimer = org.mockito.Mockito.mock(Timer.class);
+        Timer lazyListSubscriptionTimer = org.mockito.Mockito.mock(Timer.class);
+        
+        when(testPluginMetrics.counter("startSubscriptionRequestsSuccess")).thenReturn(lazySubscriptionCounter);
+        when(testPluginMetrics.counter("startSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("startSubscriptionRequestLatency")).thenReturn(lazySubscriptionTimer);
+        when(testPluginMetrics.counter("startSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.counter("listSubscriptionRequestsSuccess")).thenReturn(lazyListSubscriptionCounter);
+        when(testPluginMetrics.counter("listSubscriptionRequestsFailed")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        when(testPluginMetrics.timer("listSubscriptionRequestLatency")).thenReturn(lazyListSubscriptionTimer);
+        when(testPluginMetrics.counter("listSubscriptionApiCalls")).thenReturn(org.mockito.Mockito.mock(Counter.class));
+        
+        // Enable subscription metrics
+        testRecorder.enableSubscriptionMetrics();
+        
+        // Test operations work
+        testRecorder.recordSubscriptionSuccess();
+        testRecorder.recordListSubscriptionSuccess();
+        
+        // Test latency operations
+        String expectedResult = "test result";
+        Supplier<String> operation = () -> expectedResult;
+        when(lazySubscriptionTimer.record(any(Supplier.class))).thenReturn(expectedResult);
+        when(lazyListSubscriptionTimer.record(any(Supplier.class))).thenReturn(expectedResult);
+        
+        String result1 = testRecorder.recordSubscriptionLatency(operation);
+        String result2 = testRecorder.recordListSubscriptionLatency(operation);
+        
+        // Verify operations worked
+        verify(lazySubscriptionCounter).increment();
+        verify(lazyListSubscriptionCounter).increment();
+        verify(lazySubscriptionTimer).record(any(Supplier.class));
+        verify(lazyListSubscriptionTimer).record(any(Supplier.class));
+        assertThat(result1, equalTo(expectedResult));
+        assertThat(result2, equalTo(expectedResult));
+    }
+
+    @Test
+    void enableSubscriptionMetrics_WithInjectConstructor_StartsDisabled() {
+        // Use separate PluginMetrics mock to avoid interference with setUp
+        PluginMetrics testPluginMetrics = org.mockito.Mockito.mock(PluginMetrics.class);
+        setupNonSubscriptionMocks(testPluginMetrics);
+        
+        // Use @Inject constructor (single parameter)
+        VendorAPIMetricsRecorder testRecorder = new VendorAPIMetricsRecorder(testPluginMetrics);
+        
+        // Should start with subscription metrics disabled
+        testRecorder.recordSubscriptionSuccess(); // Should do nothing
+        
+        // Verify no subscription metrics were created
+        verify(testPluginMetrics, org.mockito.Mockito.never()).counter("startSubscriptionRequestsSuccess");
+        
+        // We can verify subscription metrics disabled behavior indirectly by testing that operations do nothing
+    }
+
+    // Helper method to set up non-subscription metric mocks to reduce duplication
+    private void setupNonSubscriptionMocks(PluginMetrics mockPluginMetrics) {
+        Counter defaultCounter = org.mockito.Mockito.mock(Counter.class);
+        Timer defaultTimer = org.mockito.Mockito.mock(Timer.class);
+        DistributionSummary defaultSummary = org.mockito.Mockito.mock(DistributionSummary.class);
+        
+        when(mockPluginMetrics.counter("searchRequestsSuccess")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("searchRequestsFailed")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.timer("searchRequestLatency")).thenReturn(defaultTimer);
+        when(mockPluginMetrics.summary("searchResponseSizeBytes")).thenReturn(defaultSummary);
+        when(mockPluginMetrics.counter("getRequestsSuccess")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("getRequestsFailed")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.timer("getRequestLatency")).thenReturn(defaultTimer);
+        when(mockPluginMetrics.summary("getResponseSizeBytes")).thenReturn(defaultSummary);
+        when(mockPluginMetrics.counter("authenticationRequestsSuccess")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("authenticationRequestsFailed")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.timer("authenticationRequestLatency")).thenReturn(defaultTimer);
+        when(mockPluginMetrics.timer("bufferWriteLatency")).thenReturn(defaultTimer);
+        when(mockPluginMetrics.counter("bufferWriteAttempts")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("bufferWriteSuccess")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("bufferWriteRetrySuccess")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("bufferWriteRetryAttempts")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("bufferWriteFailures")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("totalDataApiRequests")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("logsRequested")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("requestAccessDenied")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("requestThrottled")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("resourceNotFound")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("nonRetryableErrors")).thenReturn(defaultCounter);
+        when(mockPluginMetrics.counter("retryableErrors")).thenReturn(defaultCounter);
+    }
 }

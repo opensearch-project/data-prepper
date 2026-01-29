@@ -21,10 +21,10 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.util.StringUtils;
 
+import javax.inject.Named;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * OAuth2 implementation of the Office365AuthProvider.
  */
-@Component
+@Named
 public class Office365AuthenticationProvider implements Office365AuthenticationInterface {
     private static final Logger log = LoggerFactory.getLogger(Office365AuthenticationProvider.class);
     private static final String TOKEN_URL = "https://login.microsoftonline.com/%s/oauth2/v2.0/token";
