@@ -1,0 +1,6 @@
+processor:
+  - add_entries:
+      entries:
+        - key: "message"
+          value: "world"
+          append_if_key_exists: true

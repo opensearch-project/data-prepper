@@ -1,0 +1,7 @@
+extension:
+aws:
+  secrets:
+    jira-account-credentials:
+      secret_id: "arn:aws:secretsmanager:us-east-1:123456789012:secret:jira-credentials-secret"
+      region: "us-east-1"
+      sts_role_arn: "arn:aws:iam::123456789012:role/Example-Role"

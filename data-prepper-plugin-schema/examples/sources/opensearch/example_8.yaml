@@ -1,0 +1,5 @@
+source:
+opensearch:
+  username: "admin"
+  password: "admin"
+...

@@ -1,0 +1,3 @@
+source:
+- otel_metrics_source:
+    output_format: otel

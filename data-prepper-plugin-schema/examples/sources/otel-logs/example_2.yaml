@@ -1,0 +1,3 @@
+source:
+- otel_logs_source:
+    output_format: otel
