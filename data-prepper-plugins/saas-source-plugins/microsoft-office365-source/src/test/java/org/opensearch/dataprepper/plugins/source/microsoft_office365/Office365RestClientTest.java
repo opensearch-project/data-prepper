@@ -764,5 +764,4 @@ class Office365RestClientTest {
         verify(metricsRecorder, times(1)).recordSubscriptionSuccess(); // Overall operation
         verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall(); // Start API calls
     }
-
 }
