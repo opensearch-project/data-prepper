@@ -147,13 +147,17 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     parsedValue = parseUsingPointer(event, parsedValue, pointer, doWriteToRoot);
                 }
 
+                if (doWriteToRoot && deleteSourceRequested) {
+                    event.delete(this.source);
+                }
+
                 if (doWriteToRoot) {
                     writeToRoot(event, parsedValue);
                 } else if (overwriteIfDestinationExists || !event.containsKey(destination)) {
                     event.put(destination, parsedValue, normalizeKeys);
                 }
 
-                if(deleteSourceRequested) {
+                if (deleteSourceRequested && !doWriteToRoot) {
                     event.delete(this.source);
                 }
             } catch (Exception e) {
