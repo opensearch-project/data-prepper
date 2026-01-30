@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,7 @@ class Office365ServiceTest {
     @BeforeEach
     void setUp() {
         office365Service = new Office365Service(sourceConfig, office365RestClient, pluginMetrics);
+        lenient().when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(Instant.now().minus(Duration.ofDays(365)));
     }
 
     @Test
@@ -184,7 +186,7 @@ class Office365ServiceTest {
         Instant endTime = Instant.now();
         String logType = "Exchange";
 
-        when(office365RestClient.searchAuditLogs(
+        lenient().when(office365RestClient.searchAuditLogs(
                 any(), any(), any(), any()
         )).thenThrow(new RuntimeException("API Error"));
 
@@ -287,9 +289,9 @@ class Office365ServiceTest {
         Instant endTime = startTime.plus(Duration.ofHours(1));
 
         String logType = "Exchange";
-        int lookBackHours = 96; // Configure 4 days range limit
-
-        when(sourceConfig.getLookBackHours()).thenReturn(lookBackHours);
+        long lookBackMinutes = 96 * 60; // Configure 4 days range limit
+        Instant lookBackDuration = now.minus(Duration.ofMinutes(lookBackMinutes));
+        when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(lookBackDuration);
         when(office365RestClient.searchAuditLogs(
                 any(String.class),
                 any(Instant.class),
@@ -313,6 +315,44 @@ class Office365ServiceTest {
         Duration actualLookback = Duration.between(capturedStartTime, now);
         assertEquals(96, actualLookback.toHours(),
                 "Adjusted start time should be exactly 96 hours ago");
+    }
+
+    @Test
+    void testSearchAuditLogs_WithSubHourRange_AdjustsStartTime() {
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-11-09T21:30:00.00Z"), ZoneOffset.UTC);
+        Instant now = Instant.now(fixedClock);
+
+        Instant startTime = now.minus(Duration.ofMinutes(45));
+        Instant endTime = startTime.plus(Duration.ofMinutes(15));
+
+        String logType = "Exchange";
+        long lookBackMinutes = 30L;
+        Instant lookBackDuration = now.minus(Duration.ofMinutes(lookBackMinutes));
+
+        when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(lookBackDuration);
+        when(office365RestClient.searchAuditLogs(
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(new AuditLogsResponse(new ArrayList<>(), null));
+
+        office365Service.searchAuditLogs(logType, startTime, endTime, null);
+
+        // Capture the actual start time that was passed to the REST client
+        ArgumentCaptor<Instant> startTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(office365RestClient).searchAuditLogs(
+                eq(logType),
+                startTimeCaptor.capture(),
+                eq(endTime),
+                isNull()
+        );
+
+        // Verify that the service adjusted the start time correctly:
+        Instant capturedStartTime = startTimeCaptor.getValue();
+        Duration actualLookback = Duration.between(capturedStartTime, now);
+        assertEquals(45, actualLookback.toMinutes(),
+                "Adjusted start time should be exactly 30 minutes ago");
     }
 
     private Map<String, Object> createTestItem(String contentId, Instant contentCreated) {

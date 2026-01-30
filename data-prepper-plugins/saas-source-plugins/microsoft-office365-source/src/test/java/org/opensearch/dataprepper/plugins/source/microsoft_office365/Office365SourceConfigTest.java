@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Oauth2
 
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -79,7 +80,8 @@ class Office365SourceConfigTest {
     void testDefaultValues() {
         assertFalse(config.isAcknowledgments());
         assertEquals(4, config.getNumberOfWorkers());
-        assertEquals(0, config.getLookBackHours());
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        assertNotNull(lookBackDuration);
     }
 
     @Test
@@ -99,7 +101,77 @@ class Office365SourceConfigTest {
         Duration negativeDuration = Duration.ofDays(-1);
         setField(config, "range", negativeDuration);
 
-        assertEquals(0, config.getLookBackHours());
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        assertNotNull(lookBackDuration);
+    }
+
+    @Test
+    void testGetLookBackDuration_withMinuteRange() throws Exception {
+        Duration fifteenMinutes = Duration.ofMinutes(15);
+        setField(config, "range", fifteenMinutes);
+
+        Instant now = Instant.now();
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        // Verify the duration is approximately 15 minutes before now (within 1 second tolerance)
+        Duration actualDuration = Duration.between(lookBackDuration, now);
+        assertEquals(15, actualDuration.toMinutes());
+    }
+
+    @Test
+    void testGetLookBackDuration_with30MinuteRange() throws Exception {
+        Duration thirtyMinutes = Duration.ofMinutes(30);
+        setField(config, "range", thirtyMinutes);
+
+        Instant now = Instant.now();
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        // Verify the duration is approximately 30 minutes before now
+        Duration actualDuration = Duration.between(lookBackDuration, now);
+        assertEquals(30, actualDuration.toMinutes());
+    }
+
+    @Test
+    void testGetLookBackDuration_with45MinuteRange() throws Exception {
+        Duration fortyFiveMinutes = Duration.ofMinutes(45);
+        setField(config, "range", fortyFiveMinutes);
+
+        Instant now = Instant.now();
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        // Verify the duration is approximately 45 minutes before now
+        Duration actualDuration = Duration.between(lookBackDuration, now);
+        assertEquals(45, actualDuration.toMinutes());
+    }
+
+    @Test
+    void testGetLookBackDuration_withHourRange() throws Exception {
+        Duration twoHours = Duration.ofHours(2);
+        setField(config, "range", twoHours);
+
+        Instant now = Instant.now();
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Duration actualDuration = Duration.between(lookBackDuration, now);
+        assertEquals(2, actualDuration.toHours());
+        assertEquals(120, actualDuration.toMinutes());
+    }
+
+    @Test
+    void testGetLookBackDuration_withDayRange() throws Exception {
+        Duration oneDay = Duration.ofDays(1);
+        setField(config, "range", oneDay);
+
+        Instant now = Instant.now();
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Duration actualDuration = Duration.between(lookBackDuration, now);
+        assertEquals(24, actualDuration.toHours());
+        assertEquals(1440, actualDuration.toMinutes());
+    }
+
+    @Test
+    void testGetLookBackDuration_withZeroRange() throws Exception {
+        Duration zeroDuration = Duration.ZERO;
+        setField(config, "range", zeroDuration);
+
+        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        assertNotNull(lookBackDuration);
     }
 
     @Test
