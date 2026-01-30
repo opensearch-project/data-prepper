@@ -50,8 +50,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSink.class);
 
     private final KafkaSinkConfig kafkaSinkConfig;
-    private final KafkaCustomProducerFactory kafkaCustomProducerFactory;
-    private final TopicServiceFactory topicServiceFactory;
+    private final KafkaCustomProducer producer;
 
     private volatile boolean sinkInitialized;
 
@@ -59,7 +58,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private ProducerWorker producerWorker;
 
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
 
     private final PluginFactory pluginFactory;
 
@@ -87,10 +86,11 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         reentrantLock = new ReentrantLock();
         this.sinkContext = sinkContext;
 
-        SerializationFactory serializationFactory = new CommonSerializationFactory();
-        topicServiceFactory = new TopicServiceFactory();
-        kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, topicServiceFactory);
-
+        final SerializationFactory serializationFactory = new CommonSerializationFactory();
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
+        final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
+        this.producer = kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
+        this.executorService = Executors.newFixedThreadPool(totalWorkers);
     }
 
 
@@ -110,7 +110,6 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void doInitializeInternal() {
-        executorService = Executors.newFixedThreadPool(totalWorkers);
         sinkInitialized = Boolean.TRUE;
     }
 
@@ -121,10 +120,6 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             return;
         }
         try {
-            // TODO: Looks like this call to prepareTopicAndSchema is unnecessary as it is 
-            // done in createProducer().
-            prepareTopicAndSchema();
-            final KafkaCustomProducer producer = createProducer();
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 executorService.submit(producerWorker);
@@ -136,40 +131,6 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         }
         reentrantLock.unlock();
     }
-
-    private void prepareTopicAndSchema() {
-        checkTopicCreationCriteriaAndCreateTopic();
-        final SchemaConfig schemaConfig = kafkaSinkConfig.getSchemaConfig();
-        if (schemaConfig != null) {
-            if (schemaConfig.isCreate()) {
-                final RestUtils restUtils = new RestUtils(schemaConfig);
-                final String topic = kafkaSinkConfig.getTopic().getName();
-                final SchemaService schemaService = new SchemaService.SchemaServiceBuilder()
-                        .getRegisterationAndCompatibilityService(topic, kafkaSinkConfig.getSerdeFormat(),
-                                restUtils, schemaConfig).build();
-                schemaService.registerSchema(topic);
-            }
-
-        }
-
-    }
-
-    private void checkTopicCreationCriteriaAndCreateTopic() {
-        final TopicProducerConfig topic = kafkaSinkConfig.getTopic();
-        if (topic.isCreateTopic()) {
-            final TopicService topicService = topicServiceFactory.createTopicService(kafkaSinkConfig);
-            topicService.createTopic(kafkaSinkConfig.getTopic().getName(), topic.getNumberOfPartitions(), topic.getReplicationFactor(), null);
-            topicService.closeAdminClient();
-        }
-
-
-    }
-
-    private KafkaCustomProducer createProducer() {
-        final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
-    }
-
 
     @Override
     public void shutdown() {
