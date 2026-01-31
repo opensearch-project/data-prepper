@@ -68,11 +68,10 @@ public class S3DlqWriterConfigTest {
     }
 
     @ParameterizedTest
-    @NullSource
     @ValueSource(booleans = {false, true})
     public void getS3ClientWithValidAccessStyle(final boolean forcePathStyle) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
-        reflectivelySetField(config, "force_path_style", forcePathStyle);
+        reflectivelySetField(config, "forcePathStyle", forcePathStyle);
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }
