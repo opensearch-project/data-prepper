@@ -35,6 +35,11 @@ public class S3DlqWriterConfigTest {
         assertThat(new S3DlqWriterConfig().getKeyPathPrefix(), is(equalTo(null)));
     }
 
+    @Test
+    public void testDefaultForcePathStyle() {
+        assertThat(new S3DlqWriterConfig().getForcePathStyle(), is(equalTo(false)));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"foobar", "arn:aws:es:us-west-2:123456789012:domain/bogus-domain",
         "arn:aws:iam::123456789012:group/bogus-group"})
@@ -58,6 +63,15 @@ public class S3DlqWriterConfigTest {
     public void getS3ClientWithValidStsRoleArn(final String stsRoleArn) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "stsRoleArn", stsRoleArn);
+        final S3Client s3Client = config.getS3Client();
+        assertThat(s3Client, is(notNullValue()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void getS3ClientWithValidAccessStyle(final boolean forcePathStyle) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "forcePathStyle", forcePathStyle);
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }
