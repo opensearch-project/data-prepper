@@ -53,7 +53,7 @@ dependencyResolutionManagement {
             version('bouncycastle', '1.81')
             library('bouncycastle-bcprov', 'org.bouncycastle', 'bcprov-jdk18on').versionRef('bouncycastle')
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
-            version('guava', '32.1.2-jre')
+            version('guava', '32.1.3-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
             version('reflections', '0.10.2')
             library('reflections-core', 'org.reflections', 'reflections').versionRef('reflections')
