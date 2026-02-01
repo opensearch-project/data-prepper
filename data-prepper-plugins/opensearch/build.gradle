@@ -43,8 +43,8 @@ dependencies {
     }
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
-    testImplementation 'net.bytebuddy:byte-buddy:1.18.3'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.18.3'
+    testImplementation 'net.bytebuddy:byte-buddy:1.18.4'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.18.4'
     testImplementation testLibs.slf4j.simple
     testImplementation project(path: ':data-prepper-test:test-common')
     testImplementation 'org.wiremock:wiremock:3.13.2'
