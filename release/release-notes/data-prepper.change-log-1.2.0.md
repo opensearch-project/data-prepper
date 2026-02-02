@@ -1077,7 +1077,8 @@
     awaitTermination
      Signed-off-by: Taylor Gray &lt;33740195+graytaylor0@users.noreply.github.com&gt;
 
-* __Updated existing plugins to use the new pluginType property in the DataPrepperPlugin annotation. Resolves #322.__
+* __Updated existing plugins to use the new pluginTypeForDocGen property in the DataPrepperPlugin annotation. Resolves
+  #322.__
 
   [David Venable](mailto:dlv@amazon.com) - Wed, 20 Oct 2021 13:51:53 -0500
 

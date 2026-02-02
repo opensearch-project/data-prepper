@@ -1,0 +1,6 @@
+processor:
+  - map_to_list:
+      source: "my-map"
+      target: "my-list"
+      exclude_keys: ["key1"]
+      remove_processed_fields: true

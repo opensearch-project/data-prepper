@@ -1,0 +1,9 @@
+split-event-pipeline:
+source:
+  http:
+processor:
+  - split_event:
+      field: query
+      delimiter: ' '    
+sink:
+  - stdout:

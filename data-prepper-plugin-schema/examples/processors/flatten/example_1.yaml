@@ -1,0 +1,4 @@
+processor:
+  - flatten:
+      source: "key2"   
+      target: "flattened-key2"

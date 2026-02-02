@@ -1,0 +1,6 @@
+processor:
+  - map_to_list:
+      source: "my-map"
+      target: "my-list"
+      key_name: "name"
+      value_name: "data"

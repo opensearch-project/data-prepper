@@ -1,0 +1,5 @@
+sink:
+opensearch:
+  hosts: ["https://your-fgac-amazon-opensearch-service-endpoint"]
+  username: "master-username"
+  password: "master-password"

@@ -1,0 +1,5 @@
+processor:
+  - flatten:
+      source: ""   # empty string represents root of event
+      target: ""   # empty string represents root of event
+      remove_processed_fields: true

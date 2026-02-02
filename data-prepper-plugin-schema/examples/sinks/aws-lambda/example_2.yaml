@@ -1,0 +1,19 @@
+sink:
+- aws_lambda:
+    function_name: "my-lambda-sink"
+    invocation_type: "event"
+    aws:
+      region: "us-west-2"
+      sts_role_arn: "arn:aws:iam::123456789012:role/my-lambda-sink-role"
+    max_retries: 5
+    batch:
+      key_name: "events"
+      threshold:
+        event_count: 50
+        maximum_size: "3mb"
+        event_collect_timeout: PT5S
+    lambda_when: "event['type'] == 'log'"
+    dlq:
+      region: "us-east-1"
+      sts_role_arn: "arn:aws:iam::123456789012:role/my-sqs-role"
+      bucket: "<<your-dlq-bucket-name>>"

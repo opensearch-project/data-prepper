@@ -1,0 +1,4 @@
+processor:
+  - map_to_list:
+      source: ""
+      target: "my-list"

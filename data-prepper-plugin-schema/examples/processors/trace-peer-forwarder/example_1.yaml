@@ -1,0 +1,28 @@
+otel-trace-pipeline:
+  delay: "100"
+  source:
+    otel_trace_source:
+  processor:
+    - trace_peer_forwarder:
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - otel_trace_raw:
+  sink:
+    - opensearch:
+service-map-pipeline:
+  delay: "100"
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - service_map_stateful:
+  sink:
+    - opensearch:

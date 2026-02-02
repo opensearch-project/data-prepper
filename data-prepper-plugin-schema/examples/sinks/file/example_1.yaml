@@ -1,0 +1,4 @@
+sample-pipeline:
+sink:
+  - file:
+      path: path/to/output-file

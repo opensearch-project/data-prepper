@@ -1,0 +1,5 @@
+processor:
+  - add_entries:
+      entries:
+        - metadata_key: "length"
+          value_expression: "length(/message)"

@@ -1,0 +1,12 @@
+version: "2"
+kinesis-pipeline:
+  source:
+    kinesis:
+      streams:
+        - stream_name: "stream1"
+          initial_position: "LATEST"
+        - stream_name: "stream2"
+          initial_position: "LATEST"
+      aws:
+        region: "us-west-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/my-iam-role"
