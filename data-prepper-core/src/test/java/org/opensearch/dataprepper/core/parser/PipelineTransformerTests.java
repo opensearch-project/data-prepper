@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFacto
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
@@ -672,6 +673,39 @@ class PipelineTransformerTests {
 
         verifyDataPrepperConfigurationAccesses();
         verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void parseConfiguration_with_pipeline_DLQ_successfully() {
+        mockDataPrepperConfigurationAccesses();
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn("dlq_pipeline");
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_PIPELINE_DLQ_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(2));
+        assertThat(pipelineMap, hasKey("test-pipeline"));
+        assertThat(pipelineMap, hasKey("dlq_pipeline"));
+        Pipeline testPipeline = pipelineMap.get("test-pipeline");
+        HeadlessPipeline dlqPipeline = pipelineMap.get("dlq_pipeline");
+        assertThat(testPipeline.getFailurePipeline(), equalTo(dlqPipeline));
+        verifyDataPrepperConfigurationAccesses(2);
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+
+    @Test
+    void parseConfiguration_with_forward_pipelines_successfully() {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_FORWARD_PIPELINE_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(2));
+        assertThat(pipelineMap, hasKey("test-pipeline-1"));
+        assertThat(pipelineMap, hasKey("test-pipeline-2"));
+        verifyDataPrepperConfigurationAccesses(2);
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+        Pipeline testPipeline2 = pipelineMap.get("test-pipeline-2");
+        assertTrue(testPipeline2.getSource() instanceof HeadlessPipelineSource);
     }
 
     @ParameterizedTest

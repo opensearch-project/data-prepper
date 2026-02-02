@@ -81,5 +81,7 @@ public class TestDataProvider {
             "test-pipeline-2", "test-pipeline-3"));
     public static final String INVALID_ONLY_HEADLESS_AND_SUBPIPELINES_CONFIG_FILE = "src/test/resources/invalid_only_headless_and_subpipelines_config.yml";
     public static final String INVALID_ONLY_HEADLESS_PIPELINES_CONFIG_FILE = "src/test/resources/invalid_only_headless_pipelines_config.yml";
+    public static final String VALID_FORWARD_PIPELINE_CONFIG_FILE = "src/test/resources/valid_forward_pipeline.yml";
+    public static final String VALID_PIPELINE_DLQ_CONFIG_FILE = "src/test/resources/valid_pipeline_dlq.yml";
 
 }
