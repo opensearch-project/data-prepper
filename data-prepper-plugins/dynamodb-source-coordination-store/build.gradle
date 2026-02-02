@@ -17,7 +17,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sts'
     implementation 'javax.inject:javax.inject:1'
     testImplementation 'com.amazonaws:DynamoDBLocal:2.2.1'
-    testImplementation 'org.awaitility:awaitility:4.2.0'
+    testImplementation 'org.awaitility:awaitility:4.3.0'
 }
 
 configurations {
