@@ -38,7 +38,8 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private final DefaultAcknowledgementSetMetrics metrics;
     private ScheduledFuture<?> progressCheckFuture;
     private boolean completed;
-    private AtomicInteger totalEventsAdded;
+    private boolean callbackInvoked;
+    private final AtomicInteger totalEventsAdded;
 
     public DefaultAcknowledgementSet(final ScheduledExecutorService scheduledExecutor,
                                      final Consumer<Boolean> callback,
@@ -52,6 +53,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         this.callbackFuture = null;
         this.metrics = metrics;
         this.completed = false;
+        this.callbackInvoked = false;
         this.progressCheckCallback = null;
         pendingAcknowledgments = new HashMap<>();
         lock = new ReentrantLock(true);
@@ -130,11 +132,18 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                 if (progressCheckFuture != null) {
                     progressCheckFuture.cancel(false);
                 }
-                if (callbackFuture != null) {
+
+                // Invoke callback with false on timeout if not already invoked
+                if (!callbackInvoked) {
+                    callbackInvoked = true;
+                    callbackFuture = scheduledExecutor.submit(() -> callback.accept(false));
+                    LOG.warn("AcknowledgementSet expired, invoking callback with false");
+                } else if (callbackFuture != null) {
+                    // Callback already invoked, just cancel the future if it exists
                     callbackFuture.cancel(true);
                     callbackFuture = null;
-                    LOG.warn("AcknowledgementSet expired");
                 }
+
                 metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
                 return true;
             }
@@ -144,19 +153,16 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         return false;
     }
 
-    public Instant getExpiryTime() {
-        return expiryTime;
-    }
-
     @Override
     public void complete() {
         lock.lock();
         try {
             completed = true;
-            if (pendingAcknowledgments.size() == 0) {
+            if (pendingAcknowledgments.size() == 0 && !callbackInvoked) {
                 if (progressCheckFuture != null) {
                     progressCheckFuture.cancel(false);
                 }
+                callbackInvoked = true;
                 callbackFuture = scheduledExecutor.submit(() -> callback.accept(this.result));
             }
         } finally {
@@ -178,10 +184,11 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             }
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {
                 pendingAcknowledgments.remove(eventHandle);
-                if (completed && pendingAcknowledgments.size() == 0) {
+                if (completed && pendingAcknowledgments.size() == 0 && !callbackInvoked) {
                     if (progressCheckFuture != null) {
                         progressCheckFuture.cancel(false);
                     }
+                    callbackInvoked = true;
                     callbackFuture = scheduledExecutor.submit(() -> callback.accept(this.result));
                     return true;
                 } else if (pendingAcknowledgments.size() == 0) {
