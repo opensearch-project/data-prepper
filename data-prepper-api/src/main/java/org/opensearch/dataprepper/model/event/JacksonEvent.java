@@ -404,7 +404,7 @@ public class JacksonEvent implements Event {
         }
 
         if (!baseNode.isMissingNode()) {
-            ((ObjectNode) baseNode).remove(leafKey);
+            ((ObjectNode) baseNode).remove(leafKey.replace("~1", "/"));
         }
     }
 
