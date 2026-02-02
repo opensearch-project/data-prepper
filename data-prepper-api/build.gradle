@@ -19,6 +19,7 @@ dependencies {
     implementation libs.parquet.common
     implementation libs.commons.lang3
     implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
+    implementation 'com.google.re2j:re2j:1.8'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test:test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
