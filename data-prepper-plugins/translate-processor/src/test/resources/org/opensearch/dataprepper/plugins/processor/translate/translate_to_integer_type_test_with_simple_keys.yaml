@@ -1,0 +1,20 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - translate:
+        mappings:
+          - source:
+              - citi-name
+            targets:
+              - target: zip
+                type: "integer"
+                map:
+                  san-francisco: 12345
+                  las-angeles: 23456
+                  paris: 34567
+                  london: 45678
+                  new-york: 56789
+                  las-vegas: 67890
+  sink:
+    - unused:
