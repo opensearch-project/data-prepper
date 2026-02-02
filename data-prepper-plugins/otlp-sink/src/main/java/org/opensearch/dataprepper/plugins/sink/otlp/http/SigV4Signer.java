@@ -45,6 +45,7 @@ class SigV4Signer {
                 .withRegion(region)
                 .withStsRoleArn(config.getStsRoleArn())
                 .withStsExternalId(config.getStsExternalId())
+                .withStsHeaderOverrides(config.getStsHeaderOverrides())
                 .build());
 
         this.endpointUri = config.getEndpoint() != null
