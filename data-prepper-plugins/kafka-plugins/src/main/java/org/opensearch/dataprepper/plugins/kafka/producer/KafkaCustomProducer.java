@@ -17,6 +17,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -143,13 +144,15 @@ public class KafkaCustomProducer<T> {
     public void produceRecords(final Record<Event> record) throws Exception {
         bufferedEventHandles.add(record.getData().getEventHandle());
         Event event = getEvent(record);
-        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
+        final String key = StringUtils.isEmpty(kafkaProducerConfig.getPartitionKey()) ? 
+            null : 
+            event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {
-            if (Objects.equals(serdeFormat, MessageFormat.JSON.toString())) {
+            if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
                 publishJsonMessage(record, key);
-            } else if (Objects.equals(serdeFormat, MessageFormat.AVRO.toString())) {
+            } else if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
                 publishAvroMessage(record, key);
-            } else if(Objects.equals(serdeFormat, MessageFormat.BYTES.toString())) {
+            } else if (serdeFormat.equalsIgnoreCase(MessageFormat.BYTES.toString())) {
                 publishJsonMessageAsBytes(record, key);
             } else {
                 publishPlaintextMessage(record, key);
@@ -197,7 +200,7 @@ public class KafkaCustomProducer<T> {
     }
 
     private void publishAvroMessage(final Record<Event> record, final String key) throws Exception {
-        final Schema avroSchema = schemaService.getSchema(topicName);
+        final Schema avroSchema = schemaService.getSchema(topicName + "-value");
         if (avroSchema == null) {
             throw new RuntimeException("Schema definition is mandatory in case of type avro");
         }

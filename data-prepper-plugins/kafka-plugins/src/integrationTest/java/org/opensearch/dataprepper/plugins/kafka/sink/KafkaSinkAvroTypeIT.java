@@ -23,7 +23,9 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -37,6 +39,8 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
@@ -60,6 +64,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class KafkaSinkAvroTypeIT {
     private static final int TEST_ID = 123456;
 
@@ -104,6 +109,8 @@ public class KafkaSinkAvroTypeIT {
     private AuthConfig authConfig;
     private AuthConfig.SaslAuthConfig saslAuthConfig;
     private PlainTextAuthConfig plainTextAuthConfig;
+    @Mock
+    private EncryptionConfig encryptionConfig;
     private static final Properties props = new Properties();
 
 
@@ -126,10 +133,13 @@ public class KafkaSinkAvroTypeIT {
         when(pluginSetting.getName()).thenReturn("name");
         when(pluginSetting.getPipelineName()).thenReturn("pipelinename");
 
-        when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
-        when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
+        // when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
+        // when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
 
         kafkaSinkConfig = mock(KafkaSinkConfig.class);
+
+        when(kafkaSinkConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
 
         registryUrl = System.getProperty("tests.kafka.confluent.registry_url");
         when(schemaConfig.getRegistryURL()).thenReturn(registryUrl);
@@ -151,6 +161,7 @@ public class KafkaSinkAvroTypeIT {
 
         topicConfig = mock(TopicProducerConfig.class);
         when(topicConfig.getName()).thenReturn(testTopic);
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.AVRO);
 
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         when(kafkaSinkConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
@@ -250,6 +261,7 @@ public class KafkaSinkAvroTypeIT {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 KafkaAvroDeserializer.class);
         props.put("schema.registry.url", schemaConfig.getRegistryURL());
+        props.put("auto.offset.reset", "earliest");
 
         KafkaConsumer<String, GenericRecord> kafkaConsumer = new KafkaConsumer<String, GenericRecord>(props);
 
@@ -275,7 +287,6 @@ public class KafkaSinkAvroTypeIT {
                         isPollNext = false;
                     }
                     recListCounter++;
-                    break;
                 }
             }
         }
