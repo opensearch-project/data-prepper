@@ -77,8 +77,8 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     integrationTestImplementation testLibs.junit.vintage
-    integrationTestImplementation 'io.confluent:kafka-schema-registry:7.9.1'
-    integrationTestImplementation ('io.confluent:kafka-schema-registry:7.9.1:tests') {
+    integrationTestImplementation 'io.confluent:kafka-schema-registry:7.9.5'
+    integrationTestImplementation ('io.confluent:kafka-schema-registry:7.9.5:tests') {
         exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
         exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
         exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
