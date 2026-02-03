@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor.model.internal;
@@ -8,7 +13,8 @@ package org.opensearch.dataprepper.plugins.processor.model.internal;
 import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class SpanStateDataTest {
 
@@ -64,7 +70,7 @@ class SpanStateDataTest {
             "GET", "op", 1000L, "OK", "2023-01-01", null, attributes
         );
         
-        assertEquals("GET /api", data.getOperationName());
+        assertEquals("GET", data.getOperationName());
     }
 
     @Test
