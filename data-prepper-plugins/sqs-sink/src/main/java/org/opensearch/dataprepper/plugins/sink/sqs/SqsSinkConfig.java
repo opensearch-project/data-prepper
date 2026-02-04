@@ -28,6 +28,7 @@ public class SqsSinkConfig {
     private String queueUrl;
 
     @JsonProperty("codec")
+    @NotNull
     private PluginModel codec;
 
     @JsonProperty("threshold")
@@ -68,9 +69,9 @@ public class SqsSinkConfig {
         }
     }
 
-    @AssertTrue(message = "ndjson codec (default codec) doesn't support max events per message greater than 1")
+    @AssertTrue(message = "ndjson codec doesn't support max events per message greater than 1")
     boolean isValidCodecConfig() {
-        if ((codec == null || codec.getPluginName().equals("ndjson")) && thresholdConfig.getMaxEventsPerMessage() > 1)
+        if ((codec != null && codec.getPluginName().equals("ndjson")) && thresholdConfig.getMaxEventsPerMessage() > 1)
             return false;
         return true;
     }
