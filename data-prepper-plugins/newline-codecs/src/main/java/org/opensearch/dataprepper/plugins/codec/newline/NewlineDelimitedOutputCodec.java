@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 package org.opensearch.dataprepper.plugins.codec.newline;
 
@@ -25,24 +30,28 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     private static final String MESSAGE_FIELD = "message";
     @SuppressWarnings("unused")
     private OutputCodecContext deprecatedSupportCodecContext;
+    private final boolean includeEmptyObjects;
 
     @DataPrepperPluginConstructor
     public NewlineDelimitedOutputCodec(final NewlineDelimitedOutputConfig config) {
         Objects.requireNonNull(config);
+        this.includeEmptyObjects = config.isIncludeEmptyObjects();
     }
 
     private static class NewlineWriter implements Writer {
         private final OutputStream outputStream;
         private final OutputCodecContext codecContext;
+        private final boolean includeEmptyObjects;
 
-        private NewlineWriter(final OutputStream outputStream, final OutputCodecContext codecContext) {
+        private NewlineWriter(final OutputStream outputStream, final OutputCodecContext codecContext, final boolean includeEmptyObjects) {
             this.outputStream = outputStream;
             this.codecContext = codecContext;
+            this.includeEmptyObjects = includeEmptyObjects;
         }
 
         @Override
         public void writeEvent(final Event event) throws IOException {
-            doWriteEvent(outputStream, event, codecContext);
+            doWriteEvent(outputStream, event, codecContext, includeEmptyObjects);
         }
 
         @Override
@@ -56,7 +65,7 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
         Objects.requireNonNull(outputStream);
         Objects.requireNonNull(codecContext);
 
-        return new NewlineWriter(outputStream, codecContext);
+        return new NewlineWriter(outputStream, codecContext, includeEmptyObjects);
     }
 
     @Override
@@ -68,25 +77,7 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
 
     @Override
     public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
-        Objects.requireNonNull(event);
-
-        // Extract the message field and write it as plain text
-        String message = null;
-        if (event.containsKey(MESSAGE_FIELD)) {
-            Object messageObj = event.get(MESSAGE_FIELD, Object.class);
-            if (messageObj != null) {
-                message = messageObj.toString();
-            }
-        }
-
-        // If message is null or empty, write empty string
-        if (message == null) {
-            message = "";
-        }
-
-        // Write the message as plain text followed by a newline
-        outputStream.write(message.getBytes());
-        outputStream.write(System.lineSeparator().getBytes());
+        doWriteEvent(outputStream, event, deprecatedSupportCodecContext, includeEmptyObjects);
     }
 
     @Override
@@ -99,7 +90,7 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
         return NEWLINE;
     }
 
-    private static void doWriteEvent(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
+    private static void doWriteEvent(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext, final boolean includeEmptyObjects) throws IOException {
         Objects.requireNonNull(event);
 
         // Extract the message field and write it as plain text
@@ -111,8 +102,11 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
             }
         }
 
-        // If message is null or empty, write empty string
-        if (message == null) {
+        // Default: do not write anything if message is null or empty
+        if (message == null || message.isEmpty()) {
+            if (!includeEmptyObjects) {
+                return;
+            }
             message = "";
         }
 

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -44,11 +45,12 @@ class NewlineDelimitedOutputCodecTest {
 
     @Test
     void writeEvent_writes_message_field_as_plain_text() throws IOException {
+        final String message = UUID.randomUUID().toString();
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final OutputCodecContext codecContext = new OutputCodecContext();
 
         final Map<String, Object> eventData = new HashMap<>();
-        eventData.put("message", "r_id=2bb2bd0aeece11f0bea286fb87d48915-ticket_update,tp=00-13a3bb055e6b589dbc0f952e0d75020a-1f2e986790c19742-01");
+        eventData.put("message", message);
         final Event event = eventFactory.eventBuilder(EventBuilder.class).withData(eventData).build();
 
         codec.start(outputStream, event, codecContext);
@@ -56,11 +58,48 @@ class NewlineDelimitedOutputCodecTest {
         codec.complete(outputStream);
 
         final String output = outputStream.toString(StandardCharsets.UTF_8);
-        assertThat(output, equalTo("r_id=2bb2bd0aeece11f0bea286fb87d48915-ticket_update,tp=00-13a3bb055e6b589dbc0f952e0d75020a-1f2e986790c19742-01" + System.lineSeparator()));
+        assertThat(output, equalTo(message + System.lineSeparator()));
     }
 
     @Test
-    void writeEvent_writes_empty_string_when_message_is_missing() throws IOException {
+    void writeEvent_writes_nothing_when_message_is_missing_and_include_empty_objects_false() throws IOException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final OutputCodecContext codecContext = new OutputCodecContext();
+
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put("other_field", "some value");
+        final Event event = eventFactory.eventBuilder(EventBuilder.class).withData(eventData).build();
+
+        codec.start(outputStream, event, codecContext);
+        codec.writeEvent(event, outputStream);
+        codec.complete(outputStream);
+
+        final String output = outputStream.toString(StandardCharsets.UTF_8);
+        assertThat(output, equalTo(""));
+    }
+
+    @Test
+    void writeEvent_writes_nothing_when_message_is_null_and_include_empty_objects_false() throws IOException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final OutputCodecContext codecContext = new OutputCodecContext();
+
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put("message", null);
+        final Event event = eventFactory.eventBuilder(EventBuilder.class).withData(eventData).build();
+
+        codec.start(outputStream, event, codecContext);
+        codec.writeEvent(event, outputStream);
+        codec.complete(outputStream);
+
+        final String output = outputStream.toString(StandardCharsets.UTF_8);
+        assertThat(output, equalTo(""));
+    }
+
+    @Test
+    void writeEvent_writes_empty_line_when_message_is_missing_and_include_empty_objects_true() throws IOException {
+        config.setIncludeEmptyObjects(true);
+        codec = new NewlineDelimitedOutputCodec(config);
+
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final OutputCodecContext codecContext = new OutputCodecContext();
 
@@ -77,7 +116,10 @@ class NewlineDelimitedOutputCodecTest {
     }
 
     @Test
-    void writeEvent_writes_empty_string_when_message_is_null() throws IOException {
+    void writeEvent_writes_empty_line_when_message_is_null_and_include_empty_objects_true() throws IOException {
+        config.setIncludeEmptyObjects(true);
+        codec = new NewlineDelimitedOutputCodec(config);
+
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final OutputCodecContext codecContext = new OutputCodecContext();
 
