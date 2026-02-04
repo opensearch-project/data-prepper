@@ -5,62 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.otel.codec;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.ByteString;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.OTelProtoDecoder.getServiceName;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.OTelProtoDecoder.getServiceName;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.ArrayValue;
-import io.opentelemetry.proto.common.v1.InstrumentationScope;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.common.v1.KeyValueList;
-import io.opentelemetry.proto.logs.v1.LogRecord;
-import io.opentelemetry.proto.logs.v1.ResourceLogs;
-import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
-import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
-import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
-import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
-import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.ScopeSpans;
-import io.opentelemetry.proto.trace.v1.Status;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.log.JacksonStandardOTelLog;
-import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
-import org.opensearch.dataprepper.model.metric.Bucket;
-import org.opensearch.dataprepper.model.metric.DefaultBucket;
-import org.opensearch.dataprepper.model.metric.DefaultExemplar;
-import org.opensearch.dataprepper.model.metric.DefaultQuantile;
-import org.opensearch.dataprepper.model.metric.Exemplar;
-import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonStandardExponentialHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonStandardGauge;
-import org.opensearch.dataprepper.model.metric.JacksonHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonStandardHistogram;
-import org.opensearch.dataprepper.model.metric.JacksonStandardSum;
-import org.opensearch.dataprepper.model.metric.JacksonStandardSummary;
-import org.opensearch.dataprepper.model.metric.Metric;
-import org.opensearch.dataprepper.model.metric.Quantile;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.DefaultLink;
-import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
-import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
-import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
-import org.opensearch.dataprepper.model.trace.Link;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
-import org.opensearch.dataprepper.model.trace.SpanEvent;
-import org.opensearch.dataprepper.model.trace.TraceGroupFields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
@@ -77,6 +25,66 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.log.JacksonStandardOTelLog;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
+import org.opensearch.dataprepper.model.metric.Bucket;
+import org.opensearch.dataprepper.model.metric.DefaultBucket;
+import org.opensearch.dataprepper.model.metric.DefaultExemplar;
+import org.opensearch.dataprepper.model.metric.DefaultQuantile;
+import org.opensearch.dataprepper.model.metric.Exemplar;
+import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonGauge;
+import org.opensearch.dataprepper.model.metric.JacksonHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonStandardExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonStandardGauge;
+import org.opensearch.dataprepper.model.metric.JacksonStandardHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonStandardSum;
+import org.opensearch.dataprepper.model.metric.JacksonStandardSummary;
+import org.opensearch.dataprepper.model.metric.JacksonSum;
+import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Quantile;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultLink;
+import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
+import org.opensearch.dataprepper.model.trace.Link;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.SpanEvent;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.ByteString;
+
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.ArrayValue;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.common.v1.KeyValueList;
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
+import io.opentelemetry.proto.logs.v1.ScopeLogs;
+import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
+import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
+import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
+import io.opentelemetry.proto.trace.v1.Status;
 
 /**
  * OTelProtoStandardCodec is for encoding/decoding between DataPrepper OTEL representation and standard
@@ -929,6 +937,438 @@ public class OTelProtoStandardCodec {
             }
 
             return anyValueBuilder.build();
+        }
+
+        @Override
+        public io.opentelemetry.proto.metrics.v1.ResourceMetrics convertToResourceMetrics(final Metric metric) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.ResourceMetrics.Builder resourceMetricsBuilder = 
+                io.opentelemetry.proto.metrics.v1.ResourceMetrics.newBuilder();
+            
+            // Build resource from metric
+            if (metric.getResource() != null) {
+                final Resource resource = constructResource(metric.getResource());
+                resourceMetricsBuilder.setResource(resource);
+                
+                // Extract schema URL from resource
+                final String schemaUrl = (String) metric.getResource().get(SCHEMA_URL_KEY);
+                if (schemaUrl != null) {
+                    resourceMetricsBuilder.setSchemaUrl(schemaUrl);
+                }
+            }
+            
+            // Build scope metrics
+            final io.opentelemetry.proto.metrics.v1.ScopeMetrics.Builder scopeMetricsBuilder = 
+                io.opentelemetry.proto.metrics.v1.ScopeMetrics.newBuilder();
+            
+            // Build instrumentation scope
+            if (metric.getScope() != null) {
+                final InstrumentationScope instrumentationScope = 
+                    constructInstrumentationScope(metric.getScope());
+                scopeMetricsBuilder.setScope(instrumentationScope);
+            }
+            
+            // Set schema URL at scope level
+            if (metric.getSchemaUrl() != null) {
+                scopeMetricsBuilder.setSchemaUrl(metric.getSchemaUrl());
+            }
+            
+            // Convert the metric based on its type
+            final io.opentelemetry.proto.metrics.v1.Metric protoMetric = constructMetric(metric);
+            scopeMetricsBuilder.addMetrics(protoMetric);
+            
+            resourceMetricsBuilder.addScopeMetrics(scopeMetricsBuilder.build());
+            return resourceMetricsBuilder.build();
+        }
+
+        @Override
+        public io.opentelemetry.proto.logs.v1.ResourceLogs convertToResourceLogs(final Log log) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.logs.v1.ResourceLogs.Builder resourceLogsBuilder = 
+                io.opentelemetry.proto.logs.v1.ResourceLogs.newBuilder();
+            
+            // Build resource from log metadata
+            if (log.getMetadata() != null && log.getMetadata().getAttributes() != null) {
+                final java.util.Map<String, Object> resourceMap = new java.util.HashMap<>();
+                resourceMap.put(ATTRIBUTES_KEY, log.getMetadata().getAttributes());
+                final Resource resource = constructResource(resourceMap);
+                resourceLogsBuilder.setResource(resource);
+            }
+            
+            // Build scope logs
+            final ScopeLogs.Builder scopeLogsBuilder = ScopeLogs.newBuilder();
+            
+            // Convert the log record
+            final LogRecord protoLogRecord = constructLogRecord(log);
+            scopeLogsBuilder.addLogRecords(protoLogRecord);
+            
+            resourceLogsBuilder.addScopeLogs(scopeLogsBuilder.build());
+            return resourceLogsBuilder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Metric constructMetric(final Metric metric) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.Metric.Builder metricBuilder = 
+                io.opentelemetry.proto.metrics.v1.Metric.newBuilder();
+            
+            // Set common fields
+            metricBuilder.setName(metric.getName() != null ? metric.getName() : "");
+            metricBuilder.setDescription(metric.getDescription() != null ? metric.getDescription() : "");
+            metricBuilder.setUnit(metric.getUnit() != null ? metric.getUnit() : "");
+            
+            // Handle different metric types
+            if (metric instanceof JacksonGauge) {
+                metricBuilder.setGauge(constructGauge((JacksonGauge) metric));
+            } else if (metric instanceof JacksonSum) {
+                metricBuilder.setSum(constructSum((JacksonSum) metric));
+            } else if (metric instanceof JacksonHistogram) {
+                metricBuilder.setHistogram(constructHistogram((JacksonHistogram) metric));
+            } else if (metric instanceof JacksonSummary) {
+                metricBuilder.setSummary(constructSummary((JacksonSummary) metric));
+            } else if (metric instanceof JacksonExponentialHistogram) {
+                metricBuilder.setExponentialHistogram(
+                    constructExponentialHistogram((JacksonExponentialHistogram) metric));
+            } else {
+                throw new UnsupportedEncodingException(
+                    "Unsupported metric type: " + metric.getClass().getName());
+            }
+            
+            return metricBuilder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Gauge constructGauge(final JacksonGauge gauge) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.Gauge.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.Gauge.newBuilder();
+            
+            final NumberDataPoint dataPoint = constructNumberDataPoint(
+                gauge.getValue(),
+                gauge.getStartTime(),
+                gauge.getTime(),
+                gauge.getAttributes(),
+                gauge.getExemplars(),
+                gauge.getFlags()
+            );
+            
+            builder.addDataPoints(dataPoint);
+            return builder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Sum constructSum(final JacksonSum sum) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.Sum.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.Sum.newBuilder();
+            
+            // Set aggregation temporality
+            if (sum.getAggregationTemporality() != null) {
+                builder.setAggregationTemporality(
+                    io.opentelemetry.proto.metrics.v1.AggregationTemporality.valueOf(
+                        sum.getAggregationTemporality()));
+            }
+            
+            // Set monotonic flag
+            builder.setIsMonotonic(sum.isMonotonic());
+            
+            final NumberDataPoint dataPoint = constructNumberDataPoint(
+                sum.getValue(),
+                sum.getStartTime(),
+                sum.getTime(),
+                sum.getAttributes(),
+                sum.getExemplars(),
+                sum.getFlags()
+            );
+            
+            builder.addDataPoints(dataPoint);
+            return builder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Histogram constructHistogram(
+                final JacksonHistogram histogram) throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.Histogram.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.Histogram.newBuilder();
+            
+            // Set aggregation temporality
+            if (histogram.getAggregationTemporality() != null) {
+                builder.setAggregationTemporality(
+                    io.opentelemetry.proto.metrics.v1.AggregationTemporality.valueOf(
+                        histogram.getAggregationTemporality()));
+            }
+            
+            // Build histogram data point
+            final io.opentelemetry.proto.metrics.v1.HistogramDataPoint.Builder dpBuilder = 
+                io.opentelemetry.proto.metrics.v1.HistogramDataPoint.newBuilder();
+            
+            dpBuilder.setStartTimeUnixNano(convertISO8601ToNanos(histogram.getStartTime()));
+            dpBuilder.setTimeUnixNano(convertISO8601ToNanos(histogram.getTime()));
+            dpBuilder.setCount(histogram.getCount());
+            dpBuilder.setSum(histogram.getSum());
+            
+            if (histogram.getMin() != null) {
+                dpBuilder.setMin(histogram.getMin());
+            }
+            if (histogram.getMax() != null) {
+                dpBuilder.setMax(histogram.getMax());
+            }
+            
+            // Add bucket counts and bounds
+            if (histogram.getBucketCountsList() != null) {
+                dpBuilder.addAllBucketCounts(histogram.getBucketCountsList());
+            }
+            if (histogram.getExplicitBoundsList() != null) {
+                dpBuilder.addAllExplicitBounds(histogram.getExplicitBoundsList());
+            }
+            
+            // Add attributes
+            if (histogram.getAttributes() != null) {
+                dpBuilder.addAllAttributes(convertAttributesToKeyValue(histogram.getAttributes()));
+            }
+            
+            // Add exemplars
+            if (histogram.getExemplars() != null) {
+                for (Exemplar exemplar : histogram.getExemplars()) {
+                    dpBuilder.addExemplars(constructExemplar(exemplar));
+                }
+            }
+            
+            if (histogram.getFlags() != null) {
+                dpBuilder.setFlags(histogram.getFlags());
+            }
+            
+            builder.addDataPoints(dpBuilder.build());
+            return builder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Summary constructSummary(
+                final JacksonSummary summary) throws UnsupportedEncodingException {
+            
+            final io.opentelemetry.proto.metrics.v1.Summary.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.Summary.newBuilder();
+            
+            final SummaryDataPoint.Builder dpBuilder = SummaryDataPoint.newBuilder();
+            
+            dpBuilder.setStartTimeUnixNano(convertISO8601ToNanos(summary.getStartTime()));
+            dpBuilder.setTimeUnixNano(convertISO8601ToNanos(summary.getTime()));
+            dpBuilder.setCount(summary.getCount());
+            dpBuilder.setSum(summary.getSum());
+            
+            // Add quantile values
+            if (summary.getQuantiles() != null) {
+                for (Quantile quantile : summary.getQuantiles()) {
+                    dpBuilder.addQuantileValues(
+                        SummaryDataPoint.ValueAtQuantile.newBuilder()
+                            .setQuantile(quantile.getQuantile())
+                            .setValue(quantile.getValue())
+                            .build()
+                    );
+                }
+            }
+            
+            // Add attributes
+            if (summary.getAttributes() != null) {
+                dpBuilder.addAllAttributes(convertAttributesToKeyValue(summary.getAttributes()));
+            }
+            
+            if (summary.getFlags() != null) {
+                dpBuilder.setFlags(summary.getFlags());
+            }
+            
+            builder.addDataPoints(dpBuilder.build());
+            return builder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.ExponentialHistogram constructExponentialHistogram(
+                final JacksonExponentialHistogram expHistogram) throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.ExponentialHistogram.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.ExponentialHistogram.newBuilder();
+            
+            // Set aggregation temporality
+            if (expHistogram.getAggregationTemporality() != null) {
+                builder.setAggregationTemporality(
+                    io.opentelemetry.proto.metrics.v1.AggregationTemporality.valueOf(
+                        expHistogram.getAggregationTemporality()));
+            }
+            
+            // Build exponential histogram data point
+            final ExponentialHistogramDataPoint.Builder dpBuilder = 
+                ExponentialHistogramDataPoint.newBuilder();
+            
+            dpBuilder.setStartTimeUnixNano(convertISO8601ToNanos(expHistogram.getStartTime()));
+            dpBuilder.setTimeUnixNano(convertISO8601ToNanos(expHistogram.getTime()));
+            dpBuilder.setCount(expHistogram.getCount());
+            dpBuilder.setSum(expHistogram.getSum());
+            
+            if (expHistogram.getMin() != null) {
+                dpBuilder.setMin(expHistogram.getMin());
+            }
+            if (expHistogram.getMax() != null) {
+                dpBuilder.setMax(expHistogram.getMax());
+            }
+            
+            dpBuilder.setScale(expHistogram.getScale());
+            dpBuilder.setZeroCount(expHistogram.getZeroCount());
+            
+            if (expHistogram.getZeroThreshold() != null) {
+                dpBuilder.setZeroThreshold(expHistogram.getZeroThreshold());
+            }
+            
+            // Build positive buckets
+            if (expHistogram.getPositive() != null) {
+                final ExponentialHistogramDataPoint.Buckets.Builder positiveBuckets = 
+                    ExponentialHistogramDataPoint.Buckets.newBuilder();
+                positiveBuckets.setOffset(expHistogram.getPositiveOffset());
+                positiveBuckets.addAllBucketCounts(expHistogram.getPositive());
+                dpBuilder.setPositive(positiveBuckets.build());
+            }
+            
+            // Build negative buckets
+            if (expHistogram.getNegative() != null) {
+                final ExponentialHistogramDataPoint.Buckets.Builder negativeBuckets = 
+                    ExponentialHistogramDataPoint.Buckets.newBuilder();
+                negativeBuckets.setOffset(expHistogram.getNegativeOffset());
+                negativeBuckets.addAllBucketCounts(expHistogram.getNegative());
+                dpBuilder.setNegative(negativeBuckets.build());
+            }
+            
+            // Add attributes
+            if (expHistogram.getAttributes() != null) {
+                dpBuilder.addAllAttributes(convertAttributesToKeyValue(expHistogram.getAttributes()));
+            }
+            
+            // Add exemplars
+            if (expHistogram.getExemplars() != null) {
+                for (Exemplar exemplar : expHistogram.getExemplars()) {
+                    dpBuilder.addExemplars(constructExemplar(exemplar));
+                }
+            }
+            
+            if (expHistogram.getFlags() != null) {
+                dpBuilder.setFlags(expHistogram.getFlags());
+            }
+            
+            builder.addDataPoints(dpBuilder.build());
+            return builder.build();
+        }
+
+        protected NumberDataPoint constructNumberDataPoint(
+                final Double value,
+                final String startTime,
+                final String time,
+                final java.util.Map<String, Object> attributes,
+                final java.util.List<? extends Exemplar> exemplars,
+                final Integer flags) throws UnsupportedEncodingException, DecoderException {
+            
+            final NumberDataPoint.Builder builder = NumberDataPoint.newBuilder();
+            
+            if (value != null) {
+                builder.setAsDouble(value);
+            }
+            
+            if (startTime != null) {
+                builder.setStartTimeUnixNano(convertISO8601ToNanos(startTime));
+            }
+            
+            if (time != null) {
+                builder.setTimeUnixNano(convertISO8601ToNanos(time));
+            }
+            
+            if (attributes != null) {
+                builder.addAllAttributes(convertAttributesToKeyValue(attributes));
+            }
+            
+            if (exemplars != null) {
+                for (Exemplar exemplar : exemplars) {
+                    builder.addExemplars(constructExemplar(exemplar));
+                }
+            }
+            
+            if (flags != null) {
+                builder.setFlags(flags);
+            }
+            
+            return builder.build();
+        }
+
+        protected io.opentelemetry.proto.metrics.v1.Exemplar constructExemplar(final Exemplar exemplar) 
+                throws UnsupportedEncodingException, DecoderException {
+            
+            final io.opentelemetry.proto.metrics.v1.Exemplar.Builder builder = 
+                io.opentelemetry.proto.metrics.v1.Exemplar.newBuilder();
+            
+            if (exemplar.getTime() != null) {
+                builder.setTimeUnixNano(convertISO8601ToNanos(exemplar.getTime()));
+            }
+            
+            if (exemplar.getValue() != null) {
+                builder.setAsDouble(exemplar.getValue());
+            }
+            
+            if (exemplar.getSpanId() != null && !exemplar.getSpanId().isEmpty()) {
+                builder.setSpanId(ByteString.copyFrom(Hex.decodeHex(exemplar.getSpanId())));
+            }
+            
+            if (exemplar.getTraceId() != null && !exemplar.getTraceId().isEmpty()) {
+                builder.setTraceId(ByteString.copyFrom(Hex.decodeHex(exemplar.getTraceId())));
+            }
+            
+            if (exemplar.getAttributes() != null) {
+                builder.addAllFilteredAttributes(
+                    convertAttributesToKeyValue(exemplar.getAttributes()));
+            }
+            
+            return builder.build();
+        }
+
+        protected LogRecord constructLogRecord(final Log log) throws UnsupportedEncodingException, DecoderException {
+            final LogRecord.Builder builder = LogRecord.newBuilder();
+            
+            // Set timestamps
+            if (log.getMetadata() != null && log.getMetadata().getTimeReceived() != null) {
+                builder.setTimeUnixNano(log.getMetadata().getTimeReceived().toEpochMilli() * 1_000_000);
+            }
+            
+            // Set body
+            final Object message = log.get("message", Object.class);
+            if (message != null) {
+                builder.setBody(objectToAnyValue(message));
+            }
+            
+            // Set severity
+            final Object severityNumber = log.get("severityNumber", Object.class);
+            if (severityNumber instanceof Integer) {
+                builder.setSeverityNumber(
+                    io.opentelemetry.proto.logs.v1.SeverityNumber.forNumber((Integer) severityNumber));
+            }
+            
+            final String severityText = log.get("severityText", String.class);
+            if (severityText != null) {
+                builder.setSeverityText(severityText);
+            }
+            
+            // Set trace context
+            final String traceId = log.get("traceId", String.class);
+            if (traceId != null && !traceId.isEmpty()) {
+                builder.setTraceId(ByteString.copyFrom(Hex.decodeHex(traceId)));
+            }
+            
+            final String spanId = log.get("spanId", String.class);
+            if (spanId != null && !spanId.isEmpty()) {
+                builder.setSpanId(ByteString.copyFrom(Hex.decodeHex(spanId)));
+            }
+            
+            // Set attributes
+            if (log.getMetadata() != null && log.getMetadata().getAttributes() != null) {
+                builder.addAllAttributes(
+                    convertAttributesToKeyValue(log.getMetadata().getAttributes()));
+            }
+            
+            return builder.build();
         }
     }
 

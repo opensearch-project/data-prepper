@@ -1,7 +1,3 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.sink.otlp.buffer.OtlpSinkBuffer;
@@ -68,10 +67,15 @@ class OtlpSinkTest {
     }
 
     @Test
-    void testOutput_addsEveryRecordToBuffer() {
+    void testOutput_addsEverySpanRecordToBuffer() {
         // Arrange
-        @SuppressWarnings("unchecked") final Record<Span> r1 = mock(Record.class);
-        @SuppressWarnings("unchecked") final Record<Span> r2 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r1 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r2 = mock(Record.class);
+        
+        final Span span1 = mock(Span.class);
+        final Span span2 = mock(Span.class);
+        when(r1.getData()).thenReturn(span1);
+        when(r2.getData()).thenReturn(span2);
 
         // Act
         target.output(List.of(r1, r2));
@@ -79,6 +83,71 @@ class OtlpSinkTest {
         // Assert
         verify(mockBuffer).add(r1);
         verify(mockBuffer).add(r2);
+        verifyNoMoreInteractions(mockBuffer);
+    }
+
+    @Test
+    void testOutput_addsMetricRecordsToBuffer() {
+        // Arrange
+        @SuppressWarnings("unchecked") final Record<Event> r1 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r2 = mock(Record.class);
+        
+        final Metric metric1 = mock(Metric.class);
+        final Metric metric2 = mock(Metric.class);
+        when(r1.getData()).thenReturn(metric1);
+        when(r2.getData()).thenReturn(metric2);
+
+        // Act
+        target.output(List.of(r1, r2));
+
+        // Assert
+        verify(mockBuffer).add(r1);
+        verify(mockBuffer).add(r2);
+        verifyNoMoreInteractions(mockBuffer);
+    }
+
+    @Test
+    void testOutput_addsLogRecordsToBuffer() {
+        // Arrange
+        @SuppressWarnings("unchecked") final Record<Event> r1 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r2 = mock(Record.class);
+        
+        final Log log1 = mock(Log.class);
+        final Log log2 = mock(Log.class);
+        when(r1.getData()).thenReturn(log1);
+        when(r2.getData()).thenReturn(log2);
+
+        // Act
+        target.output(List.of(r1, r2));
+
+        // Assert
+        verify(mockBuffer).add(r1);
+        verify(mockBuffer).add(r2);
+        verifyNoMoreInteractions(mockBuffer);
+    }
+
+    @Test
+    void testOutput_addsMixedRecordsToBuffer() {
+        // Arrange
+        @SuppressWarnings("unchecked") final Record<Event> spanRecord = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> metricRecord = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> logRecord = mock(Record.class);
+        
+        final Span span = mock(Span.class);
+        final Metric metric = mock(Metric.class);
+        final Log log = mock(Log.class);
+        
+        when(spanRecord.getData()).thenReturn(span);
+        when(metricRecord.getData()).thenReturn(metric);
+        when(logRecord.getData()).thenReturn(log);
+
+        // Act
+        target.output(List.of(spanRecord, metricRecord, logRecord));
+
+        // Assert
+        verify(mockBuffer).add(spanRecord);
+        verify(mockBuffer).add(metricRecord);
+        verify(mockBuffer).add(logRecord);
         verifyNoMoreInteractions(mockBuffer);
     }
 
@@ -109,7 +178,7 @@ class OtlpSinkTest {
 
     @Test
     void testConstructor_doesNotThrow() {
-        // Just ensure the three-arg constructor still works
+        // Just ensure the constructor still works
         assertDoesNotThrow(() -> new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting));
     }
 }
