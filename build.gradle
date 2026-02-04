@@ -1,8 +1,15 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 import com.github.jk1.license.render.TextReportRenderer
+import org.opensearch.dataprepper.gradle.release.PrintCurrentVersionTask
+import org.opensearch.dataprepper.gradle.release.PrintNextVersionTask
+import org.opensearch.dataprepper.gradle.release.UpdateVersionTask
 
 buildscript {
     dependencies {
@@ -326,6 +333,21 @@ task generateThirdPartyReport(type: Copy) {
     include 'THIRD-PARTY-NOTICES.txt'
     rename 'THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY'
     generateThirdPartyReport.dependsOn(generateLicenseReport)
+}
+
+tasks.register('printNextVersion', PrintNextVersionTask) {
+    description = 'Prints the next release version based on the current version in gradle.properties'
+    group = 'release'
+}
+
+tasks.register('printCurrentVersion', PrintCurrentVersionTask) {
+    description = 'Prints the current version from gradle.properties'
+    group = 'release'
+}
+
+tasks.register('updateToNextVersion', UpdateVersionTask) {
+    description = 'Updates gradle.properties to the next release version'
+    group = 'release'
 }
 
 // Utility method to recursively collect tasks from all projects and subprojects
