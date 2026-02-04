@@ -665,6 +665,88 @@ class S3SinkServiceTest {
         verify(s3ObjectsForceFlushedCounter, times(2)).increment();
     }
 
+    @Test
+    void flushAllRemainingGroups_when_no_groups_does_not_flush() {
+        when(s3GroupManager.hasNoGroups()).thenReturn(true);
+
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        s3SinkService.flushAllRemainingGroups();
+
+        verify(s3GroupManager).hasNoGroups();
+        verify(s3GroupManager, never()).getS3GroupEntries();
+        verify(s3ObjectsForceFlushedCounter, never()).increment();
+    }
+
+    @Test
+    void flushAllRemainingGroups_when_groups_exist_flushes_all() throws IOException {
+        when(s3GroupManager.hasNoGroups()).thenReturn(false);
+        when(s3GroupManager.getNumberOfGroups()).thenReturn(2);
+
+        final S3Group s3Group1 = mock(S3Group.class);
+        final S3Group s3Group2 = mock(S3Group.class);
+        final Buffer buffer1 = mock(Buffer.class);
+        final Buffer buffer2 = mock(Buffer.class);
+        final OutputStream outputStream1 = mock(OutputStream.class);
+        final OutputStream outputStream2 = mock(OutputStream.class);
+
+        when(s3Group1.getBuffer()).thenReturn(buffer1);
+        when(s3Group1.getOutputCodec()).thenReturn(codec);
+        when(buffer1.getOutputStream()).thenReturn(outputStream1);
+        when(buffer1.getKey()).thenReturn(UUID.randomUUID().toString());
+        when(buffer1.getEventCount()).thenReturn(3);
+        when(buffer1.getSize()).thenReturn(100L);
+        when(buffer1.getDuration()).thenReturn(Duration.ZERO);
+
+        when(s3Group2.getBuffer()).thenReturn(buffer2);
+        when(s3Group2.getOutputCodec()).thenReturn(codec);
+        when(buffer2.getOutputStream()).thenReturn(outputStream2);
+        when(buffer2.getKey()).thenReturn(UUID.randomUUID().toString());
+        when(buffer2.getEventCount()).thenReturn(5);
+        when(buffer2.getSize()).thenReturn(200L);
+        when(buffer2.getDuration()).thenReturn(Duration.ZERO);
+
+        final CompletableFuture<Void> completedFuture = CompletableFuture.completedFuture(null);
+        when(buffer1.flushToS3(any(Consumer.class), any(Consumer.class))).thenReturn(Optional.of(completedFuture));
+        when(buffer2.flushToS3(any(Consumer.class), any(Consumer.class))).thenReturn(Optional.of(completedFuture));
+
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(List.of(s3Group1, s3Group2));
+        doNothing().when(codec).complete(any(OutputStream.class));
+
+        final S3SinkService s3SinkService = createObjectUnderTest();
+
+        try (final MockedStatic<CompletableFuture> completableFutureMockedStatic = mockStatic(CompletableFuture.class)) {
+            final CompletableFuture<Void> mockCompletableFuture = mock(CompletableFuture.class);
+            when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
+            when(mockCompletableFuture.join()).thenReturn(null);
+            completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
+            s3SinkService.flushAllRemainingGroups();
+        }
+
+        verify(s3GroupManager).hasNoGroups();
+        verify(s3GroupManager).getNumberOfGroups();
+        verify(s3GroupManager).getS3GroupEntries();
+        verify(s3GroupManager).removeGroup(s3Group1);
+        verify(s3GroupManager).removeGroup(s3Group2);
+        verify(codec, times(2)).complete(any(OutputStream.class));
+        verify(buffer1).flushToS3(any(Consumer.class), any(Consumer.class));
+        verify(buffer2).flushToS3(any(Consumer.class), any(Consumer.class));
+        verify(s3ObjectsForceFlushedCounter, times(2)).increment();
+    }
+
+    @Test
+    void flushAllRemainingGroups_when_empty_groups_list_does_not_increment_force_flush_counter() {
+        when(s3GroupManager.hasNoGroups()).thenReturn(false);
+        when(s3GroupManager.getNumberOfGroups()).thenReturn(0);
+        when(s3GroupManager.getS3GroupEntries()).thenReturn(Collections.emptyList());
+
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        s3SinkService.flushAllRemainingGroups();
+
+        verify(s3GroupManager).hasNoGroups();
+        verify(s3GroupManager).getS3GroupEntries();
+        verify(s3ObjectsForceFlushedCounter, never()).increment();
+    }
+
     private Collection<Record<Event>> generateRandomStringEventRecord() {
         return generateEventRecords(50);
     }
