@@ -155,7 +155,8 @@ class CsvProcessorTest {
         Record<Event> eventUnderTest = createMessageEvent("key%1,key&2,key^3\n1,2,3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
-        assertThatKeyEquals(parsedEvent, "key_1", "1");
+        // % is valid in event keys, so key%1 is not normalized; & and ^ are invalid and replaced with _
+        assertThatKeyEquals(parsedEvent, "key%1", "1");
         assertThatKeyEquals(parsedEvent, "key_2", "2");
         assertThatKeyEquals(parsedEvent, "key_3", "3");
     }
@@ -195,7 +196,8 @@ class CsvProcessorTest {
 
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
 
-        assertThatKeyEquals(parsedEvent, "col_1", "1");
+        // % is valid in event keys, so col%1 is not normalized; & and ^ are invalid and replaced with _
+        assertThatKeyEquals(parsedEvent, "col%1", "1");
         assertThatKeyEquals(parsedEvent, "col_2", "2");
         assertThatKeyEquals(parsedEvent, "col_3", "3");
     }
