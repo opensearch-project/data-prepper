@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceLeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +47,7 @@ public class Office365Source extends CrawlerSourcePlugin {
     private final Office365SourceConfig office365SourceConfig;
     private final Office365AuthenticationInterface office365AuthProvider;
     private final Office365Service office365Service;
+    private final VendorAPIMetricsRecorder vendorAPIMetricsRecorder;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
     @DataPrepperPluginConstructor
@@ -56,7 +58,8 @@ public class Office365Source extends CrawlerSourcePlugin {
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final DimensionalTimeSliceCrawler crawler,
                            final PluginExecutorServiceProvider executorServiceProvider,
-                           final Office365Service office365Service) {
+                           final Office365Service office365Service,
+                           final VendorAPIMetricsRecorder vendorAPIMetricsRecorder) {
         super(PLUGIN_NAME, pluginMetrics, office365SourceConfig, pluginFactory,
                 acknowledgementSetManager, crawler, executorServiceProvider);
         crawler.initialize(Arrays.asList(Constants.CONTENT_TYPES));
@@ -64,6 +67,10 @@ public class Office365Source extends CrawlerSourcePlugin {
         this.office365SourceConfig = office365SourceConfig;
         this.office365AuthProvider = office365AuthProvider;
         this.office365Service = office365Service;
+        this.vendorAPIMetricsRecorder = vendorAPIMetricsRecorder;
+        
+        // Enable subscription metrics at the earliest possible point - plugin initialization
+        this.vendorAPIMetricsRecorder.enableSubscriptionMetrics();
     }
 
     @Override
