@@ -1,0 +1,21 @@
+{
+  "traceId": "ERROR_TRACE_ID",
+  "spanId": "ERROR_CHILD_SPAN_ID",
+  "traceState": "ERROR_TRACE_STATE",
+  "kind": "SPAN_KIND_SERVER",
+  "name": "ERROR_OPERATION",
+  "startTime": "2020-08-20T05:40:43.178010200Z",
+  "durationInNanos": 29160000,
+  "endTime": "2020-08-20T05:40:43.207170200Z",
+  "parentSpanId": "ERROR_ROOT_SPAN_ID",
+  "attributes": {},
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0,
+  "status": {
+    "code": "2",
+    "message": "Something went wrong"
+  }
+}
