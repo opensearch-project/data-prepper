@@ -268,6 +268,7 @@ public class CreateServer {
         if (serverConfiguration.getMaxRequestLength() != null) {
             sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
         }
+
         final int threads = serverConfiguration.getThreadCount();
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);

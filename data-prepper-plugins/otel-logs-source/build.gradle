@@ -13,6 +13,7 @@ dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:otel-proto-common')
     implementation project(':data-prepper-plugins:http-common')
+    implementation project(':data-prepper-plugins:http-source-common' )
     implementation libs.commons.codec
     implementation project(':data-prepper-plugins:armeria-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
@@ -22,6 +23,8 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
     implementation 'software.amazon.awssdk:s3'
+    implementation 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
     implementation libs.protobuf.util
     implementation libs.armeria.core
     implementation libs.armeria.grpc
