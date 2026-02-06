@@ -22,10 +22,11 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
 
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import com.linecorp.armeria.server.ServerBuilder;
 
 import java.util.HashMap;
@@ -56,13 +57,13 @@ class HttpServiceTest {
 
     @BeforeEach
     void setUp() {
-        httpService = new HttpService(pluginMetrics, oTelTraceSourceConfig, pluginFactory);
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = new OTelProtoOpensearchCodec.OTelProtoDecoder();
+        httpService = new HttpService(pluginMetrics, otelProtoDecoder, oTelTraceSourceConfig, pluginFactory);
     }
 
     @Test
     void testCreateWithNoCompression() {
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OPENSEARCH);
         when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(5000);
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(null);
 
@@ -75,7 +76,6 @@ class HttpServiceTest {
     @Test
     void testCreateWithCompression() {
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
-        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OPENSEARCH);
         when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(5000);
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(null);
 
@@ -90,7 +90,6 @@ class HttpServiceTest {
         RetryInfoConfig retryInfo = new RetryInfoConfig(Duration.ofMillis(200), Duration.ofMillis(3000));
         when(oTelTraceSourceConfig.getRetryInfo()).thenReturn(retryInfo);
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OPENSEARCH);
         when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(5000);
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(null);
 
@@ -106,7 +105,6 @@ class HttpServiceTest {
         when(authConfig.getPluginSettings()).thenReturn(new HashMap<>());
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(authConfig);
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OPENSEARCH);
         when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(5000);
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);

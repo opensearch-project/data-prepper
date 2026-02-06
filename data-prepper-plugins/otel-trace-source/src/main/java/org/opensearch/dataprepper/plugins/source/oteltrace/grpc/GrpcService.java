@@ -14,9 +14,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
@@ -47,12 +45,14 @@ public class GrpcService {
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
 
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
+    private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final PluginMetrics pluginMetrics;
     private final String pipelineName;
 
-    public GrpcService(PluginFactory pluginFactory, OTelTraceSourceConfig oTelTraceSourceConfig, PluginMetrics pluginMetrics, String pipelineName) {
+    public GrpcService(PluginFactory pluginFactory,final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final String pipelineName) {
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
+        this.otelProtoDecoder = otelProtoDecoder;
         this.pluginMetrics = pluginMetrics;
         this.pipelineName = pipelineName;
         this.authenticationProvider = createAuthenticationProvider(pluginFactory, oTelTraceSourceConfig);
@@ -62,7 +62,7 @@ public class GrpcService {
 
         final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                 (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+                otelProtoDecoder,
                 buffer,
                 pluginMetrics,
                 null

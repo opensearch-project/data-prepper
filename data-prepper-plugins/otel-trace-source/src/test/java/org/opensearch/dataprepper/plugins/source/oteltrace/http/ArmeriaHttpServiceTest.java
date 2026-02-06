@@ -20,11 +20,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.Arguments;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
@@ -34,6 +37,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 
@@ -100,96 +106,100 @@ class ArmeriaHttpServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(OTelOutputFormat.class)
-    void testExportTraceSuccess(OTelOutputFormat outputFormat) throws Exception {
+    @MethodSource("getOTelFormatTestArguments")
+    void testExportTraceSuccess(OTelOutputFormat outputFormat, final String key) throws Exception {
         when(buffer.isByteBuffer()).thenReturn(false);
         doAnswer((a)-> {
             recordsReceived = ((Collection<Record<Span>>)a.getArgument(0)).stream().collect(Collectors.toList());
             return null;
         }).when(buffer).writeAll(any(), any(Integer.class));
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = (outputFormat == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
+        ExportTraceServiceRequest request = createExportTraceRequest();
         try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
             mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
-            armeriaHttpService = new ArmeriaHttpService(buffer, outputFormat, pluginMetrics, 5000);
-            ExportTraceServiceRequest request = createExportTraceRequest();
+            armeriaHttpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, 5000);
 
             ExportTraceServiceResponse response = armeriaHttpService.exportTrace(request);
-
             assertNotNull(response);
-            verify(requestsReceivedCounter).increment();
-            verify(payloadSizeSummary).record(request.getSerializedSize());
-            verify(successRequestsCounter).increment();
-            assertThat(recordsReceived.size(), equalTo(1));
-            Span span = recordsReceived.get(0).getData();
-            if (outputFormat == OTelOutputFormat.OTEL) {
-                assertThat(span.get("resource/attributes/service.name", String.class), equalTo(TRACE_SERVICE_NAME));
-            } else {
-                assertThat(span.get("attributes/resource.attributes.service@name", String.class), equalTo(TRACE_SERVICE_NAME));
-            }
         }
+        verify(requestsReceivedCounter).increment();
+        verify(payloadSizeSummary).record(request.getSerializedSize());
+        verify(successRequestsCounter).increment();
+        assertThat(recordsReceived.size(), equalTo(1));
+        Span span = recordsReceived.get(0).getData();
+        assertThat(span.get(key, String.class), equalTo(TRACE_SERVICE_NAME));
+    }
+
+    private static Stream<Arguments> getOTelFormatTestArguments() {
+        return Stream.of(
+            Arguments.of(OTelOutputFormat.OPENSEARCH, "attributes/resource.attributes.service@name"),
+            Arguments.of(OTelOutputFormat.OTEL, "resource/attributes/service.name")
+        );
     }
 
     @ParameterizedTest
     @EnumSource(OTelOutputFormat.class)
     void testExportTraceWithByteBuffer(OTelOutputFormat outputFormat) throws Exception {
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = (outputFormat == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
         try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
             mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
-            armeriaHttpService = new ArmeriaHttpService(buffer, outputFormat, pluginMetrics, 5000);
+            armeriaHttpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, 5000);
             ExportTraceServiceRequest request = ExportTraceServiceRequest.getDefaultInstance();
             when(buffer.isByteBuffer()).thenReturn(true);
 
             ExportTraceServiceResponse response = armeriaHttpService.exportTrace(request);
-
             assertNotNull(response);
-            verify(requestsReceivedCounter).increment();
-            verify(successRequestsCounter).increment();
         }
+        verify(requestsReceivedCounter).increment();
+        verify(successRequestsCounter).increment();
     }
 
     @ParameterizedTest
     @EnumSource(OTelOutputFormat.class)
     void testExportTraceThrowsBadRequestException(OTelOutputFormat outputFormat) {
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = (outputFormat == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
         try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
             mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
-            armeriaHttpService = new ArmeriaHttpService(buffer, outputFormat, pluginMetrics, 5000);
+            armeriaHttpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, 5000);
             ExportTraceServiceRequest request = mock(ExportTraceServiceRequest.class);
             when(request.getSerializedSize()).thenReturn(100);
             when(request.getResourceSpansList()).thenThrow(new RuntimeException("Parse error"));
 
             assertThrows(BadRequestException.class, () -> armeriaHttpService.exportTrace(request));
-            verify(requestsReceivedCounter).increment();
         }
+        verify(requestsReceivedCounter).increment();
     }
 
     @ParameterizedTest
     @EnumSource(OTelOutputFormat.class)
     void testExportTraceThrowsBufferWriteException(OTelOutputFormat outputFormat) throws Exception {
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = (outputFormat == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
         try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
             mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
-            armeriaHttpService = new ArmeriaHttpService(buffer, outputFormat, pluginMetrics, 5000);
+            armeriaHttpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, 5000);
             ExportTraceServiceRequest request = ExportTraceServiceRequest.getDefaultInstance();
             when(buffer.isByteBuffer()).thenReturn(false);
             doThrow(new RuntimeException("Buffer error")).when(buffer).writeAll(any(), anyInt());
 
             assertThrows(BufferWriteException.class, () -> armeriaHttpService.exportTrace(request));
-            verify(requestsReceivedCounter).increment();
         }
+        verify(requestsReceivedCounter).increment();
     }
 
     @ParameterizedTest
     @EnumSource(OTelOutputFormat.class)
     void testExportTraceWithTimeout(OTelOutputFormat outputFormat) throws Exception {
+        final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = (outputFormat == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
         try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
             mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
-            armeriaHttpService = new ArmeriaHttpService(buffer, outputFormat, pluginMetrics, 5000);
+            armeriaHttpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, 5000);
             ExportTraceServiceRequest request = ExportTraceServiceRequest.getDefaultInstance();
             when(buffer.isByteBuffer()).thenReturn(false);
-            //when(serviceRequestContext.isTimedOut()).thenReturn(true);
 
             ExportTraceServiceResponse response = armeriaHttpService.exportTrace(request);
-
             assertNotNull(response);
-            verify(requestsReceivedCounter).increment();
         }
+        verify(requestsReceivedCounter).increment();
     }
 
     private ExportTraceServiceRequest createExportTraceRequest() {
