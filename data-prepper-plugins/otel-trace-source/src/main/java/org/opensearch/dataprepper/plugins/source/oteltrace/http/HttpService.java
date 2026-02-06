@@ -39,7 +39,7 @@ public class HttpService {
         RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
                 ? oTelTraceSourceConfig.getRetryInfo()
                 : DEFAULT_RETRY_INFO;
-        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
+        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, oTelTraceSourceConfig.getOutputFormat(), pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
         HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
         configureAuthentication(serverBuilder);
