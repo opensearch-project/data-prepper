@@ -59,6 +59,9 @@ Browse using Maven Central:
 
 Data Prepper Maven artifacts release nightly snapshot builds.
 
+The OpenSearch project has a browsable web interface.
+You can [view Data Prepper snapshots](https://ci.opensearch.org/ci/dbc/snapshots/maven/org/opensearch/dataprepper/).
+
 The Maven repository is:
 * `https://central.sonatype.com/repository/maven-snapshots`
 
