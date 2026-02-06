@@ -1,7 +1,13 @@
-# This workflow will build a Java project with Gradle
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
 
-name: Data Prepper OpenSearchSink integration tests with Open Distro
+name: Integration Tests - OpenSearch sink against Open Distro
 
 on:
   push:
@@ -27,19 +33,24 @@ jobs:
 
     steps:
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
-          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          java-version:  ${{ matrix.java }}
+
       - name: Checkout Data Prepper
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
+
       - name: Run Open Distro docker
         run: |
           docker pull amazon/opendistro-for-elasticsearch:${{ matrix.opendistro }}
           docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:${{ matrix.opendistro }}
-          sleep 90
-      - name: Run Open Distro tests
+          sleep 1
+      - name: Wait for Open Distro to be available
         run: |
           ./gradlew :data-prepper-plugins:opensearch:integrationTest --tests "org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIT" -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
+      - name: Run Open Distro tests
+        run: |
           ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true -Dtests.opensearch.version=opendistro:${{ matrix.opendistro }}
       - name: Upload Unit Test Results
         if: always()
