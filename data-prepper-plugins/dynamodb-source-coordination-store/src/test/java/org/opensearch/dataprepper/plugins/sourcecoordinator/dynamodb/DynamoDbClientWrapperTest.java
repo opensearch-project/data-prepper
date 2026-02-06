@@ -70,6 +70,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -842,7 +843,7 @@ public class DynamoDbClientWrapperTest {
     @Test
     void tryDeletePartition_with_exception_throws_PartitionUpdateException() throws NoSuchFieldException, IllegalAccessException {
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
-        when(table.deleteItem(any(DeleteItemEnhancedRequest.class))).thenThrow(RuntimeException.class);
+        lenient().when(table.deleteItem(any(DeleteItemEnhancedRequest.class))).thenThrow(RuntimeException.class);
 
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
 
