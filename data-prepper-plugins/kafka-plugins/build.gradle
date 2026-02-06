@@ -39,7 +39,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
-    implementation 'io.confluent:kafka-avro-serializer:7.9.1'
+    implementation 'io.confluent:kafka-avro-serializer:7.9.5'
     implementation 'io.confluent:kafka-json-schema-serializer:7.9.1'
     implementation 'io.confluent:kafka-schema-registry-client:7.9.1'
     implementation 'software.amazon.awssdk:sts'
