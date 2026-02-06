@@ -118,7 +118,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigBasic() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://test.com");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
@@ -137,7 +137,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigOauth2() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://test.com");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
         when(confluenceSourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);

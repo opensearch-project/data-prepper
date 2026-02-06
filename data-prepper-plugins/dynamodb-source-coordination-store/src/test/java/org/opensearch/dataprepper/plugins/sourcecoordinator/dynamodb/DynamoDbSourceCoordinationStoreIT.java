@@ -36,7 +36,9 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -265,8 +267,16 @@ class DynamoDbSourceCoordinationStoreIT {
         objectUnderTest.tryCreatePartitionItem(sourceIdentifier,
                 unassignedPartitionKey3, SourcePartitionStatus.UNASSIGNED, 1L, partitionProgressState, false);
 
-        final Optional<SourcePartitionStoreItem> maybeAcquired =
-                objectUnderTest.tryAcquireAvailablePartition(sourceIdentifier, ownerId, Duration.ofSeconds(20));
+        // Wait for partition to be available in DynamoDB Local before attempting to acquire
+        final Optional<SourcePartitionStoreItem>[] maybeAcquiredHolder = new Optional[]{Optional.empty()};
+        await().atMost(5, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    maybeAcquiredHolder[0] = objectUnderTest.tryAcquireAvailablePartition(sourceIdentifier, ownerId, Duration.ofSeconds(20));
+                    assertThat(maybeAcquiredHolder[0].isPresent(), equalTo(true));
+                });
+
+        final Optional<SourcePartitionStoreItem> maybeAcquired = maybeAcquiredHolder[0];
 
         assertThat(maybeAcquired, notNullValue());
         assertThat(maybeAcquired.isPresent(), equalTo(true));
