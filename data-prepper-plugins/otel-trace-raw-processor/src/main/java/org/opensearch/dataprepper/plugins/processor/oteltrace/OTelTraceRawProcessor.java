@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
@@ -19,6 +24,7 @@ import org.opensearch.dataprepper.model.trace.Span;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
+import org.opensearch.dataprepper.plugins.processor.oteltrace.util.OTelSpanDerivationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +98,9 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         }
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
+
+        // Derive server span attributes (fault, error, operation, environment)
+        OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
 
         return processedSpans.stream().map(Record::new).collect(Collectors.toList());
     }
