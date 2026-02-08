@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +28,11 @@ public class HttpService {
 
     private final PluginMetrics pluginMetrics;
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
+    private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
     private final PluginFactory pluginFactory;
 
-    public HttpService(PluginMetrics pluginMetrics, OTelTraceSourceConfig oTelTraceSourceConfig, PluginFactory pluginFactory) {
+    public HttpService(PluginMetrics pluginMetrics, final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginFactory pluginFactory) {
+        this.otelProtoDecoder = otelProtoDecoder;
         this.pluginMetrics = pluginMetrics;
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginFactory = pluginFactory;
@@ -39,7 +42,7 @@ public class HttpService {
         RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
                 ? oTelTraceSourceConfig.getRetryInfo()
                 : DEFAULT_RETRY_INFO;
-        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
+        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, otelProtoDecoder, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
         HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
         configureAuthentication(serverBuilder);

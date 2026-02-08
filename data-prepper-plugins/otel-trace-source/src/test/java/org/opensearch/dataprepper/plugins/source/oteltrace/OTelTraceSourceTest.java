@@ -36,6 +36,10 @@ import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.resource.v1.Resource;
+import org.opensearch.dataprepper.model.record.Record;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +69,7 @@ import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
@@ -77,6 +82,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -103,6 +109,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -119,6 +126,9 @@ class OTelTraceSourceTest {
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
+    private static final String RESOURCE_ATTR_SERVICE_KEY = "service.name";
+    private static final String TRACE_SERVICE_NAME = "TestTraceServiceName";
+    private static final int TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT = 11;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
@@ -169,6 +179,7 @@ class OTelTraceSourceTest {
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
     private OTelTraceSource SOURCE;
+    private List<Record<org.opensearch.dataprepper.model.trace.Span>> recordsReceived;
 
     @BeforeEach
     void beforeEach() {
@@ -222,7 +233,11 @@ class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws Exception {
+        doAnswer((a)-> {
+            recordsReceived = ((Collection<Record<org.opensearch.dataprepper.model.trace.Span>>)a.getArgument(0)).stream().collect(Collectors.toList());
+            return null;
+        }).when(buffer).writeAll(any(), any(Integer.class));
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
         when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
         final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
@@ -236,6 +251,7 @@ class OTelTraceSourceTest {
                 )));
         when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OPENSEARCH);
 
         configureObjectUnderTest();
         SOURCE.start(buffer);
@@ -253,6 +269,53 @@ class OTelTraceSourceTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
+
+        assertThat(recordsReceived.size(), equalTo(1));
+        org.opensearch.dataprepper.model.trace.Span span = recordsReceived.get(0).getData();
+        assertThat(span.get("attributes/resource.attributes.service@name", String.class), equalTo(TRACE_SERVICE_NAME));
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_using_otel_format_with_successful_response() throws Exception {
+        doAnswer((a)-> {
+            recordsReceived = ((Collection<Record<org.opensearch.dataprepper.model.trace.Span>>)a.getArgument(0)).stream().collect(Collectors.toList());
+            return null;
+        }).when(buffer).writeAll(any(), any(Integer.class));
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+        when(oTelTraceSourceConfig.getOutputFormat()).thenReturn(OTelOutputFormat.OTEL);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21890" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportTraceRequest()).getBytes())
+                .header("Authorization", "Basic " + encodeToString)
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+
+        assertThat(recordsReceived.size(), equalTo(1));
+        org.opensearch.dataprepper.model.trace.Span span = recordsReceived.get(0).getData();
+        assertThat(span.get("resource/attributes/service.name", String.class), equalTo(TRACE_SERVICE_NAME));
     }
 
     @Test
@@ -792,8 +855,17 @@ class OTelTraceSourceTest {
                 .setEndTimeUnixNano(101)
                 .setTraceState("SUCCESS").build();
 
+        final Resource resource = Resource.newBuilder()
+                .setDroppedAttributesCount(TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT)
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey(RESOURCE_ATTR_SERVICE_KEY)
+                        .setValue(AnyValue.newBuilder().setStringValue(TRACE_SERVICE_NAME).build())
+                )
+                .build();
+
         return ExportTraceServiceRequest.newBuilder()
                 .addResourceSpans(ResourceSpans.newBuilder()
+                        .setResource(resource)
                         .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
                 .build();
     }
