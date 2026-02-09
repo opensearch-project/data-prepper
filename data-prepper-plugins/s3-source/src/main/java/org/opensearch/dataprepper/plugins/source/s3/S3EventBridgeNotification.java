@@ -9,7 +9,7 @@ import software.amazon.awssdk.utils.http.SdkHttpUtils;
 import java.util.List;
 
 /**
- * A helper class that represents a strongly typed notification item sent to EvenBridge
+ * A helper class that represents a strongly typed notification item sent to EventBridge
  */
 public class S3EventBridgeNotification {
     private final String version;
@@ -156,13 +156,13 @@ public class S3EventBridgeNotification {
 
     public static class Object {
         private final String key;
-        private final int size;
+        private final long size;
         private final String etag;
         private final String versionId;
         private final String sequencer;
 
         public Object(@JsonProperty(value = "key") final String key,
-                      @JsonProperty(value = "size") final int size,
+                      @JsonProperty(value = "size") final long size,
                       @JsonProperty(value = "etag") final String etag,
                       @JsonProperty(value = "version-id") final String versionId,
                       @JsonProperty(value = "sequencer") final String sequencer) {
@@ -173,7 +173,7 @@ public class S3EventBridgeNotification {
             this.sequencer = sequencer;
         }
 
-        public int getSize() {
+        public long getSize() {
             return size;
         }
 
