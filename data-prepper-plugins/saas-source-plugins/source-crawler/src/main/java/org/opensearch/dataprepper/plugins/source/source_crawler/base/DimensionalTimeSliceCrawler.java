@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
@@ -48,6 +49,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
     private final Counter partitionsCreatedCounter;
     private final Timer partitionWaitTimeTimer;
     private final Timer partitionProcessLatencyTimer;
+    private final AtomicLong localPartitionCounter = new AtomicLong(0);
     private List<String> dimensionTypes;
     private static final String LAST_UPDATED_KEY = "last_updated|";
 
@@ -76,11 +78,11 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
      */
     @Override
     public Instant crawl(LeaderPartition leaderPartition, EnhancedSourceCoordinator coordinator) {
-        double startCount = partitionsCreatedCounter.count();
+        long startCount = localPartitionCounter.get();
 
         Instant latestModifiedTime = createPartitions(leaderPartition, coordinator);
 
-        double partitionsInThisCrawl = partitionsCreatedCounter.count() - startCount;
+        long partitionsInThisCrawl = localPartitionCounter.get() - startCount;
         log.info("Total partitions created in this crawl: {}", partitionsInThisCrawl);
         return latestModifiedTime;
     }
@@ -170,7 +172,10 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
 
             SaasSourcePartition partition = new SaasSourcePartition(workerState, LAST_UPDATED_KEY + UUID.randomUUID());
             coordinator.createPartition(partition);
+            
+            // Increment both counters for reliability
             partitionsCreatedCounter.increment();
+            localPartitionCounter.incrementAndGet();
         }
     }
 
