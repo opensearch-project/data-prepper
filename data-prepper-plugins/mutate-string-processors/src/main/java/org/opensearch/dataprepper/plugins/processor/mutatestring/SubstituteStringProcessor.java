@@ -17,8 +17,8 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 
 /**
  * This processor takes in a key and changes its value by searching for a pattern and replacing the matches with a string.

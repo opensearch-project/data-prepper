@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 
 @DataPrepperPlugin(name = "rename_keys", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {

@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 
 public class MappingsParser {
     private final LinkedHashMap<Range<Float>, Object> rangeMappings = new LinkedHashMap<>();
