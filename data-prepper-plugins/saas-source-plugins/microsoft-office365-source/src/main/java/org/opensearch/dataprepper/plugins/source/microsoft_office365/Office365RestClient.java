@@ -250,23 +250,6 @@ public class Office365RestClient {
                                     new ParameterizedTypeReference<>() {}
                             );
 
-                            // Log response details
-                            List<Map<String, Object>> responseBody = response.getBody();
-                            if (responseBody == null) {
-                                log.debug("Search audit logs response is null for URL: {}", url);
-                            } else {
-                                log.debug("Search audit logs response received {} entries for URL: {}",
-                                        responseBody.size(), url);
-                                String responseStr = responseBody.toString();
-                                // Size protection for log limits.
-                                if (responseStr.length() > 10000) {
-                                    log.debug("Search audit logs response body (truncated to first 10000 chars): {}",
-                                            responseStr.substring(0, 10000) + "... [TRUNCATED - total length: " + responseStr.length() + "]");
-                                } else {
-                                    log.debug("Search audit logs response body: {}", responseBody);
-                                }
-                            }
-
                             metricsRecorder.recordSearchResponseSize(response);
                             metricsRecorder.recordSearchSuccess();
 
@@ -324,21 +307,6 @@ public class Office365RestClient {
 
                     return responseEntity.getBody();
                 }, authConfig::renewCredentials, metricsRecorder::recordGetFailure);
-
-                // Log response details
-                if (response == null) {
-                    log.debug("Get audit log response is null for content URI: {}", contentUri);
-                } else {
-                    log.debug("Get audit log response received {} characters for content URI: {}",
-                            response.length(), contentUri);
-                    // Size protection for log limits.
-                    if (response.length() > 10000) {
-                        log.debug("Get audit log response content (truncated to first 10000 chars): {}",
-                                response.substring(0, 10000) + "... [TRUNCATED - total length: " + response.length() + "]");
-                    } else {
-                        log.debug("Get audit log response content: {}", response);
-                    }
-                }
 
                 metricsRecorder.recordGetResponseSize(response);
                 metricsRecorder.recordGetSuccess();

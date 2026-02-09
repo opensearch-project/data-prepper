@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.DimensionalTimeSliceCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 
 import java.util.concurrent.ExecutorService;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class Office365SourceTest {
@@ -75,6 +77,9 @@ class Office365SourceTest {
 
     @Mock
     private Office365Service office365Service;
+    
+    @Mock
+    private VendorAPIMetricsRecorder vendorAPIMetricsRecorder;
 
 
     @Test
@@ -82,7 +87,7 @@ class Office365SourceTest {
         when(executorServiceProvider.get()).thenReturn(executorService);
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider, office365Service);
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
         assertNotNull(source);
     }
 
@@ -92,7 +97,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider, office365Service);
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
 
         source.setEnhancedSourceCoordinator(sourceCoordinator);
         source.start(buffer);
@@ -108,7 +113,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider, office365Service);
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
 
         doThrow(new RuntimeException("Authentication failed"))
                 .when(office365AuthProvider).initCredentials();
@@ -119,7 +124,17 @@ class Office365SourceTest {
         assertEquals("Failed to start Office365 Source Plugin", exception.getMessage());
     }
 
+    @Test
+    void testConstructorEnablesSubscriptionMetrics() {
+        when(executorServiceProvider.get()).thenReturn(executorService);
 
+        Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
+                office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
+
+        verify(vendorAPIMetricsRecorder, times(1)).enableSubscriptionMetrics();
+        assertNotNull(source);
+    }
 
     @Test
     void testStop() {
@@ -127,7 +142,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider, office365Service);
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
 
         source.setEnhancedSourceCoordinator(sourceCoordinator);
         source.start(buffer);
@@ -142,7 +157,7 @@ class Office365SourceTest {
 
         Office365Source source = new Office365Source(pluginMetrics, office365SourceConfig,
                 office365AuthProvider, pluginFactory, acknowledgementSetManager, crawler,
-                executorServiceProvider, office365Service);
+                executorServiceProvider, office365Service, vendorAPIMetricsRecorder);
 
         source.stop();
 
