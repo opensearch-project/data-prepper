@@ -101,6 +101,8 @@ pipeline {
                             dir('archive') {
                                 sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-x64.tar.gz"
                                 sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz"
+                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz"
+                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz"
                             }
                         }
                     }
