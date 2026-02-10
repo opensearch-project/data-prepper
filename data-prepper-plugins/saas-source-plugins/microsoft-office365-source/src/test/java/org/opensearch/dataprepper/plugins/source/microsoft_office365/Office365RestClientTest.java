@@ -764,4 +764,83 @@ class Office365RestClientTest {
         verify(metricsRecorder, times(1)).recordSubscriptionSuccess(); // Overall operation
         verify(metricsRecorder, times(CONTENT_TYPES.length)).recordSubscriptionCall(); // Start API calls
     }
+
+    /**
+     * Tests that searchAuditLogs records failure metrics only once when an exception is thrown.
+     * 
+     * This test will FAIL if the double recording bug is present, indicating that
+     * recordSearchFailure() is being called multiple times instead of once.
+     * 
+     * Expected behavior: recordSearchFailure should be called exactly once per logical failure.
+     */
+    @Test
+    void testSearchAuditLogsRecordsFailureMetricsOnlyOnce() {
+        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant endTime = Instant.now();
+
+        when(authConfig.getTenantId()).thenReturn("test-tenant");
+        when(authConfig.getAccessToken()).thenReturn("test-token");
+
+        // Mock REST template to throw an exception that persists through all retry attempts
+        HttpClientErrorException exception = new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenThrow(exception);
+
+        // Verify that the exception is propagated
+        SaaSCrawlerException crawlerException = assertThrows(SaaSCrawlerException.class,
+                () -> office365RestClient.searchAuditLogs(
+                        "Audit.AzureActiveDirectory",
+                        startTime,
+                        endTime,
+                        null
+                ));
+
+        // Verify the exception details
+        assertEquals("Failed to fetch audit logs", crawlerException.getMessage());
+        assertTrue(crawlerException.isRetryable());
+
+        // CRITICAL TEST: Verify that recordSearchFailure is called exactly once
+        // This test will FAIL if the double recording bug exists
+        verify(metricsRecorder, times(1)).recordSearchFailure();
+    }
+
+    /**
+     * Tests that getAuditLog records failure metrics only once when an exception is thrown.
+     * 
+     * This test will FAIL if the double recording bug is present, indicating that
+     * recordGetFailure() is being called multiple times instead of once.
+     * 
+     * Expected behavior: recordGetFailure should be called exactly once per logical failure.
+     */
+    @Test
+    void testGetAuditLogRecordsFailureMetricsOnlyOnce() {
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
+        
+        when(authConfig.getAccessToken()).thenReturn("test-token");
+        
+        // Mock REST template to throw an exception that persists through all retry attempts
+        HttpClientErrorException exception = new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR);
+        when(restTemplate.exchange(
+                eq(contentUri),
+                eq(HttpMethod.GET),
+                any(),
+                eq(String.class)
+        )).thenThrow(exception);
+
+        // Verify that the exception is propagated
+        SaaSCrawlerException crawlerException = assertThrows(SaaSCrawlerException.class,
+                () -> office365RestClient.getAuditLog(contentUri));
+
+        // Verify the exception details
+        assertEquals("Failed to fetch audit log", crawlerException.getMessage());
+        assertTrue(crawlerException.isRetryable());
+
+        // CRITICAL TEST: Verify that recordGetFailure is called exactly once
+        // This test will FAIL if the double recording bug exists
+        verify(metricsRecorder, times(1)).recordGetFailure();
+    }
 }

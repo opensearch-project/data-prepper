@@ -269,7 +269,6 @@ public class Office365RestClient {
                 );
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
-                metricsRecorder.recordSearchFailure();
                 log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
                         contentType, url, e);
                 throw new SaaSCrawlerException("Failed to fetch audit logs", e, true);
@@ -314,7 +313,6 @@ public class Office365RestClient {
                 return response;
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
-                metricsRecorder.recordGetFailure();
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
                 throw new SaaSCrawlerException("Failed to fetch audit log", e, true);
             }
