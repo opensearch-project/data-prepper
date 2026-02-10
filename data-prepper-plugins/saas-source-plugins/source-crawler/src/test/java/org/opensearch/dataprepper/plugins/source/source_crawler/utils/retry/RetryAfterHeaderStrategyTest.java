@@ -47,7 +47,7 @@ class RetryAfterHeaderStrategyTest {
 
     @Test
     void constructor_WithNullRateLimitSleepTime_UsesDefaultValues() {
-        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(null,null);
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy((List)null, (List)null);
         assertThat(strategy, notNullValue());
         assertThat(strategy.getMaxRetries(), equalTo(6));
     }
@@ -414,5 +414,61 @@ class RetryAfterHeaderStrategyTest {
         final long sleepTime = retryAfterHeaderStrategy.calculateSleepTime(exception, 0);
 
         assertThat(sleepTime, equalTo(2000L));
+    }
+
+    @Test
+    void calculateSleepTime_WithCustomRateLimitHeadersCaseSensitive_PrefersRetryAfterHeader() {
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(
+                "X-Custom-Rate-Limit-Remaining",
+                "X-Custom-Rate-Limit-Reset"
+        );
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Custom-Retry-After", "50");
+        headers.set("X-Custom-Rate-Limit-Remaining", "0");
+        final long resetTime = Instant.now().getEpochSecond() + 10;
+        headers.set("X-Custom-Rate-Limit-Reset", String.valueOf(resetTime));
+
+        final HttpClientErrorException exception = new HttpClientErrorException(
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+
+        final long sleepTime = strategy.calculateSleepTime(exception, 0);
+
+        assertThat(sleepTime, equalTo(11000L));
+    }
+
+    @Test
+    void calculateSleepTime_WithCustomRateLimitHeadersCaseInsensitive_PrefersRetryAfterHeader() {
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy(
+                "x-custom-rate-limit-remaining",
+                "x-custom-rate-limit-reset"
+        );
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Custom-Retry-After", "50");
+        headers.set("X-Custom-Rate-Limit-Remaining", "0");
+        final long resetTime = Instant.now().getEpochSecond() + 50;
+        headers.set("X-Custom-Rate-Limit-Reset", String.valueOf(resetTime));
+
+        final HttpClientErrorException exception = new HttpClientErrorException(
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+
+        final long sleepTime = strategy.calculateSleepTime(exception, 0);
+
+        assertThat(sleepTime, equalTo(51000L));
+    }
+
+    @Test
+    void calculateSleepTime_WithDefaultConstructor_UsesDefaultHeaders() {
+        final RetryAfterHeaderStrategy strategy = new RetryAfterHeaderStrategy();
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set("Retry-After", "40");
+        final HttpClientErrorException exception = new HttpClientErrorException(
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+
+        final long sleepTime = strategy.calculateSleepTime(exception, 0);
+
+        assertThat(sleepTime, equalTo(40000L));
     }
 }
