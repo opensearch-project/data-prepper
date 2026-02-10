@@ -19,3 +19,13 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 *.iml
 .kiro
 .vscode
+
+# Manual testing files (should not be committed)
+MANUAL_TEST.md
+data-prepper-config.yaml
+pipelines.yaml
+run-dataprepper.sh
+trace-tester.py
+
+# Claude session notes
+claude.md

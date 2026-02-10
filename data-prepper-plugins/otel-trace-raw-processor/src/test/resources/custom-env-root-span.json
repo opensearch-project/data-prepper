@@ -1,0 +1,22 @@
+{
+  "traceId": "CUSTOM_ENV_TRACE_ID",
+  "spanId": "CUSTOM_ENV_ROOT_SPAN_ID",
+  "traceState": "CUSTOM_ENV_TRACE_STATE",
+  "kind": "SPAN_KIND_CLIENT",
+  "traceGroupFields": {
+    "endTime": "2020-08-20T05:40:43.217170200Z",
+    "durationInNanos": 49160000,
+    "statusCode": 1
+  },
+  "name": "CUSTOM_ENV_ROOT_SPAN",
+  "traceGroup": "CUSTOM_ENV_ROOT_SPAN",
+  "startTime": "2020-08-20T05:40:43.168010200Z",
+  "durationInNanos": 49160000,
+  "endTime": "2020-08-20T05:40:43.217170200Z",
+  "attributes": {},
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}
