@@ -148,7 +148,7 @@ function run_smoke_test() {
     local CURRENT_DIR
     CURRENT_DIR=$(pwd)
 
-    eval "${REPO_DIR}/release/smoke-tests/run-smoke-tests.sh -i ${SMOKE_IMAGE_NAME} -v ${DATA_PREPPER_VERSION}"
+    eval "${REPO_DIR}/release/smoke-tests/run-smoke-tests.sh -i ${SMOKE_IMAGE_NAME} -v ${DATA_PREPPER_VERSION} -a ${ARCHITECTURE}"
 
     echo echo "Completed smoke testing tar ${TAR_FILE}"
 

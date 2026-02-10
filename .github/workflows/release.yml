@@ -92,7 +92,7 @@ jobs:
       - name: Smoke Test Docker Image
         run: |
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
-          ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
+          ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }} -a ${{ matrix.architecture }}
 
   validate-archive:
     strategy:
