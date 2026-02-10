@@ -229,78 +229,12 @@ The processor also generates time-series metrics:
 - **Cleanup**: Old database files are automatically cleaned up during window rotation
 - **I/O performance**: Use fast storage (SSD) for better performance
 
-### Scaling Guidelines
-
-###### TODO : Correct memory allocation based on performance test results
-
-| Trace Volume | Memory Allocation |
-|--------------|-------------------|
-| < 10k spans/sec | 2-4 GB heap |
-| 10k-50k spans/sec | 4-8 GB heap |
-| > 50k spans/sec | 8+ GB heap |
-
-## Troubleshooting
-
-### Common Issues
-
-#### High Memory Usage
-
-**Symptoms**: OutOfMemoryError, frequent garbage collection
-**Solutions**:
-- Increase JVM heap size
-- Reduce `window_duration`
-- Check for trace data without proper parent-child relationships
-- Monitor database file sizes
-
-```bash
-# Check database sizes
-ls -lh data/otel-apm-service-map/
-```
-
-#### Missing Service Connections
-
-**Symptoms**: Incomplete service map, missing edges between services
-**Solutions**:
-- Verify spans have proper `span.kind` attributes (CLIENT/SERVER)
-- Check parent-child span relationships in traces
-- Ensure `service.name` is populated on all spans
-- Verify trace sampling isn't dropping related spans
-
-#### Database Errors
-
-**Symptoms**: MapDB related exceptions, file corruption
-**Solutions**:
-- Check disk space at `db_path` location
-- Ensure write permissions for Data Prepper process
-- Verify no other processes are accessing the database files
-
-```bash
-# Check disk space
-df -h /path/to/db_path
-
-# Check permissions  
-ls -la data/otel-apm-service-map/
-```
-
-### Debug Configuration
-
-Enable debug logging for detailed processing information:
-
-```yaml
-logging:
-  level:
-    org.opensearch.dataprepper.plugins.processor.OtelApmServiceMapProcessor: DEBUG
-    org.opensearch.dataprepper.plugins.processor.utils.ApmServiceMapMetricsUtil: DEBUG
-```
-
 ### Monitoring Metrics
 
 The processor exposes the following metrics for monitoring:
 
 - `spansDbSize`: Total size of span databases in bytes
 - `spansDbCount`: Total number of spans stored across all databases
-
-## Integration Examples
 
 ### With OpenSearch Dashboards
 
@@ -310,16 +244,7 @@ Create index patterns and visualizations:
 2. **Service Map Visualization**: Network graph showing service connections
 3. **Metrics Dashboard**: Time-series charts for latency, throughput, and errors
 
-## Best Practices
-
-1. **Window Duration**: Choose based on your longest-running traces
-2. **Group-by Attributes**: Include environment and version for better service categorization  
-3. **Index Templates**: Use appropriate mapping for service name fields
-4. **Monitoring**: Set up alerts on database size and processing metrics
-5. **Storage**: Use dedicated storage for database files in high-volume environments
-
 ## Related Documentation
 
-- [Data Prepper Processor Configuration](../../README.md)
 - [OpenTelemetry Trace Processing](../otel-trace-raw-processor/README.md)  
 - [Service Map State Management](../service-map-stateful/README.md)
