@@ -14,6 +14,77 @@ The plugin supports exporting to AWS X-Ray and any OTLP Protobuf-compatible endp
 
 ---
 
+## Batching Behavior with Mixed Signal Types
+
+When a single OTLP sink receives mixed signal types (logs, metrics, and traces), the sink automatically flushes the current batch whenever the signal type changes. This ensures that each batch contains only one signal type, which is required by the OTLP protocol.
+
+### Batching Limitation
+
+If your pipeline produces events in mixed order (e.g., log → trace → log → metric), batching efficiency may be reduced because:
+- Each signal type change triggers an immediate flush
+- Batches may not reach the configured `max_events` or `max_batch_size` thresholds
+- More frequent HTTP requests result in higher overhead
+
+### Recommendation: Use Conditional Routing for Optimal Batching
+
+For pipelines with mixed signal types, we recommend using Data Prepper's conditional routing feature to separate signals into dedicated sink instances. This allows each sink to batch events of the same type efficiently without forced flushes.
+
+**Example Configuration:**
+
+```yaml
+mixed_signal_pipeline:
+  source:
+    # Source that produces logs, metrics, and traces
+    http:
+      path: "/v1/data"
+
+  routes:
+    - logs: 'getEventType() == "LOG"'
+    - traces: 'getEventType() == "TRACE"'
+    - metrics: 'getEventType() == "METRIC"'
+
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/logs"
+        routes:
+          - logs
+        threshold:
+          max_events: 512
+          max_batch_size: 1mb
+          flush_timeout: 200ms
+        aws: { }
+
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/traces"
+        routes:
+          - traces
+        threshold:
+          max_events: 512
+          max_batch_size: 1mb
+          flush_timeout: 200ms
+        aws: { }
+
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/metrics"
+        routes:
+          - metrics
+        threshold:
+          max_events: 512
+          max_batch_size: 1mb
+          flush_timeout: 200ms
+        aws: { }
+```
+
+**Benefits of this approach:**
+- Each sink receives only one signal type, maximizing batch efficiency
+- No forced flushes due to signal type changes
+- Better throughput and reduced HTTP request overhead
+- Ability to configure different batching thresholds per signal type if needed
+
+For more information on conditional routing, see the [Data Prepper Expression Syntax](https://github.com/opensearch-project/data-prepper/blob/main/docs/expression_syntax.md) documentation.
+
+---
+
 ## Sample Pipeline Configuration
 
 ### Traces to AWS X-Ray (Minimal Configuration)
