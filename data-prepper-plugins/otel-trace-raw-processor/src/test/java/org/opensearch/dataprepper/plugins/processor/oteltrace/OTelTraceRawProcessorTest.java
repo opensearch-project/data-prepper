@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
-import org.opensearch.dataprepper.plugins.otel.common.utils.OTelSpanDerivationUtil;
+import org.opensearch.dataprepper.plugins.otel.utils.OTelSpanDerivationUtil;
 
 import java.io.IOException;
 import java.io.InputStream;

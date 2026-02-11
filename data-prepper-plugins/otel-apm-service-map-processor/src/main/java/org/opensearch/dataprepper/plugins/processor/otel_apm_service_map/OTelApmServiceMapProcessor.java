@@ -28,7 +28,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceConnection;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceOperationDetail;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Service;
@@ -319,9 +318,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             }
             final Map<String, Object> scope = span.getScope();
             if (scope != null ) {
-                attributes = (Map<String, Object>)scope.get("attributes");
+                final Map<String, Object> scopeAttributes = (Map<String, Object>)scope.get("attributes");
                 if (attributes != null) {
-                    combinedAttributes.putAll(attributes);
+                    combinedAttributes.putAll(scopeAttributes);
                 }
             }
 

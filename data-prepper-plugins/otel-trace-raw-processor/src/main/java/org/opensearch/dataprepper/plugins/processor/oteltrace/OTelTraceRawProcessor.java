@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.model.trace.Span;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
-import org.opensearch.dataprepper.plugins.otel.common.utils.OTelSpanDerivationUtil;
+import org.opensearch.dataprepper.plugins.otel.utils.OTelSpanDerivationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

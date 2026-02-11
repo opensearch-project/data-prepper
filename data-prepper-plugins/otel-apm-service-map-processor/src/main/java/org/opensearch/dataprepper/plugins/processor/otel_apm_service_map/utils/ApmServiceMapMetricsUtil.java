@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,7 +41,7 @@ public final class ApmServiceMapMetricsUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ApmServiceMapMetricsUtil.class);
     // Standard latency buckets in seconds
-    private final static List<Double> explicitBounds = List.of(0.0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
+    private static final List<Double> explicitBounds = List.of(0.0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
             0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0);
 
     /**

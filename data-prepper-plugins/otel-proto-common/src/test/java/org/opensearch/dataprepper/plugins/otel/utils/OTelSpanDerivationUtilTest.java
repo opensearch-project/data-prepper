@@ -8,10 +8,9 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.otel.common.utils;
+package org.opensearch.dataprepper.plugins.otel.utils;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.otel.common.utils.OTelSpanDerivationUtil.ErrorFaultResult;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +25,7 @@ class OTelSpanDerivationUtilTest {
         Map<String, Object> spanAttributes = new HashMap<>();
         spanAttributes.put("http.response.status_code", 500);
 
-        ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
+        OTelSpanDerivationUtil.ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
 
         assertEquals(1, result.fault);
         assertEquals(0, result.error);
@@ -37,7 +36,7 @@ class OTelSpanDerivationUtilTest {
         Map<String, Object> spanAttributes = new HashMap<>();
         spanAttributes.put("http.response.status_code", 404);
 
-        ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
+        OTelSpanDerivationUtil.ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
 
         assertEquals(0, result.fault);
         assertEquals(1, result.error);
@@ -48,7 +47,7 @@ class OTelSpanDerivationUtilTest {
         Map<String, Object> spanAttributes = new HashMap<>();
         spanAttributes.put("http.response.status_code", 200);
 
-        ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
+        OTelSpanDerivationUtil.ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault((String) null, spanAttributes);
 
         assertEquals(0, result.fault);
         assertEquals(0, result.error);
@@ -56,7 +55,7 @@ class OTelSpanDerivationUtilTest {
 
     @Test
     void testComputeErrorAndFault_SpanStatusError() {
-        ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault("ERROR", null);
+        OTelSpanDerivationUtil.ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault("ERROR", null);
 
         assertEquals(1, result.fault);
         assertEquals(0, result.error);
@@ -67,7 +66,7 @@ class OTelSpanDerivationUtilTest {
         Map<String, Object> spanStatus = new HashMap<>();
         spanStatus.put("code", "ERROR");
 
-        ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault(spanStatus, null);
+        OTelSpanDerivationUtil.ErrorFaultResult result = OTelSpanDerivationUtil.computeErrorAndFault(spanStatus, null);
 
         assertEquals(1, result.fault);
         assertEquals(0, result.error);
@@ -202,7 +201,7 @@ class OTelSpanDerivationUtilTest {
 
     @Test
     void testErrorFaultResult() {
-        ErrorFaultResult result = new ErrorFaultResult(1, 0);
+        OTelSpanDerivationUtil.ErrorFaultResult result = new OTelSpanDerivationUtil.ErrorFaultResult(1, 0);
         assertEquals(1, result.error);
         assertEquals(0, result.fault);
     }

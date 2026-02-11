@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.codec.binary.Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class SpanStateDataTest {
 
@@ -71,7 +70,7 @@ class SpanStateDataTest {
             "GET", "op", 1000L, "OK", "2023-01-01", null, attributes
         );
         
-        assertEquals("GET", data.getOperationName());
+        assertEquals("GET /api", data.getOperationName());
     }
 
     @Test

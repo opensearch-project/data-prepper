@@ -87,13 +87,18 @@ public class ClasspathPluginProvider implements PluginProvider {
 
         final Map<String, Map<Class<?>, Class<?>>> pluginsMap = new HashMap<>(dataPrepperPluginClasses.size());
         for (final Class<?> concretePluginClass : dataPrepperPluginClasses) {
+            final DataPrepperPlugin annotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
+            if (annotation == null) {
+                LOG.warn("Class {} was found by Reflections but does not have @DataPrepperPlugin annotation", concretePluginClass.getName());
+                continue;
+            }
             // plugin name
             addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin::name, name -> true);
             // deprecated plugin name
             addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin::deprecatedName,
                     deprecatedPluginName -> !deprecatedPluginName.equals(DEFAULT_DEPRECATED_NAME));
             // alternate plugin names
-            for (final String alternateName: concretePluginClass.getAnnotation(DataPrepperPlugin.class).alternateNames()) {
+            for (final String alternateName: annotation.alternateNames()) {
                 addPossiblePluginName(pluginsMap, concretePluginClass, DataPrepperPlugin -> alternateName,
                         alternatePluginName -> !alternatePluginName.equals(DEFAULT_ALTERNATE_NAME));
             }
@@ -109,6 +114,10 @@ public class ClasspathPluginProvider implements PluginProvider {
             final Predicate<String> possiblePluginNamePredicate
             ) {
         final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
+        if (dataPrepperPluginAnnotation == null) {
+            LOG.warn("Class {} was found by Reflections but does not have @DataPrepperPlugin annotation", concretePluginClass.getName());
+            return;
+        }
         final String possiblePluginName = possiblePluginNameFunction.apply(dataPrepperPluginAnnotation);
         final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
 

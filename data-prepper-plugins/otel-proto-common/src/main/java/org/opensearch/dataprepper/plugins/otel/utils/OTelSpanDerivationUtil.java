@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.otel.common.utils;
+package org.opensearch.dataprepper.plugins.otel.utils;
 
 import org.opensearch.dataprepper.model.trace.Span;
 import org.slf4j.Logger;
@@ -111,7 +111,7 @@ public class OTelSpanDerivationUtil {
      * @param spanAttributes The span attributes containing HTTP status codes
      * @return ErrorFaultResult containing error and fault indicators
      */
-    static ErrorFaultResult computeErrorAndFault(final Object spanStatus, final Map<String, Object> spanAttributes) {
+    public static ErrorFaultResult computeErrorAndFault(final Object spanStatus, final Map<String, Object> spanAttributes) {
         // Check HTTP status first (highest priority)
         if (spanAttributes != null) {
             Object httpStatusObj = spanAttributes.get("http.response.status_code");
@@ -196,7 +196,7 @@ public class OTelSpanDerivationUtil {
      * @param spanAttributes The span attributes containing HTTP method and URL information
      * @return Computed operation name
      */
-    static String computeOperationName(final String spanName, final Map<String, Object> spanAttributes) {
+    public static String computeOperationName(final String spanName, final Map<String, Object> spanAttributes) {
         // Get HTTP method (try new standard first, then legacy)
         String method = getStringAttribute(spanAttributes, "http.request.method");
         if (method == null) {
@@ -238,7 +238,7 @@ public class OTelSpanDerivationUtil {
      * @param spanAttributes The span attributes containing resource information
      * @return Computed environment string
      */
-    static String computeEnvironment(final Map<String, Object> spanAttributes) {
+    public static String computeEnvironment(final Map<String, Object> spanAttributes) {
         try {
             // Navigate: spanAttributes -> "resource" -> "attributes" -> deployment keys
             @SuppressWarnings("unchecked")
@@ -293,15 +293,22 @@ public class OTelSpanDerivationUtil {
 
     /**
      * Simple data class to hold error and fault computation results.
-     * Package-private for testing purposes only.
      */
-    static class ErrorFaultResult {
-        public final int error;
-        public final int fault;
+    public static class ErrorFaultResult {
+        final int error;
+        final int fault;
 
         public ErrorFaultResult(final int error, final int fault) {
             this.error = error;
             this.fault = fault;
+        }
+
+        public int getError() {
+            return error;
+        }
+
+        public int getFault() {
+            return fault;
         }
     }
 }
