@@ -37,15 +37,11 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 @Named
 public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSliceWorkerProgressState> {
     private static final Logger log = LoggerFactory.getLogger(DimensionalTimeSliceCrawler.class);
-    // delay five minutes for partition creation on latest time duration to ensure the newly generated events are queryable
-    // In general, newly generated events become queryable after 30 ~ 120 second
-    protected static final long WAIT_SECONDS_BEFORE_PARTITION_CREATION = 300;
     private static final String DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED = "dimensionalTimeSliceWorkerPartitionsCreated";
     private static final String WORKER_PARTITION_WAIT_TIME = "workerPartitionWaitTime";
     private static final String WORKER_PARTITION_PROCESS_LATENCY = "workerPartitionProcessLatency";
     private static final Duration HOUR_DURATION = Duration.ofHours(1);
-    private static final long MINUTES_PER_HOUR = 60;
-    private static final long WAIT_MINUTES_BEFORE_PARTITION_CREATION = WAIT_SECONDS_BEFORE_PARTITION_CREATION / 60; // 5 minutes
+    static final Duration WAIT_BEFORE_PARTITION_CREATION = Duration.ofMinutes(5);
 
     private final CrawlerClient client;
     private final Counter partitionsCreatedCounter;
@@ -121,16 +117,16 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
         Instant initialTime = leaderProgressState.getLastPollTime();
-        Instant latestModifiedTime = initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        Instant latestModifiedTime = initialTime.minus(WAIT_BEFORE_PARTITION_CREATION);
         Instant remainingDuration = leaderProgressState.getRemainingDuration();
         long remainingMinutes = Duration.between(remainingDuration, initialTime).toMinutes();
 
         // For sub-hour time ranges (less than 60 minutes), create a single partition
-        if (remainingMinutes < MINUTES_PER_HOUR) {
+        if (remainingMinutes < HOUR_DURATION.toMinutes()) {
             log.info("Creating partition for sub-hour historical pull: {} minutes", remainingMinutes);
             Instant startTime = initialTime.minus(Duration.ofMinutes(remainingMinutes));
             Instant endTime;
-            if (remainingMinutes <= WAIT_MINUTES_BEFORE_PARTITION_CREATION) {
+            if (remainingMinutes <= WAIT_BEFORE_PARTITION_CREATION.toMinutes()) {
                 // For very small ranges, skip the 5-minute delay to create a valid partition
                 endTime = initialTime;
             } else {
@@ -143,8 +139,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         }
 
         // For hour or longer time ranges, use hourly partitioning
-        long remainingHours = remainingMinutes / MINUTES_PER_HOUR;
-        long extraMinutes = remainingMinutes % MINUTES_PER_HOUR;
+        long remainingHours = remainingMinutes / HOUR_DURATION.toMinutes();
+        long extraMinutes = remainingMinutes % HOUR_DURATION.toMinutes();
         Instant latestHour = initialTime.truncatedTo(ChronoUnit.HOURS);
 
         // Create hourly partitions for complete hours
@@ -180,7 +176,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
      */
     private Instant createPartitionsForIncrementalSync(LeaderPartition leaderPartition,
                                                     EnhancedSourceCoordinator coordinator) {
-        Instant latestModifiedTime = Instant.now().minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        Instant latestModifiedTime = Instant.now().minus(WAIT_BEFORE_PARTITION_CREATION);
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         Instant lastPollTime = leaderProgressState.getLastPollTime();
 

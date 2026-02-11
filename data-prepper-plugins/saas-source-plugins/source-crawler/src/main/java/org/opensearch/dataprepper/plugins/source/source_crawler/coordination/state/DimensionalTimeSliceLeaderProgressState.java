@@ -62,12 +62,7 @@ public class DimensionalTimeSliceLeaderProgressState implements LeaderProgressSt
      */
     public DimensionalTimeSliceLeaderProgressState(final Instant lastPollTime, int remainingHours) {
         this.lastPollTime = lastPollTime;
-        long minutes = remainingHours * MINUTES_PER_HOUR;
-        if (minutes > 0) {
-            this.remainingDuration = lastPollTime.minus(Duration.ofMinutes(minutes));
-        } else {
-            this.remainingDuration = lastPollTime;
-        }
+        this.remainingDuration = remainingDurationFromHours(lastPollTime, remainingHours);
     }
 
     /**
@@ -79,14 +74,19 @@ public class DimensionalTimeSliceLeaderProgressState implements LeaderProgressSt
     @JsonSetter("remaining_hours")
     public void setRemainingHours(int remainingHours) {
         if (this.remainingDuration == null || this.remainingDuration.equals(this.lastPollTime)) {
-            // Only set if remainingDuration hasn't been set yet (prefer remainingDuration to hours)
-            long minutes = remainingHours * MINUTES_PER_HOUR;
-            if (minutes > 0 && this.lastPollTime != null) {
-                this.remainingDuration = this.lastPollTime.minus(Duration.ofMinutes(minutes));
-            } else if (this.lastPollTime != null) {
-                this.remainingDuration = this.lastPollTime;
-            }
+            this.remainingDuration = remainingDurationFromHours(this.lastPollTime, remainingHours);
         }
+    }
+
+    private Instant remainingDurationFromHours(Instant lastPollTime, int remainingHours) {
+        if (lastPollTime == null) {
+            return null;
+        }
+        long minutes = remainingHours * MINUTES_PER_HOUR;
+        if (minutes > 0) {
+            return lastPollTime.minus(Duration.ofMinutes(minutes));
+        }
+        return lastPollTime;
     }
 
     /**
