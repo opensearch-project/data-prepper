@@ -45,6 +45,7 @@ import software.amazon.awssdk.services.glue.model.AccessDeniedException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -472,9 +473,14 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         }
         Headers headers = consumerRecord.headers();
         if (headers != null) {
-            Map<String, byte[]> headerData = new HashMap<>();
+            Map<String, Object> headerData = new HashMap<>();
             for (Header header: headers) {
-                headerData.put(header.key(), header.value());
+                byte[] headerValue = header.value();
+                try {
+                    headerData.put(header.key(), ((headerValue != null) ? new String(header.value(), StandardCharsets.UTF_8) : null));
+                } catch (Exception e) {
+                    headerData.put(header.key(), headerValue);
+                }
             }
             eventMetadata.setAttribute("kafka_headers", headerData);
         }

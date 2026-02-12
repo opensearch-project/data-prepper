@@ -15,7 +15,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
@@ -45,6 +48,8 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfi
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -53,6 +58,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -61,6 +67,7 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -135,6 +142,7 @@ public class KafkaCustomConsumerTest {
     private double overflowCount;
     private boolean paused;
     private boolean resumed;
+    private String testStringHeader;
 
     @BeforeEach
     public void setUp() throws JsonProcessingException {
@@ -184,7 +192,7 @@ public class KafkaCustomConsumerTest {
         }).when(overflowCounter).increment();
         doAnswer((i)-> {return posCount;}).when(posCounter).count();
         doAnswer((i)-> {return negCount;}).when(negCounter).count();
-        callbackExecutor = Executors.newScheduledThreadPool(2); 
+        callbackExecutor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
 
         sourceConfig = mock(KafkaConsumerConfig.class);
@@ -324,6 +332,54 @@ public class KafkaCustomConsumerTest {
             }
             if (value2 != null) {
                 Assertions.assertEquals(value2, testValue2);
+            }
+            Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
+            Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
+        }
+
+        verify(topicMetrics).recordTimeBetweenPolls();
+    }
+
+    @Test
+    public void testPlainTextConsumeRecordsWithHeaders() throws InterruptedException {
+        testStringHeader = UUID.randomUUID().toString();
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecordsWithHeaders(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("plaintext", false);
+
+        try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
+        });
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 2L);
+
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            String value1 = event.get(testKey1, String.class);
+            String value2 = event.get(testKey2, String.class);
+            Map<String, Object> attributes = event.getMetadata().getAttributes();
+            Map<String, Object> kafkaHeaders = (Map<String, Object>) attributes.get("kafka_headers");
+            assertThat(kafkaHeaders.get("test-string-header"), equalTo(testStringHeader));
+            assertTrue(value1 != null || value2 != null);
+            if (value1 != null) {
+                Assertions.assertEquals(value1, testValue1);
+                assertThat(kafkaHeaders.get("test-int-header"), notNullValue());
+            }
+            if (value2 != null) {
+                Assertions.assertEquals(value2, testValue2);
+                assertThat(kafkaHeaders.get("test-double-header"), notNullValue());
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
@@ -696,6 +752,29 @@ public class KafkaCustomConsumerTest {
         records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
     }
+
+    private ConsumerRecords createPlainTextRecordsWithHeaders(String topic, final long startOffset) {
+        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        RecordHeaders headers1 = new RecordHeaders();
+        RecordHeaders headers2 = new RecordHeaders();
+
+        // Adding a String header
+        headers1.add("test-string-header", testStringHeader.getBytes(StandardCharsets.UTF_8));
+        headers2.add("test-string-header", testStringHeader.getBytes(StandardCharsets.UTF_8));
+
+        // Adding an Integer header (stored as 4 bytes)
+        int testIntHeader = 5;
+        byte[] intBytes = ByteBuffer.allocate(4).putInt(testIntHeader).array();
+        headers1.add("test-int-header", intBytes);
+        ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, startOffset, System.currentTimeMillis(), TimestampType.CREATE_TIME, 0L, 0, 0,testKey1, testValue1, headers1);
+        double testDoubleHeader = 5.125d;
+        byte[] doubleBytes = ByteBuffer.allocate(8).putDouble(testDoubleHeader).array();
+        headers2.add("test-double-header", doubleBytes);
+        ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, startOffset+1, System.currentTimeMillis(), TimestampType.CREATE_TIME, 0L, 0, 0, testKey2, testValue2, headers2);
+        records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1, record2));
+        return new ConsumerRecords(records);
+    }
+
 
     private ConsumerRecords createJsonRecords(String topic) throws Exception {
         final ObjectMapper mapper = new ObjectMapper();
