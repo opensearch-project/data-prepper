@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
@@ -30,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -297,8 +302,8 @@ public class SqsSinkService extends SqsSinkExecutor {
     }
 
     @Override
-    public void recordLatency(double latencyMillis) {
-        sinkMetrics.recordRequestLatency((double)latencyMillis);
+    public void recordLatency(long amount, TimeUnit timeUnit) {
+        sinkMetrics.recordRequestLatency(amount, timeUnit);
     }
 
     @Override

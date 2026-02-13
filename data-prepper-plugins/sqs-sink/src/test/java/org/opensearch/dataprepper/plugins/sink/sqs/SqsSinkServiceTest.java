@@ -1,10 +1,17 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
+import io.micrometer.core.instrument.Timer;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -24,7 +31,6 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -59,29 +65,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SqsSinkServiceTest {
-    @Mock
+@ExtendWith(MockitoExtension.class)
+class SqsSinkServiceTest {
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private SqsClient sqsClient;
     @Mock
     private SqsSinkConfig sqsSinkConfig;
-    @Mock
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private ExpressionEvaluator expressionEvaluator;
-    @Mock
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private DlqPushHandler dlqPushHandler;
     @Mock
     private PluginMetrics pluginMetrics;
-    @Mock
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private PluginFactory pluginFactory;
     @Mock
     private SendMessageBatchResponse flushResponse;
     @Mock
     private EventHandle eventHandle;
-    @Mock
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private SqsThresholdConfig thresholdConfig;
 
-    @Mock
+    @Mock(strictness = Mock.Strictness.LENIENT)
     private SinkContext sinkContext;
 
     @Mock
@@ -96,6 +104,8 @@ public class SqsSinkServiceTest {
     private Counter dlqSuccessCounter;
     @Mock
     private DistributionSummary summary;
+    @Mock
+    private Timer timer;
 
     private AtomicInteger eventsSuccessCount;
     private AtomicInteger requestsSuccessCount;
@@ -113,8 +123,6 @@ public class SqsSinkServiceTest {
 
     @BeforeEach
     void setup() {
-        sinkContext = mock(SinkContext.class);
-        pluginFactory = mock(PluginFactory.class);
         when(sinkContext.getExcludeKeys()).thenReturn(null);
         when(sinkContext.getIncludeKeys()).thenReturn(null);
         when(sinkContext.getTagsTargetKey()).thenReturn(null);
@@ -125,36 +133,23 @@ public class SqsSinkServiceTest {
         dlqSuccessCount = new AtomicInteger(0);
         outputCodec = new JsonOutputCodec(new JsonOutputCodecConfig());
         when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputCodec);
-        eventHandle = mock(EventHandle.class);
         outputCodecContext = new OutputCodecContext();
         queueUrl = UUID.randomUUID().toString();
-        sqsSinkConfig = mock(SqsSinkConfig.class);
-        thresholdConfig = mock(SqsThresholdConfig.class);
         when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl);
         when (thresholdConfig.getMaxMessageSizeBytes()).thenReturn(256*1024L);
         when (thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         when (sqsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
-        when (sqsSinkConfig.getMaxRetries()).thenReturn(3);
-        sqsClient = mock(SqsClient.class);
-        flushResponse = mock(SendMessageBatchResponse.class);
-        when(flushResponse.hasFailed()).thenReturn(false);
+        lenient().when (sqsSinkConfig.getMaxRetries()).thenReturn(3);
+        lenient().when(flushResponse.hasFailed()).thenReturn(false);
         when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenReturn(flushResponse);
-        expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
-        dlqPushHandler = mock(DlqPushHandler.class);
         when(dlqPushHandler.perform(any(List.class))).thenReturn(true);
         PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn("name");
-        when(pluginSetting.getPipelineName()).thenReturn("pipeline");
+        lenient().when(pluginSetting.getName()).thenReturn("name");
+        lenient().when(pluginSetting.getPipelineName()).thenReturn("pipeline");
         when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
-        pluginMetrics = mock(PluginMetrics.class);
-        eventsSuccessCounter = mock(Counter.class);
-        eventsFailedCounter = mock(Counter.class);
-        requestsSuccessCounter = mock(Counter.class);
-        requestsFailedCounter = mock(Counter.class);
-        dlqSuccessCounter = mock(Counter.class);
-        summary = mock(DistributionSummary.class);
-        doNothing().when(summary).record(any(Double.class));
+        lenient().doNothing().when(summary).record(any(Double.class));
+        lenient().doNothing().when(timer).record(any(Long.class), any(TimeUnit.class));
         lenient().doAnswer((a)-> {
             int v = (int)(double)(a.getArgument(0));
             eventsSuccessCount.addAndGet(v);
@@ -204,10 +199,8 @@ public class SqsSinkServiceTest {
             return null;
         }).when(pluginMetrics).counter(anyString());
 
-        lenient().doAnswer(a -> {
-            return summary;
-        }).when(pluginMetrics).summary(anyString());
-        
+        lenient().doAnswer(a -> summary).when(pluginMetrics).summary(anyString());
+        lenient().doAnswer(a -> timer).when(pluginMetrics).timer(anyString());
     }
 
     @Test
