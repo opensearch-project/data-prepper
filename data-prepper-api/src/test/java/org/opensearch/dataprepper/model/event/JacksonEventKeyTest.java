@@ -57,7 +57,6 @@ class JacksonEventKeyTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "inv(alid",
             "getMetadata(\"test_key\")"
     })
     void constructor_throws_with_invalid_key(final String key) {
@@ -156,7 +155,6 @@ class JacksonEventKeyTest {
     @CsvSource(value = {
             "test_key, true",
             "/test_key, true",
-            "inv(alid, false",
             "getMetadata(\"test_key\"), false",
             "key.with.dot, true",
             "key-with-hyphen, true",
@@ -168,7 +166,8 @@ class JacksonEventKeyTest {
             " key_with_space_prefix, true",
             "key_with_space_suffix , true",
             "$key_with_dollar_prefix, true",
-            "key_with_dollar_suffix$, true"
+            "key_with_dollar_suffix$, true",
+            "key(withparentheses), true"
     })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEventKey.isValidEventKey(key), equalTo(isValid));
