@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.common.sink;
@@ -10,6 +14,8 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 
 import org.mockito.Mock;
+
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
@@ -25,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class DefaultSinkOutputStrategyTest {
     @Mock
@@ -47,7 +54,7 @@ public class DefaultSinkOutputStrategyTest {
 
 
     @BeforeEach
-    private void setUp() throws Exception {
+    void setUp() throws Exception {
         flushed = false;
         eventsInBuffer = new ArrayList<>();
         lockStrategy = mock(LockStrategy.class);
@@ -101,7 +108,7 @@ public class DefaultSinkOutputStrategyTest {
         sinkOutputStrategy.execute(Collections.emptyList());
 
         verify(sinkBuffer).getFlushableBuffer(any());
-        verify(sinkMetrics).recordRequestLatency(anyDouble());
+        verify(sinkMetrics).recordRequestLatency(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(eventHandle1).release(true);
         verify(eventHandle2).release(true);
     }
@@ -129,7 +136,7 @@ public class DefaultSinkOutputStrategyTest {
         sinkOutputStrategy.execute(Collections.emptyList());
 
         verify(sinkBuffer, times(2)).getFlushableBuffer(any());
-        verify(sinkMetrics, times(2)).recordRequestLatency(anyDouble());
+        verify(sinkMetrics, times(2)).recordRequestLatency(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(eventHandle1).release(true);
         verify(eventHandle2).release(true);
     }
@@ -157,7 +164,7 @@ public class DefaultSinkOutputStrategyTest {
         when(sinkBuffer.exceedsFlushTimeInterval()).thenReturn(true);
 
         verify(sinkBuffer, times(2)).getFlushableBuffer(any());
-        verify(sinkMetrics, times(2)).recordRequestLatency(anyDouble());
+        verify(sinkMetrics, times(2)).recordRequestLatency(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(eventHandle1).release(true);
         verify(eventHandle2).release(true);
     }
@@ -182,7 +189,7 @@ public class DefaultSinkOutputStrategyTest {
         sinkOutputStrategy.execute(Collections.emptyList());
 
         verify(sinkBuffer).getFlushableBuffer(any());
-        verify(sinkMetrics).recordRequestLatency(anyDouble());
+        verify(sinkMetrics).recordRequestLatency(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(eventHandle1).release(true);
         verify(eventHandle2).release(false);
     }
@@ -207,7 +214,7 @@ public class DefaultSinkOutputStrategyTest {
         sinkOutputStrategy.execute(Collections.emptyList());
 
         verify(sinkBuffer).getFlushableBuffer(any());
-        verify(sinkMetrics).recordRequestLatency(anyDouble());
+        verify(sinkMetrics).recordRequestLatency(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(eventHandle1).release(true);
         verify(eventHandle2).release(false);
     }
