@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -103,6 +104,8 @@ public class KafkaSourceJsonTypeIT {
 
     private Counter counter;
 
+    private Timer timer;
+
     private List<Record> receivedRecords;
 
     private String bootstrapServers;
@@ -138,6 +141,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
             doAnswer(args -> {
