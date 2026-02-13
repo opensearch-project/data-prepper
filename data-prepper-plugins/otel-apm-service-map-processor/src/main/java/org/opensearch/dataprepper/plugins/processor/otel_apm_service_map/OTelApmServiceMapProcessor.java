@@ -42,6 +42,7 @@ import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.i
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.MetricAggregationState;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.utils.ApmServiceMapMetricsUtil;
 import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@Experimental
 @SingleThread
 @DataPrepperPlugin(name = "otel_apm_service_map", pluginType = Processor.class,
         pluginConfigurationType = OTelApmServiceMapProcessorConfig.class)
