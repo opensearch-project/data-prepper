@@ -32,7 +32,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.27.7'
     testImplementation testLibs.slf4j.simple
     testImplementation libs.commons.io
-    testImplementation 'com.jayway.jsonpath:json-path-assert:2.6.0'
+    testImplementation 'com.jayway.jsonpath:json-path-assert:2.10.0'
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
 }
 
