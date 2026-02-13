@@ -58,6 +58,18 @@ class ServiceTest {
     }
 
     @Test
+    void testNotEquals() {
+        Service.KeyAttributes keyAttributes1 = new Service.KeyAttributes("prod", "test-service1");
+        Service.KeyAttributes keyAttributes2 = new Service.KeyAttributes("prod", "test-service2");
+        Service service1 = new Service(keyAttributes1);
+        Service service2 = new Service(keyAttributes2);
+
+        assertNotEquals(service1, null);
+        assertNotEquals(service2, null);
+        assertNotEquals(service1, service2);
+    }
+
+    @Test
     void testHashCode() {
         Service.KeyAttributes keyAttributes = new Service.KeyAttributes("prod", "test-service");
         Service service1 = new Service(keyAttributes);

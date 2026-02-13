@@ -41,7 +41,7 @@ public final class ApmServiceMapMetricsUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ApmServiceMapMetricsUtil.class);
     // Standard latency buckets in seconds
-    private static final List<Double> explicitBounds = List.of(0.0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
+    private static final List<Double> EXPLICIT_BOUNDS = List.of(0.0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
             0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0);
 
     /**
@@ -345,25 +345,25 @@ public final class ApmServiceMapMetricsUtil {
     static HistogramBuckets createHistogramBucketsFromDurations(final List<Double> durations) {
 
         // Initialize bucket counts (one more than bounds for the overflow bucket)
-        final List<Long> bucketCounts = new ArrayList<>(Collections.nCopies(explicitBounds.size() + 1, 0L));
+        final List<Long> bucketCounts = new ArrayList<>(Collections.nCopies(EXPLICIT_BOUNDS.size() + 1, 0L));
 
         // Count durations into buckets
         for (Double duration : durations) {
             if (duration == null) continue;
 
             int bucketIndex = 0;
-            for (int i = 0; i < explicitBounds.size(); i++) {
-                if (duration <= explicitBounds.get(i)) {
+            for (int i = 0; i < EXPLICIT_BOUNDS.size(); i++) {
+                if (duration <= EXPLICIT_BOUNDS.get(i)) {
                     bucketIndex = i;
                     break;
                 }
-                bucketIndex = explicitBounds.size(); // Overflow bucket
+                bucketIndex = EXPLICIT_BOUNDS.size(); // Overflow bucket
             }
 
             bucketCounts.set(bucketIndex, bucketCounts.get(bucketIndex) + 1);
         }
 
-        return new HistogramBuckets(bucketCounts, explicitBounds);
+        return new HistogramBuckets(bucketCounts, EXPLICIT_BOUNDS);
     }
 
     // Private constructor to prevent instantiation

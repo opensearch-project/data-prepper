@@ -50,7 +50,7 @@ The processor analyzes different span kinds:
 ```yaml
 processor:
   - otel_apm_service_map:
-      window_duration: 60
+      window_duration: 60s
       db_path: "data/otel-apm-service-map/"
       group_by_attributes:
         - "service.version"
@@ -61,7 +61,7 @@ processor:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `window_duration` | Integer | `60` | Fixed time window in seconds for evaluating APM service map relationships |
+| `window_duration` | Duration | `60s` | Fixed time window in seconds for evaluating APM service map relationships |
 | `db_path` | String | `"data/otel-apm-service-map/"` | Directory path for database files storing transient processing data |
 | `group_by_attributes` | List<String> | `[]` | OpenTelemetry resource attributes to include in service grouping |
 
@@ -70,7 +70,7 @@ processor:
 ```yaml
 processor:
   - otel_apm_service_map:
-      window_duration: 120  # 2-minute windows for high-latency services
+      window_duration: 120s  # 2-minute windows for high-latency services
       db_path: "/tmp/apm-service-map/"
       group_by_attributes:
         - "service.version"
@@ -90,9 +90,13 @@ otel-apm-service-map-pipeline:
     otel_trace_source:
       ssl: false
       port: 21890
+  route:
+      - service_local_details : '/eventType == "ServiceLocalDetails"'
+      - service_remote_details : '/eventType == "ServiceRemoteDetails"'
+      - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
-        window_duration: 60
+        window_duration: 60s
         db_path: "data/otel-apm-service-map/"
   sink:
     - opensearch:
@@ -100,6 +104,10 @@ otel-apm-service-map-pipeline:
         index: "apm-service-map-%{yyyy.MM.dd}"
         username: "admin"
         password: "admin"
+        routes: [service_local_details, service_remote_details]
+    - prometheus:
+        ...
+        routes: [service_processed_metrics]
 ```
 
 ### Multi-Environment Setup
@@ -111,18 +119,26 @@ multi-env-apm-pipeline:
     otel_trace_source:
       ssl: false
       port: 21890
+  route:
+      - service_local_details : '/eventType == "ServiceLocalDetails"'
+      - service_remote_details : '/eventType == "ServiceRemoteDetails"'
+      - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
-        window_duration: 90
+        window_duration: 90s
         db_path: "data/multi-env-service-map/"
         group_by_attributes:
           - "deployment.environment"
           - "service.version"
           - "service.namespace"
   sink:
+    - prometheus:
+        ...
+        routes: [service_processed_metrics]
     - opensearch:
         hosts: ["https://localhost:9200"]
         index: "apm-service-map-${deployment.environment}-%{yyyy.MM.dd}"
+        routes: [service_local_details, service_remote_details]
         index_type: custom
         template_content: |
           {
@@ -148,7 +164,7 @@ Represents a connection between two services:
 
 ```json
 {
-  "eventType": "OTelAPMServiceMap",
+  "eventType": "SERVICE_MAP",
   "data": {
     "service": {
       "keyAttributes": {
@@ -180,7 +196,7 @@ Represents specific operations within a service:
 
 ```json
 {
-  "eventType": "OTelAPMServiceMap",
+  "eventType": "SERVICE_MAP",
   "data": {
     "service": {
       "keyAttributes": {

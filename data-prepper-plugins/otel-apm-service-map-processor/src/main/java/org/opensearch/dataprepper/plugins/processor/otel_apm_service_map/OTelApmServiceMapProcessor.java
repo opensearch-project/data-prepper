@@ -74,7 +74,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final String SPANS_DB_COUNT = "spansDbCount";
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelApmServiceMapProcessor.class);
-    private static final String EVENT_TYPE_OTEL_APM_SERVICE_MAP = "OTelAPMServiceMap";
+    private static final String EVENT_TYPE_OTEL_APM_SERVICE_MAP = "SERVICE_MAP";
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final String SPAN_KIND_SERVER = "SPAN_KIND_SERVER";
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
