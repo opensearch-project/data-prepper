@@ -138,8 +138,20 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     @Override
-    public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
-        throw new RuntimeException("not supported");
+    public void writeBytes(final byte[] bytes, final String key, final int timeoutInMillis) throws Exception {
+        long startTime = System.nanoTime();
+
+        try {
+            doWriteBytes(bytes, key, timeoutInMillis);
+            postProcess(recordsInBuffer.get());
+        } catch (Exception e) {
+            if (e instanceof TimeoutException) {
+                writeTimeoutCounter.increment();
+            }
+            throw e;
+        } finally {
+            writeTimer.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+        }
     }
 
     /**
@@ -210,6 +222,10 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      * @throws Exception Exception thrown when the operation times out
      */
     public abstract void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception;
+
+    public void doWriteBytes(final byte[] bytes, final String key, final int timeoutInMillis) throws Exception {
+        throw new UnsupportedOperationException("Not supported: This is not a byte buffer.");
+    }
 
     /**
      * This method should implement the logic for reading from the buffer

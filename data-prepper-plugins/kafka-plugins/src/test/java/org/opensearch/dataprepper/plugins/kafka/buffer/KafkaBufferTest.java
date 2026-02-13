@@ -385,8 +385,8 @@ class KafkaBufferTest {
         }
 
         @Test
-        void writeBytes_sets_and_clears_MDC() throws Exception {
-            createObjectUnderTest().writeBytes(new byte[] {}, UUID.randomUUID().toString(), 100);
+        void doWriteBytes_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().doWriteBytes(new byte[] {}, UUID.randomUUID().toString(), 100);
 
             mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
             mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));

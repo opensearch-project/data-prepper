@@ -120,7 +120,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     }
 
     @Override
-    public void writeBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
+    public void doWriteBytes(final byte[] bytes, final String key, int timeoutInMillis) throws Exception {
         try {
             setMdc();
             producer.produceRawData(bytes, key);
