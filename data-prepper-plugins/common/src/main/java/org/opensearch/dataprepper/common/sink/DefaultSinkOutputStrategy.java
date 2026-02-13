@@ -40,7 +40,8 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
         try {      
             SinkFlushResult flushResult = flushableBuffer.flush();
             if (flushResult == null) { // success
-                sinkMetrics.recordRequestLatency((double)(System.nanoTime() - startTime));
+                double latency = (System.nanoTime() - startTime)/1000_000; // convert to ms
+                sinkMetrics.recordRequestLatency(latency);
                 for (final Event event: events) {
                     event.getEventHandle().release(true);
                 }
