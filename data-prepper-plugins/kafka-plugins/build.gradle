@@ -87,9 +87,9 @@ dependencies {
     constraints {
         implementation('org.mozilla:rhino') {
             version {
-                require '1.7.12'
+                require '1.7.15.1'
             }
-            because 'Fixes SNYK-JAVA-ORGMOZILLA-1314295.'
+            because 'Fixes CVE-2025-66453, SNYK-JAVA-ORGMOZILLA-1314295.'
         }
         implementation('org.bitbucket.b_c:jose4j') {
             version {
