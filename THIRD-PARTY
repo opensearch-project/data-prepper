@@ -1,5 +1,5 @@
 
-Dependency License Report for opensearch-data-prepper 2.13.0
+Dependency License Report for opensearch-data-prepper 2.13.1
 
 1. Group: aopalliance  Name: aopalliance  Version: 1.0
 
@@ -16738,7 +16738,7 @@ package in the Spring Framework library, distributed by VMware, Inc:
 
 --------------------------------------------------------------------------------
 
-249. Group: io.netty  Name: netty-all  Version: 4.1.125.Final
+249. Group: io.netty  Name: netty-all  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16748,7 +16748,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-250. Group: io.netty  Name: netty-buffer  Version: 4.1.125.Final
+250. Group: io.netty  Name: netty-buffer  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16756,7 +16756,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-251. Group: io.netty  Name: netty-codec  Version: 4.1.125.Final
+251. Group: io.netty  Name: netty-codec  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16764,7 +16764,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-252. Group: io.netty  Name: netty-codec-dns  Version: 4.1.125.Final
+252. Group: io.netty  Name: netty-codec-dns  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16772,7 +16772,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-253. Group: io.netty  Name: netty-codec-haproxy  Version: 4.1.125.Final
+253. Group: io.netty  Name: netty-codec-haproxy  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16780,7 +16780,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-254. Group: io.netty  Name: netty-codec-http  Version: 4.1.125.Final
+254. Group: io.netty  Name: netty-codec-http  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16788,7 +16788,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-255. Group: io.netty  Name: netty-codec-http2  Version: 4.1.125.Final
+255. Group: io.netty  Name: netty-codec-http2  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16796,7 +16796,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-256. Group: io.netty  Name: netty-codec-memcache  Version: 4.1.125.Final
+256. Group: io.netty  Name: netty-codec-memcache  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16804,7 +16804,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-257. Group: io.netty  Name: netty-codec-mqtt  Version: 4.1.125.Final
+257. Group: io.netty  Name: netty-codec-mqtt  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16812,7 +16812,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-258. Group: io.netty  Name: netty-codec-redis  Version: 4.1.125.Final
+258. Group: io.netty  Name: netty-codec-redis  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16820,7 +16820,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-259. Group: io.netty  Name: netty-codec-smtp  Version: 4.1.125.Final
+259. Group: io.netty  Name: netty-codec-smtp  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16828,7 +16828,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-260. Group: io.netty  Name: netty-codec-socks  Version: 4.1.125.Final
+260. Group: io.netty  Name: netty-codec-socks  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16836,7 +16836,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-261. Group: io.netty  Name: netty-codec-stomp  Version: 4.1.125.Final
+261. Group: io.netty  Name: netty-codec-stomp  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16844,7 +16844,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-262. Group: io.netty  Name: netty-codec-xml  Version: 4.1.125.Final
+262. Group: io.netty  Name: netty-codec-xml  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16852,7 +16852,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-263. Group: io.netty  Name: netty-common  Version: 4.1.125.Final
+263. Group: io.netty  Name: netty-common  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16860,7 +16860,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-264. Group: io.netty  Name: netty-handler  Version: 4.1.125.Final
+264. Group: io.netty  Name: netty-handler  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16868,7 +16868,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-265. Group: io.netty  Name: netty-handler-proxy  Version: 4.1.125.Final
+265. Group: io.netty  Name: netty-handler-proxy  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16876,7 +16876,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-266. Group: io.netty  Name: netty-handler-ssl-ocsp  Version: 4.1.125.Final
+266. Group: io.netty  Name: netty-handler-ssl-ocsp  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16884,7 +16884,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-267. Group: io.netty  Name: netty-resolver  Version: 4.1.125.Final
+267. Group: io.netty  Name: netty-resolver  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16892,7 +16892,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-268. Group: io.netty  Name: netty-resolver-dns  Version: 4.1.125.Final
+268. Group: io.netty  Name: netty-resolver-dns  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16900,7 +16900,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-269. Group: io.netty  Name: netty-resolver-dns-classes-macos  Version: 4.1.125.Final
+269. Group: io.netty  Name: netty-resolver-dns-classes-macos  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -16908,7 +16908,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-270. Group: io.netty  Name: netty-resolver-dns-native-macos  Version: 4.1.125.Final
+270. Group: io.netty  Name: netty-resolver-dns-native-macos  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17194,7 +17194,7 @@ POM License: The Apache Software License, Version 2.0 - http://www.apache.org/li
 
 --------------------------------------------------------------------------------
 
-273. Group: io.netty  Name: netty-transport  Version: 4.1.125.Final
+273. Group: io.netty  Name: netty-transport  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17202,7 +17202,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-274. Group: io.netty  Name: netty-transport-classes-epoll  Version: 4.1.125.Final
+274. Group: io.netty  Name: netty-transport-classes-epoll  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17210,7 +17210,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-275. Group: io.netty  Name: netty-transport-classes-kqueue  Version: 4.1.125.Final
+275. Group: io.netty  Name: netty-transport-classes-kqueue  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17218,7 +17218,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-276. Group: io.netty  Name: netty-transport-native-epoll  Version: 4.1.125.Final
+276. Group: io.netty  Name: netty-transport-native-epoll  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17226,7 +17226,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-277. Group: io.netty  Name: netty-transport-native-kqueue  Version: 4.1.125.Final
+277. Group: io.netty  Name: netty-transport-native-kqueue  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17234,7 +17234,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-278. Group: io.netty  Name: netty-transport-native-unix-common  Version: 4.1.125.Final
+278. Group: io.netty  Name: netty-transport-native-unix-common  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17242,7 +17242,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-279. Group: io.netty  Name: netty-transport-rxtx  Version: 4.1.125.Final
+279. Group: io.netty  Name: netty-transport-rxtx  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17250,7 +17250,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-280. Group: io.netty  Name: netty-transport-sctp  Version: 4.1.125.Final
+280. Group: io.netty  Name: netty-transport-sctp  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -17258,7 +17258,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-281. Group: io.netty  Name: netty-transport-udt  Version: 4.1.125.Final
+281. Group: io.netty  Name: netty-transport-udt  Version: 4.1.131.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -37317,7 +37317,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 --------------------------------------------------------------------------------
 
-392. Group: org.apache.logging.log4j  Name: log4j-api  Version: 2.25.1
+392. Group: org.apache.logging.log4j  Name: log4j-api  Version: 2.25.3
 
 Manifest License: "Apache-2.0";link="https://www.apache.org/licenses/LICENSE-2.0.txt" (Not packaged)
 
@@ -37768,7 +37768,7 @@ ResolverUtil.java
 Copyright 2005-2006 Tim Fennell
 --------------------------------------------------------------------------------
 
-394. Group: org.apache.logging.log4j  Name: log4j-core  Version: 2.25.1
+394. Group: org.apache.logging.log4j  Name: log4j-core  Version: 2.25.3
 
 Manifest License: "Apache-2.0";link="https://www.apache.org/licenses/LICENSE-2.0.txt" (Not packaged)
 
@@ -37995,7 +37995,7 @@ ResolverUtil.java
 Copyright 2005-2006 Tim Fennell
 --------------------------------------------------------------------------------
 
-395. Group: org.apache.logging.log4j  Name: log4j-slf4j2-impl  Version: 2.25.1
+395. Group: org.apache.logging.log4j  Name: log4j-slf4j2-impl  Version: 2.25.3
 
 Manifest License: "Apache-2.0";link="https://www.apache.org/licenses/LICENSE-2.0.txt" (Not packaged)
 
@@ -55631,9 +55631,9 @@ POM License: The Apache License, Version 2.0 - http://www.apache.org/licenses/LI
 
 --------------------------------------------------------------------------------
 
-504. Group: org.mozilla  Name: rhino  Version: 1.7.12
+504. Group: org.mozilla  Name: rhino  Version: 1.7.15.1
 
-POM Project URL: https://developer.mozilla.org/en/Rhino
+POM Project URL: https://mozilla.github.io/rhino/
 
 POM License: Mozilla Public License, Version 2.0 - http://www.mozilla.org/MPL/2.0/index.txt
 
@@ -56019,161 +56019,66 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
                     ****************************************                    
 
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at http://mozilla.org/MPL/2.0/.
+Rhino is licensed subject to the terms of the Mozilla Public License, v. 2.0.
+See "License.txt" for the text of the license.
 
-USING IDSWITCH GENERATOR TOOL
+Rhino contains the following additional software:
 
-Usage:
-java org.mozilla.javascript.tools.idswitch.Main <SINGLE-JAVA-SOURCE>
+----
 
-The main purpose of this utility is to generate Java code to map strings to some ids that can be used, for example, in a switch statement.
+Portions of the floating-point conversion code, and portions of the test suite
+come from the Google V8 JavaScript engine and are subject to the following:
 
-The utility scans the input file for lines with the following structure:
+Copyright 2010-2015 the V8 project authors. All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
 
-// #string_id_map#
-... <DEFINITION AREA>
-// #generated#
-...<GENERATED AREA>
-// #/generated#
-... <DEFINITION AREA>
-// #/string_id_map#
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+    * Neither the name of Google Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Then every line in <DEFINITION AREA> is scanned for the pattern:
-^[ \t]*Id_([0-9a-zA-Z_]+)[ \t]*=.*$
+----
 
-Each such patterns adds a mapping form string $1 to Id_\$ or if the line also contains the pattern //\s*#string=\s*([^#]+)\s*#, then it adds map of $1 in this pattern to Id_\$
+Portions of the number-to-string code are subject to the following:
 
-After that lines in <GENERATED AREA> are replaced by a code block that sets variable "id" to Id_<name> if variable "s" equals <name> (or value defined by //#string=...# construction in the line with Id_<name>) or 0 otherwise.
-If the new code for <GENERATED AREA> is identical to old one, the file is not touched otherwise <GENERATED AREA> is overwritten by the new code and a time stamp is appended after #generated#.
-
-For example, if file x.java contains:
-
-// #string_id_map#
-
-    private int getId(String s) {
-        int id;
-// #generated# Initial version
-// #/generated#
-        return id;
-    }
-
-    private static final int
-        Id_x       = 1,
-        Id_y       = 2,
-        Id_hello   = 3, // #string = Hello, World! #
-        Id_symbols = 4, // #string=<<*Symbols*>>#
-        Id_nice    = 5,
-        Id_for     = 6,
-        Id_bar     = 7;
-
-// #/string_id_map#
-
-....
-
-    private double getFieldValue(String s) {
-
-// #string_id_map#
-    final int
-        Id_field1 = 1,
-        Id_field2 = 2,
-        Id_field3 = 3,
-        Id_one_more_field = 4; // #string = ONE%MORE%FIELD#
-
-        int id;
-// #generated# Initial version
-// #/generated#
-// #/string_id_map#
-        switch (id) {
-            case Id_field1: return field1;
-            case Id_field2: return field2;
-            case Id_field3: return field3;
-            case Id_one_more_field: return one_more_field;
-        }
-        throw new RuntimeException("No such field");
-    }
-
-
-then invocation
-
-java org.mozilla.javascript.tools.idswitch.Main x.java
-
-would replace that by a code fragment similar to:
-
-// #string_id_map#
-
-    private int getId(String s) {
-        int id;
-// #generated# Last update: 2001-05-25 18:00:24 GMT+02:00
-        L0: { id = 0; String X = null; int c;
-            L: switch (s.length()) {
-            case 1: c=s.charAt(0);
-                if (c=='x') { id=Id_x; break L0; }
-                else if (c=='y') { id=Id_y; break L0; }
-                break L;
-            case 3: c=s.charAt(0);
-                if (c=='b') { if (s.charAt(2)=='r' && s.charAt(1)=='a') {id=Id_bar; break L0;} }
-                else if (c=='f') { if (s.charAt(2)=='r' && s.charAt(1)=='o') {id=Id_for; break L0;} }
-                break L;
-            case 4: X="nice";id=Id_nice; break L;
-            case 13: c=s.charAt(0);
-                if (c=='<') { X="<<*Symbols*>>";id=Id_symbols; }
-                else if (c=='H') { X="Hello, World!";id=Id_hello; }
-                break L;
-            }
-            if (X!=null && X!=s && !X.equals(s)) id = 0;
-        }
-// #/generated#
-        return id;
-    }
-
-    private static final int
-        Id_x       = 1,
-        Id_y       = 2,
-        Id_hello   = 3, // #string = Hello, World! #
-        Id_symbols = 4, // #string=<<*Symbols*>>#
-        Id_nice    = 5,
-        Id_for     = 6,
-        Id_bar     = 7;
-
-// #/string_id_map#
-
-....
-
-    private double getFieldValue(String s) {
-
-// #string_id_map#
-    final int
-        Id_field1 = 1,
-        Id_field2 = 2,
-        Id_field3 = 3,
-        Id_one_more_field = 4; // #string = ONE%MORE%FIELD#
-
-        int id;
-// #generated# Last update: 2001-05-25 16:48:50 GMT+02:00
-        L0: { id = 0; String X = null; int c;
-            int s_length = s.length();
-            if (s_length==6) {
-                c=s.charAt(5);
-                if (c=='1') { X="field1";id=Id_field1; }
-                else if (c=='2') { X="field2";id=Id_field2; }
-                else if (c=='3') { X="field3";id=Id_field3; }
-            }
-            else if (s_length==14) { X="ONE%MORE%FIELD";id=Id_one_more_field; }
-            if (X!=null && X!=s && !X.equals(s)) id = 0;
-        }
-// #/generated#
-// #/string_id_map#
-        switch (id) {
-            case Id_field1: return field1;
-            case Id_field2: return field2;
-            case Id_field3: return field3;
-            case Id_one_more_field: return one_more_field;
-        }
-        throw new RuntimeException("No such field");
-    }
-
+ Copyright 2018-2020 Raffaello Giulietti
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+ 
 --------------------------------------------------------------------------------
 
 505. Group: org.objenesis  Name: objenesis  Version: 3.3
@@ -76243,5 +76148,5 @@ POM License: The Apache License, Version 2.0 - http://www.apache.org/licenses/LI
 --------------------------------------------------------------------------------
 
 
-This report was generated at Wed Nov 19 22:15:18 UTC 2025.
+This report was generated at Mon Feb 16 19:58:07 UTC 2026.
 
