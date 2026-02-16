@@ -476,11 +476,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             Map<String, Object> headerData = new HashMap<>();
             for (Header header: headers) {
                 byte[] headerValue = header.value();
-                try {
-                    headerData.put(header.key(), ((headerValue != null) ? new String(header.value(), StandardCharsets.UTF_8) : null));
-                } catch (Exception e) {
-                    headerData.put(header.key(), headerValue);
+                if (headerValue == null) {
+                    headerData.put(header.key(), null);
+                    continue;
                 }
+                String strValue = new String(header.value(), StandardCharsets.UTF_8);
+                if (Arrays.equals(headerValue, strValue.getBytes())) {
+                    headerData.put(header.key(), strValue);
+                    continue;
+                }
+                headerData.put(header.key(), headerValue);
             }
             eventMetadata.setAttribute("kafka_headers", headerData);
         }
