@@ -1,13 +1,20 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.common.sink;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+
+import java.util.concurrent.TimeUnit;
 
 public class DefaultSinkMetrics implements SinkMetrics {
     static final String DEFAULT_EVENT_NAME = "Event";
@@ -22,7 +29,7 @@ public class DefaultSinkMetrics implements SinkMetrics {
     private final Counter sinkEventsFailed;
     private final Counter sinkEventsDropped;
     private final Counter sinkRetries;
-    private final DistributionSummary sinkRequestLatency;
+    private final Timer sinkRequestLatency;
     private final DistributionSummary sinkRequestSize;
     private final DistributionSummary sinkEventSize;
 
@@ -33,7 +40,7 @@ public class DefaultSinkMetrics implements SinkMetrics {
         this.sinkEventsFailed = pluginMetrics.counter("sink"+eventName+"sFailed");
         this.sinkEventsDropped = pluginMetrics.counter("sink"+eventName+"sDropped");
         this.sinkRetries = pluginMetrics.counter(SINK_RETRIES);
-        this.sinkRequestLatency = pluginMetrics.summary(SINK_REQUEST_LATENCY);
+        this.sinkRequestLatency = pluginMetrics.timer(SINK_REQUEST_LATENCY);
         this.sinkRequestSize = pluginMetrics.summary(SINK_REQUEST_SIZE);
         this.sinkEventSize = pluginMetrics.summary("sink"+eventName+"Size");
     }
@@ -66,8 +73,13 @@ public class DefaultSinkMetrics implements SinkMetrics {
         sinkRetries.increment(value);
     }
 
+    @Override
+    public void recordRequestLatency(final long amount, final TimeUnit unit) {
+        sinkRequestLatency.record(amount, unit);
+    }
+
     public void recordRequestLatency(double value) {
-        sinkRequestLatency.record(value);
+        recordRequestLatency((long)value, TimeUnit.NANOSECONDS);
     }
 
     public void recordRequestSize(double value){
