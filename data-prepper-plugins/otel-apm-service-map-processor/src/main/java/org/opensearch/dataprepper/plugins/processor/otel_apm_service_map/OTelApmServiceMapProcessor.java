@@ -28,9 +28,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceConnection;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceOperationDetail;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Service;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Node;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.NodeOperationDetail;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Operation;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ClientSpanDecoration;
@@ -78,6 +77,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final String SPAN_KIND_SERVER = "SPAN_KIND_SERVER";
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
+    private static final String NODE_TYPE_SERVICE = "service";
 
     // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger processorsCreated = new AtomicInteger(0);
@@ -334,7 +334,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     /**
      * This method checks for master instance and let master instance process the current window and rotate the window.
      *
-     * @return Set of Record<Event> containing json representation of ServiceConnection and ServiceOperationDetail found
+     * @return Set of Record<Event> containing json representation of NodeOperationDetail found
      */
     private Collection<Record<Event>> evaluateApmEvents() {
         LOG.debug("Evaluating APM service map events with three-window semantics");
@@ -360,8 +360,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      * to generate APM service map events and metrics. The method operates in two main phases:
      * Phase 1: Decorates spans with ephemeral client/server relationship information using
      * two-pass decoration (CLIENT spans first, then SERVER spans with back-annotation).
-     * Phase 2: Generates ServiceConnection and ServiceOperationDetail events from decorated
-     * trace data, along with aggregated metrics for latency, throughput, and error rates.
+     * Phase 2: Generates NodeOperationDetail events from decorated trace data, along with
+     * aggregated metrics for latency, throughput, and error rates.
      * The window logic ensures complete trace context by accessing spans across all three
      * time windows, while current window processing focuses on spans that belong to the
      * active processing window. Trace data decoration uses ephemeral storage that exists
@@ -388,8 +388,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             if (!traceData.getProcessingSpans().isEmpty()) {
                 decorateSpansInTraceWithEphemeralStorage(traceData);
 
-                apmEvents.addAll(generateServiceConnectionsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
-                apmEvents.addAll(generateServiceOperationDetailsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
+                apmEvents.addAll(generateNodeConnectionsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
+                apmEvents.addAll(generateNodeOperationDetailsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
             }
         }
 
@@ -702,17 +702,18 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * PHASE 2: Generate ServiceConnection events and CLIENT-side metrics from ephemeral decorations
-     * Uses only ephemeral decoration data - no relationship computation
+     * PHASE 2: Generate node-level NodeOperationDetail events (without operations) and CLIENT-side metrics
+     * from ephemeral decorations. Acts as a safety net for edges where the parent SERVER span
+     * is not in the processing window but the CLIENT span is.
      *
      * @param traceData Three-window trace data with ephemeral decorations (only processing spans are used)
      * @param currentTime Current timestamp
      * @param metricsStateByKey Shared map for metric aggregation across all traces
-     * @return Collection of ServiceConnection events
+     * @return Collection of node-level NodeOperationDetail events
      */
-    private Collection<Record<Event>> generateServiceConnectionsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
-                                                                                          final Instant currentTime,
-                                                                                          final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
+    private Collection<Record<Event>> generateNodeConnectionsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
+                                                                                       final Instant currentTime,
+                                                                                       final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
         final Collection<Record<Event>> connectionEvents = new HashSet<>();
 
         for (SpanStateData clientSpan : traceData.getProcessingSpans()) {
@@ -720,21 +721,25 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 final ClientSpanDecoration decoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
 
                 if (decoration != null && !"unknown".equals(decoration.getRemoteService())) {
-                    final Service clientService = new Service(
-                            new Service.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
+                    final Node sourceNode = new Node(
+                            NODE_TYPE_SERVICE,
+                            new Node.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
                             clientSpan.getGroupByAttributes()
                     );
 
-                    final Service serverService = new Service(
-                            new Service.KeyAttributes(decoration.getRemoteEnvironment(), decoration.getRemoteService()),
+                    final Node targetNode = new Node(
+                            NODE_TYPE_SERVICE,
+                            new Node.KeyAttributes(decoration.getRemoteEnvironment(), decoration.getRemoteService()),
                             decoration.getRemoteGroupByAttributes()
                     );
 
                     final Instant connectionAnchorTimestamp = getAnchorTimestampFromSpan(clientSpan, currentTime);
 
-                    final ServiceConnection serviceConnection = new ServiceConnection(
-                            clientService,
-                            serverService,
+                    final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
+                            sourceNode,
+                            targetNode,
+                            null,
+                            null,
                             connectionAnchorTimestamp
                     );
 
@@ -743,7 +748,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
                     final Event connectionEvent = eventFactory.eventBuilder(EventBuilder.class)
                                 .withEventMetadata(eventMetadata)
-                                .withData(serviceConnection)
+                                .withData(nodeOperationDetail)
                             .build();
 
                     connectionEvents.add(new Record<>(connectionEvent));
@@ -760,17 +765,17 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * PHASE 2: Generate ServiceOperationDetail events and metrics from ephemeral decorations
-     * Uses only ephemeral decoration data - no relationship computation
+     * PHASE 2: Generate operation-level NodeOperationDetail events and metrics from ephemeral decorations.
+     * This is the primary emission path that produces full node + operation detail.
      *
      * @param traceData Three-window trace data with ephemeral decorations (only processing spans are used)
      * @param currentTime Current timestamp
      * @param metricsStateByKey Shared map for metric aggregation across all traces
-     * @return Collection of ServiceOperationDetail events
+     * @return Collection of operation-level NodeOperationDetail events
      */
-    private Collection<Record<Event>> generateServiceOperationDetailsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
-                                                                                               final Instant currentTime,
-                                                                                               final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
+    private Collection<Record<Event>> generateNodeOperationDetailsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
+                                                                                            final Instant currentTime,
+                                                                                            final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
         final Collection<Record<Event>> operationEvents = new HashSet<>();
 
         for (SpanStateData serverSpan : traceData.getProcessingSpans()) {
@@ -780,32 +785,33 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 final Instant anchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
                 ApmServiceMapMetricsUtil.generateMetricsForServerSpan(serverSpan, currentTime, metricsStateByKey, anchorTimestamp);
 
+                final Node sourceNode = new Node(
+                        NODE_TYPE_SERVICE,
+                        new Node.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
+                        serverSpan.getGroupByAttributes()
+                );
+
                 if (decoration != null && !decoration.getClientDescendants().isEmpty()) {
                     for (SpanStateData clientSpan : decoration.getClientDescendants()) {
                         final ClientSpanDecoration clientDecoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
 
                         if (clientDecoration != null) {
-                            final Service service = new Service(
-                                    new Service.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
-                                    serverSpan.getGroupByAttributes()
-                            );
-
-                            final Service remoteService = new Service(
-                                    new Service.KeyAttributes(clientDecoration.getRemoteEnvironment(), clientDecoration.getRemoteService()),
+                            final Node targetNode = new Node(
+                                    NODE_TYPE_SERVICE,
+                                    new Node.KeyAttributes(clientDecoration.getRemoteEnvironment(), clientDecoration.getRemoteService()),
                                     clientDecoration.getRemoteGroupByAttributes()
                             );
 
-                            final Operation operation = new Operation(
-                                    serverSpan.getOperationName(),
-                                    remoteService,
-                                    clientDecoration.getRemoteOperation()
-                            );
+                            final Operation sourceOperation = new Operation(serverSpan.getOperationName());
+                            final Operation targetOperation = new Operation(clientDecoration.getRemoteOperation());
 
                             final Instant operationAnchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
 
-                            final ServiceOperationDetail serviceOperationDetail = new ServiceOperationDetail(
-                                    service,
-                                    operation,
+                            final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
+                                    sourceNode,
+                                    targetNode,
+                                    sourceOperation,
+                                    targetOperation,
                                     operationAnchorTimestamp
                             );
 
@@ -814,28 +820,21 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
                             final Event operationEvent = eventFactory.eventBuilder(EventBuilder.class)
                                         .withEventMetadata(eventMetadata)
-                                        .withData(serviceOperationDetail)
+                                        .withData(nodeOperationDetail)
                                     .build();
                             operationEvents.add(new Record<>(operationEvent));
                         }
                     }
                 } else {
-                    final Service service = new Service(
-                            new Service.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
-                            serverSpan.getGroupByAttributes()
-                    );
-
-                    final Operation operation = new Operation(
-                            serverSpan.getOperationName(),
-                            null,
-                            null
-                    );
+                    final Operation sourceOperation = new Operation(serverSpan.getOperationName());
 
                     final Instant unknownAnchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
 
-                    final ServiceOperationDetail serviceOperationDetail = new ServiceOperationDetail(
-                            service,
-                            operation,
+                    final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
+                            sourceNode,
+                            null,
+                            sourceOperation,
+                            null,
                             unknownAnchorTimestamp
                     );
 
@@ -844,7 +843,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
                     final Event operationEvent = eventFactory.eventBuilder(EventBuilder.class)
                                 .withEventMetadata(eventMetadata)
-                                .withData(serviceOperationDetail)
+                                .withData(nodeOperationDetail)
                             .build();
                     operationEvents.add(new Record<>(operationEvent));
                 }
