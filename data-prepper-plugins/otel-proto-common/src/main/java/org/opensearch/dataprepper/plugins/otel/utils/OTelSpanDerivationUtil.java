@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.otel.utils;
+package org.opensearch.dataprepper.plugins.otel.common;
 
 import org.opensearch.dataprepper.model.trace.Span;
 import org.slf4j.Logger;

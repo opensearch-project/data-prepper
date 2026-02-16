@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 
-import org.opensearch.dataprepper.plugins.otel.utils.OTelSpanDerivationUtil;
+import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;

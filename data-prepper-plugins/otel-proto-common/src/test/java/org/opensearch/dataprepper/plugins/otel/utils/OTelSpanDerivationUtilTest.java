@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.otel.utils;
+package org.opensearch.dataprepper.plugins.otel.common;
 
 import org.junit.jupiter.api.Test;
 
