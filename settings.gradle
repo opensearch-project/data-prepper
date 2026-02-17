@@ -210,6 +210,7 @@ include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
 include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
 include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
 include 'data-prepper-plugins:otlp-sink'
+include 'data-prepper-plugins:otel-apm-service-map-processor'
 
 
 include 'e2e-test:kafka-buffer-backward-compatibility'

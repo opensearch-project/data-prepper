@@ -1,0 +1,22 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:mapdb-processor-state')
+    implementation project(':data-prepper-plugins:otel-proto-common')
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation libs.commons.codec
+    testImplementation project(':data-prepper-test:test-common')
+}
