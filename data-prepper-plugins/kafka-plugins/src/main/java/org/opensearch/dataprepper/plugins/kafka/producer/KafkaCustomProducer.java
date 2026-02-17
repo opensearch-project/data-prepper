@@ -43,6 +43,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -118,10 +119,13 @@ public class KafkaCustomProducer<T> {
 
     public void produceRawData(final byte[] bytes, final String key) throws Exception{
         try {
+            long startPreparationTime = System.currentTimeMillis();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             OutputStream compressedOutputStream = compressionConfig.getCompressionEngine().createOutputStream(byteArrayOutputStream);
             compressedOutputStream.write(bytes);
             compressedOutputStream.close();
+
+            topicMetrics.getProduceDataPreparationTimer().record(System.currentTimeMillis() - startPreparationTime, TimeUnit.MILLISECONDS);
             send(topicName, key, byteArrayOutputStream.toByteArray()).get();
 
             topicMetrics.update(producer);

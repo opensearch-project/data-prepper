@@ -11,23 +11,23 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.util.IOUtils;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.common.v1.KeyValueList;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.logs.v1.ScopeLogs;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.common.v1.KeyValueList;
 import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.common.v1.InstrumentationScope;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
@@ -46,22 +46,23 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.skyscreamer.jsonassert.JSONAssert;
-import io.micrometer.core.instrument.util.IOUtils;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -117,6 +118,9 @@ public class OTelLogsGrpcServiceTest {
     Timer requestProcessDuration;
 
     @Mock
+    Timer requestParsingDuration;
+
+    @Mock
     OTelProtoCodec.OTelProtoDecoder mockOTelProtoDecoder;
     @Mock
     PluginMetrics mockPluginMetrics;
@@ -137,7 +141,7 @@ public class OTelLogsGrpcServiceTest {
     private String OBSERVED_TIME_KEY;
 
     @BeforeEach
-    public void setup() {
+    public void setup() throws Exception {
         pluginSetting = new PluginSetting("OTelLogsGrpcService", Collections.EMPTY_MAP);
         pluginSetting.setPipelineName("pipeline");
 
@@ -147,6 +151,7 @@ public class OTelLogsGrpcServiceTest {
         when(mockPluginMetrics.counter(OTelLogsGrpcService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         when(mockPluginMetrics.summary(OTelLogsGrpcService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(mockPluginMetrics.timer(OTelLogsGrpcService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
+        when(mockPluginMetrics.timer(OTelLogsGrpcService.REQUEST_PARSING_DURATION)).thenReturn(requestParsingDuration);
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(0).run();
             return null;
@@ -227,6 +232,7 @@ public class OTelLogsGrpcServiceTest {
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/test-log.json"));
         String expected = String.format(file, TIME_KEY, OBSERVED_TIME_KEY);
         JSONAssert.assertEquals(expected, result, false);
+        verify(requestParsingDuration).record(anyLong(), eq(TimeUnit.MILLISECONDS));
     }
 
     @Test

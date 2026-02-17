@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
@@ -36,6 +37,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+    public static final String REQUEST_PARSING_DURATION = "requestParsingDuration";
 
     private final int bufferWriteTimeoutInMillis;
 
@@ -48,6 +50,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private final Timer requestParsingDuration;
 
     public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
@@ -62,11 +65,14 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
             successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
             payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
             requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+            requestParsingDuration = pluginMetrics.timer(REQUEST_PARSING_DURATION, metricsPrefix);
+
         } else {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
             successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
             payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
             requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+            requestParsingDuration = pluginMetrics.timer(REQUEST_PARSING_DURATION);
         }
 
         this.oTelProtoDecoder = oTelProtoDecoder;
@@ -92,17 +98,19 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
         final List<OpenTelemetryLog> logs;
 
         try {
+            final long startParsingTime = System.currentTimeMillis();
             logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
+            requestParsingDuration.record(System.currentTimeMillis() - startParsingTime, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             LOG.error("Failed to parse the request {} due to:", request, e);
             throw new BadRequestException(e.getMessage(), e);
         }
 
-        final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
         try {
             if (buffer.isByteBuffer()) {
                 buffer.writeBytes(request.toByteArray(), null, bufferWriteTimeoutInMillis);
             } else {
+                final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
                 buffer.writeAll(records, bufferWriteTimeoutInMillis);
             }
         } catch (Exception e) {
