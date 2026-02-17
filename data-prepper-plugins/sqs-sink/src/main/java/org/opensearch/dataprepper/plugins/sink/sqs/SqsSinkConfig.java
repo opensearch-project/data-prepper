@@ -46,7 +46,7 @@ public class SqsSinkConfig {
     @JsonProperty("dlq")
     private PluginModel dlq;
 
-    @AssertTrue(message = "FIFO queues wth dynamic group id or dynamic deduplication id and more than one events per message is not valid OR standard queues do not support groupId or deduplication configuration")
+    @AssertTrue(message = "FIFO queues wth dynamic group id or dynamic deduplication id and more than one events per message is not valid OR standard queues do not support deduplication configuration")
     boolean isValidConfig() {
         String deDupId = getDeDuplicationId();
         String groupId = getGroupId();
@@ -64,7 +64,7 @@ public class SqsSinkConfig {
                 return true;
             }
         } else {
-             return (groupId == null && deDupId == null);
+             return (deDupId == null);
         }
     }
 
