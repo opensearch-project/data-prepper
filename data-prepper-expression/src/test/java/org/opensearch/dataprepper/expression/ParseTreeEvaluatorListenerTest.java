@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +31,10 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -119,6 +124,10 @@ class ParseTreeEvaluatorListenerTest {
         final Event testEvent = createTestEvent(data);
         final String testSingleJsonPointerStatement = String.format("/%s", testKey);
         final String testSingleEscapeJsonPointerStatement = String.format("\"/%s\"", testKey);
+        final String testNowFunction = "now()";
+        when(expressionFunctionProvider.provideFunction(eq("now"), any(List.class), any(Event.class), any(Function.class))).thenReturn(
+                Instant.now().toEpochMilli()
+        );
 
         assertThat(evaluateStatementOnEvent(testSingleStringStatement, testEvent), equalTo(testStringValue));
         assertThat(evaluateStatementOnEvent(testSingleIntegerStatement, testEvent), equalTo(testInteger));
@@ -127,6 +136,9 @@ class ParseTreeEvaluatorListenerTest {
         assertThat(evaluateStatementOnEvent(testSingleNullStatement, testEvent), equalTo(null));
         assertThat(evaluateStatementOnEvent(testSingleJsonPointerStatement, testEvent), equalTo(testValue));
         assertThat(evaluateStatementOnEvent(testSingleEscapeJsonPointerStatement, testEvent), equalTo(testValue));
+        assertThat(evaluateStatementOnEvent(testNowFunction, testEvent), is(instanceOf(Long.class)));
+        assertThat((Long)(evaluateStatementOnEvent(testNowFunction, testEvent)), lessThan(Instant.now().toEpochMilli() + 5000L));
+        assertThat((Long)(evaluateStatementOnEvent(testNowFunction, testEvent)), greaterThanOrEqualTo(Instant.now().toEpochMilli() - 5000L));
     }
 
     @Test
@@ -370,6 +382,27 @@ class ParseTreeEvaluatorListenerTest {
         final String addStatement = String.format("/%s + /%s", stringKey1, stringKey2);
         final Event testEvent = createTestEvent(data);
         assertThat(evaluateStatementOnEvent(addStatement, testEvent), equalTo("ab"));
+    }
+
+    @Test
+    void testSimpleAddRelationalEqualityOperatorsExpressionWithFunction() {
+        final String nowFunction = "now()";
+        final String arithmeticDurationExpression = "3 * 24 * 3600 * 1000";
+        when(expressionFunctionProvider.provideFunction(eq("now"), any(List.class), any(Event.class), any(Function.class))).thenReturn(
+                Instant.now().toEpochMilli()
+        );
+        final String addStatement = String.format("%s + %s", nowFunction, arithmeticDurationExpression);
+        Event testEvent = createTestEvent(new HashMap<>());
+        final long expected = Instant.now().toEpochMilli() + 3 * 24 * 3600 * 1000;
+        assertThat((long)(evaluateStatementOnEvent(addStatement, testEvent)), greaterThanOrEqualTo(expected - 5000L));
+        assertThat((long)(evaluateStatementOnEvent(addStatement, testEvent)), lessThanOrEqualTo(expected + 5000L));
+        final String timestampKey = "my_timestamp";
+        final Map<String, Long> data = Map.of(timestampKey, Instant.now().toEpochMilli() - 4 * 24 * 3600 * 1000);
+        testEvent = createTestEvent(data);
+        final String relationalStatement = String.format("/%s < %s - %s", timestampKey, nowFunction, arithmeticDurationExpression);
+        assertThat(evaluateStatementOnEvent(relationalStatement, testEvent), is(true));
+        final String equalityStatement = String.format("/%s == %s - %s", timestampKey, nowFunction, arithmeticDurationExpression);
+        assertThat(evaluateStatementOnEvent(equalityStatement, testEvent), is(false));
     }
 
     @Test
