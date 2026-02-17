@@ -79,4 +79,9 @@ public class TestDataProvider {
     public static final String INVALID_ZERO_BUFFER_MULTIPLE_THREADS_NO_SINGLE_THREAD_PROCESSORS_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_multiple_threads_no_single_thread_processors.yml";
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
             "test-pipeline-2", "test-pipeline-3"));
+    public static final String INVALID_ONLY_HEADLESS_AND_SUBPIPELINES_CONFIG_FILE = "src/test/resources/invalid_only_headless_and_subpipelines_config.yml";
+    public static final String INVALID_ONLY_HEADLESS_PIPELINES_CONFIG_FILE = "src/test/resources/invalid_only_headless_pipelines_config.yml";
+    public static final String VALID_FORWARD_PIPELINE_CONFIG_FILE = "src/test/resources/valid_forward_pipeline.yml";
+    public static final String VALID_PIPELINE_DLQ_CONFIG_FILE = "src/test/resources/valid_pipeline_dlq.yml";
+
 }
