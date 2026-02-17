@@ -30,22 +30,26 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 public class RetryAfterHeaderStrategy implements RetryStrategy {
     private static final String RATE_LIMIT_REMAINING = "X-RateLimit-Remaining";
     private static final String RATE_LIMIT_RESET = "X-RateLimit-Reset";
-    private static final String RETRY_AFTER = "Retry-After";
     private static final List<HttpStatus> DEFAULT_RATE_LIMIT_STATUS_CODES = Arrays.asList(HttpStatus.TOO_MANY_REQUESTS);
 
-    private final List<Integer> retryAttemptSleepTime;
-    private final List<Integer> rateLimitRetrySleepTime;
-    private final List<HttpStatus> rateLimitStatusCodes;
-    private final int maxRetries;
+    private List<Integer> retryAttemptSleepTime;
+    private List<Integer> rateLimitRetrySleepTime;
+    private List<HttpStatus> rateLimitStatusCodes;
+    private int maxRetries;
+    private String rateLimitRemainingHeader;
+    private String rateLimitResetHeader;
 
     /**
-     * Constructor with default sleep times
+     * Constructor with default sleep times.
+     * Uses case-insensitive header matching per HTTP specification.
      */
     public RetryAfterHeaderStrategy() {
         this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
         this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
         this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = RetryStrategy.MAX_RETRIES;
+        this.rateLimitRemainingHeader = RATE_LIMIT_REMAINING;
+        this.rateLimitResetHeader = RATE_LIMIT_RESET;
     }
 
     /**
@@ -54,9 +58,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
      * @param maxRetries Maximum number of retries
      */
     public RetryAfterHeaderStrategy(final int maxRetries) {
-        this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
-        this.rateLimitRetrySleepTime = RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
-        this.rateLimitStatusCodes = DEFAULT_RATE_LIMIT_STATUS_CODES;
+        this(); // Initialize all defaults
         this.maxRetries = maxRetries;
     }
 
@@ -68,7 +70,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
      * @param rateLimitStatusCodes List of status codes that are considered rate limited
      */
     public RetryAfterHeaderStrategy(List<Integer> rateLimitRetrySleepTime, List<HttpStatus> rateLimitStatusCodes) {
-        this.retryAttemptSleepTime = RetryStrategy.DEFAULT_RETRY_ATTEMPT_SLEEP_TIME;
+        this(); // Initialize all defaults
         this.rateLimitRetrySleepTime = rateLimitRetrySleepTime != null
                 ? rateLimitRetrySleepTime
                 : RetryStrategy.DEFAULT_RATE_LIMIT_RETRY_SLEEP_TIME;
@@ -76,6 +78,19 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
                 ? rateLimitStatusCodes
                 : DEFAULT_RATE_LIMIT_STATUS_CODES;
         this.maxRetries = this.rateLimitRetrySleepTime.size();
+    }
+
+    /**
+     * Constructor with custom header names.
+     *
+     * @param rateLimitRemainingHeader Custom rate limit remaining header name
+     * @param rateLimitResetHeader Custom rate limit reset header name
+     */
+    public RetryAfterHeaderStrategy(String rateLimitRemainingHeader,
+                                    String rateLimitResetHeader) {
+        this(); // Initialize all defaults
+        this.rateLimitRemainingHeader = rateLimitRemainingHeader;
+        this.rateLimitResetHeader = rateLimitResetHeader;
     }
 
     @Override
@@ -124,21 +139,22 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
                 headers = ((HttpServerErrorException) ex).getResponseHeaders();
             }
 
-            if (headers != null && headers.containsKey(RETRY_AFTER)) {
-                String retryAfter = headers.getFirst(RETRY_AFTER);
+            if (headers != null && headers.containsKey(HttpHeaders.RETRY_AFTER)) {
+                String retryAfter = headers.getFirst(HttpHeaders.RETRY_AFTER);
                 if (retryAfter != null) {
                     int seconds = Integer.parseInt(retryAfter);
                     return Optional.of(Math.max(seconds, 1));
                 }
             }
-            if (headers != null && headers.containsKey(RATE_LIMIT_REMAINING) && headers.containsKey(RATE_LIMIT_RESET)) {
-                String xRateLimitRemaining = headers.getFirst(RATE_LIMIT_REMAINING);
-                String resetEpoch = headers.getFirst(RATE_LIMIT_RESET);
+            if (headers != null && headers.containsKey(rateLimitRemainingHeader) && headers.containsKey(rateLimitResetHeader)) {
+                String xRateLimitRemaining = headers.getFirst(rateLimitRemainingHeader);
+                String resetEpoch = headers.getFirst(rateLimitResetHeader);
                 if (xRateLimitRemaining != null && xRateLimitRemaining.equals("0") && resetEpoch != null
                         && !resetEpoch.isBlank()) {
                     long resetSeconds = Long.parseLong(resetEpoch);
                     long nowSeconds = Instant.now().getEpochSecond();
                     long wait = resetSeconds - nowSeconds + 1;
+                    log.debug("Rate limit exceeded. Reset at: {}, waiting: {} seconds", resetSeconds, wait);
                     return Optional.of((int) Math.max(wait, 1));
                 }
             }
@@ -147,5 +163,4 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
         }
         return Optional.empty();
     }
-
 }
