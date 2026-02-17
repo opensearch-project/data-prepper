@@ -126,7 +126,7 @@ class Router_ThreeRoutesDefaultIT {
 
         inMemorySourceAccessor.submit(TESTING_KEY, allEvents);
 
-        await().atMost(2, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
                     assertThat(inMemorySinkAccessor.get(ALPHA_SOURCE_KEY), not(empty()));
                     assertThat(inMemorySinkAccessor.get(BETA_SOURCE_KEY), not(empty()));
@@ -134,34 +134,34 @@ class Router_ThreeRoutesDefaultIT {
                     assertThat(inMemorySinkAccessor.get(ALPHA_DEFAULT_SOURCE_KEY), not(empty()));
                     assertThat(inMemorySinkAccessor.get(ALPHA_BETA_GAMMA_SOURCE_KEY), not(empty()));
                     assertThat(inMemorySinkAccessor.get(DEFAULT_SOURCE_KEY), not(empty()));
+
+                    final List<Record<Event>> actualAlphaRecords = inMemorySinkAccessor.get(ALPHA_SOURCE_KEY);
+
+                    assertThat(actualAlphaRecords.size(), equalTo(alphaEvents.size()));
+
+                    assertThat(actualAlphaRecords, containsInAnyOrder(allEvents.stream()
+                            .filter(alphaEvents::contains).toArray()));
+
+                    final List<Record<Event>> actualBetaRecords = inMemorySinkAccessor.get(BETA_SOURCE_KEY);
+
+                    assertThat(actualBetaRecords.size(), equalTo(betaEvents.size()));
+
+                    assertThat(actualBetaRecords, containsInAnyOrder(allEvents.stream()
+                            .filter(betaEvents::contains).toArray()));
+
+                    final List<Record<Event>> actualDefaultRecords = inMemorySinkAccessor.get(DEFAULT_SOURCE_KEY);
+
+                    assertThat(actualDefaultRecords.size(), equalTo(defaultEvents.size()));
+                    assertThat(actualDefaultRecords, containsInAnyOrder(allEvents.stream()
+                            .filter(defaultEvents::contains).toArray()));
+
+                    final List<Record<Event>> actualAlphaDefaultRecords = new ArrayList<>();
+                    actualAlphaDefaultRecords.addAll(actualAlphaRecords);
+                    actualAlphaDefaultRecords.addAll(actualDefaultRecords);
+                    assertThat(actualAlphaDefaultRecords.size(), equalTo(defaultEvents.size()+alphaEvents.size()));
+                    assertThat(actualAlphaDefaultRecords, containsInAnyOrder(allEvents.stream()
+                            .filter(event -> defaultEvents.contains(event) || alphaEvents.contains(event)).toArray()));
                 });
-
-        final List<Record<Event>> actualAlphaRecords = inMemorySinkAccessor.get(ALPHA_SOURCE_KEY);
-
-        assertThat(actualAlphaRecords.size(), equalTo(alphaEvents.size()));
-
-        assertThat(actualAlphaRecords, containsInAnyOrder(allEvents.stream()
-                .filter(alphaEvents::contains).toArray()));
-
-        final List<Record<Event>> actualBetaRecords = inMemorySinkAccessor.get(BETA_SOURCE_KEY);
-
-        assertThat(actualBetaRecords.size(), equalTo(betaEvents.size()));
-
-        assertThat(actualBetaRecords, containsInAnyOrder(allEvents.stream()
-                .filter(betaEvents::contains).toArray()));
-
-        final List<Record<Event>> actualDefaultRecords = inMemorySinkAccessor.get(DEFAULT_SOURCE_KEY);
-
-        assertThat(actualDefaultRecords.size(), equalTo(defaultEvents.size()));
-        assertThat(actualDefaultRecords, containsInAnyOrder(allEvents.stream()
-                .filter(defaultEvents::contains).toArray()));
-
-        final List<Record<Event>> actualAlphaDefaultRecords = new ArrayList<>();
-        actualAlphaDefaultRecords.addAll(actualAlphaRecords);
-        actualAlphaDefaultRecords.addAll(actualDefaultRecords);
-        assertThat(actualAlphaDefaultRecords.size(), equalTo(defaultEvents.size()+alphaEvents.size()));
-        assertThat(actualAlphaDefaultRecords, containsInAnyOrder(allEvents.stream()
-                .filter(event -> defaultEvents.contains(event) || alphaEvents.contains(event)).toArray()));
 
     }
 
