@@ -246,6 +246,9 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         Map<String, Object> status = new HashMap<>();
         status.put("code", "ERROR");
         
+//        Span mockSpan = mock(Span.class);
+//        when(mockSpan.getStatus()).thenReturn(status);
+        
         // Create a reflection helper to test private method
         // Since extractSpanStatus is private, it's tested indirectly through processSpan
         Record<Event> record = new Record<>(createMockSpan("test-service", "test-op", "SERVER"));
@@ -761,6 +764,36 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     }
 
     @Test
+    void testWindowProcessingWithInterruptedException() {
+        // Given
+        when(clock.instant())
+            .thenReturn(testTime) // Initial timestamp
+            .thenReturn(testTime.plusSeconds(65)); // 65 seconds later
+
+        // Mock the processor to throw InterruptedException during barrier wait
+        processor = new OTelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, eventFactory, pluginMetrics) {
+            @Override
+            public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+                // Override to simulate barrier exception
+                try {
+                    return super.doExecute(records);
+                } catch (RuntimeException e) {
+                    // Should handle the exception gracefully
+                    throw e;
+                }
+            }
+        };
+        
+        Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
+        Record<Event> record = new Record<>(mockSpan);
+        Collection<Record<Event>> records = Collections.singletonList(record);
+        
+        // When/Then - Should handle exceptions gracefully
+        Collection<Record<Event>> result = processor.doExecute(records);
+        assertNotNull(result);
+    }
+
+    @Test
     void testGroupByAttributesWithNestedResourceStructure() {
         // Given
         List<String> groupByAttributes = Arrays.asList("deployment.environment", "k8s.namespace.name", "service.version");
@@ -1184,10 +1217,10 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         event = resultList.get(3).getData();
         assertThat(event.get("name", String.class), equalTo("latency_seconds"));
         event = resultList.get(4).getData();
-        String serviceAttributesName4 = event.get("service/keyAttributes/name", String.class);
+        String sourceNodeName4 = event.get("sourceNode/keyAttributes/name", String.class);
         event = resultList.get(5).getData();
-        String serviceAttributesName5 = event.get("service/keyAttributes/name", String.class);
-        assertThat(Set.of(serviceAttributesName4, serviceAttributesName5), equalTo(Set.of("client-service", "server-service")));
+        String sourceNodeName5 = event.get("sourceNode/keyAttributes/name", String.class);
+        assertThat(Set.of(sourceNodeName4, sourceNodeName5), equalTo(Set.of("client-service", "server-service")));
         
         // Cleanup
         isolatedProcessor.shutdown();

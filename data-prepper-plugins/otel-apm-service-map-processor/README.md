@@ -91,8 +91,7 @@ otel-apm-service-map-pipeline:
       ssl: false
       port: 21890
   route:
-      - service_local_details : '/eventType == "ServiceLocalDetails"'
-      - service_remote_details : '/eventType == "ServiceRemoteDetails"'
+      - service_map_v2 : '/eventType == "SERVICE_MAP_V2"'
       - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
@@ -101,7 +100,7 @@ otel-apm-service-map-pipeline:
   sink:
     - opensearch:
         hosts: ["https://localhost:9200"]
-        index: "apm-service-map-%{yyyy.MM.dd}"
+        index: "otel-v2-apm-service-map-%{yyyy.MM.dd}"
         username: "admin"
         password: "admin"
         routes: [service_local_details, service_remote_details]
@@ -120,8 +119,7 @@ multi-env-apm-pipeline:
       ssl: false
       port: 21890
   route:
-      - service_local_details : '/eventType == "ServiceLocalDetails"'
-      - service_remote_details : '/eventType == "ServiceRemoteDetails"'
+      - service_map_v2 : '/eventType == "SERVICE_MAP_V2"'
       - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
@@ -164,7 +162,7 @@ Represents a connection between two services:
 
 ```json
 {
-  "eventType": "SERVICE_MAP",
+  "eventType": "SERVICE_MAP_V2",
   "data": {
     "service": {
       "keyAttributes": {
@@ -196,7 +194,7 @@ Represents specific operations within a service:
 
 ```json
 {
-  "eventType": "SERVICE_MAP",
+  "eventType": "SERVICE_MAP_V2",
   "data": {
     "service": {
       "keyAttributes": {
