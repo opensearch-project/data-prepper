@@ -37,9 +37,9 @@ Some examples:
 * [`http` source](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/http-source/src/test/java/org/opensearch/dataprepper/plugins/source/loghttp/HTTPSourceTest.java)
 * [`otlp` source](https://github.com/opensearch-project/data-prepper/blob/5ad289dd00cfaa73509c7b0fdb757b73d0f18a0c/data-prepper-plugins/otlp-source/src/test/java/org/opensearch/dataprepper/plugins/source/otlp/OTLPSourceTest.java)
 
-## Pull request security checklist
+## Push request security checklist
 
-All pull requests for pull-based sources should include evaluation against this checklist.
+All pull requests for push-based sources should include evaluation against this checklist.
 
 * [ ] Does this PR add or modify an HTTP endpoint?
 * [ ] Is the source using an existing web framework within Data Prepper? If not, why not?
