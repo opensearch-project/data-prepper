@@ -4,8 +4,8 @@
     "date_detection": false,
     "dynamic_templates": [
       {
-        "long_source_node_group_by_attributes": {
-          "path_match": "sourceNode.groupByAttributes.*",
+        "long_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
           "match_mapping_type": "long",
           "mapping": {
             "type": "long"
@@ -13,8 +13,8 @@
         }
       },
       {
-        "double_source_node_group_by_attributes": {
-          "path_match": "sourceNode.groupByAttributes.*",
+        "double_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
           "match_mapping_type": "double",
           "mapping": {
             "type": "double"
@@ -22,18 +22,17 @@
         }
       },
       {
-        "string_source_node_group_by_attributes": {
-          "path_match": "sourceNode.groupByAttributes.*",
+        "string_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
           "match_mapping_type": "string",
           "mapping": {
-            "ignore_above": 256,
             "type": "keyword"
           }
         }
       },
       {
-        "long_target_node_group_by_attributes": {
-          "path_match": "targetNode.groupByAttributes.*",
+        "long_operation_attributes": {
+          "path_match": "*.attributes.*",
           "match_mapping_type": "long",
           "mapping": {
             "type": "long"
@@ -41,8 +40,8 @@
         }
       },
       {
-        "double_target_node_group_by_attributes": {
-          "path_match": "targetNode.groupByAttributes.*",
+        "double_operation_attributes": {
+          "path_match": "*.attributes.*",
           "match_mapping_type": "double",
           "mapping": {
             "type": "double"
@@ -50,67 +49,10 @@
         }
       },
       {
-        "string_target_node_group_by_attributes": {
-          "path_match": "targetNode.groupByAttributes.*",
+        "string_operation_attributes": {
+          "path_match": "*.attributes.*",
           "match_mapping_type": "string",
           "mapping": {
-            "ignore_above": 256,
-            "type": "keyword"
-          }
-        }
-      },
-      {
-        "long_source_operation_attributes": {
-          "path_match": "sourceOperation.attributes.*",
-          "match_mapping_type": "long",
-          "mapping": {
-            "type": "long"
-          }
-        }
-      },
-      {
-        "double_source_operation_attributes": {
-          "path_match": "sourceOperation.attributes.*",
-          "match_mapping_type": "double",
-          "mapping": {
-            "type": "double"
-          }
-        }
-      },
-      {
-        "string_source_operation_attributes": {
-          "path_match": "sourceOperation.attributes.*",
-          "match_mapping_type": "string",
-          "mapping": {
-            "ignore_above": 256,
-            "type": "keyword"
-          }
-        }
-      },
-      {
-        "long_target_operation_attributes": {
-          "path_match": "targetOperation.attributes.*",
-          "match_mapping_type": "long",
-          "mapping": {
-            "type": "long"
-          }
-        }
-      },
-      {
-        "double_target_operation_attributes": {
-          "path_match": "targetOperation.attributes.*",
-          "match_mapping_type": "double",
-          "mapping": {
-            "type": "double"
-          }
-        }
-      },
-      {
-        "string_target_operation_attributes": {
-          "path_match": "targetOperation.attributes.*",
-          "match_mapping_type": "string",
-          "mapping": {
-            "ignore_above": 256,
             "type": "keyword"
           }
         }
