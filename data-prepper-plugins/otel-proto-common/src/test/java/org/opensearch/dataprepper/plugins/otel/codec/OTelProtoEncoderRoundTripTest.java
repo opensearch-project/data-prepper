@@ -158,9 +158,10 @@ public class OTelProtoEncoderRoundTripTest {
                 originalRequest.getResourceSpans(0).getScopeSpans(0).getSpans(0);
             
             // Verify events are preserved
-            assertThat(encodedSpan.getEventsCount(), equalTo(originalSpan.getEventsCount()));
+            final int eventsCount = originalSpan.getEventsCount();
+            assertThat(encodedSpan.getEventsCount(), equalTo(eventsCount));
             
-            if (originalSpan.getEventsCount() > 0) {
+            if (eventsCount > 0) {
                 final io.opentelemetry.proto.trace.v1.Span.Event originalEvent = originalSpan.getEvents(0);
                 final io.opentelemetry.proto.trace.v1.Span.Event encodedEvent = encodedSpan.getEvents(0);
                 
@@ -174,61 +175,76 @@ public class OTelProtoEncoderRoundTripTest {
     @Nested
     class MetricsRoundTripTests {
 
-        @Test
-        void testGaugeMetricRoundTrip() throws Exception {
-            final ExportMetricsServiceRequest originalRequest = 
-                buildExportMetricsServiceRequestFromJsonFile("test-gauge-metrics.json");
-            
-            // Decode to Data Prepper model
-            final Collection<Record<? extends Metric>> records = 
-                decoder.parseExportMetricsServiceRequest(originalRequest, TEST_TIME);
-            
-            assertThat(records.size(), equalTo(1));
-            final Metric metric = records.iterator().next().getData();
-            assertThat(metric, instanceOf(JacksonGauge.class));
-            
-            final JacksonGauge gauge = (JacksonGauge) metric;
-            
-            // Encode back to protobuf
-            final ResourceMetrics encodedResourceMetrics = encoder.convertToResourceMetrics(gauge);
-            
-            // Verify structure
-            assertNotNull(encodedResourceMetrics);
-            assertThat(encodedResourceMetrics.getScopeMetricsCount(), equalTo(1));
-            assertThat(encodedResourceMetrics.getScopeMetrics(0).getMetricsCount(), equalTo(1));
-            
-            final io.opentelemetry.proto.metrics.v1.Metric encodedMetric = 
-                encodedResourceMetrics.getScopeMetrics(0).getMetrics(0);
-            final io.opentelemetry.proto.metrics.v1.Metric originalMetric = 
-                originalRequest.getResourceMetrics(0).getScopeMetrics(0).getMetrics(0);
-            
-            // Verify metric metadata
-            assertEquals(originalMetric.getName(), encodedMetric.getName());
-            assertEquals(originalMetric.getDescription(), encodedMetric.getDescription());
-            assertEquals(originalMetric.getUnit(), encodedMetric.getUnit());
-            
-            // Verify it's a gauge
-            assertThat(encodedMetric.hasGauge(), equalTo(true));
-            
-            // Verify data points
-            assertThat(encodedMetric.getGauge().getDataPointsCount(), 
-                equalTo(originalMetric.getGauge().getDataPointsCount()));
-            
-            if (originalMetric.getGauge().getDataPointsCount() > 0) {
+        @Nested
+        class GaugeMetricTests {
+            private ExportMetricsServiceRequest originalRequest;
+            private JacksonGauge gauge;
+            private ResourceMetrics encodedResourceMetrics;
+            private io.opentelemetry.proto.metrics.v1.Metric encodedMetric;
+            private io.opentelemetry.proto.metrics.v1.Metric originalMetric;
+
+            @BeforeEach
+            void setUpGaugeTest() throws Exception {
+                originalRequest = buildExportMetricsServiceRequestFromJsonFile("test-gauge-metrics.json");
+                
+                // Decode to Data Prepper model
+                final Collection<Record<? extends Metric>> records = 
+                    decoder.parseExportMetricsServiceRequest(originalRequest, TEST_TIME);
+                
+                assertThat(records.size(), equalTo(1));
+                final Metric metric = records.iterator().next().getData();
+                assertThat(metric, instanceOf(JacksonGauge.class));
+                
+                gauge = (JacksonGauge) metric;
+                
+                // Encode back to protobuf
+                encodedResourceMetrics = encoder.convertToResourceMetrics(gauge);
+                
+                // Verify structure
+                assertNotNull(encodedResourceMetrics);
+                assertThat(encodedResourceMetrics.getScopeMetricsCount(), equalTo(1));
+                assertThat(encodedResourceMetrics.getScopeMetrics(0).getMetricsCount(), equalTo(1));
+                
+                encodedMetric = encodedResourceMetrics.getScopeMetrics(0).getMetrics(0);
+                originalMetric = originalRequest.getResourceMetrics(0).getScopeMetrics(0).getMetrics(0);
+            }
+
+            @Test
+            void testGaugeMetricStructure() {
+                // Verify metric metadata
+                assertEquals(originalMetric.getName(), encodedMetric.getName());
+                assertEquals(originalMetric.getDescription(), encodedMetric.getDescription());
+                assertEquals(originalMetric.getUnit(), encodedMetric.getUnit());
+                
+                // Verify it's a gauge
+                assertThat(encodedMetric.hasGauge(), equalTo(true));
+                
+                // Verify data points
+                assertThat(encodedMetric.getGauge().getDataPointsCount(), 
+                    equalTo(originalMetric.getGauge().getDataPointsCount()));
+            }
+
+            @Test
+            void testGaugeDataPointTimestamps() {
+                assertThat(originalMetric.getGauge().getDataPointsCount(), equalTo(1));
+                
                 final var originalDataPoint = originalMetric.getGauge().getDataPoints(0);
                 final var encodedDataPoint = encodedMetric.getGauge().getDataPoints(0);
                 
                 assertEquals(originalDataPoint.getTimeUnixNano(), encodedDataPoint.getTimeUnixNano());
                 assertEquals(originalDataPoint.getStartTimeUnixNano(), encodedDataPoint.getStartTimeUnixNano());
+            }
+
+            @Test
+            void testGaugeValuePreserved() {
+                assertThat(originalMetric.getGauge().getDataPointsCount(), equalTo(1));
                 
-                // Verify value (handle both int and double)
-                if (originalDataPoint.hasAsDouble()) {
-                    assertThat(encodedDataPoint.getAsDouble(), 
-                        closeTo(originalDataPoint.getAsDouble(), DELTA));
-                } else if (originalDataPoint.hasAsInt()) {
-                    assertThat((double) encodedDataPoint.getAsDouble(), 
-                        closeTo((double) originalDataPoint.getAsInt(), DELTA));
-                }
+                final var originalDataPoint = originalMetric.getGauge().getDataPoints(0);
+                final var encodedDataPoint = encodedMetric.getGauge().getDataPoints(0);
+                
+                // test-gauge-metrics.json uses asInt, verify it's preserved as double
+                assertThat((double) encodedDataPoint.getAsDouble(), 
+                    closeTo((double) originalDataPoint.getAsInt(), DELTA));
             }
         }
 
@@ -300,25 +316,25 @@ public class OTelProtoEncoderRoundTripTest {
             assertThat(encodedMetric.getHistogram().getDataPointsCount(), 
                 equalTo(originalMetric.getHistogram().getDataPointsCount()));
             
-            if (originalMetric.getHistogram().getDataPointsCount() > 0) {
-                final var originalDataPoint = originalMetric.getHistogram().getDataPoints(0);
-                final var encodedDataPoint = encodedMetric.getHistogram().getDataPoints(0);
-                
-                assertEquals(originalDataPoint.getCount(), encodedDataPoint.getCount());
-                assertThat(encodedDataPoint.getSum(), closeTo(originalDataPoint.getSum(), DELTA));
-                
-                // Verify bucket counts
-                assertEquals(originalDataPoint.getBucketCountsCount(), 
-                    encodedDataPoint.getBucketCountsCount());
-                
-                // Verify explicit bounds
-                assertEquals(originalDataPoint.getExplicitBoundsCount(), 
-                    encodedDataPoint.getExplicitBoundsCount());
-                
-                for (int i = 0; i < originalDataPoint.getExplicitBoundsCount(); i++) {
-                    assertThat(encodedDataPoint.getExplicitBounds(i), 
-                        closeTo(originalDataPoint.getExplicitBounds(i), DELTA));
-                }
+            assertThat(originalMetric.getHistogram().getDataPointsCount(), equalTo(1));
+            
+            final var originalDataPoint = originalMetric.getHistogram().getDataPoints(0);
+            final var encodedDataPoint = encodedMetric.getHistogram().getDataPoints(0);
+            
+            assertEquals(originalDataPoint.getCount(), encodedDataPoint.getCount());
+            assertThat(encodedDataPoint.getSum(), closeTo(originalDataPoint.getSum(), DELTA));
+            
+            // Verify bucket counts
+            assertEquals(originalDataPoint.getBucketCountsCount(), 
+                encodedDataPoint.getBucketCountsCount());
+            
+            // Verify explicit bounds
+            final int explicitBoundsCount = originalDataPoint.getExplicitBoundsCount();
+            assertEquals(explicitBoundsCount, encodedDataPoint.getExplicitBoundsCount());
+            
+            for (int i = 0; i < explicitBoundsCount; i++) {
+                assertThat(encodedDataPoint.getExplicitBounds(i), 
+                    closeTo(originalDataPoint.getExplicitBounds(i), DELTA));
             }
         }
 
@@ -489,10 +505,11 @@ public class OTelProtoEncoderRoundTripTest {
                 encodedResourceMetrics.getScopeMetrics(0).getMetrics(0);
             
             // Verify data point attributes are preserved
-            if (encodedMetric.hasGauge() && encodedMetric.getGauge().getDataPointsCount() > 0) {
-                final var dataPoint = encodedMetric.getGauge().getDataPoints(0);
-                assertThat(dataPoint.getAttributesCount(), equalTo(originalAttributeCount));
-            }
+            assertThat(encodedMetric.hasGauge(), equalTo(true));
+            assertThat(encodedMetric.getGauge().getDataPointsCount(), equalTo(1));
+            
+            final var dataPoint = encodedMetric.getGauge().getDataPoints(0);
+            assertThat(dataPoint.getAttributesCount(), equalTo(originalAttributeCount));
         }
     }
 
@@ -633,9 +650,10 @@ public class OTelProtoEncoderRoundTripTest {
             assertEquals(originalDataPoint.getSum(), encodedDataPoint.getSum(), 0.0001);
             
             // Verify bucket counts are preserved (the distribution data!)
-            assertEquals(originalDataPoint.getBucketCountsCount(), 
-                encodedDataPoint.getBucketCountsCount());
-            for (int i = 0; i < originalDataPoint.getBucketCountsCount(); i++) {
+            final int bucketCountsCount = originalDataPoint.getBucketCountsCount();
+            assertEquals(bucketCountsCount, encodedDataPoint.getBucketCountsCount());
+            
+            for (int i = 0; i < bucketCountsCount; i++) {
                 assertEquals(originalDataPoint.getBucketCounts(i), 
                     encodedDataPoint.getBucketCounts(i),
                     "Bucket count at index " + i + " should match");
@@ -666,15 +684,14 @@ public class OTelProtoEncoderRoundTripTest {
             final var encodedDataPoint = encodedMetric.getGauge().getDataPoints(0);
             
             // Verify the actual numeric value is preserved
-            if (originalDataPoint.hasAsDouble()) {
-                assertEquals(originalDataPoint.getAsDouble(), 
-                    encodedDataPoint.getAsDouble(), 0.0001,
-                    "Gauge value should be preserved");
-            } else if (originalDataPoint.hasAsInt()) {
-                assertEquals((double) originalDataPoint.getAsInt(), 
-                    encodedDataPoint.getAsDouble(), 0.0001,
-                    "Gauge value should be preserved");
-            }
+            assertThat(originalDataPoint.hasAsDouble() || originalDataPoint.hasAsInt(), equalTo(true));
+            
+            final double expectedValue = originalDataPoint.hasAsDouble() 
+                ? originalDataPoint.getAsDouble() 
+                : (double) originalDataPoint.getAsInt();
+            
+            assertEquals(expectedValue, encodedDataPoint.getAsDouble(), 0.0001,
+                "Gauge value should be preserved");
         }
     }
 }

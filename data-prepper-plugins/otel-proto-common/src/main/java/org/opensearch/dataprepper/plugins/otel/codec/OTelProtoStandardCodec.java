@@ -37,6 +37,9 @@ import org.opensearch.dataprepper.model.metric.DefaultBucket;
 import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.metric.DefaultQuantile;
 import org.opensearch.dataprepper.model.metric.Exemplar;
+import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.Gauge;
+import org.opensearch.dataprepper.model.metric.Histogram;
 import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
@@ -48,6 +51,8 @@ import org.opensearch.dataprepper.model.metric.JacksonStandardSummary;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Sum;
+import org.opensearch.dataprepper.model.metric.Summary;
 import org.opensearch.dataprepper.model.metric.Quantile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
@@ -1020,17 +1025,17 @@ public class OTelProtoStandardCodec {
             metricBuilder.setUnit(metric.getUnit() != null ? metric.getUnit() : "");
             
             // Handle different metric types
-            if (metric instanceof JacksonGauge) {
-                metricBuilder.setGauge(constructGauge((JacksonGauge) metric));
-            } else if (metric instanceof JacksonSum) {
-                metricBuilder.setSum(constructSum((JacksonSum) metric));
-            } else if (metric instanceof JacksonHistogram) {
-                metricBuilder.setHistogram(constructHistogram((JacksonHistogram) metric));
-            } else if (metric instanceof JacksonSummary) {
-                metricBuilder.setSummary(constructSummary((JacksonSummary) metric));
-            } else if (metric instanceof JacksonExponentialHistogram) {
+            if (metric instanceof Gauge) {
+                metricBuilder.setGauge(constructGauge((Gauge) metric));
+            } else if (metric instanceof Sum) {
+                metricBuilder.setSum(constructSum((Sum) metric));
+            } else if (metric instanceof Histogram) {
+                metricBuilder.setHistogram(constructHistogram((Histogram) metric));
+            } else if (metric instanceof Summary) {
+                metricBuilder.setSummary(constructSummary((Summary) metric));
+            } else if (metric instanceof ExponentialHistogram) {
                 metricBuilder.setExponentialHistogram(
-                    constructExponentialHistogram((JacksonExponentialHistogram) metric));
+                    constructExponentialHistogram((ExponentialHistogram) metric));
             } else {
                 throw new UnsupportedEncodingException(
                     "Unsupported metric type: " + metric.getClass().getName());
@@ -1039,7 +1044,7 @@ public class OTelProtoStandardCodec {
             return metricBuilder.build();
         }
 
-        protected io.opentelemetry.proto.metrics.v1.Gauge constructGauge(final JacksonGauge gauge) 
+        protected io.opentelemetry.proto.metrics.v1.Gauge constructGauge(final Gauge gauge) 
                 throws UnsupportedEncodingException, DecoderException {
             
             final io.opentelemetry.proto.metrics.v1.Gauge.Builder builder = 
@@ -1058,7 +1063,7 @@ public class OTelProtoStandardCodec {
             return builder.build();
         }
 
-        protected io.opentelemetry.proto.metrics.v1.Sum constructSum(final JacksonSum sum) 
+        protected io.opentelemetry.proto.metrics.v1.Sum constructSum(final Sum sum) 
                 throws UnsupportedEncodingException, DecoderException {
             
             final io.opentelemetry.proto.metrics.v1.Sum.Builder builder = 
@@ -1088,7 +1093,7 @@ public class OTelProtoStandardCodec {
         }
 
         protected io.opentelemetry.proto.metrics.v1.Histogram constructHistogram(
-                final JacksonHistogram histogram) throws UnsupportedEncodingException, DecoderException {
+                final Histogram histogram) throws UnsupportedEncodingException, DecoderException {
             
             final io.opentelemetry.proto.metrics.v1.Histogram.Builder builder = 
                 io.opentelemetry.proto.metrics.v1.Histogram.newBuilder();
@@ -1145,7 +1150,7 @@ public class OTelProtoStandardCodec {
         }
 
         protected io.opentelemetry.proto.metrics.v1.Summary constructSummary(
-                final JacksonSummary summary) throws UnsupportedEncodingException {
+                final Summary summary) throws UnsupportedEncodingException {
             
             final io.opentelemetry.proto.metrics.v1.Summary.Builder builder = 
                 io.opentelemetry.proto.metrics.v1.Summary.newBuilder();
@@ -1183,7 +1188,7 @@ public class OTelProtoStandardCodec {
         }
 
         protected io.opentelemetry.proto.metrics.v1.ExponentialHistogram constructExponentialHistogram(
-                final JacksonExponentialHistogram expHistogram) throws UnsupportedEncodingException, DecoderException {
+                final ExponentialHistogram expHistogram) throws UnsupportedEncodingException, DecoderException {
             
             final io.opentelemetry.proto.metrics.v1.ExponentialHistogram.Builder builder = 
                 io.opentelemetry.proto.metrics.v1.ExponentialHistogram.newBuilder();

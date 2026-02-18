@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -16,18 +22,9 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
-import io.opentelemetry.proto.logs.v1.ResourceLogs;
-import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalType;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalHandler;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import org.slf4j.Logger;
@@ -40,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using an Armeria client.
@@ -117,9 +113,9 @@ public class OtlpHttpSender {
      * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
      *
      * @param batch the batch of events to send
-     * @param signalType the signal type (TRACE, METRIC, or LOG)
+     * @param signalHandler the signal handler for building the request and parsing the response
      */
-    public void send(@Nonnull final List<Pair<Object, EventHandle>> batch, @Nonnull final OtlpSignalType signalType) {
+    public void send(@Nonnull final List<Pair<Object, EventHandle>> batch, @Nonnull final OtlpSignalHandler signalHandler) {
         if (batch.isEmpty()) {
             return;
         }
@@ -127,7 +123,7 @@ public class OtlpHttpSender {
         // Defensive copy to avoid ConcurrentModificationException
         final List<Pair<Object, EventHandle>> immutableBatch = List.copyOf(batch);
 
-        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(immutableBatch, signalType);
+        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(immutableBatch, signalHandler);
         final int events = immutableBatch.size();
         if (payloadAndCompressedPayload.right().length == 0) {
             sinkMetrics.incrementFailedRecordsCount(events);
@@ -148,52 +144,18 @@ public class OtlpHttpSender {
 
                     final int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    handleResponse(statusCode, responseBytes, immutableBatch, signalType);
+                    handleResponse(statusCode, responseBytes, immutableBatch, signalHandler);
                 })
                 .exceptionally(e -> {
-                    LOG.error("Failed to send {} {} events.", events, signalType, e);
+                    LOG.error("Failed to send {} events.", events, e);
                     sinkMetrics.incrementRejectedRecordsCount(events);
                     releaseAllEventHandle(immutableBatch, false);
                     return null;
                 });
     }
 
-    private Pair<byte[], byte[]> getPayloadAndCompressedPayload(final List<Pair<Object, EventHandle>> batch, final OtlpSignalType signalType) {
-        final byte[] payload;
-        
-        switch (signalType) {
-            case TRACE:
-                final ExportTraceServiceRequest traceRequest = ExportTraceServiceRequest.newBuilder()
-                        .addAllResourceSpans(batch.stream()
-                                .map(p -> (ResourceSpans) p.left())
-                                .collect(Collectors.toList()))
-                        .build();
-                payload = traceRequest.toByteArray();
-                break;
-                
-            case METRIC:
-                final ExportMetricsServiceRequest metricsRequest = ExportMetricsServiceRequest.newBuilder()
-                        .addAllResourceMetrics(batch.stream()
-                                .map(p -> (ResourceMetrics) p.left())
-                                .collect(Collectors.toList()))
-                        .build();
-                payload = metricsRequest.toByteArray();
-                break;
-                
-            case LOG:
-                final ExportLogsServiceRequest logsRequest = ExportLogsServiceRequest.newBuilder()
-                        .addAllResourceLogs(batch.stream()
-                                .map(p -> (ResourceLogs) p.left())
-                                .collect(Collectors.toList()))
-                        .build();
-                payload = logsRequest.toByteArray();
-                break;
-                
-            default:
-                LOG.error("Unknown signal type: {}", signalType);
-                return Pair.of(new byte[0], new byte[0]);
-        }
-        
+    private Pair<byte[], byte[]> getPayloadAndCompressedPayload(final List<Pair<Object, EventHandle>> batch, final OtlpSignalHandler signalHandler) {
+        final byte[] payload = signalHandler.buildRequestPayload(batch);
         final byte[] compressedPayload = gzipCompressor.apply(payload);
         return Pair.of(payload, compressedPayload);
     }
@@ -212,11 +174,11 @@ public class OtlpHttpSender {
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(compressedPayload));
     }
 
-    private void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<Object, EventHandle>> batch, final OtlpSignalType signalType) {
+    private void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<Object, EventHandle>> batch, final OtlpSignalHandler signalHandler) {
         sinkMetrics.recordResponseCode(statusCode);
 
         if (statusCode >= 200 && statusCode < 300) {
-            handleSuccessfulResponse(responseBytes, batch, signalType);
+            handleSuccessfulResponse(responseBytes, batch, signalHandler);
             return;
         }
 
@@ -224,7 +186,7 @@ public class OtlpHttpSender {
                 ? new String(responseBytes, StandardCharsets.UTF_8)
                 : "<no body>";
 
-        LOG.error("Non-successful OTLP response for {}. Status: {}, Response: {}", signalType, statusCode, responseBody);
+        LOG.error("Non-successful OTLP response. Status: {}, Response: {}", statusCode, responseBody);
         sinkMetrics.incrementRejectedRecordsCount(batch.size());
         releaseAllEventHandle(batch, false);
     }
@@ -232,7 +194,7 @@ public class OtlpHttpSender {
     /**
      * Handles a successful OTLP response with partial success.
      */
-    private void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<Object, EventHandle>> batch, final OtlpSignalType signalType) {
+    private void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<Object, EventHandle>> batch, final OtlpSignalHandler signalHandler) {
         final int events = batch.size();
         if (responseBytes == null) {
             sinkMetrics.incrementRecordsOut(events);
@@ -241,40 +203,12 @@ public class OtlpHttpSender {
         }
 
         try {
-            long rejectedCount = 0;
-            String errorMessage = "";
-            
-            switch (signalType) {
-                case TRACE:
-                    final ExportTraceServiceResponse traceResponse = ExportTraceServiceResponse.parseFrom(responseBytes);
-                    if (traceResponse.hasPartialSuccess()) {
-                        rejectedCount = traceResponse.getPartialSuccess().getRejectedSpans();
-                        errorMessage = traceResponse.getPartialSuccess().getErrorMessage();
-                    }
-                    break;
-                    
-                case METRIC:
-                    final ExportMetricsServiceResponse metricsResponse = ExportMetricsServiceResponse.parseFrom(responseBytes);
-                    if (metricsResponse.hasPartialSuccess()) {
-                        rejectedCount = metricsResponse.getPartialSuccess().getRejectedDataPoints();
-                        errorMessage = metricsResponse.getPartialSuccess().getErrorMessage();
-                    }
-                    break;
-                    
-                case LOG:
-                    final ExportLogsServiceResponse logsResponse = ExportLogsServiceResponse.parseFrom(responseBytes);
-                    if (logsResponse.hasPartialSuccess()) {
-                        rejectedCount = logsResponse.getPartialSuccess().getRejectedLogRecords();
-                        errorMessage = logsResponse.getPartialSuccess().getErrorMessage();
-                    }
-                    break;
-                    
-                default:
-                    LOG.warn("Unknown signal type in response: {}", signalType);
-            }
+            final Pair<Long, String> partialSuccess = signalHandler.parsePartialSuccess(responseBytes);
+            final long rejectedCount = partialSuccess.left();
+            final String errorMessage = partialSuccess.right();
 
             if (rejectedCount > 0) {
-                LOG.error("OTLP Partial Success for {}: rejected={}, message={}", signalType, rejectedCount, errorMessage);
+                LOG.error("OTLP Partial Success: rejected={}, message={}", rejectedCount, errorMessage);
                 sinkMetrics.incrementRejectedRecordsCount(rejectedCount);
             }
 
@@ -284,7 +218,7 @@ public class OtlpHttpSender {
             // Optimistically release all as true, no per-event granularity
             releaseAllEventHandle(batch, true);
         } catch (final Exception e) {
-            LOG.error("Could not parse OTLP response for {}: {}", signalType, e.getMessage());
+            LOG.error("Could not parse OTLP response: {}", e.getMessage());
             sinkMetrics.incrementErrorsCount();
             sinkMetrics.incrementRecordsOut(events);
             releaseAllEventHandle(batch, true);

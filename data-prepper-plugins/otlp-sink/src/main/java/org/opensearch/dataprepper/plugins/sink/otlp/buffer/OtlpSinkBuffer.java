@@ -1,24 +1,21 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.opentelemetry.proto.logs.v1.ResourceLogs;
-import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import lombok.Getter;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.log.Log;
-import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
-import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalType;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalHandler;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
@@ -36,7 +33,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A back-pressure buffer for OTLP sink that supports traces, metrics, and logs.
+ * A signal-agnostic back-pressure buffer for OTLP sink.
+ * Uses a signal handler to encode and send events of a specific type.
  */
 public class OtlpSinkBuffer {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpSinkBuffer.class);
@@ -44,7 +42,7 @@ public class OtlpSinkBuffer {
     private static final int MIN_QUEUE_CAPACITY = 2000;
 
     private final BlockingQueue<Record<Event>> queue;
-    private final OTelProtoStandardCodec.OTelProtoEncoder encoder;
+    private final OtlpSignalHandler signalHandler;
     private final OtlpHttpSender sender;
     private final OtlpSinkMetrics sinkMetrics;
 
@@ -58,27 +56,20 @@ public class OtlpSinkBuffer {
     private volatile boolean running = true;
 
     /**
-     * Creates a new OTLP sink buffer.
+     * Creates a new signal-specific OTLP sink buffer.
      *
-     * @param awsCredentialsSupplier the AWS credentials supplier
-     * @param config      the OTLP sink configuration
-     * @param sinkMetrics the metrics collector to use
+     * @param config        the OTLP sink configuration
+     * @param sinkMetrics   the metrics collector to use
+     * @param signalHandler the signal handler for encoding and request building
+     * @param sender        the HTTP sender
      */
-    public OtlpSinkBuffer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics));
-    }
-
-    /**
-     * Visible for testing only: constructs an OTLP sink buffer with injected encoder and sender.
-     */
-    @VisibleForTesting
-    OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
-                   @Nonnull final OtlpSinkMetrics sinkMetrics,
-                   @Nonnull final OTelProtoStandardCodec.OTelProtoEncoder encoder,
-                   @Nonnull final OtlpHttpSender sender) {
+    public OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
+                          @Nonnull final OtlpSinkMetrics sinkMetrics,
+                          @Nonnull final OtlpSignalHandler signalHandler,
+                          @Nonnull final OtlpHttpSender sender) {
 
         this.sinkMetrics = sinkMetrics;
-        this.encoder = encoder;
+        this.signalHandler = signalHandler;
         this.sender = sender;
 
         this.maxEvents = config.getMaxEvents();
@@ -156,7 +147,6 @@ public class OtlpSinkBuffer {
         final List<Pair<Object, EventHandle>> batch = new ArrayList<>();
         long batchSize = 0;
         long lastFlush = System.currentTimeMillis();
-        OtlpSignalType currentSignalType = null;
 
         while (true) {
             try {
@@ -165,27 +155,16 @@ public class OtlpSinkBuffer {
 
                 if (record != null) {
                     final Event event = record.getData();
-                    final OtlpSignalType signalType = OtlpSignalType.fromEvent(event);
-
-                    // If signal type changes, flush current batch first
-                    if (currentSignalType != null && currentSignalType != signalType && !batch.isEmpty()) {
-                        sender.send(batch, currentSignalType);
-                        batch.clear();
-                        batchSize = 0;
-                        lastFlush = now;
-                    }
-
-                    currentSignalType = signalType;
 
                     try {
-                        final Object resourceData = encodeEvent(event, signalType);
-                        if (resourceData != null) {
+                        final Object encodedData = signalHandler.encodeEvent(event);
+                        if (encodedData != null) {
                             final EventHandle eventHandle = event.getEventHandle();
-                            batch.add(Pair.of(resourceData, eventHandle));
-                            batchSize += getSerializedSize(resourceData);
+                            batch.add(Pair.of(encodedData, eventHandle));
+                            batchSize += signalHandler.getSerializedSize(encodedData);
                         }
                     } catch (final Exception e) {
-                        LOG.error("Failed to encode event of type {}, skipping", signalType, e);
+                        LOG.error("Failed to encode event, skipping", e);
                         sinkMetrics.incrementFailedRecordsCount(1);
                         sinkMetrics.incrementErrorsCount();
                     }
@@ -195,9 +174,7 @@ public class OtlpSinkBuffer {
                 final boolean flushByTime = !batch.isEmpty() && (now - lastFlush >= flushTimeoutMillis);
 
                 if (flushBySize || flushByTime) {
-                    if (currentSignalType != null) {
-                        sender.send(batch, currentSignalType);
-                    }
+                    sender.send(batch, signalHandler);
                     batch.clear();
                     batchSize = 0;
                     lastFlush = now;
@@ -218,47 +195,9 @@ public class OtlpSinkBuffer {
         }
 
         // Final flush
-        if (!batch.isEmpty() && currentSignalType != null) {
-            sender.send(batch, currentSignalType);
+        if (!batch.isEmpty()) {
+            sender.send(batch, signalHandler);
             batch.clear();
         }
-    }
-
-    /**
-     * Encodes an event based on its signal type.
-     *
-     * @param event the event to encode
-     * @param signalType the signal type
-     * @return the encoded resource data (ResourceSpans, ResourceMetrics, or ResourceLogs)
-     */
-    private Object encodeEvent(final Event event, final OtlpSignalType signalType) throws Exception {
-        switch (signalType) {
-            case TRACE:
-                return encoder.convertToResourceSpans((Span) event);
-            case METRIC:
-                return encoder.convertToResourceMetrics((Metric) event);
-            case LOG:
-                return encoder.convertToResourceLogs((Log) event);
-            default:
-                LOG.warn("Unknown signal type: {}", signalType);
-                return null;
-        }
-    }
-
-    /**
-     * Gets the serialized size of the resource data.
-     *
-     * @param resourceData the resource data
-     * @return the serialized size in bytes
-     */
-    private long getSerializedSize(final Object resourceData) {
-        if (resourceData instanceof ResourceSpans) {
-            return ((ResourceSpans) resourceData).getSerializedSize();
-        } else if (resourceData instanceof ResourceMetrics) {
-            return ((ResourceMetrics) resourceData).getSerializedSize();
-        } else if (resourceData instanceof ResourceLogs) {
-            return ((ResourceLogs) resourceData).getSerializedSize();
-        }
-        return 0;
     }
 }
