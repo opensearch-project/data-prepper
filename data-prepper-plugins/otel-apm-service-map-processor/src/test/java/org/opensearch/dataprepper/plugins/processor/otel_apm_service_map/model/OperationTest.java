@@ -12,6 +12,8 @@ package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,46 +21,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OperationTest {
 
     @Test
-    void testConstructorAndGetters() {
-        Service.KeyAttributes keyAttributes = new Service.KeyAttributes("prod", "test-service");
-        Service service = new Service(keyAttributes);
-        Operation operation = new Operation("test-operation", service, "remote-op");
+    void testConstructorWithNameOnly() {
+        Operation operation = new Operation("test-operation");
 
         assertEquals("test-operation", operation.getName());
-        assertEquals(service, operation.getRemoteService());
-        assertEquals("remote-op", operation.getRemoteOperationName());
+        assertTrue(operation.getAttributes().isEmpty());
+    }
+
+    @Test
+    void testConstructorWithAttributes() {
+        Map<String, String> attributes = Map.of("http.method", "GET");
+        Operation operation = new Operation("test-operation", attributes);
+
+        assertEquals("test-operation", operation.getName());
+        assertEquals(attributes, operation.getAttributes());
+    }
+
+    @Test
+    void testConstructorWithNullAttributes() {
+        Operation operation = new Operation("test-operation", null);
+
+        assertTrue(operation.getAttributes().isEmpty());
     }
 
     @Test
     void testEquals() {
-        Service.KeyAttributes keyAttributes = new Service.KeyAttributes("prod", "test-service");
-        Service service = new Service(keyAttributes);
-        Operation operation1 = new Operation("test-operation", service, "remote-op");
-        Operation operation2 = new Operation("test-operation", service, "remote-op");
+        Operation operation1 = new Operation("test-operation");
+        Operation operation2 = new Operation("test-operation");
 
         assertEquals(operation1, operation2);
-        assertNotEquals(operation1, new Operation("different", service, "remote-op"));
+        assertNotEquals(operation1, new Operation("different"));
         assertNotEquals(operation1, null);
     }
 
     @Test
     void testHashCode() {
-        Service.KeyAttributes keyAttributes = new Service.KeyAttributes("prod", "test-service");
-        Service service = new Service(keyAttributes);
-        Operation operation1 = new Operation("test-operation", service, "remote-op");
-        Operation operation2 = new Operation("test-operation", service, "remote-op");
+        Operation operation1 = new Operation("test-operation");
+        Operation operation2 = new Operation("test-operation");
 
         assertEquals(operation1.hashCode(), operation2.hashCode());
     }
 
     @Test
     void testToString() {
-        Service.KeyAttributes keyAttributes = new Service.KeyAttributes("prod", "test-service");
-        Service service = new Service(keyAttributes);
-        Operation operation = new Operation("test-operation", service, "remote-op");
+        Operation operation = new Operation("test-operation");
 
         String result = operation.toString();
         assertTrue(result.contains("test-operation"));
-        assertTrue(result.contains("remote-op"));
     }
 }

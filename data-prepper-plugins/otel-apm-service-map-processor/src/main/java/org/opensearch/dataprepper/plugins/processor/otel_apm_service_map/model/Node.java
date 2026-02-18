@@ -16,7 +16,10 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
-public class Service {
+public class Node {
+
+    @JsonProperty("type")
+    private final String type;
 
     @JsonProperty("keyAttributes")
     private final KeyAttributes keyAttributes;
@@ -24,14 +27,20 @@ public class Service {
     @JsonProperty("groupByAttributes")
     private final Map<String, String> groupByAttributes;
 
-    public Service(final KeyAttributes keyAttributes) {
+    public Node(final String type, final KeyAttributes keyAttributes) {
+        this.type = type;
         this.keyAttributes = keyAttributes;
         this.groupByAttributes = Collections.emptyMap();
     }
 
-    public Service(final KeyAttributes keyAttributes, final Map<String, String> groupByAttributes) {
+    public Node(final String type, final KeyAttributes keyAttributes, final Map<String, String> groupByAttributes) {
+        this.type = type;
         this.keyAttributes = keyAttributes;
         this.groupByAttributes = groupByAttributes != null ? groupByAttributes : Collections.emptyMap();
+    }
+
+    public String getType() {
+        return type;
     }
 
     public KeyAttributes getKeyAttributes() {
@@ -45,24 +54,25 @@ public class Service {
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        Service service = (Service) o;
-        return Objects.equals(keyAttributes, service.keyAttributes) &&
-                Objects.equals(groupByAttributes, service.groupByAttributes);
+        Node node = (Node) o;
+        return Objects.equals(type, node.type) &&
+                Objects.equals(keyAttributes, node.keyAttributes) &&
+                Objects.equals(groupByAttributes, node.groupByAttributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(keyAttributes, groupByAttributes);
+        return Objects.hash(type, keyAttributes, groupByAttributes);
     }
 
     @Override
     public String toString() {
-        return "Service{" +
-                "keyAttributes=" + keyAttributes +
+        return "Node{" +
+                "type='" + type + '\'' +
+                ", keyAttributes=" + keyAttributes +
                 ", groupByAttributes=" + groupByAttributes +
                 '}';
     }
-
 
     public static class KeyAttributes {
         @JsonProperty("environment")
