@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
@@ -179,8 +180,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         final String path = oTelLogsSourceConfig.getHttpPath().replace("${pipelineName}", pipelineName);
         LOG.info("Configuring HTTP service under {} ", path);
 
-
-        final ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100, oTelLogsSourceConfig.getOutputFormat());
+        final ArmeriaHttpService armeriaHttpService = new ArmeriaHttpService(buffer, pluginMetrics, 100, createOtelProtoDecoder());
         final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null ? oTelLogsSourceConfig.getRetryInfo() : new RetryInfoConfig();
         final HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
@@ -210,7 +210,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 .exceptionHandler(createGrpExceptionHandler(oTelLogsSourceConfig));
         final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
                 (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+                createOtelProtoDecoder(),
                 buffer,
                 pluginMetrics,
                 null
@@ -253,6 +253,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
         } else {
             serverBuilder.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
         }
+    }
+
+    private OTelProtoCodec.OTelProtoDecoder createOtelProtoDecoder() {
+        return oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
     }
 
     @Override
