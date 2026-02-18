@@ -62,9 +62,6 @@
       "enabled": true
     },
     "properties": {
-      "eventType": {
-        "type": "keyword"
-      },
       "sourceNode": {
         "properties": {
           "type": {

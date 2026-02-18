@@ -245,10 +245,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         
         Map<String, Object> status = new HashMap<>();
         status.put("code", "ERROR");
-        
-//        Span mockSpan = mock(Span.class);
-//        when(mockSpan.getStatus()).thenReturn(status);
-        
+
         // Create a reflection helper to test private method
         // Since extractSpanStatus is private, it's tested indirectly through processSpan
         Record<Event> record = new Record<>(createMockSpan("test-service", "test-op", "SERVER"));
@@ -760,36 +757,6 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         Collection<Record<Event>> result = processor.doExecute(records);
         
         // Then
-        assertNotNull(result);
-    }
-
-    @Test
-    void testWindowProcessingWithInterruptedException() {
-        // Given
-        when(clock.instant())
-            .thenReturn(testTime) // Initial timestamp
-            .thenReturn(testTime.plusSeconds(65)); // 65 seconds later
-
-        // Mock the processor to throw InterruptedException during barrier wait
-        processor = new OTelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, eventFactory, pluginMetrics) {
-            @Override
-            public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
-                // Override to simulate barrier exception
-                try {
-                    return super.doExecute(records);
-                } catch (RuntimeException e) {
-                    // Should handle the exception gracefully
-                    throw e;
-                }
-            }
-        };
-        
-        Span mockSpan = createMockSpan("test-service", "test-op", "SERVER");
-        Record<Event> record = new Record<>(mockSpan);
-        Collection<Record<Event>> records = Collections.singletonList(record);
-        
-        // When/Then - Should handle exceptions gracefully
-        Collection<Record<Event>> result = processor.doExecute(records);
         assertNotNull(result);
     }
 
