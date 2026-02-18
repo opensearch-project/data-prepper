@@ -91,7 +91,7 @@ otel-apm-service-map-pipeline:
       ssl: false
       port: 21890
   route:
-      - service_map_v2 : '/eventType == "SERVICE_MAP_V2"'
+      - service_map_events : '/eventType == "SERVICE_MAP"'
       - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
@@ -100,10 +100,10 @@ otel-apm-service-map-pipeline:
   sink:
     - opensearch:
         hosts: ["https://localhost:9200"]
-        index: "otel-v2-apm-service-map-%{yyyy.MM.dd}"
+        index_type: otel-v2-apm-service-map
         username: "admin"
         password: "admin"
-        routes: [service_local_details, service_remote_details]
+        routes: [service_map_events]
     - prometheus:
         ...
         routes: [service_processed_metrics]
@@ -119,7 +119,7 @@ multi-env-apm-pipeline:
       ssl: false
       port: 21890
   route:
-      - service_map_v2 : '/eventType == "SERVICE_MAP_V2"'
+      - service_map_events : '/eventType == "SERVICE_MAP"'
       - service_processed_metrics : '/eventType == "METRIC"'
   processor:
     - otel_apm_service_map:
@@ -136,7 +136,7 @@ multi-env-apm-pipeline:
     - opensearch:
         hosts: ["https://localhost:9200"]
         index: "apm-service-map-${deployment.environment}-%{yyyy.MM.dd}"
-        routes: [service_local_details, service_remote_details]
+        routes: [service_map_events]
         index_type: custom
         template_content: |
           {
@@ -162,7 +162,7 @@ Represents a connection between two services:
 
 ```json
 {
-  "eventType": "SERVICE_MAP_V2",
+  "eventType": "SERVICE_MAP",
   "data": {
     "service": {
       "keyAttributes": {
@@ -194,7 +194,7 @@ Represents specific operations within a service:
 
 ```json
 {
-  "eventType": "SERVICE_MAP_V2",
+  "eventType": "SERVICE_MAP",
   "data": {
     "service": {
       "keyAttributes": {
