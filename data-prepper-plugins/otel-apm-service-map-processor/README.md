@@ -13,36 +13,6 @@ The `otel_apm_service_map` processor analyzes OpenTelemetry trace spans to autom
 - **Off-Heap Storage**: Efficient memory usage with MapDB for large-scale processing
 - **Real-Time Processing**: Generates service map data as traces are processed
 
-## How It Works
-
-### Three-Window Sliding Architecture
-
-The processor uses three overlapping time windows to ensure complete trace processing:
-
-- **Previous Window**: Completed spans from the previous time period
-- **Current Window**: Spans being actively processed
-- **Next Window**: Incoming spans for the next time period
-
-This approach ensures that spans from long-running traces that cross window boundaries are properly correlated.
-
-### Two-Phase Processing
-
-#### Phase 1: Span Decoration
-1. **CLIENT Span Processing**: Identifies outbound service calls and decorates them with remote service information
-2. **SERVER Span Processing**: Processes inbound requests and back-annotates related CLIENT spans
-
-#### Phase 2: Event Generation
-1. **ServiceConnection Events**: Represents service-to-service relationships
-2. **ServiceOperationDetail Events**: Represents specific operations within services
-3. **Metrics Generation**: Creates aggregated performance metrics
-
-### Span Analysis
-
-The processor analyzes different span kinds:
-- **CLIENT spans**: Represent outbound calls to other services
-- **SERVER spans**: Represent inbound requests being processed
-- **Span relationships**: Uses parent-child relationships to build complete call chains
-
 ## Configuration
 
 ### Basic Configuration
@@ -63,7 +33,7 @@ processor:
 |-----------|------|---------|-------------|
 | `window_duration` | Duration | `60s` | Fixed time window in seconds for evaluating APM service map relationships |
 | `db_path` | String | `"data/otel-apm-service-map/"` | Directory path for database files storing transient processing data |
-| `group_by_attributes` | List<String> | `[]` | OpenTelemetry resource attributes to include in service grouping |
+| `group_by_attributes` | List\<String\> | `[]` | OpenTelemetry resource attributes to include in service grouping |
 
 ### Advanced Configuration
 
@@ -79,9 +49,9 @@ processor:
         - "k8s.cluster.name"
 ```
 
-## Usage Examples
+## Pipeline Examples
 
-### Basic Pipeline Configuration
+### Basic Pipeline
 
 ```yaml
 version: "2"
@@ -135,99 +105,321 @@ multi-env-apm-pipeline:
         routes: [service_processed_metrics]
     - opensearch:
         hosts: ["https://localhost:9200"]
-        index: "apm-service-map-${deployment.environment}-%{yyyy.MM.dd}"
+        index_type: otel-v2-apm-service-map
         routes: [service_map_events]
-        index_type: custom
-        template_content: |
-          {
-            "index_patterns": ["apm-service-map-*"],
-            "template": {
-              "mappings": {
-                "properties": {
-                  "serviceName": {"type": "keyword"},
-                  "environment": {"type": "keyword"},
-                  "destinationServiceName": {"type": "keyword"},
-                  "destinationEnvironment": {"type": "keyword"}
-                }
-              }
-            }
-          }
 ```
 
 ## Output Events
 
-### ServiceConnection Events
+The processor generates two types of output events:
 
-Represents a connection between two services:
+- **NodeOperationDetail events** (`eventType: "SERVICE_MAP"`) - Service topology and operation relationships
+- **Metric events** (`eventType: "METRIC"`) - Aggregated performance metrics
 
-```json
-{
-  "eventType": "SERVICE_MAP",
-  "data": {
-    "service": {
-      "keyAttributes": {
-        "environment": "production",
-        "serviceName": "user-service"
-      },
-      "groupByAttributes": {
-        "service.version": "1.2.3",
-        "deployment.environment": "production"
-      }
-    },
-    "destinationService": {
-      "keyAttributes": {
-        "environment": "production",
-        "serviceName": "auth-service"
-      },
-      "groupByAttributes": {
-        "service.version": "2.1.0"
-      }
-    },
-    "timestamp": "2023-12-01T12:00:00Z"
-  }
-}
-```
+### NodeOperationDetail Events
 
-### ServiceOperationDetail Events
+NodeOperationDetail is a unified event type that represents both service-to-service connections and operation-level relationships through dual hash fields.
 
-Represents specific operations within a service:
+#### Service Connection (Edge Event)
+
+Represents a connection between two services with operation details:
 
 ```json
 {
   "eventType": "SERVICE_MAP",
-  "data": {
-    "service": {
-      "keyAttributes": {
-        "environment": "production", 
-        "serviceName": "auth-service"
-      },
-      "groupByAttributes": {
-        "service.version": "2.1.0"
-      }
+  "sourceNode": {
+    "keyAttributes": {
+      "environment": "production",
+      "serviceName": "user-service"
     },
-    "operation": {
-      "operationName": "authenticate",
-      "destinationService": {
-        "keyAttributes": {
-          "environment": "production",
-          "serviceName": "database-service"
-        }
-      },
-      "destinationOperation": "query"
+    "groupByAttributes": {
+      "service.version": "1.2.3",
+      "deployment.environment": "production"
     },
-    "timestamp": "2023-12-01T12:00:00Z"
-  }
+    "type": "service"
+  },
+  "targetNode": {
+    "keyAttributes": {
+      "environment": "production",
+      "serviceName": "auth-service"
+    },
+    "groupByAttributes": {
+      "service.version": "2.1.0"
+    },
+    "type": "service"
+  },
+  "sourceOperation": {
+    "name": "GET /api/users",
+    "attributes": {}
+  },
+  "targetOperation": {
+    "name": "GET /validate",
+    "attributes": {}
+  },
+  "nodeConnectionHash": "abc123",
+  "operationConnectionHash": "def456",
+  "timestamp": "2023-12-01T12:00:00Z"
 }
 ```
+
+#### Leaf Node Event
+
+Represents a service with no outgoing calls:
+
+```json
+{
+  "eventType": "SERVICE_MAP",
+  "sourceNode": {
+    "keyAttributes": {
+      "environment": "production",
+      "serviceName": "database-service"
+    },
+    "groupByAttributes": {},
+    "type": "service"
+  },
+  "targetNode": null,
+  "sourceOperation": {
+    "name": "query",
+    "attributes": {}
+  },
+  "targetOperation": null,
+  "nodeConnectionHash": "ghi789",
+  "operationConnectionHash": null,
+  "timestamp": "2023-12-01T12:00:00Z"
+}
+```
+
+### Dual Hash Fields
+
+NodeOperationDetail uses two hash fields for different query patterns:
+
+- **`nodeConnectionHash`**: Hash of `sourceNode + targetNode`. Use `GROUP BY nodeConnectionHash` to get the service topology graph.
+- **`operationConnectionHash`**: Hash of `sourceNode + targetNode + sourceOperation + targetOperation`. Use `GROUP BY operationConnectionHash` to get operation-level detail. Only present when both operations are known.
 
 ### Generated Metrics
 
-The processor also generates time-series metrics:
+The processor generates time-series metrics as JacksonMetric events:
 
-- **Latency metrics**: `latency_histogram` with percentiles
-- **Throughput metrics**: `request_count` and `request_rate` 
-- **Error metrics**: `error_count` and `error_rate`
-- **Status code metrics**: HTTP status code distributions
+| Metric | Type | Unit | Description |
+|--------|------|------|-------------|
+| `request` | Sum (monotonic) | `1` | Number of requests |
+| `error` | Sum (monotonic) | `1` | Number of error requests (HTTP 4xx) |
+| `fault` | Sum (monotonic) | `1` | Number of fault requests (HTTP 5xx or ERROR status) |
+| `latency_seconds` | Histogram | `s` | Request latency distribution |
+
+**Histogram Bucket Boundaries:**
+`[0.0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]`
+
+All metrics use **delta aggregation temporality** (values are cumulative within each window only).
+
+## Algorithm: NodeOperationDetail Generation
+
+### OTel Trace Structure
+
+For any cross-service call, OpenTelemetry produces this span pattern:
+
+```
+Service A: SERVER span (s1, op="GET /api/users")
+  +-- Service A: INTERNAL span (i1)              [optional, 0 or more]
+        +-- Service A: CLIENT span (c1)
+              +-- Service B: SERVER span (s2, op="GET /users")
+```
+
+- **SERVER span**: handles an incoming request to the service
+- **INTERNAL span**: intermediate processing within the service
+- **CLIENT span**: makes an outgoing call to another service
+- Parent-child links are via `spanId` / `parentSpanId`
+
+### Three-Window Architecture
+
+Spans are stored across three MapDB-backed time windows:
+
+```
+|  Previous Window  |  Current Window   |  Next Window    |
+|  (old spans for   |  (being processed |  (incoming spans |
+|   lookup context) |   this cycle)     |   accumulating)  |
+```
+
+- **nextWindow**: where ALL incoming spans are written (every `doExecute` call)
+- **currentWindow**: processed when `windowDuration` elapses
+- **previousWindow**: kept for lookup context (helps complete traces that span windows)
+
+### Processing Flow
+
+The pipeline framework calls `doExecute(records)` repeatedly. Each call follows this order:
+
+```
+doExecute(records):
+    // STEP 1: Check window FIRST (before storing new spans)
+    if windowDurationHasPassed():
+        apmEvents = evaluateApmEvents()    // Phase 1 + Phase 2 + rotate
+    else:
+        apmEvents = EMPTY
+
+    // STEP 2: Store incoming spans AFTER (always into nextWindow)
+    for each span in records:
+        spanData = processSpan(span)       // raw extraction only
+        nextWindow.put(traceId, spanData)
+
+    return apmEvents
+```
+
+**Critical ordering**: Step 1 happens BEFORE Step 2. New spans from the current batch go into the post-rotation nextWindow and are NOT included in the window being processed.
+
+### Window Rotation
+
+When `windowDurationHasPassed()` is true:
+
+```
+evaluateApmEvents():
+    barrier.await()              // sync all processor threads
+    if isMasterInstance():
+        apmEvents = processCurrentWindowSpans()   // Phase 1 + Phase 2
+        rotateWindows()
+    barrier.await()              // sync again
+    return apmEvents
+
+rotateWindows():
+    temp = previousWindow
+    previousWindow = currentWindow    // just-processed becomes context
+    currentWindow  = nextWindow       // accumulated spans become next to process
+    nextWindow     = temp             // reuse old previous (cleared)
+    nextWindow.clear()
+    previousTimestamp = now
+```
+
+### Phase 1: Span Decoration (Two Passes)
+
+Decoration runs on spans from ALL 3 windows to build relationships.
+
+**Pass 1 - Decorate CLIENT spans:** For each CLIENT span, find its direct child SERVER span to learn the remote service:
+
+```
+c1 (CLIENT, service A)
+  +-- child s2 (SERVER, service B)
+
+ClientSpanDecoration(c1) = {
+    parentServerOperationName: null,      <-- not yet known
+    remoteService: "B",                   <-- from s2.serviceName
+    remoteOperation: "GET /users",        <-- from s2.operationName
+    remoteEnvironment: s2.environment,
+    remoteGroupByAttributes: s2.groupByAttributes
+}
+```
+
+**Pass 2 - Decorate SERVER spans + back-annotate CLIENT spans:** For each SERVER span, find CLIENT descendants from the same service via BFS:
+
+```
+s1 (SERVER, service A, op="GET /api/users")
+  +-- ... INTERNAL spans ...
+        +-- c1 (CLIENT, service A)
+
+BFS from s1 finds c1 (same service, CLIENT kind)
+
+ClientSpanDecoration(c1) UPDATED = {
+    parentServerOperationName: "GET /api/users",   <-- NOW FILLED from s1
+    remoteService: "B",                             <-- unchanged
+    remoteOperation: "GET /users",                  <-- unchanged
+}
+```
+
+The BFS walks through children, continuing as long as the child is from the **same service**, and collects CLIENT spans found along the way.
+
+### Phase 2: NodeOperationDetail Emission (CLIENT-Primary Algorithm)
+
+After decoration, each CLIENT span's decoration contains ALL the data needed for a full NodeOperationDetail:
+
+| NodeOperationDetail field | Source |
+|---|---|
+| sourceNode (service A) | CLIENT span's own serviceName, environment, groupByAttributes |
+| targetNode (service B) | decoration.remoteService, remoteEnvironment, remoteGroupByAttributes |
+| sourceOperation | decoration.parentServerOperationName (from parent SERVER span) |
+| targetOperation | decoration.remoteOperation (from child SERVER span) |
+
+```
+// Step 1: CLIENT spans -- primary emission
+for each CLIENT span in processingSpans:
+    decoration = getClientDecoration(clientSpan.spanId)
+    if decoration exists AND remoteService != "unknown":
+        sourceNode  = Node("service", clientSpan.environment, clientSpan.serviceName)
+        targetNode  = Node("service", decoration.remoteEnvironment, decoration.remoteService)
+        sourceOp    = Operation(decoration.parentServerOperationName)   // may be null
+        targetOp    = Operation(decoration.remoteOperation)
+        emit NodeOperationDetail(sourceNode, targetNode, sourceOp, targetOp)
+
+// Step 2: Leaf SERVER spans -- services with no outgoing calls
+for each SERVER span in processingSpans:
+    if serverDecoration is null OR serverDecoration.clientDescendants is empty:
+        sourceNode = Node("service", serverSpan.environment, serverSpan.serviceName)
+        sourceOp   = Operation(serverSpan.operationName)
+        emit NodeOperationDetail(sourceNode, null, sourceOp, null)
+```
+
+### What Each Span Contributes
+
+```
+                                     s1 provides:
+                                       sourceOperation = s1.operationName
+                                       (via Pass 2 back-annotation)
+                                              |
+s1 (SERVER, service A, op="GET /api/users")   |
+  +-- ... INTERNAL spans ...                  |
+        +-- c1 (CLIENT, service A)  <---------+
+              |
+              |   c1 provides (from itself):
+              |     sourceNode = Node(A)
+              |
+              +-- s2 (SERVER, service B, op="GET /users")
+                    |
+                    |   s2 provides (via Pass 1 decoration):
+                    |     targetNode = Node(B)
+                    |     targetOperation = s2.operationName
+                    v
+              NodeOperationDetail {
+                  sourceNode:  A (from c1)
+                  targetNode:  B (from s2 via decoration)
+                  sourceOp:    "GET /api/users" (from s1 via decoration)
+                  targetOp:    "GET /users" (from s2 via decoration)
+              }
+```
+
+### Edge Cases
+
+| Child SERVER (s2) in any window? | Parent SERVER (s1) in any window? | Result |
+|---|---|---|
+| No | (irrelevant) | `remoteService = "unknown"` -- no event emitted |
+| Yes | No | Event emitted with `nodeConnectionHash` only. `sourceOp = null`, `operationConnectionHash = null` |
+| Yes | Yes | Full event with both hashes and both operations |
+
+### Key Properties
+
+- **No duplicates**: Each CLIENT span emits exactly once, each leaf SERVER span emits exactly once
+- **Single entity type**: All emissions produce NodeOperationDetail with dual hash fields
+- **Dedup at query time**: `GROUP BY nodeConnectionHash` for topology, `GROUP BY operationConnectionHash` for operations
+- **Three-window lookup**: Decoration uses spans from all 3 windows (~3x windowDuration coverage)
+
+### Metrics Generation
+
+Metrics are generated alongside NodeOperationDetail events during Phase 2:
+
+```
+// Step 1: CLIENT spans
+for each CLIENT span in processingSpans:
+    if decoration exists AND remoteService != "unknown":
+        emit NodeOperationDetail(...)
+        if decoration.parentServerOperationName != null:
+            generateMetricsForClientSpan(clientSpan, decoration)
+
+// Step 2: SERVER spans
+for each SERVER span in processingSpans:
+    generateMetricsForServerSpan(serverSpan)         // ALL server spans
+    if leaf (no CLIENT descendants):
+        emit NodeOperationDetail(sourceNode, null, sourceOp, null)
+```
+
+**CLIENT span metrics** include `remoteService`, `remoteOperation`, and `remoteEnvironment` labels. Only generated when the full operation context is available (`parentServerOperationName != null`).
+
+**SERVER span metrics** are generated for ALL SERVER spans regardless of leaf status. They include `service`, `operation`, and `environment` labels.
 
 ## Performance Considerations
 
@@ -250,15 +442,7 @@ The processor exposes the following metrics for monitoring:
 - `spansDbSize`: Total size of span databases in bytes
 - `spansDbCount`: Total number of spans stored across all databases
 
-### With OpenSearch Dashboards
-
-Create index patterns and visualizations:
-
-1. **Index Pattern**: `apm-service-map-*`
-2. **Service Map Visualization**: Network graph showing service connections
-3. **Metrics Dashboard**: Time-series charts for latency, throughput, and errors
-
 ## Related Documentation
 
-- [OpenTelemetry Trace Processing](../otel-trace-raw-processor/README.md)  
+- [OpenTelemetry Trace Processing](../otel-trace-raw-processor/README.md)
 - [Service Map State Management](../service-map-stateful/README.md)

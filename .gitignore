@@ -30,3 +30,8 @@ trace-tester.py
 # Claude session notes
 claude.md
 CLAUDE.md
+
+# Algorithm design documents (reference only, not for source control)
+node-operation-detail-algorithm.md
+**/apm-metrics-generation-algorithm.md
+**/producer-consumer-algorithm-extension.md
