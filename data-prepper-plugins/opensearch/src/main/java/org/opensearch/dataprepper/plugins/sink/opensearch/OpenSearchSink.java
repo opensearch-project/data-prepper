@@ -78,7 +78,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -664,8 +663,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
    * flushRemainingBulkRequests Flush the remaining bulk requests during shutdown
    * This is necessary to ensure that any remaining operations are sent to OpenSearch before the sink is shut down.
    * It iterates through the bulkRequestMap, flushing each bulk request that has operations left.
-   * If an error occurs during the flush, it retries until sinkShutdownTimeout
-   * */
+   */
   private void flushRemainingBulkRequests() {
     if (bulkRequestMap.isEmpty()) {
       return;
