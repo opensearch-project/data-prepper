@@ -98,6 +98,10 @@ public class Office365RestClient {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Failed to list subscriptions: {}", e.getMessage());
                 throw e;
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Failed to list subscriptions: {}", e.getMessage());
+                throw new SaaSCrawlerException("Failed to list subscriptions: " + e.getMessage(), e, true);
             }
         });
     }
@@ -146,6 +150,9 @@ public class Office365RestClient {
                     metricsRecorder.recordError(e);
                     throw e;
                 }
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                throw new SaaSCrawlerException("Failed to start subscription for " + contentType + ": " + e.getMessage(), e, true);
             }
         }
         
@@ -194,7 +201,7 @@ public class Office365RestClient {
                         metricsRecorder.recordSubscriptionSuccess();
                         return null;
                     }
-                } catch (SaaSCrawlerException e) {
+                } catch (Exception e) {
                     // If listing subscriptions fails, fall back to starting all content types
                     log.warn("Failed to list subscriptions, will attempt to start all content types as fallback: {}", e.getMessage());
                     contentTypesToStart.clear();
@@ -211,6 +218,10 @@ public class Office365RestClient {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Failed to initialize subscriptions", e);
                 throw e;
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Failed to initialize subscriptions", e);
+                throw new SaaSCrawlerException("Failed to initialize subscriptions: " + e.getMessage(), e, true);
             }
         });
     }
@@ -275,6 +286,11 @@ public class Office365RestClient {
                 log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
                         contentType, url, e);
                 throw e;
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
+                        contentType, url, e);
+                throw new SaaSCrawlerException("Failed to fetch audit logs", e, true);
             }
         });
     }
@@ -318,6 +334,10 @@ public class Office365RestClient {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
                 throw e;
+            } catch (Exception e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
+                throw new SaaSCrawlerException("Failed to fetch audit log", e, true);
             }
         });
     }

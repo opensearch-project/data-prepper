@@ -110,7 +110,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
                 metricsRecorder.recordAuthSuccess();
                 
                 log.info("Received new access token. Expires in {} seconds", expiresIn);
-            } catch (SaaSCrawlerException e) {
+            } catch (Exception e) {
                 // Record authentication failure and specific error details
                 metricsRecorder.recordAuthFailure();
                 metricsRecorder.recordError(e);
