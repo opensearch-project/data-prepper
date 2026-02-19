@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.otel.common;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -204,5 +205,200 @@ class OTelSpanDerivationUtilTest {
         OTelSpanDerivationUtil.ErrorFaultResult result = new OTelSpanDerivationUtil.ErrorFaultResult(1, 0);
         assertEquals(1, result.error);
         assertEquals(0, result.fault);
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_RpcAwsApi() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("rpc.service", "DynamoDb");
+        spanAttributes.put("rpc.method", "aws-api");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("aws-api", result.getLeft());
+        assertEquals("AWS::DynamoDB", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_RpcMethod() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("rpc.method", "GetItem");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("GetItem", result.getLeft());
+        assertEquals("UnknownRemoteService", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_DbSystem() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("db.system", "postgresql");
+        spanAttributes.put("db.operation", "SELECT");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("SELECT", result.getLeft());
+        assertEquals("postgresql", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_DbStatement() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("db.system", "mysql");
+        spanAttributes.put("db.statement", "INSERT INTO users VALUES (1, 'test')");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("INSERT", result.getLeft());
+        assertEquals("mysql", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_FaaS() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("faas.invoked_name", "my-lambda-function");
+        spanAttributes.put("faas.trigger", "http");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("http", result.getLeft());
+        assertEquals("my-lambda-function", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_Messaging() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("messaging.system", "kafka");
+        spanAttributes.put("messaging.operation", "publish");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("publish", result.getLeft());
+        assertEquals("kafka", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_GraphQL() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("graphql.operation.type", "query");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("query", result.getLeft());
+        assertEquals("graphql", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_PeerService() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("peer.service", "payment-service");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("payment-service", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_ServerAddress() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("server.address", "api.example.com");
+        spanAttributes.put("server.port", "443");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("api.example.com:443", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_NetPeerName() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("net.peer.name", "db.example.com");
+        spanAttributes.put("net.peer.port", "5432");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("db.example.com:5432", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_UrlFull() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("url.full", "https://api.example.com:8080/v1/users");
+        spanAttributes.put("http.request.method", "POST");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("POST /v1", result.getLeft());
+        assertEquals("api.example.com:8080", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_HttpUrl() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("http.url", "http://service.local:3000/api/data");
+        spanAttributes.put("http.method", "GET");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("GET /api", result.getLeft());
+        assertEquals("service.local:3000", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_EmptyAttributes() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("UnknownRemoteService", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_NullAttributes() {
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(null);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("UnknownRemoteService", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_AwsServiceMappings() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("rpc.service", "AmazonSNS");
+        spanAttributes.put("rpc.method", "aws-api");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("aws-api", result.getLeft());
+        assertEquals("AWS::SNS", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_DbSystemName() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("db.system.name", "redis");
+        spanAttributes.put("db.operation.name", "GET");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("GET", result.getLeft());
+        assertEquals("redis", result.getRight());
+    }
+
+    @Test
+    void testComputeRemoteOperationAndService_NetworkPeerAddress() {
+        Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("network.peer.address", "10.0.0.1");
+        spanAttributes.put("network.peer.port", "8080");
+
+        Pair<String, String> result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertEquals("UnknownRemoteOperation", result.getLeft());
+        assertEquals("10.0.0.1:8080", result.getRight());
     }
 }
