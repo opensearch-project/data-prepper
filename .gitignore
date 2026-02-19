@@ -27,5 +27,5 @@ pipelines.yaml
 run-dataprepper.sh
 trace-tester.py
 
-# Claude session notes
-claude.md
+# Claude project instructions
+CLAUDE.md

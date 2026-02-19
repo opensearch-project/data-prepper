@@ -245,7 +245,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         
         Map<String, Object> status = new HashMap<>();
         status.put("code", "ERROR");
-        
+
         // Create a reflection helper to test private method
         // Since extractSpanStatus is private, it's tested indirectly through processSpan
         Record<Event> record = new Record<>(createMockSpan("test-service", "test-op", "SERVER"));
@@ -1184,10 +1184,10 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         event = resultList.get(3).getData();
         assertThat(event.get("name", String.class), equalTo("latency_seconds"));
         event = resultList.get(4).getData();
-        String serviceAttributesName4 = event.get("service/keyAttributes/name", String.class);
+        String sourceNodeName4 = event.get("sourceNode/keyAttributes/name", String.class);
         event = resultList.get(5).getData();
-        String serviceAttributesName5 = event.get("service/keyAttributes/name", String.class);
-        assertThat(Set.of(serviceAttributesName4, serviceAttributesName5), equalTo(Set.of("client-service", "server-service")));
+        String sourceNodeName5 = event.get("sourceNode/keyAttributes/name", String.class);
+        assertThat(Set.of(sourceNodeName4, sourceNodeName5), equalTo(Set.of("client-service", "server-service")));
         
         // Cleanup
         isolatedProcessor.shutdown();

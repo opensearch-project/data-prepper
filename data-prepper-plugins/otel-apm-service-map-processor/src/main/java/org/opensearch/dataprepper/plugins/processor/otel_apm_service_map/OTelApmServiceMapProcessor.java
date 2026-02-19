@@ -28,9 +28,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceConnection;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.ServiceOperationDetail;
-import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Service;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Node;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.NodeOperationDetail;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Operation;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ClientSpanDecoration;
@@ -42,7 +41,6 @@ import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.i
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.MetricAggregationState;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.utils.ApmServiceMapMetricsUtil;
 import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
-import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +64,6 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Experimental
 @SingleThread
 @DataPrepperPlugin(name = "otel_apm_service_map", pluginType = Processor.class,
         pluginConfigurationType = OTelApmServiceMapProcessorConfig.class)
@@ -80,6 +77,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final String SPAN_KIND_SERVER = "SPAN_KIND_SERVER";
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
+    private static final String NODE_TYPE_SERVICE = "service";
 
     // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger processorsCreated = new AtomicInteger(0);
@@ -336,7 +334,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     /**
      * This method checks for master instance and let master instance process the current window and rotate the window.
      *
-     * @return Set of Record<Event> containing json representation of ServiceConnection and ServiceOperationDetail found
+     * @return Set of Record<Event> containing json representation of NodeOperationDetail found
      */
     private Collection<Record<Event>> evaluateApmEvents() {
         LOG.debug("Evaluating APM service map events with three-window semantics");
@@ -359,17 +357,17 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
     /**
      * Processes spans from the current window using three-window semantics (previous, current, next)
-     * to generate APM service map events and metrics. The method operates in two main phases:
+     * to generate APM service map events and metrics. The method operates in two phases:
+     *
      * Phase 1: Decorates spans with ephemeral client/server relationship information using
      * two-pass decoration (CLIENT spans first, then SERVER spans with back-annotation).
-     * Phase 2: Generates ServiceConnection and ServiceOperationDetail events from decorated
-     * trace data, along with aggregated metrics for latency, throughput, and error rates.
-     * The window logic ensures complete trace context by accessing spans across all three
-     * time windows, while current window processing focuses on spans that belong to the
-     * active processing window. Trace data decoration uses ephemeral storage that exists
-     * only during this processing cycle to maintain span relationships and remote service
-     * information. Event generation produces structured APM events and time-bucketed metrics
-     * sorted chronologically for downstream consumption.
+     *
+     * Phase 2: Generates NodeOperationDetail events using CLIENT-span-primary algorithm.
+     * CLIENT spans are the primary emission source since their decoration contains all needed
+     * data (sourceNode, targetNode, sourceOperation from parentServerOperationName, targetOperation
+     * from remoteOperation). Leaf SERVER spans (no CLIENT descendants) emit separately.
+     * Metrics (latency, throughput, error rates) are generated for all SERVER spans and for
+     * CLIENT spans with full operation context.
      */
     private Collection<Record<Event>> processCurrentWindowSpans() {
         final Collection<Record<Event>> apmEvents = new HashSet<>();
@@ -390,8 +388,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             if (!traceData.getProcessingSpans().isEmpty()) {
                 decorateSpansInTraceWithEphemeralStorage(traceData);
 
-                apmEvents.addAll(generateServiceConnectionsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
-                apmEvents.addAll(generateServiceOperationDetailsFromEphemeralDecorations(traceData, currentTime, metricsStateByKey));
+                apmEvents.addAll(generateNodeOperationDetailEvents(traceData, currentTime, metricsStateByKey));
             }
         }
 
@@ -704,156 +701,109 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * PHASE 2: Generate ServiceConnection events and CLIENT-side metrics from ephemeral decorations
-     * Uses only ephemeral decoration data - no relationship computation
+     * PHASE 2: Generate NodeOperationDetail events and metrics from ephemeral decorations.
+     * Uses CLIENT-span-primary algorithm:
+     *
+     * Step 1 (CLIENT spans): Each CLIENT span in processingSpans emits a full NodeOperationDetail.
+     * The CLIENT span's decoration contains all needed data: sourceNode from the span itself,
+     * targetNode from remoteService/remoteEnvironment, sourceOperation from parentServerOperationName
+     * (back-annotated in Phase 1 Pass 2), and targetOperation from remoteOperation.
+     *
+     * Step 2 (Leaf SERVER spans): SERVER spans with no CLIENT descendants emit a leaf
+     * NodeOperationDetail (sourceNode + sourceOperation only, no target). Server metrics
+     * are generated for ALL server spans regardless of leaf status.
      *
      * @param traceData Three-window trace data with ephemeral decorations (only processing spans are used)
      * @param currentTime Current timestamp
      * @param metricsStateByKey Shared map for metric aggregation across all traces
-     * @return Collection of ServiceConnection events
+     * @return Collection of NodeOperationDetail events
      */
-    private Collection<Record<Event>> generateServiceConnectionsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
-                                                                                          final Instant currentTime,
-                                                                                          final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
-        final Collection<Record<Event>> connectionEvents = new HashSet<>();
+    private Collection<Record<Event>> generateNodeOperationDetailEvents(final ThreeWindowTraceDataWithDecorations traceData,
+                                                                        final Instant currentTime,
+                                                                        final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
+        final Collection<Record<Event>> events = new HashSet<>();
 
+        // Step 1: CLIENT spans — primary emission path
         for (SpanStateData clientSpan : traceData.getProcessingSpans()) {
             if (SPAN_KIND_CLIENT.equals(clientSpan.getSpanKind())) {
                 final ClientSpanDecoration decoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
 
                 if (decoration != null && !"unknown".equals(decoration.getRemoteService())) {
-                    final Service clientService = new Service(
-                            new Service.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
+                    final Node sourceNode = new Node(
+                            NODE_TYPE_SERVICE,
+                            new Node.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
                             clientSpan.getGroupByAttributes()
                     );
 
-                    final Service serverService = new Service(
-                            new Service.KeyAttributes(decoration.getRemoteEnvironment(), decoration.getRemoteService()),
+                    final Node targetNode = new Node(
+                            NODE_TYPE_SERVICE,
+                            new Node.KeyAttributes(decoration.getRemoteEnvironment(), decoration.getRemoteService()),
                             decoration.getRemoteGroupByAttributes()
                     );
 
-                    final Instant connectionAnchorTimestamp = getAnchorTimestampFromSpan(clientSpan, currentTime);
+                    final Operation sourceOp = decoration.getParentServerOperationName() != null
+                            ? new Operation(decoration.getParentServerOperationName())
+                            : null;
+                    final Operation targetOp = new Operation(decoration.getRemoteOperation());
 
-                    final ServiceConnection serviceConnection = new ServiceConnection(
-                            clientService,
-                            serverService,
-                            connectionAnchorTimestamp
-                    );
+                    final Instant anchorTimestamp = getAnchorTimestampFromSpan(clientSpan, currentTime);
+
+                    final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
+                            sourceNode, targetNode, sourceOp, targetOp, anchorTimestamp);
 
                     final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                        .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
+                            .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
 
-                    final Event connectionEvent = eventFactory.eventBuilder(EventBuilder.class)
-                                .withEventMetadata(eventMetadata)
-                                .withData(serviceConnection)
+                    final Event event = eventFactory.eventBuilder(EventBuilder.class)
+                            .withEventMetadata(eventMetadata)
+                            .withData(nodeOperationDetail)
                             .build();
 
-                    connectionEvents.add(new Record<>(connectionEvent));
+                    events.add(new Record<>(event));
 
                     if (decoration.getParentServerOperationName() != null) {
-                        final Instant metricsAnchorTimestamp = getAnchorTimestampFromSpan(clientSpan, currentTime);
-                        ApmServiceMapMetricsUtil.generateMetricsForClientSpan(clientSpan, decoration, currentTime, metricsStateByKey, metricsAnchorTimestamp);
+                        ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
+                                clientSpan, decoration, currentTime, metricsStateByKey, anchorTimestamp);
                     }
                 }
             }
         }
 
-        return connectionEvents;
-    }
-
-    /**
-     * PHASE 2: Generate ServiceOperationDetail events and metrics from ephemeral decorations
-     * Uses only ephemeral decoration data - no relationship computation
-     *
-     * @param traceData Three-window trace data with ephemeral decorations (only processing spans are used)
-     * @param currentTime Current timestamp
-     * @param metricsStateByKey Shared map for metric aggregation across all traces
-     * @return Collection of ServiceOperationDetail events
-     */
-    private Collection<Record<Event>> generateServiceOperationDetailsFromEphemeralDecorations(final ThreeWindowTraceDataWithDecorations traceData,
-                                                                                               final Instant currentTime,
-                                                                                               final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
-        final Collection<Record<Event>> operationEvents = new HashSet<>();
-
+        // Step 2: SERVER spans — metrics for all, leaf NodeOperationDetail for those with no CLIENT descendants
         for (SpanStateData serverSpan : traceData.getProcessingSpans()) {
             if (SPAN_KIND_SERVER.equals(serverSpan.getSpanKind())) {
+                final Instant anchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
+                ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
+                        serverSpan, currentTime, metricsStateByKey, anchorTimestamp);
+
                 final ServerSpanDecoration decoration = traceData.getDecorations().getServerDecoration(serverSpan.getSpanId());
 
-                final Instant anchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
-                ApmServiceMapMetricsUtil.generateMetricsForServerSpan(serverSpan, currentTime, metricsStateByKey, anchorTimestamp);
-
-                if (decoration != null && !decoration.getClientDescendants().isEmpty()) {
-                    for (SpanStateData clientSpan : decoration.getClientDescendants()) {
-                        final ClientSpanDecoration clientDecoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
-
-                        if (clientDecoration != null) {
-                            final Service service = new Service(
-                                    new Service.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
-                                    serverSpan.getGroupByAttributes()
-                            );
-
-                            final Service remoteService = new Service(
-                                    new Service.KeyAttributes(clientDecoration.getRemoteEnvironment(), clientDecoration.getRemoteService()),
-                                    clientDecoration.getRemoteGroupByAttributes()
-                            );
-
-                            final Operation operation = new Operation(
-                                    serverSpan.getOperationName(),
-                                    remoteService,
-                                    clientDecoration.getRemoteOperation()
-                            );
-
-                            final Instant operationAnchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
-
-                            final ServiceOperationDetail serviceOperationDetail = new ServiceOperationDetail(
-                                    service,
-                                    operation,
-                                    operationAnchorTimestamp
-                            );
-
-                            final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                                .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
-
-                            final Event operationEvent = eventFactory.eventBuilder(EventBuilder.class)
-                                        .withEventMetadata(eventMetadata)
-                                        .withData(serviceOperationDetail)
-                                    .build();
-                            operationEvents.add(new Record<>(operationEvent));
-                        }
-                    }
-                } else {
-                    final Service service = new Service(
-                            new Service.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
+                if (decoration == null || decoration.getClientDescendants().isEmpty()) {
+                    final Node sourceNode = new Node(
+                            NODE_TYPE_SERVICE,
+                            new Node.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
                             serverSpan.getGroupByAttributes()
                     );
 
-                    final Operation operation = new Operation(
-                            serverSpan.getOperationName(),
-                            null,
-                            null
-                    );
+                    final Operation sourceOp = new Operation(serverSpan.getOperationName());
 
-                    final Instant unknownAnchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
-
-                    final ServiceOperationDetail serviceOperationDetail = new ServiceOperationDetail(
-                            service,
-                            operation,
-                            unknownAnchorTimestamp
-                    );
+                    final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
+                            sourceNode, null, sourceOp, null, anchorTimestamp);
 
                     final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                        .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
+                            .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
 
-                    final Event operationEvent = eventFactory.eventBuilder(EventBuilder.class)
-                                .withEventMetadata(eventMetadata)
-                                .withData(serviceOperationDetail)
+                    final Event event = eventFactory.eventBuilder(EventBuilder.class)
+                            .withEventMetadata(eventMetadata)
+                            .withData(nodeOperationDetail)
                             .build();
-                    operationEvents.add(new Record<>(operationEvent));
+
+                    events.add(new Record<>(event));
                 }
             }
         }
 
-        return operationEvents;
+        return events;
     }
 
     /**
