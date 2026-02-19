@@ -60,6 +60,7 @@ class Office365ServiceTest {
     void setUp() {
         office365Service = new Office365Service(sourceConfig, office365RestClient, pluginMetrics);
         lenient().when(sourceConfig.getLookBackDuration(any(Instant.class))).thenReturn(Instant.now().minus(Duration.ofDays(365)));
+        lenient().doCallRealMethod().when(sourceConfig).getAdjustedStartTime(any(Instant.class), any(Instant.class), any(Instant.class));
     }
 
     @Test

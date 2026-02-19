@@ -111,7 +111,7 @@ class Office365SourceConfigTest {
         setField(config, "range", fifteenMinutes);
 
         Instant now = Instant.now();
-        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Instant lookBackDuration = config.getLookBackDuration(now);
         // Verify the duration is approximately 15 minutes before now (within 1 second tolerance)
         Duration actualDuration = Duration.between(lookBackDuration, now);
         assertEquals(15, actualDuration.toMinutes());
@@ -123,7 +123,7 @@ class Office365SourceConfigTest {
         setField(config, "range", thirtyMinutes);
 
         Instant now = Instant.now();
-        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Instant lookBackDuration = config.getLookBackDuration(now);
         // Verify the duration is approximately 30 minutes before now
         Duration actualDuration = Duration.between(lookBackDuration, now);
         assertEquals(30, actualDuration.toMinutes());
@@ -135,7 +135,7 @@ class Office365SourceConfigTest {
         setField(config, "range", fortyFiveMinutes);
 
         Instant now = Instant.now();
-        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Instant lookBackDuration = config.getLookBackDuration(now);
         // Verify the duration is approximately 45 minutes before now
         Duration actualDuration = Duration.between(lookBackDuration, now);
         assertEquals(45, actualDuration.toMinutes());
@@ -147,7 +147,7 @@ class Office365SourceConfigTest {
         setField(config, "range", twoHours);
 
         Instant now = Instant.now();
-        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Instant lookBackDuration = config.getLookBackDuration(now);
         Duration actualDuration = Duration.between(lookBackDuration, now);
         assertEquals(2, actualDuration.toHours());
         assertEquals(120, actualDuration.toMinutes());
@@ -159,7 +159,7 @@ class Office365SourceConfigTest {
         setField(config, "range", oneDay);
 
         Instant now = Instant.now();
-        Instant lookBackDuration = config.getLookBackDuration(Instant.now());
+        Instant lookBackDuration = config.getLookBackDuration(now);
         Duration actualDuration = Duration.between(lookBackDuration, now);
         assertEquals(24, actualDuration.toHours());
         assertEquals(1440, actualDuration.toMinutes());
