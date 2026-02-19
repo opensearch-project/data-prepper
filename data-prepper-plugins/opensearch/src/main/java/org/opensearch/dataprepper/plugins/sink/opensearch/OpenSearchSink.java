@@ -161,7 +161,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExecutorService queryExecutorService;
 
   private final int processWorkerThreads;
-  private static final long FLUSH_TIMEOUT_WAIT_MS = 300000L; // 5 minutes timeout for flushing during shutdown
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
@@ -677,29 +676,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
       if (bulkRequest != null && bulkRequest.getOperationsCount() > 0) {
         LOG.info("Flushing bulk request with {} operations for thread {}", bulkRequest.getOperationsCount(), threadId);
-		Duration retryTime = Duration.ZERO;
-        boolean success = false;
-        while (!success && retryTime.toMillis() <= FLUSH_TIMEOUT_WAIT_MS) {
-          try {
-            flushBatch(bulkRequest);
-            success = true;
-            LOG.info("Successfully flushed bulk request for thread {}", threadId);
-          } catch (Exception e) {
-            LOG.warn("Error flushing bulk request during shutdown retrying in 1 Seconds, remaining time: {}sec", (FLUSH_TIMEOUT_WAIT_MS - retryTime.toMillis())/1000, e);
-            try {
-              	Thread.sleep( 1000L);
-				retryTime = retryTime.plusMillis(1000L);
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              LOG.warn("Interrupted while waiting to retry bulk flush");
-              break;
-            }
-          }
-		}
-      }
-    }
-
-    // Clear the maps after flushing
+		flushBatch(bulkRequest);
+		LOG.info("Successfully flushed bulk request for thread {}", threadId);
+	  }
+	}
     bulkRequestMap.clear();
     lastFlushTimeMap.clear();
   }
