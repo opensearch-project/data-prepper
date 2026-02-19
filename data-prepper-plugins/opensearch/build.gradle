@@ -37,7 +37,7 @@ dependencies {
     implementation libs.caffeine
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:netty-nio-client'
-    implementation 'co.elastic.clients:elasticsearch-java:7.17.0'
+    implementation 'co.elastic.clients:elasticsearch-java:7.17.29'
     implementation('org.apache.maven:maven-artifact:3.9.12') {
         exclude group: 'org.codehaus.plexus'
     }
