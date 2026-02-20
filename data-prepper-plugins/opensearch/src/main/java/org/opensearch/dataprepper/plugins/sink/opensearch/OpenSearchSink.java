@@ -719,6 +719,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @Override
   public void shutdown() {
     super.shutdown();
+
+    // Flush any pending bulk requests before closing resources
+    flushRemainingBulkRequests();
+
     closeFiles();
     if (openSearchClient != null) {
       openSearchClient.shutdown();
@@ -727,6 +731,29 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       existingDocumentQueryManager.stop();
       queryExecutorService.shutdown();
     }
+  }
+
+  /**
+   * flushRemainingBulkRequests Flush the remaining bulk requests during shutdown
+   * This is necessary to ensure that any remaining operations are sent to OpenSearch before the sink is shut down.
+   * It iterates through the bulkRequestMap, flushing each bulk request that has operations left.
+   */
+  private void flushRemainingBulkRequests() {
+    if (bulkRequestMap.isEmpty()) {
+      return;
+    }
+
+    LOG.info("Flushing remaining {} bulk requests during shutdown", bulkRequestMap.size());
+    for (final Long threadId : bulkRequestMap.keySet()) {
+      final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
+      if (bulkRequest != null && bulkRequest.getOperationsCount() > 0) {
+        LOG.info("Flushing bulk request with {} operations for thread {}", bulkRequest.getOperationsCount(), threadId);
+		flushBatch(bulkRequest);
+		LOG.info("Successfully flushed bulk request for thread {}", threadId);
+	  }
+	}
+    bulkRequestMap.clear();
+    lastFlushTimeMap.clear();
   }
 
   private void maybeUpdateServerlessNetworkPolicy() {
