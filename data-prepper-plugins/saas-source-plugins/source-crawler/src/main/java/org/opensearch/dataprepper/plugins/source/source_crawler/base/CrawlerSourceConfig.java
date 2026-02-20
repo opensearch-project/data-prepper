@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import java.time.Duration;
+import java.time.Instant;
 
 /**
  * Marker interface to all the SAAS connectors configuration
@@ -54,5 +55,25 @@ public interface CrawlerSourceConfig {
      */
     default Duration getLeaseInterval() {
         return Duration.ofMinutes(1);
+    }
+
+    /**
+     * Adjusts the start time based on the configured lookback boundary.
+     * When the requested start time is before the lookback boundary and the lookback boundary
+     * falls within the time window, the start time is adjusted to the lookback boundary to
+     * respect API limitations (e.g., Office 365 API's maximum lookback period).
+     *
+     * @param startTime         the requested start time for the query
+     * @param endTime           the end time for the query
+     * @param lookBackStartTime the earliest time to query from (e.g., from getLookBackDuration(referenceTime))
+     * @return the adjusted start time, or the original start time if no adjustment is needed
+     */
+    default Instant getAdjustedStartTime(final Instant startTime,
+                                         final Instant endTime,
+                                         final Instant lookBackStartTime) {
+        if (startTime.isBefore(lookBackStartTime) && lookBackStartTime.isBefore(endTime)) {
+            return lookBackStartTime;
+        }
+        return startTime;
     }
 }
