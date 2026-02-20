@@ -257,41 +257,61 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
-    public void testReplaceInvalidKeyChars(final String key) {
-        assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo("key_1"));
+    @CsvSource(value = {
+            "key&1, key_1",
+            "key^1, key_1",
+            "key%1, key%1",
+            "key_1, key_1"
+    })
+    public void testReplaceInvalidKeyChars(final String key, final String expected) {
+        assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo(expected));
         assertThat(JacksonEvent.replaceInvalidKeyChars(key.substring(0,3)), equalTo("key"));
         assertThat(JacksonEvent.replaceInvalidKeyChars(null), equalTo(null));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
-    public void testPutWithReplaceInvalidKeyChars(final String key) {
+    @CsvSource(value = {
+            "key&1, key_1",
+            "key^1, key_1",
+            "key%1, key%1",
+            "key_1, key_1"
+    })
+    public void testPutWithReplaceInvalidKeyChars(final String key, final String expectedKey) {
         final String value = UUID.randomUUID().toString();
 
         event.put(key, value, true);
-        assertThat(event.get("key_1", String.class), equalTo(value));
+        assertThat(event.get(expectedKey, String.class), equalTo(value));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
-    public void testPutWithReplaceInvalidKeyChars_for_map(final String key) {
+    @CsvSource(value = {
+            "key&1, key_1",
+            "key^1, key_1",
+            "key%1, key%1",
+            "key_1, key_1"
+    })
+    public void testPutWithReplaceInvalidKeyChars_for_map(final String key, final String expectedKey) {
         final String value = UUID.randomUUID().toString();
         final Map<String, String> mapToPut = Map.of(key, value);
 
         event.put("myMap", mapToPut, true);
-        assertThat(event.get("myMap/key_1", String.class), equalTo(value));
+        assertThat(event.get("myMap/" + expectedKey, String.class), equalTo(value));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
-    public void testPutEventKeyWithReplaceInvalidKeyChars_for_map(final String key) {
+    @CsvSource(value = {
+            "key&1, key_1",
+            "key^1, key_1",
+            "key%1, key%1",
+            "key_1, key_1"
+    })
+    public void testPutEventKeyWithReplaceInvalidKeyChars_for_map(final String key, final String expectedKey) {
         final String value = UUID.randomUUID().toString();
         final Map<String, String> mapToPut = Map.of(key, value);
 
         final EventKey eventKey = new JacksonEventKey("myMap");
         event.put(eventKey, mapToPut, true);
-        assertThat(event.get("myMap/key_1", String.class), equalTo(value));
+        assertThat(event.get("myMap/" + expectedKey, String.class), equalTo(value));
     }
 
     @ParameterizedTest
@@ -305,7 +325,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key&1", "key^1", "key%1"})
+    @ValueSource(strings = {"key&1", "key^1"})
     public void testPutWithoutReplaceInvalidKeyChars(final String key) {
         final String value = UUID.randomUUID().toString();
 
@@ -348,7 +368,7 @@ public class JacksonEventTest {
 
         event.put("foo", data1, true);
         assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
-        assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
+        assertThat(event.get("foo/key_2/key%4/key_5", String.class), equalTo("value5"));
     }
 
     @Test
@@ -364,7 +384,7 @@ public class JacksonEventTest {
 
         event.put(key, data1, true);
         assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
-        assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
+        assertThat(event.get("foo/key_2/key%4/key_5", String.class), equalTo("value5"));
     }
 
     @Test
@@ -743,7 +763,7 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
-            "with,Comma", "with:Colon", "with|Brace"})
+            "with,Comma", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
@@ -1260,13 +1280,15 @@ public class JacksonEventTest {
     @ParameterizedTest
     @CsvSource(value = {"test_key, true",
             "/test_key, true",
-            "inv(alid, false",
+            "inv(alid, true",
             "getMetadata(\"test_key\"), false",
             "key.with.dot, true",
             "key-with-hyphen, true",
             "key_with_underscore, true",
             "key@with@at, true",
-            "key[with]brackets, true"
+            "key[with]brackets, true",
+            "key%with%percent, true",
+            "key:with:colon, true"
     })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEvent.isValidEventKey(key), equalTo(isValid));
