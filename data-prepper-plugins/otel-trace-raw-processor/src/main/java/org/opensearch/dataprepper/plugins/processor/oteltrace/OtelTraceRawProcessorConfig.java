@@ -25,6 +25,11 @@ public class OtelTraceRawProcessorConfig {
     static final Duration DEFAULT_TRACE_ID_TTL = Duration.ofSeconds(15L);
     static final long MAX_TRACE_ID_CACHE_SIZE = 1_000_000L;
 
+    @JsonProperty(value = "agent_trace_enrichment", defaultValue = "false")
+    @JsonPropertyDescription("Enables GenAI agent trace enrichment: propagates gen_ai.* attributes from child spans " +
+            "to root spans, aggregates token counts, and strips conflicting flattened sub-keys. Default is <code>false</code>.")
+    private boolean agentTraceEnrichment = false;
+
     @JsonProperty(value = "trace_flush_interval", defaultValue = "180")
     @JsonPropertyDescription("Represents the time interval in seconds to flush all the descendant spans without any " +
             "root span. Default is <code>180</code>.")
@@ -51,5 +56,9 @@ public class OtelTraceRawProcessorConfig {
 
     public long getTraceGroupCacheMaxSize() {
         return traceGroupCacheMaxSize;
+    }
+
+    public boolean isAgentTraceEnrichment() {
+        return agentTraceEnrichment;
     }
 }

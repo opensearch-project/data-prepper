@@ -60,6 +60,8 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private final ReentrantLock traceFlushLock = new ReentrantLock();
     private final ReentrantLock prepareForShutdownLock = new ReentrantLock();
 
+    private final boolean agentTraceEnrichment;
+
     private volatile boolean isShuttingDown = false;
 
     @DataPrepperPluginConstructor
@@ -68,6 +70,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                                  final PluginMetrics pluginMetrics) {
         super(pluginMetrics);
         traceFlushInterval = SEC_TO_MILLIS * otelTraceRawProcessorConfig.getTraceFlushIntervalSeconds();
+        agentTraceEnrichment = otelTraceRawProcessorConfig.isAgentTraceEnrichment();
         traceIdTraceGroupCache = Caffeine.newBuilder()
           .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
           .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
@@ -98,6 +101,10 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         }
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
+
+        if (agentTraceEnrichment) {
+            GenAiEnrichmentHelper.enrichBatch(processedSpans);
+        }
 
         // Derive server span attributes (fault, error, operation, environment)
         OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
