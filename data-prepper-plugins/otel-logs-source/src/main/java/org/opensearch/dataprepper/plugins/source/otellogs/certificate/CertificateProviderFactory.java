@@ -51,8 +51,10 @@ public class CertificateProviderFactory {
                     .overrideConfiguration(metricPublisher -> metricPublisher.addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics)))
                     .build();
 
-            return new ACMCertificateProvider(awsCertificateManager, oTelLogsSourceConfig.getAcmCertificateArn(),
-                    oTelLogsSourceConfig.getAcmCertIssueTimeOutMillis(), oTelLogsSourceConfig.getAcmPrivateKeyPassword());
+            return new ACMCertificateProvider(awsCertificateManager,
+                    oTelLogsSourceConfig.getAcmCertificateArn(),
+                    oTelLogsSourceConfig.getAcmCertIssueTimeOutMillis(),
+                    oTelLogsSourceConfig.getAcmPrivateKeyPassword());
         } else if (oTelLogsSourceConfig.isSslCertAndKeyFileInS3()) {
             LOG.info("Using S3 to fetch certificate and private key for SSL/TLS.");
             final AwsCredentialsProvider credentialsProvider = AwsCredentialsProviderChain.builder()
