@@ -41,7 +41,9 @@ import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRespon
 import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.coordinator.Scheduler;
+import software.amazon.kinesis.metrics.CloudWatchMetricsFactory;
 import software.amazon.kinesis.metrics.MetricsLevel;
+import software.amazon.kinesis.metrics.NullMetricsFactory;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
 import java.time.Duration;
@@ -58,6 +60,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -255,6 +258,30 @@ public class KinesisServiceTest {
         assertNotNull(kinesisService.getApplicationName());
         assertEquals(kinesisService.getApplicationName(), pipelineName);
         verify(workerIdentifierGenerator, times(1)).generate();
+    }
+
+    @Test
+    void testCreateSchedulerUsesNullMetricsFactoryWhenMetricsDisabled() {
+        when(kinesisSourceConfig.isKclMetricsEnabled()).thenReturn(false);
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
+        Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
+
+        assertNotNull(schedulerObjectUnderTest);
+        assertNotNull(schedulerObjectUnderTest.metricsConfig());
+        assertInstanceOf(NullMetricsFactory.class, schedulerObjectUnderTest.metricsConfig().metricsFactory());
+    }
+
+    @Test
+    void testCreateSchedulerUsesCloudWatchMetricsFactoryWhenMetricsEnabled() {
+        when(kinesisSourceConfig.isKclMetricsEnabled()).thenReturn(true);
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
+                pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
+        Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
+
+        assertNotNull(schedulerObjectUnderTest);
+        assertNotNull(schedulerObjectUnderTest.metricsConfig());
+        assertInstanceOf(CloudWatchMetricsFactory.class, schedulerObjectUnderTest.metricsConfig().metricsFactory());
     }
 
     @Test
