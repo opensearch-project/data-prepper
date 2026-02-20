@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Collection;
 
 @Experimental
@@ -60,16 +59,12 @@ public class SqsSink extends AbstractSink<Record<Event>> {
         sinkInitialized = false;
         final PluginModel codecConfiguration = sqsSinkConfig.getCodec();
         final PluginSetting codecPluginSettings;
-        if (codecConfiguration != null) {
-            String codecPluginName = codecConfiguration.getPluginName();
-            if (!codecPluginName.equals("json") && !codecPluginName.equals("ndjson")) {
-                throw new RuntimeException(String.format("Codec {} not supported.", codecPluginName));
-            }
-            codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
-                codecConfiguration.getPluginSettings());
-        } else {
-            codecPluginSettings = new PluginSetting("ndjson", Map.of());
+        String codecPluginName = codecConfiguration.getPluginName();
+        if (!codecPluginName.equals("json") && !codecPluginName.equals("ndjson")) {
+            throw new RuntimeException(String.format("Codec {} not supported.", codecPluginName));
         }
+        codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
+            codecConfiguration.getPluginSettings());
         
         AwsConfig awsConfig = sqsSinkConfig.getAwsConfig();
         final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());

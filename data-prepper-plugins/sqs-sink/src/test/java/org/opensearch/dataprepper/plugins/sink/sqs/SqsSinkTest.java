@@ -231,20 +231,6 @@ public class SqsSinkTest {
     }
 
     @Test
-    void TestForNullCodec() {
-        when(sqsSinkConfig.getCodec()).thenReturn(null);
-        try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
-            mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
-                            any(AwsCredentialsProvider.class)))
-                    .thenReturn(sqsClient);
-
-            SqsSink sqsSink = createObjectUnderTest();
-            sqsSink.doInitialize();
-            assertTrue(sqsSink.isReady());
-        }
-    }
-
-    @Test
     void TestSinkOutputWithEvents() {
         try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
             mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),

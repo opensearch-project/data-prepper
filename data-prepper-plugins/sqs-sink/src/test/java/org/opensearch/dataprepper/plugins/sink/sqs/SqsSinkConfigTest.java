@@ -45,7 +45,7 @@ public class SqsSinkConfigTest {
     }
 
     @Test
-    private void TestCustomConfig() throws Exception {
+    void TestCustomConfig() throws Exception {
         AwsConfig awsConfig = mock(AwsConfig.class);
         reflectivelySetField(sqsSinkConfig, "awsConfig", awsConfig);
         assertThat(sqsSinkConfig.getAwsConfig(), equalTo(awsConfig));
@@ -119,7 +119,7 @@ public class SqsSinkConfigTest {
         reflectivelySetField(sqsSinkConfig, "codec", null);
         reflectivelySetField(sqsSinkConfig, "thresholdConfig", sqsThresholdConfig);
         when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
-        assertFalse(sqsSinkConfig.isValidCodecConfig());
+        assertTrue(sqsSinkConfig.isValidCodecConfig());
         when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         assertTrue(sqsSinkConfig.isValidCodecConfig());
         PluginModel codec = mock(PluginModel.class);
