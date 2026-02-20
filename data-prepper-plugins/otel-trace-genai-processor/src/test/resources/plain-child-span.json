@@ -1,0 +1,17 @@
+{
+  "traceId": "PLAIN_TRACE_ID",
+  "spanId": "PLAIN_CHILD_SPAN_ID",
+  "traceState": "",
+  "kind": "SPAN_KIND_CLIENT",
+  "name": "plain_child",
+  "startTime": "2026-02-17T12:00:00.100000000Z",
+  "durationInNanos": 500000000,
+  "endTime": "2026-02-17T12:00:00.600000000Z",
+  "parentSpanId": "PLAIN_ROOT_SPAN_ID",
+  "attributes": {},
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}
