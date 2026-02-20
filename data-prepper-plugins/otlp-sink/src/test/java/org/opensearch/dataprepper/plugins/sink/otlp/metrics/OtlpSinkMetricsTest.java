@@ -73,16 +73,16 @@ class OtlpSinkMetricsTest {
     }
 
     @Test
-    void testIncrementRejectedSpansCount() {
-        sinkMetrics.incrementRejectedSpansCount(5);
-        verify(pluginMetrics).counter("rejectedSpansCount");
+    void testIncrementRejectedRecordsCount() {
+        sinkMetrics.incrementRejectedRecordsCount(5);
+        verify(pluginMetrics).counter("rejectedRecordsCount");
         verify(counterMock).increment(5.0);
     }
 
     @Test
-    void testIncrementFailedSpansCount() {
-        sinkMetrics.incrementFailedSpansCount(5);
-        verify(pluginMetrics).counter("failedSpansCount");
+    void testIncrementFailedRecordsCount() {
+        sinkMetrics.incrementFailedRecordsCount(5);
+        verify(pluginMetrics).counter("failedRecordsCount");
         verify(counterMock).increment(5.0);
     }
 

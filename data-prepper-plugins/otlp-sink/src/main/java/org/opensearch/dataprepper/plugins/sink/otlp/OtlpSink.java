@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.sink.otlp;
@@ -11,19 +16,24 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.sink.otlp.buffer.OtlpSinkBuffer;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  *  OTLP Sink Plugin for Data Prepper.
+ *  Supports traces, metrics, and logs with separate buffers per signal type for optimal batching.
  */
 @Experimental
 @DataPrepperPlugin(
@@ -31,10 +41,10 @@ import java.util.Collection;
         pluginType = Sink.class,
         pluginConfigurationType = OtlpSinkConfig.class
 )
-public class OtlpSink extends AbstractSink<Record<Span>> {
+public class OtlpSink extends AbstractSink<Record<Event>> {
     private volatile boolean initialized = false;
 
-    private final OtlpSinkBuffer buffer;
+    private final Map<OtlpSignalType, OtlpSinkBuffer> buffersBySignalType;
     private final OtlpSinkMetrics sinkMetrics;
 
     /**
@@ -50,27 +60,54 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
         super(pluginSetting);
 
         this.sinkMetrics = new OtlpSinkMetrics(pluginMetrics, pluginSetting);
-        this.buffer = new OtlpSinkBuffer(awsCredentialsSupplier, config, sinkMetrics);
+        this.buffersBySignalType = createBuffers(awsCredentialsSupplier, config, sinkMetrics);
+    }
+
+    private Map<OtlpSignalType, OtlpSinkBuffer> createBuffers(
+            final AwsCredentialsSupplier awsCredentialsSupplier,
+            final OtlpSinkConfig config,
+            final OtlpSinkMetrics sinkMetrics) {
+        
+        final Map<OtlpSignalType, OtlpSinkBuffer> buffers = new EnumMap<>(OtlpSignalType.class);
+        final OTelProtoStandardCodec.OTelProtoEncoder encoder = new OTelProtoStandardCodec.OTelProtoEncoder();
+        final OtlpHttpSender sender = new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics);
+
+        // Create a buffer for each signal type
+        for (final OtlpSignalType signalType : new OtlpSignalType[]{OtlpSignalType.TRACE, OtlpSignalType.METRIC, OtlpSignalType.LOG}) {
+            final OtlpSignalHandler handler = signalType.createHandler(encoder);
+            final OtlpSinkBuffer buffer = new OtlpSinkBuffer(config, sinkMetrics, handler, sender);
+            buffers.put(signalType, buffer);
+        }
+
+        return buffers;
     }
 
     /**
-     * Initialize the buffer
+     * Initialize the buffers
      */
     @Override
     public void doInitialize() {
-        buffer.start();
+        buffersBySignalType.values().forEach(OtlpSinkBuffer::start);
         initialized = true;
     }
 
     /**
      * Implement the sink's output logic
      *
-     * @param records Records to be output
+     * @param records Records to be output (can be Span, Metric, or Log events)
      */
     @Override
-    public void doOutput(@Nonnull final Collection<Record<Span>> records) {
-        for (final Record<Span> record : records) {
-            buffer.add(record);
+    public void doOutput(@Nonnull final Collection<Record<Event>> records) {
+        for (final Record<Event> record : records) {
+            final OtlpSignalType signalType = OtlpSignalType.fromEvent(record.getData());
+            final OtlpSinkBuffer buffer = buffersBySignalType.get(signalType);
+            
+            if (buffer != null) {
+                buffer.add(record);
+            } else {
+                // Unknown signal type, skip
+                sinkMetrics.incrementFailedRecordsCount(1);
+            }
         }
     }
 
@@ -81,7 +118,7 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
      */
     @Override
     public boolean isReady() {
-        return initialized && buffer.isRunning();
+        return initialized && buffersBySignalType.values().stream().allMatch(OtlpSinkBuffer::isRunning);
     }
 
     /**
@@ -90,6 +127,6 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
     @Override
     public void shutdown() {
         super.shutdown();
-        buffer.stop();
+        buffersBySignalType.values().forEach(OtlpSinkBuffer::stop);
     }
 }
