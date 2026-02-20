@@ -23,7 +23,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Function;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 
 @DataPrepperPlugin(name = "split_event", pluginType = Processor.class, pluginConfigurationType = SplitEventProcessorConfig.class)
