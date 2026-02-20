@@ -55,7 +55,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisRecordProcessor.class);
 
     private static final int DEFAULT_MONITOR_WAIT_TIME_MS = 15_000;
-    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(4);
 
     private final StreamIdentifier streamIdentifier;
     private final KinesisStreamConfig kinesisStreamConfig;
