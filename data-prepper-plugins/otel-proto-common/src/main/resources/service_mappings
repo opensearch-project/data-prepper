@@ -1,0 +1,12 @@
+AmazonDynamoDBv2,AWS::DynamoDB
+DynamoDb,AWS::DynamoDB
+dynamodb,AWS::DynamoDB
+DynamoDBv2,AWS::DynamoDB
+sns,AWS::SNS
+AmazonSNS,AWS::SNS
+SimpleNotificationService,AWS::SNS
+Kinesis,AWS::Kinesis
+AmazonKinesis,AWS::Kinesis
+Amazon S3,AWS::S3
+S3,AWS::S3
+s3,AWS::S3

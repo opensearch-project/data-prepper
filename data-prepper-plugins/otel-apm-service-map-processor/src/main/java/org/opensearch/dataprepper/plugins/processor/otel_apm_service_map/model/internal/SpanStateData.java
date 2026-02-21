@@ -19,7 +19,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
-// TODO : 1. Add new rules as per Producer/Consumers/LocalRoot
 @Getter
 public class SpanStateData implements Serializable {
     private String serviceName;
