@@ -231,11 +231,17 @@ class OTelTraceRawProcessorTest {
     void testServerSpansReceiveDerivedAttributes() {
         final Collection<Record<Span>> processedRecords = oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
 
+        final List<Span> spans = processedRecords.stream()
+                .map(Record::getData)
+                .collect(Collectors.toList());
         // We know TEST_TWO_FULL_TRACE_GROUP_RECORDS contains SERVER spans, so let's be specific
         final List<Span> serverSpans = processedRecords.stream()
                 .map(Record::getData)
                 .filter(span -> "SPAN_KIND_SERVER".equals(span.getKind()))
                 .collect(Collectors.toList());
+        for (final Span span : serverSpans) {
+            System.out.println("---SPAN--"+span.toJsonString());
+        }
 
         // Verify we have the expected SERVER spans
         assertThat(serverSpans.size(), equalTo(4)); // 2 traces × 2 SERVER child spans each
