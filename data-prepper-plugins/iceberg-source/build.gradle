@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:buffer-common')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+
+    implementation 'org.apache.iceberg:iceberg-core:1.10.1'
+    implementation 'org.apache.iceberg:iceberg-data:1.10.1'
+    implementation 'org.apache.iceberg:iceberg-parquet:1.10.1'
+    implementation 'org.apache.iceberg:iceberg-orc:1.10.1'
+    implementation 'org.apache.iceberg:iceberg-aws:1.10.1'
+
+    implementation libs.parquet.hadoop
+    implementation libs.avro.core
+    implementation libs.hadoop.common
+    implementation 'org.apache.orc:orc-core:1.9.5'
+
+    implementation 'software.amazon.awssdk:glue'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:sts'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation project(':data-prepper-test:test-common')
+}
