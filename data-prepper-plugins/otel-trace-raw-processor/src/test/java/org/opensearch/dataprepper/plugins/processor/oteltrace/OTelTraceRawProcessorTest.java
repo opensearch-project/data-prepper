@@ -239,9 +239,6 @@ class OTelTraceRawProcessorTest {
                 .map(Record::getData)
                 .filter(span -> "SPAN_KIND_SERVER".equals(span.getKind()))
                 .collect(Collectors.toList());
-        for (final Span span : serverSpans) {
-            System.out.println("---SPAN--"+span.toJsonString());
-        }
 
         // Verify we have the expected SERVER spans
         assertThat(serverSpans.size(), equalTo(4)); // 2 traces × 2 SERVER child spans each

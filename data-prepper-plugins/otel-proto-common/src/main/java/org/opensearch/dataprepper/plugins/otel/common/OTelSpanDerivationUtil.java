@@ -14,16 +14,11 @@ import org.opensearch.dataprepper.model.trace.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.model.metric.JacksonMetric.ATTRIBUTES_KEY;
 import io.opentelemetry.proto.trace.v1.Span.SpanKind;
@@ -44,7 +39,6 @@ public class OTelSpanDerivationUtil {
     public static final String DERIVED_REMOTE_SERVICE_ATTRIBUTE = "derived.remote_service";
     private static final Logger LOG = LoggerFactory.getLogger(OTelSpanDerivationUtil.class);
     private static final String SERVICE_MAPPINGS_FILE = "service_mappings";
-    private static final String HOST_PORT_ORDERED_LIST_FILE = "hostport_attributes_ordered_list";
 
     /**
      * Derives fault, error, operation, and environment attributes for SERVER spans in the provided list.
@@ -58,56 +52,10 @@ public class OTelSpanDerivationUtil {
         }
 
         for (final Span span : spans) {
-                System.out.println("--checking-----SERVER SPAN---"+isServerSpan(span));
             if (span != null && isServerSpan(span)) {
-                System.out.println("-------SERVER SPAN---");
                 deriveAttributesForSpan(span);
             }
         }
-    }
-
-    private AddressPortAttributeKeys getAddressPortAttributeKeys(final String str) {
-        return new AddressPortAttributeKeys(str);
-    }
-
-    public List<AddressPortAttributeKeys> getAddressPortAttributeKeysList() {
-        try (
-            final InputStream inputStream = getClass().getClassLoader().getResourceAsStream(HOST_PORT_ORDERED_LIST_FILE);
-        ) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                return reader.lines()
-                .filter(line -> line.contains(","))
-                .map(this::getAddressPortAttributeKeys)
-                .collect(Collectors.toList());
-            } catch (IOException e) {
-                throw e;
-            }
-        } catch (final Exception e) {
-            LOG.error("An exception occurred while initializing hostport attribute list for Data Prepper", e);
-        }
-        return null;
-    }
-
-
-    public Map<String, String> getAwsServiceMappingsFromResources() {
-        try (
-            final InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SERVICE_MAPPINGS_FILE);
-        ) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                return reader.lines()
-                .filter(line -> line.contains(","))
-                .collect(Collectors.toMap(
-                    line -> line.split(",", 2)[0].trim(),
-                    line -> line.split(",", 2)[1].trim(),
-                    (oldValue, newValue) -> newValue
-                ));
-            } catch (IOException e) {
-                throw e;
-            }
-        } catch (final Exception e) {
-            LOG.error("An exception occurred while initializing service mappings for Data Prepper", e);
-        }
-        return null;
     }
 
     private static boolean isServerSpan(Span span) {
@@ -318,9 +266,10 @@ public class OTelSpanDerivationUtil {
 
     public static RemoteOperationAndService computeRemoteOperationAndService(final Map<String, Object> spanAttributes) {
         OTelSpanDerivationUtil oTelSpanDerivationUtil = new OTelSpanDerivationUtil();
-        Map<String, String> awsServiceMappings = oTelSpanDerivationUtil.getAwsServiceMappingsFromResources();
+        Map<String, String> awsServiceMappings = (new AwsServiceMappingsProvider()).getServiceMappings();
         RemoteOperationAndServiceProviders remoteOperationAndServiceProviders = new RemoteOperationAndServiceProviders();
-        List<OTelSpanDerivationUtil.AddressPortAttributeKeys> addressPortAttributeKeysList = oTelSpanDerivationUtil.getAddressPortAttributeKeysList();
+        ServiceAddressPortAttributesProvider serviceAddressPortAttributesProvider = new ServiceAddressPortAttributesProvider();
+        List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList = serviceAddressPortAttributesProvider.getAddressPortAttributeKeysList();
 
         RemoteOperationAndService remoteOperationAndService = new RemoteOperationAndService(null, null);
         if (remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
@@ -348,7 +297,7 @@ public class OTelSpanDerivationUtil {
             remoteOperationAndService = remoteOperationAndServiceProviders.PeerServiceRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
         }
 
-        if (!remoteOperationAndService.isNull()) {
+        if (!remoteOperationAndService.hasNullValues()) {
             return remoteOperationAndService;
         }
 
@@ -375,9 +324,9 @@ public class OTelSpanDerivationUtil {
                 remoteService != null ? remoteService : "UnknownRemoteService");
     }
 
-    private static String deriveServiceFromNetwork(final Map<String, Object> spanAttributes, final String urlString, final List<AddressPortAttributeKeys> addressPortAttributeKeysList) {
+    private static String deriveServiceFromNetwork(final Map<String, Object> spanAttributes, final String urlString, final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList) {
 
-        for (AddressPortAttributeKeys addressPortAttributeKeys : addressPortAttributeKeysList) {
+        for (ServiceAddressPortAttributesProvider.AddressPortAttributeKeys addressPortAttributeKeys : addressPortAttributeKeysList) {
             final String address = getStringAttribute(spanAttributes, addressPortAttributeKeys.getAddress());
             if (address != null) {
                 final String port = getStringAttribute(spanAttributes, addressPortAttributeKeys.getPort());
@@ -435,24 +384,6 @@ public class OTelSpanDerivationUtil {
     @Deprecated
     static String getStringAttributeFromMap(final Map<String, Object> map, final String key) {
         return getStringAttribute(map, key);
-    }
-
-
-    public static class AddressPortAttributeKeys {
-        final String address;
-        final String port;
-        public AddressPortAttributeKeys(final String str) {
-            this.address = str.split(",")[0];
-            this.port = str.split(",")[1];
-        }
-
-        public String getAddress() {
-            return address;
-        }
-
-        public String getPort() {
-            return port;
-        }
     }
 
     /**

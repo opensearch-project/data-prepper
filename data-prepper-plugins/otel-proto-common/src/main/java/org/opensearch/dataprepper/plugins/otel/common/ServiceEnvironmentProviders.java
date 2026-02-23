@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.otel.common;
 import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil.getStringAttribute;
 import java.util.Map;
 
-public class ServiceEnvironmentProviders {
+class ServiceEnvironmentProviders {
     public static String getDeploymentEnvironment(final Map<String, Object> spanAttributes) {
         try {
             // Navigate: spanAttributes -> "resource" -> "attributes" -> deployment keys

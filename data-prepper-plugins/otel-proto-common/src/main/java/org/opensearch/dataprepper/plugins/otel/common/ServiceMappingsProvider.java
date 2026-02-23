@@ -12,7 +12,8 @@ package org.opensearch.dataprepper.plugins.otel.common;
 
 import java.util.Map;
 
-interface RemoteOperationServiceExtractor {
-    boolean appliesToSpan(Map<String, Object> spanAttributes);
-    RemoteOperationAndService getRemoteOperationAndService(Map<String, Object> spanAttributes, Object optionalArg);
+interface ServiceMappingsProvider {
+    Map<String, String> getServiceMappings();
 }
+
+

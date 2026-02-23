@@ -14,7 +14,7 @@ import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationU
 
 import java.util.Map;
 
-public class RemoteOperationAndServiceProviders {
+class RemoteOperationAndServiceProviders {
     public final PeerServiceRemoteOperationServiceExtractor PeerServiceRemoteOperationServiceExtractor = new PeerServiceRemoteOperationServiceExtractor();
     public final GraphQlRemoteOperationServiceExtractor GraphQlRemoteOperationServiceExtractor = new GraphQlRemoteOperationServiceExtractor();
     public final MessagingSystemRemoteOperationServiceExtractor MessagingSystemRemoteOperationServiceExtractor = new MessagingSystemRemoteOperationServiceExtractor();
@@ -124,7 +124,7 @@ public class RemoteOperationAndServiceProviders {
             String remoteService = null;
             String rpcService = getStringAttribute(spanAttributes, "rpc.service");
             String rpcSystem = getStringAttribute(spanAttributes, "rpc.system");
-            if (rpcSystem != null && rpcSystem.equals("aws-api")) {
+            if (rpcSystem != null && rpcSystem.equals("aws-api") && awsServiceMappings != null) {
                 remoteService = (String)((Map<String, Object>)awsServiceMappings).getOrDefault(rpcService, "AWS::" + rpcService);
             }
             return new RemoteOperationAndService(getStringAttribute(spanAttributes, "rpc.method"), remoteService);
