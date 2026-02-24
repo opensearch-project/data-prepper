@@ -14,11 +14,14 @@ import org.opensearch.dataprepper.model.trace.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URL;
+import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.model.metric.JacksonMetric.ATTRIBUTES_KEY;
+import io.opentelemetry.proto.trace.v1.Span.SpanKind;
 
 /**
  * Utility class for deriving fault, error, operation, and environment attributes from OpenTelemetry spans.
@@ -33,8 +36,9 @@ public class OTelSpanDerivationUtil {
     public static final String DERIVED_ERROR_ATTRIBUTE = "derived.error";
     public static final String DERIVED_OPERATION_ATTRIBUTE = "derived.operation";
     public static final String DERIVED_ENVIRONMENT_ATTRIBUTE = "derived.environment";
+    public static final String DERIVED_REMOTE_SERVICE_ATTRIBUTE = "derived.remote_service";
     private static final Logger LOG = LoggerFactory.getLogger(OTelSpanDerivationUtil.class);
-    private static final String SPAN_KIND_SERVER = "SPAN_KIND_SERVER";
+    private static final String SERVICE_MAPPINGS_FILE = "service_mappings";
 
     /**
      * Derives fault, error, operation, and environment attributes for SERVER spans in the provided list.
@@ -48,12 +52,23 @@ public class OTelSpanDerivationUtil {
         }
 
         for (final Span span : spans) {
-            if (span != null && SPAN_KIND_SERVER.equals(span.getKind())) {
+            if (span != null && isServerSpan(span)) {
                 deriveAttributesForSpan(span);
             }
         }
     }
 
+    private static boolean isServerSpan(Span span) {
+        return SpanKind.SPAN_KIND_SERVER.name().equals(span.getKind());
+    }
+
+    private static boolean isClientSpan(Span span) {
+        return SpanKind.SPAN_KIND_CLIENT.name().equals(span.getKind());
+    }
+
+    private static boolean isProducerSpan(Span span) {
+        return SpanKind.SPAN_KIND_PRODUCER.name().equals(span.getKind());
+    }
 
     /**
      * Adds an attribute to the span. This method just delegates to span.putAttribute()
@@ -85,14 +100,23 @@ public class OTelSpanDerivationUtil {
 
             final ErrorFaultResult errorFault = computeErrorAndFault(span.getStatus(), spanAttributes);
 
-            final String operationName = computeOperationName(span.getName(), spanAttributes);
+            String operationName = null;
+            if (isServerSpan(span)) {
+                operationName = computeOperationName(span.getName(), spanAttributes);
+            } else if (isClientSpan(span) || isProducerSpan(span)) {
+                final RemoteOperationAndService remoteOperationAndService = computeRemoteOperationAndService(spanAttributes);
+                operationName = remoteOperationAndService.getOperation();
+                putAttribute(span, DERIVED_REMOTE_SERVICE_ATTRIBUTE, remoteOperationAndService.getService());
+            }
 
             final String environment = computeEnvironment(spanAttributes);
 
             // Add derived attributes using our safe attribute setting method
             putAttribute(span, DERIVED_FAULT_ATTRIBUTE, String.valueOf(errorFault.fault));
             putAttribute(span, DERIVED_ERROR_ATTRIBUTE, String.valueOf(errorFault.error));
-            putAttribute(span, DERIVED_OPERATION_ATTRIBUTE, operationName);
+            if (operationName != null) {
+                putAttribute(span, DERIVED_OPERATION_ATTRIBUTE, operationName);
+            }
             putAttribute(span, DERIVED_ENVIRONMENT_ATTRIBUTE, environment);
 
             LOG.debug("Derived attributes for SERVER span {}: fault={}, error={}, operation={}, environment={}",
@@ -186,6 +210,15 @@ public class OTelSpanDerivationUtil {
         return "ERROR".equalsIgnoreCase(statusString) ||
                "2".equals(statusString) ||
                statusString.toLowerCase().contains("error");
+
+    }
+
+    private static String extractFirstPathFromUrl(final String url) {
+        int colonDoubleSlash = url.indexOf("://");
+        int firstSlash = url.indexOf("/", colonDoubleSlash+3);
+        int secondSlash = url.indexOf("/", firstSlash+1);
+        String result= (secondSlash > 0) ? url.substring(firstSlash, secondSlash) : url.substring(firstSlash);
+        return result;
     }
 
     /**
@@ -231,6 +264,87 @@ public class OTelSpanDerivationUtil {
         return spanName != null ? spanName : "UnknownOperation";
     }
 
+    public static RemoteOperationAndService computeRemoteOperationAndService(final Map<String, Object> spanAttributes) {
+        OTelSpanDerivationUtil oTelSpanDerivationUtil = new OTelSpanDerivationUtil();
+        Map<String, String> awsServiceMappings = (new AwsServiceMappingsProvider()).getServiceMappings();
+        RemoteOperationAndServiceProviders remoteOperationAndServiceProviders = new RemoteOperationAndServiceProviders();
+        ServiceAddressPortAttributesProvider serviceAddressPortAttributesProvider = new ServiceAddressPortAttributesProvider();
+        List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList = serviceAddressPortAttributesProvider.getAddressPortAttributeKeysList();
+
+        RemoteOperationAndService remoteOperationAndService = new RemoteOperationAndService(null, null);
+        if (remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, awsServiceMappings);
+        }
+        if (remoteOperationAndServiceProviders.DbRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.DbRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+        if (remoteOperationAndServiceProviders.DbQueryRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.DbQueryRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+        if (remoteOperationAndServiceProviders.FaasRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.FaasRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+        if (remoteOperationAndServiceProviders.MessagingSystemRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.MessagingSystemRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+        if (remoteOperationAndServiceProviders.GraphQlRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.GraphQlRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+        if (remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, awsServiceMappings);
+        }
+        if (remoteOperationAndServiceProviders.PeerServiceRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {
+            remoteOperationAndService = remoteOperationAndServiceProviders.PeerServiceRemoteOperationServiceExtractor.getRemoteOperationAndService(spanAttributes, null);
+        }
+
+        if (!remoteOperationAndService.hasNullValues()) {
+            return remoteOperationAndService;
+        }
+
+        // Fallback: derive from URL or network attributes
+        final String urlString = getStringAttribute(spanAttributes, "url.full") != null
+                ? getStringAttribute(spanAttributes, "url.full")
+                : getStringAttribute(spanAttributes, "http.url");
+
+        String remoteOperation = remoteOperationAndService.getOperation();
+        String remoteService = remoteOperationAndService.getService();
+        if (remoteService == null) {
+            remoteService = deriveServiceFromNetwork(spanAttributes, urlString, addressPortAttributeKeysList);
+        }
+
+        if (remoteOperation == null && urlString != null) {
+            final String httpMethod = getStringAttribute(spanAttributes, "http.request.method") != null
+                    ? getStringAttribute(spanAttributes, "http.request.method")
+                    : getStringAttribute(spanAttributes, "http.method");
+            remoteOperation = httpMethod != null ? httpMethod + " " + extractFirstPathFromUrl(urlString) : urlString;
+        }
+
+        return new RemoteOperationAndService(
+                remoteOperation != null ? remoteOperation : "UnknownRemoteOperation",
+                remoteService != null ? remoteService : "UnknownRemoteService");
+    }
+
+    private static String deriveServiceFromNetwork(final Map<String, Object> spanAttributes, final String urlString, final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList) {
+
+        for (ServiceAddressPortAttributesProvider.AddressPortAttributeKeys addressPortAttributeKeys : addressPortAttributeKeysList) {
+            final String address = getStringAttribute(spanAttributes, addressPortAttributeKeys.getAddress());
+            if (address != null) {
+                final String port = getStringAttribute(spanAttributes, addressPortAttributeKeys.getPort());
+                return port != null ? address + ":" + port : address;
+            }
+        }
+
+        if (urlString != null) {
+            try {
+                final URL url = new URL(urlString);
+                final int port = url.getPort() == -1 ? url.getDefaultPort() : url.getPort();
+                return url.getHost() + ":" + port;
+            } catch (MalformedURLException ignored) {}
+        }
+
+        return null;
+    }
+
     /**
      * Compute environment from resource attributes.
      * Package-private for testing purposes only.
@@ -239,29 +353,11 @@ public class OTelSpanDerivationUtil {
      * @return Computed environment string
      */
     public static String computeEnvironment(final Map<String, Object> spanAttributes) {
-        try {
-            // Navigate: spanAttributes -> "resource" -> "attributes" -> deployment keys
-            @SuppressWarnings("unchecked")
-            Map<String, Object> resourceAttrs = (Map<String, Object>)
-                ((Map<String, Object>) spanAttributes.get("resource")).get("attributes");
-
-            // Extract from resource.attributes.deployment.environment.name
-            String env = getStringAttribute(resourceAttrs, "deployment.environment.name");
-            if (env != null && !env.trim().isEmpty()) {
-                return env;
-            }
-
-            // Fall back to resource.attributes.deployment.environment
-            env = getStringAttribute(resourceAttrs, "deployment.environment");
-            if (env != null && !env.trim().isEmpty()) {
-                return env;
-            }
-        } catch (Exception ignored) {
-            // Any navigation failure falls through to default
+        String env = ServiceEnvironmentProviders.getAwsServiceEnvironment(spanAttributes);
+        if (env == null) {
+            env = ServiceEnvironmentProviders.getDeploymentEnvironment(spanAttributes);
         }
-
-        // Default: 'generic:default'
-        return "generic:default";
+        return env;
     }
 
     /**
@@ -289,7 +385,6 @@ public class OTelSpanDerivationUtil {
     static String getStringAttributeFromMap(final Map<String, Object> map, final String key) {
         return getStringAttribute(map, key);
     }
-
 
     /**
      * Simple data class to hold error and fault computation results.
