@@ -231,6 +231,9 @@ class OTelTraceRawProcessorTest {
     void testServerSpansReceiveDerivedAttributes() {
         final Collection<Record<Span>> processedRecords = oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
 
+        final List<Span> spans = processedRecords.stream()
+                .map(Record::getData)
+                .collect(Collectors.toList());
         // We know TEST_TWO_FULL_TRACE_GROUP_RECORDS contains SERVER spans, so let's be specific
         final List<Span> serverSpans = processedRecords.stream()
                 .map(Record::getData)
