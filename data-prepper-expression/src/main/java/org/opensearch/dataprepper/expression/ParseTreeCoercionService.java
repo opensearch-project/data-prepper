@@ -134,6 +134,12 @@ class ParseTreeCoercionService {
                     }
                     argList.add(trimmedArg);
                 } else {
+                    try {
+                        argList.add(Integer.parseInt(trimmedArg));
+                        continue;
+                    } catch (final Exception e) {
+
+                    }
                     throw new ExpressionCoercionException(UNSUPPORTED_ARG_TYPE);
                 }
             }
