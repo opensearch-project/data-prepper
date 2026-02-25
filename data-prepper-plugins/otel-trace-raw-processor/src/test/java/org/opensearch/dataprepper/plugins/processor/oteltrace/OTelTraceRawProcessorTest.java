@@ -454,6 +454,23 @@ class OTelTraceRawProcessorTest {
         MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords), equalTo(0));
     }
 
+    @Test
+    void testGenAiEnrichmentRunsDuringDoExecute() {
+        // Verifies that GenAI enrichment (normalization + propagation) runs as part of doExecute.
+        // Uses a span with OpenLLMetry vendor attributes (llm.usage.prompt_tokens) and asserts
+        // the normalized gen_ai.* attribute appears on the output span.
+        final Span root = buildSpanFromJsonFile("genai-root-span.json");
+        final Span child = buildSpanFromJsonFile("openllmetry-child-span.json");
+
+        final Collection<Record<Span>> result = oTelTraceRawProcessor.doExecute(
+                Stream.of(root, child).map(Record::new).collect(Collectors.toList()));
+
+        final Span outputRoot = result.stream().map(Record::getData)
+                .filter(s -> s.getParentSpanId() == null || s.getParentSpanId().isEmpty())
+                .findFirst().orElseThrow();
+        assertThat(outputRoot.getAttributes().get("gen_ai.usage.input_tokens")).isNotNull();
+    }
+
     private static Span buildSpanFromJsonFile(final String jsonFileName) {
         JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
         try (final InputStream inputStream = Objects.requireNonNull(

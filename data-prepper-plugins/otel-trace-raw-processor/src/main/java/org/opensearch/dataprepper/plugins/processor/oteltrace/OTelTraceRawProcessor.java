@@ -99,6 +99,9 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
 
+        // Enrich GenAI agent traces (propagate select gen_ai attributes to root, aggregate tokens, strip conflicting sub-keys)
+        GenAiEnrichmentHelper.enrichBatch(processedSpans);
+
         // Derive server span attributes (fault, error, operation, environment)
         OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
 
