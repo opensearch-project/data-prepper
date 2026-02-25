@@ -1,0 +1,111 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+# GenAI attribute mappings from vendor-specific instrumentation libraries to OTel GenAI Semantic Conventions.
+# Each entry maps a source attribute key to a target gen_ai.* key.
+# Optional: wrap_as_array: true wraps a scalar string value into a single-element JSON array string.
+#
+# Sources:
+#   OpenInference: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+#   OpenLLMetry:   https://www.traceloop.com/docs/openllmetry/contributing/semantic-conventions
+
+openinference:
+  - from: llm.token_count.prompt
+    to: gen_ai.usage.input_tokens
+  - from: llm.token_count.completion
+    to: gen_ai.usage.output_tokens
+  - from: llm.model_name
+    to: gen_ai.request.model
+  - from: llm.provider
+    to: gen_ai.provider.name
+  - from: llm.input_messages
+    to: gen_ai.input.messages
+  - from: llm.output_messages
+    to: gen_ai.output.messages
+  - from: embedding.model_name
+    to: gen_ai.request.model
+  - from: tool.name
+    to: gen_ai.tool.name
+  - from: tool.description
+    to: gen_ai.tool.description
+  - from: tool_call.function.arguments
+    to: gen_ai.tool.call.arguments
+  - from: tool_call.id
+    to: gen_ai.tool.call.id
+  - from: reranker.model_name
+    to: gen_ai.request.model
+  - from: agent.name
+    to: gen_ai.agent.name
+  - from: session.id
+    to: gen_ai.conversation.id
+  - from: openinference.span.kind
+    to: gen_ai.operation.name
+
+openllmetry:
+  - from: llm.usage.prompt_tokens
+    to: gen_ai.usage.input_tokens
+  - from: llm.usage.completion_tokens
+    to: gen_ai.usage.output_tokens
+  - from: llm.request.model
+    to: gen_ai.request.model
+  - from: llm.response.model
+    to: gen_ai.response.model
+  - from: llm.request.max_tokens
+    to: gen_ai.request.max_tokens
+  - from: llm.request.temperature
+    to: gen_ai.request.temperature
+  - from: llm.request.top_p
+    to: gen_ai.request.top_p
+  - from: llm.top_k
+    to: gen_ai.request.top_k
+  - from: llm.frequency_penalty
+    to: gen_ai.request.frequency_penalty
+  - from: llm.presence_penalty
+    to: gen_ai.request.presence_penalty
+  - from: llm.chat.stop_sequences
+    to: gen_ai.request.stop_sequences
+  - from: llm.request.functions
+    to: gen_ai.tool.definitions
+  - from: llm.response.finish_reason
+    to: gen_ai.response.finish_reasons
+    wrap_as_array: true
+  - from: llm.response.stop_reason
+    to: gen_ai.response.finish_reasons
+    wrap_as_array: true
+  - from: llm.request.type
+    to: gen_ai.operation.name
+  - from: traceloop.span.kind
+    to: gen_ai.operation.name
+  - from: traceloop.entity.name
+    to: gen_ai.agent.name
+  - from: traceloop.entity.input
+    to: gen_ai.input.messages
+  - from: traceloop.entity.output
+    to: gen_ai.output.messages
+
+# Value mappings for gen_ai.operation.name.
+# Keys are matched case-insensitively.
+# Sources: OpenInference span kinds, OpenLLMetry traceloop.span.kind and llm.request.type values.
+operation_name_values:
+  LLM: chat
+  EMBEDDING: embeddings
+  CHAIN: invoke_agent
+  RETRIEVER: retrieval
+  RERANKER: retrieval
+  TOOL: execute_tool
+  AGENT: invoke_agent
+  PROMPT: text_completion
+  workflow: invoke_agent
+  task: invoke_agent
+  agent: invoke_agent
+  tool: execute_tool
+  completion: text_completion
+  chat: chat
+  rerank: retrieval
+  embedding: embeddings

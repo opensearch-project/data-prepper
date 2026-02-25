@@ -1,0 +1,20 @@
+{
+  "traceId": "GENAI_TRACE_ID_1",
+  "spanId": "000000000000c002",
+  "parentSpanId": "000000000000a002",
+  "traceState": "",
+  "name": "openai.chat",
+  "kind": "CLIENT",
+  "startTime": "2026-01-01T00:00:00.000Z",
+  "endTime": "2026-01-01T00:00:01.000Z",
+  "durationInNanos": 1000000000,
+  "status": {},
+  "attributes": {
+    "llm.usage.prompt_tokens": 200,
+    "llm.usage.completion_tokens": 55,
+    "llm.request.model": "gpt-4o",
+    "llm.request.type": "chat",
+    "llm.response.finish_reason": "stop",
+    "traceloop.entity.name": "research-agent"
+  }
+}
