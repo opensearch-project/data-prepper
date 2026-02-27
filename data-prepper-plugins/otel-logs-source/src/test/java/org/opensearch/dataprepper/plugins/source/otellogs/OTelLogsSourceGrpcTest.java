@@ -341,6 +341,17 @@ class OTelLogsSourceGrpcTest {
     }
 
     @Test
+    void start_withoutHttpPath_doesNotThrowNPE() {
+        final OTelLogsSourceConfig config = createDefaultConfigBuilder()
+                .path("/test-pipeline/v1/logs")
+                .build();
+        final OTelLogsSource source = new OTelLogsSource(config, pluginMetrics, pluginFactory,
+                certificateProviderFactory, pipelineDescription);
+        source.start(buffer);
+        source.stop();
+    }
+
+    @Test
     void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelLogsSource source = new OTelLogsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
