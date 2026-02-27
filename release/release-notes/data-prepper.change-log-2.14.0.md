@@ -1,9 +1,122 @@
 
+* __feat: Add GenAI agent trace enrichment to otel_traces processor (#6548) (#6566)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 24 Feb 2026 20:46:22 -0600
+    
+    EAD -&gt; refs/heads/2.14, tag: refs/tags/2.14.0, refs/remotes/upstream/2.14
+    * feat: add GenAI agent trace enrichment to otel_traces processor
+    
+    Always-on enrichment in otel_traces processor:
+    - Normalizes vendor attributes (OpenInference, OpenLLMetry) to gen_ai.* semconv
+    - Propagates select gen_ai attributes from child spans to root
+    - Aggregates token counts across children to root
+    - Strips conflicting flattened sub-keys
+    
+    No configuration required. No-op for non-GenAI traces.
+    
+    RFC: https://github.com/opensearch-project/data-prepper/issues/6542
+    
+    
+    
+    * fix: use OTelProtoOpensearchCodec storage key format in GenAI enrichment
+    
+    OTelProtoOpensearchCodec converts span attribute keys from dot-notation to a
+    prefixed @ format before storing them in the JacksonSpan attributes map (e.g.
+    gen_ai.system -&gt; span.attributes.gen_ai@system). The enrichment code was using
+    dot-notation for lookups and writes, so it silently found nothing in production
+    even though unit tests passed (tests bypass the codec).
+    
+    Fix: add toStorageKey()/toLogicalKey() helpers that convert between the two
+    formats. All attribute reads and writes in enrichRootSpan, normalizeAttributes,
+    and stripFlattenedSubkeys now use the storage format.
+    
+    Test fix: add convertToStorageFormat() helper that renames attribute keys to
+    simulate the codec, and storageFormatRecords() that applies it before passing
+    spans to the processor. JSON fixtures stay in dot-notation. All GenAI tests now
+    exercise the real code path.
+    
+    E2E validated: LangGraph, Strands, CrewAI root spans now have gen_ai.* 
+    attributes propagated correctly.
+    
+    
+    
+    * refactor: address PR review comments on GenAiAttributeMappings and tests
+    
+    - Make MappingTarget fields private with getKey()/isWrapSlice() getters
+    - Make LOOKUP_TABLE/OPERATION_NAME_VALUES private with static getters
+    - Add GenAiAttributeMappingsTest with direct coverage of getters and mappings
+    - Assert result/attrs non-empty in testFlattenedSubkeysStripped to prevent
+     silent pass when collections are empty
+    
+    
+    
+    * test: add integration test verifying GenAI enrichment runs in
+    OTelTraceRawProcessor.doExecute
+    
+    Adds testGenAiEnrichmentRunsDuringDoExecute to OTelTraceRawProcessorTest. 
+    Passes a span with OpenLLMetry vendor attributes through doExecute and asserts
+    the normalized gen_ai.* attribute appears on the output span, verifying the
+    enrichment call is wired into the processor pipeline.
+    
+    
+    
+    * refactor: load GenAI attribute mappings from YAML resource file
+    
+    Moves hardcoded attribute mappings from GenAiAttributeMappings.java into 
+    genai-attribute-mappings.yaml in the jar resources. Loaded at class init via
+    Jackson YAML. This separates data from code and makes it easier to add new
+    instrumentation library mappings without modifying Java.
+    
+    Covers OpenInference (15 mappings) and OpenLLMetry (20 mappings) profiles plus
+    operation_name_values. Adds testMappingsFileExists to verify the resource file
+    is present and readable.
+    
+    
+    
+    * rename: wrapSlice -&gt; wrapAsArray for clarity in GenAI attribute mappings
+    
+    Renamed the flag that wraps a scalar string value into a single-element JSON
+    array from wrapSlice to wrapAsArray (Java) and wrap_as_array (YAML). The new
+    name makes the behavior immediately clear without needing context.
+    
+    
+    
+    * revert: remove storage-key format from GenAI enrichment
+    
+    Reverts the behavioral changes from 5ac188ad which converted attribute lookups
+    and writes to use span.attributes.* prefix with @ separators
+    (e.g. span.attributes.gen_ai@system). The enrichment code now uses plain
+    dot-notation keys (e.g. gen_ai.system) matching the format in the JacksonSpan
+    attributes map at processing time.
+    
+    Removed: toStorageKey(), toLogicalKey(), STORAGE_PREFIX, and the 
+    convertToStorageFormat()/storageFormatRecords() test helpers.
+    
+    Preserves accessor refactors (getKey(), isWrapAsArray(), getLookupTable()) and
+    test assertions from subsequent commits.
+    
+    Unit tests: 35/35 pass (full otel-trace-raw-processor module) E2E: Strands +
+    LangGraph agents → local DP → OpenSearch verified
+    
+    
+    
+    * fix: add license header to genai-attribute-mappings.yaml
+    
+    
+    
+    ---------
+    
+    
+    (cherry picked from commit 6eb06fe60c21bc4125875af5a3052e332908a12a)
+    
+    Signed-off-by: Kyle Hounslow &lt;kylhouns@amazon.com&gt; Co-authored-by: Kyle
+    Hounslow &lt;7102778+kylehounslow@users.noreply.github.com&gt;
+
 * __otel_apm_service_map: Added support for deriving remote service and remote operation (#6539) (#6565)__
 
     [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 24 Feb 2026 14:53:53 -0800
     
-    EAD -&gt; refs/heads/2.14, refs/remotes/upstream/2.14
+    
     * otel_apm_service_map: Added support for deriving remote service and remote
     operation
     
