@@ -344,7 +344,6 @@ class OTelLogsSourceGrpcTest {
     @Test
     void start_withoutHttpPath_doesNotThrowNPE() {
         final OTelLogsSourceConfig config = createDefaultConfigBuilder()
-                .httpPath(null)
                 .path("/test-pipeline/v1/logs")
                 .build();
         final OTelLogsSource source = new OTelLogsSource(config, pluginMetrics, pluginFactory,
