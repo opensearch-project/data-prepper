@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import static org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME;
-
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.Server;
@@ -18,7 +16,6 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
-import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
@@ -56,8 +53,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -135,7 +130,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
     private Server createServer(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
         serverBuilder.disableServerHeader();
-        if (oTelLogsSourceConfig.isSsl()) {
+        if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
@@ -149,11 +144,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
             serverBuilder.http(oTelLogsSourceConfig.getPort());
         }
 
-        if (oTelLogsSourceConfig.getAuthentication() != null) {
-            createHttpAuthentication()
-                    .flatMap(ArmeriaHttpAuthenticationProvider::getAuthenticationDecorator)
-                    .ifPresent(serverBuilder::decorator);
-        }
+        final GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
+        authProvider.getHttpAuthenticationService().ifPresent(serverBuilder::decorator);
 
         serverBuilder.maxNumConnections(oTelLogsSourceConfig.getMaxConnectionCount());
         serverBuilder.requestTimeout(Duration.ofMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis()));
@@ -165,13 +157,16 @@ public class OTelLogsSource implements Source<Record<Object>> {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount);
         serverBuilder.blockingTaskExecutor(executor, true);
 
-        if (oTelLogsSourceConfig.hasHealthCheck()) {
+        if ((oTelLogsSourceConfig.enableUnframedRequests() || oTelLogsSourceConfig.getHttpPath() != null)
+                && oTelLogsSourceConfig.hasHealthCheck()) {
             LOG.info("HTTP source health check is enabled");
             serverBuilder.service(HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        configureGrpcService(serverBuilder, buffer);
-        configureHttpService(serverBuilder, buffer, executor.getQueue());
+        configureGrpcService(serverBuilder, buffer, authProvider);
+        if (oTelLogsSourceConfig.getHttpPath() != null) {
+            configureHttpService(serverBuilder, buffer, executor.getQueue());
+        }
 
         return serverBuilder.build();
     }
@@ -200,7 +195,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer,
+            GrpcAuthenticationProvider authProvider) {
         LOG.info("Configuring gRPC service");
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -215,7 +211,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 pluginMetrics,
                 null
         );
-        GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
 
         final List<ServerInterceptor> interceptors = new ArrayList<>();
         if (authProvider.getAuthenticationInterceptor() != null) {
@@ -294,21 +289,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
         authenticationPluginSetting.setPipelineName(pipelineName);
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
-    }
-
-    private Optional<ArmeriaHttpAuthenticationProvider> createHttpAuthentication() {
-        if (oTelLogsSourceConfig.getAuthentication() == null || oTelLogsSourceConfig.getAuthentication().getPluginName().equals(UNAUTHENTICATED_PLUGIN_NAME)) {
-            LOG.warn("Creating otel_trace_source http service without authentication. This is not secure.");
-            LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
-            return Optional.empty();
-        } else {
-            return Optional.of(createGrpcAuthenticationProvider(oTelLogsSourceConfig.getAuthentication()));
-        }
-    }
-
-    private ArmeriaHttpAuthenticationProvider createGrpcAuthenticationProvider(final PluginModel authenticationConfiguration) {
-        Map<String, Object> pluginSettings = authenticationConfiguration.getPluginSettings();
-        return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, new PluginSetting(authenticationConfiguration.getPluginName(), pluginSettings));
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler(OTelLogsSourceConfig config) {

@@ -113,6 +113,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithAcmeSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
@@ -338,6 +339,18 @@ class OTelLogsSourceGrpcTest {
     void testStartWithEmptyBuffer() {
         final OTelLogsSource source = new OTelLogsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
         assertThrows(IllegalStateException.class, () -> source.start(null));
+    }
+
+    @Test
+    void start_withoutHttpPath_doesNotThrowNPE() {
+        final OTelLogsSourceConfig config = createDefaultConfigBuilder()
+                .httpPath(null)
+                .path("/test-pipeline/v1/logs")
+                .build();
+        final OTelLogsSource source = new OTelLogsSource(config, pluginMetrics, pluginFactory,
+                certificateProviderFactory, pipelineDescription);
+        source.start(buffer);
+        source.stop();
     }
 
     @Test
