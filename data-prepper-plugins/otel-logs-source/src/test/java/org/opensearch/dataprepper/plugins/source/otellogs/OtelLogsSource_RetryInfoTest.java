@@ -21,6 +21,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,7 +80,7 @@ class OtelLogsSource_RetryInfoTest {
 
     @BeforeEach
     void beforeEach() throws Exception {
-        lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+        lenient().when(authenticationProvider.getHttpAuthenticationService()).thenReturn(Optional.empty());
         Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
 
         when(oTelLogsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
