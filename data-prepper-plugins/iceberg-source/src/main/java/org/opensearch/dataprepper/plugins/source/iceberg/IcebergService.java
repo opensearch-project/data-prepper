@@ -62,10 +62,7 @@ public class IcebergService {
             final Map<String, String> catalogProps = new HashMap<>(tableConfig.getCatalog());
             final Catalog catalog = CatalogUtil.buildIcebergCatalog(tableName, catalogProps, null);
 
-            final String[] parts = tableName.split("\\.");
-            final TableIdentifier tableId = parts.length == 2
-                    ? TableIdentifier.of(parts[0], parts[1])
-                    : TableIdentifier.parse(tableName);
+            final TableIdentifier tableId = TableIdentifier.parse(tableName);
 
             final Table table = catalog.loadTable(tableId);
             validateCoWTable(table, tableName);
