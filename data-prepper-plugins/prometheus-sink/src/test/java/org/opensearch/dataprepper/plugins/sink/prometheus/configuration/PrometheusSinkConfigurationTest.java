@@ -24,11 +24,13 @@ import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PrometheusSinkConfigurationTest {
 
     private static final String SINK_YAML =
-            " url: \"http://localhost:8080/test\"\n" +
+            " url: \"https://localhost:8080/test\"\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n" +
@@ -65,7 +67,7 @@ public class PrometheusSinkConfigurationTest {
         objectMapper.registerModule(new JavaTimeModule());
         final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(SINK_YAML, PrometheusSinkConfiguration.class);
 
-        assertThat(prometheusSinkConfiguration.getUrl(), equalTo("http://localhost:8080/test"));
+        assertThat(prometheusSinkConfiguration.getUrl(), equalTo("https://localhost:8080/test"));
         assertThat(prometheusSinkConfiguration.getMaxRetries(), equalTo(5));
         assertThat(prometheusSinkConfiguration.getConnectionTimeout(), equalTo(Duration.ofSeconds(45)));
         assertThat(prometheusSinkConfiguration.getIdleTimeout(), equalTo(Duration.ofSeconds(45)));
@@ -112,11 +114,106 @@ public class PrometheusSinkConfigurationTest {
     @Test
     void prometheus_sink_config_test_with_invalid_url() throws JsonProcessingException {
         final String INVALID_SINK_YAML =
-            " url: \"http://localhost:8080/test\"\n" +
+            " url: \"ftp://localhost:8080/test\"\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n";
         final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(INVALID_SINK_YAML, PrometheusSinkConfiguration.class);
         assertFalse(prometheusSinkConfiguration.isValidConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_http_url_is_valid() throws JsonProcessingException {
+        final String HTTP_SINK_YAML =
+            " url: \"http://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(HTTP_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(prometheusSinkConfiguration.isValidConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_without_aws_config_returns_null() throws JsonProcessingException {
+        final String NO_AWS_SINK_YAML =
+            " url: \"http://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(NO_AWS_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertNull(prometheusSinkConfiguration.getAwsConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_with_basic_auth() throws JsonProcessingException {
+        final String AUTH_SINK_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n" +
+                    " authentication:\n" +
+                    "   http_basic:\n" +
+                    "     username: \"myuser\"\n" +
+                    "     password: \"mypass\"\n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(AUTH_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertThat(config.getAuthentication().getHttpBasic().getUsername(), equalTo("myuser"));
+        assertThat(config.getAuthentication().getHttpBasic().getPassword(), equalTo("mypass"));
+    }
+
+    @Test
+    void prometheus_sink_config_test_without_auth_returns_null() throws JsonProcessingException {
+        final String NO_AUTH_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(NO_AUTH_YAML, PrometheusSinkConfiguration.class);
+        assertNull(config.getAuthentication());
+    }
+
+    @Test
+    void prometheus_sink_config_test_aws_and_auth_is_invalid() throws JsonProcessingException {
+        final String BOTH_YAML =
+            " url: \"https://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n" +
+                    " aws:\n" +
+                    "   region: \"us-east-2\"\n" +
+                    " authentication:\n" +
+                    "   http_basic:\n" +
+                    "     username: \"myuser\"\n" +
+                    "     password: \"mypass\"\n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(BOTH_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(config.isValidAuthConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_basic_auth_without_aws_is_valid() throws JsonProcessingException {
+        final String AUTH_ONLY_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n" +
+                    " authentication:\n" +
+                    "   http_basic:\n" +
+                    "     username: \"myuser\"\n" +
+                    "     password: \"mypass\"\n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(AUTH_ONLY_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(config.isValidAuthConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_aws_with_http_url_is_invalid() throws JsonProcessingException {
+        final String AWS_HTTP_SINK_YAML =
+            " url: \"http://localhost:8080/test\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n" +
+                    " aws:\n" +
+                    "          region: \"us-east-2\"\n" +
+                    "          sts_role_arn: \"arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role\"\n";
+        final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(AWS_HTTP_SINK_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(prometheusSinkConfiguration.isValidAwsConfig());
     }
 }

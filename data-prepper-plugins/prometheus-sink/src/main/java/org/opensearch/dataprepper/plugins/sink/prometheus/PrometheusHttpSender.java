@@ -39,6 +39,7 @@ import com.google.common.annotations.VisibleForTesting;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
+import java.util.Base64;
 import java.util.Set;
 
 /**
@@ -59,6 +60,7 @@ public class PrometheusHttpSender {
     private final long idleTimeoutMillis;
     private final CompressionEngine compressionEngine;
     private final PrometheusSinkConfiguration config;
+    private final String authHeader;
 
     /**
      * Constructor for the PrometheusHttpSender.
@@ -80,7 +82,16 @@ public class PrometheusHttpSender {
         this.config = config;
         this.connectionTimeoutMillis = config.getConnectionTimeout().toMillis();
         this.idleTimeoutMillis = config.getIdleTimeout().toMillis();
+        this.authHeader = buildAuthHeader(config);
+    }
 
+    private static String buildAuthHeader(final PrometheusSinkConfiguration config) {
+        if (config.getAuthentication() != null && config.getAuthentication().getHttpBasic() != null) {
+            final String credentials = config.getAuthentication().getHttpBasic().getUsername()
+                    + ":" + config.getAuthentication().getHttpBasic().getPassword();
+            return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        }
+        return null;
     }
 
     /**
@@ -160,16 +171,20 @@ public class PrometheusHttpSender {
     }
 
     private SdkHttpFullRequest createSdkHttpRequest(final String url, @Nonnull final byte[] payload) {
-        return SdkHttpFullRequest.builder()
+        final SdkHttpFullRequest.Builder builder = SdkHttpFullRequest.builder()
                 .method(SdkHttpMethod.POST)
                 .uri(URI.create(url))
-                .putHeader("Content-Encoding", config.getEncoding().toString())
+                .putHeader("Content-Encoding", config.getEncoding().name().toLowerCase())
                 .putHeader("Content-Type", config.getContentType())
                 .putHeader("X-Prometheus-Remote-Write-Version", config.getRemoteWriteVersion())
-                .putHeader("x-amz-content-sha256","required")
-                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream())
-                .build();
-
+                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream());
+        if (authHeader != null) {
+            builder.putHeader("Authorization", authHeader);
+        }
+        if (signer != null) {
+            builder.putHeader("x-amz-content-sha256", "required");
+        }
+        return builder.build();
     }
 
     private HttpRequest buildHttpRequest(final byte[] payload) {
