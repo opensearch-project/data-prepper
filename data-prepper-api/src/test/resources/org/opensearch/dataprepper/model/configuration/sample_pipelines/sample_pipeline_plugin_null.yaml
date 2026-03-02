@@ -1,0 +1,9 @@
+test-pipeline:
+  source:
+    stdin: null
+  processor:
+  - uppercase_string: null
+  sink:
+  - stdout: null
+  workers: 1
+  delay: 100

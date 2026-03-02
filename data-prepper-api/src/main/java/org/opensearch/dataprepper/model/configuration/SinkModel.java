@@ -164,7 +164,7 @@ public class SinkModel extends PluginModel {
 
     static class SinkModelDeserializer extends AbstractPluginModelDeserializer<SinkModel, SinkInternalJsonModel> {
         SinkModelDeserializer() {
-            super(SinkModel.class, SinkInternalJsonModel.class, SinkModel::new, () -> new SinkInternalJsonModel(null, null, null, null, null));
+            super(SinkModel.class, SinkInternalJsonModel.class, SinkModel::new);
         }
     }
 }

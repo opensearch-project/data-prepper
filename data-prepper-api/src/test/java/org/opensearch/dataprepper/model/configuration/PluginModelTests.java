@@ -141,6 +141,85 @@ class PluginModelTests {
         assertThat(readValue.listOfPlugins.get(1).getPluginSettings().get("key2"), equalTo("value2"));
     }
 
+    @Test
+    final void testRoundTrip_withEmptyObject() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_with_empty_object.yaml");
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+
+        final PluginModel pluginModel1 = mapper.readValue(inputStream, PluginModel.class);
+        assertThat(pluginModel1.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel1.getPluginSettings().size(), equalTo(0));
+
+        final String serialized = mapper.writeValueAsString(pluginModel1);
+        assertThat(serialized.contains("{}"), equalTo(true));
+
+        final PluginModel pluginModel2 = mapper.readValue(serialized, PluginModel.class);
+        assertThat(pluginModel2.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel2.getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void testRoundTrip_withNullValue() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_with_null.yaml");
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+
+        // null input -> deserializes to empty settings
+        final PluginModel pluginModel1 = mapper.readValue(inputStream, PluginModel.class);
+        assertThat(pluginModel1.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel1.getPluginSettings().size(), equalTo(0));
+
+        // empty settings -> serializes as {}
+        final String serialized = mapper.writeValueAsString(pluginModel1);
+        assertThat(serialized.contains("{}"), equalTo(true));
+
+        final PluginModel pluginModel2 = mapper.readValue(serialized, PluginModel.class);
+        assertThat(pluginModel2.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel2.getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void testRoundTrip_withEmptyValue() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_with_empty_value.yaml");
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+
+        // empty value (no value after colon) -> deserializes to empty settings
+        final PluginModel pluginModel1 = mapper.readValue(inputStream, PluginModel.class);
+        assertThat(pluginModel1.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel1.getPluginSettings().size(), equalTo(0));
+
+        // empty settings -> serializes as {}
+        final String serialized = mapper.writeValueAsString(pluginModel1);
+        assertThat(serialized.contains("{}"), equalTo(true));
+
+        final PluginModel pluginModel2 = mapper.readValue(serialized, PluginModel.class);
+        assertThat(pluginModel2.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel2.getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void testDeserialize_emptyString_throwsException() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_empty_string.yaml");
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        final JsonMappingException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            JsonMappingException.class,
+            () -> mapper.readValue(inputStream, PluginModel.class)
+        );
+        assertThat(exception.getMessage(), org.hamcrest.Matchers.containsString("Empty string is not allowed"));
+    }
+
+    @Test
+    final void testDeserialize_nonEmptyString_throwsException() throws IOException {
+        final String yaml = "customPlugin: someStringValue";
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        final JsonMappingException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            JsonMappingException.class,
+            () -> mapper.readValue(yaml, PluginModel.class)
+        );
+        assertThat(exception.getMessage(), org.hamcrest.Matchers.containsString("String values not allowed"));
+    }
+
     static Map<String, Object> validPluginSettings() {
         final Map<String, Object> settings = new HashMap<>();
         settings.put("key1", "value1");

@@ -1,10 +1,10 @@
 version: "2"
 test-pipeline:
   source:
-    testSource: null
+    testSource: {}
   processor:
-    - testProcessor: null
+    - testProcessor: {}
   sink:
-    - testSink: null
+    - testSink: {}
   workers: 8
   delay: 50

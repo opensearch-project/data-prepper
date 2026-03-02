@@ -1,8 +1,8 @@
 test-pipeline:
   source:
-    testSource: null
+    testSource: {}
   processor:
-  - testPrepper: null
+  - testPrepper: {}
   routes:
   - my-route: "/a==b"
   sink:
