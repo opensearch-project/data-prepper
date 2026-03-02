@@ -13,6 +13,8 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -28,7 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -37,6 +41,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -92,6 +97,12 @@ class SqsSinkServiceTest {
     @Mock(strictness = Mock.Strictness.LENIENT)
     private SinkContext sinkContext;
 
+    private HeadlessPipeline dlqPipeline;
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private PipelineDescription pipelineDescription;
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private PluginSetting pluginSetting;
+
     @Mock
     private Counter eventsSuccessCounter;
     @Mock
@@ -117,8 +128,12 @@ class SqsSinkServiceTest {
     private OutputCodecContext outputCodecContext;
     private String queueUrl;
 
+    private String pluginName;
+    private String pipelineName;
+
     private SqsSinkService createObjectUnderTest() {
-        return new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics);
+        return new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler,
+                pluginMetrics, pluginSetting, pipelineDescription);
     }
 
     @BeforeEach
@@ -139,14 +154,16 @@ class SqsSinkServiceTest {
         when (thresholdConfig.getMaxMessageSizeBytes()).thenReturn(256*1024L);
         when (thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         when (sqsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
+        pipelineName = UUID.randomUUID().toString();
+        when (pipelineDescription.getPipelineName()).thenReturn(pipelineName);
         lenient().when (sqsSinkConfig.getMaxRetries()).thenReturn(3);
         lenient().when(flushResponse.hasFailed()).thenReturn(false);
         when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenReturn(flushResponse);
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
         when(dlqPushHandler.perform(any(List.class))).thenReturn(true);
-        PluginSetting pluginSetting = mock(PluginSetting.class);
-        lenient().when(pluginSetting.getName()).thenReturn("name");
-        lenient().when(pluginSetting.getPipelineName()).thenReturn("pipeline");
+        pluginName = UUID.randomUUID().toString();
+        lenient().when(pluginSetting.getName()).thenReturn(pluginName);
+        lenient().when(pluginSetting.getPipelineName()).thenReturn(pipelineName);
         when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
         lenient().doNothing().when(summary).record(any(Double.class));
         lenient().doNothing().when(timer).record(any(Long.class), any(TimeUnit.class));
@@ -518,6 +535,82 @@ class SqsSinkServiceTest {
         assertThat(eventsSuccessCount.get(), equalTo(numRecords));
         assertThat(requestsSuccessCount.get(), equalTo(numRecords/10));
         verify(eventHandle, times(numRecords)).release(true);
+    }
+
+    @Test
+    void TestLargeRecordToPipelineDLQ() {
+        dlqPipeline = mock(HeadlessPipeline.class);
+        List<Record<Event>> capturedRecords = new ArrayList<>();
+        doAnswer(invocation -> {
+            List<Record<Event>> arg = invocation.getArgument(0);
+            capturedRecords.addAll(arg);
+            return null;
+        }).when(dlqPipeline).sendEvents(any());
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        sqsSinkService.setDlqPipeline(dlqPipeline);
+        Record<Event> record = getLargeRecord(300 * 1024);
+        sqsSinkService.execute(List.of(record));
+
+        verify(dlqPipeline, times(1)).sendEvents(any());
+        assertThat(capturedRecords.size(), equalTo(1));
+
+        Event event = capturedRecords.get(0).getData();
+        assertThat(event.get("_failure_metadata/pluginId", String.class), equalTo(pluginName));
+        assertThat(event.get("_failure_metadata/pluginName", String.class), equalTo(pluginName));
+        assertThat(event.get("_failure_metadata/pipelineName", String.class), equalTo(pipelineName));
+        assertThat(event.get("_failure_metadata/sqsSinkQueueUrl", String.class), equalTo(queueUrl));
+        verify(eventHandle, never()).release(anyBoolean());
+    }
+
+    @Test
+    void TestSendingToPipelineDLQAfterMultipleRetries() {
+        dlqPipeline = mock(HeadlessPipeline.class);
+        List<Record<Event>> capturedRecords = new ArrayList<>();
+        doAnswer(invocation -> {
+            List<Record<Event>> arg = invocation.getArgument(0);
+            capturedRecords.addAll(arg);
+            return null;
+        }).when(dlqPipeline).sendEvents(any());
+
+        final int numRecords = 10;
+        RequestThrottledException requestThrottledException = mock(RequestThrottledException.class);
+        when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenThrow(requestThrottledException);
+
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        sqsSinkService.setDlqPipeline(dlqPipeline);
+        List<Record<Event>> records = getRecordList(numRecords);
+        sqsSinkService.execute(records);
+
+        assertThat(capturedRecords.size(), equalTo(numRecords));
+        assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(0));
+        assertThat(eventsSuccessCount.get(), equalTo(0));
+        assertThat(requestsSuccessCount.get(), equalTo(0));
+        verify(eventHandle, never()).release(anyBoolean());
+    }
+
+    @Test
+    void TestSendingToPipelineDLQAfterNonRetryableException() {
+        dlqPipeline = mock(HeadlessPipeline.class);
+        List<Record<Event>> capturedRecords = new ArrayList<>();
+        doAnswer(invocation -> {
+            List<Record<Event>> arg = invocation.getArgument(0);
+            capturedRecords.addAll(arg);
+            return null;
+        }).when(dlqPipeline).sendEvents(any());
+
+        final int numRecords = 10;
+        UnsupportedOperationException unsupportedOperationException = mock(UnsupportedOperationException.class);
+        when(unsupportedOperationException.getMessage()).thenReturn("Unsupported operation");
+        when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenThrow(unsupportedOperationException);
+
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        sqsSinkService.setDlqPipeline(dlqPipeline);
+
+        List<Record<Event>> records = getRecordList(numRecords);
+        sqsSinkService.execute(records);
+
+        assertThat(capturedRecords.size(), equalTo(numRecords));
+        verify(eventHandle, never()).release(anyBoolean());
     }
 
     private List<Record<Event>> getLargeRecordList(int numberOfRecords) {

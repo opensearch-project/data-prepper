@@ -641,10 +641,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
         if (event != null) {
             event.updateFailureMetadata()
-                .with("pluginId", dlqObject.getPluginId())
-                .with("pluginName", dlqObject.getPluginName())
-                .with("pipelineName", dlqObject.getPipelineName())
-                .with("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                .withPluginId(dlqObject.getPluginId())
+                .withPluginName(dlqObject.getPluginName())
+                .withPipelineName(dlqObject.getPipelineName())
+                .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
                 .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
                 .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
                 .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());

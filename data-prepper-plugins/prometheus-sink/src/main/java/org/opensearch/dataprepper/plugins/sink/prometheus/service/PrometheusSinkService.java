@@ -93,11 +93,11 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
             }
             event.updateFailureMetadata()
                 .with("statusCode", statusCode)
-                .with("pluginName", PLUGIN_NAME)
-                .with("pipelineName", pipelineDescription.getPipelineName());
+                .withPluginName(PLUGIN_NAME)
+                .withPipelineName(pipelineDescription.getPipelineName());
             if (ex != null) {
                 event.updateFailureMetadata()
-                    .with("message",  ex.getMessage());
+                    .withErrorMessage(ex.getMessage());
             }
             dlqRecords.add(new Record<>(event));
         }

@@ -202,15 +202,28 @@ public class JacksonEventTest {
     @Test
     public void testDefaultEventFailureMetadata() {
         String eventType = UUID.randomUUID().toString();
-
+        String pluginId = UUID.randomUUID().toString();
+        String pluginName = UUID.randomUUID().toString();
+        String pipelineName = UUID.randomUUID().toString();
+        String errorMessage = UUID.randomUUID().toString();
         Event event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
 
         EventFailureMetadata eventFailureMetadata = event.updateFailureMetadata();
         eventFailureMetadata.with("key1", "value1").with("key2", 2);
-        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key1", String.class), equalTo("value1"));
-        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key2", Integer.class), equalTo(2));
+        eventFailureMetadata.withPluginId(pluginId);
+        eventFailureMetadata.withPluginName(pluginName);
+        eventFailureMetadata.withPipelineName(pipelineName);
+        eventFailureMetadata.withErrorMessage(errorMessage);
+        String base = JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA + "/";
+        assertThat(event.get(base + "key1", String.class), equalTo("value1"));
+        assertThat(event.get(base + "key2", Integer.class), equalTo(2));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PLUGIN_ID, String.class), equalTo(pluginId));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PLUGIN_NAME, String.class), equalTo(pluginName));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PIPELINE_NAME, String.class), equalTo(pipelineName));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.ERROR_MESSAGE, String.class), equalTo(errorMessage));
+
     }
 
     @Test
