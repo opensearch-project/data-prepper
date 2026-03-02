@@ -1,0 +1,50 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+name: Verify data-prepper-api compatibility
+
+on:
+  push:
+    paths:
+      - 'data-prepper-api/**'
+      - '*gradle*'
+  pull_request:
+    paths:
+      - 'data-prepper-api/**'
+      - '*gradle*'
+
+  workflow_dispatch:
+
+jobs:
+  verify-api-compatibility:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: 11
+        distribution: temurin
+
+    - name: Checkout Data Prepper
+      uses: actions/checkout@v6
+
+    - name: Validate API compatibility
+      run: ./gradlew -p data-prepper-api validateCompatibility
+
+    - name: Output compatibility report
+      if: failure()
+      run: cat data-prepper-api/build/reports/library-compatibility/report.txt
+
+    - name: Upload Compatibility Report
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: library-compatibility-report
+        path: ${{ github.workspace }}/data-prepper-api/build/reports/library-compatibility/report.html
