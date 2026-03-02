@@ -146,6 +146,7 @@ class DefaultAcknowledgementSetTests {
         assertThat(invalidAcquiresCounter, equalTo(1));
     }
 
+    @Test
     void testDefaultAcknowledgementInvalidRelease() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
