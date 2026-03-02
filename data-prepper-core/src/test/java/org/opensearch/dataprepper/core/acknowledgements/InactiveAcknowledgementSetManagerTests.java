@@ -32,4 +32,11 @@ public class InactiveAcknowledgementSetManagerTests {
         assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.create((a)->{}, Duration.ofMillis(10)));
     }
 
+    @Test
+    void testCreateAPIWithInvokeCallbackOnExpiry() {
+        assertThat(acknowledgementSetManager, notNullValue());
+        assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.create((a)->{}, Duration.ofMillis(10), true));
+        assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.create((a)->{}, Duration.ofMillis(10), false));
+    }
+
 }

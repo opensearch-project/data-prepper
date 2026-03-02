@@ -29,4 +29,7 @@ public class InactiveAcknowledgementSetManager implements AcknowledgementSetMana
         throw new UnsupportedOperationException("create operation not supported");
     }
 
+    public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry) {
+        throw new UnsupportedOperationException("create operation not supported");
+    }
 }

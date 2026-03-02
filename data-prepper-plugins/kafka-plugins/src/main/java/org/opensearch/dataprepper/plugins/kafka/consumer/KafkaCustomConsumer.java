@@ -101,6 +101,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
+    private final boolean invokeCallbackOnExpiry;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -112,7 +113,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate,
-                               final CompressionOption compressionConfig) {
+                               final CompressionOption compressionConfig,
+                               final boolean invokeCallbackOnExpiry) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -120,6 +122,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.buffer = buffer;
         this.paused = false;
         this.byteDecoder = byteDecoder;
+        this.invokeCallbackOnExpiry = invokeCallbackOnExpiry;
         this.topicMetrics = topicMetrics;
         this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * (RETRY_ON_EXCEPTION_SLEEP_MS + BUFFER_WRITE_TIMEOUT));
         this.pauseConsumePredicate = pauseConsumePredicate;
@@ -129,7 +132,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.ownedPartitionsEpoch = new HashMap<>();
         this.metricsUpdatedTime = Instant.now().getEpochSecond();
         this.acknowledgedOffsets = new ArrayList<>();
-        this.acknowledgementsTimeout = Duration.ofSeconds(Integer.MAX_VALUE);
+        this.acknowledgementsTimeout = consumerConfig.getAcknowledgementsTimeout();
         this.acknowledgementsEnabled = consumerConfig.getAcknowledgementsEnabled();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.partitionCommitTrackerMap = new HashMap<>();
@@ -151,7 +154,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE);
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE, false);
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -205,7 +208,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                             });
                         }
                     }
-                }, acknowledgementsTimeout);
+                }, acknowledgementsTimeout, invokeCallbackOnExpiry);
         return acknowledgementSet;
     }
 

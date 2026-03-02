@@ -26,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
@@ -205,7 +206,6 @@ class DefaultAcknowledgementSetManagerTests {
                 .untilAsserted(() -> {
                 assertThat(result, equalTo(true));
                 });
-        
     }
 
     @Test
@@ -270,7 +270,40 @@ class DefaultAcknowledgementSetManagerTests {
                 .untilAsserted(() -> {
                 assertThat(result, equalTo(null));
                 });
-        
+    }
+
+    @Test
+    void testCreateWithInvokeCallbackOnExpiryTrue() {
+        AcknowledgementSet acknowledgementSet = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT, true);
+        assertThat(acknowledgementSet, notNullValue());
+    }
+
+    @Test
+    void testCreateWithInvokeCallbackOnExpiryFalse() {
+        AcknowledgementSet acknowledgementSet = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT, false);
+        assertThat(acknowledgementSet, notNullValue());
+    }
+
+    @Test
+    void testExpirationWithInvokeCallbackOnExpiryTrue() throws InterruptedException {
+        AcknowledgementSet acknowledgementSet = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT, true);
+        eventHandle3 = mock(DefaultEventHandle.class);
+        lenient().doAnswer(a -> {
+            Boolean res = (Boolean)a.getArgument(0);
+            acknowledgementSet.release(eventHandle3, res);
+            return null;
+        }).when(eventHandle3).release(any(Boolean.class));
+        event3 = mock(JacksonEvent.class);
+        lenient().when(event3.getEventHandle()).thenReturn(eventHandle3);
+        acknowledgementSet.add(event3);
+        lenient().when(eventHandle3.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+        acknowledgementSet.complete();
+
+        Thread.sleep(TEST_TIMEOUT.multipliedBy(5).toMillis());
+        await().atMost(TEST_TIMEOUT.multipliedBy(5))
+                .untilAsserted(() -> {
+                    assertThat(result, equalTo(false));
+                });
     }
 
 }

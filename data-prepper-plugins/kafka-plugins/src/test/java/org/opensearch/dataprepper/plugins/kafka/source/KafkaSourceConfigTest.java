@@ -102,4 +102,10 @@ class KafkaSourceConfigTest {
 		SourceTopicConfig topic = (SourceTopicConfig) kafkaSourceConfig.getTopics().get(0);
 		assertEquals(IsolationLevel.READ_COMMITTED, topic.getIsolationLevel());
 	}
+
+	@Test
+	void test_default_acknowledgements_timeout() {
+		kafkaSourceConfig = new KafkaSourceConfig();
+		assertEquals(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT, kafkaSourceConfig.getAcknowledgementsTimeout());
+	}
 }

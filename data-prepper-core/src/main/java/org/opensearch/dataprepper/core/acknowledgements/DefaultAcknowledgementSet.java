@@ -43,11 +43,19 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private ScheduledFuture<?> progressCheckFuture;
     private boolean completed;
     private AtomicInteger totalEventsAdded;
+    private final boolean invokeCallbackOnExpiry;
 
     public DefaultAcknowledgementSet(final ScheduledExecutorService scheduledExecutor,
                                      final Consumer<Boolean> callback,
                                      final Duration expiryTime,
                                      final DefaultAcknowledgementSetMetrics metrics) {
+        this(scheduledExecutor, callback, expiryTime, metrics, false);
+    }
+    public DefaultAcknowledgementSet(final ScheduledExecutorService scheduledExecutor,
+                                     final Consumer<Boolean> callback,
+                                     final Duration expiryTime,
+                                     final DefaultAcknowledgementSetMetrics metrics,
+                                     final boolean invokeCallbackOnExpiry) {
         this.callback = callback;
         this.result = true;
         this.totalEventsAdded = new AtomicInteger(0);
@@ -55,6 +63,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         this.expiryTime = Instant.now().plusMillis(expiryTime.toMillis());
         this.callbackFuture = null;
         this.metrics = metrics;
+        this.invokeCallbackOnExpiry = invokeCallbackOnExpiry;
         this.completed = false;
         this.progressCheckCallback = null;
         pendingAcknowledgments = new HashMap<>();
@@ -134,7 +143,9 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
                 if (progressCheckFuture != null) {
                     progressCheckFuture.cancel(false);
                 }
-                if (callbackFuture != null) {
+                if (invokeCallbackOnExpiry) {
+                    callbackFuture = scheduledExecutor.submit(() -> callback.accept(false));
+                } else if (callbackFuture != null) {
                     callbackFuture.cancel(true);
                     callbackFuture = null;
                     LOG.warn("AcknowledgementSet expired");

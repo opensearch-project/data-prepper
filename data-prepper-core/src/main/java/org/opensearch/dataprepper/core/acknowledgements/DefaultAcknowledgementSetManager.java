@@ -51,6 +51,13 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
         return acknowledgementSet;
     }
 
+    public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry) {
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutor, callback, timeout, metrics, invokeCallbackOnExpiry);
+        acknowledgementSetMonitor.add(acknowledgementSet);
+        metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
+        return acknowledgementSet;
+    }
+
     public void shutdown() {
         acknowledgementSetMonitorThread.stop();
     }

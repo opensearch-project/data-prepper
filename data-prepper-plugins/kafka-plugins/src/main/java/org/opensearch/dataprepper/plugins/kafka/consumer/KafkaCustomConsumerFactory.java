@@ -83,7 +83,8 @@ public class KafkaCustomConsumerFactory {
                                                              final AtomicBoolean shutdownInProgress,
                                                              final boolean topicNameInMetrics,
                                                              final CircuitBreaker circuitBreaker,
-                                                             final CompressionOption compressionConfig) {
+                                                             final CompressionOption compressionConfig,
+                                                             final boolean invokeCallbackOnExpiry) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
@@ -113,7 +114,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig, invokeCallbackOnExpiry));
 
             });
         } catch (Exception e) {

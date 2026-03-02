@@ -29,6 +29,7 @@ import java.util.Optional;
 
 class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
+    static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofHours(2);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
@@ -54,6 +55,9 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("drain_timeout")
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
+
+    @JsonProperty("acknowledgements_timeout")
+    private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
@@ -142,6 +146,12 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    @Override
+    @JsonIgnore
+    public Duration getAcknowledgementsTimeout() {
+        return acknowledgementsTimeout;
     }
 
     @JsonIgnore
