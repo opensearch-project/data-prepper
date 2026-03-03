@@ -91,3 +91,7 @@ The Maven artifacts will then be available in your local Maven repository. In st
 they will be available at `${USER}/.m2/repository/org/opensearch/dataprepper/`.
 
 Be sure to enable `mavenLocal()` as a repository in your plugin's build project.
+
+## Other documentation for plugin developers
+
+* [Security requirements for push-based sources](security_push.md)
