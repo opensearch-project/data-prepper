@@ -63,7 +63,7 @@ public interface ProcessorState<K, V> {
     /**
      * @return Size of the processor state, in terms of number of elements stored.
      */
-    public long size();
+    //public long size();
 
     /**
      * @return Size of the processor state data stored in file, in bytes.
