@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.DistributionSummary;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.client.ClientFactory;
@@ -134,6 +135,8 @@ public class PrometheusSinkAMPIT {
     @Mock
     private DistributionSummary summary;
     @Mock
+    private Timer timer;
+    @Mock
     private EventHandle eventHandle;
     @Mock
     private Pipeline dlqPipeline;
@@ -192,6 +195,7 @@ public class PrometheusSinkAMPIT {
         metricsFailedCounter = mock(Counter.class);
         requestsSuccessCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
+        timer = mock(Timer.class);
         summary = mock(DistributionSummary.class);
 
         when(pluginMetrics.counter(eq("sinkRequestsSucceeded"))).thenReturn(requestsSuccessCounter);
@@ -200,6 +204,7 @@ public class PrometheusSinkAMPIT {
         when(pluginMetrics.counter(eq("sinkMetricsFailed"))).thenReturn(metricsFailedCounter);
 
         when(pluginMetrics.summary(any(String.class))).thenReturn(summary);
+        when(pluginMetrics.timer(any(String.class))).thenReturn(timer);
 
         awsRegion = System.getProperty("tests.aws.region");
         when(awsConfig.getAwsRegion()).thenReturn(Region.of(awsRegion));
