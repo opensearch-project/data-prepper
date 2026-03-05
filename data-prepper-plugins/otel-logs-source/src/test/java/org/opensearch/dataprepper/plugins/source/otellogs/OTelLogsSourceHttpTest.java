@@ -35,7 +35,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfig;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithSsl;
@@ -173,7 +172,7 @@ class OTelLogsSourceHttpTest {
     }
 
     private void configureSource() {
-        configureSource(createDefaultConfig());
+        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).build());
     }
 
     private void configureSource(OTelLogsSourceConfig config) {
@@ -211,7 +210,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpsRequest_requestIsProcessed_writesToBufferAndReturnsSuccessfulResponse() throws Exception {
-        configureSource(createBuilderForConfigWithSsl().build());
+        configureSource(createBuilderForConfigWithSsl().httpPath(CONFIG_HTTP_PATH).build());
         SOURCE.start(buffer);
         ExportLogsServiceRequest request = createExportLogsRequest();
 
@@ -254,7 +253,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_payloadIsCompressed_returns200() throws IOException {
-        configureSource( createDefaultConfigBuilder().compression(CompressionOption.GZIP).build());
+        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).compression(CompressionOption.GZIP).build());
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
@@ -271,7 +270,7 @@ class OTelLogsSourceHttpTest {
     void httpRequest_withBasicAuth_returnsAppropriateResponse(String givenUsername, String givenPassword, HttpStatus expectedStatus, VerificationMode expectedBufferWrites) throws Exception {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(new GrpcBasicAuthenticationProvider(basicAuthConfig));
-        configureSource(createConfigBuilderWithBasicAuth().build());
+        configureSource(createConfigBuilderWithBasicAuth().httpPath(CONFIG_HTTP_PATH).build());
         SOURCE.start(buffer);
 
         final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", givenUsername, givenPassword).getBytes(StandardCharsets.UTF_8));
@@ -296,7 +295,7 @@ class OTelLogsSourceHttpTest {
     @ParameterizedTest
     @MethodSource("getHealthCheckParams")
     void healthCheckRequest_requestIsProcesses_returnsStatusCodeAccordingToConfig(boolean givenHealthCheckConfig, HttpStatus expectedStatus) throws IOException {
-        configureSource(createDefaultConfigBuilder().healthCheck(givenHealthCheckConfig).build());
+        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).healthCheck(givenHealthCheckConfig).build());
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
@@ -344,7 +343,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_requestBodyIsTooLarge_returns413() throws InvalidProtocolBufferException {
-        configureSource(createDefaultConfigBuilder().maxRequestLength(ByteCount.ofBytes(4)).build());
+        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).maxRequestLength(ByteCount.ofBytes(4)).build());
         SOURCE.start(buffer);
 
         WebClient.of()
