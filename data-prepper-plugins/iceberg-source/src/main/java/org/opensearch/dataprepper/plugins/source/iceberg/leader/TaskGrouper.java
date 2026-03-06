@@ -28,10 +28,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Groups ChangelogScanTasks for distributed processing.
- *
+ * <p>
  * Grouping stages:
  * 1. Iceberg partition isolation: tasks grouped by partition value
  * 2. Bounds-based pairing: within a partition, DELETED-ADDED file pairs with matching
@@ -78,8 +79,8 @@ public class TaskGrouper {
                 final ChangelogTaskProgressState state = new ChangelogTaskProgressState();
                 state.setSnapshotId(toSnapshotId);
                 state.setTableName(tableName);
-                state.setDataFilePaths(group.stream().map(t -> t.filePath).collect(java.util.stream.Collectors.toList()));
-                state.setTaskTypes(group.stream().map(t -> t.taskType).collect(java.util.stream.Collectors.toList()));
+                state.setDataFilePaths(group.stream().map(t -> t.filePath).collect(Collectors.toList()));
+                state.setTaskTypes(group.stream().map(t -> t.taskType).collect(Collectors.toList()));
                 state.setTotalRecords(group.stream().mapToLong(t -> t.recordCount).sum());
                 result.add(state);
             }
@@ -162,7 +163,12 @@ public class TaskGrouper {
             }
         }
 
-        // If both unpaired DELETED and ADDED remain -> fallback group
+        // If both unpaired DELETED and ADDED remain -> single fallback group.
+        // These must stay together so that carryover removal can match DELETE-INSERT
+        // pairs from different files on the same worker node.
+        // TODO: A Source-layer shuffle via PeerForwarder extension could distribute
+        // these rows by hash of all columns, enabling parallel carryover removal.
+        // See RFC #6552 Section 5.2.4 for details.
         if (!unpairedDeleted.isEmpty() && !unpairedAdded.isEmpty()) {
             final List<TaskInfo> fallback = new ArrayList<>();
             fallback.addAll(unpairedDeleted);
@@ -224,7 +230,7 @@ public class TaskGrouper {
                         t.file().location(), "DELETED",
                         t.file().recordCount(), extractBoundsKey(t));
             }
-            return new TaskInfo("unknown", "UNKNOWN", 0, null);
+            throw new IllegalArgumentException("Unsupported ChangelogScanTask type: " + task.getClass().getName());
         }
 
         private static String extractBoundsKey(final ContentScanTask<?> task) {
@@ -233,7 +239,7 @@ public class TaskGrouper {
             if (lower == null || upper == null || lower.isEmpty() || upper.isEmpty()) {
                 return null;
             }
-            return lower.toString() + "|" + upper.toString();
+            return lower + "|" + upper;
         }
     }
 }
