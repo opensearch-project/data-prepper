@@ -79,6 +79,7 @@ public class ChangelogWorker implements Runnable {
         LOG.info("Starting Changelog Worker");
 
         while (!Thread.currentThread().isInterrupted()) {
+            boolean processed = false;
             try {
                 // Try changelog tasks first, then initial load tasks
                 Optional<EnhancedSourcePartition> partition =
@@ -86,28 +87,30 @@ public class ChangelogWorker implements Runnable {
 
                 if (partition.isPresent() && partition.get() instanceof ChangelogTaskPartition) {
                     processPartition((ChangelogTaskPartition) partition.get());
+                    processed = true;
                 } else {
-                    if (partition.isPresent()) {
-                        sourceCoordinator.giveUpPartition(partition.get());
-                    }
+                    partition.ifPresent(sourceCoordinator::giveUpPartition);
                     // Try initial load tasks
                     partition = sourceCoordinator.acquireAvailablePartition(
                             InitialLoadTaskPartition.PARTITION_TYPE);
                     if (partition.isPresent() && partition.get() instanceof InitialLoadTaskPartition) {
                         processInitialLoadPartition((InitialLoadTaskPartition) partition.get());
-                    } else if (partition.isPresent()) {
-                        sourceCoordinator.giveUpPartition(partition.get());
+                        processed = true;
+                    } else {
+                        partition.ifPresent(sourceCoordinator::giveUpPartition);
                     }
                 }
             } catch (final Exception e) {
                 LOG.error("Error in changelog worker", e);
             }
 
-            try {
-                Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
-            } catch (final InterruptedException e) {
-                LOG.info("Changelog worker interrupted");
-                break;
+            if (!processed) {
+                try {
+                    Thread.sleep(DEFAULT_LEASE_INTERVAL_MILLIS);
+                } catch (final InterruptedException e) {
+                    LOG.info("Changelog worker interrupted");
+                    break;
+                }
             }
         }
 
@@ -146,7 +149,7 @@ public class ChangelogWorker implements Runnable {
             final InputFile inputFile = table.io().newInputFile(filePath);
             try (CloseableIterable<Record> reader = openDataFile(inputFile, schema, filePath)) {
                 for (final Record record : reader) {
-                    allRows.add(new RowWithMeta(record, operation, schema));
+                    allRows.add(new RowWithMeta(record, operation));
                     LOG.debug("  Row: {} op={}", record, operation);
                 }
             }
@@ -169,7 +172,7 @@ public class ChangelogWorker implements Runnable {
             LOG.info("Carryover removal: {} rows -> {} rows", allRows.size(), survivingIndices.size());
             for (final int idx : survivingIndices) {
                 final RowWithMeta row = allRows.get(idx);
-                LOG.info("  Surviving row: {} op={}", row.record, row.operation);
+                LOG.debug("  Surviving row: {} op={}", row.record, row.operation);
             }
         } else {
             survivingIndices = new ArrayList<>();
@@ -202,7 +205,7 @@ public class ChangelogWorker implements Runnable {
             final RowWithMeta row = allRows.get(idx);
             if ("DELETE".equals(row.operation)) {
                 final Event event = converter.convert(row.record, schema, row.operation, state.getSnapshotId());
-                LOG.info("Writing DELETE event: document_id={}, bulk_action={}",
+                LOG.debug("Writing DELETE event: document_id={}, bulk_action={}",
                         event.getMetadata().getAttribute("document_id"),
                         event.getMetadata().getAttribute("bulk_action"));
                 if (acknowledgementSet != null) {
@@ -215,7 +218,7 @@ public class ChangelogWorker implements Runnable {
             final RowWithMeta row = allRows.get(idx);
             if ("INSERT".equals(row.operation)) {
                 final Event event = converter.convert(row.record, schema, row.operation, state.getSnapshotId());
-                LOG.info("Writing INSERT event: document_id={}, bulk_action={}",
+                LOG.debug("Writing INSERT event: document_id={}, bulk_action={}",
                         event.getMetadata().getAttribute("document_id"),
                         event.getMetadata().getAttribute("bulk_action"));
                 if (acknowledgementSet != null) {
@@ -256,6 +259,22 @@ public class ChangelogWorker implements Runnable {
                 tableName, state.getDataFilePath());
 
         final InputFile inputFile = table.io().newInputFile(state.getDataFilePath());
+
+        final boolean ackEnabled = sourceConfig.isAcknowledgmentsEnabled();
+        AcknowledgementSet acknowledgementSet = null;
+        if (ackEnabled) {
+            acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                if (result) {
+                    LOG.info("Acknowledgement received for initial load partition {}", partition.getPartitionKey());
+                    sourceCoordinator.completePartition(partition);
+                    incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
+                } else {
+                    LOG.warn("Negative acknowledgement for initial load partition {}, giving up", partition.getPartitionKey());
+                    sourceCoordinator.giveUpPartition(partition);
+                }
+            }, Duration.ofMinutes(30));
+        }
+
         final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> accumulator =
                 BufferAccumulator.create(buffer, BUFFER_ACCUMULATOR_SIZE, BUFFER_TIMEOUT);
 
@@ -263,14 +282,20 @@ public class ChangelogWorker implements Runnable {
         try (CloseableIterable<Record> reader = openDataFile(inputFile, schema, state.getDataFilePath())) {
             for (final Record record : reader) {
                 final Event event = converter.convert(record, schema, "INSERT", state.getSnapshotId());
+                if (acknowledgementSet != null) {
+                    acknowledgementSet.add(event);
+                }
                 accumulator.add(new org.opensearch.dataprepper.model.record.Record<>(event));
                 rowCount++;
             }
         }
 
         accumulator.flush();
-        sourceCoordinator.completePartition(partition);
-        incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
+
+        if (!ackEnabled) {
+            sourceCoordinator.completePartition(partition);
+            incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
+        }
 
         LOG.info("Completed initial load partition for table {}: {} rows", tableName, rowCount);
     }
@@ -281,18 +306,30 @@ public class ChangelogWorker implements Runnable {
 
     private void incrementSnapshotCompletionCount(final String snapshotKey) {
         final String completionKey = "snapshot-completion-" + snapshotKey;
-        final Optional<EnhancedSourcePartition> partitionOpt = sourceCoordinator.getPartition(completionKey);
-        if (partitionOpt.isPresent()) {
+        while (true) {
+            final Optional<EnhancedSourcePartition> partitionOpt = sourceCoordinator.getPartition(completionKey);
+            if (partitionOpt.isEmpty()) {
+                LOG.error("Failed to get completion status for {}", completionKey);
+                return;
+            }
             final GlobalState gs = (GlobalState) partitionOpt.get();
             final Map<String, Object> progress = new java.util.HashMap<>(
                     gs.getProgressState().orElse(Map.of()));
             final int completed = ((Number) progress.getOrDefault("completed", 0)).intValue();
             progress.put("completed", completed + 1);
             gs.setProgressState(progress);
-            sourceCoordinator.saveProgressStateForPartition(gs, Duration.ZERO);
+            try {
+                sourceCoordinator.saveProgressStateForPartition(gs, Duration.ZERO);
+                break;
+            } catch (final Exception e) {
+                LOG.warn("Completion count update conflict for {}, retrying", completionKey);
+            }
         }
     }
 
+    // TODO: Replace format switch with FormatModelRegistry when available (Iceberg 1.11+).
+    // TODO: Add GenericDeleteFilter for MoR support. See GenericReader.open(FileScanTask)
+    // in iceberg-data for the reference pattern (delete file merge + format-agnostic reading).
     private CloseableIterable<Record> openDataFile(final InputFile inputFile,
                                                     final Schema schema,
                                                     final String filePath) {
@@ -324,12 +361,10 @@ public class ChangelogWorker implements Runnable {
     private static class RowWithMeta {
         final Record record;
         final String operation;
-        final Schema schema;
 
-        RowWithMeta(final Record record, final String operation, final Schema schema) {
+        RowWithMeta(final Record record, final String operation) {
             this.record = record;
             this.operation = operation;
-            this.schema = schema;
         }
     }
 }
