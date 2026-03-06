@@ -22,26 +22,26 @@ import static org.mockito.Mockito.when;
 class LeaderPartitionTest {
 
     @Test
-    void constructor_returns_expected_partition_type() {
+    void getPartitionType_newInstance_returnsLeader() {
         final LeaderPartition partition = new LeaderPartition();
         assertThat(partition.getPartitionType(), equalTo("LEADER"));
     }
 
     @Test
-    void constructor_returns_expected_partition_key() {
+    void getPartitionKey_newInstance_returnsGlobal() {
         final LeaderPartition partition = new LeaderPartition();
         assertThat(partition.getPartitionKey(), equalTo("GLOBAL"));
     }
 
     @Test
-    void constructor_returns_non_empty_progress_state() {
+    void getProgressState_newInstance_returnsNotInitialized() {
         final LeaderPartition partition = new LeaderPartition();
         assertThat(partition.getProgressState().isPresent(), equalTo(true));
         assertThat(partition.getProgressState().get().isInitialized(), equalTo(false));
     }
 
     @Test
-    void fromSourcePartitionStoreItem_returns_expected_state() {
+    void getProgressState_fromStoreItem_returnsRestoredState() {
         final SourcePartitionStoreItem item = mock(SourcePartitionStoreItem.class);
         when(item.getSourceIdentifier()).thenReturn("prefix|LEADER");
         when(item.getSourcePartitionKey()).thenReturn("GLOBAL");
