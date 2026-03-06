@@ -81,7 +81,6 @@ public class TaskGrouper {
                 state.setDataFilePaths(group.stream().map(t -> t.filePath).collect(java.util.stream.Collectors.toList()));
                 state.setTaskTypes(group.stream().map(t -> t.taskType).collect(java.util.stream.Collectors.toList()));
                 state.setTotalRecords(group.stream().mapToLong(t -> t.recordCount).sum());
-                state.setLoadedRecords(0);
                 result.add(state);
             }
         }

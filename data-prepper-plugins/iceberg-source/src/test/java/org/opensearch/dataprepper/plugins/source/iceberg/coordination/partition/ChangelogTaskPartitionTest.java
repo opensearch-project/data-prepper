@@ -54,7 +54,7 @@ class ChangelogTaskPartitionTest {
         when(item.getSourceIdentifier()).thenReturn("prefix|CHANGELOG_TASK");
         when(item.getSourcePartitionKey()).thenReturn("db.table1|snap|uuid");
         when(item.getPartitionProgressState()).thenReturn(
-                "{\"snapshotId\":100,\"tableName\":\"db.table1\",\"loadedRecords\":0,\"totalRecords\":50," +
+                "{\"snapshotId\":100,\"tableName\":\"db.table1\",\"totalRecords\":50," +
                 "\"dataFilePaths\":[\"/path/file1.parquet\"],\"taskTypes\":[\"ADDED\"]}");
 
         final ChangelogTaskPartition partition = new ChangelogTaskPartition(item);

@@ -22,9 +22,6 @@ public class ChangelogTaskProgressState {
     @JsonProperty("tableName")
     private String tableName;
 
-    @JsonProperty("loadedRecords")
-    private long loadedRecords;
-
     @JsonProperty("totalRecords")
     private long totalRecords;
 
@@ -48,14 +45,6 @@ public class ChangelogTaskProgressState {
 
     public void setTableName(final String tableName) {
         this.tableName = tableName;
-    }
-
-    public long getLoadedRecords() {
-        return loadedRecords;
-    }
-
-    public void setLoadedRecords(final long loadedRecords) {
-        this.loadedRecords = loadedRecords;
     }
 
     public long getTotalRecords() {

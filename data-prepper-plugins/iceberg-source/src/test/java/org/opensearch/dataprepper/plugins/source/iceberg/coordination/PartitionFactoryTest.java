@@ -47,7 +47,7 @@ class PartitionFactoryTest {
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn("prefix|CHANGELOG_TASK");
         when(sourcePartitionStoreItem.getSourcePartitionKey()).thenReturn("table|123|uuid");
         when(sourcePartitionStoreItem.getPartitionProgressState())
-                .thenReturn("{\"snapshotId\":123,\"tableName\":\"test\",\"loadedRecords\":0,\"totalRecords\":10,\"dataFilePaths\":[\"path1\"],\"taskTypes\":[\"ADDED\"]}");
+                .thenReturn("{\"snapshotId\":123,\"tableName\":\"test\",\"totalRecords\":10,\"dataFilePaths\":[\"path1\"],\"taskTypes\":[\"ADDED\"]}");
 
         final EnhancedSourcePartition result = partitionFactory.apply(sourcePartitionStoreItem);
         assertThat(result, instanceOf(ChangelogTaskPartition.class));
