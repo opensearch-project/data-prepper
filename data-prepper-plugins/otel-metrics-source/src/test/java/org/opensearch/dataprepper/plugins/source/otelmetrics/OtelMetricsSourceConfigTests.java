@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
@@ -27,10 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_THREAD_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_MAX_CONNECTION_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_THREAD_COUNT;
+
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 class OtelMetricsSourceConfigTests {
@@ -61,7 +67,7 @@ class OtelMetricsSourceConfigTests {
         assertEquals(DEFAULT_REQUEST_TIMEOUT_MS, otelMetricsSourceConfig.getRequestTimeoutInMillis());
         assertEquals(DEFAULT_PORT, otelMetricsSourceConfig.getPort());
         assertEquals(DEFAULT_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
-        assertEquals(OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
+        assertEquals(DEFAULT_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
         assertEquals(CompressionOption.NONE, otelMetricsSourceConfig.getCompression());
         assertFalse(otelMetricsSourceConfig.hasHealthCheck());
         assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
@@ -322,9 +328,9 @@ class OtelMetricsSourceConfigTests {
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
-        final OTelMetricsSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+        final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
 
-        RetryInfoConfig retryInfo = otelTraceSourceConfig.getRetryInfo();
+        RetryInfoConfig retryInfo = otelMetricsSourceConfig.getRetryInfo();
         assertThat(retryInfo.getMaxDelay(), equalTo(Duration.ofMillis(100)));
         assertThat(retryInfo.getMinDelay(), equalTo(Duration.ofMillis(50)));
     }

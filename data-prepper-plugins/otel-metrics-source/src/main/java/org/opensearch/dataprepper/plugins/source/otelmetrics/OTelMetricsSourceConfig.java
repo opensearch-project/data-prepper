@@ -1,13 +1,33 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_ENABLED_UNFRAMED_REQUESTS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_HEALTH_CHECK;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_MAX_CONNECTION_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PROTO_REFLECTION_SERVICE;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_SSL;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_THREAD_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_USE_ACM_CERT_FOR_SSL;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -17,6 +37,10 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
 import java.util.Set;
 
+
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
@@ -38,16 +62,6 @@ public class OTelMetricsSourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
-    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
-    static final int DEFAULT_PORT = 21891;
-    static final int DEFAULT_THREAD_COUNT = 200;
-    static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
-    static final boolean DEFAULT_SSL = true;
-    static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
-    static final boolean DEFAULT_HEALTH_CHECK = false;
-    static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
-    static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-    static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     private static final String NAME_KEY = "name";
@@ -125,6 +139,10 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
+
+    @JsonProperty("http_path")
+    @Size(min = 1, message = "path length should be at least 1")
+    private String httpPath;
 
     @AssertTrue(message = "buffer_partition_keys only supports 'name' and 'service_name'. 'name' is mandatory")
     boolean isBufferKeysValid() {
@@ -271,8 +289,8 @@ public class OTelMetricsSourceConfig {
         return retryInfo;
     }
 
-    public void setRetryInfo(RetryInfoConfig retryInfo) {
-        this.retryInfo = retryInfo;
+    public String getHttpPath() {
+        return httpPath;
     }
 }
 

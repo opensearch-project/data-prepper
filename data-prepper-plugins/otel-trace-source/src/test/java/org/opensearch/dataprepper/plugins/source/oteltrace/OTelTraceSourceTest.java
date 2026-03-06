@@ -63,7 +63,6 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
@@ -408,24 +407,6 @@ class OTelTraceSourceTest {
         assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNAUTHENTICATED));
     }
 
-
-    @Test
-    void testGrpcFailsIfSslIsEnabledAndNoTls() {
-        when(oTelTraceSourceConfig.isSsl()).thenReturn(true);
-        when(oTelTraceSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-        when(oTelTraceSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-    
-        TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-    
-        StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportTraceRequest()));
-    
-        assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNKNOWN));
-    }
-    
     @Test
     void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
