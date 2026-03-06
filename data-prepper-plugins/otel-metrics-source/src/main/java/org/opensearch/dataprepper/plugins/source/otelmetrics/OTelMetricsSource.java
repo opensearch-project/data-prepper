@@ -155,12 +155,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             configureHttpService(serverBuilder, buffer, executor.getQueue());
         }
 
-        if ((oTelMetricsSourceConfig.enableUnframedRequests() || oTelMetricsSourceConfig.getHttpPath() != null)
-                && oTelMetricsSourceConfig.hasHealthCheck()) {
-            LOG.info("HTTP source health check is enabled for metrics source");
-            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
-        }
-
         return serverBuilder.build();
     }
 
@@ -253,6 +247,11 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(maxPendingRequests, blockingQueue);
         final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
         serverBuilder.decorator(path, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+
+        if (oTelMetricsSourceConfig.hasHealthCheck()) {
+            LOG.info("HTTP source health check is enabled for metrics source");
+            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
+        }
 
         if (CompressionOption.NONE.equals(oTelMetricsSourceConfig.getCompression())) {
             serverBuilder.annotatedService(path, armeriaHttpService, httpExceptionHandler);
