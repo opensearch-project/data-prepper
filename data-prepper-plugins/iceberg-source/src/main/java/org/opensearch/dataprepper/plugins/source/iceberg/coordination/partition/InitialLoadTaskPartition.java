@@ -47,9 +47,6 @@ public class InitialLoadTaskPartition extends EnhancedSourcePartition<InitialLoa
 
     @Override
     public Optional<InitialLoadTaskProgressState> getProgressState() {
-        if (state != null) {
-            return Optional.of(state);
-        }
-        return Optional.empty();
+        return Optional.of(state);
     }
 }

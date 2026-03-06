@@ -46,9 +46,6 @@ public class ChangelogTaskPartition extends EnhancedSourcePartition<ChangelogTas
 
     @Override
     public Optional<ChangelogTaskProgressState> getProgressState() {
-        if (state != null) {
-            return Optional.of(state);
-        }
-        return Optional.empty();
+        return Optional.of(state);
     }
 }
