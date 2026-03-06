@@ -10,7 +10,7 @@ def RELEASE_LATEST_TAG = ''
 
 pipeline {
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 2, unit: 'HOURS')
     }
     agent none
     triggers {
