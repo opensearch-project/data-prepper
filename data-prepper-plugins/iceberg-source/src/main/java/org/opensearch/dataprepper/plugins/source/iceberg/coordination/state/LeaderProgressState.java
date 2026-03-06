@@ -17,7 +17,7 @@ public class LeaderProgressState {
     @JsonProperty("initialized")
     private boolean initialized;
 
-    @JsonProperty("last_processed_snapshot_id")
+    @JsonProperty("lastProcessedSnapshotId")
     private Long lastProcessedSnapshotId;
 
     public boolean isInitialized() {

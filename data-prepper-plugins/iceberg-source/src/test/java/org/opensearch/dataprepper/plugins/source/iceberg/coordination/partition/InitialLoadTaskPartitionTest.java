@@ -56,7 +56,7 @@ class InitialLoadTaskPartitionTest {
         when(item.getSourceIdentifier()).thenReturn("prefix|INITIAL_LOAD_TASK");
         when(item.getSourcePartitionKey()).thenReturn("db.table1|initial|uuid");
         when(item.getPartitionProgressState()).thenReturn(
-                "{\"snapshot_id\":200,\"table_name\":\"db.table1\",\"data_file_path\":\"/path/file.parquet\",\"total_records\":1000}");
+                "{\"snapshotId\":200,\"tableName\":\"db.table1\",\"dataFilePath\":\"/path/file.parquet\",\"totalRecords\":1000}");
 
         final InitialLoadTaskPartition partition = new InitialLoadTaskPartition(item);
         assertThat(partition.getPartitionKey(), equalTo("db.table1|initial|uuid"));

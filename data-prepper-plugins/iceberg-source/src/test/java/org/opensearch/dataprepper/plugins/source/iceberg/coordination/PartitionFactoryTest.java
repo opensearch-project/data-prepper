@@ -47,7 +47,7 @@ class PartitionFactoryTest {
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn("prefix|CHANGELOG_TASK");
         when(sourcePartitionStoreItem.getSourcePartitionKey()).thenReturn("table|123|uuid");
         when(sourcePartitionStoreItem.getPartitionProgressState())
-                .thenReturn("{\"snapshot_id\":123,\"table_name\":\"test\",\"loaded_records\":0,\"total_records\":10,\"data_file_paths\":[\"path1\"],\"task_types\":[\"ADDED\"]}");
+                .thenReturn("{\"snapshotId\":123,\"tableName\":\"test\",\"loadedRecords\":0,\"totalRecords\":10,\"dataFilePaths\":[\"path1\"],\"taskTypes\":[\"ADDED\"]}");
 
         final EnhancedSourcePartition result = partitionFactory.apply(sourcePartitionStoreItem);
         assertThat(result, instanceOf(ChangelogTaskPartition.class));
@@ -58,7 +58,7 @@ class PartitionFactoryTest {
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn("prefix|INITIAL_LOAD_TASK");
         when(sourcePartitionStoreItem.getSourcePartitionKey()).thenReturn("table|initial|uuid");
         when(sourcePartitionStoreItem.getPartitionProgressState())
-                .thenReturn("{\"snapshot_id\":456,\"table_name\":\"test\",\"data_file_path\":\"path1\",\"total_records\":100}");
+                .thenReturn("{\"snapshotId\":456,\"tableName\":\"test\",\"dataFilePath\":\"path1\",\"totalRecords\":100}");
 
         final EnhancedSourcePartition result = partitionFactory.apply(sourcePartitionStoreItem);
         assertThat(result, instanceOf(InitialLoadTaskPartition.class));

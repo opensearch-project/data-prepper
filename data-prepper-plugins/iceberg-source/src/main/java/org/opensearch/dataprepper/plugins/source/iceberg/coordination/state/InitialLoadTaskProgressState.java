@@ -14,16 +14,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class InitialLoadTaskProgressState {
 
-    @JsonProperty("snapshot_id")
+    @JsonProperty("snapshotId")
     private long snapshotId;
 
-    @JsonProperty("table_name")
+    @JsonProperty("tableName")
     private String tableName;
 
-    @JsonProperty("data_file_path")
+    @JsonProperty("dataFilePath")
     private String dataFilePath;
 
-    @JsonProperty("total_records")
+    @JsonProperty("totalRecords")
     private long totalRecords;
 
     public long getSnapshotId() {

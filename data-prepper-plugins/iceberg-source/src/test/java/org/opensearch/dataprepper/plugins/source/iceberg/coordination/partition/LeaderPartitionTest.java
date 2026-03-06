@@ -45,7 +45,7 @@ class LeaderPartitionTest {
         final SourcePartitionStoreItem item = mock(SourcePartitionStoreItem.class);
         when(item.getSourceIdentifier()).thenReturn("prefix|LEADER");
         when(item.getSourcePartitionKey()).thenReturn("GLOBAL");
-        when(item.getPartitionProgressState()).thenReturn("{\"initialized\":true,\"last_processed_snapshot_id\":42}");
+        when(item.getPartitionProgressState()).thenReturn("{\"initialized\":true,\"lastProcessedSnapshotId\":42}");
 
         final LeaderPartition partition = new LeaderPartition(item);
         assertThat(partition.getProgressState(), notNullValue());

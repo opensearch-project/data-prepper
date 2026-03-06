@@ -16,22 +16,22 @@ import java.util.List;
 
 public class ChangelogTaskProgressState {
 
-    @JsonProperty("snapshot_id")
+    @JsonProperty("snapshotId")
     private long snapshotId;
 
-    @JsonProperty("table_name")
+    @JsonProperty("tableName")
     private String tableName;
 
-    @JsonProperty("loaded_records")
+    @JsonProperty("loadedRecords")
     private long loadedRecords;
 
-    @JsonProperty("total_records")
+    @JsonProperty("totalRecords")
     private long totalRecords;
 
-    @JsonProperty("data_file_paths")
+    @JsonProperty("dataFilePaths")
     private List<String> dataFilePaths;
 
-    @JsonProperty("task_types")
+    @JsonProperty("taskTypes")
     private List<String> taskTypes;
 
     public long getSnapshotId() {
