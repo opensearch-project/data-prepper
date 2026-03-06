@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.function.Function;
 
+@Experimental
 @DataPrepperPlugin(name = "iceberg", pluginType = Source.class, pluginConfigurationType = IcebergSourceConfig.class)
 public class IcebergSource implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
 
