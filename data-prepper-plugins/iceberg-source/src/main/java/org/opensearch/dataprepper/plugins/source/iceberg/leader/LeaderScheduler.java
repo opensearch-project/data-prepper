@@ -12,7 +12,6 @@ import org.apache.iceberg.TableScan;
 import org.apache.iceberg.io.CloseableIterable;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.iceberg.IcebergSourceConfig;
 import org.opensearch.dataprepper.plugins.source.iceberg.TableConfig;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.ChangelogTaskPartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.GlobalState;
@@ -39,16 +38,19 @@ public class LeaderScheduler implements Runnable {
     static final String SNAPSHOT_COMPLETION_PREFIX = "snapshot-completion-";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
-    private final IcebergSourceConfig sourceConfig;
+    private final Map<String, TableConfig> tableConfigs;
+    private final Duration pollingInterval;
     private final Map<String, Table> tables;
     private final TaskGrouper taskGrouper = new TaskGrouper();
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
-                           final IcebergSourceConfig sourceConfig,
+                           final Map<String, TableConfig> tableConfigs,
+                           final Duration pollingInterval,
                            final Map<String, Table> tables) {
         this.sourceCoordinator = sourceCoordinator;
-        this.sourceConfig = sourceConfig;
+        this.tableConfigs = tableConfigs;
+        this.pollingInterval = pollingInterval;
         this.tables = tables;
     }
 
@@ -89,7 +91,7 @@ public class LeaderScheduler implements Runnable {
                     }
                 }
                 try {
-                    Thread.sleep(sourceConfig.getPollingInterval().toMillis());
+                    Thread.sleep(pollingInterval.toMillis());
                 } catch (final InterruptedException e) {
                     LOG.info("Leader scheduler interrupted");
                     break;
@@ -109,12 +111,10 @@ public class LeaderScheduler implements Runnable {
         for (final Map.Entry<String, Table> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
             final Table table = entry.getValue();
-            final TableConfig tableConfig = sourceConfig.getTables().stream()
-                    .filter(tc -> tc.getTableName().equals(tableName))
-                    .findFirst().orElse(null);
+            final TableConfig tableConfig = tableConfigs.get(tableName);
 
-            if (tableConfig == null || !tableConfig.isInitialLoad()) {
-                LOG.info("Skipping initial load for table {} (initial_load=false)", tableName);
+            if (tableConfig.isDisableExport()) {
+                LOG.info("Skipping initial Export for table {} (isDisableExport=true)", tableName);
                 continue;
             }
 

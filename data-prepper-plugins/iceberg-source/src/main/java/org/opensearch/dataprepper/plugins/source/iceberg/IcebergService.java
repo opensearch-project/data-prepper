@@ -84,7 +84,7 @@ public class IcebergService {
         // Start schedulers with shared table references
         final List<Runnable> runnableList = new ArrayList<>();
 
-        runnableList.add(new LeaderScheduler(sourceCoordinator, sourceConfig, tables));
+        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs, sourceConfig.getPollingInterval(), tables));
         runnableList.add(new ChangelogWorker(
                 sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager));
 

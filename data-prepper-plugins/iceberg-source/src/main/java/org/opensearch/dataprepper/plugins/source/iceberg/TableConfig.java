@@ -24,8 +24,8 @@ public class TableConfig {
     @JsonProperty("identifier_columns")
     private List<String> identifierColumns = Collections.emptyList();
 
-    @JsonProperty("initial_load")
-    private boolean initialLoad = true;
+    @JsonProperty("disable_export")
+    private boolean disableExport = false;
 
     public String getTableName() {
         return tableName;
@@ -39,7 +39,5 @@ public class TableConfig {
         return identifierColumns;
     }
 
-    public boolean isInitialLoad() {
-        return initialLoad;
-    }
+    public boolean isDisableExport() { return disableExport; }
 }
