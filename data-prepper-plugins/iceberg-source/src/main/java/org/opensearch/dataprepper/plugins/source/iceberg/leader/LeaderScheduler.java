@@ -75,7 +75,7 @@ public class LeaderScheduler implements Runnable {
                 }
 
                 if (leaderPartition != null) {
-                    final LeaderProgressState progressState = leaderPartition.getProgressState().get();
+                    final LeaderProgressState progressState = leaderPartition.getProgressState().orElseThrow();
                     if (!progressState.isInitialized()) {
                         performInitialLoad();
                         progressState.setInitialized(true);
@@ -111,7 +111,7 @@ public class LeaderScheduler implements Runnable {
     }
 
     private void performInitialLoad() {
-        final LeaderProgressState progressState = leaderPartition.getProgressState().get();
+        final LeaderProgressState progressState = leaderPartition.getProgressState().orElseThrow();
 
         for (final Map.Entry<String, Table> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
@@ -140,7 +140,7 @@ public class LeaderScheduler implements Runnable {
                     final InitialLoadTaskProgressState taskState = new InitialLoadTaskProgressState();
                     taskState.setSnapshotId(snapshotId);
                     taskState.setTableName(tableName);
-                    taskState.setDataFilePath(task.file().path().toString());
+                    taskState.setDataFilePath(task.file().location());
                     taskState.setTotalRecords(task.file().recordCount());
 
                     final String partitionKey = tableName + "|initial|" + UUID.randomUUID();
@@ -169,7 +169,7 @@ public class LeaderScheduler implements Runnable {
     }
 
     private void pollAndPlan() {
-        final LeaderProgressState progressState = leaderPartition.getProgressState().get();
+        final LeaderProgressState progressState = leaderPartition.getProgressState().orElseThrow();
 
         for (final Map.Entry<String, Table> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
@@ -184,7 +184,7 @@ public class LeaderScheduler implements Runnable {
             final long currentSnapshotId = table.currentSnapshot().snapshotId();
             final Long lastProcessedId = progressState.getLastProcessedSnapshotId();
 
-            if (lastProcessedId != null && lastProcessedId == currentSnapshotId) {
+            if (lastProcessedId != null && lastProcessedId.equals(currentSnapshotId)) {
                 continue;
             }
 
@@ -262,7 +262,7 @@ public class LeaderScheduler implements Runnable {
         final List<Snapshot> result = new ArrayList<>();
         Snapshot current = table.snapshot(toInclusive);
         while (current != null) {
-            if (fromExclusive != null && current.snapshotId() == fromExclusive) {
+            if (fromExclusive != null && fromExclusive.equals(current.snapshotId())) {
                 break;
             }
             result.add(0, current);

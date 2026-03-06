@@ -216,12 +216,12 @@ public class TaskGrouper {
             if (task instanceof AddedRowsScanTask) {
                 final AddedRowsScanTask t = (AddedRowsScanTask) task;
                 return new TaskInfo(
-                        t.file().path().toString(), "ADDED",
+                        t.file().location(), "ADDED",
                         t.file().recordCount(), extractBoundsKey(t));
             } else if (task instanceof DeletedDataFileScanTask) {
                 final DeletedDataFileScanTask t = (DeletedDataFileScanTask) task;
                 return new TaskInfo(
-                        t.file().path().toString(), "DELETED",
+                        t.file().location(), "DELETED",
                         t.file().recordCount(), extractBoundsKey(t));
             }
             return new TaskInfo("unknown", "UNKNOWN", 0, null);
