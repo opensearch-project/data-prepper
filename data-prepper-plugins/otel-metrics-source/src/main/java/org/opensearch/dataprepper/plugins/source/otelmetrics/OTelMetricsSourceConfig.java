@@ -10,17 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_ENABLED_UNFRAMED_REQUESTS;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_HEALTH_CHECK;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_MAX_CONNECTION_COUNT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PROTO_REFLECTION_SERVICE;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_SSL;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_THREAD_COUNT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_USE_ACM_CERT_FOR_SSL;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
@@ -66,6 +55,16 @@ public class OTelMetricsSourceConfig {
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     private static final String NAME_KEY = "name";
     private static final String SERVICE_NAME_KEY = "service_name";
+    public static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+    public static final int DEFAULT_PORT = 21891;
+    public static final int DEFAULT_THREAD_COUNT = 200;
+    public static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
+    public static final boolean DEFAULT_SSL = true;
+    public static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
+    public static final boolean DEFAULT_HEALTH_CHECK = false;
+    public static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
+    public static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    public static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;

@@ -10,8 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.BASIC_AUTH_USERNAME;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.CONFIG_HTTP_PATH;

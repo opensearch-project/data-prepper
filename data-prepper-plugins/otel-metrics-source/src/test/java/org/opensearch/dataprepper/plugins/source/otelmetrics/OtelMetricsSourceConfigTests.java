@@ -32,11 +32,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_MAX_CONNECTION_COUNT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.ConfigDefaults.DEFAULT_THREAD_COUNT;
-
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_THREAD_COUNT;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 class OtelMetricsSourceConfigTests {
