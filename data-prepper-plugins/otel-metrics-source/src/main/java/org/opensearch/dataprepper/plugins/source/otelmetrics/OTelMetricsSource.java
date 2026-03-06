@@ -151,7 +151,15 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         ScheduledThreadPoolExecutor executor = configureServer(serverBuilder);
 
         configureGrpcService(serverBuilder, buffer);
-        configureHttpService(serverBuilder, buffer, executor.getQueue());
+        if (oTelMetricsSourceConfig.getHttpPath() != null) {
+            configureHttpService(serverBuilder, buffer, executor.getQueue());
+        }
+
+        if ((oTelMetricsSourceConfig.enableUnframedRequests() || oTelMetricsSourceConfig.getHttpPath() != null)
+                && oTelMetricsSourceConfig.hasHealthCheck()) {
+            LOG.info("HTTP source health check is enabled for metrics source");
+            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
+        }
 
         return serverBuilder.build();
     }
@@ -256,10 +264,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                     httpExceptionHandler);
         }
 
-        if (oTelMetricsSourceConfig.hasHealthCheck()) {
-            LOG.info("HTTP source health check is enabled for metrics source");
-            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
-        }
     }
 
     private OTelProtoCodec.OTelProtoDecoder createOtelProtoDecoder() {
