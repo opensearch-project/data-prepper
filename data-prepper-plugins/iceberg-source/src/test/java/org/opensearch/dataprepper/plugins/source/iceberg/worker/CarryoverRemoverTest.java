@@ -119,18 +119,11 @@ class CarryoverRemoverTest {
     }
 
     @Test
-    void removeCarryover_duplicateIdenticalRows_removedInPairs() {
-        // Two identical rows exist in the table (legitimate duplicates)
-        // After sort: DELETE, DELETE, INSERT, INSERT
-        // First DELETE+DELETE are adjacent (not a pair), then INSERT+INSERT
-        // Algorithm pairs: (DELETE[0], INSERT[2]) via adjacent check after sort
-        // Actually: DELETE, DELETE, INSERT, INSERT -> (DELETE, INSERT) pair removed, (DELETE, INSERT) pair removed
-        // Wait - sort puts DELETE before INSERT for same data, so:
+    void removeCarryover_duplicateIdenticalRows_allCancelledAsCarryover() {
+        // Two identical rows exist in both old and new files (legitimate duplicates).
         // Sorted: D(Alice), D(Alice), I(Alice), I(Alice)
-        // i=0: D + D -> not a pair (both DELETE), advance to i=1
-        // i=1: D + I -> pair! skip both, i=3
-        // i=3: I -> no pair, add to result
-        // Result: 2 rows (first DELETE and last INSERT)
+        // deleteCount=2, then 2 INSERTs cancel both -> 0 remaining.
+        // All are carryover pairs.
         final List<CarryoverRemover.ChangelogRow> rows = new ArrayList<>(List.of(
                 new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "DELETE", 0),
                 new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "DELETE", 1),
@@ -138,7 +131,20 @@ class CarryoverRemoverTest {
                 new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "INSERT", 3)
         ));
         final List<Integer> result = carryoverRemover.removeCarryover(rows);
-        // D, D, I, I -> (D stays), (D+I pair removed), (I stays) = 2 remaining
-        assertThat(result, hasSize(2));
+        assertThat(result, hasSize(0));
+    }
+
+    @Test
+    void removeCarryover_asymmetricDeleteInsert_deleteSurvives() {
+        // Two files contain Alice, only one is rewritten with a change.
+        // Sorted: D(Alice), D(Alice), I(Alice)
+        // deleteCount=2, 1 INSERT cancels 1 -> 1 DELETE remains.
+        final List<CarryoverRemover.ChangelogRow> rows = new ArrayList<>(List.of(
+                new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "DELETE", 0),
+                new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "DELETE", 1),
+                new CarryoverRemover.ChangelogRow(List.of(1, "Alice", 30), "INSERT", 2)
+        ));
+        final List<Integer> result = carryoverRemover.removeCarryover(rows);
+        assertThat(result, hasSize(1));
     }
 }

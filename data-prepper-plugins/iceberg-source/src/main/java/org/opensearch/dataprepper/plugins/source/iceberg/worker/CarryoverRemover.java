@@ -13,23 +13,21 @@ package org.opensearch.dataprepper.plugins.source.iceberg.worker;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Removes carryover rows from a list of changelog rows.
  * Carryover = identical DELETE + INSERT pairs produced by CoW file rewrites.
  *
- * Algorithm (matches Spark's RemoveCarryoverIterator):
+ * Algorithm (aligned with Spark's RemoveCarryoverIterator):
  * 1. Sort all rows by data columns, with DELETE before INSERT for equal rows
- * 2. Walk the sorted list, skip adjacent DELETE+INSERT pairs with identical data
+ * 2. Walk the sorted list, track consecutive DELETE count, cancel with matching INSERTs
  */
 public class CarryoverRemover {
 
-    /**
-     * A changelog row: the data columns as a comparable list, plus the operation type.
-     */
     public static class ChangelogRow {
         private final List<Object> dataColumns;
-        private final String operation; // "INSERT" or "DELETE"
+        private final String operation;
         private final int originalIndex;
 
         public ChangelogRow(final List<Object> dataColumns, final String operation, final int originalIndex) {
@@ -61,21 +59,44 @@ public class CarryoverRemover {
         }
 
         rows.sort(Comparator
-                .<ChangelogRow, String>comparing(r -> dataColumnsToString(r.getDataColumns()))
+                .<ChangelogRow, ComparableColumns>comparing(r -> new ComparableColumns(r.getDataColumns()))
                 .thenComparing(r -> "DELETE".equals(r.getOperation()) ? 0 : 1));
 
         final List<Integer> result = new ArrayList<>();
         int i = 0;
         while (i < rows.size()) {
-            if (i + 1 < rows.size()
-                    && "DELETE".equals(rows.get(i).getOperation())
-                    && "INSERT".equals(rows.get(i + 1).getOperation())
-                    && dataColumnsEqual(rows.get(i).getDataColumns(), rows.get(i + 1).getDataColumns())) {
-                i += 2; // skip carryover pair
-            } else {
-                result.add(rows.get(i).getOriginalIndex());
+            final ChangelogRow current = rows.get(i);
+            if (!"DELETE".equals(current.getOperation())) {
+                result.add(current.getOriginalIndex());
                 i++;
+                continue;
             }
+
+            // Current row is DELETE. Count consecutive identical DELETE rows.
+            int deleteCount = 1;
+            int j = i + 1;
+            while (j < rows.size()
+                    && "DELETE".equals(rows.get(j).getOperation())
+                    && dataColumnsEqual(current.getDataColumns(), rows.get(j).getDataColumns())) {
+                deleteCount++;
+                j++;
+            }
+
+            // Cancel DELETE rows with matching INSERT rows
+            while (j < rows.size()
+                    && "INSERT".equals(rows.get(j).getOperation())
+                    && dataColumnsEqual(current.getDataColumns(), rows.get(j).getDataColumns())
+                    && deleteCount > 0) {
+                deleteCount--;
+                j++;
+            }
+
+            // Emit remaining uncancelled DELETE rows
+            for (int k = 0; k < deleteCount; k++) {
+                result.add(rows.get(i + k).getOriginalIndex());
+            }
+
+            i = j;
         }
         return result;
     }
@@ -85,21 +106,50 @@ public class CarryoverRemover {
             return false;
         }
         for (int i = 0; i < a.size(); i++) {
-            if (a.get(i) == null && b.get(i) == null) {
-                continue;
-            }
-            if (a.get(i) == null || !a.get(i).equals(b.get(i))) {
+            if (!Objects.equals(a.get(i), b.get(i))) {
                 return false;
             }
         }
         return true;
     }
 
-    private String dataColumnsToString(final List<Object> columns) {
-        final StringBuilder sb = new StringBuilder();
-        for (final Object col : columns) {
-            sb.append(col == null ? "\0null\0" : col.toString()).append("\1");
+    /**
+     * Comparable wrapper for column-by-column comparison, used as sort key.
+     */
+    private static class ComparableColumns implements Comparable<ComparableColumns> {
+        private final List<Object> columns;
+
+        ComparableColumns(final List<Object> columns) {
+            this.columns = columns;
         }
-        return sb.toString();
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public int compareTo(final ComparableColumns other) {
+            final int len = Math.min(columns.size(), other.columns.size());
+            for (int i = 0; i < len; i++) {
+                final Object a = columns.get(i);
+                final Object b = other.columns.get(i);
+                if (a == null && b == null) {
+                    continue;
+                }
+                if (a == null) {
+                    return -1;
+                }
+                if (b == null) {
+                    return 1;
+                }
+                final int cmp;
+                if (a instanceof Comparable && b instanceof Comparable) {
+                    cmp = ((Comparable<Object>) a).compareTo(b);
+                } else {
+                    cmp = a.toString().compareTo(b.toString());
+                }
+                if (cmp != 0) {
+                    return cmp;
+                }
+            }
+            return Integer.compare(columns.size(), other.columns.size());
+        }
     }
 }
