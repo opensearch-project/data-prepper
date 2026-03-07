@@ -76,6 +76,13 @@ public class IcebergService {
                 LOG.warn("No identifier_columns configured for table {}. "
                         + "CDC correctness requires identifier_columns for UPDATE/DELETE support "
                         + "and idempotent writes.", tableName);
+            } else {
+                for (final String col : tableConfig.getIdentifierColumns()) {
+                    if (table.schema().findField(col) == null) {
+                        throw new IllegalArgumentException(
+                                "identifier_columns contains '" + col + "' which does not exist in table " + tableName);
+                    }
+                }
             }
 
             tables.put(tableName, table);
