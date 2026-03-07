@@ -14,16 +14,27 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.variants.PhysicalType;
+import org.apache.iceberg.variants.Variant;
+import org.apache.iceberg.variants.VariantArray;
+import org.apache.iceberg.variants.VariantObject;
+import org.apache.iceberg.variants.VariantPrimitive;
+import org.apache.iceberg.variants.VariantValue;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ChangelogRecordConverterTest {
 
@@ -137,5 +148,103 @@ class ChangelogRecordConverterTest {
 
         assertThat(event.get("id", Integer.class), equalTo(1));
         assertThat(event.get("name", Object.class), nullValue());
+    }
+
+    @Test
+    void convert_structType_preservesFieldNames() {
+        final Types.StructType addressType = Types.StructType.of(
+                Types.NestedField.required(10, "city", Types.StringType.get()),
+                Types.NestedField.optional(11, "zip", Types.IntegerType.get())
+        );
+        final Schema schema = new Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.optional(2, "address", addressType)
+        );
+        final Record addressRecord = GenericRecord.create(addressType);
+        addressRecord.setField("city", "Tokyo");
+        addressRecord.setField("zip", 100);
+        final Record record = GenericRecord.create(schema);
+        record.setField("id", 1);
+        record.setField("address", addressRecord);
+
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final Event event = converter.convert(record, schema, "INSERT", 12345L);
+
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> address = (Map<String, Object>) event.get("address", Object.class);
+        assertThat(address.get("city"), equalTo("Tokyo"));
+        assertThat(address.get("zip"), equalTo(100));
+    }
+
+    @Test
+    void convert_variantType_objectConvertedToMap() {
+        final Schema schema = new Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.optional(2, "data", Types.VariantType.get())
+        );
+
+        final VariantPrimitive<?> cityValue = mock(VariantPrimitive.class);
+        when(cityValue.type()).thenReturn(PhysicalType.STRING);
+        doReturn("Tokyo").when(cityValue).get();
+        doReturn(cityValue).when(cityValue).asPrimitive();
+
+        final VariantObject variantObj = mock(VariantObject.class);
+        when(variantObj.type()).thenReturn(PhysicalType.OBJECT);
+        when(variantObj.fieldNames()).thenReturn(List.of("city"));
+        when(variantObj.get("city")).thenReturn(cityValue);
+        when(variantObj.asObject()).thenReturn(variantObj);
+
+        final Variant variant = mock(Variant.class);
+        when(variant.value()).thenReturn(variantObj);
+
+        final Record record = GenericRecord.create(schema);
+        record.setField("id", 1);
+        record.setField("data", variant);
+
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final Event event = converter.convert(record, schema, "INSERT", 12345L);
+
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> data = (Map<String, Object>) event.get("data", Object.class);
+        assertThat(data.get("city"), equalTo("Tokyo"));
+    }
+
+    @Test
+    void convert_variantType_arrayConvertedToList() {
+        final Schema schema = new Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.optional(2, "tags", Types.VariantType.get())
+        );
+
+        final VariantPrimitive<?> elem0 = mock(VariantPrimitive.class);
+        when(elem0.type()).thenReturn(PhysicalType.STRING);
+        doReturn("a").when(elem0).get();
+        doReturn(elem0).when(elem0).asPrimitive();
+        final VariantPrimitive<?> elem1 = mock(VariantPrimitive.class);
+        when(elem1.type()).thenReturn(PhysicalType.STRING);
+        doReturn("b").when(elem1).get();
+        doReturn(elem1).when(elem1).asPrimitive();
+
+        final VariantArray variantArr = mock(VariantArray.class);
+        when(variantArr.type()).thenReturn(PhysicalType.ARRAY);
+        when(variantArr.numElements()).thenReturn(2);
+        when(variantArr.get(0)).thenReturn(elem0);
+        when(variantArr.get(1)).thenReturn(elem1);
+        when(variantArr.asArray()).thenReturn(variantArr);
+
+        final Variant variant = mock(Variant.class);
+        when(variant.value()).thenReturn(variantArr);
+
+        final Record record = GenericRecord.create(schema);
+        record.setField("id", 1);
+        record.setField("tags", variant);
+
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final Event event = converter.convert(record, schema, "INSERT", 12345L);
+
+        @SuppressWarnings("unchecked")
+        final List<Object> tags = (List<Object>) event.get("tags", Object.class);
+        assertThat(tags.get(0), equalTo("a"));
+        assertThat(tags.get(1), equalTo("b"));
     }
 }
