@@ -190,6 +190,7 @@ public class ChangelogWorker implements Runnable {
                 if (result) {
                     LOG.info("Acknowledgement received for partition {}", partition.getPartitionKey());
                     sourceCoordinator.completePartition(partition);
+                    incrementSnapshotCompletionCount(state.getSnapshotId());
                 } else {
                     LOG.warn("Negative acknowledgement for partition {}, giving up", partition.getPartitionKey());
                     sourceCoordinator.giveUpPartition(partition);
