@@ -187,13 +187,17 @@ public class ChangelogWorker implements Runnable {
         AcknowledgementSet acknowledgementSet = null;
         if (ackEnabled) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result) {
-                    LOG.info("Acknowledgement received for partition {}", partition.getPartitionKey());
-                    sourceCoordinator.completePartition(partition);
-                    incrementSnapshotCompletionCount(state.getSnapshotId());
-                } else {
-                    LOG.warn("Negative acknowledgement for partition {}, giving up", partition.getPartitionKey());
-                    sourceCoordinator.giveUpPartition(partition);
+                try {
+                    if (result) {
+                        LOG.info("Acknowledgement received for partition {}", partition.getPartitionKey());
+                        sourceCoordinator.completePartition(partition);
+                        incrementSnapshotCompletionCount(state.getSnapshotId());
+                    } else {
+                        LOG.warn("Negative acknowledgement for partition {}, giving up", partition.getPartitionKey());
+                        sourceCoordinator.giveUpPartition(partition);
+                    }
+                } catch (final Exception e) {
+                    LOG.error("Error in acknowledgement callback for partition {}", partition.getPartitionKey(), e);
                 }
             }, Duration.ofMinutes(30));
         }
@@ -231,7 +235,14 @@ public class ChangelogWorker implements Runnable {
 
         accumulator.flush();
 
-        if (!ackEnabled) {
+        if (ackEnabled) {
+            if (survivingIndices.isEmpty()) {
+                sourceCoordinator.completePartition(partition);
+                incrementSnapshotCompletionCount(state.getSnapshotId());
+            } else {
+                acknowledgementSet.complete();
+            }
+        } else {
             sourceCoordinator.completePartition(partition);
             incrementSnapshotCompletionCount(state.getSnapshotId());
         }
@@ -265,13 +276,17 @@ public class ChangelogWorker implements Runnable {
         AcknowledgementSet acknowledgementSet = null;
         if (ackEnabled) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result) {
-                    LOG.info("Acknowledgement received for initial load partition {}", partition.getPartitionKey());
-                    sourceCoordinator.completePartition(partition);
-                    incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
-                } else {
-                    LOG.warn("Negative acknowledgement for initial load partition {}, giving up", partition.getPartitionKey());
-                    sourceCoordinator.giveUpPartition(partition);
+                try {
+                    if (result) {
+                        LOG.info("Acknowledgement received for initial load partition {}", partition.getPartitionKey());
+                        sourceCoordinator.completePartition(partition);
+                        incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
+                    } else {
+                        LOG.warn("Negative acknowledgement for initial load partition {}, giving up", partition.getPartitionKey());
+                        sourceCoordinator.giveUpPartition(partition);
+                    }
+                } catch (final Exception e) {
+                    LOG.error("Error in acknowledgement callback for initial load partition {}", partition.getPartitionKey(), e);
                 }
             }, Duration.ofMinutes(30));
         }
@@ -293,7 +308,9 @@ public class ChangelogWorker implements Runnable {
 
         accumulator.flush();
 
-        if (!ackEnabled) {
+        if (ackEnabled) {
+            acknowledgementSet.complete();
+        } else {
             sourceCoordinator.completePartition(partition);
             incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
         }
@@ -305,7 +322,7 @@ public class ChangelogWorker implements Runnable {
         incrementSnapshotCompletionCount(String.valueOf(snapshotId));
     }
 
-    private void incrementSnapshotCompletionCount(final String snapshotKey) {
+    private synchronized void incrementSnapshotCompletionCount(final String snapshotKey) {
         final String completionKey = "snapshot-completion-" + snapshotKey;
         while (true) {
             final Optional<EnhancedSourcePartition> partitionOpt = sourceCoordinator.getPartition(completionKey);
