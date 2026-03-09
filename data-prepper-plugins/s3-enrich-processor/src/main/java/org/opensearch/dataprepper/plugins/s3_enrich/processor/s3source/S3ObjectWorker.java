@@ -92,7 +92,7 @@ public class S3ObjectWorker {
                 try {
                     Event event = record.getData();
 
-                    String correlationValue = event.getJsonNode().get(s3EnricherProcessorConfig.getCorrelationKey()).asText();
+                    String correlationValue = event.getJsonNode().get(s3EnricherProcessorConfig.getCorrelationKeys().get(0)).asText();
 
                     event.getMetadata().setExternalOriginationTime(originationTime);
                     event.getEventHandle().setExternalOriginationTime(originationTime);
