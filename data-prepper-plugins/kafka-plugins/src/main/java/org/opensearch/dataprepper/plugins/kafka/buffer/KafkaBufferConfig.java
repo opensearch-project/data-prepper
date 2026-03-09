@@ -29,7 +29,7 @@ import java.util.Optional;
 
 class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
-    static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofHours(2);
+    static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofHours(Integer.MAX_VALUE);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
