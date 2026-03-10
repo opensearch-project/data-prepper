@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -8,6 +12,7 @@ package org.opensearch.dataprepper.expression;
 import inet.ipaddr.IPAddress;
 import inet.ipaddr.IPAddressString;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 
 import javax.inject.Named;
 import java.util.List;
@@ -17,7 +22,6 @@ import java.util.stream.Collectors;
 
 @Named
 public class CidrExpressionFunction implements ExpressionFunction {
-
     private static final String FUNCTION_NAME = "cidrContains";
     @Override
     public String getFunctionName() {
@@ -30,19 +34,22 @@ public class CidrExpressionFunction implements ExpressionFunction {
             throw new IllegalArgumentException(FUNCTION_NAME + "() takes at least two arguments");
         }
 
-        final List<String> argStrings;
-        try {
-            argStrings = args.stream()
-                    .map(arg -> ((String)arg).trim())
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                    "Arguments in " + FUNCTION_NAME + "() function should be of Json Pointer type or String type");
+        final String ipAddressInEvent;
+        final Object firstArg = args.get(0);
+        if (firstArg instanceof EventKey) {
+            ipAddressInEvent = event.get((EventKey) firstArg, String.class);
+        } else {
+            throw new RuntimeException("Unexpected argument type for first argument: " + firstArg.getClass());
         }
 
-        final String ipAddressInEvent = event.get(argStrings.get(0), String.class);
-        final List<String> cidrBlockStrs = argStrings.subList(1, argStrings.size()).stream()
-                .map(str -> str.substring(1, str.length() - 1))
+        final List<String> cidrBlockStrs = args.subList(1, args.size()).stream()
+                .map(arg -> {
+                    if (arg instanceof String) {
+                        return (String) arg;
+                    } else {
+                        throw new RuntimeException("Unexpected argument type: " + arg.getClass());
+                    }
+                })
                 .collect(Collectors.toList());
 
         return isIpInCidr(ipAddressInEvent, cidrBlockStrs);
