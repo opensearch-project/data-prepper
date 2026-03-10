@@ -1,13 +1,18 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
-import java.util.List;
+
 import javax.inject.Named;
+import java.util.List;
 import java.util.function.Function;
 
 @Named
@@ -22,16 +27,9 @@ public class GetMetadataExpressionFunction implements ExpressionFunction {
         }
         Object arg = args.get(0);
         if (!(arg instanceof String)) {
-            throw new RuntimeException("getMetadata() takes only String type arguments");
+            throw new RuntimeException("Unexpected argument type: " + arg.getClass() + ". getMetadata() takes only String type arguments");
         }
         String argStr = ((String)arg).trim();
-        if (argStr.length() == 0) {
-            return null;
-        }
-        if (argStr.charAt(0) != '\"' || argStr.length() < 2) {
-            throw new RuntimeException("Literal string expected as argument to getMetadata()");
-        } 
-        argStr = argStr.substring(1, argStr.length()-1).trim();
         if (argStr.isEmpty()) {
             return null;
         }

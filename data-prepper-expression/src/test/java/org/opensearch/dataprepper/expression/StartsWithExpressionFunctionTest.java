@@ -1,111 +1,170 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
 package org.opensearch.dataprepper.expression;
 
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.expression.StartsWithExpressionFunction.STARTS_WITH_FUNCTION_NAME;
 
-public class StartsWithExpressionFunctionTest {
-
+class StartsWithExpressionFunctionTest {
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+    private StartsWithExpressionFunction startsWithExpressionFunction;
     private Event testEvent;
+    private Function<Object, Object> testFunction;
+    private String testKey;
+    private String testKey2;
+    private String testKey3;
+    private String testValue;
+    private String testPrefix;
+    private static final int testValueLength = 10;
 
     private Event createTestEvent(final Object data) {
         return JacksonEvent.builder().withEventType("event").withData(data).build();
     }
 
-    private ExpressionFunction createObjectUnderTest() {
+    @BeforeEach
+    public void setUp() {
+        testKey = RandomStringUtils.randomAlphabetic(5);
+        testKey2 = RandomStringUtils.randomAlphabetic(5);
+        testKey3 = RandomStringUtils.randomAlphabetic(5);
+        testValue = RandomStringUtils.randomAlphabetic(testValueLength);
+        testPrefix = testValue.substring(0, 4);
+        testEvent = createTestEvent(Map.of(testKey, testValue, testKey2, testPrefix, testKey3, 1234));
+        testFunction = mock(Function.class);
+    }
+
+    public StartsWithExpressionFunction createObjectUnderTest() {
         return new StartsWithExpressionFunction();
     }
 
-    @ParameterizedTest
-    @MethodSource("validStartsWithProvider")
-    void startsWith_returns_expected_result_when_evaluated(
-            final String value, final String prefix, final boolean expectedResult) {
-        final String key = "test_key";
-        testEvent = createTestEvent(Map.of(key, value));
-
-        final ExpressionFunction objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.getFunctionName(), equalTo(STARTS_WITH_FUNCTION_NAME));
-
-        final Object result = objectUnderTest.evaluate(List.of("/" + key, "\"" + prefix + "\""), testEvent, mock(Function.class));
-
-        assertThat(result, equalTo(expectedResult));
+    @Test
+    void testFunctionName() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        assertThat(startsWithExpressionFunction.getFunctionName(), equalTo(STARTS_WITH_FUNCTION_NAME));
     }
 
     @Test
-    void startsWith_with_a_key_as_the_prefix_returns_expected_result() {
-
-        final String prefixKey = "prefix";
-        final String prefixValue = "te";
-
-        final String key = "test_key";
-        final String value = "test";
-        testEvent = createTestEvent(Map.of(key, value, prefixKey, prefixValue));
-
-        final ExpressionFunction objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.getFunctionName(), equalTo(STARTS_WITH_FUNCTION_NAME));
-
-        final Object result = objectUnderTest.evaluate(List.of("/" + key, "/" + prefixKey), testEvent, mock(Function.class));
-
-        assertThat(result, equalTo(true));
+    void evaluate_with_two_eventKeys_when_first_argument_starts_with_second() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey1 = eventKeyFactory.createEventKey("/" + testKey);
+        EventKey eventKey2 = eventKeyFactory.createEventKey("/" + testKey2);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey1, eventKey2), testEvent, testFunction), equalTo(true));
     }
 
     @Test
-    void startsWith_returns_false_when_key_does_not_exist_in_Event() {
-        final String key = "test_key";
-        testEvent = createTestEvent(Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
-
-        final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
-        final Object result = startsWithExpressionFunction.evaluate(List.of("/" + key, "\"abcd\""), testEvent, mock(Function.class));
-
-        assertThat(result, equalTo(false));
-    }
-
-    @Test
-    void startsWith_without_2_arguments_throws_RuntimeException() {
-        final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, mock(Function.class)));
+    void evaluate_with_two_eventKeys_when_first_argument_does_not_start_with_second() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey1 = eventKeyFactory.createEventKey("/" + testKey);
+        EventKey eventKey2 = eventKeyFactory.createEventKey("/" + testKey2);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey2, eventKey1), testEvent, testFunction), equalTo(false));
     }
 
     @ParameterizedTest
-    @MethodSource("invalidStartsWithProvider")
-    void invalid_startsWith_arguments_throws_RuntimeException(final String firstArg, final Object secondArg, final Object value) {
-        final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
-        final String testKey = "test_key";
-
-        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of(firstArg, secondArg), createTestEvent(Map.of(testKey, value)), mock(Function.class)));
+    @CsvSource({
+            "abcde,abcde",
+            "abcde,abcd",
+            "abcde,a"
+    })
+    void evaluate_with_two_literal_strings_returns_when_first_argument_starts_with_second(final String arg1, final String arg2) {
+        startsWithExpressionFunction = createObjectUnderTest();
+        assertThat(startsWithExpressionFunction.evaluate(List.of(arg1, arg2), testEvent, testFunction), equalTo(true));
     }
 
-    private static Stream<Arguments> validStartsWithProvider() {
-        return Stream.of(
-                Arguments.of("{test", "{te", true),
-                Arguments.of("{test", "{", true),
-                Arguments.of("test", "{", false),
-                Arguments.of("MyPrefix", "My", true),
-                Arguments.of("MyPrefix", "Prefix", false)
-        );
+    @ParameterizedTest
+    @CsvSource({
+            "abcde,xyz",
+            "abc,abcd"
+    })
+    void evaluate_with_two_literal_strings_returns_when_first_argument_does_not_start_with_second() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        assertThat(startsWithExpressionFunction.evaluate(List.of("abcde", "xyz"), testEvent, testFunction), equalTo(false));
     }
 
-    private static Stream<Arguments> invalidStartsWithProvider() {
-        return Stream.of(
-                Arguments.of("\"abc\"", "/test_key", 1234),
-                Arguments.of("abcd", "/test_key", "value"),
-                Arguments.of("\"abcd\"", "/test_key", 1234),
-                Arguments.of("\"/test_key\"", 1234, "value")
-        );
+    @Test
+    void testStartsWithEventKeyAndLiteralString() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey = eventKeyFactory.createEventKey("/" + testKey);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey, testPrefix), testEvent, testFunction), equalTo(true));
+    }
+
+    @Test
+    void testStartsWithLiteralStringAndEventKey() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey = eventKeyFactory.createEventKey("/" + testKey2);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(testValue, eventKey), testEvent, testFunction), equalTo(true));
+    }
+
+    @Test
+    void testStartsWithReturnsFalseWhenNotStartingWith() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey = eventKeyFactory.createEventKey("/" + testKey);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey, "xyz"), testEvent, testFunction), equalTo(false));
+    }
+
+    @Test
+    void testStartsWithReturnsFalseWhenEventKeyResolvesToNull() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey = eventKeyFactory.createEventKey("/unknownKey");
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey, "value"), testEvent, testFunction), equalTo(false));
+    }
+
+    @Test
+    void testStartsWithReturnsFalseWhenSecondEventKeyResolvesToNull() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey1 = eventKeyFactory.createEventKey("/" + testKey);
+        EventKey eventKey2 = eventKeyFactory.createEventKey("/unknownKey");
+        assertThat(startsWithExpressionFunction.evaluate(List.of(eventKey1, eventKey2), testEvent, testFunction), equalTo(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 3, 4, 5, 6, 7, 8})
+    void testStartsWithMultiplePrefixes(int endOffset) {
+        startsWithExpressionFunction = createObjectUnderTest();
+        String testString = RandomStringUtils.randomAlphabetic(10);
+        assertThat(startsWithExpressionFunction.evaluate(List.of(testString, testString.substring(0, endOffset)), testEvent, testFunction), equalTo(true));
+    }
+
+    @Test
+    void testThrowsWhenWrongNumberOfArgs() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, testFunction));
+    }
+
+    @Test
+    void testThrowsWhenEventKeyResolvesToNonString() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        EventKey eventKey = eventKeyFactory.createEventKey("/" + testKey3);
+        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of(eventKey, "value"), testEvent, testFunction));
+    }
+
+    @Test
+    void testThrowsWhenUnexpectedArgumentType() {
+        startsWithExpressionFunction = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd", 1234), testEvent, testFunction));
     }
 }
