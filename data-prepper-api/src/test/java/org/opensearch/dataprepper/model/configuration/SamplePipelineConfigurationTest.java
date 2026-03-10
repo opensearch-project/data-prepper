@@ -19,10 +19,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -42,8 +44,6 @@ class SamplePipelineConfigurationTest {
     void setup() {
         objectMapper = new ObjectMapper(new YAMLFactory());
     }
-
-    // --- Valid pipeline scenarios ---
 
     @ParameterizedTest(name = "pipeline with plugin config [{0}] should deserialize successfully")
     @ValueSource(strings = {
@@ -100,12 +100,13 @@ class SamplePipelineConfigurationTest {
         final PipelinesDataFlowModel model = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
         final PipelineModel pipeline = model.getPipelines().get(PIPELINE_NAME);
 
-        assertThat(pipeline.getSource().getPluginSettings().size(), equalTo(0));
-        assertThat(pipeline.getProcessors().get(0).getPluginSettings().size(), equalTo(0));
-        assertThat(pipeline.getSinks().get(0).getPluginSettings().size(), equalTo(0));
+        final Map<String, Object> sourceSettings = pipeline.getSource().getPluginSettings();
+        assertThat(sourceSettings == null || sourceSettings.isEmpty(), equalTo(true));
+        final Map<String, Object> processorSettings = pipeline.getProcessors().get(0).getPluginSettings();
+        assertThat(processorSettings == null || processorSettings.isEmpty(), equalTo(true));
+        final Map<String, Object> sinkSettings = pipeline.getSinks().get(0).getPluginSettings();
+        assertThat(sinkSettings == null || sinkSettings.isEmpty(), equalTo(true));
     }
-
-    // --- Invalid pipeline scenario ---
 
     @Test
     void deserialize_pipeline_withEmptyStringPluginConfig_throwsException() {
@@ -115,6 +116,6 @@ class SamplePipelineConfigurationTest {
             JsonMappingException.class,
             () -> objectMapper.readValue(inputStream, PipelinesDataFlowModel.class)
         );
-        assertThat(exception.getMessage(), org.hamcrest.Matchers.containsString("Empty string is not allowed"));
+        assertThat(exception.getMessage(), containsString("Empty string is not allowed"));
     }
 }

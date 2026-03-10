@@ -2,10 +2,10 @@ extension:
   test_extension:
 test-pipeline:
   source:
-    testSource: {}
+    testSource: null
   processor:
-    - testProcessor: {}
+    - testProcessor: null
   sink:
-    - testSink: {}
+    - testSink: null
   workers: 8
   delay: 50
