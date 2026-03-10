@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
@@ -32,6 +33,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -427,5 +429,104 @@ class ParseTreeEvaluatorListenerTest {
         assertThat(evaluateStatementOnEvent(testSingleParenthesisStatement, testEvent), is(true));
         final String testNestedParenthesesStatement = "not ((not false) or true)";
         assertThat(evaluateStatementOnEvent(testNestedParenthesesStatement, testEvent), is(false));
+    }
+
+    @Test
+    void testFunctionWithEscapedJsonPointerArgTreatedAsString() {
+        // getMetadata("/key1") — the "/key1" is lexed as EscapedJsonPointer but should be passed as a String
+        final String testValue = "testValue";
+        final Map<String, Object> attributesMap = Map.of("key1", testValue);
+        final Event testEvent = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Map.of())
+                .withEventMetadataAttributes(attributesMap)
+                .build();
+        when(expressionFunctionProvider.provideFunction(eq("getMetadata"), argThat(args ->
+                args.size() == 1 && args.get(0) instanceof String && args.get(0).equals("/key1")
+        ), any(Event.class), any(Function.class))).thenReturn(testValue);
+        final String statement = "getMetadata(\"/key1\") == \"" + testValue + "\"";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithBareJsonPointerArgConvertedToEventKey() {
+        // length(/field) — the /field should be converted to EventKey
+        final String testKey = "field";
+        final String testValue = "hello";
+        final Map<String, String> data = Map.of(testKey, testValue);
+        final Event testEvent = createTestEvent(data);
+        when(expressionFunctionProvider.provideFunction(eq("length"), argThat(args ->
+                args.size() == 1 && args.get(0) instanceof EventKey
+        ), any(Event.class), any(Function.class))).thenReturn(5);
+        final String statement = "length(/field) == 5";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleMixedArgs() {
+        // contains(/message, "error") — first arg is EventKey, second is String
+        final Event testEvent = createTestEvent(Map.of("message", "error occurred"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "contains(/message,\"error\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithNoArgs() {
+        // getEventType() — no arguments
+        final Event testEvent = createTestEvent(new HashMap<>());
+        when(expressionFunctionProvider.provideFunction(eq("getEventType"), argThat(args ->
+                args.isEmpty()
+        ), any(Event.class), any(Function.class))).thenReturn("event");
+        final String statement = "getEventType() == \"event\"";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithIntegerLiteralArg() {
+        final Event testEvent = createTestEvent(new HashMap<>());
+        when(expressionFunctionProvider.provideFunction(eq("testFunc"), argThat(args ->
+                args.size() == 1 && args.get(0) instanceof Integer && ((Integer) args.get(0)) == 42
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "testFunc(42) == true";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithStringLiteralArg() {
+        final Event testEvent = createTestEvent(new HashMap<>());
+        when(expressionFunctionProvider.provideFunction(eq("testFunc"), argThat(args ->
+                args.size() == 1 && args.get(0) instanceof String && args.get(0).equals("hello")
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "testFunc(\"hello\") == true";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testNestedFunctionComposition() {
+        // length(join(",", /list)) — inner function evaluates first, result passed to outer
+        final Event testEvent = createTestEvent(Map.of("list", List.of("a", "b", "c")));
+        // Mock inner: join(",", /list) returns "a,b,c"
+        when(expressionFunctionProvider.provideFunction(eq("join"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof EventKey
+        ), any(Event.class), any(Function.class))).thenReturn("a,b,c");
+        // Mock outer: length("a,b,c") returns 5
+        when(expressionFunctionProvider.provideFunction(eq("length"), argThat(args ->
+                args.size() == 1 && args.get(0).equals("a,b,c")
+        ), any(Event.class), any(Function.class))).thenReturn(5);
+        final String statement = "length(join(\",\",/list)) == 5";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionResultUsedInArithmeticExpression() {
+        final Event testEvent = createTestEvent(Map.of("field", "hello"));
+        when(expressionFunctionProvider.provideFunction(eq("length"), argThat(args ->
+                args.size() == 1 && args.get(0) instanceof EventKey
+        ), any(Event.class), any(Function.class))).thenReturn(5);
+        final String statement = "length(/field) + 3";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), equalTo(8));
     }
 }

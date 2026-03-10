@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -55,124 +56,33 @@ class ParseTreeCoercionServiceParameterizedTest {
     private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService(
             literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider, eventKeyFactory);
 
-    @ParameterizedTest
-    @MethodSource("provideTerminalNodeTypes")
-    void testCoerceTerminalNodeTypes(int tokenType) {
-        when(token.getType()).thenReturn(tokenType);
+    @Test
+    void testCoerceCommaTerminalNodeType() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.COMMA);
         when(terminalNode.getSymbol()).thenReturn(token);
         final Event testEvent = mock(Event.class);
-        
+
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
-        assertThat(result, equalTo(tokenType));
-    }
 
-    private static Stream<Arguments> provideTerminalNodeTypes() {
-        return Stream.of(
-            Arguments.of(DataPrepperExpressionParser.COMMA),
-            Arguments.of(DataPrepperExpressionParser.SET_DELIMITER)
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideFunctionWithMissingParenthesis")
-    void testFunctionWithMissingParenthesis(String functionText, String expectedMessage) {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(functionText);
-        final Event testEvent = mock(Event.class);
-        
-        final ExpressionCoercionException exception = assertThrows(ExpressionCoercionException.class,
-                () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
-        
-        assertThat(exception.getMessage(), equalTo(expectedMessage));
-    }
-
-    private static Stream<Arguments> provideFunctionWithMissingParenthesis() {
-        return Stream.of(
-            Arguments.of("lengtharg", "Invalid function format: missing opening parenthesis"),
-            Arguments.of("length(arg", "Invalid function format: missing closing parenthesis"),
-            Arguments.of("lengtharg)", "Invalid function format: missing opening parenthesis")
-        );
+        assertThat(result, equalTo(DataPrepperExpressionParser.COMMA));
     }
 
     @Test
-    void testFunctionWithNoArguments() {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("now()");
+    void testEvaluateFunction() {
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction(eq("now"), eq(java.util.Collections.<Object>emptyList()), eq(testEvent), any()))
-                .thenReturn("2023-01-01");
-        
-        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
-        assertThat(result, equalTo("2023-01-01"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideFunctionErrorCases")
-    void testFunctionErrorCases(String functionText, String expectedMessage) {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(functionText);
-        final Event testEvent = mock(Event.class);
-        
-        final ExpressionCoercionException exception = assertThrows(ExpressionCoercionException.class,
-                () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
-        
-        assertThat(exception.getMessage(), equalTo(expectedMessage));
-    }
-
-    private static Stream<Arguments> provideFunctionErrorCases() {
-        return Stream.of(
-            Arguments.of("test(\"unclosed", "Invalid function format: missing closing parenthesis"),
-            Arguments.of("test(123)", "Unsupported type passed as function argument")
-        );
-    }
-
-    @Test
-    void testFunctionWithEmptyStringArgument() {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("test(\"\")");
-        final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("")), eq(testEvent), any()))
+        final List<Object> args = List.of("arg1");
+        when(expressionFunctionProvider.provideFunction(eq("testFunc"), eq(args), eq(testEvent), any()))
                 .thenReturn("result");
-        
-        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
+
+        final Object result = objectUnderTest.evaluateFunction("testFunc", args, testEvent);
+
         assertThat(result, equalTo("result"));
     }
 
     @Test
-    void testFunctionWithEmptyArgument() {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("test(/key, , \"value\")");
-        final Event testEvent = mock(Event.class);
-        final EventKey expectedKey = eventKeyFactory.createEventKey("/key");
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of(expectedKey, "value")), eq(testEvent), any()))
-                .thenReturn("result");
-        
-        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
-        assertThat(result, equalTo("result"));
-    }
-
-    @Test
-    void testFunctionWithMultipleArguments() {
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
-        when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("test(/key, \"value\")");
-        final Event testEvent = mock(Event.class);
-        final EventKey expectedKey = eventKeyFactory.createEventKey("/key");
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of(expectedKey, "value")), eq(testEvent), any()))
-                .thenReturn("result");
-        
-        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
-        assertThat(result, equalTo("result"));
+    void testCreateEventKey() {
+        final EventKey result = objectUnderTest.createEventKey("/testKey");
+        assertThat(result.getKey(), equalTo("/testKey"));
     }
 
     @ParameterizedTest
@@ -198,9 +108,9 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn(input);
         final Event testEvent = mock(Event.class);
-        
+
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
+
         // Should strip quotes
         String expected = input.replaceAll("^\"{1,3}|\"{1,3}$", "");
         assertThat(result, equalTo(expected));
@@ -215,17 +125,16 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(testEvent.get(any(EventKey.class), eq(Object.class))).thenReturn(null);
 
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        
+
         assertThat(result, equalTo(null));
     }
 
     @Test
     void testConvertLiteralTypeWithUnsupportedType() {
-        // Create a service with limited type conversions to test the error path
         Map<Class<? extends java.io.Serializable>, Function<Object, Object>> limitedConversions = new HashMap<>();
         ParseTreeCoercionService limitedService =
                 new ParseTreeCoercionService(limitedConversions, expressionFunctionProvider, eventKeyFactory);
-        
+
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("/key");

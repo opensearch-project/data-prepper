@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -14,7 +18,9 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionBaseList
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionListener;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 
@@ -39,6 +45,15 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
     private final Event event;
     private boolean listStart;
     private Set<Object> setMembers;
+
+    /**
+     * Track function context for composable function support
+     */
+    private final Stack<FunctionEvalContext> functionContextStack = new Stack<>();
+    /**
+     * Track whether we are directly inside a functionArg that contains only a jsonPointer
+     */
+    private int functionArgDepth = 0;
 
     public ParseTreeEvaluatorListener(final OperatorProvider operatorProvider,
                                       final ParseTreeCoercionService coercionService,
@@ -77,12 +92,78 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         }
     }
 
+    private boolean isInsideFunction() {
+        return !functionContextStack.isEmpty();
+    }
+
+    @Override
+    public void enterFunction(DataPrepperExpressionParser.FunctionContext ctx) {
+        final String functionName = ctx.FunctionName().getText();
+        functionContextStack.push(new FunctionEvalContext(functionName, operandStack.size()));
+    }
+
+    @Override
+    public void exitFunction(DataPrepperExpressionParser.FunctionContext ctx) {
+        final FunctionEvalContext funcCtx = functionContextStack.pop();
+
+        // Collect all arguments that were pushed onto the operand stack during function arg evaluation
+        final List<Object> args = new ArrayList<>();
+        while (operandStack.size() > funcCtx.stackSizeAtEntry) {
+            args.add(0, operandStack.pop());
+        }
+
+        final Object result = coercionService.evaluateFunction(funcCtx.functionName, args, event);
+        operandStack.push(result);
+    }
+
+    @Override
+    public void enterFunctionArg(DataPrepperExpressionParser.FunctionArgContext ctx) {
+        functionArgDepth++;
+    }
+
+    @Override
+    public void exitFunctionArg(DataPrepperExpressionParser.FunctionArgContext ctx) {
+        functionArgDepth--;
+    }
+
     @Override
     public void visitTerminal(TerminalNode node) {
         final int nodeType = node.getSymbol().getType();
         if (nodeType == DataPrepperExpressionParser.EOF) {
             return;
         }
+
+        // Skip FunctionName, LPAREN, RPAREN, and COMMA tokens inside function rules
+        // These are structural tokens handled by enter/exitFunction
+        if (nodeType == DataPrepperExpressionParser.FunctionName) {
+            return;
+        }
+
+        if (isInsideFunction()) {
+            // Inside a function context, LPAREN/RPAREN/COMMA are structural - skip them
+            if (nodeType == DataPrepperExpressionParser.LPAREN ||
+                nodeType == DataPrepperExpressionParser.RPAREN ||
+                nodeType == DataPrepperExpressionParser.COMMA) {
+                return;
+            }
+
+            // Inside a function arg, bare JsonPointer (e.g. /field) should be converted to EventKey.
+            // EscapedJsonPointer (e.g. "/key1") is a quoted value — treat it as a string literal,
+            // not an EventKey. This ensures getMetadata("/key1") receives a String argument.
+            if (functionArgDepth > 0) {
+                if (nodeType == DataPrepperExpressionParser.JsonPointer) {
+                    operandStack.push(coercionService.createEventKey(node.getText()));
+                    return;
+                }
+                if (nodeType == DataPrepperExpressionParser.EscapedJsonPointer) {
+                    final String nodeStringValue = node.getText();
+                    // Strip surrounding quotes and push as String
+                    operandStack.push(nodeStringValue.substring(1, nodeStringValue.length() - 1));
+                    return;
+                }
+            }
+        }
+
         if (operatorProvider.containsOperator(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
         } else if (nodeType == DataPrepperExpressionParser.LBRACE) {
@@ -98,7 +179,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         } else {
             final Object arg = coercionService.coercePrimaryTerminalNode(node, event);
             if (listStart) {
-                if (!(arg instanceof Integer) || (((int)arg) != DataPrepperExpressionParser.COMMA && ((int)arg) != DataPrepperExpressionParser.SET_DELIMITER)) {
+                if (!(arg instanceof Integer) || (((int)arg) != DataPrepperExpressionParser.COMMA)) {
                     setMembers.add(arg);
                 }
             } else {
@@ -150,5 +231,15 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         final Token stopToken = ctx.getStop();
         final String fullStatement = startToken.getInputStream().toString();
         return fullStatement.substring(startToken.getStartIndex(), stopToken.getStopIndex() + 1);
+    }
+
+    private static final class FunctionEvalContext {
+        final String functionName;
+        final int stackSizeAtEntry;
+
+        FunctionEvalContext(final String functionName, final int stackSizeAtEntry) {
+            this.functionName = functionName;
+            this.stackSizeAtEntry = stackSizeAtEntry;
+        }
     }
 }

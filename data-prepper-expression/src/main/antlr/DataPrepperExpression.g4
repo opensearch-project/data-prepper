@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 grammar DataPrepperExpression;
@@ -29,7 +33,7 @@ arithmeticExpression
     ;
 
 multiplicativeExpression
-    : multiplicativeExpression (MULTIPLY | DIVIDE | MOD) arithmeticTerm
+    : multiplicativeExpression (MULTIPLY | FORWARDSLASH | MOD) arithmeticTerm
     | arithmeticTerm
     ;
 
@@ -126,7 +130,7 @@ setInitializer
     ;
 
 setMembers
-    : literal (SPACE* SET_DELIMITER SPACE* literal)*
+    : literal (SPACE* COMMA SPACE* literal)*
     ;
 
 unaryOperator
@@ -151,22 +155,19 @@ jsonPointer
     ;
 
 function
-    : Function
+    : FunctionName LPAREN functionArgs? RPAREN
     ;
 
-Function
-    : JsonPointerCharacters LPAREN FunctionArgs RPAREN
+functionArgs
+    : functionArg (COMMA functionArg)*
     ;
 
-fragment
-FunctionArgs
-    : ((FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg)?
-    ;
-
-fragment
-FunctionArg
-    : JsonPointer
-    | String
+functionArg
+    : conditionalExpression
+    | arithmeticExpression
+    | stringExpression
+    | jsonPointer
+    | literal
     ;
 
 variableIdentifier
@@ -274,6 +275,10 @@ String
     | DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE StringCharacters? DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE
     ;
 
+FunctionName
+    : JsonPointerCharacters
+    ;
+
 fragment
 StringCharacters
     : StringCharacter+
@@ -299,14 +304,6 @@ DataTypes
     | ARRAY
     | DOUBLE
     | STRING
-    ;
-
-SET_DELIMITER
-    : COMMA
-    ;
-
-DIVIDE
-    : FORWARDSLASH
     ;
 
 COMMA : ',';

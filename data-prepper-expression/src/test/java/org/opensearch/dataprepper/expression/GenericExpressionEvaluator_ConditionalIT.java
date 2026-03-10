@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -287,7 +291,13 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/status_code <= null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("not /status_code", event("{\"status_code\": 200}")),
                 arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
-                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}"))
+                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}")),
+                // Integer literals in function args are now valid syntax but fail at evaluation time
+                arguments("hasTags(10)", tagEvent),
+                arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("getMetadata(10)", tagEvent),
+                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );
     }
 
@@ -317,16 +327,13 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("trueand/status_code", event("{\"status_code\": 200}")),
                 arguments("trueor/status_code", event("{\"status_code\": 200}")),
                 arguments("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
-                arguments("hasTags(10)", tagEvent),
                 arguments("hasTags("+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
-                arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
-                arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -338,10 +345,8 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/color in {\"\",blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/value in {22a2.0, 100}", event("{\"value\": 100}")),
                 arguments("/value in {222, 10a0}", event("{\"value\": 100}")),
-                arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
-                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("getEventType() == \"test_event", tagEvent),
                 arguments("getEventType() == test_event\"", tagEvent)
                 

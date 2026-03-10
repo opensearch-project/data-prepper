@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression.util;
@@ -47,19 +51,15 @@ public class FunctionMatcher extends SimpleExpressionMatcher {
 
     @Override
     protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
-        if (!SINGLE_CHILD_MATCHER.matches(item.getChildCount())) {
-            mismatchDescription.appendText("\n\t\t expected " + item.getText() + " to have 1 child node");
+        // function is now a parser rule: FunctionName LPAREN functionArgs? RPAREN
+        // Minimum 3 children: FunctionName, LPAREN, RPAREN
+        final int childCount = item.getChildCount();
+        if (childCount < 3) {
+            mismatchDescription.appendText("\n\t\t expected " + item.getText() + " to have at least 3 child nodes, got " + childCount);
             describeContextTo(item, mismatchDescription);
             return false;
         }
-        else if (!TERMINAL_NODE_MATCHER.matches(item.getChild(0))) {
-            mismatchDescription.appendText("\n\t\t expected " + item.getText() + " child to be of type TerminalNode");
-            describeContextTo(item, mismatchDescription);
-            return false;
-        }
-        else {
-            return true;
-        }
+        return true;
     }
 
     @Override

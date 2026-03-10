@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression.util;
@@ -23,21 +27,30 @@ class FunctionMatcherTest {
     void baseCase() {
         final DiagnosingMatcher<ParseTree> isFunctionUnaryTree = isFunctionUnaryTree();
         final ParseTree primary = mock(DataPrepperExpressionParser.PrimaryContext.class, "PrimaryContext");
-        final ParseTree jsonPointer = mock(DataPrepperExpressionParser.FunctionContext.class, "FunctionContext");
-        final ParseTree terminal = mock(TerminalNode.class, "TerminalNode");
+        final ParseTree functionCtx = mock(DataPrepperExpressionParser.FunctionContext.class, "FunctionContext");
+        final ParseTree functionName = mock(TerminalNode.class, "FunctionName");
+        final ParseTree lparen = mock(TerminalNode.class, "LPAREN");
+        final ParseTree rparen = mock(TerminalNode.class, "RPAREN");
 
         doReturn(1)
                 .when(primary)
                 .getChildCount();
-        doReturn(jsonPointer)
+        doReturn(functionCtx)
                 .when(primary)
                 .getChild(eq(0));
-        doReturn(1)
-                .when(jsonPointer)
+        // function is now a parser rule: FunctionName LPAREN RPAREN (3 children, no args)
+        doReturn(3)
+                .when(functionCtx)
                 .getChildCount();
-        doReturn(terminal)
-                .when(jsonPointer)
+        doReturn(functionName)
+                .when(functionCtx)
                 .getChild(eq(0));
+        doReturn(lparen)
+                .when(functionCtx)
+                .getChild(eq(1));
+        doReturn(rparen)
+                .when(functionCtx)
+                .getChild(eq(2));
 
         assertTrue(isFunctionUnaryTree.matches(primary));
     }
