@@ -38,6 +38,9 @@ For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
 * authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
 * record_type(Optional) => A string represents the supported record data type that is written into the buffer plugin. Value options are `otlp` or `event`. Default is `otlp`.
+* output_format(Optional) => A string that sets the output format for decoded spans. Default is `opensearch`. Supported values are:
+    * `opensearch`: Attribute keys are prefixed and dots are replaced with `@` (e.g. `http.method` → `span.attributes.http@method`). Use with `index_type: trace-analytics-raw` in the OpenSearch sink.
+    * `otel`: Attribute keys are preserved as-is from the original OTel protobuf (e.g. `http.method`). Use with `index_type: trace-analytics-plain-raw` in the OpenSearch sink. **Required for GenAI agent trace enrichment** in the `otel_traces` processor.
 * compression (Optional) : The compression type applied on the client request payload. Defaults to `none`. Supported values are:
     * `none`: no compression
     * `gzip`: apply GZip de-compression on the incoming request.

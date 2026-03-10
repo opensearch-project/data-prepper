@@ -142,6 +142,26 @@ class GenAiEnrichmentTest {
     }
 
     @Test
+    void testClaudeCodeNormalization() {
+        final Collection<Record<Span>> result = processor.doExecute(records(
+                "genai-root-span.json", "claude-code-llm-request-span.json"));
+
+        final Span child = result.stream().map(Record::getData)
+                .filter(s -> "cc01000000000001".equals(s.getSpanId()))
+                .findFirst().orElseThrow();
+        final Map<String, Object> attrs = child.getAttributes();
+
+        // Normalized from flat Claude Code attrs
+        assertEquals("us.anthropic.claude-sonnet-4-5-20250929-v1:0", attrs.get("gen_ai.request.model"));
+        assertEquals(13, ((Number) attrs.get("gen_ai.usage.input_tokens")).intValue());
+        assertEquals(156, ((Number) attrs.get("gen_ai.usage.output_tokens")).intValue());
+
+        // Originals preserved
+        assertEquals("us.anthropic.claude-sonnet-4-5-20250929-v1:0", attrs.get("model"));
+        assertEquals(13, ((Number) attrs.get("input_tokens")).intValue());
+    }
+
+    @Test
     void testOpenLLMetryNormalization() {
         final Collection<Record<Span>> result = processor.doExecute(records(
                 "genai-root-span.json", "openllmetry-child-span.json"));

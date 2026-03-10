@@ -90,6 +90,19 @@ openllmetry:
     to: gen_ai.output.messages
 
 # Value mappings for gen_ai.operation.name.
+
+claude_code:
+  # Claude Code (anthropics/claude-code) uses flat attribute names.
+  # Enabled via CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1.
+  # Spans: claude_code.llm_request, claude_code.tool, claude_code.tool.execution
+  - from: model
+    to: gen_ai.request.model
+  - from: input_tokens
+    to: gen_ai.usage.input_tokens
+  - from: output_tokens
+    to: gen_ai.usage.output_tokens
+
+# Value mappings for gen_ai.operation.name.
 # Keys are matched case-insensitively.
 # Sources: OpenInference span kinds, OpenLLMetry traceloop.span.kind and llm.request.type values.
 operation_name_values:
