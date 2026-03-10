@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.s3;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -42,6 +43,7 @@ public class S3ScanService {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
+    private final ExpressionEvaluator expressionEvaluator;
     private final ExecutorService executorService;
     private final List<ScanObjectWorker> workers;
 
@@ -52,7 +54,8 @@ public class S3ScanService {
                          final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                          final AcknowledgementSetManager acknowledgementSetManager,
                          final S3ObjectDeleteWorker s3ObjectDeleteWorker,
-                         final PluginMetrics pluginMetrics) {
+                         final PluginMetrics pluginMetrics,
+                         final ExpressionEvaluator expressionEvaluator) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3ScanBucketOptions = s3SourceConfig.getS3ScanScanOptions().getBuckets();
         this.s3ClientBuilderFactory = s3ClientBuilderFactory;
@@ -65,15 +68,18 @@ public class S3ScanService {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
+        this.expressionEvaluator = expressionEvaluator;
         this.workers = new ArrayList<>();
         this.executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("s3-source-scan"));
     }
 
     public void start() {
         long backOffMs = s3SourceConfig.getBackOff().toMillis();
+        final S3ScanProcessingConditionEvaluator conditionEvaluator =
+                new S3ScanProcessingConditionEvaluator(s3ClientBuilderFactory.getS3Client(), expressionEvaluator);
         for (int i = 0; i < s3SourceConfig.getNumWorkers(); i++) {
             ScanObjectWorker scanObjectWorker = new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                    getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, backOffMs, pluginMetrics);
+                    getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, backOffMs, pluginMetrics, conditionEvaluator);
             workers.add(scanObjectWorker);
             executorService.submit(new Thread(scanObjectWorker));
         }
