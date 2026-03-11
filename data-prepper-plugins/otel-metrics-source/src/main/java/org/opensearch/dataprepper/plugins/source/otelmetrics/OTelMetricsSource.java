@@ -22,7 +22,6 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
@@ -148,7 +147,10 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private Server createServer(Buffer<Record<? extends Metric>> buffer) {
         final ServerBuilder serverBuilder = Server.builder();
 
-        ScheduledThreadPoolExecutor executor = configureServer(serverBuilder);
+        configureServer(serverBuilder);
+
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(oTelMetricsSourceConfig.getThreadCount());
+        serverBuilder.blockingTaskExecutor(executor, true);
 
         configureGrpcService(serverBuilder, buffer);
         if (oTelMetricsSourceConfig.getHttpPath() != null) {
@@ -158,10 +160,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         return serverBuilder.build();
     }
 
-    /**
-     * Returns the used thread pool. Can be used by other parts of the server configuration
-     */
-    private @NonNull ScheduledThreadPoolExecutor configureServer(ServerBuilder serverBuilder) {
+    private void configureServer(ServerBuilder serverBuilder) {
         serverBuilder.disableServerHeader();
         if (oTelMetricsSourceConfig.isSsl()) {
             LOG.info("Creating metrics http source with SSL/TLS enabled.");
@@ -196,10 +195,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         if (oTelMetricsSourceConfig.getMaxRequestLength() != null) {
             serverBuilder.maxRequestLength(oTelMetricsSourceConfig.getMaxRequestLength().getBytes());
         }
-        final int threadCount = oTelMetricsSourceConfig.getThreadCount();
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount);
-        serverBuilder.blockingTaskExecutor(executor, true);
-        return executor;
     }
 
     private Optional<ArmeriaHttpAuthenticationProvider> createHttpAuthentication() {
@@ -248,7 +243,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
         serverBuilder.decorator(path, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
-        if (oTelMetricsSourceConfig.hasHealthCheck()) {
+        if (oTelMetricsSourceConfig.isHealthCheck()) {
             LOG.info("HTTP source health check is enabled for metrics source");
             serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
@@ -292,7 +287,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             interceptors.add(authProvider.getAuthenticationInterceptor());
         }
 
-        if (oTelMetricsSourceConfig.enableUnframedRequests()) {
+        if (oTelMetricsSourceConfig.isEnableUnframedRequests()) {
             grpcServiceBuilder.enableUnframedRequests(true);
         }
 
@@ -308,12 +303,12 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             grpcServiceBuilder.addService(ServerInterceptors.intercept(grpcServiceConfig.getService(), interceptors));
         }
 
-        if (oTelMetricsSourceConfig.hasHealthCheck()) {
+        if (oTelMetricsSourceConfig.isHealthCheck()) {
             LOG.info("Health check for gRPC metrics service is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
-        if (oTelMetricsSourceConfig.hasProtoReflectionService()) {
+        if (oTelMetricsSourceConfig.isProtoReflectionService()) {
             LOG.info("Proto reflection service for metrics source is enabled");
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }

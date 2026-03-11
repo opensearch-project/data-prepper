@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createBuilderForConfigWithAcmeSsl;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createBuilderForConfigWithAcmSsl;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createBuilderForConfigWithSsl;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createConfigBuilderWithBasicAuth;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createDefaultConfig;
@@ -218,7 +218,7 @@ class OTelMetricsSourceGrpcTest {
             when(certificate.getPrivateKey()).thenReturn(keyAsString);
             when(certificateProvider.getCertificate()).thenReturn(certificate);
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            final OTelMetricsSource source = new OTelMetricsSource(createBuilderForConfigWithAcmeSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
+            final OTelMetricsSource source = new OTelMetricsSource(createBuilderForConfigWithAcmSsl().build(), pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -234,7 +234,7 @@ class OTelMetricsSourceGrpcTest {
     }
 
     @Test
-    void start_with_Health_configured_includes_HealthCheck_service() throws IOException {
+    void startWithHealthConfiguredIncludesHealthCheckService() throws IOException {
         SOURCE.start(buffer);
         HealthGrpc.HealthBlockingStub healthClient = Clients.builder(GRPC_ENDPOINT).build(HealthGrpc.HealthBlockingStub.class);
         HealthCheckResponse healthCheckResponse = healthClient.check(HealthCheckRequest.newBuilder().build());
@@ -243,7 +243,7 @@ class OTelMetricsSourceGrpcTest {
     }
 
     @Test
-    void start_without_Health_configured_does_not_include_HealthCheck_service() throws IOException {
+    void startWithoutHealthConfiguredDoesNotIncludeHealthCheckService() throws IOException {
         setupSource(createDefaultConfigBuilder().healthCheck(false).build());
         SOURCE.start(buffer);
         HealthGrpc.HealthBlockingStub healthClient = Clients.builder(GRPC_ENDPOINT).build(HealthGrpc.HealthBlockingStub.class);
@@ -366,7 +366,7 @@ class OTelMetricsSourceGrpcTest {
     }
 
     @Test
-    void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
+    void grpcRequestWritesToBufferWithSuccessfulResponse() throws Exception {
         SOURCE.start(buffer);
 
         final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
@@ -384,7 +384,7 @@ class OTelMetricsSourceGrpcTest {
     }
 
     @Test
-    void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
+    void grpcWithAuthRequestWritesToBufferWithSuccessfulResponse() throws Exception {
         GrpcBasicAuthenticationProvider authProvider = new GrpcBasicAuthenticationProvider(new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD));
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
         setupSource(createConfigBuilderWithBasicAuth().build());
@@ -404,7 +404,7 @@ class OTelMetricsSourceGrpcTest {
     }
 
     @Test
-    void gRPC_with_auth_request_with_different_basic_auth_credentials_does_not_write_to_buffer_with_401_response() throws Exception {
+    void grpcWithAuthRequestWithDifferentBasicAuthCredentialsDoesNotWriteToBufferWith401Response() throws Exception {
         GrpcBasicAuthenticationProvider authProvider = new GrpcBasicAuthenticationProvider(new HttpBasicAuthenticationConfig("username", "wrong password"));
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
         setupSource(createConfigBuilderWithBasicAuth().healthCheck(true).build());
@@ -425,7 +425,7 @@ class OTelMetricsSourceGrpcTest {
 
     @ParameterizedTest
     @ArgumentsSource(BufferExceptionToStatusArgumentsProvider.class)
-    void gRPC_request_returns_expected_status_for_exceptions_from_buffer(
+    void grpcRequestReturnsExpectedStatusForExceptionsFromBuffer(
             final Class<Exception> bufferExceptionClass,
             final Status.Code expectedStatusCode) throws Exception {
         SOURCE.start(buffer);

@@ -15,6 +15,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +31,7 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Getter
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
@@ -51,20 +53,23 @@ public class OTelMetricsSourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
+    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+    static final int DEFAULT_PORT = 21891;
+    static final int DEFAULT_THREAD_COUNT = 200;
+    static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
+    static final boolean DEFAULT_SSL = true;
+    static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
+    static final boolean DEFAULT_HEALTH_CHECK = false;
+    static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
+    static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     private static final String NAME_KEY = "name";
     private static final String SERVICE_NAME_KEY = "service_name";
-    public static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
-    public static final int DEFAULT_PORT = 21891;
-    public static final int DEFAULT_THREAD_COUNT = 200;
-    public static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
-    public static final boolean DEFAULT_SSL = true;
-    public static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
-    public static final boolean DEFAULT_HEALTH_CHECK = false;
-    public static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
-    public static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-    public static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    static final String HTTP_PATH = "http_path";
+    static final String AUTHENTICATION = "authentication";
+    static final String MAX_REQUEST_LENGTH = "max_request_length";
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -124,7 +129,7 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(MAX_CONNECTION_COUNT)
     private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
 
-    @JsonProperty("authentication")
+    @JsonProperty(AUTHENTICATION)
     private PluginModel authentication;
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
@@ -133,13 +138,13 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
 
-    @JsonProperty("max_request_length")
+    @JsonProperty(MAX_REQUEST_LENGTH)
     private ByteCount maxRequestLength;
 
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
 
-    @JsonProperty("http_path")
+    @JsonProperty(HTTP_PATH)
     @Size(min = 1, message = "path length should be at least 1")
     private String httpPath;
 
@@ -190,106 +195,8 @@ public class OTelMetricsSourceConfig {
                 sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
     }
 
-    public int getRequestTimeoutInMillis() {
-        return requestTimeoutInMillis;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public boolean hasHealthCheck() {
-        return healthCheck;
-    }
-
-    public Set<String> getBufferPartitionKeys() {
-        return bufferPartitionKeys;
-    }
-
     public boolean enableHttpHealthCheck() {
-        return enableUnframedRequests() && hasHealthCheck();
-    }
-
-    public boolean hasProtoReflectionService() {
-        return protoReflectionService;
-    }
-
-    public boolean enableUnframedRequests() {
-        return enableUnframedRequests;
-    }
-
-    public boolean isSsl() {
-        return ssl;
-    }
-
-    public OTelOutputFormat getOutputFormat() {
-        return outputFormat;
-    }
-
-    public boolean useAcmCertForSSL() {
-        return useAcmCertForSSL;
-    }
-
-    public long getAcmCertIssueTimeOutMillis() {
-        return acmCertIssueTimeOutMillis;
-    }
-
-    public String getSslKeyCertChainFile() {
-        return sslKeyCertChainFile;
-    }
-
-    public String getSslKeyFile() {
-        return sslKeyFile;
-    }
-
-    public String getAcmCertificateArn() {
-        return acmCertificateArn;
-    }
-
-    public String getAcmPrivateKeyPassword() {
-        return acmPrivateKeyPassword;
-    }
-
-    public boolean isSslCertAndKeyFileInS3() {
-        return sslCertAndKeyFileInS3;
-    }
-
-    public String getAwsRegion() {
-        return awsRegion;
-    }
-
-    public int getThreadCount() {
-        return threadCount;
-    }
-
-    public int getMaxConnectionCount() {
-        return maxConnectionCount;
-    }
-
-    public PluginModel getAuthentication() { return authentication; }
-
-    public boolean isUnauthenticatedHealthCheck() {
-        return unauthenticatedHealthCheck;
-    }
-
-    public CompressionOption getCompression() {
-        return compression;
-    }
-
-    public ByteCount getMaxRequestLength() {
-        return maxRequestLength;
-    }
-
-    public RetryInfoConfig getRetryInfo() {
-        return retryInfo;
-    }
-
-    public String getHttpPath() {
-        return httpPath;
+        return isEnableUnframedRequests() && isHealthCheck();
     }
 }
 

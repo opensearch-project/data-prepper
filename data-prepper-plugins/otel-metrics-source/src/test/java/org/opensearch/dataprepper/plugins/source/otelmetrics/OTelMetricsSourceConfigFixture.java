@@ -65,7 +65,7 @@ public class OTelMetricsSourceConfigFixture {
                 .sslKeyFile("data/certificate/test_decrypted_key.key");
     }
 
-    public static OTelMetricsSourceConfig.OTelMetricsSourceConfigBuilder createBuilderForConfigWithAcmeSsl() {
+    public static OTelMetricsSourceConfig.OTelMetricsSourceConfigBuilder createBuilderForConfigWithAcmSsl() {
         return createDefaultConfigBuilder()
                 .ssl(true)
                 .useAcmCertForSSL(true)
