@@ -19,12 +19,10 @@ import org.apache.iceberg.variants.Variant;
 import org.apache.iceberg.variants.VariantArray;
 import org.apache.iceberg.variants.VariantObject;
 import org.apache.iceberg.variants.VariantPrimitive;
-import org.apache.iceberg.variants.VariantValue;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
