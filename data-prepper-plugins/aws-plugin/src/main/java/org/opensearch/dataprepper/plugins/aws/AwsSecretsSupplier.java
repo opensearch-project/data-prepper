@@ -31,6 +31,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
     private static final Logger LOG = LoggerFactory.getLogger(AwsSecretsSupplier.class);
+    private static final Object NOT_LOADED_SENTINEL = new Object(); // Sentinel to indicate secret not loaded yet
+    
     private final SecretValueDecoder secretValueDecoder;
     private final ObjectMapper objectMapper;
     private final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap;
@@ -58,6 +60,14 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
                             awsSecretManagerConfigurationMap.get(secretConfigurationId);
                     final SecretsManagerClient secretsManagerClient = entry.getValue();
+                    
+                    // Check if validation at bootstrap is disabled for this secret
+                    if (!awsSecretManagerConfiguration.isValidateAtBootstrap()) {
+                        LOG.info("Skipping secret retrieval at bootstrap for secret: {} (validate_at_bootstrap=false)", 
+                            awsSecretManagerConfiguration.getAwsSecretId());
+                        return NOT_LOADED_SENTINEL; // Mark as not loaded, will be loaded on first access
+                    }
+                    
                     return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
                 }));
     }
@@ -77,7 +87,15 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
-        final Object keyValuePairs = secretIdToValue.get(secretId);
+        
+        // Check if secret was skipped at bootstrap and needs to be loaded now
+        Object keyValuePairs = secretIdToValue.get(secretId);
+        if (keyValuePairs == NOT_LOADED_SENTINEL) {
+            LOG.info("Secret {} was not loaded at bootstrap, loading now on first access...", secretId);
+            refresh(secretId);
+            keyValuePairs = secretIdToValue.get(secretId);
+        }
+        
         if (!(keyValuePairs instanceof Map)) {
             throw new IllegalArgumentException(String.format("The value under secretId: %s is not a valid json.",
                     secretId));
@@ -95,8 +113,16 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
+        
+        // Check if secret was skipped at bootstrap and needs to be loaded now
+        Object secretValue = secretIdToValue.get(secretId);
+        if (secretValue == NOT_LOADED_SENTINEL) {
+            LOG.info("Secret {} was not loaded at bootstrap, loading now on first access...", secretId);
+            refresh(secretId);
+            secretValue = secretIdToValue.get(secretId);
+        }
+        
         try {
-            final Object secretValue = secretIdToValue.get(secretId);
             return secretValue instanceof Map ? objectMapper.writeValueAsString(secretValue) :
                     secretValue;
         } catch (JsonProcessingException e) {
