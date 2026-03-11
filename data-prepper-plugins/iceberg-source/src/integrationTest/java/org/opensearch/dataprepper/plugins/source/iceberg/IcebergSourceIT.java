@@ -176,23 +176,19 @@ public class IcebergSourceIT {
                     helper.newRecord(TEST_SCHEMA, 3, "Carol", 35)
             ));
 
-            // Wait for CDC events: should be DELETE(old Bob) + INSERT(new Bob)
-            // Carryover for Alice and Carol should be removed
+            // Wait for CDC event: carryover for Alice and Carol removed,
+            // UPDATE pair (DELETE old Bob + INSERT new Bob) merged into single INDEX
             await().atMost(60, TimeUnit.SECONDS)
-                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(fixture.afterInitialLoad + 2))));
+                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(fixture.afterInitialLoad + 1))));
 
             final List<org.opensearch.dataprepper.model.record.Record<Event>> cdcEvents =
                     receivedRecords.subList(fixture.afterInitialLoad, receivedRecords.size());
 
-            assertThat(cdcEvents, hasSize(2));
+            assertThat(cdcEvents, hasSize(1));
 
-            final Event deleteEvent = cdcEvents.get(0).getData();
-            assertThat(deleteEvent.getMetadata().getAttribute("iceberg_operation"), equalTo("DELETE"));
-            assertThat(deleteEvent.get("name", String.class), equalTo("Bob"));
-            assertThat(deleteEvent.get("age", Integer.class), equalTo(25));
-
-            final Event insertEvent = cdcEvents.get(1).getData();
+            final Event insertEvent = cdcEvents.get(0).getData();
             assertThat(insertEvent.getMetadata().getAttribute("iceberg_operation"), equalTo("INSERT"));
+            assertThat(insertEvent.getMetadata().getAttribute("bulk_action"), equalTo("index"));
             assertThat(insertEvent.get("name", String.class), equalTo("Bob"));
             assertThat(insertEvent.get("age", Integer.class), equalTo(26));
         } finally {

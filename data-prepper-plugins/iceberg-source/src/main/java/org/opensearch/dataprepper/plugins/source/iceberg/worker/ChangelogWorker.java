@@ -42,9 +42,12 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class ChangelogWorker implements Runnable {
 
@@ -181,8 +184,10 @@ public class ChangelogWorker implements Runnable {
             }
         }
 
-        // Step 3: Convert to events and write to buffer
-        // Order: DELETE before INSERT for the same document_id
+        // Step 3: Merge UPDATE pairs and write to buffer
+        // When identifier_columns is set, a DELETE + INSERT pair with the same document_id
+        // represents an UPDATE. Since OpenSearch INDEX is an upsert, the INSERT alone
+        // overwrites the existing document, making the DELETE unnecessary.
         final boolean ackEnabled = sourceConfig.isAcknowledgmentsEnabled();
         AcknowledgementSet acknowledgementSet = null;
         if (ackEnabled) {
@@ -205,32 +210,45 @@ public class ChangelogWorker implements Runnable {
         final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> accumulator =
                 BufferAccumulator.create(buffer, BUFFER_ACCUMULATOR_SIZE, BUFFER_TIMEOUT);
 
-        // Write DELETEs first, then INSERTs
-        for (final int idx : survivingIndices) {
-            final RowWithMeta row = allRows.get(idx);
-            if ("DELETE".equals(row.operation)) {
-                final Event event = converter.convert(row.record, schema, row.operation, state.getSnapshotId());
-                LOG.debug("Writing DELETE event: document_id={}, bulk_action={}",
-                        event.getMetadata().getAttribute("document_id"),
-                        event.getMetadata().getAttribute("bulk_action"));
-                if (acknowledgementSet != null) {
-                    acknowledgementSet.add(event);
+        // Identify DELETE indices whose document_id has a matching INSERT (i.e., UPDATE pairs)
+        final Set<Integer> deletesToSkip = new HashSet<>();
+        if (!tableConfig.getIdentifierColumns().isEmpty()) {
+            final Map<String, Integer> deleteByDocId = new LinkedHashMap<>();
+            for (final int idx : survivingIndices) {
+                final RowWithMeta row = allRows.get(idx);
+                if ("DELETE".equals(row.operation)) {
+                    final String docId = buildDocumentId(row.record, schema, tableConfig.getIdentifierColumns());
+                    deleteByDocId.put(docId, idx);
                 }
-                accumulator.add(new org.opensearch.dataprepper.model.record.Record<>(event));
+            }
+            for (final int idx : survivingIndices) {
+                final RowWithMeta row = allRows.get(idx);
+                if ("INSERT".equals(row.operation)) {
+                    final String docId = buildDocumentId(row.record, schema, tableConfig.getIdentifierColumns());
+                    if (deleteByDocId.containsKey(docId)) {
+                        deletesToSkip.add(deleteByDocId.remove(docId));
+                    }
+                }
+            }
+            if (!deletesToSkip.isEmpty()) {
+                LOG.info("Merged {} UPDATE pair(s) (DELETE + INSERT -> INDEX only)", deletesToSkip.size());
             }
         }
+
         for (final int idx : survivingIndices) {
-            final RowWithMeta row = allRows.get(idx);
-            if ("INSERT".equals(row.operation)) {
-                final Event event = converter.convert(row.record, schema, row.operation, state.getSnapshotId());
-                LOG.debug("Writing INSERT event: document_id={}, bulk_action={}",
-                        event.getMetadata().getAttribute("document_id"),
-                        event.getMetadata().getAttribute("bulk_action"));
-                if (acknowledgementSet != null) {
-                    acknowledgementSet.add(event);
-                }
-                accumulator.add(new org.opensearch.dataprepper.model.record.Record<>(event));
+            if (deletesToSkip.contains(idx)) {
+                continue;
             }
+            final RowWithMeta row = allRows.get(idx);
+            final Event event = converter.convert(row.record, schema, row.operation, state.getSnapshotId());
+            LOG.debug("Writing event: op={}, document_id={}, bulk_action={}",
+                    row.operation,
+                    event.getMetadata().getAttribute("document_id"),
+                    event.getMetadata().getAttribute("bulk_action"));
+            if (acknowledgementSet != null) {
+                acknowledgementSet.add(event);
+            }
+            accumulator.add(new org.opensearch.dataprepper.model.record.Record<>(event));
         }
 
         accumulator.flush();
@@ -320,6 +338,12 @@ public class ChangelogWorker implements Runnable {
 
     private void incrementSnapshotCompletionCount(final long snapshotId) {
         incrementSnapshotCompletionCount(String.valueOf(snapshotId));
+    }
+
+    private String buildDocumentId(final Record record, final Schema schema, final List<String> identifierColumns) {
+        return identifierColumns.stream()
+                .map(col -> String.valueOf(record.getField(col)))
+                .collect(java.util.stream.Collectors.joining("|"));
     }
 
     private synchronized void incrementSnapshotCompletionCount(final String snapshotKey) {
