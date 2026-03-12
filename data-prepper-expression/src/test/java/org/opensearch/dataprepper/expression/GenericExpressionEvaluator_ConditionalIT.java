@@ -333,6 +333,9 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
+                arguments("contains(\""+testTag2+"\"", tagEvent),
+                arguments("contains\""+testTag2+"\"", tagEvent),
+                arguments("contains", tagEvent),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -349,7 +352,6 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
                 arguments("getEventType() == \"test_event", tagEvent),
                 arguments("getEventType() == test_event\"", tagEvent)
-                
         );
     }
 
