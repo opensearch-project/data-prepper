@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import com.linecorp.armeria.common.ContentTooLargeException;
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.Server;
@@ -14,7 +15,11 @@ import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
-
+import io.grpc.ServerInterceptor;
+import io.grpc.ServerInterceptors;
+import io.grpc.protobuf.services.ProtoReflectionService;
+import io.micrometer.core.instrument.Counter;
+import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
@@ -57,11 +62,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-import io.grpc.ServerInterceptor;
-import io.grpc.ServerInterceptors;
-import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
-
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
 public class OTelLogsSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
@@ -75,6 +75,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final CertificateProviderFactory certificateProviderFactory;
     private final ByteDecoder byteDecoder;
     private final PluginFactory pluginFactory;
+    final Counter requestsTooLargeCounter;
     private Server server;
 
     @DataPrepperPluginConstructor
@@ -95,6 +96,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.pipelineName = pipelineDescription.getPipelineName();
         this.pluginFactory = pluginFactory;
         this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOutputFormat());
+        this.requestsTooLargeCounter = pluginMetrics.counter(HttpExceptionHandler.REQUESTS_TOO_LARGE);
     }
 
     @Override
@@ -143,6 +145,12 @@ public class OTelLogsSource implements Source<Record<Object>> {
             LOG.warn("In order to set up TLS for the otlp logs source, go here: https://docs.opensearch.org/latest/data-prepper/pipelines/configuration/sources/otel-logs-source/#ssl");
             serverBuilder.http(oTelLogsSourceConfig.getPort());
         }
+
+        serverBuilder.accessLogWriter(log -> {
+            if (log.responseCause() instanceof ContentTooLargeException) {
+                requestsTooLargeCounter.increment();
+            }
+        }, true);
 
         final GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
         authProvider.getHttpAuthenticationService().ifPresent(serverBuilder::decorator);
