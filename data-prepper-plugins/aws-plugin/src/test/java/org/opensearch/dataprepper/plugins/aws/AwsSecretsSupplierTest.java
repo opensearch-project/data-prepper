@@ -86,7 +86,7 @@ class AwsSecretsSupplierTest {
     @BeforeEach
     void setUp() throws JsonProcessingException {
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
-        when(awsSecretManagerConfiguration.isValidateAtBootstrap()).thenReturn(true); // Default: validate at bootstrap
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default: validate on start
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_AWS_SECRET_CONFIGURATION_NAME, awsSecretManagerConfiguration)
         );
