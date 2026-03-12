@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
@@ -48,20 +52,16 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         final boolean appendIfExists;
         final String addWhen;
         final String addToElementWhen;
-        final Object staticExpressionValue;
-
         EntryProperties(AddEntryProcessorConfig.Entry entry, ExpressionEvaluator evaluator) {
             this.overwriteIfExists = entry.getOverwriteIfKeyExists();
             this.appendIfExists = entry.getAppendIfKeyExists();
             this.addWhen = entry.getAddWhen();
             this.addToElementWhen = entry.getAddToElementWhen();
             String valueExpr = entry.getValueExpression();
-            this.staticExpressionValue = (valueExpr != null && !containsEventReference(valueExpr)) ? 
-                evaluator.evaluate(valueExpr, null) : null;
-        }
-
-        private boolean containsEventReference(String expression) {
-            return expression.contains("/") || expression.contains("getMetadata");
+            if (valueExpr != null && !evaluator.isValidExpressionStatement(valueExpr)) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("value_expression \"%s\" is not a valid expression statement.", valueExpr));
+            }
         }
     }
 
@@ -315,9 +315,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         KeyInfo keyInfo = preprocessedKeys.get(entryIndex);
         
         if (!Objects.isNull(entry.getValueExpression())) {
-            value = props.staticExpressionValue != null ? 
-                    props.staticExpressionValue : 
-                    expressionEvaluator.evaluate(entry.getValueExpression(), context);
+            value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
         } else if (!Objects.isNull(entry.getFormat())) {
             try {
                 if (keyInfo.formatParts != null) {
