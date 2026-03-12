@@ -126,11 +126,9 @@ def main():
         
         violation_text = '\n'.join(violations)
         
-        # Set output for GitHub Actions
-        github_output = os.environ.get('GITHUB_OUTPUT')
-        if github_output:
-            with open(github_output, 'a') as f:
-                f.write(f"violations<<EOF\n{violation_text}\nEOF\n")
+        # Write violations file for the comment workflow artifact
+        with open('violations.txt', 'w') as f:
+            f.write(violation_text + '\n')
         
         print("\nViolations:")
         for violation in violations:
@@ -139,11 +137,6 @@ def main():
         sys.exit(1)
     else:
         print("\n✅ All files have proper license headers!")
-        # Set empty output for GitHub Actions
-        github_output = os.environ.get('GITHUB_OUTPUT')
-        if github_output:
-            with open(github_output, 'a') as f:
-                f.write("violations=\n")
 
 if __name__ == "__main__":
     main()
