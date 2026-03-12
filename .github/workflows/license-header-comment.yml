@@ -1,0 +1,99 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+# Comments on PRs with license header check results.
+# Triggered by the License Header Check workflow.
+
+name: License Header Comment
+
+on:
+  workflow_run:
+    workflows: ['License Header Check']
+    types: [completed]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          name: license-check-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read PR number
+        id: pr
+        run: echo "number=$(cat pr_number.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const prNumber = parseInt('${{ steps.pr.outputs.number }}');
+            const failed = '${{ github.event.workflow_run.conclusion }}' === 'failure';
+            const hasViolations = fs.existsSync('violations.txt');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              (comment.body.includes('License Header Violations Found') || comment.body.includes('License Header Check Passed'))
+            );
+
+            let body;
+            if (failed && hasViolations) {
+              const violations = fs.readFileSync('violations.txt', 'utf8').trim();
+              body = [
+                '## ⚠️ License Header Violations Found',
+                '',
+                'The following newly added files are missing required license headers:',
+                '',
+                violations,
+                '',
+                'Please add the appropriate license header to each file and push your changes.',
+                '',
+                '**See the license header requirements:** https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md#license-headers'
+              ].join('\n');
+            } else if (!failed && botComment) {
+              body = [
+                '## ✅ License Header Check Passed',
+                '',
+                'All newly added files have proper license headers. Great work! 🎉'
+              ].join('\n');
+            } else {
+              return;
+            }
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }
