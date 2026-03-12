@@ -46,7 +46,6 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceC
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -390,7 +389,7 @@ class OTelLogsSourceHttpTest {
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response,
                                                     final HttpStatus expectedStatus,
                                                     final Throwable throwable) {
-         assertThat("Http Status", response.status(), equalTo(expectedStatus));
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
         assertThat("Http Response Throwable", throwable, is(nullValue()));
 
         final List<String> headerKeys = response.headers()
