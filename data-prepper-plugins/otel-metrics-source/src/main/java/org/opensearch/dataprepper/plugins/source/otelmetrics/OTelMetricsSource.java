@@ -125,7 +125,19 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         }
 
         if (server == null) {
-            server = createServer(buffer);
+            final ServerBuilder serverBuilder = Server.builder();
+
+            configureHeadersAndHealthCheck(serverBuilder);
+            configureTLS(serverBuilder);
+            configureAuthentication(serverBuilder);
+            final ScheduledThreadPoolExecutor executor = configureTaskExecutor(serverBuilder);
+
+            configureGrpcService(serverBuilder, buffer);
+            if (oTelMetricsSourceConfig.getHttpPath() != null) {
+                configureHttpService(serverBuilder, buffer, executor.getQueue());
+            }
+
+            server = serverBuilder.build();
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
         try {
@@ -143,25 +155,24 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         LOG.info("Started otel_metrics_source...");
     }
 
+    private void configureHeadersAndHealthCheck(ServerBuilder serverBuilder) {
+        serverBuilder.disableServerHeader();
 
-    private Server createServer(Buffer<Record<? extends Metric>> buffer) {
-        final ServerBuilder serverBuilder = Server.builder();
-
-        configureServer(serverBuilder);
-
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(oTelMetricsSourceConfig.getThreadCount());
-        serverBuilder.blockingTaskExecutor(executor, true);
-
-        configureGrpcService(serverBuilder, buffer);
-        if (oTelMetricsSourceConfig.getHttpPath() != null) {
-            configureHttpService(serverBuilder, buffer, executor.getQueue());
+        if ((oTelMetricsSourceConfig.isEnableUnframedRequests() || oTelMetricsSourceConfig.getHttpPath() != null)
+                && oTelMetricsSourceConfig.isHealthCheck()) {
+            LOG.info("HTTP source health check is enabled for metrics source");
+            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        return serverBuilder.build();
+        serverBuilder.maxNumConnections(oTelMetricsSourceConfig.getMaxConnectionCount());
+        serverBuilder.requestTimeout(Duration.ofMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis()));
+
+        if (oTelMetricsSourceConfig.getMaxRequestLength() != null) {
+            serverBuilder.maxRequestLength(oTelMetricsSourceConfig.getMaxRequestLength().getBytes());
+        }
     }
 
-    private void configureServer(ServerBuilder serverBuilder) {
-        serverBuilder.disableServerHeader();
+    private void configureTLS(ServerBuilder serverBuilder) {
         if (oTelMetricsSourceConfig.isSsl()) {
             LOG.info("Creating metrics http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -175,7 +186,9 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             LOG.warn("In order to set up TLS for the otlp metrics source, go here: https://docs.opensearch.org/latest/data-prepper/pipelines/configuration/sources/otel-metrics-source/#ssl");
             serverBuilder.http(oTelMetricsSourceConfig.getPort());
         }
+    }
 
+    private void configureAuthentication(ServerBuilder serverBuilder) {
         if (oTelMetricsSourceConfig.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator =
                     createHttpAuthentication()
@@ -188,13 +201,12 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 optionalAuthDecorator.ifPresent(serverBuilder::decorator);
             }
         }
+    }
 
-        serverBuilder.maxNumConnections(oTelMetricsSourceConfig.getMaxConnectionCount());
-        serverBuilder.requestTimeout(Duration.ofMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis()));
-
-        if (oTelMetricsSourceConfig.getMaxRequestLength() != null) {
-            serverBuilder.maxRequestLength(oTelMetricsSourceConfig.getMaxRequestLength().getBytes());
-        }
+    private ScheduledThreadPoolExecutor configureTaskExecutor(ServerBuilder serverBuilder) {
+        final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(oTelMetricsSourceConfig.getThreadCount());
+        serverBuilder.blockingTaskExecutor(executor, true);
+        return executor;
     }
 
     private Optional<ArmeriaHttpAuthenticationProvider> createHttpAuthentication() {
@@ -243,11 +255,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
         serverBuilder.decorator(path, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
-        if (oTelMetricsSourceConfig.isHealthCheck()) {
-            LOG.info("HTTP source health check is enabled for metrics source");
-            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
-        }
-
         if (CompressionOption.NONE.equals(oTelMetricsSourceConfig.getCompression())) {
             serverBuilder.annotatedService(path, armeriaHttpService, httpExceptionHandler);
         } else {
@@ -274,7 +281,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 .exceptionHandler(createGrpcExceptionHandler(oTelMetricsSourceConfig));
         final OTelMetricsGrpcService oTelmetricsGrpcService = new OTelMetricsGrpcService(
                 (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+                createOtelProtoDecoder(),
                 buffer,
                 oTelMetricsSourceConfig.getBufferPartitionKeys(),
                 pluginMetrics,
