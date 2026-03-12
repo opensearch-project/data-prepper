@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -33,6 +34,8 @@ import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.StsException;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -55,6 +58,8 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -216,6 +221,71 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
         assertThat(props.get("sasl.client.callback.handler.class"),
                 is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+    }
+
+    @Test
+    public void testGetBootStrapServersForMsk_StsException403_ThrowsImmediately() throws IOException {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-override-by-msk.yaml");
+        final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
+        final KafkaClient kafkaClient = mock(KafkaClient.class);
+        when(kafkaClientBuilder.credentialsProvider(any())).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.region(any(Region.class))).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.build()).thenReturn(kafkaClient);
+
+        final StsException stsException = (StsException) StsException.builder()
+                .statusCode(403)
+                .message("Access Denied")
+                .build();
+
+        when(kafkaClient.getBootstrapBrokers(any(GetBootstrapBrokersRequest.class)))
+                .thenThrow(stsException);
+
+        try (MockedStatic<KafkaClient> mockedKafkaClient = mockStatic(KafkaClient.class)) {
+            mockedKafkaClient.when(KafkaClient::builder).thenReturn(kafkaClientBuilder);
+
+            RuntimeException thrown = org.junit.jupiter.api.Assertions.assertThrows(
+                    RuntimeException.class,
+                    () -> KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG)
+            );
+
+            assertThat(thrown.getMessage(), is("Access denied when calling STS to get bootstrap server information from MSK. " +
+                    "Verify that the role exists and the trust policy is correctly configured."));
+
+            verify(kafkaClient, times(1)).getBootstrapBrokers(any(GetBootstrapBrokersRequest.class));
+        }
+    }
+
+    @Test
+    public void testGetBootStrapServersForMsk_StsExceptionNon403_Retries() throws IOException {
+        final String testMSKEndpoint = "test-endpoint:9098";
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-override-by-msk.yaml");
+        final KafkaClientBuilder kafkaClientBuilder = mock(KafkaClientBuilder.class);
+        final KafkaClient kafkaClient = mock(KafkaClient.class);
+        when(kafkaClientBuilder.credentialsProvider(any())).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.region(any(Region.class))).thenReturn(kafkaClientBuilder);
+        when(kafkaClientBuilder.build()).thenReturn(kafkaClient);
+
+        final StsException stsException = (StsException) StsException.builder()
+                .statusCode(500)
+                .message("Internal Server Error")
+                .build();
+
+        final GetBootstrapBrokersResponse response = mock(GetBootstrapBrokersResponse.class);
+        when(response.bootstrapBrokerStringSaslIam()).thenReturn(testMSKEndpoint);
+
+        when(kafkaClient.getBootstrapBrokers(any(GetBootstrapBrokersRequest.class)))
+                .thenThrow(stsException)
+                .thenReturn(response);
+
+        try (MockedStatic<KafkaClient> mockedKafkaClient = mockStatic(KafkaClient.class)) {
+            mockedKafkaClient.when(KafkaClient::builder).thenReturn(kafkaClientBuilder);
+            KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        }
+
+        assertThat(props.getProperty("bootstrap.servers"), is(testMSKEndpoint));
+        verify(kafkaClient, times(2)).getBootstrapBrokers(any(GetBootstrapBrokersRequest.class));
     }
 
     @Test

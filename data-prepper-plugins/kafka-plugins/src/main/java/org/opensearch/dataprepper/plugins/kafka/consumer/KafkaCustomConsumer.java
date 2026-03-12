@@ -70,6 +70,10 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int RETRY_ON_EXCEPTION_SLEEP_MS = 1000;
+    private static final long INITIAL_AUTH_BACKOFF_MS = 10000L;
+    private static final long MAX_AUTH_BACKOFF_MS = 300000L;
+    static final int MAX_CONSECUTIVE_AUTH_FAILURES = 50;
+    private static final double BACKOFF_MULTIPLIER = 2.0;
     private static final int BUFFER_WRITE_TIMEOUT = 2000;
     static final String DEFAULT_KEY = "message";
 
@@ -99,6 +103,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
+    private int consecutiveAuthFailures;
+    private long currentAuthBackoffMs;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
 
@@ -138,6 +144,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.consecutiveAuthFailures = 0;
+        this.currentAuthBackoffMs = INITIAL_AUTH_BACKOFF_MS;
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
     }
 
@@ -219,6 +227,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     <T> void consumeRecords() throws Exception {
         try {
             ConsumerRecords<String, T> records = doPoll();
+            resetAuthBackoff();
             LOG.debug("Consumed records with count {}", records.count());
             if (Objects.nonNull(records) && !records.isEmpty() && records.count() > 0) {
                 Map<TopicPartition, CommitOffsetRange> offsets = new HashMap<>();
@@ -238,9 +247,19 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 }
             }
         } catch (AuthenticationException e) {
-            LOG.warn("Authentication error while doing poll(). Will retry after 10 seconds", e);
+            consecutiveAuthFailures++;
             topicMetrics.getNumberOfPollAuthErrors().increment();
-            Thread.sleep(10000);
+            if (consecutiveAuthFailures >= MAX_CONSECUTIVE_AUTH_FAILURES) {
+                LOG.error("Reached maximum consecutive authentication failures ({}) for topic {}. " +
+                        "Stopping consumer. Verify that the IAM role exists and trust policy is correct.",
+                        MAX_CONSECUTIVE_AUTH_FAILURES, topicName, e);
+                shutdownInProgress.set(true);
+                return;
+            }
+            LOG.warn("Authentication error while doing poll() for topic {} (consecutive failures: {}). " +
+                    "Will retry after {} ms", topicName, consecutiveAuthFailures, currentAuthBackoffMs, e);
+            sleepMillis(currentAuthBackoffMs);
+            currentAuthBackoffMs = Math.min((long) (currentAuthBackoffMs * BACKOFF_MULTIPLIER), MAX_AUTH_BACKOFF_MS);
         } catch (RecordDeserializationException e) {
             LOG.warn("Deserialization error - topic {} partition {} offset {}. Error message: {}",
                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e.getMessage());
@@ -262,6 +281,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             topicMetrics.getNumberOfDeserializationErrors().increment();
         }
+    }
+
+    private void resetAuthBackoff() {
+        consecutiveAuthFailures = 0;
+        currentAuthBackoffMs = INITIAL_AUTH_BACKOFF_MS;
+    }
+
+    @VisibleForTesting
+    void sleepMillis(long millis) throws InterruptedException {
+        Thread.sleep(millis);
     }
 
     private void addAcknowledgedOffsets(final TopicPartition topicPartition, final Range<Long> offsetRange) {
@@ -386,12 +415,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         });
 
         boolean retryingAfterException = false;
+        long outerRetryBackoffMs = INITIAL_AUTH_BACKOFF_MS;
         while (!shutdownInProgress.get()) {
             LOG.debug("Still running Kafka consumer in start of loop");
             try {
                 if (retryingAfterException) {
-                    LOG.debug("Pause consuming from Kafka topic due a previous exception.");
-                    Thread.sleep(10000);
+                    LOG.debug("Pause consuming from Kafka topic due a previous exception. Backoff: {} ms", outerRetryBackoffMs);
+                    Thread.sleep(outerRetryBackoffMs);
                 } else if (pauseConsumePredicate.pauseConsuming()) {
                     LOG.debug("Pause and skip consuming from Kafka topic due to an external condition: {}", pauseConsumePredicate);
                     paused = true;
@@ -413,9 +443,11 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 topicMetrics.update(consumer);
                 LOG.debug("Updated consumer metrics");
                 retryingAfterException = false;
+                outerRetryBackoffMs = INITIAL_AUTH_BACKOFF_MS;
             } catch (Exception exp) {
-                LOG.error("Error while reading the records from the topic {}. Retry after 10 seconds", topicName, exp);
+                LOG.error("Error while reading the records from the topic {}. Retry after {} ms", topicName, outerRetryBackoffMs, exp);
                 retryingAfterException = true;
+                outerRetryBackoffMs = Math.min((long) (outerRetryBackoffMs * BACKOFF_MULTIPLIER), MAX_AUTH_BACKOFF_MS);
             }
         }
         LOG.info("Shutting down, number of acks pending = {}", numberOfAcksPending.get());

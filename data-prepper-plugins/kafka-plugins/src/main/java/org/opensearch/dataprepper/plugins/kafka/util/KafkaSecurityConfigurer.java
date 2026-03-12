@@ -294,8 +294,18 @@ public class KafkaSecurityConfigurer {
             retryable = false;
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
-            } catch (KafkaException | StsException e) {
-                log.info("Failed to get bootstrap server information from MSK. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
+            } catch (StsException e) {
+                if (e.statusCode() == 403) {
+                    throw new RuntimeException("Access denied when calling STS to get bootstrap server information from MSK. " +
+                            "Verify that the role exists and the trust policy is correctly configured.", e);
+                }
+                log.info("Failed to get bootstrap server information from MSK due to STS error. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException exp) {}
+                retryable = true;
+            } catch (KafkaException e) {
+                log.info("Failed to get bootstrap server information from MSK due to Kafka error. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}

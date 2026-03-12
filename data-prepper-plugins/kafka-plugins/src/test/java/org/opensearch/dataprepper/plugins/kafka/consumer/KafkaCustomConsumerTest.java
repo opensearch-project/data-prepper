@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,10 +67,14 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +160,7 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -687,6 +693,84 @@ public class KafkaCustomConsumerTest {
         Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
         Assertions.assertTrue(offsetsAfterFailedCommit.isEmpty(),
             "Offsets should be cleared after non-rebalance exception");
+    }
+
+    @Test
+    public void testConsumeRecords_AuthenticationException_IncrementsCounterAndDoesNotShutdown() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords();
+
+        verify(authErrorCounter, times(1)).increment();
+        Assertions.assertFalse(shutdownInProgress.get(),
+                "Consumer should not shut down after a single auth failure");
+    }
+
+    @Test
+    public void testConsumeRecords_MaxConsecutiveAuthFailures_StopsConsumer() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        for (int i = 0; i < KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES; i++) {
+            consumer.consumeRecords();
+        }
+
+        Assertions.assertTrue(shutdownInProgress.get(),
+                "Consumer should shut down after reaching max consecutive auth failures");
+        verify(authErrorCounter, times(KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES)).increment();
+    }
+
+    @Test
+    public void testConsumeRecords_SuccessfulPollResetsAuthFailureCounter() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        consumerRecords = createPlainTextRecords(topic, 0L);
+
+        when(kafkaConsumer.poll(any(Duration.class)))
+                .thenThrow(authException)
+                .thenThrow(authException)
+                .thenReturn(consumerRecords);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+        Assertions.assertFalse(shutdownInProgress.get());
+
+        consumer.consumeRecords();
+
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+        for (int i = 0; i < KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES - 1; i++) {
+            consumer.consumeRecords();
+        }
+
+        Assertions.assertFalse(shutdownInProgress.get(),
+                "Consumer should not shut down because the counter was reset after a successful poll");
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
