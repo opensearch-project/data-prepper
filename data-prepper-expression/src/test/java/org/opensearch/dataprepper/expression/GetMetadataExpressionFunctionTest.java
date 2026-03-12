@@ -1,27 +1,31 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.Arguments;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.apache.commons.lang3.RandomStringUtils;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GetMetadataExpressionFunctionTest {
     private GetMetadataExpressionFunction getMetadataExpressionFunction;
@@ -53,16 +57,14 @@ class GetMetadataExpressionFunctionTest {
     void testGetMetadataBasic(final String key, final Object value) {
         getMetadataExpressionFunction = createObjectUnderTest();
         when(testFunction.apply(value)).thenReturn(value);
-        assertThat(getMetadataExpressionFunction.evaluate(List.of("\""+key+"\""), testEvent, testFunction), equalTo(value));
-        assertThat(getMetadataExpressionFunction.evaluate(List.of("\""+key+"notPresent\""), testEvent, testFunction), equalTo(null));
+        assertThat(getMetadataExpressionFunction.evaluate(List.of(key), testEvent, testFunction), equalTo(value));
+        assertThat(getMetadataExpressionFunction.evaluate(List.of(key + "notPresent"), testEvent, testFunction), equalTo(null));
     }
 
     @Test
     void testGetMetadataWithMoreArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
-        String testString = RandomStringUtils.randomAlphabetic(5);
         assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\"arg1\"", "\"arg2\""), testEvent, testFunction));
         assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2", "arg3/arg4"), testEvent, testFunction));
     }
 
@@ -73,25 +75,15 @@ class GetMetadataExpressionFunctionTest {
     }
 
     @Test
-    void testGetMetadataWithNonLiteralStringArguments() {
-        getMetadataExpressionFunction = createObjectUnderTest();
-        String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("testString"), testEvent, testFunction));
-    }
-
-    @Test
     void testGetMetadataWithInvalidArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
         assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of(), testEvent, testFunction));
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\""), testEvent, testFunction));
     }
 
     @Test
     void testGetMetadataWithEmptyStringArgument() {
         getMetadataExpressionFunction = createObjectUnderTest();
         assertThat(getMetadataExpressionFunction.evaluate(List.of("  "), testEvent, testFunction), equalTo(null));
-        assertThat(getMetadataExpressionFunction.evaluate(List.of("\"\""), testEvent, testFunction), equalTo(null));
+        assertThat(getMetadataExpressionFunction.evaluate(List.of(""), testEvent, testFunction), equalTo(null));
     }
-
-
 }

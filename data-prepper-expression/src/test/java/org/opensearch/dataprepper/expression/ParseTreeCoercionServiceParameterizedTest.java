@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -133,7 +137,7 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("test(\"\")");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("\"\"")), eq(testEvent), any()))
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("")), eq(testEvent), any()))
                 .thenReturn("result");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
@@ -147,7 +151,8 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("test(/key, , \"value\")");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("/key", "\"value\"")), eq(testEvent), any()))
+        final EventKey expectedKey = eventKeyFactory.createEventKey("/key");
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of(expectedKey, "value")), eq(testEvent), any()))
                 .thenReturn("result");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
@@ -161,7 +166,8 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("test(/key, \"value\")");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("/key", "\"value\"")), eq(testEvent), any()))
+        final EventKey expectedKey = eventKeyFactory.createEventKey("/key");
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of(expectedKey, "value")), eq(testEvent), any()))
                 .thenReturn("result");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);

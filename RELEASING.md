@@ -63,16 +63,6 @@ If you have just created a release branch, you should also create a PR on the `m
 
 For example, if you have started the `2.7` branch, you will need to update the `main` branch from `2.6.0-SNAPSHOT` to `2.7.0-SNAPSHOT`.
 
-#### Update the version of DataPrepperVersion
-
-If you have just created a release branch, you should also create a PR on the `main` branch to bump the version in `DataPrepperVersion`.
-
-Steps:
-1. Modify the `DataPrepperVersion` class to update `CURRENT_VERSION` to the next version.
-2. Create a PR targeting `main`
-
-Note: This step can be automated through [#4877](https://github.com/opensearch-project/data-prepper/issues/4877).
-
 ### Update the THIRD-PARTY file
 
 We should update the `THIRD-PARTY` file for every release.

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -126,13 +130,13 @@ class ParseTreeCoercionService {
                     continue;
                 }
                 if (trimmedArg.charAt(0) == '/') {
-                    argList.add(trimmedArg);
+                    argList.add(eventKeyFactory.createEventKey(trimmedArg));
                 } else if (trimmedArg.charAt(0) == '"') {
                     if (trimmedArg.length() < 2 || trimmedArg.charAt(trimmedArg.length() - 1) != '"') {
                         throw new ExpressionCoercionException(
                                 INVALID_STRING_ARG);
                     }
-                    argList.add(trimmedArg);
+                    argList.add(trimmedArg.substring(1, trimmedArg.length() - 1));
                 } else {
                     throw new ExpressionCoercionException(UNSUPPORTED_ARG_TYPE);
                 }

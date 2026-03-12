@@ -1,15 +1,20 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
-import java.util.stream.Collectors;
-import java.util.List;
+
 import javax.inject.Named;
+import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Named
 public class HasTagsExpressionFunction implements ExpressionFunction {
@@ -18,18 +23,18 @@ public class HasTagsExpressionFunction implements ExpressionFunction {
     }
 
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
-        if (args.size() == 0) {
+        if (args.isEmpty()) {
             throw new RuntimeException("hasTags() takes at least one argument");
         }
-        if(!args.stream().allMatch(a -> ((a instanceof String) && (((String)a).length() > 0) && (((String)a).charAt(0) == '"')))) {
-            throw new RuntimeException("hasTags() takes only non-empty string literal type arguments");
+        if (!args.stream().allMatch(a -> a instanceof String)) {
+            throw new RuntimeException("Unexpected argument type. hasTags() takes only String type arguments");
         }
         final List<String> tags = args.stream()
-                                    .map(a -> {
-                                        String str = (String) a;
-                                        return str.substring(1, str.length()-1);
-                                     })
+                                    .map(a -> (String) a)
                                     .collect(Collectors.toList());
+        if (tags.stream().anyMatch(String::isEmpty)) {
+            throw new RuntimeException("Unexpected argument value. hasTags() requires non-empty strings.");
+        }
         return event.getMetadata().hasTags(tags);
     }
 }
