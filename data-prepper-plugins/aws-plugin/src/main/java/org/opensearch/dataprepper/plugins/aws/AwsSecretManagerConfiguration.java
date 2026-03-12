@@ -52,8 +52,8 @@ public class AwsSecretManagerConfiguration {
     @JsonProperty("disable_refresh")
     private boolean disableRefresh = false;
 
-    @JsonProperty("validate_at_bootstrap")
-    private boolean validateAtBootstrap = true;  // Default: true (safe-by-default)
+    @JsonProperty("skip_validation_on_start")
+    private boolean skipValidationOnStart = false;  // Default: false (validate by default)
 
     public String getAwsSecretId() {
         return awsSecretId;
@@ -71,8 +71,8 @@ public class AwsSecretManagerConfiguration {
         return disableRefresh;
     }
 
-    public boolean isValidateAtBootstrap() {
-        return validateAtBootstrap;
+    public boolean isSkipValidationOnStart() {
+        return skipValidationOnStart;
     }
 
     public SecretsManagerClient createSecretManagerClient(final AwsCredentialsSupplier awsCredentialsSupplier) {
