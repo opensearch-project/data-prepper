@@ -20,6 +20,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
+import org.apache.kafka.common.utils.ExponentialBackoff;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -70,10 +71,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int RETRY_ON_EXCEPTION_SLEEP_MS = 1000;
-    private static final long INITIAL_AUTH_BACKOFF_MS = 10000L;
-    private static final long MAX_AUTH_BACKOFF_MS = 300000L;
-    static final int MAX_CONSECUTIVE_AUTH_FAILURES = 50;
-    private static final double BACKOFF_MULTIPLIER = 2.0;
+    static final Duration INITIAL_BACKOFF = Duration.ofSeconds(10);
+    static final Duration MAX_BACKOFF = Duration.ofMinutes(10);
     private static final int BUFFER_WRITE_TIMEOUT = 2000;
     static final String DEFAULT_KEY = "message";
 
@@ -103,8 +102,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
-    private int consecutiveAuthFailures;
-    private long currentAuthBackoffMs;
+    private final ExponentialBackoff exponentialBackoff;
+    private long authFailureAttempts;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
 
@@ -144,8 +143,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
-        this.consecutiveAuthFailures = 0;
-        this.currentAuthBackoffMs = INITIAL_AUTH_BACKOFF_MS;
+        this.exponentialBackoff = new ExponentialBackoff(INITIAL_BACKOFF.toMillis(), 2, MAX_BACKOFF.toMillis(), 0);
+        this.authFailureAttempts = 0;
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
     }
 
@@ -247,19 +246,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 }
             }
         } catch (AuthenticationException e) {
-            consecutiveAuthFailures++;
+            authFailureAttempts++;
+            long backoffMs = exponentialBackoff.backoff(authFailureAttempts - 1);
             topicMetrics.getNumberOfPollAuthErrors().increment();
-            if (consecutiveAuthFailures >= MAX_CONSECUTIVE_AUTH_FAILURES) {
-                LOG.error("Reached maximum consecutive authentication failures ({}) for topic {}. " +
-                        "Stopping consumer. Verify that the IAM role exists and trust policy is correct.",
-                        MAX_CONSECUTIVE_AUTH_FAILURES, topicName, e);
-                shutdownInProgress.set(true);
-                return;
-            }
-            LOG.warn("Authentication error while doing poll() for topic {} (consecutive failures: {}). " +
-                    "Will retry after {} ms", topicName, consecutiveAuthFailures, currentAuthBackoffMs, e);
-            sleepMillis(currentAuthBackoffMs);
-            currentAuthBackoffMs = Math.min((long) (currentAuthBackoffMs * BACKOFF_MULTIPLIER), MAX_AUTH_BACKOFF_MS);
+            LOG.warn("Authentication error while doing poll() for topic {} (failure count: {}). " +
+                    "Will retry after {} ms. Verify that the IAM role exists and trust policy is correct.",
+                    topicName, authFailureAttempts, backoffMs, e);
+            sleepMillis(backoffMs);
         } catch (RecordDeserializationException e) {
             LOG.warn("Deserialization error - topic {} partition {} offset {}. Error message: {}",
                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e.getMessage());
@@ -284,8 +277,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     }
 
     private void resetAuthBackoff() {
-        consecutiveAuthFailures = 0;
-        currentAuthBackoffMs = INITIAL_AUTH_BACKOFF_MS;
+        authFailureAttempts = 0;
     }
 
     @VisibleForTesting
@@ -415,13 +407,14 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         });
 
         boolean retryingAfterException = false;
-        long outerRetryBackoffMs = INITIAL_AUTH_BACKOFF_MS;
+        long outerRetryAttempts = 0;
         while (!shutdownInProgress.get()) {
             LOG.debug("Still running Kafka consumer in start of loop");
             try {
                 if (retryingAfterException) {
-                    LOG.debug("Pause consuming from Kafka topic due a previous exception. Backoff: {} ms", outerRetryBackoffMs);
-                    Thread.sleep(outerRetryBackoffMs);
+                    long backoffMs = exponentialBackoff.backoff(outerRetryAttempts - 1);
+                    LOG.debug("Pause consuming from Kafka topic due a previous exception. Backoff: {} ms", backoffMs);
+                    Thread.sleep(backoffMs);
                 } else if (pauseConsumePredicate.pauseConsuming()) {
                     LOG.debug("Pause and skip consuming from Kafka topic due to an external condition: {}", pauseConsumePredicate);
                     paused = true;
@@ -443,11 +436,12 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 topicMetrics.update(consumer);
                 LOG.debug("Updated consumer metrics");
                 retryingAfterException = false;
-                outerRetryBackoffMs = INITIAL_AUTH_BACKOFF_MS;
+                outerRetryAttempts = 0;
             } catch (Exception exp) {
-                LOG.error("Error while reading the records from the topic {}. Retry after {} ms", topicName, outerRetryBackoffMs, exp);
+                long backoffMs = exponentialBackoff.backoff(outerRetryAttempts);
+                LOG.error("Error while reading the records from the topic {}. Retry after {} ms", topicName, backoffMs, exp);
                 retryingAfterException = true;
-                outerRetryBackoffMs = Math.min((long) (outerRetryBackoffMs * BACKOFF_MULTIPLIER), MAX_AUTH_BACKOFF_MS);
+                outerRetryAttempts++;
             }
         }
         LOG.info("Shutting down, number of acks pending = {}", numberOfAcksPending.get());

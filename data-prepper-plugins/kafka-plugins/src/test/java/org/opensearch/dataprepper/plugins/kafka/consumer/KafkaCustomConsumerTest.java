@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.ArgumentCaptor;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.model.CheckpointState;
@@ -62,6 +63,7 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -696,7 +698,7 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testConsumeRecords_AuthenticationException_IncrementsCounterAndDoesNotShutdown() throws Exception {
+    public void testConsumeRecords_AuthenticationException_IncrementsCounterAndUsesBackoff() throws Exception {
         String topic = topicConfig.getName();
         Counter authErrorCounter = mock(Counter.class);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
@@ -712,12 +714,11 @@ public class KafkaCustomConsumerTest {
         consumer.consumeRecords();
 
         verify(authErrorCounter, times(1)).increment();
-        Assertions.assertFalse(shutdownInProgress.get(),
-                "Consumer should not shut down after a single auth failure");
+        verify(consumer).sleepMillis(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis());
     }
 
     @Test
-    public void testConsumeRecords_MaxConsecutiveAuthFailures_StopsConsumer() throws Exception {
+    public void testConsumeRecords_MultipleAuthFailures_UsesExponentialBackoff() throws Exception {
         String topic = topicConfig.getName();
         Counter authErrorCounter = mock(Counter.class);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
@@ -730,13 +731,18 @@ public class KafkaCustomConsumerTest {
         doNothing().when(consumer).sleepMillis(anyLong());
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
 
-        for (int i = 0; i < KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES; i++) {
-            consumer.consumeRecords();
-        }
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+        consumer.consumeRecords();
 
-        Assertions.assertTrue(shutdownInProgress.get(),
-                "Consumer should shut down after reaching max consecutive auth failures");
-        verify(authErrorCounter, times(KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES)).increment();
+        Assertions.assertFalse(shutdownInProgress.get(),
+                "Consumer should not shut down on auth failures");
+        ArgumentCaptor<Long> sleepCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());
+        List<Long> sleepValues = sleepCaptor.getAllValues();
+        assertThat(sleepValues.get(0), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis()));
+        assertThat(sleepValues.get(1), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis() * 2));
+        assertThat(sleepValues.get(2), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis() * 4));
     }
 
     @Test
@@ -758,19 +764,18 @@ public class KafkaCustomConsumerTest {
         doNothing().when(consumer).sleepMillis(anyLong());
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
 
-        consumer.consumeRecords();
-        consumer.consumeRecords();
-        Assertions.assertFalse(shutdownInProgress.get());
+        consumer.consumeRecords(); // auth failure 1
+        consumer.consumeRecords(); // auth failure 2
+        consumer.consumeRecords(); // success - resets backoff
 
-        consumer.consumeRecords();
-
+        // Next auth failure should use initial backoff again
         when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
-        for (int i = 0; i < KafkaCustomConsumer.MAX_CONSECUTIVE_AUTH_FAILURES - 1; i++) {
-            consumer.consumeRecords();
-        }
+        consumer.consumeRecords(); // auth failure after reset
 
-        Assertions.assertFalse(shutdownInProgress.get(),
-                "Consumer should not shut down because the counter was reset after a successful poll");
+        ArgumentCaptor<Long> sleepCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());
+        List<Long> sleepValues = sleepCaptor.getAllValues();
+        assertThat(sleepValues.get(2), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis()));
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
