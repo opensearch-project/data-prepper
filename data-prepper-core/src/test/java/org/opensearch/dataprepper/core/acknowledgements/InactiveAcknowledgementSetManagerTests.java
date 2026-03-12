@@ -11,6 +11,8 @@ package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
 
@@ -30,6 +32,13 @@ public class InactiveAcknowledgementSetManagerTests {
     void testCreateAPI() {
         assertThat(acknowledgementSetManager, notNullValue());
         assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.create((a)->{}, Duration.ofMillis(10)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testCreateAPIWithInvokeCallbackOnExpiry(boolean invokeCallbackOnExpiryFlag) {
+        assertThat(acknowledgementSetManager, notNullValue());
+        assertThrows(UnsupportedOperationException.class, () -> acknowledgementSetManager.create((a)->{}, Duration.ofMillis(10), invokeCallbackOnExpiryFlag));
     }
 
 }

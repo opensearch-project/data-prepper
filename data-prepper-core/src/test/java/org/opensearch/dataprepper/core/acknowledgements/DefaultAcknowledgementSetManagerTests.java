@@ -11,6 +11,8 @@ package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,14 +28,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultAcknowledgementSetManagerTests {
     private static final Duration TEST_TIMEOUT = Duration.ofMillis(400);
+    private static final Duration EXPIRY_TEST_TIMEOUT = Duration.ofMillis(100);
     private DefaultAcknowledgementSetManager acknowledgementSetManager;
     private ScheduledExecutorService callbackExecutor;
 
@@ -104,9 +109,9 @@ class DefaultAcknowledgementSetManagerTests {
     @Test
     void testExpirations() throws InterruptedException {
         eventHandle2.release(true);
-        Thread.sleep(TEST_TIMEOUT.multipliedBy(5).toMillis());
+        Thread.sleep(TEST_TIMEOUT.multipliedBy(2).toMillis());
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
-        await().atMost(TEST_TIMEOUT.multipliedBy(5))
+        await().atMost(TEST_TIMEOUT.multipliedBy(3))
                 .untilAsserted(() -> {
                     assertThat(result, equalTo(null));
                 });
@@ -205,7 +210,6 @@ class DefaultAcknowledgementSetManagerTests {
                 .untilAsserted(() -> {
                 assertThat(result, equalTo(true));
                 });
-        
     }
 
     @Test
@@ -270,7 +274,30 @@ class DefaultAcknowledgementSetManagerTests {
                 .untilAsserted(() -> {
                 assertThat(result, equalTo(null));
                 });
-        
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testCreateWithInvokeCallbackOnExpiry(final boolean expiryCallback) {
+        AcknowledgementSet acknowledgementSet = acknowledgementSetManager.create((flag) -> { result = flag; }, EXPIRY_TEST_TIMEOUT, expiryCallback);
+        assertThat(acknowledgementSet, notNullValue());
+    }
+
+    @Test
+    void testExpirationWithInvokeCallbackOnExpiryTrue() throws InterruptedException {
+        DefaultAcknowledgementSet acknowledgementSet = (DefaultAcknowledgementSet) acknowledgementSetManager.create((flag) -> { result = flag; }, EXPIRY_TEST_TIMEOUT, true);
+        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+        JacksonEvent event = mock(JacksonEvent.class);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        acknowledgementSet.add(event);
+        acknowledgementSet.complete();
+
+        Thread.sleep(EXPIRY_TEST_TIMEOUT.multipliedBy(2).toMillis());
+        await().atMost(EXPIRY_TEST_TIMEOUT.multipliedBy(3))
+                .untilAsserted(() -> {
+                    acknowledgementSet.isDone();
+                    assertThat(result, equalTo(false));
+                });
     }
 
 }

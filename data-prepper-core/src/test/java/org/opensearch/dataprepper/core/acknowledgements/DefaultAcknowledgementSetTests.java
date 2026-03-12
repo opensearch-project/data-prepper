@@ -62,7 +62,7 @@ class DefaultAcknowledgementSetTests {
     private DefaultAcknowledgementSetMetrics metrics;
     private int invalidAcquiresCounter;
     private int invalidReleasesCounter;
-    
+
     private void setupMetrics() {
         metrics = mock(DefaultAcknowledgementSetMetrics.class);
         lenient().doAnswer(a -> {
@@ -146,6 +146,7 @@ class DefaultAcknowledgementSetTests {
         assertThat(invalidAcquiresCounter, equalTo(1));
     }
 
+    @Test
     void testDefaultAcknowledgementInvalidRelease() {
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
@@ -168,7 +169,7 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
-            }        
+            }
         );
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
@@ -187,7 +188,7 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
-            }        
+            }
         );
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
@@ -221,7 +222,7 @@ class DefaultAcknowledgementSetTests {
                 } catch (Exception e) {
                     callbackInterrupted.set(true);
                 }
-            }        
+            }
         );
         defaultAcknowledgementSet.add(event);
         defaultAcknowledgementSet.complete();
@@ -248,7 +249,7 @@ class DefaultAcknowledgementSetTests {
         defaultAcknowledgementSet = createObjectUnderTestWithCallback(
             (flag) -> {
                 acknowledgementSetResult = flag;
-            }        
+            }
         );
         defaultAcknowledgementSet.addProgressCheck(
             (progressCheck) -> {
@@ -312,5 +313,41 @@ class DefaultAcknowledgementSetTests {
 
         verify(callbackFuture).cancel(false);
         verify(progressCheck).cancel(true);
+    }
+
+    @Test
+    void testDefaultAcknowledgementSetWithCallbackOnExpiryTrue() throws Exception {
+        setupMetrics();
+        defaultAcknowledgementSet = new DefaultAcknowledgementSet(executor, (flag) -> {
+            acknowledgementSetResult = flag;
+        }, TEST_TIMEOUT, metrics, true);
+
+        defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
+
+        Thread.sleep(TEST_TIMEOUT.multipliedBy(2).toMillis());
+
+        Awaitility.waitAtMost(Duration.ofSeconds(15))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
+        assertThat(acknowledgementSetResult, equalTo(false));
+    }
+
+    @Test
+    void testDefaultAcknowledgementSetWithCallbackOnExpiryFalse() throws Exception {
+        setupMetrics();
+        defaultAcknowledgementSet = new DefaultAcknowledgementSet(executor, (flag) -> {
+            acknowledgementSetResult = flag;
+        }, TEST_TIMEOUT, metrics, false);
+
+        defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
+
+        Thread.sleep(TEST_TIMEOUT.multipliedBy(2).toMillis());
+
+        Awaitility.waitAtMost(Duration.ofSeconds(10))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
+        assertThat(acknowledgementSetResult, equalTo(null));
     }
 }

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.source;
@@ -101,5 +105,11 @@ class KafkaSourceConfigTest {
 		assertThat(kafkaSourceConfig.getTopics(), notNullValue());
 		SourceTopicConfig topic = (SourceTopicConfig) kafkaSourceConfig.getTopics().get(0);
 		assertEquals(IsolationLevel.READ_COMMITTED, topic.getIsolationLevel());
+	}
+
+	@Test
+	void test_default_acknowledgements_timeout() {
+		kafkaSourceConfig = new KafkaSourceConfig();
+		assertEquals(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT, kafkaSourceConfig.getAcknowledgementsTimeout());
 	}
 }

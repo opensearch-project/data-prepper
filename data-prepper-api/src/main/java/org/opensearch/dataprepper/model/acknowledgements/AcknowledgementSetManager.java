@@ -30,4 +30,16 @@ public interface AcknowledgementSetManager {
      * @since 2.2
      */
     AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout);
+
+    /**
+     * Creates an acknowledgement set
+     *
+     * @param callback callback function to be invoked
+     * @param timeout expiry timeout
+     * @param invokeCallbackOnExpiry flag indicating if the callback function should be invoked on expiry
+     *
+     * @return AcknowledgementSet returns a new acknowledgement set
+     * @since 2.15
+     */
+    AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry);
 }

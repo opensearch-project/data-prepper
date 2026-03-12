@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
@@ -200,6 +204,7 @@ public class KafkaCustomConsumerTest {
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
+        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(Duration.ofSeconds(Integer.MAX_VALUE));
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
                 acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
