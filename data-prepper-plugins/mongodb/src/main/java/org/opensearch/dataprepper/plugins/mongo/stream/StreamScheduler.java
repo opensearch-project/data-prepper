@@ -93,7 +93,13 @@ public class StreamScheduler implements Runnable {
                     if (sourceConfig.isDisableS3ReadForLeader()) {
                         System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
                     }
-                    sourceCoordinator.giveUpPartition(streamPartition);
+                    try {
+                        sourceCoordinator.giveUpPartition(streamPartition);
+                    } catch (final Exception ex) {
+                        LOG.error("Failed to give up stream partition. Will attempt to reacquire this partition...");
+                        streamPartition = null;
+                    }
+
                 }
 
                 try {
