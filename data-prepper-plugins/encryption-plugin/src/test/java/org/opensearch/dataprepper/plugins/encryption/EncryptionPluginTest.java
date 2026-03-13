@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.encryption;
@@ -23,7 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -63,8 +66,6 @@ class EncryptionPluginTest {
     private EncryptionRotationHandler encryptionRotationHandler;
     @Mock
     private DefaultEncryptionHttpHandler defaultEncryptionHttpHandler;
-    @Mock
-    private ScheduledExecutorService scheduledExecutorService;
 
     private EncryptionPlugin objectUnderTest;
 
@@ -92,7 +93,7 @@ class EncryptionPluginTest {
         ) {
             encryptedDataKeySupplierFactoryMockedStatic.when(EncryptedDataKeySupplierFactory::create)
                     .thenReturn(encryptedDataKeySupplierFactory);
-            encryptionEngineFactoryMockedStatic.when(() -> EncryptionEngineFactory.create(any(KeyProviderFactory.class)))
+            encryptionEngineFactoryMockedStatic.when(() -> EncryptionEngineFactory.create(any(KeyProviderFactory.class), any(PluginMetrics.class)))
                     .thenReturn(encryptionEngineFactory);
             encryptionRotationHandlerFactoryMockedStatic.when(() -> EncryptionRotationHandlerFactory.create(
                     any(PluginMetrics.class), any(EncryptedDataKeyWriterFactory.class)))
@@ -149,7 +150,7 @@ class EncryptionPluginTest {
         ) {
             encryptedDataKeySupplierFactoryMockedStatic.when(EncryptedDataKeySupplierFactory::create)
                     .thenReturn(encryptedDataKeySupplierFactory);
-            encryptionEngineFactoryMockedStatic.when(() -> EncryptionEngineFactory.create(any(KeyProviderFactory.class)))
+            encryptionEngineFactoryMockedStatic.when(() -> EncryptionEngineFactory.create(any(KeyProviderFactory.class), any(PluginMetrics.class)))
                     .thenReturn(encryptionEngineFactory);
             encryptionRotationHandlerFactoryMockedStatic.when(() -> EncryptionRotationHandlerFactory.create(
                             any(PluginMetrics.class), any(EncryptedDataKeyWriterFactory.class)))
