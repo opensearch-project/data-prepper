@@ -20,6 +20,7 @@ public enum IndexType {
     LOG_ANALYTICS_PLAIN("log-analytics-plain"),
     METRIC_ANALYTICS("metric-analytics"),
     METRIC_ANALYTICS_PLAIN("metric-analytics-plain"),
+    TSDB("tsdb"),
     CUSTOM("custom"),
     MANAGEMENT_DISABLED("management_disabled");
 
