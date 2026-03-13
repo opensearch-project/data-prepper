@@ -109,10 +109,10 @@ class CredentialsProviderFactory {
                     .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
         }
 
-        return StsAssumeRoleCredentialsProvider.builder()
+        return new BackoffCredentialsProvider(StsAssumeRoleCredentialsProvider.builder()
                 .stsClient(stsClient)
                 .refreshRequest(assumeRoleRequestBuilder.build())
-                .build();
+                .build());
     }
 
     private void validateStsRoleArn(final String stsRoleArn) {
