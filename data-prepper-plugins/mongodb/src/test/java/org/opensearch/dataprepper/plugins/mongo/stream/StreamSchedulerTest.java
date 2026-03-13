@@ -28,10 +28,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -148,6 +150,40 @@ public class StreamSchedulerTest {
         future.cancel(true);
         executorService.shutdownNow();
 
+    }
+
+    @Test
+    void test_stream_giveUpPartitionThrowsException_schedulerContinuesRunning() {
+        final String collection = UUID.randomUUID().toString();
+        final StreamPartition streamPartition = new StreamPartition(collection, null);
+        given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition));
+        given(collectionConfig.getCollection()).willReturn(collection);
+        final int streamBatchSize = 1000;
+        given(collectionConfig.getStreamBatchSize()).willReturn(streamBatchSize);
+        doThrow(new RuntimeException("giveUpPartition failed"))
+                .when(sourceCoordinator).giveUpPartition(any(StreamPartition.class));
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
+                                any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                        .thenThrow(RuntimeException.class);
+                streamScheduler.run();
+            }
+        });
+
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .untilAsserted(() -> verify(sourceCoordinator).giveUpPartition(streamPartition));
+
+        // Scheduler is still running — didn't crash from the giveUpPartition exception.
+        // streamPartition is reset to null, enabling clean reacquisition on the next iteration.
+        assertFalse(future.isDone());
+
+        future.cancel(true);
+        executorService.shutdownNow();
     }
 
     @Test
