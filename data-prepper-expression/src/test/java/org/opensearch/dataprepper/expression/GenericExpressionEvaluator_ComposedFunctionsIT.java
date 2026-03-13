@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -65,5 +66,21 @@ class GenericExpressionEvaluator_ComposedFunctionsIT extends BaseExpressionEvalu
 
         assertThat(actualValue, instanceOf(Boolean.class));
         assertThat(actualValue, equalTo(true));
+    }
+
+    @Test
+    void evaluate_provides_expected_results_for_composing_length_and_toJsonPointer() {
+        final GenericExpressionEvaluator objectUnderTest = applicationContext.getBean(GenericExpressionEvaluator.class);
+
+        final Map<String, String> dataMap = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        final Event event = TestEventFactory.getTestEventFactory().eventBuilder(LogEventBuilder.class).withData(dataMap).build();
+
+        final String jsonString = event.toJsonString();
+
+        final Object actualValue = objectUnderTest.evaluate("length(toJsonString())", event);
+
+        assertThat(actualValue, instanceOf(Integer.class));
+        assertThat((Integer) actualValue, equalTo(jsonString.length()));
     }
 }

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
@@ -253,6 +257,7 @@ public class AddEntryProcessorTests {
             return eventArg.get("testKey", String.class);
         });
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, valueExpression, false, false,null, "message", true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
@@ -320,6 +325,7 @@ public class AddEntryProcessorTests {
         ));
 
         when(expressionEvaluator.evaluate(eq(valueExpression), any())).thenReturn(3);
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("test");
@@ -902,6 +908,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithArithmeticExpression() {
         String valueExpression = "/number-key";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         Random random = new Random();
@@ -916,6 +923,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithStringExpression() {
         String valueExpression = "/string-key";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         String randomString = UUID.randomUUID().toString();
@@ -929,6 +937,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithBooleanExpression() {
         String valueExpression = "/number-key > 5";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(false);
@@ -941,6 +950,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithIntegerFunctions() {
         String valueExpression = "length(/string-key)";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("length_key", null, null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
         String randomString = UUID.randomUUID().toString();
@@ -954,6 +964,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithIntegerFunctionsAndMetadataKey() {
         String valueExpression = "length(/date)";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "length_key", null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
         String randomString = UUID.randomUUID().toString();
@@ -967,6 +978,7 @@ public class AddEntryProcessorTests {
     public void testValueExpressionWithStringExpressionWithMetadataKey() {
         String valueExpression = "/date";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newkey", null, null, valueExpression, false, false,null, null, true, null)));
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
         String randomString = UUID.randomUUID().toString();

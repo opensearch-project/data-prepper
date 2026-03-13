@@ -22,13 +22,15 @@ public class LengthExpressionFunction implements ExpressionFunction {
         return "length";
     }
 
-    public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
+    public Object evaluate(final List<Object> args, final Event event, final Function<Object, Object> convertLiteralType) {
         if (args.size() != 1) {
             throw new RuntimeException("length() takes only one argument");
         }
-        Object arg = args.get(0);
-        if (arg instanceof EventKey) {
-            EventKey eventKey = (EventKey) arg;
+        final Object arg = args.get(0);
+        if (arg instanceof String) {
+            return getLength((String) arg);
+        } else if (arg instanceof EventKey) {
+            final EventKey eventKey = (EventKey) arg;
             final Object value = event.get(eventKey, Object.class);
             if (value == null) {
                 return null;
@@ -36,10 +38,13 @@ public class LengthExpressionFunction implements ExpressionFunction {
             if (!(value instanceof String)) {
                 throw new RuntimeException(eventKey.getKey() + " is not String type");
             }
-            return Integer.valueOf(((String) value).length());
+            return getLength((String) value);
         } else {
             throw new RuntimeException("Unexpected argument type: " + arg.getClass());
         }
     }
-}
 
+    private static Integer getLength(final String value) {
+        return value.length();
+    }
+}

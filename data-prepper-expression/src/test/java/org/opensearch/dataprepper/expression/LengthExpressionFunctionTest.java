@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -47,7 +48,7 @@ class LengthExpressionFunctionTest {
     @ValueSource(ints = {0, 1, 2, 5, 10, 20, 50})
     void testWithEventKeyResolvingToString(int stringLength) {
         lengthExpressionFunction = createObjectUnderTest();
-        String testString = RandomStringUtils.randomAlphabetic(stringLength);
+        final String testString = RandomStringUtils.insecure().nextAlphabetic(stringLength);
         testEvent = createTestEvent(Map.of("key", testString));
         EventKey eventKey = eventKeyFactory.createEventKey("/key");
         assertThat(lengthExpressionFunction.evaluate(List.of(eventKey), testEvent, testFunction), equalTo(testString.length()));
@@ -84,10 +85,13 @@ class LengthExpressionFunctionTest {
         assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
     }
 
-    @Test
-    void testWithStringArgumentThrowsRuntimeException() {
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 5, 10, 20, 50})
+    void evaluate_with_a_string_argument(final int stringLength) {
         lengthExpressionFunction = createObjectUnderTest();
-        testEvent = createTestEvent(Map.of("key", "value"));
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("someString"), testEvent, testFunction));
+        final String testString = RandomStringUtils.insecure().nextAlphabetic(stringLength);
+        testEvent = createTestEvent(Collections.emptyMap());
+        assertThat(lengthExpressionFunction.evaluate(List.of(testString), testEvent, testFunction),
+                equalTo(testString.length()));
     }
 }
