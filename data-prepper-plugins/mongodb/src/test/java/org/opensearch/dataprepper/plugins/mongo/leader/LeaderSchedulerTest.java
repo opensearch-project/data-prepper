@@ -33,9 +33,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -289,5 +291,35 @@ public class LeaderSchedulerTest {
     @Test
     void test_shouldInitStream_withNullS3PathPrefix() {
         assertThrows(IllegalArgumentException.class, () -> new LeaderScheduler(coordinator, mongoDBSourceConfig, null, Duration.ofMillis(100)));
+    }
+
+    @Test
+    void test_saveProgressStateThrowsException_schedulerContinuesAndReacquiresLeader() {
+        given(mongoDBSourceConfig.getCollections()).willReturn(List.of());
+        leaderScheduler = new LeaderScheduler(coordinator, mongoDBSourceConfig, TEST_S3_PATH_PREFIX, Duration.ofMillis(100));
+        leaderPartition = new LeaderPartition();
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        doThrow(new RuntimeException("saveProgressState failed"))
+                .when(coordinator).saveProgressStateForPartition(eq(leaderPartition), eq(Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES)));
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> leaderScheduler.run());
+
+        // Verify saveProgressStateForPartition was called (and threw internally)
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, atLeast(1)).saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES)));
+
+        // Verify the scheduler reacquires the leader after failure —
+        // leaderPartition was reset to null, so acquireAvailablePartition is called again
+        await()
+            .atMost(Duration.ofSeconds(2))
+            .untilAsserted(() -> verify(coordinator, atLeast(2)).acquireAvailablePartition(LeaderPartition.PARTITION_TYPE));
+
+        // Scheduler is still running — didn't crash
+        assertFalse(future.isDone());
+
+        future.cancel(true);
+        executorService.shutdownNow();
     }
 }
