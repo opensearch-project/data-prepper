@@ -160,4 +160,12 @@ public class PrometheusSinkConfiguration {
         }
         return true;
     }
+
+    @AssertTrue(message = "Bearer token authentication is not yet supported.")
+    boolean isValidBearerTokenConfig() {
+        if (authentication != null && authentication.getBearerTokenOptions() != null) {
+            return false;
+        }
+        return true;
+    }
 }

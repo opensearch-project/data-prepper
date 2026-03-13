@@ -204,6 +204,31 @@ public class PrometheusSinkConfigurationTest {
     }
 
     @Test
+    void prometheus_sink_config_test_bearer_token_is_rejected() throws JsonProcessingException {
+        final String BEARER_TOKEN_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n" +
+                    " authentication:\n" +
+                    "   bearer_token:\n" +
+                    "     client_id: \"my-client-id\"\n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(BEARER_TOKEN_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(config.isValidBearerTokenConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_test_without_bearer_token_is_valid() throws JsonProcessingException {
+        final String NO_BEARER_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(NO_BEARER_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(config.isValidBearerTokenConfig());
+    }
+
+    @Test
     void prometheus_sink_config_test_aws_with_http_url_is_invalid() throws JsonProcessingException {
         final String AWS_HTTP_SINK_YAML =
             " url: \"http://localhost:8080/test\"\n" +
