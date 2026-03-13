@@ -113,7 +113,7 @@ class CredentialsProviderFactoryTest {
         when(awsCredentialsOptions.getRegion())
                 .thenReturn(Region.US_EAST_1);
         final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
-        assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+        assertThat(awsCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
     }
 
     @ParameterizedTest
@@ -185,8 +185,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
-            assertThat(actualCredentialsProvider, equalTo(stsCredentialsProvider));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             verify(stsClientBuilder).region(region);
             verify(stsClientBuilder).overrideConfiguration(any(ClientOverrideConfiguration.class));
@@ -227,8 +226,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
-            assertThat(actualCredentialsProvider, equalTo(stsCredentialsProvider));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             verify(stsClientBuilder).region(region);
             verify(stsClientBuilder).overrideConfiguration(any(ClientOverrideConfiguration.class));
@@ -261,7 +259,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             verify(stsClientBuilder, never()).region(any(Region.class));
         }
@@ -291,7 +289,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -335,7 +333,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -371,7 +369,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -413,7 +411,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -444,7 +442,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -474,7 +472,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
             verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
@@ -508,8 +506,7 @@ class CredentialsProviderFactoryTest {
                 actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
             }
 
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
-            assertThat(actualCredentialsProvider, equalTo(stsCredentialsProvider));
+            assertThat(actualCredentialsProvider, instanceOf(BackoffCredentialsProvider.class));
 
             final ArgumentCaptor<ClientOverrideConfiguration> clientOverrideConfigurationArgumentCaptor =
                     ArgumentCaptor.forClass(ClientOverrideConfiguration.class);
