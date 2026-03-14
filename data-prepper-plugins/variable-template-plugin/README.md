@@ -77,14 +77,94 @@ Because of how the variables get templated it wont work if you use the variables
 And you can only set variables as standalone. So you cant define them inside a string. This applies also to expression.
 This will be supported in upcomming feature.
 
-- Wont work:
+## Wont work:
+```yaml
 URL: ${{env:OPENSEARCH_HOST}}:9200
----
+```
+
+```yaml
 processor:
     - add_entries:
         entries:
           - key: "Resolve worked?"
             value: "yes"
             add_when: "/event_key == ${{store:TEST_KEY}}"
+```
 
+## Full Setup:
+```yaml
+# data-prepper-config.yaml
+ssl: false
+extensions:
+  variable_sources:
+    resolvers:
+      env: true
+      file: true
+      store:
+        enabled: true
+        sources:
+          - /var/secrets/.env
+          - /var/secrets/store.txt
+  aws:
+    secrets:
+      aws_example_secret:
+        secret_id: dataprepper_local
+        region: us-east-1
+  geoip_service:
+    maxmind:
+```
 
+```yaml
+# pipelines.yaml
+simple-sample-pipeline:
+  workers: 2
+  delay: "5000"
+  source:
+    random:
+  processor:
+    - add_entries:
+        entries:
+          - key: "env-variable"
+            value: "${{env:DEMO_ENVIRONMENT_KEY}}"
+          - key: "file-variable"
+            value: ${{file:/var/secrets/secret-file.txt}}
+          - key: "store_first_variable"
+            value: ${{store:STORE_FIRST_ENTRY}}
+          - key: "store_second_variable"
+            value: ${{store:STORE_SECOND_ENTRY}}
+          - key: "store_second_variable"
+            value: ${{store:STORE_THIRD_ENTRY}}
+          - key: "aws_secret_variable"
+            value: "${{aws_secrets:aws_example_secret}}"
+  sink:
+    - stdout:
+    - file:
+        path: ${{store:OUTPUT_FILE}}
+    - opensearch:
+        hosts: ["${{store:OPENSEARCH_HOST}}"]
+        index: ${{store:INDEX_NAME}}
+        username: "admin"
+        password: "${{env:OPENSEARCH_PASSWORD}}"
+        insecure: true
+```
+
+```json
+# stdout sink
+{"message":"058b3a98-fc63-428c-b43b-e9c85ce469c7","env-variable":"VALUE_FROM_ENVIRONMENT","file-variable":"value-from-secret-file","store_first_variable":"FIRST_STORE_VALUE","store_second_variable":"SECOND_STORE_VALUE","aws_secret_variable":"{\"aws_demo_key\":\"secret_from_aws\"}"}
+```
+
+```json
+# opensearch sink
+{
+  "_index" : "index-name-from-store",
+  "_id" : "C-V-7JwB-wKI_oflC0Kg",
+  "_score" : 1.0,
+  "_source" : {
+    "message" : "43a60d0b-026a-4bf5-9d19-6b55f689fd91",
+    "env-variable" : "VALUE_FROM_ENVIRONMENT",
+    "file-variable" : "value-from-secret-file",
+    "store_first_variable" : "FIRST_STORE_VALUE",
+    "store_second_variable" : "SECOND_STORE_VALUE",
+    "aws_secret_variable" : "{\"aws_demo_key\":\"secret_from_aws\"}"
+}
+```
