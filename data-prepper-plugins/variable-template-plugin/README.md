@@ -42,7 +42,7 @@ password: ${{file:/var/secrets/opensearch/password}}
 Reads key/value pairs from one or more `.env`-style files and resolves them by key.
 
 ```yaml
-image: ${{store:LOCAL_IMAGE_NAME_DOCKERHUB}}
+image: ${{store:OPENSEARCH_URL}}
 ```
 
 `.env, .txt or other` file format:
@@ -51,7 +51,7 @@ image: ${{store:LOCAL_IMAGE_NAME_DOCKERHUB}}
 KEY=value
 QUOTED="also works"
 SPECIAL=p@$$w0rd!
-URL=https://host.docker.internal:9200
+OPENSEARCH_URL=https://host.docker.internal:9200
 ```
 
 Rules:
@@ -73,8 +73,18 @@ This plugin uses the Data Prepper extension framework's `PluginConfigValueTransl
 
 ## Known Limitations
 
-Because of how the variables get templated it wont work if you use the variables in the aws section.
-And you can only set variables as standalone. So you cant define them inside a string. 
+Because of how the variables get templated it wont work if you use the variables in the aws-extension config.
+And you can only set variables as standalone. So you cant define them inside a string. This applies also to expression.
 This will be supported in upcomming feature.
 
-${{env:OPENSEARCH_HOST}}:9200
+- Wont work:
+URL: ${{env:OPENSEARCH_HOST}}:9200
+---
+processor:
+    - add_entries:
+        entries:
+          - key: "Resolve worked?"
+            value: "yes"
+            add_when: "/event_key == ${{store:TEST_KEY}}"
+
+
