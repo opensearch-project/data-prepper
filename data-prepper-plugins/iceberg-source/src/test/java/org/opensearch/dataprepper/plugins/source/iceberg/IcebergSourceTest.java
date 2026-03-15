@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 
 import java.util.List;
@@ -37,6 +38,9 @@ class IcebergSourceTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
+    private EventFactory eventFactory;
+
+    @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
     @Mock
@@ -47,7 +51,7 @@ class IcebergSourceTest {
         when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(true);
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
 
-        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager);
+        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager, eventFactory);
         assertThat(source.areAcknowledgementsEnabled(), equalTo(true));
     }
 
@@ -56,7 +60,7 @@ class IcebergSourceTest {
         when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
 
-        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager);
+        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager, eventFactory);
         assertThat(source.areAcknowledgementsEnabled(), equalTo(false));
     }
 
@@ -64,7 +68,7 @@ class IcebergSourceTest {
     void getPartitionFactory_returnsNonNull() {
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
 
-        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager);
+        final IcebergSource source = new IcebergSource(sourceConfig, pluginMetrics, acknowledgementSetManager, eventFactory);
         assertThat(source.getPartitionFactory() != null, equalTo(true));
     }
 }
