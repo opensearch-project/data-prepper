@@ -86,7 +86,7 @@ public class TaskGrouper {
             }
         }
 
-        LOG.info("Planned {} task group(s) for table {} (snapshot {} -> {})",
+        LOG.debug("Planned {} task group(s) for table {} (snapshot {} -> {})",
                 result.size(), tableName, fromSnapshotIdExclusive, toSnapshotId);
         return result;
     }

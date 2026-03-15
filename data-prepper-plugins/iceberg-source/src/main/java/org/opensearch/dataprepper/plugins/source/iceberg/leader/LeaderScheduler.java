@@ -10,11 +10,13 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
+import io.micrometer.core.instrument.Counter;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableScan;
 import org.apache.iceberg.io.CloseableIterable;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.TableConfig;
@@ -41,22 +43,26 @@ public class LeaderScheduler implements Runnable {
     private static final Duration DEFAULT_EXTEND_LEASE_DURATION = Duration.ofMinutes(3);
     private static final Duration COMPLETION_CHECK_INTERVAL = Duration.ofSeconds(2);
     static final String SNAPSHOT_COMPLETION_PREFIX = "snapshot-completion-";
+    static final String SNAPSHOTS_PROCESSED_COUNT = "snapshotsProcessed";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final Map<String, TableConfig> tableConfigs;
     private final Duration pollingInterval;
     private final Map<String, Table> tables;
     private final TaskGrouper taskGrouper = new TaskGrouper();
+    private final Counter snapshotsProcessedCounter;
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final Map<String, TableConfig> tableConfigs,
                            final Duration pollingInterval,
-                           final Map<String, Table> tables) {
+                           final Map<String, Table> tables,
+                           final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.tableConfigs = tableConfigs;
         this.pollingInterval = pollingInterval;
         this.tables = tables;
+        this.snapshotsProcessedCounter = pluginMetrics.counter(SNAPSHOTS_PROCESSED_COUNT);
     }
 
     @Override
@@ -252,6 +258,7 @@ public class LeaderScheduler implements Runnable {
                         leaderPartition, DEFAULT_EXTEND_LEASE_DURATION);
 
                 LOG.info("Snapshot {} completed for table {}", snapshot.snapshotId(), tableName);
+                snapshotsProcessedCounter.increment();
             }
         }
     }

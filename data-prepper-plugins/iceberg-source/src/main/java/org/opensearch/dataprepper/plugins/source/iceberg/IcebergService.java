@@ -96,9 +96,10 @@ public class IcebergService {
         // Start schedulers with shared table references
         final List<Runnable> runnableList = new ArrayList<>();
 
-        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs, sourceConfig.getPollingInterval(), tables));
+        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs, sourceConfig.getPollingInterval(), tables, pluginMetrics));
         runnableList.add(new ChangelogWorker(
-                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager));
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, pluginMetrics,
+                new org.opensearch.dataprepper.plugins.source.iceberg.worker.IcebergDataFileReader()));
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
