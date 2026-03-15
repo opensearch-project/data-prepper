@@ -132,8 +132,6 @@ simple-sample-pipeline:
             value: ${{store:STORE_FIRST_ENTRY}}
           - key: "store_second_variable"
             value: ${{store:STORE_SECOND_ENTRY}}
-          - key: "store_second_variable"
-            value: ${{store:STORE_THIRD_ENTRY}}
           - key: "aws_secret_variable"
             value: "${{aws_secrets:aws_example_secret}}"
   sink:
@@ -154,13 +152,13 @@ simple-sample-pipeline:
 ```
 
 ```json
-# opensearch sink
+# document in opensearch
 {
   "_index" : "index-name-from-store",
   "_id" : "C-V-7JwB-wKI_oflC0Kg",
   "_score" : 1.0,
   "_source" : {
-    "message" : "43a60d0b-026a-4bf5-9d19-6b55f689fd91",
+    "message" : "058b3a98-fc63-428c-b43b-e9c85ce469c7",
     "env-variable" : "VALUE_FROM_ENVIRONMENT",
     "file-variable" : "value-from-secret-file",
     "store_first_variable" : "FIRST_STORE_VALUE",
