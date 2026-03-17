@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -226,9 +227,10 @@ public class S3ScanObjectWorkerIT {
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
 
         final S3ScanProcessingConditionEvaluator conditionEvaluator =
-                new S3ScanProcessingConditionEvaluator(s3Client, mock(ExpressionEvaluator.class));
-        return new ScanObjectWorker(s3Client, scanOptions, createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics, conditionEvaluator);
+                new S3ScanProcessingConditionEvaluator(s3Client, mock(ExpressionEvaluator.class), mock(PluginFactory.class), Collections.emptyList());
+        return new ScanObjectWorker(s3Client, scanOptions, createObjectUnderTest(s3ObjectRequest),
+                bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics,
+                conditionEvaluator, Collections.emptyMap());
     }
 
     @ParameterizedTest

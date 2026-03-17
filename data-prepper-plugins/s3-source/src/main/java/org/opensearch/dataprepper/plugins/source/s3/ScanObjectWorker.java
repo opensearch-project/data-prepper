@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -121,7 +122,8 @@ public class ScanObjectWorker implements Runnable {
                             final S3ObjectDeleteWorker s3ObjectDeleteWorker,
                             final long backOffMs,
                             final PluginMetrics pluginMetrics,
-                            final S3ScanProcessingConditionEvaluator processingConditionEvaluator){
+                            final S3ScanProcessingConditionEvaluator processingConditionEvaluator,
+                            final Map<String, List<S3ScanProcessingCondition>> bucketProcessingConditionsMap){
         this.s3Client = s3Client;
         this.backOffMs = backOffMs;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
@@ -150,17 +152,8 @@ public class ScanObjectWorker implements Runnable {
                 }
             }
         }
-        this.bucketProcessingConditionsMap = new HashMap<>();
-        if (s3SourceConfig.getS3ScanScanOptions().getBuckets() != null) {
-            for (S3ScanBucketOptions bucketOption : s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
-                final S3ScanBucketOption s3ScanBucketOption = bucketOption.getS3ScanBucketOption();
-                if (s3ScanBucketOption != null && s3ScanBucketOption.getProcessingConditions() != null) {
-                    bucketProcessingConditionsMap
-                            .computeIfAbsent(s3ScanBucketOption.getName(), k -> new ArrayList<>())
-                            .addAll(s3ScanBucketOption.getProcessingConditions());
-                }
-            }
-        }
+        this.bucketProcessingConditionsMap = bucketProcessingConditionsMap != null
+                ? Collections.unmodifiableMap(bucketProcessingConditionsMap) : Collections.emptyMap();
         this.processingConditionEvaluator = processingConditionEvaluator;
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -244,14 +237,21 @@ public class ScanObjectWorker implements Runnable {
         final String objectKey = objectToProcess.get().getPartitionKey().split("\\|")[1];
 
         final List<S3ScanProcessingCondition> conditions = bucketProcessingConditionsMap.get(bucket);
-        if (!processingConditionEvaluator.allConditionsMet(bucket, objectKey, conditions)) {
-            final S3ScanProcessingCondition failedCondition = processingConditionEvaluator.findFirstMatching(objectKey, conditions);
-            final Duration retryDelay = failedCondition != null ? failedCondition.getRetryDelay() : Duration.ofMinutes(5);
-            final int maxRetry = failedCondition != null ? failedCondition.getMaxRetry() : 10;
-            LOG.info("Processing conditions not met for {}/{}, rescheduling after {}", bucket, objectKey, retryDelay);
-            sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), retryDelay, maxRetry, false);
-            partitionKeys.remove(objectToProcess.get().getPartitionKey());
-            return;
+        final Optional<S3ScanProcessingCondition> unmetCondition = processingConditionEvaluator.firstUnmetCondition(bucket, objectKey, conditions);
+        if (unmetCondition.isPresent()) {
+            final S3ScanProcessingCondition failedCondition = unmetCondition.get();
+            final Duration retryDelay = failedCondition.getRetryDelay();
+            final int maxRetry = failedCondition.getMaxRetry();
+            final Long closedCount = objectToProcess.get().getPartitionClosedCount();
+            if (closedCount != null && closedCount + 1 >= maxRetry) {
+                LOG.warn("Max retries ({}) reached for processing conditions on {}/{}, processing object as-is",
+                        maxRetry, bucket, objectKey);
+            } else {
+                LOG.info("Processing conditions not met for {}/{}, rescheduling after {}", bucket, objectKey, retryDelay);
+                sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), retryDelay, maxRetry, false);
+                partitionKeys.remove(objectToProcess.get().getPartitionKey());
+                return;
+            }
         }
 
         try {

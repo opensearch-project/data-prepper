@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
@@ -54,6 +55,9 @@ class S3ScanServiceTest {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    @Mock
+    private PluginFactory pluginFactory;
+
     @Test
     void scan_service_test_and_verify_thread_invoking() {
         S3ScanService s3ScanService = mock(S3ScanService.class);
@@ -81,7 +85,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator, pluginFactory);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getS3ScanFilter().getS3scanIncludePrefixOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
@@ -108,7 +112,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator, pluginFactory);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getS3ScanFilter().getS3scanIncludePrefixOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
@@ -137,7 +141,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator, pluginFactory);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getS3ScanFilter().getS3scanIncludePrefixOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
