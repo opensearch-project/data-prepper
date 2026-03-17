@@ -14,6 +14,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.util.Map;
 
@@ -41,6 +42,7 @@ public class OtelLogsSourceConfigFixture {
     public static OTelLogsSourceConfig.OTelLogsSourceConfigBuilder createDefaultConfigBuilder() {
         return OTelLogsSourceConfig.builder()
                 .healthCheck(true)
+                .httpPath(CONFIG_HTTP_PATH)
                 .port(DEFAULT_PORT)
                 .enableUnframedRequests(false)
                 .ssl(false)
