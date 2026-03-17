@@ -477,18 +477,26 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
           version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
         } catch (final NumberFormatException e) {
+          // Skip this event from the bulk request after sending to DLQ to avoid
+          // including events with invalid versions in the OpenSearch bulk request.
+          // See https://github.com/opensearch-project/data-prepper/issues/6601
           final String errorMessage = String.format(
                   "Unable to convert the result of evaluating document_version '%s' to Long for an Event. The evaluation result '%s' must be a valid Long type", versionExpression, versionExpressionEvaluationResult
           );
           LOG.error(errorMessage);
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
+          continue;
         } catch (final RuntimeException e) {
+          // Skip this event from the bulk request after sending to DLQ to avoid
+          // including events with invalid versions in the OpenSearch bulk request.
+          // See https://github.com/opensearch-project/data-prepper/issues/6601
           final String errorMessage = String.format(
                   "There was an exception when evaluating the document_version '%s': %s", versionExpression, e.getMessage());
           LOG.error(errorMessage + " Check the dlq if configured to see more details about the affected Event");
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
+          continue;
         }
       }
 
