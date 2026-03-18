@@ -11,6 +11,9 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
@@ -54,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -351,6 +355,62 @@ public class OpenSearchSinkTest {
         assertThat(failedDlqDataResult.getMessage().startsWith("Unable to convert the result of evaluating document_version"), equalTo(true));
 
         verify(dynamicDocumentVersionDroppedEvents).increment();
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidVersionExceptionProvider")
+    void doOutput_with_invalid_version_expression_does_not_add_event_to_bulk_request(
+            final Class<? extends RuntimeException> exceptionType) throws IOException {
+        when(pluginSetting.getName()).thenReturn("opensearch");
+        final String versionExpression = UUID.randomUUID().toString();
+        when(indexConfiguration.getVersionExpression()).thenReturn(versionExpression);
+
+        final Event event = mock(JacksonEvent.class);
+        final String document = UUID.randomUUID().toString();
+        when(event.toJsonString()).thenReturn(document);
+        final EventHandle eventHandle = mock(EventHandle.class);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        final String index = UUID.randomUUID().toString();
+        when(event.formatString(versionExpression, expressionEvaluator)).thenThrow(exceptionType);
+        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
+        final Record<Event> eventRecord = new Record<>(event);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        when(indexManager.getIndexName(anyString())).thenReturn(index);
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        final DlqObject.Builder dlqObjectBuilder = mock(DlqObject.Builder.class);
+        when(dlqObjectBuilder.withEventHandle(eventHandle)).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withFailedData(any(FailedDlqData.class))).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginName(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginId(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPipelineName(pipelineDescription.getPipelineName())).thenReturn(dlqObjectBuilder);
+        when(dlqObject.getFailedData()).thenReturn(mock(FailedDlqData.class));
+        doNothing().when(dlqObject).releaseEventHandle(false);
+        when(dlqObjectBuilder.build()).thenReturn(dlqObject);
+
+        try (final MockedStatic<DocumentBuilder> documentBuilderMockedStatic = mockStatic(DocumentBuilder.class);
+             final MockedStatic<DlqObject> dlqObjectMockedStatic = mockStatic(DlqObject.class)) {
+            documentBuilderMockedStatic.when(() -> DocumentBuilder.build(eq(event), eq(null), eq(null), eq(null), eq(null)))
+                    .thenReturn(UUID.randomUUID().toString());
+            dlqObjectMockedStatic.when(DlqObject::builder).thenReturn(dlqObjectBuilder);
+            objectUnderTest.doOutput(List.of(eventRecord));
+        }
+
+        verify(dynamicDocumentVersionDroppedEvents).increment();
+        verify(event, times(0)).getJsonNode();
+    }
+
+    private static Stream<Arguments> invalidVersionExceptionProvider() {
+        return Stream.of(
+                Arguments.of(NumberFormatException.class),
+                Arguments.of(RuntimeException.class)
+        );
     }
 
     @Test
