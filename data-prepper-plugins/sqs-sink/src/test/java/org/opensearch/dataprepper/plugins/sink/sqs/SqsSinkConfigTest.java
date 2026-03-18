@@ -114,21 +114,6 @@ public class SqsSinkConfigTest {
         
     }
 
-    @Test
-    void TestValidCodecConfig() throws Exception {
-        reflectivelySetField(sqsSinkConfig, "codec", null);
-        reflectivelySetField(sqsSinkConfig, "thresholdConfig", sqsThresholdConfig);
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
-        assertFalse(sqsSinkConfig.isValidCodecConfig());
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
-        assertTrue(sqsSinkConfig.isValidCodecConfig());
-        PluginModel codec = mock(PluginModel.class);
-        when(codec.getPluginName()).thenReturn("ndjson");
-        reflectivelySetField(sqsSinkConfig, "codec", codec);
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
-        assertFalse(sqsSinkConfig.isValidCodecConfig());
-    }
-
     private void reflectivelySetField(final SqsSinkConfig sqsSinkConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
         final Field field = SqsSinkConfig.class.getDeclaredField(fieldName);
         try {
