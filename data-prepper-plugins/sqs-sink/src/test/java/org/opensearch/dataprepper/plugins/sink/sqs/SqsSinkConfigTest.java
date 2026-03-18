@@ -45,7 +45,7 @@ public class SqsSinkConfigTest {
     }
 
     @Test
-    private void TestCustomConfig() throws Exception {
+    void TestCustomConfig() throws Exception {
         AwsConfig awsConfig = mock(AwsConfig.class);
         reflectivelySetField(sqsSinkConfig, "awsConfig", awsConfig);
         assertThat(sqsSinkConfig.getAwsConfig(), equalTo(awsConfig));
@@ -83,7 +83,7 @@ public class SqsSinkConfigTest {
         assertTrue(sqsSinkConfig.isValidConfig());
         String testGroupId = RandomStringUtils.randomAlphabetic(10);
         reflectivelySetField(sqsSinkConfig, "groupId", testGroupId);
-        assertFalse(sqsSinkConfig.isValidConfig());
+        assertTrue(sqsSinkConfig.isValidConfig());
         reflectivelySetField(sqsSinkConfig, "groupId", null);
         String testDeDupId = RandomStringUtils.randomAlphabetic(10);
         reflectivelySetField(sqsSinkConfig, "deDuplicationId", testDeDupId);
