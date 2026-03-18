@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
@@ -44,6 +45,8 @@ public class LeaderScheduler implements Runnable {
     private static final Duration COMPLETION_CHECK_INTERVAL = Duration.ofSeconds(2);
     static final String SNAPSHOT_COMPLETION_PREFIX = "snapshot-completion-";
     static final String SNAPSHOTS_PROCESSED_COUNT = "snapshotsProcessed";
+    static final String DATA_FILE_BYTES = "dataFileBytes";
+    static final String DATA_FILES_PER_TASK = "dataFilesPerTask";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final Map<String, TableConfig> tableConfigs;
@@ -51,6 +54,8 @@ public class LeaderScheduler implements Runnable {
     private final Map<String, Table> tables;
     private final TaskGrouper taskGrouper = new TaskGrouper();
     private final Counter snapshotsProcessedCounter;
+    private final DistributionSummary dataFileBytesSummary;
+    private final DistributionSummary dataFilesPerTaskSummary;
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
@@ -63,6 +68,8 @@ public class LeaderScheduler implements Runnable {
         this.pollingInterval = pollingInterval;
         this.tables = tables;
         this.snapshotsProcessedCounter = pluginMetrics.counter(SNAPSHOTS_PROCESSED_COUNT);
+        this.dataFileBytesSummary = pluginMetrics.summary(DATA_FILE_BYTES);
+        this.dataFilesPerTaskSummary = pluginMetrics.summary(DATA_FILES_PER_TASK);
     }
 
     @Override
@@ -143,6 +150,9 @@ public class LeaderScheduler implements Runnable {
 
             try (CloseableIterable<FileScanTask> tasks = scan.planFiles()) {
                 for (final FileScanTask task : tasks) {
+                    dataFileBytesSummary.record(task.file().fileSizeInBytes());
+                    dataFilesPerTaskSummary.record(1);
+
                     final InitialLoadTaskProgressState taskState = new InitialLoadTaskProgressState();
                     taskState.setSnapshotId(snapshotId);
                     taskState.setTableName(tableName);
@@ -229,7 +239,8 @@ public class LeaderScheduler implements Runnable {
                         snapshot.snapshotId(), tableName, snapshot.operation());
 
                 final List<ChangelogTaskProgressState> taskGroups =
-                        taskGrouper.planAndGroup(table, tableName, parentId, snapshot.snapshotId());
+                        taskGrouper.planAndGroup(table, tableName, parentId, snapshot.snapshotId(),
+                                dataFileBytesSummary, dataFilesPerTaskSummary);
 
                 if (taskGroups.isEmpty()) {
                     progressState.setLastProcessedSnapshotId(snapshot.snapshotId());
