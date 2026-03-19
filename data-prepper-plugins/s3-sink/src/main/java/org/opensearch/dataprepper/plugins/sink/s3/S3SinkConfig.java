@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3;
@@ -18,6 +22,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresho
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ClientOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 
 import java.util.Map;
@@ -107,6 +112,10 @@ public class S3SinkConfig {
 
     @JsonProperty("client")
     private ClientOptions clientOptions;
+
+    @JsonProperty("server_side_encryption")
+    @Valid
+    private ServerSideEncryptionConfig serverSideEncryptionConfig;
 
     /**
      * Aws Authentication configuration Options.
@@ -212,5 +221,9 @@ public class S3SinkConfig {
 
     public ClientOptions getClientOptions() {
         return clientOptions;
+    }
+
+    public ServerSideEncryptionConfig getServerSideEncryptionConfig() {
+        return serverSideEncryptionConfig;
     }
 }

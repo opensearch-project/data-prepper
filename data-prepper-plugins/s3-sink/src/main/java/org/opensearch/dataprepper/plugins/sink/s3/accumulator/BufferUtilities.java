@@ -1,10 +1,15 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,17 +39,12 @@ class BufferUtilities {
                                                                                final String targetBucket,
                                                                                final String defaultBucket,
                                                                                final Map<String, String> objectMetadata,
-                                                                               final BucketOwnerProvider bucketOwnerProvider) {
+                                                                               final BucketOwnerProvider bucketOwnerProvider,
+                                                                               final ServerSideEncryptionConfig serverSideEncryptionConfig) {
 
         final boolean[] defaultBucketAttempted = new boolean[1];
-        PutObjectRequest.Builder builder =  PutObjectRequest.builder()
-                .bucket(targetBucket)
-                .key(objectKey)
-                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(targetBucket).orElse(null));
-        if (objectMetadata != null) {
-            builder = builder.metadata(objectMetadata);
-        }
-        return s3Client.putObject(builder.build(), requestBody)
+        final PutObjectRequest putObjectRequest = buildPutObjectRequest(targetBucket, objectKey, objectMetadata, bucketOwnerProvider, serverSideEncryptionConfig);
+        return s3Client.putObject(putObjectRequest, requestBody)
                 .handle((result, ex) -> {
                     if (ex != null) {
                         runOnFailure.accept(ex);
@@ -53,13 +53,8 @@ class BufferUtilities {
                                 (ex instanceof NoSuchBucketException || ex.getCause() instanceof NoSuchBucketException || ex.getMessage().contains(ACCESS_DENIED) || ex.getMessage().contains(INVALID_BUCKET))) {
                             LOG.warn("Bucket {} could not be accessed, attempting to send to default_bucket {}", targetBucket, defaultBucket);
                             defaultBucketAttempted[0] = true;
-                            return s3Client.putObject(
-                                    PutObjectRequest.builder()
-                                            .bucket(defaultBucket)
-                                            .key(objectKey)
-                                            .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(defaultBucket).orElse(null))
-                                            .build(),
-                                    requestBody);
+                            final PutObjectRequest defaultPutObjectRequest = buildPutObjectRequest(defaultBucket, objectKey, null, bucketOwnerProvider, serverSideEncryptionConfig);
+                            return s3Client.putObject(defaultPutObjectRequest, requestBody);
                         } else {
                             runOnCompletion.accept(false);
                             return CompletableFuture.completedFuture(result);
@@ -79,5 +74,23 @@ class BufferUtilities {
                         runOnCompletion.accept(ex == null);
                     }
                 });
+    }
+
+    private static PutObjectRequest buildPutObjectRequest(final String bucket,
+                                                          final String objectKey,
+                                                          final Map<String, String> objectMetadata,
+                                                          final BucketOwnerProvider bucketOwnerProvider,
+                                                          final ServerSideEncryptionConfig serverSideEncryptionConfig) {
+        final PutObjectRequest.Builder builder = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(bucket).orElse(null));
+        if (objectMetadata != null) {
+            builder.metadata(objectMetadata);
+        }
+        if (serverSideEncryptionConfig != null) {
+            serverSideEncryptionConfig.applyTo(builder);
+        }
+        return builder.build();
     }
 }

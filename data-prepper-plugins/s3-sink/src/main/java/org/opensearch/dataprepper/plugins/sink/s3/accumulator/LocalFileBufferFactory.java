@@ -1,10 +1,15 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,12 +33,13 @@ public class LocalFileBufferFactory implements BufferFactory {
                             final Supplier<String> keySupplier,
                             final String defaultBucket,
                             final Function<Integer, Map<String, String>> metadataSupplier,
-                            final BucketOwnerProvider bucketOwnerProvider) {
+                            final BucketOwnerProvider bucketOwnerProvider,
+                            final ServerSideEncryptionConfig serverSideEncryptionConfig) {
         File tempFile = null;
         Buffer localfileBuffer = null;
         try {
             tempFile = File.createTempFile(PREFIX, SUFFIX);
-            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
+            localfileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider, serverSideEncryptionConfig);
         } catch (IOException e) {
             LOG.error("Unable to create temp file ", e);
         }

@@ -1,3 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ */
+
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.junit.jupiter.api.AfterEach;
@@ -69,7 +78,7 @@ class LocalFileBufferTest {
     void setUp() throws IOException {
         defaultBucket = UUID.randomUUID().toString();
         tempFile = File.createTempFile(PREFIX, SUFFIX);
-        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider);
+        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider, null);
     }
 
     @Test
@@ -123,7 +132,7 @@ class LocalFileBufferTest {
         try (final MockedStatic<BufferUtilities> bufferUtilitiesMockedStatic = mockStatic(BufferUtilities.class)) {
             bufferUtilitiesMockedStatic.when(() ->
                             BufferUtilities.putObjectOrSendToDefaultBucket(eq(s3Client), any(AsyncRequestBody.class),
-                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket), eq(null), eq(bucketOwnerProvider)))
+                                    eq(mockRunOnCompletion), eq(mockRunOnFailure), eq(KEY), eq(BUCKET_NAME), eq(defaultBucket), eq(null), eq(bucketOwnerProvider), eq(null)))
                     .thenReturn(expectedFuture);
 
             final Optional<CompletableFuture<?>> result = localFileBuffer.flushToS3(mockRunOnCompletion, mockRunOnFailure);

@@ -36,6 +36,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionType;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,14 +46,18 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -424,6 +430,56 @@ public class S3SinkIT {
         }
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(EncryptionArguments.class)
+    void test_server_side_encryption(final ServerSideEncryptionConfig encryptionConfig,
+                                     final ServerSideEncryption expectedEncryption,
+                                     final String expectedKmsKeyId) {
+        final OutputScenario outputScenario = new NdjsonOutputScenario();
+        final String testRun = "encryption-" + expectedEncryption + "-" + UUID.randomUUID();
+        final String pathPrefix = pathPrefixForTestSuite + testRun;
+        when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix + "/");
+
+        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
+        when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
+        when(s3SinkConfig.getCompression()).thenReturn(new NoneCompressionScenario().getCompressionOption());
+        when(thresholdOptions.getEventCount()).thenReturn(1);
+
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
+
+        when(s3SinkConfig.getServerSideEncryptionConfig()).thenReturn(encryptionConfig);
+
+        final S3Sink objectUnderTest = createObjectUnderTest();
+
+        final List<Record<Event>> events = List.of(new Record<>(generateTestEvent(generateEventData(1))));
+        objectUnderTest.doOutput(events);
+
+        final ListObjectsV2Response listObjectsResponse = s3Client.listObjectsV2(ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(pathPrefix + "/")
+                .build());
+
+        assertThat(listObjectsResponse.contents().size(), equalTo(1));
+
+        final String objectKey = listObjectsResponse.contents().get(0).key();
+        final HeadObjectResponse headResponse = s3Client.headObject(HeadObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build());
+
+        assertThat(headResponse.serverSideEncryption(), equalTo(expectedEncryption));
+        assertThat(headResponse.ssekmsKeyId(), equalTo(expectedKmsKeyId));
+    }
+
+    private static void setField(final Object object, final String fieldName, final Object value) throws Exception {
+        final Field field = object.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(object, value);
+    }
+
     private File decompressFileIfNecessary(OutputScenario outputScenario, CompressionScenario compressionScenario, String pathPrefix, File target) throws IOException {
 
         if (outputScenario.isCompressionInternal() || !compressionScenario.requiresDecompression())
@@ -549,6 +605,31 @@ public class S3SinkIT {
             return Stream.of(
                     arguments(new NdjsonOutputScenario()),
                     arguments(new JsonOutputScenario()));
+        }
+    }
+
+    static class EncryptionArguments implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) throws Exception {
+            final String kmsKeyId = System.getProperty("tests.s3sink.kms_key");
+
+            final ServerSideEncryptionConfig s3Config = new ServerSideEncryptionConfig();
+            setField(s3Config, "type", ServerSideEncryptionType.S3);
+
+            final ServerSideEncryptionConfig kmsConfig = new ServerSideEncryptionConfig();
+            setField(kmsConfig, "type", ServerSideEncryptionType.KMS);
+            setField(kmsConfig, "kmsKeyId", kmsKeyId);
+
+            final ServerSideEncryptionConfig dsseConfig = new ServerSideEncryptionConfig();
+            setField(dsseConfig, "type", ServerSideEncryptionType.KMS_DSSE);
+            setField(dsseConfig, "kmsKeyId", kmsKeyId);
+
+            return Stream.of(
+                    arguments(null, ServerSideEncryption.AES256, null),
+                    arguments(s3Config, ServerSideEncryption.AES256, null),
+                    arguments(kmsConfig, ServerSideEncryption.AWS_KMS, kmsKeyId),
+                    arguments(dsseConfig, ServerSideEncryption.AWS_KMS_DSSE, kmsKeyId)
+            );
         }
     }
 

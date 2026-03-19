@@ -77,6 +77,7 @@ task integrationTest(type: Test) {
     systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
     systemProperty 'tests.s3sink.bucket', System.getProperty('tests.s3sink.bucket')
     systemProperty 'tests.s3sink.region', System.getProperty('tests.s3sink.region')
+    systemProperty 'tests.s3sink.kms_key', System.getProperty('tests.s3sink.kms_key')
 
     filter {
         includeTestsMatching '*IT'

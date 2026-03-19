@@ -1,3 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ */
+
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +23,8 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionType;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -21,6 +32,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 
 import java.util.List;
 import java.util.Optional;
@@ -80,7 +92,7 @@ public class BufferUtilitiesTest {
 
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(successfulFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider, null).join();
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(1)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -101,7 +113,7 @@ public class BufferUtilitiesTest {
         final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(NoSuchBucketException.builder().build());
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null, null,  bucketOwnerProvider).join();
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, null, null,  bucketOwnerProvider, null).join();
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -115,7 +127,7 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture);
 
         BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket,
-                defaultBucketEnabled ? defaultBucket : null, null, bucketOwnerProvider);
+                defaultBucketEnabled ? defaultBucket : null, null, bucketOwnerProvider, null);
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), eq(requestBody));
         verify(mockRunOnCompletion).accept(false);
@@ -130,7 +142,7 @@ public class BufferUtilitiesTest {
         when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture).thenReturn(successfulFuture);
 
         when(bucketOwnerProvider.getBucketOwner(anyString())).thenReturn(Optional.empty());
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider);
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider, null);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -168,7 +180,7 @@ public class BufferUtilitiesTest {
         when(bucketOwnerProvider.getBucketOwner(targetBucket)).thenReturn(Optional.of(bucketOwner));
         when(bucketOwnerProvider.getBucketOwner(defaultBucket)).thenReturn(Optional.of(defaultBucketOwner));
 
-        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider);
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider, null);
 
         final ArgumentCaptor<PutObjectRequest> argumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client, times(2)).putObject(argumentCaptor.capture(), eq(requestBody));
@@ -191,6 +203,32 @@ public class BufferUtilitiesTest {
         inOrder.verify(mockRunOnFailure).accept(noSuchBucketException);
         inOrder.verify(mockRunOnFailure).accept(any(CompletionException.class));
         inOrder.verify(mockRunOnCompletion).accept(false);
+    }
+
+    @Test
+    void putObjectOrSendToDefaultBucket_with_encryption_config_applies_encryption_to_request() {
+        final ServerSideEncryptionConfig encryptionConfig = mock(ServerSideEncryptionConfig.class);
+
+        final CompletableFuture<PutObjectResponse> successfulFuture = CompletableFuture.completedFuture(mock(PutObjectResponse.class));
+        when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(successfulFuture);
+
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider, encryptionConfig).join();
+
+        verify(encryptionConfig).applyTo(any(PutObjectRequest.Builder.class));
+    }
+
+    @Test
+    void putObjectOrSendToDefaultBucket_with_encryption_config_applies_encryption_to_default_bucket_request() {
+        final ServerSideEncryptionConfig encryptionConfig = mock(ServerSideEncryptionConfig.class);
+
+        final CompletableFuture<PutObjectResponse> failedFuture = CompletableFuture.failedFuture(NoSuchBucketException.builder().build());
+        final CompletableFuture<PutObjectResponse> successfulFuture = CompletableFuture.completedFuture(mock(PutObjectResponse.class));
+        when(s3Client.putObject(any(PutObjectRequest.class), eq(requestBody))).thenReturn(failedFuture).thenReturn(successfulFuture);
+        when(bucketOwnerProvider.getBucketOwner(anyString())).thenReturn(Optional.empty());
+
+        BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, requestBody, mockRunOnCompletion, mockRunOnFailure, objectKey, targetBucket, defaultBucket, null, bucketOwnerProvider, encryptionConfig);
+
+        verify(encryptionConfig, times(2)).applyTo(any(PutObjectRequest.Builder.class));
     }
 
     private static class ExceptionsProvider implements ArgumentsProvider {

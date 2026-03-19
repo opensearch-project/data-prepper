@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +46,7 @@ public class LocalFileBuffer implements Buffer {
     private final Supplier<String> keySupplier;
 
     private final BucketOwnerProvider bucketOwnerProvider;
+    private final ServerSideEncryptionConfig serverSideEncryptionConfig;
     private int eventCount;
     private final StopWatch watch;
     private final File localFile;
@@ -56,7 +62,8 @@ public class LocalFileBuffer implements Buffer {
                     final Supplier<String> bucketSupplier,
                     final Supplier<String> keySupplier,
                     final String defaultBucket,
-                    final BucketOwnerProvider bucketOwnerProvider) throws FileNotFoundException {
+                    final BucketOwnerProvider bucketOwnerProvider,
+                    final ServerSideEncryptionConfig serverSideEncryptionConfig) throws FileNotFoundException {
         localFile = tempFile;
         outputStream = new BufferedOutputStream(new FileOutputStream(tempFile), 32 * 1024);
         this.s3Client = s3Client;
@@ -68,6 +75,7 @@ public class LocalFileBuffer implements Buffer {
         isCodecStarted = false;
         this.defaultBucket = defaultBucket;
         this.bucketOwnerProvider = bucketOwnerProvider;
+        this.serverSideEncryptionConfig = serverSideEncryptionConfig;
     }
 
     @Override
@@ -99,7 +107,7 @@ public class LocalFileBuffer implements Buffer {
         final CompletableFuture<PutObjectResponse> putObjectResponseCompletableFuture = BufferUtilities.putObjectOrSendToDefaultBucket(s3Client,
                 AsyncRequestBody.fromFile(localFile),
                 consumeOnCompletion, consumeOnException,
-                getKey(), getBucket(), defaultBucket, null, bucketOwnerProvider)
+                getKey(), getBucket(), defaultBucket, null, bucketOwnerProvider, serverSideEncryptionConfig)
                 .whenComplete(((response, throwable) -> removeTemporaryFile()));
         return Optional.of(putObjectResponseCompletableFuture);
     }
