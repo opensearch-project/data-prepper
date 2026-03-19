@@ -20,7 +20,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BasicAuthCredentials;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkThresholdConfig;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
@@ -132,5 +134,31 @@ public class PrometheusSinkTest extends BaseDataPrepperPluginStandardTestSuite {
         prometheusSink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
         prometheusSink.doOutput(records);
+    }
+
+    @Test
+    void test_http_sink_plugin_initializes_with_basic_auth() {
+        when(prometheusSinkConfiguration.getAwsConfig()).thenReturn(null);
+        when(prometheusSinkConfiguration.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final AuthenticationOptions authOptions = mock(AuthenticationOptions.class);
+        final BasicAuthCredentials basicCreds = mock(BasicAuthCredentials.class);
+        when(basicCreds.getUsername()).thenReturn("user");
+        when(basicCreds.getPassword()).thenReturn("pass");
+        when(authOptions.getHttpBasic()).thenReturn(basicCreds);
+        when(prometheusSinkConfiguration.getAuthentication()).thenReturn(authOptions);
+        prometheusSink = createObjectUnderTest();
+        Assertions.assertNotNull(prometheusSink);
+        prometheusSink.doInitialize();
+        assertTrue(prometheusSink.isReady(), "prometheus sink should initialize with basic auth config");
+    }
+
+    @Test
+    void test_http_sink_plugin_initializes_without_aws_config() {
+        when(prometheusSinkConfiguration.getAwsConfig()).thenReturn(null);
+        when(prometheusSinkConfiguration.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        prometheusSink = createObjectUnderTest();
+        Assertions.assertNotNull(prometheusSink);
+        prometheusSink.doInitialize();
+        assertTrue(prometheusSink.isReady(), "prometheus sink should initialize without AWS config");
     }
 }
