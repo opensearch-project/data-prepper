@@ -1,11 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
@@ -19,7 +14,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createDefaultConfig;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 
 import java.time.Duration;
 
@@ -40,6 +36,7 @@ import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.rpc.RetryInfo;
@@ -56,17 +53,22 @@ import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 @ExtendWith(MockitoExtension.class)
-class OTelMetricsSourceRetryInfoTest {
+class OTelMetricsSource_RetryInfoTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21891/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
+    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     @Mock
     private PluginFactory pluginFactory;
 
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
+
+    @Mock(lenient = true)
+    private OTelMetricsSourceConfig oTelMetricsSourceConfig;
 
     @Mock
     private Buffer<Record<? extends Metric>> buffer;
@@ -75,21 +77,35 @@ class OTelMetricsSourceRetryInfoTest {
 
     @BeforeEach
     void beforeEach() throws Exception {
-        PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_metrics", "pipeline");
-        PipelineDescription pipelineDescription = mock(PipelineDescription.class);
-        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
         Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
-        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authenticationProvider);
 
-        SOURCE = new OTelMetricsSource(createDefaultConfig(), pluginMetrics, pluginFactory, pipelineDescription);
+        when(oTelMetricsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelMetricsSourceConfig.isSsl()).thenReturn(false);
+        when(oTelMetricsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelMetricsSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelMetricsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelMetricsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+        when(oTelMetricsSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(authenticationProvider);
+
+        configureObjectUnderTest();
         SOURCE.start(buffer);
     }
 
     @AfterEach
     void afterEach() {
         SOURCE.stop();
+    }
+
+    private void configureObjectUnderTest() {
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
+
+        PipelineDescription pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
     @Test
