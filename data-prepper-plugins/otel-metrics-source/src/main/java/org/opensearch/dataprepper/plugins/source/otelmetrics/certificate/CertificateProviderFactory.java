@@ -42,7 +42,7 @@ public class CertificateProviderFactory {
 
     public CertificateProvider getCertificateProvider() {
         // ACM Cert for SSL takes preference
-        if (oTelMetricsSourceConfig.isUseAcmCertForSSL()) {
+        if (oTelMetricsSourceConfig.useAcmCertForSSL()) {
             LOG.info("Using ACM certificate and private key for SSL/TLS.");
             final AwsCredentialsProvider credentialsProvider = AwsCredentialsProviderChain.builder()
                     .addCredentialsProvider(DefaultCredentialsProvider.create()).build();

@@ -1,11 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
@@ -66,11 +61,11 @@ class OtelMetricsSourceConfigTests {
         assertEquals(DEFAULT_REQUEST_TIMEOUT_MS, otelMetricsSourceConfig.getRequestTimeoutInMillis());
         assertEquals(DEFAULT_PORT, otelMetricsSourceConfig.getPort());
         assertEquals(DEFAULT_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
-        assertEquals(DEFAULT_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
+        assertEquals(OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
         assertEquals(CompressionOption.NONE, otelMetricsSourceConfig.getCompression());
-        assertFalse(otelMetricsSourceConfig.isHealthCheck());
+        assertFalse(otelMetricsSourceConfig.hasHealthCheck());
         assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
-        assertFalse(otelMetricsSourceConfig.isProtoReflectionService());
+        assertFalse(otelMetricsSourceConfig.hasProtoReflectionService());
         assertFalse(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertNull(otelMetricsSourceConfig.getSslKeyCertChainFile());
@@ -104,9 +99,9 @@ class OtelMetricsSourceConfigTests {
         final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
 
         // When/Then
-        assertTrue(otelMetricsSourceConfig.isHealthCheck());
-        assertTrue(otelMetricsSourceConfig.isEnableUnframedRequests());
-        assertTrue(otelMetricsSourceConfig.isProtoReflectionService());
+        assertTrue(otelMetricsSourceConfig.hasHealthCheck());
+        assertTrue(otelMetricsSourceConfig.enableUnframedRequests());
+        assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
         assertTrue(otelMetricsSourceConfig.enableHttpHealthCheck());
     }
 
@@ -122,9 +117,9 @@ class OtelMetricsSourceConfigTests {
         final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
 
         // When/Then
-        assertTrue(otelMetricsSourceConfig.isHealthCheck());
-        assertFalse(otelMetricsSourceConfig.isEnableUnframedRequests());
-        assertTrue(otelMetricsSourceConfig.isProtoReflectionService());
+        assertTrue(otelMetricsSourceConfig.hasHealthCheck());
+        assertFalse(otelMetricsSourceConfig.enableUnframedRequests());
+        assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
         assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
     }
 
@@ -153,8 +148,8 @@ class OtelMetricsSourceConfigTests {
         assertEquals(TEST_PORT, otelMetricsSourceConfig.getPort());
         assertEquals(TEST_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
         assertEquals(TEST_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
-        assertTrue(otelMetricsSourceConfig.isHealthCheck());
-        assertTrue(otelMetricsSourceConfig.isProtoReflectionService());
+        assertTrue(otelMetricsSourceConfig.hasHealthCheck());
+        assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
         assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertFalse(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
@@ -188,9 +183,9 @@ class OtelMetricsSourceConfigTests {
         assertEquals(TEST_PORT, otelMetricsSourceConfig.getPort());
         assertEquals(TEST_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
         assertEquals(TEST_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
-        assertFalse(otelMetricsSourceConfig.isHealthCheck());
+        assertFalse(otelMetricsSourceConfig.hasHealthCheck());
         assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
-        assertFalse(otelMetricsSourceConfig.isProtoReflectionService());
+        assertFalse(otelMetricsSourceConfig.hasProtoReflectionService());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertTrue(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
         assertEquals(TEST_KEY_CERT_S3, otelMetricsSourceConfig.getSslKeyCertChainFile());
@@ -327,9 +322,9 @@ class OtelMetricsSourceConfigTests {
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
-        final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+        final OTelMetricsSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
 
-        RetryInfoConfig retryInfo = otelMetricsSourceConfig.getRetryInfo();
+        RetryInfoConfig retryInfo = otelTraceSourceConfig.getRetryInfo();
         assertThat(retryInfo.getMaxDelay(), equalTo(Duration.ofMillis(100)));
         assertThat(retryInfo.getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
@@ -339,7 +334,7 @@ class OtelMetricsSourceConfigTests {
                                                                     final String path,
                                                                     final boolean healthCheck,
                                                                     final boolean protoReflectionService,
-                                                                    final boolean isEnableUnframedRequests,
+                                                                    final boolean enableUnframedRequests,
                                                                     final boolean isSSL,
                                                                     final String sslKeyCertChainFile,
                                                                     final String sslKeyFile,
@@ -351,7 +346,7 @@ class OtelMetricsSourceConfigTests {
         settings.put(OTelMetricsSourceConfig.PATH, path);
         settings.put(OTelMetricsSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
         settings.put(OTelMetricsSourceConfig.PROTO_REFLECTION_SERVICE, protoReflectionService);
-        settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, isEnableUnframedRequests);
+        settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);
         settings.put(OTelMetricsSourceConfig.SSL, isSSL);
         settings.put(OTelMetricsSourceConfig.SSL_KEY_CERT_FILE, sslKeyCertChainFile);
         settings.put(OTelMetricsSourceConfig.SSL_KEY_FILE, sslKeyFile);

@@ -1,11 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
@@ -13,11 +8,6 @@ package org.opensearch.dataprepper.plugins.source.otelmetrics;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -27,11 +17,6 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
 import java.util.Set;
 
-
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
@@ -67,9 +52,6 @@ public class OTelMetricsSourceConfig {
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     private static final String NAME_KEY = "name";
     private static final String SERVICE_NAME_KEY = "service_name";
-    static final String HTTP_PATH = "http_path";
-    static final String AUTHENTICATION = "authentication";
-    static final String MAX_REQUEST_LENGTH = "max_request_length";
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -129,7 +111,7 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(MAX_CONNECTION_COUNT)
     private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
 
-    @JsonProperty(AUTHENTICATION)
+    @JsonProperty("authentication")
     private PluginModel authentication;
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
@@ -138,15 +120,11 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
 
-    @JsonProperty(MAX_REQUEST_LENGTH)
+    @JsonProperty("max_request_length")
     private ByteCount maxRequestLength;
 
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
-
-    @JsonProperty(HTTP_PATH)
-    @Size(min = 1, message = "path length should be at least 1")
-    private String httpPath;
 
     @AssertTrue(message = "buffer_partition_keys only supports 'name' and 'service_name'. 'name' is mandatory")
     boolean isBufferKeysValid() {
@@ -195,8 +173,106 @@ public class OTelMetricsSourceConfig {
                 sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
     }
 
+    public int getRequestTimeoutInMillis() {
+        return requestTimeoutInMillis;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public boolean hasHealthCheck() {
+        return healthCheck;
+    }
+
+    public Set<String> getBufferPartitionKeys() {
+        return bufferPartitionKeys;
+    }
+
     public boolean enableHttpHealthCheck() {
-        return isEnableUnframedRequests() && isHealthCheck();
+        return enableUnframedRequests() && hasHealthCheck();
+    }
+
+    public boolean hasProtoReflectionService() {
+        return protoReflectionService;
+    }
+
+    public boolean enableUnframedRequests() {
+        return enableUnframedRequests;
+    }
+
+    public boolean isSsl() {
+        return ssl;
+    }
+
+    public OTelOutputFormat getOutputFormat() {
+        return outputFormat;
+    }
+
+    public boolean useAcmCertForSSL() {
+        return useAcmCertForSSL;
+    }
+
+    public long getAcmCertIssueTimeOutMillis() {
+        return acmCertIssueTimeOutMillis;
+    }
+
+    public String getSslKeyCertChainFile() {
+        return sslKeyCertChainFile;
+    }
+
+    public String getSslKeyFile() {
+        return sslKeyFile;
+    }
+
+    public String getAcmCertificateArn() {
+        return acmCertificateArn;
+    }
+
+    public String getAcmPrivateKeyPassword() {
+        return acmPrivateKeyPassword;
+    }
+
+    public boolean isSslCertAndKeyFileInS3() {
+        return sslCertAndKeyFileInS3;
+    }
+
+    public String getAwsRegion() {
+        return awsRegion;
+    }
+
+    public int getThreadCount() {
+        return threadCount;
+    }
+
+    public int getMaxConnectionCount() {
+        return maxConnectionCount;
+    }
+
+    public PluginModel getAuthentication() { return authentication; }
+
+    public boolean isUnauthenticatedHealthCheck() {
+        return unauthenticatedHealthCheck;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
+    }
+
+    public ByteCount getMaxRequestLength() {
+        return maxRequestLength;
+    }
+
+    public RetryInfoConfig getRetryInfo() {
+        return retryInfo;
+    }
+
+    public void setRetryInfo(RetryInfoConfig retryInfo) {
+        this.retryInfo = retryInfo;
     }
 }
 
