@@ -1,0 +1,149 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
+package org.opensearch.dataprepper.plugins.processor.mutateevent;
+
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
+@DataPrepperPlugin(name = "filter_list", pluginType = Processor.class, pluginConfigurationType = FilterListProcessorConfig.class)
+public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FilterListProcessor.class);
+    private final FilterListProcessorConfig config;
+    private final ExpressionEvaluator expressionEvaluator;
+    private final String target;
+
+    @DataPrepperPluginConstructor
+    public FilterListProcessor(final PluginMetrics pluginMetrics, final FilterListProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
+        super(pluginMetrics);
+        this.config = config;
+        this.expressionEvaluator = expressionEvaluator;
+        this.target = config.getTarget() != null ? config.getTarget() : config.getSource();
+
+        if (config.getFilterListWhen() != null
+                && !expressionEvaluator.isValidExpressionStatement(config.getFilterListWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("filter_list_when %s is not a valid expression statement. " +
+                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            config.getFilterListWhen()));
+        }
+
+        if (!expressionEvaluator.isValidExpressionStatement(config.getKeepWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("keep_when %s is not a valid expression statement. " +
+                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            config.getKeepWhen()));
+        }
+    }
+
+    @Override
+    public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        for (final Record<Event> record : records) {
+            final Event recordEvent = record.getData();
+
+            try {
+                if (Objects.nonNull(config.getFilterListWhen()) && !expressionEvaluator.evaluateConditional(config.getFilterListWhen(), recordEvent)) {
+                    continue;
+                }
+
+                final List<Object> sourceList;
+                try {
+                    sourceList = recordEvent.get(config.getSource(), List.class);
+                } catch (final Exception e) {
+                    LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
+                            config.getSource(), recordEvent, e);
+                    addTagsOnFailure(recordEvent);
+                    continue;
+                }
+
+                if (sourceList == null) {
+                    LOG.debug("Source list at path [{}] is null, skipping event", config.getSource());
+                    continue;
+                }
+
+                final List<Object> filteredList = new ArrayList<>();
+                final JacksonEvent.Builder contextBuilder = JacksonEvent.builder()
+                        .withEventType("event");
+
+                for (final Object element : sourceList) {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> contextMap = element instanceof Map
+                            ? (Map<String, Object>) element
+                            : Collections.singletonMap("value", element);
+
+                    try {
+                        final Event elementEvent = contextBuilder
+                                .withData(contextMap)
+                                .build();
+
+                        if (expressionEvaluator.evaluateConditional(config.getKeepWhen(), elementEvent)) {
+                            filteredList.add(element);
+                        }
+                    } catch (final Exception e) {
+                        LOG.warn(EVENT, "Error evaluating keep_when expression [{}] for element in source list at path [{}]",
+                                config.getKeepWhen(), config.getSource(), e);
+                    }
+                }
+
+                recordEvent.put(target, filteredList);
+
+            } catch (final Exception e) {
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("There was an exception while processing Event [{}]")
+                        .addArgument(recordEvent)
+                        .setCause(e)
+                        .log();
+                addTagsOnFailure(recordEvent);
+            }
+        }
+        return records;
+    }
+
+    private void addTagsOnFailure(final Event event) {
+        if (config.getTagsOnFailure() != null) {
+            event.getMetadata().addTags(config.getTagsOnFailure());
+        }
+    }
+
+    @Override
+    public void prepareForShutdown() {
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
+    @Override
+    public void shutdown() {
+    }
+}

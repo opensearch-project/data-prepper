@@ -647,6 +647,153 @@ will end up with this after processing:
 * `tags_on_failure` - (optional): a list of tags to add to event metadata when the event fails to process
 
 
+## FilterListProcessor
+A processor that filters elements within an array field by evaluating a condition against each element, keeping only those where the condition is true. It supports arrays of objects and arrays of primitives (strings, numbers, booleans).
+
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - filter_list:
+        source: "items"
+        keep_when: '/status == "active"'
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"items": [{"name": "item1", "status": "active"}, {"name": "item2", "status": "inactive"}, {"name": "item3", "status": "active"}]}
+```
+
+When run, the processor will filter the array in-place and produce the following output:
+
+```json
+{"items": [{"name": "item1", "status": "active"}, {"name": "item3", "status": "active"}]}
+```
+
+### Filtering to a different target
+
+You can write the filtered result to a different key, leaving the original array unchanged:
+
+```yaml
+  processor:
+    - filter_list:
+        source: "items"
+        target: "active_items"
+        keep_when: '/status == "active"'
+```
+
+With the same input, the output will be:
+
+```json
+{
+  "items": [{"name": "item1", "status": "active"}, {"name": "item2", "status": "inactive"}, {"name": "item3", "status": "active"}],
+  "active_items": [{"name": "item1", "status": "active"}, {"name": "item3", "status": "active"}]
+}
+```
+
+### Filtering primitive arrays
+
+For arrays of primitives (strings, numbers, booleans), each element is accessible via the `/value` key in the expression:
+
+```yaml
+  processor:
+    - filter_list:
+        source: "tags"
+        keep_when: '/value != ""'
+```
+
+With the following input:
+
+```json
+{"tags": ["important", "", "urgent", ""]}
+```
+
+The output will be:
+
+```json
+{"tags": ["important", "urgent"]}
+```
+
+Another example filtering numbers:
+
+```yaml
+  processor:
+    - filter_list:
+        source: "scores"
+        keep_when: '/value > 50'
+```
+
+With the following input:
+
+```json
+{"scores": [90, 30, 75, 10]}
+```
+
+The output will be:
+
+```json
+{"scores": [90, 75]}
+```
+
+### Using both conditions
+
+The `filter_list_when` condition controls whether the processor runs at all (evaluated against the root event), while `keep_when` controls which elements are kept (evaluated per element):
+
+```yaml
+  processor:
+    - filter_list:
+        source: "items"
+        keep_when: '/status == "active"'
+        filter_list_when: '/env == "production"'
+```
+
+With the following input:
+
+```json
+{"env": "production", "items": [{"name": "item1", "status": "active"}, {"name": "item2", "status": "inactive"}]}
+```
+
+Since `env` is `"production"`, the processor runs and filters by `status`, producing:
+
+```json
+{"env": "production", "items": [{"name": "item1", "status": "active"}]}
+```
+
+With a different event where `filter_list_when` evaluates to `false`:
+
+```json
+{"env": "staging", "items": [{"name": "item1", "status": "active"}, {"name": "item2", "status": "inactive"}]}
+```
+
+The processor is skipped entirely and the event passes through unchanged:
+
+```json
+{"env": "staging", "items": [{"name": "item1", "status": "active"}, {"name": "item2", "status": "inactive"}]}
+```
+
+### Configuration
+* `source` - (required) - The key of the array field to filter. Supports nested paths (e.g. `outer_key/inner_list`).
+* `target` - (optional) - The key to write the filtered array to. Defaults to the `source` key (in-place filtering). Supports nested paths.
+* `keep_when` - (required) - A [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) evaluated per element. Elements where this expression evaluates to `true` are kept. For object elements, the expression is evaluated against the object's fields directly (e.g. `/status == "active"`). For primitive elements, the value is accessible via `/value` (e.g. `/value > 50`). When no elements match, the result is an empty list `[]`.
+* `filter_list_when` - (optional) - A [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) evaluated against the root event. When provided, the processor only runs if this condition is `true`. By default, all events are processed.
+* `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the processor fails to process the event.
+
+**Edge case behavior:**
+- If the `source` key does not exist or its value is `null`, the processor is a no-op and the event passes through unchanged.
+- If the `source` value is not a list (e.g. a string or number), the processor logs a warning and adds `tags_on_failure` if configured.
+- `null` elements within the list are evaluated normally. For example, with `keep_when: '/value != null'`, null elements are filtered out while non-null elements are kept.
+
+___
+
 ## Developer Guide
 This plugin is compatible with Java 11 and 17. Refer to the following developer guides for plugin development:
 - [Developer Guide](https://github.com/opensearch-project/data-prepper/blob/main/docs/developer_guide.md)
