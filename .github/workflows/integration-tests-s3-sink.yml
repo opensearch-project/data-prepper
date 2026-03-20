@@ -1,0 +1,80 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+name: Integration Tests - S3 Sink
+
+on:
+  push:
+    paths:
+      - 'data-prepper-plugins/s3-sink/**'
+      - '*gradle*'
+  pull_request_target:
+    paths:
+      - 'data-prepper-plugins/s3-sink/**'
+      - '*gradle*'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        java: [ 11, 17, 21 ]
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS Credentials
+        id: creds
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TEST_IAM_ROLE_ARN }}
+          aws-region: ${{ secrets.TEST_REGION }}
+          output-credentials: true
+
+      - name: Configure AWS Credentials file
+        run: |
+          aws configure set default.region ${{ secrets.TEST_REGION }}
+          aws configure set default.aws_access_key_id ${{ steps.creds.outputs.aws-access-key-id }}
+          aws configure set default.aws_secret_access_key ${{ steps.creds.outputs.aws-secret-access-key }}
+          aws configure set default.aws_session_token ${{ steps.creds.outputs.aws-session-token }}
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get resources from CDK stacks
+        id: cdk-resources
+        run: |
+          set -e
+          bucket=$(aws cloudformation describe-stacks --stack-name S3SinkStack --query 'Stacks[0].Outputs[?ExportName==`DataPrepperAwsTesting-S3SinkBucketName`].OutputValue' --output text)
+          kms_key=$(aws cloudformation describe-stacks --stack-name CommonKmsStack --query 'Stacks[0].Outputs[?ExportName==`DataPrepperAwsTesting-KmsKeyId`].OutputValue' --output text)
+          if [ -z "$bucket" ] || [ "$bucket" = "None" ]; then echo "Failed to get S3 bucket name"; exit 1; fi
+          if [ -z "$kms_key" ] || [ "$kms_key" = "None" ]; then echo "Failed to get KMS key ID"; exit 1; fi
+          echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+          echo "kms_key=$kms_key" >> "$GITHUB_OUTPUT"
+
+      - name: Run S3 Sink integration tests
+        run: |
+          ./gradlew data-prepper-plugins:s3-sink:integrationTest \
+            -Dtests.s3sink.region=${{ secrets.TEST_REGION }} \
+            -Dtests.s3sink.bucket=${{ steps.cdk-resources.outputs.bucket }} \
+            -Dtests.s3sink.kms_key=${{ steps.cdk-resources.outputs.kms_key }}
