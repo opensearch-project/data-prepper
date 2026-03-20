@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -34,6 +39,7 @@ public class InMemoryBuffer implements Buffer {
     private final Function<Integer, Map<String,String>> metadataSupplier;
 
     private final BucketOwnerProvider bucketOwnerProvider;
+    private final ServerSideEncryptionConfig serverSideEncryptionConfig;
     private int eventCount;
     private final StopWatch watch;
     private boolean isCodecStarted;
@@ -47,7 +53,8 @@ public class InMemoryBuffer implements Buffer {
                    final Supplier<String> keySupplier,
                    final Function<Integer, Map<String, String>> metadataSupplier,
                    final String defaultBucket,
-                   final BucketOwnerProvider bucketOwnerProvider) {
+                   final BucketOwnerProvider bucketOwnerProvider,
+                   final ServerSideEncryptionConfig serverSideEncryptionConfig) {
         this.s3Client = s3Client;
         this.bucketSupplier = bucketSupplier;
         this.keySupplier = keySupplier;
@@ -59,6 +66,7 @@ public class InMemoryBuffer implements Buffer {
         isCodecStarted = false;
         this.defaultBucket = defaultBucket;
         this.bucketOwnerProvider = bucketOwnerProvider;
+        this.serverSideEncryptionConfig = serverSideEncryptionConfig;
     }
 
     @Override
@@ -83,7 +91,7 @@ public class InMemoryBuffer implements Buffer {
         final byte[] byteArray = byteArrayOutputStream.toByteArray();
         return Optional.ofNullable(BufferUtilities.putObjectOrSendToDefaultBucket(s3Client, AsyncRequestBody.fromBytes(byteArray),
                 consumeOnCompletion, consumeOnException,
-                getKey(), getBucket(), defaultBucket, getMetadata(getEventCount()), bucketOwnerProvider));
+                getKey(), getBucket(), defaultBucket, getMetadata(getEventCount()), bucketOwnerProvider, serverSideEncryptionConfig));
     }
 
     private String getBucket() {
