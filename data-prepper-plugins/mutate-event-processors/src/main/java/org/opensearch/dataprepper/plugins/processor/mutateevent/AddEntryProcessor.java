@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -315,9 +314,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         EntryProperties props = entryProperties.get(entryIndex);
         KeyInfo keyInfo = preprocessedKeys.get(entryIndex);
 
-        if (entry.getGenerateUuid()) {
-            return UUID.randomUUID().toString();
-        } else if (!Objects.isNull(entry.getValueExpression())) {
+        if (!Objects.isNull(entry.getValueExpression())) {
             value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
         } else if (!Objects.isNull(entry.getFormat())) {
             try {

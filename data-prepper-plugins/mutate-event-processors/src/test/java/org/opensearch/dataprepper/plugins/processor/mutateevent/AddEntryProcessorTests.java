@@ -1089,9 +1089,13 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_adds_uuid_string_to_event() {
+    void test_generate_uuid_expression_adds_uuid_string_to_event() {
+        final String uuidExpr = "generate_uuid()";
+        final String generatedUuid = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-                createEntryWithGenerateUuid("recordId", false, null)));
+                createEntry("recordId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any())).thenReturn(generatedUuid);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("test-message");
@@ -1099,29 +1103,36 @@ public class AddEntryProcessorTests {
 
         final Event event = result.get(0).getData();
         assertThat(event.containsKey("recordId"), is(true));
-        final String uuid = event.get("recordId", String.class);
-        assertThat(uuid, equalTo(UUID.fromString(uuid).toString()));
+        assertThat(event.get("recordId", String.class), equalTo(generatedUuid));
     }
 
     @Test
-    void test_generate_uuid_produces_unique_values_per_event() {
+    void test_generate_uuid_expression_produces_unique_values_per_event() {
+        final String uuidExpr = "generate_uuid()";
+        final String uuid1 = UUID.randomUUID().toString();
+        final String uuid2 = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-                createEntryWithGenerateUuid("recordId", false, null)));
+                createEntry("recordId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any()))
+                .thenReturn(uuid1)
+                .thenReturn(uuid2);
 
         final AddEntryProcessor processor = createObjectUnderTest();
-        final Record<Event> record1 = getEvent("message-one");
-        final Record<Event> record2 = getEvent("message-two");
-        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Arrays.asList(record1, record2));
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(
+                Arrays.asList(getEvent("message-one"), getEvent("message-two")));
 
-        final String uuid1 = result.get(0).getData().get("recordId", String.class);
-        final String uuid2 = result.get(1).getData().get("recordId", String.class);
+        assertThat(result.get(0).getData().get("recordId", String.class), equalTo(uuid1));
+        assertThat(result.get(1).getData().get("recordId", String.class), equalTo(uuid2));
         assertThat(uuid1.equals(uuid2), is(false));
     }
 
     @Test
-    void test_generate_uuid_does_not_overwrite_existing_key_by_default() {
+    void test_generate_uuid_expression_does_not_overwrite_existing_key_by_default() {
+        final String uuidExpr = "generate_uuid()";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-                createEntryWithGenerateUuid("existingId", false, null)));
+                createEntry("existingId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Map<String, Object> data = new HashMap<>();
@@ -1133,9 +1144,13 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_overwrites_existing_key_when_overwrite_is_true() {
+    void test_generate_uuid_expression_overwrites_existing_key_when_overwrite_is_true() {
+        final String uuidExpr = "generate_uuid()";
+        final String newUuid = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-                createEntryWithGenerateUuid("existingId", true, null)));
+                createEntry("existingId", null, null, null, uuidExpr, true, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any())).thenReturn(newUuid);
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Map<String, Object> data = new HashMap<>();
@@ -1143,16 +1158,16 @@ public class AddEntryProcessorTests {
         final Record<Event> record = buildRecordWithEvent(data);
         final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        final String newValue = result.get(0).getData().get("existingId", String.class);
-        assertThat(newValue.equals("original-value"), is(false));
-        assertThat(newValue, equalTo(UUID.fromString(newValue).toString()));
+        assertThat(result.get(0).getData().get("existingId", String.class), equalTo(newUuid));
     }
 
     @Test
-    void test_generate_uuid_respects_add_when_condition() {
+    void test_generate_uuid_expression_respects_add_when_condition() {
+        final String uuidExpr = "generate_uuid()";
         final String addWhen = "/skip == true";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
-                createEntryWithGenerateUuid("recordId", false, addWhen)));
+                createEntry("recordId", null, null, null, uuidExpr, false, false, addWhen, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(eq(addWhen), any())).thenReturn(false);
 
@@ -1199,13 +1214,6 @@ public class AddEntryProcessorTests {
                 iterateOn, addToElementWhen);
     }
 
-    private AddEntryProcessorConfig.Entry createEntryWithGenerateUuid(
-            final String key,
-            final boolean overwriteIfKeyExists,
-            final String addWhen) {
-        return new AddEntryProcessorConfig.Entry(
-                key, null, null, null, null, overwriteIfKeyExists, false, addWhen, null, true, null, true);
-    }
 
     private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {
         return new LinkedList<>(Arrays.asList(entries));
