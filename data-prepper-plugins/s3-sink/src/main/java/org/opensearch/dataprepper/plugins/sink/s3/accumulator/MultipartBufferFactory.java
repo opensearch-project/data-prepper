@@ -2,9 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
@@ -28,6 +28,6 @@ public class MultipartBufferFactory implements BufferFactory {
                             final Function<Integer, Map<String, String>> metadataSupplier,
                             final BucketOwnerProvider bucketOwnerProvider,
                             final ServerSideEncryptionConfig serverSideEncryptionConfig) {
-        return new MultipartBuffer(new S3OutputStream(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider));
+        return new MultipartBuffer(new S3OutputStream(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider, serverSideEncryptionConfig));
     }
 }

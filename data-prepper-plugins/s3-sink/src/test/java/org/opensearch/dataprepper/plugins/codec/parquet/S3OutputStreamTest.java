@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec.parquet;
@@ -11,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -241,5 +246,30 @@ public class S3OutputStreamTest {
         assertThat(exception, notNullValue());
         assertThat(exception, instanceOf(CompletionException.class));
         assertThat(exception.getCause(), equalTo(mockException));
+    }
+
+    @Test
+    void close_with_encryption_config_applies_config_to_create_multipart_upload_request() {
+
+        final ServerSideEncryptionConfig serverSideEncryptionConfig = mock(ServerSideEncryptionConfig.class);
+
+        final byte[] bytes = new byte[25];
+        final String uploadId = UUID.randomUUID().toString();
+        final CreateMultipartUploadResponse createMultipartUploadResponse = mock(CreateMultipartUploadResponse.class);
+        when(createMultipartUploadResponse.uploadId()).thenReturn(uploadId);
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class))).thenReturn(CompletableFuture.completedFuture(createMultipartUploadResponse));
+
+        final UploadPartResponse uploadPartResponse = mock(UploadPartResponse.class);
+        when(uploadPartResponse.eTag()).thenReturn(UUID.randomUUID().toString());
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class))).thenReturn(CompletableFuture.completedFuture(uploadPartResponse));
+
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class))).thenReturn(CompletableFuture.completedFuture(mock(CompleteMultipartUploadResponse.class)));
+
+        final S3OutputStream s3OutputStream = new S3OutputStream(s3Client, () -> bucket, () -> objectKey, defaultBucket, bucketOwnerProvider, serverSideEncryptionConfig);
+
+        s3OutputStream.write(bytes);
+        s3OutputStream.close(runOnCompletion, runOnError);
+
+        verify(serverSideEncryptionConfig).applyTo(any(CreateMultipartUploadRequest.Builder.class));
     }
 }

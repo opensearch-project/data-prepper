@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3;
@@ -432,16 +436,17 @@ public class S3SinkIT {
 
     @ParameterizedTest
     @ArgumentsSource(EncryptionArguments.class)
-    void test_server_side_encryption(final ServerSideEncryptionConfig encryptionConfig,
+    void test_server_side_encryption(final BufferTypeOptions bufferTypeOptions,
+                                     final ServerSideEncryptionConfig encryptionConfig,
                                      final ServerSideEncryption expectedEncryption,
                                      final String expectedKmsKeyId) {
         final OutputScenario outputScenario = new NdjsonOutputScenario();
-        final String testRun = "encryption-" + expectedEncryption + "-" + UUID.randomUUID();
+        final String testRun = "encryption-" + bufferTypeOptions + "-" + expectedEncryption + "-" + UUID.randomUUID();
         final String pathPrefix = pathPrefixForTestSuite + testRun;
         when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix + "/");
 
         when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
-        when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
+        when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
         when(s3SinkConfig.getCompression()).thenReturn(new NoneCompressionScenario().getCompressionOption());
         when(thresholdOptions.getEventCount()).thenReturn(1);
 
@@ -624,12 +629,14 @@ public class S3SinkIT {
             setField(dsseConfig, "type", ServerSideEncryptionType.KMS_DSSE);
             setField(dsseConfig, "kmsKeyId", kmsKeyId);
 
-            return Stream.of(
-                    arguments(null, ServerSideEncryption.AES256, null),
-                    arguments(s3Config, ServerSideEncryption.AES256, null),
-                    arguments(kmsConfig, ServerSideEncryption.AWS_KMS, kmsKeyId),
-                    arguments(dsseConfig, ServerSideEncryption.AWS_KMS_DSSE, kmsKeyId)
-            );
+            final List<BufferTypeOptions> bufferTypes = List.of(BufferTypeOptions.INMEMORY, BufferTypeOptions.MULTI_PART);
+
+            return bufferTypes.stream().flatMap(bufferType -> Stream.of(
+                    arguments(bufferType, null, ServerSideEncryption.AES256, null),
+                    arguments(bufferType, s3Config, ServerSideEncryption.AES256, null),
+                    arguments(bufferType, kmsConfig, ServerSideEncryption.AWS_KMS, kmsKeyId),
+                    arguments(bufferType, dsseConfig, ServerSideEncryption.AWS_KMS_DSSE, kmsKeyId)
+            ));
         }
     }
 
