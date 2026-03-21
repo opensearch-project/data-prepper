@@ -111,7 +111,7 @@ public class S3EnricherCacheService {
      */
     public Cache<String, Event> getOrLoadRecordCache(String s3Url, Supplier<Cache<String, Event>> loader) {
         return s3Cache.get(s3Url, key -> {
-            LOG.info("Loading S3 data for: {}", key);
+            LOG.debug("Loading S3 data for: {}", key);
             return loader.get();
         });
     }

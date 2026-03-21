@@ -90,7 +90,7 @@ public class S3ObjectReferenceResolver {
             if (matcher.matches() && matcher.groupCount() >= 1) {
                 final String baseName = matcher.group(1);
                 if (baseName != null && !baseName.isBlank()) {
-                    return baseName + ".jsonl";
+                    return baseName + "." + config.getCodecExtension();
                 }
             }
         } catch (Exception e) {

@@ -43,7 +43,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -61,7 +60,6 @@ public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final PluginSetting codecPluginSettings;
     private final PluginFactory pluginFactory;
-    private final Pattern baseNamePattern;
     private final InputCodec codec;
     private final S3ObjectWorker s3ObjectWorker;
     protected final List<String> tagsOnFailure;
@@ -91,7 +89,6 @@ public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.pluginFactory = pluginFactory;
         CacheFactory factory = new CacheFactory(s3EnrichProcessorConfig);
         this.cacheService = new S3EnricherCacheService(factory);
-        this.baseNamePattern = Pattern.compile(s3EnrichProcessorConfig.getEnricherNamePattern());
         this.tagsOnFailure = s3EnrichProcessorConfig.getTagsOnFailure();
 
         final AwsAuthenticationAdapter awsAuthenticationAdapter = new AwsAuthenticationAdapter(awsCredentialsSupplier, s3EnrichProcessorConfig);
@@ -224,52 +221,11 @@ public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new IllegalArgumentException("No merge keys configured");
         }
 
-        List<String> failedKeys = new ArrayList<>();
-        // Merge only specified keys
-        for (EventKey eventKey : mergeKeys) {
-            try {
-                mergeKey(targetEvent, sourceEvent, eventKey);
-            } catch (Exception e) {
-                LOG.error("Failed to merge key '{}': {}", eventKey, e.getMessage(), e);
-                failedKeys.add(eventKey.getKey());
-            }
-        }
-        // Handle failures based on configuration or policy
-        if (!failedKeys.isEmpty()) {
-            if (failedKeys.size() == mergeKeys.size()) {
-                // All failed - always throw
-                throw new RuntimeException("All merge keys failed: " + failedKeys);
-            } else {
-                // Partial failure - log warning
-                LOG.warn("Failed to merge {}/{} keys: {}",
-                    failedKeys.size(), mergeKeys.size(), failedKeys);
-            }
-        }
-    }
+        final List<String> keyPaths = mergeKeys.stream()
+                .map(EventKey::getKey)
+                .collect(Collectors.toList());
 
-    /**
-     * Merges a single key from source to target event.
-     */
-    private void mergeKey(Event targetEvent, Event sourceEvent, EventKey eventKey) {
-        String keyPath = eventKey.getKey();
-
-        // Check if source has this key
-        if (!sourceEvent.containsKey(keyPath)) {
-            LOG.debug("Source event does not contain key: {}", keyPath);
-            throw new IllegalArgumentException("Source event does not contain key: " + keyPath);
-        }
-
-        // Get value from source
-        Object sourceValue = sourceEvent.get(keyPath, Object.class);
-
-        if (sourceValue == null) {
-            LOG.debug("Source value is null for key: {}", keyPath);
-            throw new IllegalArgumentException("Source value is null for key: " + keyPath);
-        }
-
-        // Put into target (will overwrite if exists)
-        targetEvent.put(eventKey, sourceValue);
-        LOG.trace("Merged key '{}' with value: {}", keyPath, sourceValue);
+        targetEvent.merge(sourceEvent, keyPaths);
     }
 
     /**

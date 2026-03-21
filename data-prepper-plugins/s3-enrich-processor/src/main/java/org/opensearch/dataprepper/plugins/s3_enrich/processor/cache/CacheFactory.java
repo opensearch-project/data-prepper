@@ -42,7 +42,7 @@ public class CacheFactory {
         Duration cacheTtl = config.getCacheTtl();
         int outerMaxSize = 100;
 
-        LOG.info("Initializing SINGLETON S3 URL Cache: maxSize={} ttl={}m",
+        LOG.info("Initializing singleton S3 URL Cache: maxCount={} ttl={}m",
                 outerMaxSize, cacheTtl.toMinutes());
 
         return Caffeine.newBuilder()
@@ -56,7 +56,7 @@ public class CacheFactory {
 
     /** Inner cache builder (1 per S3 URL) */
     public Cache<String, Event> createEventsCache(String s3Url) {
-        int maxSize = config.getCacheSizeLimit();
+        int maxSize = config.getCacheCountLimit();
         Duration cacheTtl = config.getCacheTtl();
 
         LOG.info("Creating Inner Events Cache for {}: maxSize={} ttl={}m",

@@ -447,6 +447,26 @@ public class JacksonEvent implements Event {
     }
 
     @Override
+    public void merge(final Event other, final List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            throw new IllegalArgumentException("Keys list must not be null or empty for selective merge.");
+        }
+        if (!(other instanceof JacksonEvent)) {
+            throw new IllegalArgumentException("Unable to merge the Event. The input Event must be a JacksonEvent.");
+        }
+        if (!(jsonNode instanceof ObjectNode)) {
+            throw new UnsupportedOperationException("Unable to merge the Event. The current Event must have object data.");
+        }
+
+        for (final String key : keys) {
+            final Object value = other.get(key, Object.class);
+            if (value != null) {
+                put(key, value);
+            }
+        }
+    }
+
+    @Override
     public String toJsonString() {
         return jsonNode.toString();
     }

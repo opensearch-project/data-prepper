@@ -124,7 +124,7 @@ class S3EnrichProcessorTest {
         when(codec.getPluginSettings()).thenReturn(Collections.emptyMap());
 
         when(s3EnrichProcessorConfig.getCacheTtl()).thenReturn(java.time.Duration.ofMinutes(10));
-        when(s3EnrichProcessorConfig.getCacheSizeLimit()).thenReturn(1000);
+        when(s3EnrichProcessorConfig.getCacheCountLimit()).thenReturn(1000);
         when(s3EnrichProcessorConfig.getEnricherNamePattern()).thenReturn("^(.*)_output\\.jsonl$");
         when(s3EnrichProcessorConfig.getTagsOnFailure()).thenReturn(List.of(TAG_ON_FAILURE));
         when(s3EnrichProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthOptions);
@@ -184,8 +184,6 @@ class S3EnrichProcessorTest {
         final EventKey mergeKey = mock(EventKey.class);
         when(mergeKey.getKey()).thenReturn("field1");
         when(s3EnrichProcessorConfig.getMergeKeys()).thenReturn(List.of(mergeKey));
-        when(enrichEvent.containsKey("field1")).thenReturn(true);
-        when(enrichEvent.get("field1", Object.class)).thenReturn("value1");
 
         final Collection<Record<Event>> result = objectUnderTest.doExecute(List.of(record));
 
@@ -295,14 +293,12 @@ class S3EnrichProcessorTest {
         final EventKey mergeKey = mock(EventKey.class);
         when(mergeKey.getKey()).thenReturn("city");
         when(s3EnrichProcessorConfig.getMergeKeys()).thenReturn(List.of(mergeKey));
-        when(enrichEvent.containsKey("city")).thenReturn(true);
-        when(enrichEvent.get("city", Object.class)).thenReturn("Seattle");
 
         final Collection<Record<Event>> result = objectUnderTest.doExecute(List.of(record));
 
         assertThat(result.size(), equalTo(1));
         verify(successCounter).increment();
-        verify(event).put(mergeKey, "Seattle");
+        verify(event).merge(enrichEvent, List.of("city"));
     }
 
     @Test
@@ -321,15 +317,13 @@ class S3EnrichProcessorTest {
         final EventKey missingKey = mock(EventKey.class);
         when(missingKey.getKey()).thenReturn("missing_field");
         when(s3EnrichProcessorConfig.getMergeKeys()).thenReturn(List.of(goodKey, missingKey));
-        when(enrichEvent.containsKey("good_field")).thenReturn(true);
-        when(enrichEvent.get("good_field", Object.class)).thenReturn("value");
-        when(enrichEvent.containsKey("missing_field")).thenReturn(false); // this key fails
 
         final Collection<Record<Event>> result = objectUnderTest.doExecute(List.of(record));
 
         assertThat(result.size(), equalTo(1));
         verify(successCounter).increment();
         verify(failureCounter, never()).increment();
+        verify(event).merge(enrichEvent, List.of("good_field", "missing_field"));
     }
 
     // ---- addFailureTags ----

@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.s3_enrich.processor.S3EnrichProcessorC
 import org.opensearch.dataprepper.plugins.s3_enrich.processor.configuration.S3EnrichBucketOption;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -33,9 +34,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class S3ObjectReferenceResolverTest {
 
-    private static final String BUCKET_NAME = "test-bucket";
-    private static final String KEY_PATH = "s3_key";
     private static final String NAME_PATTERN = "^(.*)_output\\.jsonl$";
+
+    private String bucketName;
+    private String keyPath;
 
     @Mock
     private S3EnrichProcessorConfig config;
@@ -48,10 +50,13 @@ class S3ObjectReferenceResolverTest {
 
     @BeforeEach
     void setUp() {
+        bucketName = UUID.randomUUID().toString();
+        keyPath = UUID.randomUUID().toString();
+
         when(config.getEnricherNamePattern()).thenReturn(NAME_PATTERN);
         when(config.getS3EnrichBucketOption()).thenReturn(bucketOption);
-        when(config.getEnricherKeyPath()).thenReturn(KEY_PATH);
-        when(bucketOption.getName()).thenReturn(BUCKET_NAME);
+        when(config.getEnricherKeyPath()).thenReturn(keyPath);
+        when(bucketOption.getName()).thenReturn(bucketName);
     }
 
     private S3ObjectReferenceResolver createObjectUnderTest() {
@@ -61,18 +66,20 @@ class S3ObjectReferenceResolverTest {
     @Test
     void resolve_returns_S3ObjectReference_with_correct_bucket() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("data/reports/daily_output.jsonl");
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("data/reports/daily_output.jsonl");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
         assertThat(result, notNullValue());
-        assertThat(result.getBucketName(), equalTo(BUCKET_NAME));
+        assertThat(result.getBucketName(), equalTo(bucketName));
     }
 
     @Test
     void resolve_extracts_base_name_and_appends_jsonl_extension() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("path/to/daily_output.jsonl");
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("path/to/daily_output.jsonl");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
@@ -82,7 +89,8 @@ class S3ObjectReferenceResolverTest {
     @Test
     void resolve_prepends_prefix_when_s3IncludePrefix_is_configured() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.of("enrichment/"));
-        when(event.get(KEY_PATH, String.class)).thenReturn("data/daily_output.jsonl");
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("data/daily_output.jsonl");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
@@ -92,7 +100,7 @@ class S3ObjectReferenceResolverTest {
     @Test
     void resolve_uses_filename_as_is_when_pattern_does_not_match() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("path/to/some_file.parquet");
+        when(event.get(keyPath, String.class)).thenReturn("path/to/some_file.parquet");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
@@ -102,23 +110,26 @@ class S3ObjectReferenceResolverTest {
     @Test
     void resolve_produces_correct_uri() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("data/report_output.jsonl");
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("data/report_output.jsonl");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
-        assertThat(result.uri(), equalTo("s3://" + BUCKET_NAME + "/" + result.getKey()));
+        assertThat(result.uri(), equalTo("s3://" + bucketName + "/" + result.getKey()));
     }
 
     @Test
     void resolve_throws_when_s3_key_is_null() {
-        when(event.get(KEY_PATH, String.class)).thenReturn(null);
+        when(bucketOption.getName()).thenReturn(bucketName);
+        when(event.get(keyPath, String.class)).thenReturn(null);
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().resolve(event));
     }
 
     @Test
     void resolve_throws_when_s3_key_is_blank() {
-        when(event.get(KEY_PATH, String.class)).thenReturn("   ");
+        when(bucketOption.getName()).thenReturn(bucketName);
+        when(event.get(keyPath, String.class)).thenReturn("   ");
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().resolve(event));
     }
@@ -126,15 +137,15 @@ class S3ObjectReferenceResolverTest {
     @Test
     void resolve_throws_when_bucket_name_is_blank() {
         when(bucketOption.getName()).thenReturn("");
-        when(event.get(KEY_PATH, String.class)).thenReturn("path/to/file_output.jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("path/to/file_output.jsonl");
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().resolve(event));
     }
-
     @Test
     void resolve_handles_s3_key_at_root_level_without_path_separator() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("myfile_output.jsonl");
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn("myfile_output.jsonl");
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
@@ -149,18 +160,19 @@ class S3ObjectReferenceResolverTest {
     })
     void resolve_extracts_filename_correctly_from_various_path_depths(final String s3Key) {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn(s3Key);
+        when(config.getCodecExtension()).thenReturn("jsonl");
+        when(event.get(keyPath, String.class)).thenReturn(s3Key);
 
         final S3ObjectReference result = createObjectUnderTest().resolve(event);
 
         assertThat(result, notNullValue());
-        assertThat(result.getBucketName(), equalTo(BUCKET_NAME));
+        assertThat(result.getBucketName(), equalTo(bucketName));
     }
 
     @Test
     void resolve_handles_s3_key_with_trailing_slash_by_stripping_it() {
         when(config.getS3IncludePrefix()).thenReturn(Optional.empty());
-        when(event.get(KEY_PATH, String.class)).thenReturn("path/to/dir/");
+        when(event.get(keyPath, String.class)).thenReturn("path/to/dir/");
 
         // trailing slash is stripped; "dir" is extracted as filename; pattern doesn't match so returned as-is
         final S3ObjectReference result = createObjectUnderTest().resolve(event);

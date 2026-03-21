@@ -37,7 +37,7 @@ class CacheFactoryTest {
     @BeforeEach
     void setUp() {
         when(config.getCacheTtl()).thenReturn(Duration.ofMinutes(10));
-        when(config.getCacheSizeLimit()).thenReturn(1000);
+        when(config.getCacheCountLimit()).thenReturn(1000);
     }
 
     private CacheFactory createObjectUnderTest() {
@@ -76,7 +76,7 @@ class CacheFactoryTest {
 
     @Test
     void createEventsCache_accepts_configured_max_size() {
-        when(config.getCacheSizeLimit()).thenReturn(500);
+        when(config.getCacheCountLimit()).thenReturn(500);
         final CacheFactory objectUnderTest = createObjectUnderTest();
 
         final Cache<String, Event> cache = objectUnderTest.createEventsCache("s3://bucket/key");

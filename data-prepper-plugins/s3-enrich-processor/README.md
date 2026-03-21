@@ -8,7 +8,7 @@ This plugin enables you to merge data from a S3 file with source data from your 
 ml_merge-pipeline:
 ...
   processor:
-    - s3_enricher:
+    - s3_enrich:
         # =============================================================================
         # S3 SOURCE BUCKET CONFIGURATION
         # Defines where to fetch the original/source data for enrichment
@@ -45,7 +45,7 @@ ml_merge-pipeline:
         # =============================================================================
         # Maximum size (in MB) of S3 source files to process
         # Files exceeding this limit will be skipped
-        s3_object_size_limit_mb: 100
+        s3_object_size_limit: 100mb
     
         # JSON path in the incoming pipeline event that contains the S3 object key
         # Used to determine which source file to fetch for enrichment

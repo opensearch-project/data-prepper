@@ -20,6 +20,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -77,12 +79,14 @@ public class S3EnrichProcessorConfig {
     @ByteCountMax("300mb")
     private ByteCount enricherSizeLimit = ByteCount.parse(DEFAULT_ENRICHER_SIZE_LIMIT);
 
-    @JsonProperty(value = "cache_max_size", defaultValue="100000")
+    @JsonProperty(value = "cache_max_count", defaultValue="200000")
     @Min(0)
-    @Max(300000)
-    private int cacheSizeLimit = DEFAULT_CACHE_SIZE_LIMIT;
+    @Max(1000000)
+    private int cacheCountLimit = DEFAULT_CACHE_SIZE_LIMIT;
 
     @JsonProperty(value = "cache_ttl", defaultValue = "PT10M")
+    @DurationMin(minutes = 1)
+    @DurationMax(minutes = 120)
     @JsonPropertyDescription("The TTL for cache entries. Accepts ISO-8601 duration format (e.g., PT10M for 10 minutes, PT1H for 1 hour).")
     private Duration cacheTtl = DEFAULT_CACHE_TTL;
 
@@ -117,6 +121,18 @@ public class S3EnrichProcessorConfig {
                     "or exception occurs. This tag may be used in conditional expressions in " +
                     "other parts of the configuration.")
     private List<String> tagsOnFailure = Collections.emptyList();
+
+    /**
+     * Returns the file extension configured on the codec (e.g. "jsonl").
+     * Reads the {@code extension} key from the codec plugin settings, falling back to {@code "jsonl"}.
+     */
+    public String getCodecExtension() {
+        if (codec == null || codec.getPluginSettings() == null) {
+            return "jsonl";
+        }
+        final Object ext = codec.getPluginSettings().get("extension");
+        return (ext instanceof String && !((String) ext).isBlank()) ? (String) ext : "jsonl";
+    }
 
     /**
      * Safely retrieves the S3 scan include prefix from the configuration chain.
