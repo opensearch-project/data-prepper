@@ -647,6 +647,116 @@ will end up with this after processing:
 * `tags_on_failure` - (optional): a list of tags to add to event metadata when the event fails to process
 
 
+## MapEntriesProcessor
+A processor that wraps each element of a primitive array into an object using a configured key name. This enables downstream processors like `add_entries` and `delete_entries` with `iterate_on`, which require `List<Map<String, Object>>` and cannot operate on primitive arrays.
+
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - map_entries:
+        source: "/names"
+        key: "name"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+```json
+{"names": ["alice", "bob", "charlie"]}
+```
+
+When run, the processor will parse the message into the following output:
+
+```json
+{"names": [{"name": "alice"}, {"name": "bob"}, {"name": "charlie"}]}
+```
+
+### Writing to a Separate Target
+If you want to keep the original array and write the wrapped objects to a different key, use the `target` option:
+```yaml
+  processor:
+    - map_entries:
+        source: "/items"
+        target: "/inventory_items"
+        key: "product"
+```
+
+Input:
+```json
+{"items": ["laptop", "monitor", "keyboard"]}
+```
+
+Output:
+```json
+{"items": ["laptop", "monitor", "keyboard"], "inventory_items": [{"product": "laptop"}, {"product": "monitor"}, {"product": "keyboard"}]}
+```
+
+### Conditional Processing
+Use `map_entries_when` to only process events matching a condition:
+```yaml
+  processor:
+    - map_entries:
+        source: "/tags"
+        key: "value"
+        map_entries_when: '/type == "tagged"'
+```
+
+Only events where `type` equals `"tagged"` will be processed.
+
+### Chaining with add_entries
+A common use case is wrapping a primitive array so that `add_entries` with `iterate_on` can operate on it:
+```yaml
+  processor:
+    - map_entries:
+        source: "/names"
+        key: "name"
+    - add_entries:
+        iterate_on: "/names"
+        entries:
+          - key: "greeting"
+            format: "Hello, ${name}"
+```
+
+Input:
+```json
+{"names": ["alice", "bob"]}
+```
+
+After `map_entries`:
+```json
+{"names": [{"name": "alice"}, {"name": "bob"}]}
+```
+
+After `add_entries`:
+```json
+{"names": [{"name": "alice", "greeting": "Hello, alice"}, {"name": "bob", "greeting": "Hello, bob"}]}
+```
+
+### Configuration
+* `source` - (required) - The key of the primitive array to transform (JSON Pointer)
+* `target` - (optional) - The key to write the resulting object array to. Defaults to `source` (in-place). Must not be empty when specified.
+* `key` - (required) - The key name to use in each resulting object
+* `exclude_null_empty_values` - (optional) - When set to `true`, null and empty string elements are filtered out before wrapping. Default is `false`
+* `append_if_target_exists` - (optional) - When set to `true`, appends results to the existing target array instead of overwriting. Default is `false`
+* `map_entries_when` - (optional) - A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) that determines whether the processor runs on the event. Evaluated at the root event level.
+* `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the event fails to process
+
+### Edge Case Behavior
+* If the `source` key does not exist in the event, the processor skips the event (no-op) and adds `tags_on_failure` if configured.
+* If the `source` value is not a list (e.g., a string or number), the processor skips the event (no-op) and adds `tags_on_failure` if configured.
+* If the `source` list is empty, the processor does nothing — the empty list remains as-is.
+* If no elements remain after filtering (when `exclude_null_empty_values` is `true` and all elements are null or empty), the original list is left unchanged.
+* Null elements within the list are wrapped like any other value by default: `[null]` becomes `[{"key": null}]`. Use `exclude_null_empty_values: true` to filter them out.
+
+___
+
 ## Developer Guide
 This plugin is compatible with Java 11 and 17. Refer to the following developer guides for plugin development:
 - [Developer Guide](https://github.com/opensearch-project/data-prepper/blob/main/docs/developer_guide.md)
