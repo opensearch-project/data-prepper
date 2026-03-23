@@ -214,7 +214,7 @@ public class AddEntryProcessorConfig {
 
         public String getAddWhen() { return addWhen; }
 
-        @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
+        @AssertTrue(message = "Exactly one of value, format, or value_expression must be specified")
         public boolean hasValueOrFormatOrExpression() {
             return Stream.of(value, format, valueExpression).filter(n -> n!=null).count() == 1;
         }
@@ -250,7 +250,6 @@ public class AddEntryProcessorConfig {
             if (metadataKey != null && iterateOn != null) {
                 throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
             }
-
             if (iterateOn == null && addToElementWhen != null) {
                 throw new InvalidPluginConfigurationException("add_to_element_when only applies when iterate_on is configured.");
             }
