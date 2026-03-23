@@ -123,18 +123,21 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     /**
      * Loads a secret if it was skipped on start (lazy-loading).
-     * 
+     * Uses {@link ConcurrentMap#compute} to ensure atomicity of the sentinel check and refresh.
+     *
      * @param secretId The secret configuration ID
      * @return The loaded secret value
      */
     private Object loadSecretIfNeeded(String secretId) {
-        Object value = secretIdToValue.get(secretId);
-        if (value == NOT_LOADED_SENTINEL) {
-            LOG.info("Secret {} was not loaded on start, loading now on first access.", secretId);
-            refresh(secretId);
-            value = secretIdToValue.get(secretId);
-        }
-        return value;
+        return secretIdToValue.compute(secretId, (key, currentValue) -> {
+            if (currentValue == NOT_LOADED_SENTINEL) {
+                LOG.info("Secret {} was not loaded on start, loading now on first access.", key);
+                final AwsSecretManagerConfiguration config = awsSecretManagerConfigurationMap.get(key);
+                final SecretsManagerClient client = secretsManagerClientMap.get(key);
+                return retrieveSecretsFromSecretManager(config, client);
+            }
+            return currentValue;
+        });
     }
 
 
@@ -184,6 +187,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     @Override
     public String updateValue(String secretId, String keyToUpdate, Object newValue) {
+        // Ensure the secret is loaded before attempting to update
+        loadSecretIfNeeded(secretId);
         Object currentSecretStore = secretIdToValue.get(secretId);
         if (currentSecretStore instanceof Map) {
             if (keyToUpdate == null) {

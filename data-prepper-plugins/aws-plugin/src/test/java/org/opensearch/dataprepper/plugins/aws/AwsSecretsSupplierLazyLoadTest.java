@@ -20,12 +20,15 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueResponse;
 
 import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -60,6 +63,12 @@ class AwsSecretsSupplierLazyLoadTest {
 
     @Mock
     private GetSecretValueResponse getSecretValueResponse;
+
+    @Mock
+    private PutSecretValueRequest putSecretValueRequest;
+
+    @Mock
+    private PutSecretValueResponse putSecretValueResponse;
 
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
@@ -130,5 +139,38 @@ class AwsSecretsSupplierLazyLoadTest {
         // Then: No additional retrieval (already loaded)
         verify(secretsManagerClient, times(1)).getSecretValue(eq(getSecretValueRequest));
         assertThat(value, equalTo(testValue));
+    }
+
+    @Test
+    void testUpdateValue_withSkipValidationOnStart_loadsSecretBeforeUpdate() throws JsonProcessingException {
+        // Given: Secret configured with skip_validation_on_start=true
+        when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
+                Map.of(testSecretId, awsSecretManagerConfiguration)
+        );
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(true);
+        when(awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier)).thenReturn(secretsManagerClient);
+        when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(objectMapper.writeValueAsString(
+                Map.of(testKey, testValue)
+        ));
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
+        when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
+        final String newVersionId = UUID.randomUUID().toString();
+        when(putSecretValueResponse.versionId()).thenReturn(newVersionId);
+
+        final AwsSecretsSupplier supplier = new AwsSecretsSupplier(
+                secretValueDecoder, awsSecretPluginConfig, objectMapper, awsCredentialsSupplier
+        );
+
+        // Then: Secret is NOT retrieved at construction time
+        verify(secretsManagerClient, never()).getSecretValue(eq(getSecretValueRequest));
+
+        // When: updateValue is called before any retrieveValue
+        final String versionId = supplier.updateValue(testSecretId, testKey, "newValue");
+
+        // Then: Secret was loaded on-demand and update succeeded
+        verify(secretsManagerClient, times(1)).getSecretValue(eq(getSecretValueRequest));
+        assertThat(versionId, equalTo(newVersionId));
     }
 }
