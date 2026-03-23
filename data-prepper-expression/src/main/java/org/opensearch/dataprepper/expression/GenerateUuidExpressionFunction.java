@@ -18,12 +18,12 @@ import java.util.function.Function;
 
 /**
  * Expression function that generates a random UUID (version 4) string.
- * Usage: {@code generate_uuid()}
+ * Usage: {@code generateUuid()}
  */
 @Named
 public class GenerateUuidExpressionFunction implements ExpressionFunction {
 
-    static final String FUNCTION_NAME = "generate_uuid";
+    static final String FUNCTION_NAME = "generateUuid";
 
     @Override
     public String getFunctionName() {

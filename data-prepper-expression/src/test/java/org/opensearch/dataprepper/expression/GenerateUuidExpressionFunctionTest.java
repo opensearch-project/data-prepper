@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
@@ -31,8 +32,8 @@ class GenerateUuidExpressionFunctionTest {
     private final Function<Object, Object> convertLiteralType = v -> v;
 
     @Test
-    void getFunctionName_returns_generate_uuid() {
-        assertThat(function.getFunctionName(), equalTo("generate_uuid"));
+    void getFunctionName_returns_generateUuid() {
+        assertThat(function.getFunctionName(), equalTo("generateUuid"));
     }
 
     @Test
@@ -40,8 +41,8 @@ class GenerateUuidExpressionFunctionTest {
         final Object result = function.evaluate(Collections.emptyList(), event, convertLiteralType);
         assertThat(result, instanceOf(String.class));
         final String uuidStr = (String) result;
-        // UUID.fromString throws if invalid
-        assertThat(UUID.fromString(uuidStr).toString(), equalTo(uuidStr));
+        final UUID regeneratedUuid = assertDoesNotThrow(() -> UUID.fromString(uuidStr));
+        assertThat(regeneratedUuid.toString(), equalTo(uuidStr));
     }
 
     @Test

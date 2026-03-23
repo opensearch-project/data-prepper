@@ -1089,8 +1089,8 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_expression_adds_uuid_string_to_event() {
-        final String uuidExpr = "generate_uuid()";
+    void test_generateUuid_expression_adds_uuid_string_to_event() {
+        final String uuidExpr = "generateUuid()";
         final String generatedUuid = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
                 createEntry("recordId", null, null, null, uuidExpr, false, false, null, null, null)));
@@ -1107,8 +1107,8 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_expression_produces_unique_values_per_event() {
-        final String uuidExpr = "generate_uuid()";
+    void test_generateUuid_expression_produces_unique_values_per_event() {
+        final String uuidExpr = "generateUuid()";
         final String uuid1 = UUID.randomUUID().toString();
         final String uuid2 = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
@@ -1128,8 +1128,8 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_expression_does_not_overwrite_existing_key_by_default() {
-        final String uuidExpr = "generate_uuid()";
+    void test_generateUuid_expression_does_not_overwrite_existing_key_by_default() {
+        final String uuidExpr = "generateUuid()";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
                 createEntry("existingId", null, null, null, uuidExpr, false, false, null, null, null)));
         when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
@@ -1144,8 +1144,8 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_expression_overwrites_existing_key_when_overwrite_is_true() {
-        final String uuidExpr = "generate_uuid()";
+    void test_generateUuid_expression_overwrites_existing_key_when_overwrite_is_true() {
+        final String uuidExpr = "generateUuid()";
         final String newUuid = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
                 createEntry("existingId", null, null, null, uuidExpr, true, false, null, null, null)));
@@ -1162,8 +1162,8 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    void test_generate_uuid_expression_respects_add_when_condition() {
-        final String uuidExpr = "generate_uuid()";
+    void test_generateUuid_expression_respects_add_when_condition() {
+        final String uuidExpr = "generateUuid()";
         final String addWhen = "/skip == true";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
                 createEntry("recordId", null, null, null, uuidExpr, false, false, addWhen, null, null)));
