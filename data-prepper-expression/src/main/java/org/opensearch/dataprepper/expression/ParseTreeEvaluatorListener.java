@@ -140,10 +140,11 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         }
 
         if (isInsideFunction()) {
-            // Inside a function context, LPAREN/RPAREN/COMMA are structural - skip them
-            if (nodeType == DataPrepperExpressionParser.LPAREN ||
-                nodeType == DataPrepperExpressionParser.RPAREN ||
-                nodeType == DataPrepperExpressionParser.COMMA) {
+            // Inside a function context, COMMA is structural - skip it.
+            // LPAREN/RPAREN are NOT skipped so they act as a barrier on the
+            // operator stack, preventing outer operators from being evaluated
+            // inside function argument sub-expressions.
+            if (nodeType == DataPrepperExpressionParser.COMMA) {
                 return;
             }
 
