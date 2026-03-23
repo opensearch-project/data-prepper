@@ -255,7 +255,8 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("substringAfter(/path, \"/\") == \"app/src/main.py\"", event("{\"path\": \"/app/src/main.py\"}"), true),
                 arguments("substringBefore(\"key=a=b\", \"=\") == \"key\"", event("{}"), true),
                 arguments("substringAfterLast(\"/app/src/main.py\", \"/\") == \"main.py\"", event("{}"), true),
-                arguments("substringBeforeLast(\"app.src.main\", \".\") == \"app.src\"", event("{}"), true)
+                arguments("substringBeforeLast(\"app.src.main\", \".\") == \"app.src\"", event("{}"), true),
+                arguments("/value == \"value-a\" and contains(/string, \"x/y/\")", event("{\"value\": \"value-a\", \"string\": \"prefix/x/y/postfix\"}"), true)
         );
     }
 
