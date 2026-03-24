@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.expression.ExpressionParsingException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
+@Experimental
 @DataPrepperPlugin(name = "s3_enrich", pluginType = Processor.class, pluginConfigurationType = S3EnrichProcessorConfig.class)
 public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(S3EnrichProcessor.class);
@@ -113,7 +115,6 @@ public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
-        LOG.info("S3EnricherProcessor processing {} records", records.size());
         List<Record<Event>> resultRecords = new ArrayList<>();
 
         // Process new records

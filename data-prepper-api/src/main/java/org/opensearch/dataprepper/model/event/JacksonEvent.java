@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -447,7 +448,7 @@ public class JacksonEvent implements Event {
     }
 
     @Override
-    public void merge(final Event other, final List<String> keys) {
+    public void merge(final Event other, final Collection<String> keys) {
         if (keys == null || keys.isEmpty()) {
             throw new IllegalArgumentException("Keys list must not be null or empty for selective merge.");
         }

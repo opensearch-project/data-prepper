@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -155,9 +156,9 @@ public interface Event extends Serializable {
      * @param keys  the list of keys to selectively merge
      * @throws IllegalArgumentException if the input event is not compatible to merge.
      * @throws UnsupportedOperationException if the current Event does not support merging.
-     * @since 2.11
+     * @since 2.15
      */
-    void merge(Event other, List<String> keys);
+    void merge(Event other, Collection<String> keys);
 
     /**
      * Generates a serialized Json string of the entire Event

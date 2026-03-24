@@ -54,7 +54,7 @@ public class S3ScanService {
     private final ExecutorService executorService;
     private final List<ScanObjectWorker> workers;
 
-    public  S3ScanService(final S3SourceConfig s3SourceConfig,
+    public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
                          final S3ObjectHandler s3ObjectHandler,
                          final BucketOwnerProvider bucketOwnerProvider,
