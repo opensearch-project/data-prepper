@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -51,7 +52,8 @@ public class SqsSink extends AbstractSink<Record<Event>> {
                    final SqsSinkConfig sqsSinkConfig,
                    final SinkContext sinkContext,
                    final ExpressionEvaluator expressionEvaluator,
-                   final AwsCredentialsSupplier awsCredentialsSupplier) {
+                   final AwsCredentialsSupplier awsCredentialsSupplier,
+                   final PipelineDescription pipelineDescription) {
         super(pluginSetting);
         this.sqsSinkConfig = sqsSinkConfig;
         sinkInitialized = false;
@@ -79,7 +81,7 @@ public class SqsSink extends AbstractSink<Record<Event>> {
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, sqsSinkConfig.getDlq(), region.toString(), role, "sqsSink");
         }
         final OutputCodec outputCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
-        sqsSinkService = new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics);
+        sqsSinkService = new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics, pluginSetting, pipelineDescription);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
@@ -99,6 +101,7 @@ public class SqsSink extends AbstractSink<Record<Event>> {
     @Override
     public void doInitialize() {
         sinkInitialized = true;
+        sqsSinkService.setDlqPipeline(getFailurePipeline());
     }
 
     /**

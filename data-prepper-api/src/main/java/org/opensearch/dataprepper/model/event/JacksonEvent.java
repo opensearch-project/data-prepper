@@ -64,10 +64,31 @@ import static org.opensearch.dataprepper.model.event.JacksonEventKey.trimTrailin
 public class JacksonEvent implements Event {
     class DefaultEventFailureMetadata implements EventFailureMetadata {
         static final String FAILURE_METADATA = "_failure_metadata";
+        static final String PLUGIN_ID = "pluginId";
+        static final String PLUGIN_NAME = "pluginName";
+        static final String PIPELINE_NAME = "pipelineName";
+        static final String ERROR_MESSAGE = "errorMessage";
+
 
         public DefaultEventFailureMetadata with(String key, Object value) {
             put(FAILURE_METADATA+"/"+key, value);
             return this;
+        }
+
+        public DefaultEventFailureMetadata withPluginId(String value) {
+            return with(PLUGIN_ID, value);
+        }
+
+        public DefaultEventFailureMetadata withPluginName(String value) {
+            return with(PLUGIN_NAME, value);
+        }
+
+        public DefaultEventFailureMetadata withPipelineName(String value) {
+            return with(PIPELINE_NAME, value);
+        }
+
+        public DefaultEventFailureMetadata withErrorMessage(Object value) {
+            return with(ERROR_MESSAGE, value);
         }
     }
 

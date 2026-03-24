@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -116,6 +117,9 @@ public class SqsSinkIT {
 
     @Mock
     private PluginModel codec;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     @Mock
     private Counter eventsSuccessCounter;
@@ -256,7 +260,7 @@ public class SqsSinkIT {
         when(sqsSinkConfig.getCodec()).thenReturn(codec);
         when(sqsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
         when(sqsSinkConfig.getDlq()).thenReturn(null);
-
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
         thresholdConfig = mock(SqsThresholdConfig.class);
         lenient().when(sqsSinkConfig.getMaxRetries()).thenReturn(3);
         when(thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
@@ -323,7 +327,7 @@ public class SqsSinkIT {
     }
 
     private SqsSink createObjectUnderTest() {
-        return new SqsSink(pluginSetting, pluginMetrics, pluginFactory, sqsSinkConfig, sinkContext, expressionEvaluator, awsCredentialsSupplier);
+        return new SqsSink(pluginSetting, pluginMetrics, pluginFactory, sqsSinkConfig, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription);
     }
 
     private List<Message> getMessages(final String queueUrl) {

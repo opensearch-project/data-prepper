@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.sqs;
 
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -24,8 +25,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -78,6 +77,8 @@ public class SqsSinkTest {
     private AwsCredentialsProvider awsCredentialsProvider;
     @Mock
     private AwsConfig awsConfig;
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     private SqsClient sqsClient;
     private PluginModel codecConfig;
@@ -112,10 +113,11 @@ public class SqsSinkTest {
         when(sqsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
         when(pluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        pipelineDescription = mock(PipelineDescription.class);
 
     }
     SqsSink createObjectUnderTest() {
-        return new SqsSink(pluginSetting, pluginMetrics, pluginFactory, sqsSinkConfig, sinkContext, expressionEvaluator, awsCredentialsSupplier);
+        return new SqsSink(pluginSetting, pluginMetrics, pluginFactory, sqsSinkConfig, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription);
     }
 
     @Test
