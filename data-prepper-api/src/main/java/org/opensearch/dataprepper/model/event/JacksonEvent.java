@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -465,6 +466,26 @@ public class JacksonEvent implements Event {
         }
 
         ((ObjectNode) jsonNode).setAll(otherObjectNode);
+    }
+
+    @Override
+    public void merge(final Event other, final Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            throw new IllegalArgumentException("Keys list must not be null or empty for selective merge.");
+        }
+        if (!(other instanceof JacksonEvent)) {
+            throw new IllegalArgumentException("Unable to merge the Event. The input Event must be a JacksonEvent.");
+        }
+        if (!(jsonNode instanceof ObjectNode)) {
+            throw new UnsupportedOperationException("Unable to merge the Event. The current Event must have object data.");
+        }
+
+        for (final String key : keys) {
+            final Object value = other.get(key, Object.class);
+            if (value != null) {
+                put(key, value);
+            }
+        }
     }
 
     @Override
