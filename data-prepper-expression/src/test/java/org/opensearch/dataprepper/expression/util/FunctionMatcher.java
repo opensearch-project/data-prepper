@@ -51,8 +51,8 @@ public class FunctionMatcher extends SimpleExpressionMatcher {
 
     @Override
     protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
-        // function is now a parser rule: FunctionName LPAREN functionArgs? RPAREN
-        // Minimum 3 children: FunctionName, LPAREN, RPAREN
+        // function is now a parser rule: Identifier LPAREN functionArgs? RPAREN
+        // Minimum 3 children: Identifier, LPAREN, RPAREN
         final int childCount = item.getChildCount();
         if (childCount < 3) {
             mismatchDescription.appendText("\n\t\t expected " + item.getText() + " to have at least 3 child nodes, got " + childCount);

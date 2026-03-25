@@ -155,7 +155,7 @@ jsonPointer
     ;
 
 function
-    : FunctionName LPAREN functionArgs? RPAREN
+    : Identifier LPAREN functionArgs? RPAREN
     ;
 
 functionArgs
@@ -302,11 +302,11 @@ DataTypes
     | STRING
     ;
 
-// FunctionName MUST be defined after DataTypes (and all other keyword-like
+// Identifier MUST be defined after DataTypes (and all other keyword-like
 // lexer rules) because it matches [A-Za-z0-9_.@]+ which would shadow any
 // keyword defined later.  ANTLR resolves same-length lexer ambiguities by
 // choosing the rule that appears first in the grammar.
-FunctionName
+Identifier
     : JsonPointerCharacters
     ;
 

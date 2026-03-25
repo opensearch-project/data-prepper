@@ -220,8 +220,42 @@ class GrammarLexerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
-    void testTokenFunctionName(final String functionName) {
-        assertToken(functionName, DataPrepperExpressionLexer.FunctionName);
+    void testTokenIdentifier(final String functionName) {
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenFunction(final String functionName) {
+        final String statement = functionName + "()";
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is(functionName)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenFunctionWithSpace(final String functionName) {
+        final String statement = functionName + " ()";
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is(functionName)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
     }
 
     @ParameterizedTest
@@ -246,7 +280,7 @@ class GrammarLexerTest {
 
         assertThat(tokens.size(), is(4));
         assertAll(
-                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.FunctionName)),
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
                 () -> assertThat(tokens.get(0).getText(), is("functionWithoutArguments")),
                 () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
                 () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
@@ -260,7 +294,7 @@ class GrammarLexerTest {
 
         assertThat(tokens.size(), is(7));
         assertAll(
-                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.FunctionName)),
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
                 () -> assertThat(tokens.get(0).getText(), is("functionWithTwoArguments")),
                 () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
                 () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.JsonPointer)),
