@@ -246,6 +246,8 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-212\"}"), true),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), false),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), true),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-0\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
