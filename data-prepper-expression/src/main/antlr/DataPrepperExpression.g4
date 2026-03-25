@@ -155,7 +155,7 @@ jsonPointer
     ;
 
 function
-    : FunctionName LPAREN functionArgs? RPAREN
+    : Identifier LPAREN functionArgs? RPAREN
     ;
 
 functionArgs
@@ -275,10 +275,6 @@ String
     | DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE StringCharacters? DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE
     ;
 
-FunctionName
-    : JsonPointerCharacters
-    ;
-
 fragment
 StringCharacters
     : StringCharacter+
@@ -304,6 +300,14 @@ DataTypes
     | ARRAY
     | DOUBLE
     | STRING
+    ;
+
+// Identifier MUST be defined after DataTypes (and all other keyword-like
+// lexer rules) because it matches [A-Za-z0-9_.@]+ which would shadow any
+// keyword defined later.  ANTLR resolves same-length lexer ambiguities by
+// choosing the rule that appears first in the grammar.
+Identifier
+    : JsonPointerCharacters
     ;
 
 COMMA : ',';

@@ -28,7 +28,7 @@ class FunctionMatcherTest {
         final DiagnosingMatcher<ParseTree> isFunctionUnaryTree = isFunctionUnaryTree();
         final ParseTree primary = mock(DataPrepperExpressionParser.PrimaryContext.class, "PrimaryContext");
         final ParseTree functionCtx = mock(DataPrepperExpressionParser.FunctionContext.class, "FunctionContext");
-        final ParseTree functionName = mock(TerminalNode.class, "FunctionName");
+        final ParseTree functionName = mock(TerminalNode.class, "Identifier");
         final ParseTree lparen = mock(TerminalNode.class, "LPAREN");
         final ParseTree rparen = mock(TerminalNode.class, "RPAREN");
 
@@ -38,7 +38,7 @@ class FunctionMatcherTest {
         doReturn(functionCtx)
                 .when(primary)
                 .getChild(eq(0));
-        // function is now a parser rule: FunctionName LPAREN RPAREN (3 children, no args)
+        // function is now a parser rule: Identifier LPAREN RPAREN (3 children, no args)
         doReturn(3)
                 .when(functionCtx)
                 .getChildCount();

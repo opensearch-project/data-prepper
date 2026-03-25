@@ -246,6 +246,8 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-212\"}"), true),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), false),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), true),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-0\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
@@ -256,7 +258,17 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("substringBefore(\"key=a=b\", \"=\") == \"key\"", event("{}"), true),
                 arguments("substringAfterLast(\"/app/src/main.py\", \"/\") == \"main.py\"", event("{}"), true),
                 arguments("substringBeforeLast(\"app.src.main\", \".\") == \"app.src\"", event("{}"), true),
-                arguments("/value == \"value-a\" and contains(/string, \"x/y/\")", event("{\"value\": \"value-a\", \"string\": \"prefix/x/y/postfix\"}"), true)
+                arguments("/value == \"value-a\" and contains(/string, \"x/y/\")", event("{\"value\": \"value-a\", \"string\": \"prefix/x/y/postfix\"}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": 200}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": \"200\"}"), false),
+                arguments("/name typeof string", event("{\"name\": \"test\"}"), true),
+                arguments("/flag typeof boolean", event("{\"flag\": true}"), true),
+                arguments("/value typeof long", event("{\"value\": 2147483648}"), true),
+                arguments("/items typeof array", event("{\"items\": [1, 2]}"), true),
+                arguments("/data typeof map", event("{\"data\": {\"k\": \"v\"}}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": \"200\"}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": 200}"), false),
+                arguments("not (/name typeof string)", event("{\"name\": 123}"), true)
         );
     }
 

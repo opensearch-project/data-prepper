@@ -98,7 +98,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
 
     @Override
     public void enterFunction(DataPrepperExpressionParser.FunctionContext ctx) {
-        final String functionName = ctx.FunctionName().getText();
+        final String functionName = ctx.Identifier().getText();
         functionContextStack.push(new FunctionEvalContext(functionName, operandStack.size()));
     }
 
@@ -133,9 +133,9 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
             return;
         }
 
-        // Skip FunctionName, LPAREN, RPAREN, and COMMA tokens inside function rules
+        // Skip Identifier, LPAREN, RPAREN, and COMMA tokens inside function rules
         // These are structural tokens handled by enter/exitFunction
-        if (nodeType == DataPrepperExpressionParser.FunctionName) {
+        if (nodeType == DataPrepperExpressionParser.Identifier) {
             return;
         }
 
