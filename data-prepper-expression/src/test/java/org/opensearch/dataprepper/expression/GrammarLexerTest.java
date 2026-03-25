@@ -14,6 +14,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.Token;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 
 import java.util.List;
@@ -202,6 +204,34 @@ class GrammarLexerTest {
     @Test
     void testTokenSUBTRACT() {
         assertToken("-", DataPrepperExpressionLexer.SUBTRACT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"integer", "boolean", "big_decimal", "long", "double", "string", "map", "array"})
+    void testTokenDataTypes(final String dataType) {
+        assertToken(dataType, DataPrepperExpressionLexer.DataTypes);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenFunctionName(final String functionName) {
+        assertToken(functionName, DataPrepperExpressionLexer.FunctionName);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"integer", "boolean", "big_decimal", "long", "double", "string", "map", "array"})
+    void testTypeOfExpressionTokenization(final String dataType) {
+        final String statement = "/status typeof " + dataType;
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.JsonPointer)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.TYPEOF)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.DataTypes)),
+                () -> assertThat(tokens.get(2).getText(), is(dataType)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
     }
 
     @Test
