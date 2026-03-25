@@ -93,6 +93,7 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getCertPath());
         assertNull(connectionConfiguration.getConnectTimeout());
         assertNull(connectionConfiguration.getSocketTimeout());
+        assertNull(connectionConfiguration.getPathPrefix());
         assertTrue(connectionConfiguration.isRequestCompressionEnabled());
     }
 
@@ -126,6 +127,17 @@ class ConnectionConfigurationTests {
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
+    }
+
+    @Test
+    void testReadConnectionConfigurationWithPathPrefix() throws JsonProcessingException {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        configMetadata.put("path_prefix", "/os");
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertEquals("/os", connectionConfiguration.getPathPrefix());
     }
 
     @Test
