@@ -157,7 +157,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private final SinkContext sinkContext;
   private final ExpressionEvaluator expressionEvaluator;
-  private final boolean useEventInBulkOperation;
+  private boolean useEventInBulkOperation;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
   private DataStreamDetector dataStreamDetector;
@@ -191,7 +191,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
     this.expressionEvaluator = expressionEvaluator;
     this.pipeline = pipelineDescription.getPipelineName();
-    this.useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -234,6 +233,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void doInitialize() {
     try {
         doInitializeInternal();
+        // getFailurePipeline() does not return valid value in the constructor. Earliest it can be used
+        // is in doInitialize()
+        useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
         this.shutdown();
