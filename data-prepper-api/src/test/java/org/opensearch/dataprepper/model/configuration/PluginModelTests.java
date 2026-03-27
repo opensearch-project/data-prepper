@@ -26,6 +26,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,7 +81,7 @@ class PluginModelTests {
         InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_with_empty_object.yaml");
 
         assertThat(serialized, notNullValue());
-        assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
+        assertThat(serialized, equalTo(stripComments(convertInputStreamToString(inputStream))));
     }
 
     @ParameterizedTest
@@ -281,6 +282,14 @@ class PluginModelTests {
             }
         }
         return stringBuilder.toString();
+    }
+
+    static String stripComments(final String content) {
+        final String stripped = Arrays.stream(content.split("\n"))
+                .filter(line -> !line.startsWith("#"))
+                .collect(java.util.stream.Collectors.joining("\n"))
+                .replaceAll("^\n+", "");
+        return content.endsWith("\n") ? stripped + "\n" : stripped;
     }
 
 }
