@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,13 +53,6 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
                             "for valid expression syntax", config.getMapEntriesWhen()));
         }
 
-        if (config.getTagsOnFailure() != null) {
-            for (final String tag : config.getTagsOnFailure()) {
-                if (tag == null || tag.isEmpty()) {
-                    throw new InvalidPluginConfigurationException("tags_on_failure must not contain null or empty strings.");
-                }
-            }
-        }
     }
 
     @Override
@@ -92,8 +85,7 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
         final String source = config.getSource();
 
         if (!event.containsKey(source)) {
-            LOG.warn(EVENT, "Source key [{}] does not exist in event [{}], skipping.", source, event);
-            addTagsOnFailure(event);
+            LOG.debug(EVENT, "Source key [{}] does not exist in event [{}], skipping.", source, event);
             return;
         }
 
@@ -123,14 +115,9 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
                     continue;
                 }
             }
-            final Map<String, Object> wrapped = new HashMap<>(1);
-            wrapped.put(key, element);
-            result.add(wrapped);
+            result.add(Collections.singletonMap(key, element));
         }
 
-        if (result.isEmpty()) {
-            return;
-        }
 
         final String effectiveTarget = config.getEffectiveTarget();
 

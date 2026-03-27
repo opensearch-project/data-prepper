@@ -96,21 +96,6 @@ class MapEntriesProcessorTest {
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
     }
 
-    @Test
-    void constructor_with_empty_string_in_tags_on_failure_throws_InvalidPluginConfigurationException() {
-        when(config.getTagsOnFailure()).thenReturn(List.of(""));
-
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
-    }
-
-    @Test
-    void constructor_with_null_element_in_tags_on_failure_throws_InvalidPluginConfigurationException() {
-        final List<String> tags = new ArrayList<>();
-        tags.add(null);
-        when(config.getTagsOnFailure()).thenReturn(tags);
-
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
-    }
 
     // --- Basic wrapping ---
 
@@ -192,7 +177,7 @@ class MapEntriesProcessorTest {
     }
 
     @Test
-    void doExecute_with_all_null_empty_and_exclude_enabled_leaves_original_list_unchanged() {
+    void doExecute_with_all_null_empty_and_exclude_enabled_writes_empty_list() {
         when(config.getExcludeNullEmptyValues()).thenReturn(true);
 
         final List<String> input = new ArrayList<>();
@@ -204,7 +189,7 @@ class MapEntriesProcessorTest {
 
         final Object output = result.get(0).getData().get("/names", Object.class);
         assertThat(output instanceof List, is(true));
-        assertThat(((List<?>) output).size(), is(2));
+        assertThat(((List<?>) output).size(), is(0));
     }
 
     // --- Skip conditions ---

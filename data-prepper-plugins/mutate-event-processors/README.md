@@ -749,10 +749,10 @@ After `add_entries`:
 * `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the event fails to process
 
 ### Edge Case Behavior
-* If the `source` key does not exist in the event, the processor skips the event (no-op) and adds `tags_on_failure` if configured.
+* If the `source` key does not exist in the event, the processor silently skips the event (no-op). A debug-level log is emitted.
 * If the `source` value is not a list (e.g., a string or number), the processor skips the event (no-op) and adds `tags_on_failure` if configured.
 * If the `source` list is empty, the processor does nothing — the empty list remains as-is.
-* If no elements remain after filtering (when `exclude_null_empty_values` is `true` and all elements are null or empty), the original list is left unchanged.
+* If no elements remain after filtering (when `exclude_null_empty_values` is `true` and all elements are null or empty), the target is written as an empty list `[]`.
 * Null elements within the list are wrapped like any other value by default: `[null]` becomes `[{"key": null}]`. Use `exclude_null_empty_values: true` to filter them out.
 
 ___
