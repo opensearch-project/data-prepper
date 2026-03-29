@@ -442,6 +442,7 @@ public class RemoteWriteProtobufParser {
                         .withValue(sample.getValue())
                         .withAttributes(new HashMap<>(standalone.labels.attributes))
                         .withIsMonotonic(true)
+                        .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
                         .withServiceName(serviceName)
                         .withTimeReceived(timeReceived)
                         .build(config.isFlattenLabels())));
