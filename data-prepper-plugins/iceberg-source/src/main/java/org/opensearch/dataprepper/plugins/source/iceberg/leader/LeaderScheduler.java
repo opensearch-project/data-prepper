@@ -259,7 +259,10 @@ public class LeaderScheduler implements Runnable {
                     }
                     final List<ShuffleWriteProgressState> shuffleTasks =
                             taskGrouper.planShuffleWriteTasks(taskInfos, tableName, snapshot.snapshotId());
-                    processShuffleSnapshot(tableName, snapshot.snapshotId(), shuffleTasks);
+                    if (!processShuffleSnapshot(tableName, snapshot.snapshotId(), shuffleTasks)) {
+                        LOG.warn("Shuffle failed for snapshot {}, will retry on next poll", snapshot.snapshotId());
+                        break;
+                    }
                 } else {
                     processInsertOnlySnapshot(tableName, snapshot.snapshotId(), taskInfos);
                 }
@@ -363,7 +366,7 @@ public class LeaderScheduler implements Runnable {
         waitForSnapshotComplete(completionKey, taskGroups.size());
     }
 
-    private void processShuffleSnapshot(final String tableName, final long snapshotId,
+    private boolean processShuffleSnapshot(final String tableName, final long snapshotId,
                                          final List<ShuffleWriteProgressState> shuffleTasks) {
         final String snapshotIdStr = String.valueOf(snapshotId);
 
@@ -389,9 +392,9 @@ public class LeaderScheduler implements Runnable {
 
         // Check if shuffle failed
         if (isShuffleFailed(snapshotIdStr)) {
-            LOG.warn("Shuffle failed for snapshot {}, resetting", snapshotId);
+            LOG.warn("Shuffle failed for snapshot {}, skipping", snapshotId);
             shuffleStorage.cleanup(snapshotIdStr);
-            return;
+            return false;
         }
 
         // Barrier: collect index data and coalesce
@@ -405,7 +408,7 @@ public class LeaderScheduler implements Runnable {
         if (ranges.isEmpty()) {
             LOG.info("No data after shuffle for snapshot {}", snapshotId);
             shuffleStorage.cleanup(snapshotIdStr);
-            return;
+            return true;
         }
 
         // Read shuffle write locations from GlobalState.
@@ -443,7 +446,14 @@ public class LeaderScheduler implements Runnable {
                 ranges.size(), snapshotId, numPartitions);
         waitForShuffleComplete(readCompletionKey, ranges.size(), snapshotIdStr);
 
+        if (isShuffleFailed(snapshotIdStr)) {
+            LOG.warn("Shuffle read failed for snapshot {}, skipping", snapshotId);
+            shuffleStorage.cleanup(snapshotIdStr);
+            return false;
+        }
+
         shuffleStorage.cleanup(snapshotIdStr);
+        return true;
     }
 
     private void waitForShuffleComplete(final String completionKey, final int totalPartitions,
