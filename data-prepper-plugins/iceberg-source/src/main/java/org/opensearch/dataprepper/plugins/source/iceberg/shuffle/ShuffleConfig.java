@@ -42,6 +42,9 @@ public class ShuffleConfig {
     @JsonProperty("ssl_key_file")
     private String sslKeyFile;
 
+    @JsonProperty("ssl_insecure_disable_verification")
+    private boolean sslInsecureDisableVerification = false;
+
     @AssertTrue(message = "ssl_certificate_file must be set when ssl is enabled")
     boolean isSslCertificateFileValid() {
         if (!ssl) {
@@ -69,4 +72,6 @@ public class ShuffleConfig {
     public String getSslCertificateFile() { return sslCertificateFile; }
 
     public String getSslKeyFile() { return sslKeyFile; }
+
+    public boolean isSslInsecureDisableVerification() { return sslInsecureDisableVerification; }
 }

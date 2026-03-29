@@ -51,6 +51,9 @@ import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.URI;
@@ -58,6 +61,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -624,9 +628,7 @@ private final ShuffleStorage shuffleStorage;
         // Remote node: get index, then pull each partition's compressed block
         final int port = sourceConfig.getShuffleConfig().getServerPort();
         final String scheme = sourceConfig.getShuffleConfig().isSsl() ? "https" : "http";
-        final HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(java.time.Duration.ofSeconds(10))
-                .build();
+        final HttpClient client = createHttpClient();
 
         final long[] offsets = pullIndex(client, scheme, nodeAddress, port, snapshotId, taskId);
 
@@ -779,5 +781,28 @@ private final ShuffleStorage shuffleStorage;
         } catch (final Exception e) {
             throw new RuntimeException("Failed to resolve local host name", e);
         }
+    }
+
+    private HttpClient createHttpClient() {
+        final HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10));
+        if (sourceConfig.getShuffleConfig().isSsl()
+                && sourceConfig.getShuffleConfig().isSslInsecureDisableVerification()) {
+            try {
+                final TrustManager[] trustAllCerts = new TrustManager[]{
+                        new X509TrustManager() {
+                            public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                        }
+                };
+                final SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+                builder.sslContext(sslContext);
+            } catch (final Exception e) {
+                throw new RuntimeException("Failed to configure insecure SSL context for shuffle client", e);
+            }
+        }
+        return builder.build();
     }
 }

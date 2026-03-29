@@ -12,13 +12,18 @@ package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -44,11 +49,11 @@ public class ShuffleHttpServer {
 
         if (config.isSsl()) {
             try {
-                final String cert = Files.readString(Path.of(config.getSslCertificateFile()));
-                final String key = Files.readString(Path.of(config.getSslKeyFile()));
+                final CertificateProvider certificateProvider = createCertificateProvider();
+                final Certificate certificate = certificateProvider.getCertificate();
                 sb.https(config.getServerPort())
-                        .tls(new ByteArrayInputStream(cert.getBytes(StandardCharsets.UTF_8)),
-                             new ByteArrayInputStream(key.getBytes(StandardCharsets.UTF_8)));
+                        .tls(new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                             new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
             } catch (final Exception e) {
                 throw new RuntimeException("Failed to configure TLS for shuffle server", e);
             }
@@ -74,4 +79,21 @@ public class ShuffleHttpServer {
     public int getPort() {
         return config.getServerPort();
     }
+
+    private CertificateProvider createCertificateProvider() {
+        final String certFile = config.getSslCertificateFile();
+        final String keyFile = config.getSslKeyFile();
+        if (certFile.toLowerCase().startsWith(S3_PREFIX) && keyFile.toLowerCase().startsWith(S3_PREFIX)) {
+            LOG.info("Loading SSL certificates from S3");
+            final S3Client s3Client = S3Client.builder()
+                    .credentialsProvider(DefaultCredentialsProvider.create())
+                    .region(new DefaultAwsRegionProviderChain().getRegion())
+                    .build();
+            return new S3CertificateProvider(s3Client, certFile, keyFile);
+        }
+        LOG.info("Loading SSL certificates from local filesystem");
+        return new FileCertificateProvider(certFile, keyFile);
+    }
+
+    private static final String S3_PREFIX = "s3://";
 }
