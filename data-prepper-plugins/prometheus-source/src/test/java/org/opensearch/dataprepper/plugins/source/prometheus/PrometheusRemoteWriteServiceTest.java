@@ -78,6 +78,9 @@ class PrometheusRemoteWriteServiceTest {
     private Counter failedRequestsCounter;
 
     @Mock
+    private Counter timeoutRequestsCounter;
+
+    @Mock
     private Counter recordsCreatedCounter;
 
     @Mock
@@ -93,6 +96,7 @@ class PrometheusRemoteWriteServiceTest {
         lenient().when(pluginMetrics.counter(PrometheusRemoteWriteService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
         lenient().when(pluginMetrics.counter(PrometheusRemoteWriteService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         lenient().when(pluginMetrics.counter(PrometheusRemoteWriteService.FAILED_REQUESTS)).thenReturn(failedRequestsCounter);
+        lenient().when(pluginMetrics.counter(PrometheusRemoteWriteService.TIMEOUT_REQUESTS)).thenReturn(timeoutRequestsCounter);
         lenient().when(pluginMetrics.counter(PrometheusRemoteWriteService.RECORDS_CREATED)).thenReturn(recordsCreatedCounter);
         lenient().when(pluginMetrics.summary(PrometheusRemoteWriteService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         lenient().when(pluginMetrics.timer(PrometheusRemoteWriteService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
@@ -130,7 +134,7 @@ class PrometheusRemoteWriteServiceTest {
         final HttpResponse response = service.doPost(serviceRequestContext, request);
 
         assertThat(response.aggregate().join().status(), equalTo(HttpStatus.REQUEST_TIMEOUT));
-        verify(failedRequestsCounter).increment();
+        verify(timeoutRequestsCounter).increment();
     }
 
     @Test
@@ -364,7 +368,7 @@ class PrometheusRemoteWriteServiceTest {
 
         verify(requestsReceivedCounter).increment();
         verify(payloadSizeSummary).record(anyDouble());
-        verify(failedRequestsCounter).increment();
+        verify(timeoutRequestsCounter).increment();
     }
 
     @Test

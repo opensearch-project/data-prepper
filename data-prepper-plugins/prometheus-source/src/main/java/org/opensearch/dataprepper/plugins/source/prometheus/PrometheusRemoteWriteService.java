@@ -45,6 +45,7 @@ public class PrometheusRemoteWriteService implements BaseHttpService {
     public static final String REQUESTS_RECEIVED = "requestsReceived";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String FAILED_REQUESTS = "failedRequests";
+    public static final String TIMEOUT_REQUESTS = "timeoutRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String RECORDS_CREATED = "recordsCreated";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
@@ -55,6 +56,7 @@ public class PrometheusRemoteWriteService implements BaseHttpService {
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
     private final Counter failedRequestsCounter;
+    private final Counter timeoutRequestsCounter;
     private final Counter recordsCreatedCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
@@ -70,6 +72,7 @@ public class PrometheusRemoteWriteService implements BaseHttpService {
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         failedRequestsCounter = pluginMetrics.counter(FAILED_REQUESTS);
+        timeoutRequestsCounter = pluginMetrics.counter(TIMEOUT_REQUESTS);
         recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
@@ -91,7 +94,7 @@ public class PrometheusRemoteWriteService implements BaseHttpService {
 
         if (serviceRequestContext.isTimedOut()) {
             LOG.warn("Request timed out before processing");
-            failedRequestsCounter.increment();
+            timeoutRequestsCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT);
         }
 
