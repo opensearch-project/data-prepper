@@ -10,7 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
+import org.apache.iceberg.ChangelogScanTask;
 import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.IncrementalChangelogScan;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableScan;
@@ -22,18 +24,30 @@ import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.InitialLoadTaskPartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.ShuffleReadPartition;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.ShuffleWritePartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ChangelogTaskProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.InitialLoadTaskProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleReadProgressState;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleWriteProgressState;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShufflePartitionCoalescer;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class LeaderScheduler implements Runnable {
 
@@ -41,22 +55,29 @@ public class LeaderScheduler implements Runnable {
     private static final Duration DEFAULT_EXTEND_LEASE_DURATION = Duration.ofMinutes(3);
     private static final Duration COMPLETION_CHECK_INTERVAL = Duration.ofSeconds(2);
     static final String SNAPSHOT_COMPLETION_PREFIX = "snapshot-completion-";
+    public static final String SHUFFLE_FAILED_PREFIX = "shuffle-failed-";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final Map<String, TableConfig> tableConfigs;
     private final Duration pollingInterval;
     private final Map<String, Table> tables;
+    private final ShuffleStorage shuffleStorage;
+    private final ShuffleConfig shuffleConfig;
     private final TaskGrouper taskGrouper = new TaskGrouper();
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final Map<String, TableConfig> tableConfigs,
                            final Duration pollingInterval,
-                           final Map<String, Table> tables) {
+                           final Map<String, Table> tables,
+                           final ShuffleStorage shuffleStorage,
+                           final ShuffleConfig shuffleConfig) {
         this.sourceCoordinator = sourceCoordinator;
         this.tableConfigs = tableConfigs;
         this.pollingInterval = pollingInterval;
         this.tables = tables;
+        this.shuffleStorage = shuffleStorage;
+        this.shuffleConfig = shuffleConfig;
     }
 
     @Override
@@ -143,7 +164,7 @@ public class LeaderScheduler implements Runnable {
                     taskState.setDataFilePath(task.file().location());
                     taskState.setTotalRecords(task.file().recordCount());
 
-                    final String partitionKey = tableName + "|initial|" + UUID.randomUUID();
+                    final String partitionKey = tableName + "|initial|" + snapshotId + "|" + task.file().location();
                     sourceCoordinator.createPartition(new InitialLoadTaskPartition(partitionKey, taskState));
                     taskCount++;
                 }
@@ -222,30 +243,26 @@ public class LeaderScheduler implements Runnable {
                 LOG.info("Planning snapshot {} for table {} (operation: {})",
                         snapshot.snapshotId(), tableName, snapshot.operation());
 
-                final List<ChangelogTaskProgressState> taskGroups =
-                        taskGrouper.planAndGroup(table, tableName, parentId, snapshot.snapshotId());
+                // Scan once and decide path based on DELETED file presence
+                final List<TaskGrouper.TaskInfo> taskInfos = scanChangelogTasks(
+                        table, tableName, parentId, snapshot.snapshotId());
+                final boolean hasDeleted = taskInfos.stream()
+                        .anyMatch(t -> "DELETED".equals(t.taskType));
 
-                if (taskGroups.isEmpty()) {
-                    progressState.setLastProcessedSnapshotId(snapshot.snapshotId());
-                    continue;
+                if (hasDeleted) {
+                    final TableConfig tableConfig = tableConfigs.get(tableName);
+                    if (tableConfig.getIdentifierColumns().isEmpty()) {
+                        throw new IllegalStateException(
+                                "Snapshot " + snapshot.snapshotId() + " for table " + tableName
+                                + " contains UPDATE/DELETE operations but identifier_columns is not configured. "
+                                + "identifier_columns is required for correct CDC processing of UPDATE/DELETE.");
+                    }
+                    final List<ShuffleWriteProgressState> shuffleTasks =
+                            taskGrouper.planShuffleWriteTasks(taskInfos, tableName, snapshot.snapshotId());
+                    processShuffleSnapshot(tableName, snapshot.snapshotId(), shuffleTasks);
+                } else {
+                    processInsertOnlySnapshot(tableName, snapshot.snapshotId(), taskInfos);
                 }
-
-                // Create a completion tracker in GlobalState
-                final String completionKey = SNAPSHOT_COMPLETION_PREFIX + snapshot.snapshotId();
-                sourceCoordinator.createPartition(new GlobalState(completionKey,
-                        Map.of("total", taskGroups.size(), "completed", 0)));
-
-                for (final ChangelogTaskProgressState taskState : taskGroups) {
-                    final String partitionKey = tableName + "|" + snapshot.snapshotId()
-                            + "|" + UUID.randomUUID();
-                    sourceCoordinator.createPartition(
-                            new ChangelogTaskPartition(partitionKey, taskState));
-                }
-
-                LOG.info("Created {} partition(s) for snapshot {}, waiting for completion",
-                        taskGroups.size(), snapshot.snapshotId());
-
-                waitForSnapshotComplete(completionKey, taskGroups.size());
 
                 progressState.setLastProcessedSnapshotId(snapshot.snapshotId());
                 sourceCoordinator.saveProgressStateForPartition(
@@ -302,6 +319,195 @@ public class LeaderScheduler implements Runnable {
                 Thread.currentThread().interrupt();
                 return;
             }
+        }
+    }
+
+    private List<TaskGrouper.TaskInfo> scanChangelogTasks(
+            final Table table, final String tableName,
+            final long fromSnapshotIdExclusive, final long toSnapshotId) {
+        final IncrementalChangelogScan scan = table.newIncrementalChangelogScan()
+                .fromSnapshotExclusive(fromSnapshotIdExclusive)
+                .toSnapshot(toSnapshotId);
+
+        final List<TaskGrouper.TaskInfo> taskInfos = new ArrayList<>();
+        try (CloseableIterable<ChangelogScanTask> tasks = scan.planFiles()) {
+            for (final ChangelogScanTask task : tasks) {
+                taskInfos.add(TaskGrouper.TaskInfo.from(task));
+            }
+        } catch (final IOException e) {
+            throw new RuntimeException("Failed to plan changelog scan for " + tableName, e);
+        }
+        return taskInfos;
+    }
+
+    private void processInsertOnlySnapshot(final String tableName, final long snapshotId,
+                                            final List<TaskGrouper.TaskInfo> taskInfos) {
+        final List<ChangelogTaskProgressState> taskGroups =
+                taskGrouper.planInsertOnlyTasks(taskInfos, tableName, snapshotId);
+
+        if (taskGroups.isEmpty()) {
+            return;
+        }
+
+        final String completionKey = SNAPSHOT_COMPLETION_PREFIX + snapshotId;
+        sourceCoordinator.createPartition(new GlobalState(completionKey,
+                Map.of("total", taskGroups.size(), "completed", 0)));
+
+        for (final ChangelogTaskProgressState taskState : taskGroups) {
+            final String filesHash = deterministicHash(taskState.getDataFilePaths());
+            final String partitionKey = tableName + "|" + snapshotId + "|" + filesHash;
+            sourceCoordinator.createPartition(new ChangelogTaskPartition(partitionKey, taskState));
+        }
+
+        LOG.info("Created {} INSERT-only partition(s) for snapshot {}", taskGroups.size(), snapshotId);
+        waitForSnapshotComplete(completionKey, taskGroups.size());
+    }
+
+    private void processShuffleSnapshot(final String tableName, final long snapshotId,
+                                         final List<ShuffleWriteProgressState> shuffleTasks) {
+        final String snapshotIdStr = String.valueOf(snapshotId);
+
+        // Phase 1: Create SHUFFLE_WRITE tasks
+        // Create location tracker GlobalState (workers will write their address here on completion)
+        final String locationKey = "shuffle-locations-" + snapshotIdStr;
+        sourceCoordinator.createPartition(new GlobalState(locationKey, new java.util.HashMap<>()));
+
+        for (final ShuffleWriteProgressState taskState : shuffleTasks) {
+            final String shuffleTaskId = deterministicHash(List.of(taskState.getDataFilePath()));
+            taskState.setShuffleTaskId(shuffleTaskId);
+
+            final String partitionKey = tableName + "|sw|" + snapshotId + "|" + shuffleTaskId;
+            sourceCoordinator.createPartition(new ShuffleWritePartition(partitionKey, taskState));
+        }
+
+        final String writeCompletionKey = SNAPSHOT_COMPLETION_PREFIX + "sw-" + snapshotId;
+        sourceCoordinator.createPartition(new GlobalState(writeCompletionKey,
+                Map.of("total", shuffleTasks.size(), "completed", 0)));
+
+        LOG.info("Created {} SHUFFLE_WRITE task(s) for snapshot {}", shuffleTasks.size(), snapshotId);
+        waitForShuffleComplete(writeCompletionKey, shuffleTasks.size(), snapshotIdStr);
+
+        // Check if shuffle failed
+        if (isShuffleFailed(snapshotIdStr)) {
+            LOG.warn("Shuffle failed for snapshot {}, resetting", snapshotId);
+            shuffleStorage.cleanup(snapshotIdStr);
+            return;
+        }
+
+        // Barrier: collect index data and coalesce
+        final int numPartitions = shuffleConfig.getPartitions();
+        final long[] partitionSizes = shuffleStorage.getPartitionSizes(snapshotIdStr, numPartitions);
+
+        final ShufflePartitionCoalescer coalescer =
+                new ShufflePartitionCoalescer(shuffleConfig.getTargetPartitionSizeBytes());
+        final List<ShufflePartitionCoalescer.PartitionRange> ranges = coalescer.coalesce(partitionSizes);
+
+        if (ranges.isEmpty()) {
+            LOG.info("No data after shuffle for snapshot {}", snapshotId);
+            shuffleStorage.cleanup(snapshotIdStr);
+            return;
+        }
+
+        // Read shuffle write locations from GlobalState.
+        // SHUFFLE_WRITE workers write their location to GlobalState on completion.
+        final Optional<EnhancedSourcePartition> locationPartition = sourceCoordinator.getPartition(locationKey);
+        final Map<String, Object> locationMap = locationPartition.map(enhancedSourcePartition -> ((GlobalState) enhancedSourcePartition).getProgressState().orElse(Map.of())).orElseGet(Map::of);
+
+        final List<String> completedTaskIds = new ArrayList<>();
+        final List<String> completedNodeAddresses = new ArrayList<>();
+        for (final Map.Entry<String, Object> entry : locationMap.entrySet()) {
+            completedTaskIds.add(entry.getKey());
+            completedNodeAddresses.add(String.valueOf(entry.getValue()));
+        }
+        LOG.info("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
+
+        // Phase 2: Create SHUFFLE_READ tasks
+        final String readCompletionKey = SNAPSHOT_COMPLETION_PREFIX + "sr-" + snapshotId;
+        sourceCoordinator.createPartition(new GlobalState(readCompletionKey,
+                Map.of("total", ranges.size(), "completed", 0)));
+
+        for (final ShufflePartitionCoalescer.PartitionRange range : ranges) {
+            final ShuffleReadProgressState readState = new ShuffleReadProgressState();
+            readState.setSnapshotId(snapshotId);
+            readState.setTableName(tableName);
+            readState.setPartitionRangeStart(range.getStartPartition());
+            readState.setPartitionRangeEnd(range.getEndPartitionInclusive());
+            readState.setShuffleWriteTaskIds(completedTaskIds);
+            readState.setNodeAddresses(completedNodeAddresses);
+
+            final String partitionKey = tableName + "|sr|" + snapshotId + "|" + range.getStartPartition() + "-" + range.getEndPartitionInclusive();
+            sourceCoordinator.createPartition(new ShuffleReadPartition(partitionKey, readState));
+        }
+
+        LOG.info("Created {} SHUFFLE_READ task(s) for snapshot {} (coalesced from {} partitions)",
+                ranges.size(), snapshotId, numPartitions);
+        waitForShuffleComplete(readCompletionKey, ranges.size(), snapshotIdStr);
+
+        shuffleStorage.cleanup(snapshotIdStr);
+    }
+
+    private void waitForShuffleComplete(final String completionKey, final int totalPartitions,
+                                         final String snapshotIdStr) {
+        while (!Thread.currentThread().isInterrupted()) {
+            if (isShuffleFailed(snapshotIdStr)) {
+                return;
+            }
+
+            final Optional<EnhancedSourcePartition> state =
+                    sourceCoordinator.getPartition(completionKey);
+
+            if (state.isPresent()) {
+                final GlobalState gs = (GlobalState) state.get();
+                final Map<String, Object> progress = gs.getProgressState().orElse(Map.of());
+                final int completed = ((Number) progress.getOrDefault("completed", 0)).intValue();
+                if (completed >= totalPartitions) {
+                    return;
+                }
+            }
+
+            try {
+                sourceCoordinator.saveProgressStateForPartition(
+                        leaderPartition, DEFAULT_EXTEND_LEASE_DURATION);
+            } catch (final Exception e) {
+                LOG.warn("Failed to extend lease while waiting for shuffle", e);
+            }
+
+            try {
+                Thread.sleep(COMPLETION_CHECK_INTERVAL.toMillis());
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    private boolean isShuffleFailed(final String snapshotIdStr) {
+        final Optional<EnhancedSourcePartition> failedState =
+                sourceCoordinator.getPartition(SHUFFLE_FAILED_PREFIX + snapshotIdStr);
+        if (failedState.isPresent()) {
+            final GlobalState gs = (GlobalState) failedState.get();
+            final Map<String, Object> progress = gs.getProgressState().orElse(Map.of());
+            return Boolean.TRUE.equals(progress.get("failed"));
+        }
+        return false;
+    }
+
+    private static String deterministicHash(final List<String> values) {
+        final List<String> sorted = new ArrayList<>(values);
+        Collections.sort(sorted);
+        try {
+            final MessageDigest md = MessageDigest.getInstance("SHA-256");
+            for (final String v : sorted) {
+                md.update(v.getBytes(StandardCharsets.UTF_8));
+            }
+            final byte[] digest = md.digest();
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 8; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (final NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
     }
 }

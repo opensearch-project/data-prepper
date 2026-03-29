@@ -11,10 +11,13 @@
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ChangelogTaskProgressState;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleWriteProgressState;
 
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 
 class TaskGrouperTest {
@@ -22,85 +25,63 @@ class TaskGrouperTest {
     private final TaskGrouper taskGrouper = new TaskGrouper();
 
     @Test
-    void pairByBounds_insertOnly_eachFileIsIndependentGroup() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("file1", "ADDED", 100, "bounds1"),
-                new TaskGrouper.TaskInfo("file2", "ADDED", 200, "bounds2")
+    void planInsertOnlyTasks_creates_one_task_per_file() {
+        final List<TaskGrouper.TaskInfo> taskInfos = List.of(
+                new TaskGrouper.TaskInfo("file1.parquet", "ADDED", 100, 0),
+                new TaskGrouper.TaskInfo("file2.parquet", "ADDED", 200, 0)
         );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        assertThat(groups, hasSize(2));
+
+        final List<ChangelogTaskProgressState> result =
+                taskGrouper.planInsertOnlyTasks(taskInfos, "db.table", 12345L);
+
+        assertThat(result, hasSize(2));
+        assertThat(result.get(0).getDataFilePaths(), equalTo(List.of("file1.parquet")));
+        assertThat(result.get(0).getTotalRecords(), equalTo(100L));
+        assertThat(result.get(1).getDataFilePaths(), equalTo(List.of("file2.parquet")));
+        assertThat(result.get(1).getTotalRecords(), equalTo(200L));
     }
 
     @Test
-    void pairByBounds_deleteOnly_eachFileIsIndependentGroup() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("file1", "DELETED", 100, "bounds1")
+    void planShuffleWriteTasks_creates_one_task_per_file_with_change_ordinal() {
+        final List<TaskGrouper.TaskInfo> taskInfos = List.of(
+                new TaskGrouper.TaskInfo("deleted.parquet", "DELETED", 100, 0),
+                new TaskGrouper.TaskInfo("added.parquet", "ADDED", 100, 0)
         );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        assertThat(groups, hasSize(1));
+
+        final List<ShuffleWriteProgressState> result =
+                taskGrouper.planShuffleWriteTasks(taskInfos, "db.table", 12345L);
+
+        assertThat(result, hasSize(2));
+        assertThat(result.get(0).getDataFilePath(), equalTo("deleted.parquet"));
+        assertThat(result.get(0).getTaskType(), equalTo("DELETED"));
+        assertThat(result.get(0).getChangeOrdinal(), equalTo(0));
+        assertThat(result.get(1).getDataFilePath(), equalTo("added.parquet"));
+        assertThat(result.get(1).getTaskType(), equalTo("ADDED"));
     }
 
     @Test
-    void pairByBounds_matchingBounds_pairedTogether() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, "{1=abc}|{1=xyz}"),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, "{1=abc}|{1=xyz}")
+    void hasDeleted_is_true_when_deleted_task_exists() {
+        final List<TaskGrouper.TaskInfo> taskInfos = List.of(
+                new TaskGrouper.TaskInfo("deleted.parquet", "DELETED", 100, 0),
+                new TaskGrouper.TaskInfo("added.parquet", "ADDED", 100, 0)
         );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        assertThat(groups, hasSize(1));
-        assertThat(groups.get(0), hasSize(2));
+
+        final boolean hasDeleted = taskInfos.stream()
+                .anyMatch(t -> "DELETED".equals(t.taskType));
+
+        assertThat(hasDeleted, equalTo(true));
     }
 
     @Test
-    void pairByBounds_differentBounds_fallbackGroup() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, "{1=abc}|{1=xyz}"),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, "{1=abc}|{1=zzz}")
+    void hasDeleted_is_false_for_insert_only() {
+        final List<TaskGrouper.TaskInfo> taskInfos = List.of(
+                new TaskGrouper.TaskInfo("file1.parquet", "ADDED", 100, 0),
+                new TaskGrouper.TaskInfo("file2.parquet", "ADDED", 200, 0)
         );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        // Bounds don't match -> fallback group with both
-        assertThat(groups, hasSize(1));
-        assertThat(groups.get(0), hasSize(2));
-    }
 
-    @Test
-    void pairByBounds_multiplePairs_eachPairedSeparately() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_us", "DELETED", 100, "bounds_us"),
-                new TaskGrouper.TaskInfo("old_eu", "DELETED", 100, "bounds_eu"),
-                new TaskGrouper.TaskInfo("new_us", "ADDED", 100, "bounds_us"),
-                new TaskGrouper.TaskInfo("new_eu", "ADDED", 100, "bounds_eu")
-        );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        assertThat(groups, hasSize(2));
-        assertThat(groups.get(0), hasSize(2));
-        assertThat(groups.get(1), hasSize(2));
-    }
+        final boolean hasDeleted = taskInfos.stream()
+                .anyMatch(t -> "DELETED".equals(t.taskType));
 
-    @Test
-    void pairByBounds_ambiguousBounds_fallbackGroup() {
-        // Two DELETED and two ADDED with same bounds -> can't pair uniquely
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old1", "DELETED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("old2", "DELETED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("new1", "ADDED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("new2", "ADDED", 100, "same_bounds")
-        );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        // Ambiguous -> all in one fallback group
-        assertThat(groups, hasSize(1));
-        assertThat(groups.get(0), hasSize(4));
-    }
-
-    @Test
-    void pairByBounds_nullBounds_fallbackGroup() {
-        final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, null),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, null)
-        );
-        final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
-        // Null bounds -> can't pair -> fallback
-        assertThat(groups, hasSize(1));
-        assertThat(groups.get(0), hasSize(2));
+        assertThat(hasDeleted, equalTo(false));
     }
 }

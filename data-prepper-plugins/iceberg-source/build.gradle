@@ -40,6 +40,10 @@ dependencies {
     implementation libs.hadoop.common
     implementation 'org.apache.orc:orc-core:1.9.5'
 
+    implementation libs.armeria.core
+
+    implementation 'org.lz4:lz4-java:1.8.0'
+
     implementation 'software.amazon.awssdk:glue'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'

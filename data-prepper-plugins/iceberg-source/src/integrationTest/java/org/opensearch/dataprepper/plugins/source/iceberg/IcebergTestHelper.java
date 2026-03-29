@@ -102,6 +102,11 @@ public class IcebergTestHelper {
         return catalog.createTable(TableIdentifier.of(namespace, tableName), schema, PartitionSpec.unpartitioned());
     }
 
+    public Table createPartitionedTable(final String namespace, final String tableName,
+                                         final Schema schema, final PartitionSpec spec) {
+        return catalog.createTable(TableIdentifier.of(namespace, tableName), schema, spec);
+    }
+
     public void dropTable(final String namespace, final String tableName) {
         try {
             catalog.dropTable(TableIdentifier.of(namespace, tableName), true);
