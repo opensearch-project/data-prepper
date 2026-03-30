@@ -302,38 +302,40 @@ public class PrometheusTimeSeries {
         final boolean isGauge = metric.getKind().equals(Metric.KIND.GAUGE.toString());
         final boolean isCounter = metric.getKind().equals(Metric.KIND.SUM.toString()) &&
                 ((Sum) metric).isMonotonic() &&
-                ((Sum) metric).getAggregationTemporality().equals("AGGREGATION_TEMPORALITY_CUMULATIVE");
+                "AGGREGATION_TEMPORALITY_CUMULATIVE".equals(((Sum) metric).getAggregationTemporality());
 
         StringBuilder metricNameBuilder = new StringBuilder(sanitizeName(name, true, false));
         String suffix = isCounter ? TOTAL_SUFFIX : "";
 
-        if (unit.startsWith("{")) {
+        if (unit != null && unit.startsWith("{")) {
             return metricNameBuilder.append(suffix).toString();
         }
 
-        if ("1".equals(unit) && isGauge) {
-            return metricNameBuilder.append(RATIO_SUFFIX).toString();
-        }
+        if (unit != null) {
+            if ("1".equals(unit) && isGauge) {
+                return metricNameBuilder.append(RATIO_SUFFIX).toString();
+            }
 
-        String mappedUnit = otelToPrometheusUnitsMap.get(unit);
-        if (mappedUnit != null) {
-            return metricNameBuilder.append(UNDERSCORE).append(mappedUnit).append(suffix).toString();
-        }
+            String mappedUnit = otelToPrometheusUnitsMap.get(unit);
+            if (mappedUnit != null) {
+                return metricNameBuilder.append(UNDERSCORE).append(mappedUnit).append(suffix).toString();
+            }
 
-        if (unit.contains("/")) {
-            String[] unitSplit = unit.split("/", 2);
-            if (unitSplit.length == 2) {
-                String unit1 = otelToPrometheusUnitsMap.get(unitSplit[0]);
-                String unit2 = otelToPrometheusUnitsMap.get(unitSplit[1]);
-                if (unit1 != null && unit2 != null) {
-                    return metricNameBuilder.append(UNDERSCORE).append(unit1)
-                            .append(UNDERSCORE).append(unit2).append(suffix).toString();
+            if (unit.contains("/")) {
+                String[] unitSplit = unit.split("/", 2);
+                if (unitSplit.length == 2) {
+                    String unit1 = otelToPrometheusUnitsMap.get(unitSplit[0]);
+                    String unit2 = otelToPrometheusUnitsMap.get(unitSplit[1]);
+                    if (unit1 != null && unit2 != null) {
+                        return metricNameBuilder.append(UNDERSCORE).append(unit1)
+                                .append(UNDERSCORE).append(unit2).append(suffix).toString();
+                    }
                 }
             }
-        }
 
-        if (!"1".equals(unit)) {
-            metricNameBuilder.append(UNDERSCORE).append(unit);
+            if (!"1".equals(unit)) {
+                metricNameBuilder.append(UNDERSCORE).append(unit);
+            }
         }
         return metricNameBuilder.append(suffix).toString();
     }
