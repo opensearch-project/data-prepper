@@ -45,23 +45,13 @@ import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.Shuf
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleWriteProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.LocalDiskShuffleReader;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClient;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleRecord;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -77,7 +67,6 @@ public class ChangelogWorker implements Runnable {
     private static final int DEFAULT_LEASE_INTERVAL_MILLIS = 2000;
     private static final int BUFFER_ACCUMULATOR_SIZE = 100;
     private static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
-    private static final int SHUFFLE_READ_MAX_RETRIES = 3;
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final IcebergSourceConfig sourceConfig;
@@ -85,8 +74,9 @@ public class ChangelogWorker implements Runnable {
     private final Map<String, TableConfig> tableConfigs;
     private final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer;
     private final AcknowledgementSetManager acknowledgementSetManager;
-private final EventFactory eventFactory;
-private final ShuffleStorage shuffleStorage;
+    private final EventFactory eventFactory;
+    private final ShuffleStorage shuffleStorage;
+    private final ShuffleNodeClient shuffleNodeClient;
     private final String localNodeAddress;
 
     public ChangelogWorker(final EnhancedSourceCoordinator sourceCoordinator,
@@ -105,7 +95,8 @@ private final ShuffleStorage shuffleStorage;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
         this.shuffleStorage = shuffleStorage;
-        this.localNodeAddress = resolveLocalAddress();
+        this.shuffleNodeClient = new ShuffleNodeClient(sourceConfig.getShuffleConfig());
+        this.localNodeAddress = ShuffleNodeClient.resolveLocalAddress();
     }
 
     @Override
@@ -617,20 +608,16 @@ private final ShuffleStorage shuffleStorage;
                                                  final String nodeAddress, final int startPartition,
                                                  final int endPartition) throws Exception {
         LOG.debug("Pulling shuffle data: snapshot={} task={} node={} partitions={}-{} isLocal={}",
-                snapshotId, taskId, nodeAddress, startPartition, endPartition, isLocalAddress(nodeAddress));
+                snapshotId, taskId, nodeAddress, startPartition, endPartition, ShuffleNodeClient.isLocalAddress(nodeAddress));
         // Local node: read directly from disk
-        if (isLocalAddress(nodeAddress)) {
+        if (ShuffleNodeClient.isLocalAddress(nodeAddress)) {
             try (var reader = shuffleStorage.createReader(snapshotId, taskId)) {
                 return reader.readPartitions(startPartition, endPartition);
             }
         }
 
         // Remote node: get index, then pull each partition's compressed block
-        final int port = sourceConfig.getShuffleConfig().getServerPort();
-        final String scheme = sourceConfig.getShuffleConfig().isSsl() ? "https" : "http";
-        final HttpClient client = createHttpClient();
-
-        final long[] offsets = pullIndex(client, scheme, nodeAddress, port, snapshotId, taskId);
+        final long[] offsets = shuffleNodeClient.pullIndex(nodeAddress, snapshotId, taskId);
 
         final List<ShuffleRecord> allRecords = new ArrayList<>();
         for (int p = startPartition; p <= endPartition; p++) {
@@ -641,55 +628,11 @@ private final ShuffleStorage shuffleStorage;
                 continue;
             }
 
-            final byte[] compressedBlock = pullDataWithRetry(client, scheme, nodeAddress, port,
-                    snapshotId, taskId, offset, length);
+            final byte[] compressedBlock = shuffleNodeClient.pullData(nodeAddress, snapshotId, taskId, offset, length);
             final byte[] uncompressed = LocalDiskShuffleReader.decompressBlock(compressedBlock);
             allRecords.addAll(LocalDiskShuffleReader.parseRecords(uncompressed));
         }
         return allRecords;
-    }
-
-    private byte[] pullDataWithRetry(final HttpClient client, final String scheme,
-                                      final String nodeAddress, final int port,
-                                      final String snapshotId, final String taskId,
-                                      final long offset, final int length) throws Exception {
-        for (int attempt = 1; attempt <= SHUFFLE_READ_MAX_RETRIES; attempt++) {
-            try {
-                final URI uri = URI.create(String.format("%s://%s:%d/shuffle/%s/%s/data?offset=%d&length=%d",
-                        scheme, nodeAddress, port, snapshotId, taskId, offset, length));
-                final HttpResponse<byte[]> response = client.send(
-                        HttpRequest.newBuilder(uri).GET().build(),
-                        HttpResponse.BodyHandlers.ofByteArray());
-                if (response.statusCode() == 200) {
-                    return response.body();
-                }
-                LOG.warn("HTTP Pull failed: status={} attempt={}/{}", response.statusCode(), attempt, SHUFFLE_READ_MAX_RETRIES);
-            } catch (final Exception e) {
-                LOG.warn("HTTP Pull failed: attempt={}/{}", attempt, SHUFFLE_READ_MAX_RETRIES, e);
-            }
-            if (attempt < SHUFFLE_READ_MAX_RETRIES) {
-                Thread.sleep(1000L * attempt);
-            }
-        }
-        throw new RuntimeException("Failed to pull shuffle data from " + nodeAddress + " after " + SHUFFLE_READ_MAX_RETRIES + " retries");
-    }
-
-    private long[] pullIndex(final HttpClient client, final String scheme, final String nodeAddress,
-                              final int port, final String snapshotId, final String taskId) throws Exception {
-        final URI uri = URI.create(String.format("%s://%s:%d/shuffle/%s/%s/index",
-                scheme, nodeAddress, port, snapshotId, taskId));
-        final HttpResponse<byte[]> response = client.send(
-                HttpRequest.newBuilder(uri).GET().build(),
-                HttpResponse.BodyHandlers.ofByteArray());
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("Failed to pull index from " + nodeAddress + ": status=" + response.statusCode());
-        }
-        final ByteBuffer buf = ByteBuffer.wrap(response.body());
-        final long[] offsets = new long[response.body().length / Long.BYTES];
-        for (int i = 0; i < offsets.length; i++) {
-            offsets[i] = buf.getLong();
-        }
-        return offsets;
     }
 
     private int computeShufflePartition(final Record record,
@@ -761,48 +704,5 @@ private final ShuffleStorage shuffleStorage;
         } catch (final Exception e) {
             LOG.warn("Failed to mark shuffle as failed for snapshot {}", snapshotIdStr, e);
         }
-    }
-
-    private boolean isLocalAddress(final String address) {
-        try {
-            final InetAddress inetAddress = InetAddress.getByName(address);
-            if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
-                return true;
-            }
-            return NetworkInterface.getByInetAddress(inetAddress) != null;
-        } catch (final Exception e) {
-            return false;
-        }
-    }
-
-    private static String resolveLocalAddress() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (final Exception e) {
-            throw new RuntimeException("Failed to resolve local host name", e);
-        }
-    }
-
-    private HttpClient createHttpClient() {
-        final HttpClient.Builder builder = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10));
-        if (sourceConfig.getShuffleConfig().isSsl()
-                && sourceConfig.getShuffleConfig().isSslInsecureDisableVerification()) {
-            try {
-                final TrustManager[] trustAllCerts = new TrustManager[]{
-                        new X509TrustManager() {
-                            public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                        }
-                };
-                final SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-                builder.sslContext(sslContext);
-            } catch (final Exception e) {
-                throw new RuntimeException("Failed to configure insecure SSL context for shuffle client", e);
-            }
-        }
-        return builder.build();
     }
 }

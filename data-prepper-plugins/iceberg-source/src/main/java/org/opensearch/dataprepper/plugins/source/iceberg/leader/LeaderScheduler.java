@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.Lead
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleReadProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ShuffleWriteProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClient;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShufflePartitionCoalescer;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.slf4j.Logger;
@@ -396,22 +397,8 @@ public class LeaderScheduler implements Runnable {
             return false;
         }
 
-        // Barrier: collect index data and coalesce
-        final int numPartitions = shuffleConfig.getPartitions();
-        final long[] partitionSizes = shuffleStorage.getPartitionSizes(snapshotIdStr, numPartitions);
-
-        final ShufflePartitionCoalescer coalescer =
-                new ShufflePartitionCoalescer(shuffleConfig.getTargetPartitionSizeBytes());
-        final List<ShufflePartitionCoalescer.PartitionRange> ranges = coalescer.coalesce(partitionSizes);
-
-        if (ranges.isEmpty()) {
-            LOG.info("No data after shuffle for snapshot {}", snapshotId);
-            shuffleStorage.cleanup(snapshotIdStr);
-            return true;
-        }
-
-        // Read shuffle write locations from GlobalState.
-        // SHUFFLE_WRITE workers write their location to GlobalState on completion.
+        // Barrier: collect index data from all nodes and coalesce
+        // Read shuffle write locations from GlobalState first (need node addresses to fetch remote indexes)
         final Optional<EnhancedSourcePartition> locationPartition = sourceCoordinator.getPartition(locationKey);
         final Map<String, Object> locationMap = locationPartition.map(enhancedSourcePartition -> ((GlobalState) enhancedSourcePartition).getProgressState().orElse(Map.of())).orElseGet(Map::of);
 
@@ -422,6 +409,21 @@ public class LeaderScheduler implements Runnable {
             completedNodeAddresses.add(String.valueOf(entry.getValue()));
         }
         LOG.info("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
+
+        final int numPartitions = shuffleConfig.getPartitions();
+        final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig);
+        final long[] partitionSizes = client.collectPartitionSizes(
+                shuffleStorage, snapshotIdStr, completedTaskIds, completedNodeAddresses, numPartitions);
+
+        final ShufflePartitionCoalescer coalescer =
+                new ShufflePartitionCoalescer(shuffleConfig.getTargetPartitionSizeBytes());
+        final List<ShufflePartitionCoalescer.PartitionRange> ranges = coalescer.coalesce(partitionSizes);
+
+        if (ranges.isEmpty()) {
+            LOG.info("No data after shuffle for snapshot {}", snapshotId);
+            shuffleStorage.cleanup(snapshotIdStr);
+            return true;
+        }
 
         // Phase 2: Create SHUFFLE_READ tasks
         final String readCompletionKey = SNAPSHOT_COMPLETION_PREFIX + "sr-" + snapshotId;
