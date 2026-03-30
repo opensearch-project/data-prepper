@@ -480,7 +480,7 @@ public class ChangelogWorker implements Runnable {
             for (final Record record : reader) {
                 final int partitionNum = computeShufflePartition(record, identifierColumns, numPartitions);
                 final byte op = "DELETE".equals(operation) ? ShuffleRecord.OP_DELETE : ShuffleRecord.OP_INSERT;
-                final byte[] serialized = serializeRecord(record, schema, avroSchema);
+                final byte[] serialized = RecordAvroSerializer.serialize(record, avroSchema);
                 writer.addRecord(partitionNum, op, state.getChangeOrdinal(), serialized);
             }
             writer.finish();
@@ -542,7 +542,7 @@ public class ChangelogWorker implements Runnable {
             // Convert ShuffleRecords to RowWithMeta
             final List<RowWithMeta> rows = new ArrayList<>();
             for (final ShuffleRecord sr : allRecords) {
-                final Record record = deserializeRecord(sr.getSerializedRecord(), schema, avroSchema);
+                final Record record = RecordAvroSerializer.deserialize(sr.getSerializedRecord(), schema, avroSchema);
                 final String op = sr.getOperation() == ShuffleRecord.OP_DELETE ? "DELETE" : "INSERT";
                 rows.add(new RowWithMeta(record, op));
             }
@@ -643,37 +643,6 @@ public class ChangelogWorker implements Runnable {
             hash = 31 * hash + (val != null ? val.hashCode() : 0);
         }
         return Math.floorMod(hash, numPartitions);
-    }
-
-    private byte[] serializeRecord(final Record record, final Schema icebergSchema,
-                                    final org.apache.avro.Schema avroSchema) throws java.io.IOException {
-        final org.apache.avro.generic.GenericRecord avroRecord = new org.apache.avro.generic.GenericData.Record(avroSchema);
-        for (final Types.NestedField field : icebergSchema.columns()) {
-            avroRecord.put(field.name(), record.getField(field.name()));
-        }
-        final java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-        final org.apache.avro.io.BinaryEncoder encoder = org.apache.avro.io.EncoderFactory.get().binaryEncoder(out, null);
-        final org.apache.avro.generic.GenericDatumWriter<org.apache.avro.generic.GenericRecord> writer =
-                new org.apache.avro.generic.GenericDatumWriter<>(avroSchema);
-        writer.write(avroRecord, encoder);
-        encoder.flush();
-        return out.toByteArray();
-    }
-
-    private Record deserializeRecord(final byte[] data, final Schema icebergSchema,
-                                      final org.apache.avro.Schema avroSchema) throws java.io.IOException {
-        final org.apache.avro.io.BinaryDecoder decoder =
-                org.apache.avro.io.DecoderFactory.get().binaryDecoder(data, null);
-        final org.apache.avro.generic.GenericDatumReader<org.apache.avro.generic.GenericRecord> reader =
-                new org.apache.avro.generic.GenericDatumReader<>(avroSchema);
-        final org.apache.avro.generic.GenericRecord avroRecord = reader.read(null, decoder);
-
-        final org.apache.iceberg.data.GenericRecord icebergRecord = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
-        for (final Types.NestedField field : icebergSchema.columns()) {
-            final Object value = avroRecord.get(field.name());
-            icebergRecord.setField(field.name(), value instanceof org.apache.avro.util.Utf8 ? value.toString() : value);
-        }
-        return icebergRecord;
     }
 
     private synchronized void registerShuffleWriteLocation(final long snapshotId, final String taskId, final String nodeAddress) {
