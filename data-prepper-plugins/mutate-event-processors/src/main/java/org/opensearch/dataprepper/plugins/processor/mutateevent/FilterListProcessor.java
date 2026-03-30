@@ -36,6 +36,8 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(FilterListProcessor.class);
+    private static final String FAILED_ELEMENTS_METADATA_KEY = "filter_list_processor_failed_elements";
+    private static final String FAILED_ELEMENTS_COUNT_METADATA_KEY = "filter_list_processor_failed_elements_count";
     private final FilterListProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
     private final String target;
@@ -89,8 +91,8 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
                 }
 
                 final List<Object> filteredList = new ArrayList<>();
-                final JacksonEvent.Builder contextBuilder = JacksonEvent.builder()
-                        .withEventType("event");
+                final List<Object> failedElements = new ArrayList<>();
+                int failedElementCount = 0;
 
                 for (final Object element : sourceList) {
                     @SuppressWarnings("unchecked")
@@ -99,7 +101,10 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
                             : Collections.singletonMap("value", element);
 
                     try {
-                        final Event elementEvent = contextBuilder
+                        // TODO: Revisit this per-element Event construction when ExpressionEvaluator/JsonPointer
+                        // internals support a lighter evaluation path that avoids full tree conversion.
+                        final Event elementEvent = JacksonEvent.builder()
+                                .withEventType("event")
                                 .withData(contextMap)
                                 .build();
 
@@ -107,9 +112,17 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
                             filteredList.add(element);
                         }
                     } catch (final Exception e) {
+                        failedElementCount++;
+                        failedElements.add(element);
                         LOG.warn(EVENT, "Error evaluating keep_when expression [{}] for element in source list at path [{}]",
                                 config.getKeepWhen(), config.getSource(), e);
                     }
+                }
+
+                if (failedElementCount > 0) {
+                    addTagsOnFailure(recordEvent);
+                    recordEvent.getMetadata().setAttribute(FAILED_ELEMENTS_COUNT_METADATA_KEY, failedElementCount);
+                    recordEvent.getMetadata().setAttribute(FAILED_ELEMENTS_METADATA_KEY, failedElements);
                 }
 
                 recordEvent.put(target, filteredList);
