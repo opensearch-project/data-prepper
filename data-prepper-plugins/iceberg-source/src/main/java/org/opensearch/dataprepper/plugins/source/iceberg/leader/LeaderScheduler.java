@@ -375,6 +375,12 @@ public class LeaderScheduler implements Runnable {
         final String locationKey = "shuffle-locations-" + snapshotIdStr;
         sourceCoordinator.createPartition(new GlobalState(locationKey, new java.util.HashMap<>()));
 
+        // Create completion key before partitions to avoid race condition where workers
+        // complete and try to increment before the key exists
+        final String writeCompletionKey = SNAPSHOT_COMPLETION_PREFIX + "sw-" + snapshotId;
+        sourceCoordinator.createPartition(new GlobalState(writeCompletionKey,
+                Map.of("total", shuffleTasks.size(), "completed", 0)));
+
         for (final ShuffleWriteProgressState taskState : shuffleTasks) {
             final String shuffleTaskId = deterministicHash(List.of(taskState.getDataFilePath()));
             taskState.setShuffleTaskId(shuffleTaskId);
@@ -382,10 +388,6 @@ public class LeaderScheduler implements Runnable {
             final String partitionKey = tableName + "|sw|" + snapshotId + "|" + shuffleTaskId;
             sourceCoordinator.createPartition(new ShuffleWritePartition(partitionKey, taskState));
         }
-
-        final String writeCompletionKey = SNAPSHOT_COMPLETION_PREFIX + "sw-" + snapshotId;
-        sourceCoordinator.createPartition(new GlobalState(writeCompletionKey,
-                Map.of("total", shuffleTasks.size(), "completed", 0)));
 
         LOG.info("Created {} SHUFFLE_WRITE task(s) for snapshot {}", shuffleTasks.size(), snapshotId);
         waitForShuffleComplete(writeCompletionKey, shuffleTasks.size(), snapshotIdStr);
