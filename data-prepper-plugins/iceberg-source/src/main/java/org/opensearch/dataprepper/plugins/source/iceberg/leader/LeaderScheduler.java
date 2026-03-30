@@ -393,7 +393,7 @@ public class LeaderScheduler implements Runnable {
         // Check if shuffle failed
         if (isShuffleFailed(snapshotIdStr)) {
             LOG.warn("Shuffle failed for snapshot {}, skipping", snapshotId);
-            shuffleStorage.cleanup(snapshotIdStr);
+            cleanupAllNodes(snapshotIdStr, locationKey);
             return false;
         }
 
@@ -421,7 +421,7 @@ public class LeaderScheduler implements Runnable {
 
         if (ranges.isEmpty()) {
             LOG.info("No data after shuffle for snapshot {}", snapshotId);
-            shuffleStorage.cleanup(snapshotIdStr);
+            cleanupAllNodes(snapshotIdStr, locationKey);
             return true;
         }
 
@@ -449,11 +449,11 @@ public class LeaderScheduler implements Runnable {
 
         if (isShuffleFailed(snapshotIdStr)) {
             LOG.warn("Shuffle read failed for snapshot {}, skipping", snapshotId);
-            shuffleStorage.cleanup(snapshotIdStr);
+            cleanupAllNodes(snapshotIdStr, locationKey);
             return false;
         }
 
-        shuffleStorage.cleanup(snapshotIdStr);
+        cleanupAllNodes(snapshotIdStr, locationKey);
         return true;
     }
 
@@ -501,6 +501,20 @@ public class LeaderScheduler implements Runnable {
             return Boolean.TRUE.equals(progress.get("failed"));
         }
         return false;
+    }
+
+    private void cleanupAllNodes(final String snapshotId, final String locationKey) {
+        shuffleStorage.cleanup(snapshotId);
+        final Optional<EnhancedSourcePartition> locationPartition = sourceCoordinator.getPartition(locationKey);
+        locationPartition.ifPresent(p -> {
+            final Map<String, Object> locations = ((GlobalState) p).getProgressState().orElse(Map.of());
+            final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig);
+            locations.values().stream()
+                    .map(String::valueOf)
+                    .distinct()
+                    .filter(addr -> !ShuffleNodeClient.isLocalAddress(addr))
+                    .forEach(addr -> client.requestCleanup(addr, snapshotId));
+        });
     }
 
     private static String deterministicHash(final List<String> values) {

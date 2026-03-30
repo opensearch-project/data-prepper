@@ -88,6 +88,30 @@ public class ShuffleNodeClient {
         throw new RuntimeException("Failed to pull " + description + " after " + MAX_RETRIES + " retries");
     }
 
+    /**
+     * Requests a remote node to delete shuffle files for a snapshot.
+     */
+    public void requestCleanup(final String nodeAddress, final String snapshotId) {
+        try {
+            final URI uri = URI.create(String.format("%s://%s:%d/shuffle/%s",
+                    scheme, nodeAddress, port, snapshotId));
+            httpClient.sendAsync(
+                    HttpRequest.newBuilder(uri).DELETE().timeout(Duration.ofSeconds(10)).build(),
+                    HttpResponse.BodyHandlers.discarding())
+                    .thenAccept(response -> {
+                        if (response.statusCode() != 200) {
+                            LOG.warn("Remote cleanup failed for snapshot {} on {}: status={}", snapshotId, nodeAddress, response.statusCode());
+                        }
+                    })
+                    .exceptionally(error -> {
+                        LOG.warn("Remote cleanup failed for snapshot {} on {}", snapshotId, nodeAddress, error);
+                        return null;
+                    });
+        } catch (final Exception e) {
+            LOG.warn("Remote cleanup failed for snapshot {} on {}", snapshotId, nodeAddress, e);
+        }
+    }
+
     public static boolean isLocalAddress(final String address) {
         try {
             final InetAddress inetAddress = InetAddress.getByName(address);

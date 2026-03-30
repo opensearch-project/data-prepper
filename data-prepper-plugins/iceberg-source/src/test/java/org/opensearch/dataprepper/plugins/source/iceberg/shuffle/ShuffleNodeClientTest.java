@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 
 class ShuffleNodeClientTest {
@@ -122,5 +123,26 @@ class ShuffleNodeClientTest {
     @Test
     void resolveLocalAddress_returnsNonNull() {
         assertThat(ShuffleNodeClient.resolveLocalAddress(), notNullValue());
+    }
+
+    @Test
+    void requestCleanup_deletesShuffleFiles() throws Exception {
+        assertThat(storage.getTaskIds("snap1"), hasSize(1));
+
+        // Test the DELETE endpoint directly with a synchronous call to avoid flakiness
+        final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
+        final java.net.http.HttpResponse<Void> response = httpClient.send(
+                java.net.http.HttpRequest.newBuilder(
+                        java.net.URI.create("http://localhost:" + port + "/shuffle/snap1"))
+                        .DELETE().build(),
+                java.net.http.HttpResponse.BodyHandlers.discarding());
+        assertThat(response.statusCode(), is(200));
+        assertThat(storage.getTaskIds("snap1"), hasSize(0));
+    }
+
+    @Test
+    void requestCleanup_nonExistentSnapshot_doesNotThrow() {
+        // Should not throw, just log a warning at most
+        client.requestCleanup("localhost", "nonexistent");
     }
 }

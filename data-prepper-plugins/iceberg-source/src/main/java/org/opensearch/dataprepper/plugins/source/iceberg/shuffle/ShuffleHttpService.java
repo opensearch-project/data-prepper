@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.server.annotation.Delete;
 import com.linecorp.armeria.server.annotation.Get;
 import com.linecorp.armeria.server.annotation.Param;
 import org.slf4j.Logger;
@@ -64,6 +65,18 @@ public class ShuffleHttpService {
         } catch (final Exception e) {
             LOG.error("Failed to serve data for snapshot={} task={} offset={} length={}",
                     snapshotId, taskId, offset, length, e);
+            return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Delete("/{snapshotId}")
+    public HttpResponse cleanup(@Param("snapshotId") final String snapshotId) {
+        try {
+            shuffleStorage.cleanup(snapshotId);
+            LOG.info("Cleaned up shuffle files for snapshot {}", snapshotId);
+            return HttpResponse.of(HttpStatus.OK);
+        } catch (final Exception e) {
+            LOG.warn("Failed to clean up shuffle files for snapshot {}", snapshotId, e);
             return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
