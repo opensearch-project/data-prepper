@@ -1,0 +1,10 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - filter_list:
+        source: "items"
+        target: "active_items"
+        keep_when: '/status == "active"'
+  sink:
+    - unused:

@@ -1,0 +1,10 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - filter_list:
+        source: "scores"
+        keep_when: '/value > 50'
+        filter_list_when: '/type == "grades"'
+  sink:
+    - unused:

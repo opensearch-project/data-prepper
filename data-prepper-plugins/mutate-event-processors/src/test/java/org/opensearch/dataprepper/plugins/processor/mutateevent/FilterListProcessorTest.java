@@ -59,11 +59,12 @@ class FilterListProcessorTest {
     @BeforeEach
     void setUp() {
         lenient().when(mockConfig.getSource()).thenReturn(SOURCE_KEY);
-        lenient().when(mockConfig.getTarget()).thenReturn(null);
+        lenient().when(mockConfig.getTarget()).thenReturn(SOURCE_KEY);
         lenient().when(mockConfig.getKeepWhen()).thenReturn(KEEP_WHEN_EXPRESSION);
         lenient().when(mockConfig.getFilterListWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(null);
         lenient().when(expressionEvaluator.isValidExpressionStatement(KEEP_WHEN_EXPRESSION)).thenReturn(true);
+        lenient().doCallRealMethod().when(mockConfig).validateExpressions(expressionEvaluator);
     }
 
     @Test
@@ -286,6 +287,7 @@ class FilterListProcessorTest {
     void test_filter_with_nested_source_path() {
         final String nestedSource = "vulnerability/identifiers";
         when(mockConfig.getSource()).thenReturn(nestedSource);
+        when(mockConfig.getTarget()).thenReturn(nestedSource);
 
         final FilterListProcessor processor = createObjectUnderTest();
 

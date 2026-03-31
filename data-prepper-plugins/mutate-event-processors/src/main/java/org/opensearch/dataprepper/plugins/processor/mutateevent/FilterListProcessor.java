@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -40,29 +39,14 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
     private static final String FAILED_ELEMENTS_COUNT_METADATA_KEY = "filter_list_processor_failed_elements_count";
     private final FilterListProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
-    private final String target;
 
     @DataPrepperPluginConstructor
     public FilterListProcessor(final PluginMetrics pluginMetrics, final FilterListProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
-        this.target = config.getTarget() != null ? config.getTarget() : config.getSource();
 
-        if (config.getFilterListWhen() != null
-                && !expressionEvaluator.isValidExpressionStatement(config.getFilterListWhen())) {
-            throw new InvalidPluginConfigurationException(
-                    String.format("filter_list_when %s is not a valid expression statement. " +
-                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
-                            config.getFilterListWhen()));
-        }
-
-        if (!expressionEvaluator.isValidExpressionStatement(config.getKeepWhen())) {
-            throw new InvalidPluginConfigurationException(
-                    String.format("keep_when %s is not a valid expression statement. " +
-                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
-                            config.getKeepWhen()));
-        }
+        config.validateExpressions(expressionEvaluator);
     }
 
     @Override
@@ -125,7 +109,7 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
                     recordEvent.getMetadata().setAttribute(FAILED_ELEMENTS_METADATA_KEY, failedElements);
                 }
 
-                recordEvent.put(target, filteredList);
+                recordEvent.put(config.getTarget(), filteredList);
 
             } catch (final Exception e) {
                 LOG.atError()

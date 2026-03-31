@@ -18,6 +18,9 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+
 import java.util.List;
 
 @JsonPropertyOrder
@@ -72,7 +75,7 @@ public class FilterListProcessorConfig {
     }
 
     public String getTarget() {
-        return target;
+        return target != null ? target : source;
     }
 
     public String getKeepWhen() {
@@ -85,5 +88,21 @@ public class FilterListProcessorConfig {
 
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    void validateExpressions(final ExpressionEvaluator expressionEvaluator) {
+        if (getFilterListWhen() != null && !expressionEvaluator.isValidExpressionStatement(getFilterListWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("filter_list_when %s is not a valid expression statement. " +
+                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            getFilterListWhen()));
+        }
+
+        if (!expressionEvaluator.isValidExpressionStatement(getKeepWhen())) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("keep_when %s is not a valid expression statement. " +
+                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            getKeepWhen()));
+        }
     }
 }
