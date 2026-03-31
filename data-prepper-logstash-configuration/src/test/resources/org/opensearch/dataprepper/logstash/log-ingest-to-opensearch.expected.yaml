@@ -12,7 +12,7 @@ logstash-converted-pipeline:
         match:
           log:
             - "%{COMBINEDAPACHELOG}"
-    - drop_events: null
+    - drop_events: {}
     - key_value:
         source: "message"
         destination: "test"
