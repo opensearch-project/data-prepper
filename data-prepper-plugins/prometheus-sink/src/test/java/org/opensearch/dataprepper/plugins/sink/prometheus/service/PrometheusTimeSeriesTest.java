@@ -205,6 +205,14 @@ public class PrometheusTimeSeriesTest {
     }
 
     @Test
+    public void testSumMetricCounterWithNullUnit() {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, null, true, "AGGREGATION_TEMPORALITY_CUMULATIVE");
+        String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+        assertThat(sanitizedName, equalTo(name + "_total"));
+    }
+
+    @Test
     public void testSumMetricWithNullUnitAndNullAggregationTemporality() {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Sum sum = createSumMetric(name, null, true, null);
