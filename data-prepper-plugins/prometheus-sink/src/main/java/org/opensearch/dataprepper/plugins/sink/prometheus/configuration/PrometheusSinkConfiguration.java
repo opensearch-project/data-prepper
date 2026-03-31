@@ -81,8 +81,15 @@ public class PrometheusSinkConfiguration {
     @DurationMax(seconds = 600)
     private Duration idleTimeout = DEFAULT_IDLE_TIMEOUT;
 
+    @JsonProperty("insecure")
+    private boolean insecure = false;
+
     @JsonProperty("sanitize_names")
     private boolean sanitizeNames = true;
+
+    public boolean isInsecure() {
+        return insecure;
+    }
 
     public boolean getSanitizeNames() {
         return sanitizeNames;
@@ -137,6 +144,17 @@ public class PrometheusSinkConfiguration {
 
     public Duration getIdleTimeout() {
         return idleTimeout;
+    }
+
+    @AssertTrue(message = "url must be https when insecure is not set to true.")
+    boolean isHttpsOrInsecure() {
+        if (url == null) {
+            return true;
+        }
+        if (insecure) {
+            return true;
+        }
+        return url.startsWith("https://");
     }
 
     @AssertTrue(message = "Cannot use both AWS SigV4 and authentication options. Choose one.")
