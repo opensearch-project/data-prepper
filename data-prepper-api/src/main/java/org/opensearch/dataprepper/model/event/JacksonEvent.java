@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -64,10 +65,31 @@ import static org.opensearch.dataprepper.model.event.JacksonEventKey.trimTrailin
 public class JacksonEvent implements Event {
     class DefaultEventFailureMetadata implements EventFailureMetadata {
         static final String FAILURE_METADATA = "_failure_metadata";
+        static final String PLUGIN_ID = "pluginId";
+        static final String PLUGIN_NAME = "pluginName";
+        static final String PIPELINE_NAME = "pipelineName";
+        static final String ERROR_MESSAGE = "errorMessage";
+
 
         public DefaultEventFailureMetadata with(String key, Object value) {
             put(FAILURE_METADATA+"/"+key, value);
             return this;
+        }
+
+        public DefaultEventFailureMetadata withPluginId(String value) {
+            return with(PLUGIN_ID, value);
+        }
+
+        public DefaultEventFailureMetadata withPluginName(String value) {
+            return with(PLUGIN_NAME, value);
+        }
+
+        public DefaultEventFailureMetadata withPipelineName(String value) {
+            return with(PIPELINE_NAME, value);
+        }
+
+        public DefaultEventFailureMetadata withErrorMessage(Object value) {
+            return with(ERROR_MESSAGE, value);
         }
     }
 
@@ -444,6 +466,26 @@ public class JacksonEvent implements Event {
         }
 
         ((ObjectNode) jsonNode).setAll(otherObjectNode);
+    }
+
+    @Override
+    public void merge(final Event other, final Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            throw new IllegalArgumentException("Keys list must not be null or empty for selective merge.");
+        }
+        if (!(other instanceof JacksonEvent)) {
+            throw new IllegalArgumentException("Unable to merge the Event. The input Event must be a JacksonEvent.");
+        }
+        if (!(jsonNode instanceof ObjectNode)) {
+            throw new UnsupportedOperationException("Unable to merge the Event. The current Event must have object data.");
+        }
+
+        for (final String key : keys) {
+            final Object value = other.get(key, Object.class);
+            if (value != null) {
+                put(key, value);
+            }
+        }
     }
 
     @Override

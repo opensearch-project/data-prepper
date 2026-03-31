@@ -71,6 +71,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -103,6 +104,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
@@ -166,6 +168,23 @@ class OpenSearchSinkIT {
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+        if (doInitialize) {
+            sink.doInitialize();
+        }
+        sinksToShutdown.add(sink);
+        return sink;
+    }
+
+    private OpenSearchSink createObjectUnderTestWithDlqPipeline(OpenSearchSinkConfig openSearchSinkConfig, HeadlessPipeline dlqPipeline, boolean doInitialize) {
+        sinkContext = mock(SinkContext.class);
+        when(sinkContext.getTagsTargetKey()).thenReturn(null);
+        when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
+        when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
+        when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
+        when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
+        OpenSearchSink sink = new OpenSearchSink(
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+        sink.setFailurePipeline(dlqPipeline);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -904,6 +923,47 @@ class OpenSearchSinkIT {
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
         verify(sinkContext).forwardRecords(any(), eq(null), eq(null));
+    }
+
+    @Test
+    @Timeout(value = 50, unit = TimeUnit.SECONDS)
+    void testOutputFailedDocumentsToDLQPipeline() throws IOException, InterruptedException {
+        HeadlessPipeline dlqPipeline = mock(HeadlessPipeline.class);
+        final String testIndexAlias = "test-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "foo";
+        final String testId2 = "foo2";
+        final Record<Event> testRecord1 = new Record(JacksonEvent.builder()
+                    .withEventType(EventType.TRACE.toString())
+                    .withData(Map.of(testIdField, testId, "name", "value")).build());
+        final Record<Event> testRecord2 = new Record(JacksonEvent.builder()
+                    .withEventType(EventType.TRACE.toString())
+                    .withData(Map.of(testIdField, testId, "name", Map.of("key", "value"))).build());
+        //List<Record<Event>> testRecords = Arrays.asList(testRecord1, testRecord2);
+        List<Record<Event>> testRecords = Collections.singletonList(testRecord1);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+        final OpenSearchSink sink = createObjectUnderTestWithDlqPipeline(openSearchSinkConfig, dlqPipeline, true);
+        sink.output(testRecords);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+        assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+
+        // verify metrics
+        final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+        assertThat(bulkRequestLatencies.size(), equalTo(3));
+        // COUNT
+        Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+        testRecords = Collections.singletonList(testRecord2);
+        sink.output(testRecords);
+        ArgumentCaptor<Collection<Record<Event>>> captor = ArgumentCaptor.forClass(Collection.class);
+        verify(dlqPipeline).sendEvents(captor.capture());
+        assertThat(captor.getValue().size(), equalTo(1));
     }
 
     @Test

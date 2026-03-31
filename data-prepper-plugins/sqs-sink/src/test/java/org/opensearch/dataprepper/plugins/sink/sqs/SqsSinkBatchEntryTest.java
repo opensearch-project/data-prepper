@@ -67,6 +67,7 @@ public class SqsSinkBatchEntryTest {
         assertThat(sqsSinkBatchEntry.getGroupId(), equalTo(groupId));
         assertThat(sqsSinkBatchEntry.getDedupId(), equalTo(deDupId));
         assertTrue(sqsSinkBatchEntry.getEventHandles().isEmpty());
+        assertTrue(sqsSinkBatchEntry.getEvents().isEmpty());
     }
      
     @Test
@@ -83,6 +84,7 @@ public class SqsSinkBatchEntryTest {
         assertThat(sqsSinkBatchEntry.getGroupId(), equalTo(groupId));
         assertThat(sqsSinkBatchEntry.getDedupId(), equalTo(deDupId));
         assertThat(sqsSinkBatchEntry.getEventHandles().size(), equalTo(1));
+        assertThat(sqsSinkBatchEntry.getEvents().size(), equalTo(1));
     }
     
 
@@ -123,6 +125,7 @@ public class SqsSinkBatchEntryTest {
         assertThat(sqsSinkBatchEntry.getDedupId(), equalTo(deDupId));
         assertThat(sqsSinkBatchEntry.getSize(), equalTo(expectedSize));
         assertThat(sqsSinkBatchEntry.getEventHandles().size(), equalTo(numRecords));
+        assertThat(sqsSinkBatchEntry.getEvents().size(), equalTo(numRecords));
     }
 
     @Test

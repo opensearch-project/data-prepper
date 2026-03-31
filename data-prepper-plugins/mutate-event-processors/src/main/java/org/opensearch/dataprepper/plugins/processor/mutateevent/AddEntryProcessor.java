@@ -313,7 +313,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         int entryIndex = entries.indexOf(entry);
         EntryProperties props = entryProperties.get(entryIndex);
         KeyInfo keyInfo = preprocessedKeys.get(entryIndex);
-        
+
         if (!Objects.isNull(entry.getValueExpression())) {
             value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
         } else if (!Objects.isNull(entry.getFormat())) {

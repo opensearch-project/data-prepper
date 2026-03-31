@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 import {Stack, StackProps} from 'aws-cdk-lib';
@@ -10,6 +14,7 @@ import {
   CompositePrincipal,
   OpenIdConnectPrincipal,
   OpenIdConnectProvider,
+  PolicyStatement,
   Role
 } from 'aws-cdk-lib/aws-iam'
 
@@ -57,5 +62,10 @@ export class GitHubAccessStack extends Stack {
         currentAccountPrincipal
       )
     });
+
+    this.gitHubActionsTestingRole.addToPolicy(new PolicyStatement({
+      actions: ['cloudformation:DescribeStacks'],
+      resources: [`arn:aws:cloudformation:*:${this.account}:stack/*`],
+    }));
   }
 }

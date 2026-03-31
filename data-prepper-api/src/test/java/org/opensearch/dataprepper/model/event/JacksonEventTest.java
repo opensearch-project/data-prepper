@@ -202,15 +202,28 @@ public class JacksonEventTest {
     @Test
     public void testDefaultEventFailureMetadata() {
         String eventType = UUID.randomUUID().toString();
-
+        String pluginId = UUID.randomUUID().toString();
+        String pluginName = UUID.randomUUID().toString();
+        String pipelineName = UUID.randomUUID().toString();
+        String errorMessage = UUID.randomUUID().toString();
         Event event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
 
         EventFailureMetadata eventFailureMetadata = event.updateFailureMetadata();
         eventFailureMetadata.with("key1", "value1").with("key2", 2);
-        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key1", String.class), equalTo("value1"));
-        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key2", Integer.class), equalTo(2));
+        eventFailureMetadata.withPluginId(pluginId);
+        eventFailureMetadata.withPluginName(pluginName);
+        eventFailureMetadata.withPipelineName(pipelineName);
+        eventFailureMetadata.withErrorMessage(errorMessage);
+        String base = JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA + "/";
+        assertThat(event.get(base + "key1", String.class), equalTo("value1"));
+        assertThat(event.get(base + "key2", Integer.class), equalTo(2));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PLUGIN_ID, String.class), equalTo(pluginId));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PLUGIN_NAME, String.class), equalTo(pluginName));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.PIPELINE_NAME, String.class), equalTo(pipelineName));
+        assertThat(event.get(base + JacksonEvent.DefaultEventFailureMetadata.ERROR_MESSAGE, String.class), equalTo(errorMessage));
+
     }
 
     @Test
@@ -680,6 +693,71 @@ public class JacksonEventTest {
         assertThat(event.get("a", Object.class), equalTo("alpha"));
         assertThat(event.containsKey("info"), equalTo(true));
         assertThat(event.get("info/ids/id", String.class), equalTo("idx"));
+    }
+
+    @Test
+    void merge_with_keys_only_copies_specified_keys() {
+        final String jsonString = "{\"a\": \"alpha\", \"b\": \"beta\", \"c\": \"gamma\"}";
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent, List.of("a", "b"));
+
+        assertThat(event.get("a", Object.class), equalTo("alpha"));
+        assertThat(event.get("b", Object.class), equalTo("beta"));
+        assertThat(event.containsKey("c"), equalTo(false));
+    }
+
+    @Test
+    void merge_with_keys_overwrites_existing_values() {
+        event.put("a", "original");
+        final String jsonString = "{\"a\": \"updated\", \"b\": \"beta\"}";
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent, List.of("a"));
+
+        assertThat(event.get("a", Object.class), equalTo("updated"));
+        assertThat(event.containsKey("b"), equalTo(false));
+    }
+
+    @Test
+    void merge_with_keys_skips_missing_keys_in_other() {
+        event.put("existing", "value");
+        final String jsonString = "{\"a\": \"alpha\"}";
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent, List.of("a", "nonexistent"));
+
+        assertThat(event.get("a", Object.class), equalTo("alpha"));
+        assertThat(event.get("existing", Object.class), equalTo("value"));
+        assertThat(event.containsKey("nonexistent"), equalTo(false));
+    }
+
+    @Test
+    void merge_with_keys_throws_when_keys_list_is_null() {
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData("{}").build();
+        assertThrows(IllegalArgumentException.class, () -> event.merge(otherEvent, null));
+    }
+
+    @Test
+    void merge_with_keys_throws_when_keys_list_is_empty() {
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData("{}").build();
+        assertThrows(IllegalArgumentException.class, () -> event.merge(otherEvent, List.of()));
+    }
+
+    @Test
+    void merge_with_keys_throws_when_other_is_not_JacksonEvent() {
+        final Event otherEvent = mock(Event.class);
+        assertThrows(IllegalArgumentException.class, () -> event.merge(otherEvent, List.of("a")));
+    }
+
+    @Test
+    void merge_with_keys_throws_when_current_event_has_array_data() {
+        final JacksonEvent arrayEvent = JacksonEvent.builder()
+                .withEventType(EventType.DOCUMENT.toString())
+                .withData("[1, 2, 3]")
+                .build();
+        final Event otherEvent = JacksonEvent.builder()
+                .withEventType(EventType.DOCUMENT.toString())
+                .withData("{\"a\": \"alpha\"}")
+                .build();
+        assertThrows(UnsupportedOperationException.class, () -> arrayEvent.merge(otherEvent, List.of("a")));
     }
 
     @ParameterizedTest

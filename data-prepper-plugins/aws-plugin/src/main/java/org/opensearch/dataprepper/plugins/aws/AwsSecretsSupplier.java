@@ -31,6 +31,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
     private static final Logger LOG = LoggerFactory.getLogger(AwsSecretsSupplier.class);
+    private static final Object NOT_LOADED_SENTINEL = new Object(); // Sentinel to indicate secret not loaded yet
+    
     private final SecretValueDecoder secretValueDecoder;
     private final ObjectMapper objectMapper;
     private final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap;
@@ -58,6 +60,14 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     final AwsSecretManagerConfiguration awsSecretManagerConfiguration =
                             awsSecretManagerConfigurationMap.get(secretConfigurationId);
                     final SecretsManagerClient secretsManagerClient = entry.getValue();
+                    
+                    // Check if validation on start is skipped for this secret
+                    if (awsSecretManagerConfiguration.isSkipValidationOnStart()) {
+                        LOG.info("Skipping secret retrieval on start for secret: {} (skip_validation_on_start=true)", 
+                            awsSecretManagerConfiguration.getAwsSecretId());
+                        return NOT_LOADED_SENTINEL; // Mark as not loaded, will be loaded on first access
+                    }
+                    
                     return retrieveSecretsFromSecretManager(awsSecretManagerConfiguration, secretsManagerClient);
                 }));
     }
@@ -77,7 +87,10 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
-        final Object keyValuePairs = secretIdToValue.get(secretId);
+        
+        // Load secret if it was skipped on start
+        final Object keyValuePairs = loadSecretIfNeeded(secretId);
+        
         if (!(keyValuePairs instanceof Map)) {
             throw new IllegalArgumentException(String.format("The value under secretId: %s is not a valid json.",
                     secretId));
@@ -95,14 +108,36 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
+        
+        // Load secret if it was skipped on start
+        final Object secretValue = loadSecretIfNeeded(secretId);
+        
         try {
-            final Object secretValue = secretIdToValue.get(secretId);
             return secretValue instanceof Map ? objectMapper.writeValueAsString(secretValue) :
                     secretValue;
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string.",
                     secretId));
         }
+    }
+
+    /**
+     * Loads a secret if it was skipped on start (lazy-loading).
+     * Uses {@link ConcurrentMap#compute} to ensure atomicity of the sentinel check and refresh.
+     *
+     * @param secretId The secret configuration ID
+     * @return The loaded secret value
+     */
+    private Object loadSecretIfNeeded(String secretId) {
+        return secretIdToValue.compute(secretId, (key, currentValue) -> {
+            if (currentValue == NOT_LOADED_SENTINEL) {
+                LOG.info("Secret {} was not loaded on start, loading now on first access.", key);
+                final AwsSecretManagerConfiguration config = awsSecretManagerConfigurationMap.get(key);
+                final SecretsManagerClient client = secretsManagerClientMap.get(key);
+                return retrieveSecretsFromSecretManager(config, client);
+            }
+            return currentValue;
+        });
     }
 
 
@@ -152,6 +187,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     @Override
     public String updateValue(String secretId, String keyToUpdate, Object newValue) {
+        // Ensure the secret is loaded before attempting to update
+        loadSecretIfNeeded(secretId);
         Object currentSecretStore = secretIdToValue.get(secretId);
         if (currentSecretStore instanceof Map) {
             if (keyToUpdate == null) {

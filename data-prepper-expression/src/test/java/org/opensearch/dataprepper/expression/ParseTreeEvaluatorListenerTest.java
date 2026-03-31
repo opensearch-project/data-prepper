@@ -529,4 +529,57 @@ class ParseTreeEvaluatorListenerTest {
         final String statement = "length(/field) + 3";
         assertThat(evaluateStatementOnEvent(statement, testEvent), equalTo(8));
     }
+
+    @Test
+    void testFunctionWithMultipleArgsAsRightOperandOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" and contains(/message, \"hello\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAsRightOperandOfOr() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-b", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" or contains(/message, \"hello\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAsLeftOperandOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "contains(/message, \"hello\") and /value == \"value-a\"";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAndStringContainingSlashes() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "path", "prefix/x/y/postfix"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "x/y/".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" and contains(/path, \"x/y/\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionOnBothSidesOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("msg", "hello", "path", "/a/b"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "hello".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        when(expressionFunctionProvider.provideFunction(eq("startsWith"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "/a".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "contains(/msg, \"hello\") and startsWith(/path, \"/a\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
 }
