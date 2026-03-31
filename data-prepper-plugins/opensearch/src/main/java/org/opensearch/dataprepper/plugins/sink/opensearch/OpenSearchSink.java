@@ -398,7 +398,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           for (int i = 0; i < tsdbDocs.size(); i++) {
             final SerializedJson doc = SerializedJson.fromStringAndOptionals(tsdbDocs.get(i), null, null, null);
             final BulkOperation op = getBulkOperationForAction(tsdbAction, doc, null, indexName, null);
-            final BulkOperationWrapper wrapper = (i == 0)
+            final BulkOperationWrapper wrapper = (i == tsdbDocs.size() - 1)
                     ? new BulkOperationWrapper(op, event.getEventHandle(), null, null)
                     : new BulkOperationWrapper(op, (EventHandle) null, null, null);
             wrappers.add(wrapper);

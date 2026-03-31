@@ -467,7 +467,7 @@ class OpenSearchSinkTsdbIT {
         metadata.put("insecure", true);
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
-        if (user != null) {
+        if (user != null && password != null) {
             metadata.put(AUTHENTICATION, Map.of(USERNAME, user, PASSWORD, password));
         }
         final String distributionVersion = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(

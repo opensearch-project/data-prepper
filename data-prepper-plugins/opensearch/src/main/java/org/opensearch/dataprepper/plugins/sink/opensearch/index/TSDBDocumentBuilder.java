@@ -252,6 +252,9 @@ public final class TSDBDocumentBuilder {
         if (value == Double.POSITIVE_INFINITY) {
             return "+Inf";
         }
+        if (value == Double.NEGATIVE_INFINITY) {
+            return "-Inf";
+        }
         if (value == (long) value.doubleValue()) {
             return String.valueOf((long) value.doubleValue());
         }
