@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
+import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.iceberg.AddedRowsScanTask;
 import org.apache.iceberg.ChangelogScanTask;
 import org.apache.iceberg.ContentScanTask;
@@ -47,7 +48,9 @@ public class TaskGrouper {
             final Table table,
             final String tableName,
             final long fromSnapshotIdExclusive,
-            final long toSnapshotId) {
+            final long toSnapshotId,
+            final DistributionSummary dataFileBytesSummary,
+            final DistributionSummary dataFilesPerTaskSummary) {
 
         final IncrementalChangelogScan scan = table.newIncrementalChangelogScan()
                 .fromSnapshotExclusive(fromSnapshotIdExclusive)
@@ -83,10 +86,15 @@ public class TaskGrouper {
                 state.setTaskTypes(group.stream().map(t -> t.taskType).collect(Collectors.toList()));
                 state.setTotalRecords(group.stream().mapToLong(t -> t.recordCount).sum());
                 result.add(state);
+
+                dataFilesPerTaskSummary.record(group.size());
+                for (final TaskInfo taskInfo : group) {
+                    dataFileBytesSummary.record(taskInfo.fileSizeBytes);
+                }
             }
         }
 
-        LOG.info("Planned {} task group(s) for table {} (snapshot {} -> {})",
+        LOG.debug("Planned {} task group(s) for table {} (snapshot {} -> {})",
                 result.size(), tableName, fromSnapshotIdExclusive, toSnapshotId);
         return result;
     }
@@ -208,13 +216,15 @@ public class TaskGrouper {
         final String filePath;
         final String taskType;
         final long recordCount;
+        final long fileSizeBytes;
         final String boundsKey; // serialized lower+upper bounds for pairing
 
         TaskInfo(final String filePath, final String taskType,
-                 final long recordCount, final String boundsKey) {
+                 final long recordCount, final long fileSizeBytes, final String boundsKey) {
             this.filePath = filePath;
             this.taskType = taskType;
             this.recordCount = recordCount;
+            this.fileSizeBytes = fileSizeBytes;
             this.boundsKey = boundsKey;
         }
 
@@ -223,12 +233,12 @@ public class TaskGrouper {
                 final AddedRowsScanTask t = (AddedRowsScanTask) task;
                 return new TaskInfo(
                         t.file().location(), "ADDED",
-                        t.file().recordCount(), extractBoundsKey(t));
+                        t.file().recordCount(), t.file().fileSizeInBytes(), extractBoundsKey(t));
             } else if (task instanceof DeletedDataFileScanTask) {
                 final DeletedDataFileScanTask t = (DeletedDataFileScanTask) task;
                 return new TaskInfo(
                         t.file().location(), "DELETED",
-                        t.file().recordCount(), extractBoundsKey(t));
+                        t.file().recordCount(), t.file().fileSizeInBytes(), extractBoundsKey(t));
             }
             throw new IllegalArgumentException("Unsupported ChangelogScanTask type: " + task.getClass().getName());
         }

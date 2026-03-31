@@ -24,8 +24,8 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_insertOnly_eachFileIsIndependentGroup() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("file1", "ADDED", 100, "bounds1"),
-                new TaskGrouper.TaskInfo("file2", "ADDED", 200, "bounds2")
+                new TaskGrouper.TaskInfo("file1", "ADDED", 100, 1024L, "bounds1"),
+                new TaskGrouper.TaskInfo("file2", "ADDED", 200, 1024L, "bounds2")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         assertThat(groups, hasSize(2));
@@ -34,7 +34,7 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_deleteOnly_eachFileIsIndependentGroup() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("file1", "DELETED", 100, "bounds1")
+                new TaskGrouper.TaskInfo("file1", "DELETED", 100, 1024L, "bounds1")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         assertThat(groups, hasSize(1));
@@ -43,8 +43,8 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_matchingBounds_pairedTogether() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, "{1=abc}|{1=xyz}"),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, "{1=abc}|{1=xyz}")
+                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, 1024L, "{1=abc}|{1=xyz}"),
+                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, 1024L, "{1=abc}|{1=xyz}")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         assertThat(groups, hasSize(1));
@@ -54,8 +54,8 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_differentBounds_fallbackGroup() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, "{1=abc}|{1=xyz}"),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, "{1=abc}|{1=zzz}")
+                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, 1024L, "{1=abc}|{1=xyz}"),
+                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, 1024L, "{1=abc}|{1=zzz}")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         // Bounds don't match -> fallback group with both
@@ -66,10 +66,10 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_multiplePairs_eachPairedSeparately() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_us", "DELETED", 100, "bounds_us"),
-                new TaskGrouper.TaskInfo("old_eu", "DELETED", 100, "bounds_eu"),
-                new TaskGrouper.TaskInfo("new_us", "ADDED", 100, "bounds_us"),
-                new TaskGrouper.TaskInfo("new_eu", "ADDED", 100, "bounds_eu")
+                new TaskGrouper.TaskInfo("old_us", "DELETED", 100, 1024L, "bounds_us"),
+                new TaskGrouper.TaskInfo("old_eu", "DELETED", 100, 1024L, "bounds_eu"),
+                new TaskGrouper.TaskInfo("new_us", "ADDED", 100, 1024L, "bounds_us"),
+                new TaskGrouper.TaskInfo("new_eu", "ADDED", 100, 1024L, "bounds_eu")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         assertThat(groups, hasSize(2));
@@ -81,10 +81,10 @@ class TaskGrouperTest {
     void pairByBounds_ambiguousBounds_fallbackGroup() {
         // Two DELETED and two ADDED with same bounds -> can't pair uniquely
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old1", "DELETED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("old2", "DELETED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("new1", "ADDED", 100, "same_bounds"),
-                new TaskGrouper.TaskInfo("new2", "ADDED", 100, "same_bounds")
+                new TaskGrouper.TaskInfo("old1", "DELETED", 100, 1024L, "same_bounds"),
+                new TaskGrouper.TaskInfo("old2", "DELETED", 100, 1024L, "same_bounds"),
+                new TaskGrouper.TaskInfo("new1", "ADDED", 100, 1024L, "same_bounds"),
+                new TaskGrouper.TaskInfo("new2", "ADDED", 100, 1024L, "same_bounds")
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         // Ambiguous -> all in one fallback group
@@ -95,8 +95,8 @@ class TaskGrouperTest {
     @Test
     void pairByBounds_nullBounds_fallbackGroup() {
         final List<TaskGrouper.TaskInfo> tasks = List.of(
-                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, null),
-                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, null)
+                new TaskGrouper.TaskInfo("old_file", "DELETED", 100, 1024L, null),
+                new TaskGrouper.TaskInfo("new_file", "ADDED", 100, 1024L, null)
         );
         final List<List<TaskGrouper.TaskInfo>> groups = taskGrouper.pairByBounds(tasks);
         // Null bounds -> can't pair -> fallback

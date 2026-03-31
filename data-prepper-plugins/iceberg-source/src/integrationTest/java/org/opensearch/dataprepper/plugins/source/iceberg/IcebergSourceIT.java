@@ -79,8 +79,7 @@ public class IcebergSourceIT {
 
     private IcebergTestHelper helper;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
+    private PluginMetrics pluginMetrics = PluginMetrics.fromNames("iceberg-source", "iceberg-it");
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
