@@ -74,6 +74,7 @@ class PrometheusRemoteWriteSourceIT {
 
         final PrometheusRemoteWriteSourceConfig config = mock(PrometheusRemoteWriteSourceConfig.class);
         when(config.isFlattenLabels()).thenReturn(false);
+        final RemoteWriteProtobufParser protobufParser = new RemoteWriteProtobufParser(config);
 
         final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
         when(pluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
@@ -90,7 +91,7 @@ class PrometheusRemoteWriteSourceIT {
         when(pluginMetrics.timer(anyString())).thenReturn(timer);
 
         final PrometheusRemoteWriteService service = new PrometheusRemoteWriteService(
-                BUFFER_TIMEOUT_MS, buffer, pluginMetrics, config);
+                BUFFER_TIMEOUT_MS, buffer, pluginMetrics, protobufParser);
 
         server = Server.builder()
                 .http(0)
