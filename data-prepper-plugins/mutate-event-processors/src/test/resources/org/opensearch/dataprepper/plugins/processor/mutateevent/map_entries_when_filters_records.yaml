@@ -1,0 +1,10 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - map_entries:
+        source: /names
+        key: name
+        map_entries_when: '/type == "users"'
+  sink:
+    - unused:

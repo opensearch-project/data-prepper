@@ -1,8 +1,12 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
-
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -12,7 +16,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -40,19 +43,7 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
-
-        if (config.getTarget() != null && config.getTarget().isEmpty()) {
-            throw new InvalidPluginConfigurationException("target must not be empty when specified.");
-        }
-
-        if (config.getMapEntriesWhen() != null
-                && !expressionEvaluator.isValidExpressionStatement(config.getMapEntriesWhen())) {
-            throw new InvalidPluginConfigurationException(
-                    String.format("map_entries_when \"%s\" is not a valid expression statement. " +
-                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ " +
-                            "for valid expression syntax", config.getMapEntriesWhen()));
-        }
-
+        config.validateExpressions(expressionEvaluator);
     }
 
     @Override

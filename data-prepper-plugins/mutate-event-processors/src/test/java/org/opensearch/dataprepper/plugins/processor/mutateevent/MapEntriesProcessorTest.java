@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
@@ -14,7 +19,6 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Arrays;
@@ -22,13 +26,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,38 +65,13 @@ class MapEntriesProcessorTest {
         return new Record<>(JacksonEvent.builder().withEventType("event").withData(data).build());
     }
 
-    // --- Constructor validation ---
+    // --- Constructor validation delegation ---
 
     @Test
-    void constructor_with_invalid_map_entries_when_throws_InvalidPluginConfigurationException() {
-        final String condition = UUID.randomUUID().toString();
-        when(config.getMapEntriesWhen()).thenReturn(condition);
-        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(false);
+    void constructor_delegates_validation_to_config() {
+        createObjectUnderTest();
 
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
-    }
-
-    @Test
-    void constructor_with_empty_map_entries_when_throws_InvalidPluginConfigurationException() {
-        when(config.getMapEntriesWhen()).thenReturn("");
-        when(expressionEvaluator.isValidExpressionStatement("")).thenReturn(false);
-
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
-    }
-
-    @Test
-    void constructor_with_whitespace_map_entries_when_throws_InvalidPluginConfigurationException() {
-        when(config.getMapEntriesWhen()).thenReturn("   ");
-        when(expressionEvaluator.isValidExpressionStatement("   ")).thenReturn(false);
-
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
-    }
-
-    @Test
-    void constructor_with_empty_target_throws_InvalidPluginConfigurationException() {
-        when(config.getTarget()).thenReturn("");
-
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+        verify(config).validateExpressions(expressionEvaluator);
     }
 
 
@@ -222,21 +200,6 @@ class MapEntriesProcessorTest {
         assertThat(output.isEmpty(), is(true));
     }
 
-    @Test
-    void doExecute_with_false_condition_skips_event_and_preserves_original_array() {
-        final String condition = "/type == \"tagged\"";
-        when(config.getMapEntriesWhen()).thenReturn(condition);
-        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
-
-        final Record<Event> record = createEvent(Map.of("names", Arrays.asList("alpha"), "type", "untagged"));
-        when(expressionEvaluator.evaluateConditional(condition, record.getData())).thenReturn(false);
-
-        final List<Record<Event>> result = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
-
-        final List<?> output = result.get(0).getData().get("/names", List.class);
-        assertThat(output, equalTo(Arrays.asList("alpha")));
-    }
-
     // --- Append mode ---
 
     @Test
@@ -310,7 +273,6 @@ class MapEntriesProcessorTest {
     void doExecute_with_multiple_records_wraps_only_matching_and_leaves_non_matching_unchanged() {
         final String condition = "/type == \"users\"";
         when(config.getMapEntriesWhen()).thenReturn(condition);
-        when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
 
         final Record<Event> matchingRecord = createEvent(new java.util.HashMap<>(Map.of(
                 "names", Arrays.asList("alpha", "beta"), "type", "users")));

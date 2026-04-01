@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
@@ -11,8 +16,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.List;
 
@@ -94,6 +101,19 @@ public class MapEntriesProcessorConfig {
 
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    void validateExpressions(final ExpressionEvaluator expressionEvaluator) {
+        if (target != null && target.isEmpty()) {
+            throw new InvalidPluginConfigurationException("target must not be empty when specified.");
+        }
+
+        if (mapEntriesWhen != null && !expressionEvaluator.isValidExpressionStatement(mapEntriesWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("map_entries_when \"%s\" is not a valid expression statement. " +
+                                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            mapEntriesWhen));
+        }
     }
 
     /**
