@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.IcebergSourceConfig;
@@ -62,19 +63,22 @@ public class ChangelogWorker implements Runnable {
     private final Map<String, TableConfig> tableConfigs;
     private final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EventFactory eventFactory;
 
     public ChangelogWorker(final EnhancedSourceCoordinator sourceCoordinator,
                            final IcebergSourceConfig sourceConfig,
                            final Map<String, Table> tables,
                            final Map<String, TableConfig> tableConfigs,
                            final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer,
-                           final AcknowledgementSetManager acknowledgementSetManager) {
+                           final AcknowledgementSetManager acknowledgementSetManager,
+                           final EventFactory eventFactory) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.tables = tables;
         this.tableConfigs = tableConfigs;
         this.buffer = buffer;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
     }
 
     @Override
@@ -134,7 +138,7 @@ public class ChangelogWorker implements Runnable {
 
         final Schema schema = table.schema();
         final ChangelogRecordConverter converter = new ChangelogRecordConverter(
-                tableName, tableConfig.getIdentifierColumns());
+                tableName, tableConfig.getIdentifierColumns(), eventFactory);
         final CarryoverRemover carryoverRemover = new CarryoverRemover();
 
         LOG.info("Processing partition for table {} snapshot {} with {} file(s)",
@@ -283,7 +287,7 @@ public class ChangelogWorker implements Runnable {
 
         final Schema schema = table.schema();
         final ChangelogRecordConverter converter = new ChangelogRecordConverter(
-                tableName, tableConfig.getIdentifierColumns());
+                tableName, tableConfig.getIdentifierColumns(), eventFactory);
 
         LOG.info("Processing initial load partition for table {} file {}",
                 tableName, state.getDataFilePath());
