@@ -54,6 +54,55 @@ then when we run with the same input, the processor will parse the message into 
 {"message": "value", "newMessage": "new value"}
 ```
 
+### Iterating over arrays with `iterate_on`
+
+The `iterate_on` option allows adding entries to each element of an array. Combined with `disable_root_keys` and `evaluate_when_on_element`, you can reference root-level fields and apply per-element conditions.
+
+```yaml
+pipeline:
+  source:
+    http:
+  processor:
+    - add_entries:
+        entries:
+          - key: "title"
+            value_expression: "/alert_title"
+            iterate_on: "vulns"
+            disable_root_keys: false
+            add_to_element_when: '/severity == "critical"'
+            evaluate_when_on_element: true
+  sink:
+    - stdout:
+```
+
+Given the following input:
+```json
+{
+  "alert_title": "SQL Injection Detected",
+  "vulns": [
+    {"cve": "CVE-2024-001", "severity": "critical"},
+    {"cve": "CVE-2024-002", "severity": "low"},
+    {"cve": "CVE-2024-003", "severity": "critical"}
+  ]
+}
+```
+
+The processor will produce:
+```json
+{
+  "alert_title": "SQL Injection Detected",
+  "vulns": [
+    {"cve": "CVE-2024-001", "severity": "critical", "title": "SQL Injection Detected"},
+    {"cve": "CVE-2024-002", "severity": "low"},
+    {"cve": "CVE-2024-003", "severity": "critical", "title": "SQL Injection Detected"}
+  ]
+}
+```
+
+In this example:
+- `disable_root_keys: false` allows `value_expression: "/alert_title"` to resolve from the root event
+- `evaluate_when_on_element: true` evaluates `add_to_element_when` against each element, so only elements with `severity == "critical"` receive the new key
+
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
   * `key` - (required) - The key of the new entry to be added. One of `key` or `metadata_key` is required.
@@ -62,6 +111,8 @@ then when we run with the same input, the processor will parse the message into 
   * `format` - (optional) - A format string to use as value of the new entry to be added. For example, `${key1}-${ke2}` where `key1` and `key2` are existing keys in the event. Required if `value` is not specified.
   * `value_expression` - (optional) - An expression string to use as value of the new entry to be added. For example, `/key` where `key` is an existing key in the event of type Number/String/Boolean. Expressions can also contain functions returning Number/String/Integer. For example `length(/key)` would return the length of the `key` in the event and key must of String type. Please see [expressions syntax document](https://github.com/opensearch-project/data-prepper/blob/2.3/docs/expression_syntax.md) for complete list of supported functions. Required if `value` and `format are not specified.
   * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
+  * `disable_root_keys` - (optional) - When set to `false` and used with `iterate_on`, resolves `value_expression` and `format` against the root event instead of the individual array element. This allows referencing root-level fields during array iteration. Has no effect without `iterate_on`. Default is `true`.
+  * `evaluate_when_on_element` - (optional) - When set to `true` and used with `iterate_on` and `add_to_element_when`, evaluates the `add_to_element_when` condition against each individual array element instead of the root event. This enables per-element conditional logic during array iteration. Default is `false`.
 
 ___
 

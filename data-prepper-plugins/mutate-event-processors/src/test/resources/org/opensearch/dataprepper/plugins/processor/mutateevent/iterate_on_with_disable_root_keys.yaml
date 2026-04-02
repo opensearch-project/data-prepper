@@ -1,0 +1,12 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - add_entries:
+        entries:
+          - key: "title"
+            value_expression: "/alert_title"
+            iterate_on: "vulns"
+            disable_root_keys: false
+  sink:
+    - unused:

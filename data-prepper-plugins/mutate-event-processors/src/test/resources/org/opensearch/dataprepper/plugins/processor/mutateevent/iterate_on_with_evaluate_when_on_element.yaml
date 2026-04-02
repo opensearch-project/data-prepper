@@ -1,0 +1,13 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - add_entries:
+        entries:
+          - key: "flagged"
+            value: true
+            iterate_on: "vulns"
+            add_to_element_when: '/severity == "critical"'
+            evaluate_when_on_element: true
+  sink:
+    - unused:
