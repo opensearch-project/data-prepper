@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
+import com.mongodb.MongoSecurityException;
+import org.bson.BsonDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +19,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefresher;
 import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
 import java.time.Duration;
@@ -71,13 +74,16 @@ public class StreamSchedulerTest {
     @Mock
     private StreamWorker streamWorker;
 
+    @Mock
+    private MongoTasksRefresher mongoTasksRefresher;
+
 
     private StreamScheduler streamScheduler;
 
     @BeforeEach
     void setup() {
         lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics, documentDBSourceAggregateMetrics);
+        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics, documentDBSourceAggregateMetrics, mongoTasksRefresher);
     }
 
 
@@ -205,6 +211,66 @@ public class StreamSchedulerTest {
 
     @Test
     void test_stream_withNullS3PathPrefix() {
-        assertThrows(IllegalArgumentException.class, () -> new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, null, pluginMetrics, documentDBSourceAggregateMetrics));
+        assertThrows(IllegalArgumentException.class, () -> new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, null, pluginMetrics, documentDBSourceAggregateMetrics, mongoTasksRefresher));
+    }
+
+    @Test
+    void test_stream_mongoSecurityException_triggersForceRefresh() {
+        final String collection = UUID.randomUUID().toString();
+        final StreamPartition streamPartition = new StreamPartition(collection, null);
+        given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition));
+        given(collectionConfig.getCollection()).willReturn(collection);
+        final int streamBatchSize = 1000;
+        given(collectionConfig.getStreamBatchSize()).willReturn(streamBatchSize);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
+                final MongoSecurityException securityException = new MongoSecurityException(
+                        null, "auth failed", new RuntimeException("credential revoked"));
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
+                                any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                        .thenThrow(new RuntimeException(securityException));
+                streamScheduler.run();
+            }
+        });
+
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .untilAsserted(() -> verify(mongoTasksRefresher).forceRefresh());
+
+        future.cancel(true);
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void test_stream_nonSecurityException_doesNotTriggerForceRefresh() {
+        final String collection = UUID.randomUUID().toString();
+        final StreamPartition streamPartition = new StreamPartition(collection, null);
+        given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition));
+        given(collectionConfig.getCollection()).willReturn(collection);
+        final int streamBatchSize = 1000;
+        given(collectionConfig.getStreamBatchSize()).willReturn(streamBatchSize);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> {
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
+                                any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                        .thenThrow(RuntimeException.class);
+                streamScheduler.run();
+            }
+        });
+
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .untilAsserted(() -> verify(sourceCoordinator).giveUpPartition(streamPartition));
+
+        verify(mongoTasksRefresher, never()).forceRefresh();
+
+        future.cancel(true);
+        executorService.shutdownNow();
     }
 }
