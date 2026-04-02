@@ -55,7 +55,7 @@ public class S3EnrichProcessor extends AbstractProcessor<Record<Event>, Record<E
     private static final long BYTES_IN_MB = 1024 * 1024;
 
     public static final String NUMBER_OF_RECORDS_ENRICHED_SUCCESS = "numberOfRecordsEnrichedSuccessFromS3";
-    public static final String NUMBER_OF_RECORDS_ENRICHED_FAILED = "numberOfRecordsEnrichedFailerFromS3";
+    public static final String NUMBER_OF_RECORDS_ENRICHED_FAILED = "numberOfRecordsEnrichedFailureFromS3";
 
     private final S3EnrichProcessorConfig s3EnrichProcessorConfig;
     private final ExpressionEvaluator expressionEvaluator;
