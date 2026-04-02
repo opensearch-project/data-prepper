@@ -536,7 +536,7 @@ public class ChangelogWorker implements Runnable {
             // Deserialize, carryover removal, UPDATE merge, write to buffer
             final Schema schema = table.schema();
             final org.apache.avro.Schema avroSchema = AvroSchemaUtil.convert(schema, tableName);
-            final ChangelogRecordConverter converter = new ChangelogRecordConverter(tableName, tableConfig.getIdentifierColumns());
+            final ChangelogRecordConverter converter = new ChangelogRecordConverter(tableName, tableConfig.getIdentifierColumns(), eventFactory);
             final CarryoverRemover carryoverRemover = new CarryoverRemover();
 
             // Convert ShuffleRecords to RowWithMeta

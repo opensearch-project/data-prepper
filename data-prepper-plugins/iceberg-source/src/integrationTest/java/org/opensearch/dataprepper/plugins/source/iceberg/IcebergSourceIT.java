@@ -394,7 +394,7 @@ public class IcebergSourceIT {
     private org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig createTestShuffleConfig() {
         try {
             final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.readValue("{\"ssl\": false, \"server_port\": 4995}", 
+            return mapper.readValue("{\"ssl\": false, \"port\": 4995}", 
                     org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig.class);
         } catch (final Exception e) {
             throw new RuntimeException(e);

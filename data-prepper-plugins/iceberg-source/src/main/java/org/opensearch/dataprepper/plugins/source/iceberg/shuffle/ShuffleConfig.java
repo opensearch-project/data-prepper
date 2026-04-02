@@ -10,13 +10,17 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
-public class ShuffleConfig {
+@JsonIgnoreProperties({"path", "compression", "authentication", "health_check_service",
+        "unauthenticated_health_check", "request_timeout", "thread_count",
+        "max_connection_count", "max_pending_requests", "max_request_length"})
+public class ShuffleConfig extends BaseHttpServerConfig {
 
     static final int DEFAULT_PARTITIONS = 64;
     static final String DEFAULT_TARGET_PARTITION_SIZE = "64mb";
@@ -30,48 +34,56 @@ public class ShuffleConfig {
     @JsonProperty("target_partition_size")
     private ByteCount targetPartitionSize = ByteCount.parse(DEFAULT_TARGET_PARTITION_SIZE);
 
-    @JsonProperty("server_port")
-    private int serverPort = DEFAULT_SERVER_PORT;
-
     @JsonProperty("ssl")
     private boolean ssl = true;
-
-    @JsonProperty("ssl_certificate_file")
-    private String sslCertificateFile;
-
-    @JsonProperty("ssl_key_file")
-    private String sslKeyFile;
 
     @JsonProperty("ssl_insecure_disable_verification")
     private boolean sslInsecureDisableVerification = false;
 
-    @AssertTrue(message = "ssl_certificate_file must be set when ssl is enabled")
-    boolean isSslCertificateFileValid() {
-        if (!ssl) {
-            return true;
-        }
-        return sslCertificateFile != null && !sslCertificateFile.isEmpty();
+    @Override
+    public int getDefaultPort() {
+        return DEFAULT_SERVER_PORT;
     }
 
-    @AssertTrue(message = "ssl_key_file must be set when ssl is enabled")
-    boolean isSslKeyFileValid() {
-        if (!ssl) {
-            return true;
+    @Override
+    public String getDefaultPath() {
+        return "/shuffle";
+    }
+
+    @Override
+    public boolean isSsl() {
+        return ssl;
+    }
+
+    @Override
+    public boolean isSslCertAndKeyFileInS3() {
+        return ssl && getSslCertificateFile() != null
+                && getSslCertificateFile().toLowerCase().startsWith("s3://")
+                && getSslKeyFile() != null
+                && getSslKeyFile().toLowerCase().startsWith("s3://");
+    }
+
+    @Override
+    public boolean isSslCertificateFileValid() {
+        if (ssl && !isUseAcmCertificateForSsl()) {
+            return getSslCertificateFile() != null && !getSslCertificateFile().isEmpty();
         }
-        return sslKeyFile != null && !sslKeyFile.isEmpty();
+        return true;
+    }
+
+    @Override
+    public boolean isSslKeyFileValid() {
+        if (ssl && !isUseAcmCertificateForSsl()) {
+            return getSslKeyFile() != null && !getSslKeyFile().isEmpty();
+        }
+        return true;
     }
 
     public int getPartitions() { return partitions; }
 
     public long getTargetPartitionSizeBytes() { return targetPartitionSize.getBytes(); }
 
-    public int getServerPort() { return serverPort; }
-
-    public boolean isSsl() { return ssl; }
-
-    public String getSslCertificateFile() { return sslCertificateFile; }
-
-    public String getSslKeyFile() { return sslKeyFile; }
+    public int getServerPort() { return getPort(); }
 
     public boolean isSslInsecureDisableVerification() { return sslInsecureDisableVerification; }
 }

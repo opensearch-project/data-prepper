@@ -11,24 +11,18 @@
 package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
 import com.linecorp.armeria.server.Server;
-import com.linecorp.armeria.server.ServerBuilder;
+import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
-import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
+import org.opensearch.dataprepper.plugins.server.CreateServer;
+import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
-import software.amazon.awssdk.services.s3.S3Client;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Standalone Armeria HTTP server for serving shuffle data.
- * Runs independently from PeerForwarder to avoid core dependencies.
+ * HTTP server for serving shuffle data to other Data Prepper nodes.
  */
 public class ShuffleHttpServer {
 
@@ -44,26 +38,19 @@ public class ShuffleHttpServer {
     }
 
     public void start() {
-        final ServerBuilder sb = Server.builder();
-        sb.disableServerHeader();
+        final ServerConfiguration serverConfig = new ServerConfiguration();
+        serverConfig.setPort(config.getServerPort());
+        serverConfig.setSsl(config.isSsl());
 
-        if (config.isSsl()) {
-            try {
-                final CertificateProvider certificateProvider = createCertificateProvider();
-                final Certificate certificate = certificateProvider.getCertificate();
-                sb.https(config.getServerPort())
-                        .tls(new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-                             new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
-            } catch (final Exception e) {
-                throw new RuntimeException("Failed to configure TLS for shuffle server", e);
-            }
-        } else {
-            sb.http(config.getServerPort());
-        }
+        final CertificateProvider certificateProvider = config.isSsl()
+                ? new CertificateProviderFactory(config).getCertificateProvider()
+                : null;
 
-        sb.annotatedService("/shuffle", service);
+        final CreateServer createServer = new CreateServer(
+                serverConfig, LOG, PluginMetrics.fromNames("shuffle", "iceberg-source"),
+                "shuffle-server", "iceberg-cdc-pipeline");
 
-        server = sb.build();
+        server = createServer.createHTTPServer(certificateProvider, null, service, "/shuffle");
         final CompletableFuture<Void> future = server.start();
         future.join();
         LOG.info("Shuffle HTTP server started on port {}", config.getServerPort());
@@ -79,21 +66,4 @@ public class ShuffleHttpServer {
     public int getPort() {
         return config.getServerPort();
     }
-
-    private CertificateProvider createCertificateProvider() {
-        final String certFile = config.getSslCertificateFile();
-        final String keyFile = config.getSslKeyFile();
-        if (certFile.toLowerCase().startsWith(S3_PREFIX) && keyFile.toLowerCase().startsWith(S3_PREFIX)) {
-            LOG.info("Loading SSL certificates from S3");
-            final S3Client s3Client = S3Client.builder()
-                    .credentialsProvider(DefaultCredentialsProvider.create())
-                    .region(new DefaultAwsRegionProviderChain().getRegion())
-                    .build();
-            return new S3CertificateProvider(s3Client, certFile, keyFile);
-        }
-        LOG.info("Loading SSL certificates from local filesystem");
-        return new FileCertificateProvider(certFile, keyFile);
-    }
-
-    private static final String S3_PREFIX = "s3://";
 }

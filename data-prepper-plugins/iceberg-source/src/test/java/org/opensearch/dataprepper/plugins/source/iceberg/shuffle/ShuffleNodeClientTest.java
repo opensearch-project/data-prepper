@@ -55,16 +55,16 @@ class ShuffleNodeClientTest {
         server.start().join();
         port = server.activeLocalPort();
 
-        final ShuffleConfig config = new ShuffleConfig();
-        // Use reflection to set port and disable ssl for test
-        final var portField = ShuffleConfig.class.getDeclaredField("serverPort");
-        portField.setAccessible(true);
-        portField.setInt(config, port);
-        final var sslField = ShuffleConfig.class.getDeclaredField("ssl");
-        sslField.setAccessible(true);
-        sslField.setBoolean(config, false);
+        final ShuffleConfig config = createConfig(port);
 
         client = new ShuffleNodeClient(config);
+    }
+
+    private static ShuffleConfig createConfig(final int port) throws Exception {
+        final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        return mapper.readValue(
+                mapper.writeValueAsString(java.util.Map.of("port", port, "ssl", false)),
+                ShuffleConfig.class);
     }
 
     @AfterEach

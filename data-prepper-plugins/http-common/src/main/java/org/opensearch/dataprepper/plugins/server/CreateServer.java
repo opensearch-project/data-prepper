@@ -296,6 +296,45 @@ public class CreateServer {
         return sb.build();
     }
 
+    /**
+     * Creates a lightweight HTTP server with TLS support and optional authentication.
+     * Intended for internal node-to-node communication (e.g. shuffle data transfer)
+     * where throttling, health checks, and buffer integration are not needed.
+     *
+     * @param certificateProvider TLS certificate provider, or null if SSL is disabled
+     * @param authenticationProvider authentication decorator, or null to skip authentication
+     * @param annotatedService Armeria annotated service to register
+     * @param path base path for the annotated service
+     * @return configured Armeria Server
+     */
+    public Server createHTTPServer(
+            final CertificateProvider certificateProvider,
+            final ArmeriaHttpAuthenticationProvider authenticationProvider,
+            final Object annotatedService,
+            final String path) {
+        final ServerBuilder sb = Server.builder();
+        sb.disableServerHeader();
+
+        if (serverConfiguration.isSsl()) {
+            LOG.info("Creating {} with SSL/TLS enabled.", sourceName);
+            final Certificate certificate = certificateProvider.getCertificate();
+            sb.https(serverConfiguration.getPort()).tls(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
+        } else {
+            LOG.warn("Creating {} without SSL/TLS. This is not secure.", sourceName);
+            sb.http(serverConfiguration.getPort());
+        }
+
+        if (authenticationProvider != null) {
+            authenticationProvider.getAuthenticationDecorator().ifPresent(sb::decorator);
+        }
+
+        sb.annotatedService(path, annotatedService);
+
+        return sb.build();
+    }
+
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
         RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
                 ? serverConfiguration.getRetryInfo()
