@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
 import com.mongodb.MongoSecurityException;
-import org.bson.BsonDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
