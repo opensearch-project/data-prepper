@@ -15,11 +15,16 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class IcebergSourceConfig {
 
     static final Duration DEFAULT_POLLING_INTERVAL = Duration.ofSeconds(30);
+
+    @JsonProperty("catalog")
+    private Map<String, String> catalog = Collections.emptyMap();
 
     @JsonProperty("tables")
     @NotEmpty
@@ -42,5 +47,9 @@ public class IcebergSourceConfig {
 
     public boolean isAcknowledgmentsEnabled() {
         return acknowledgments;
+    }
+
+    public Map<String, String> getCatalog() {
+        return catalog;
     }
 }
