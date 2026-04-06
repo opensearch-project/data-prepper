@@ -44,9 +44,13 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
     private final Counter executorRefreshErrorsCounter;
     private final String s3PathPrefix;
     private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
+    private static final int MAX_FORCE_REFRESH_ATTEMPTS = 3;
+    private static final long BASE_BACKOFF_MS = 30_000;
     private MongoDBExportPartitionSupplier currentMongoDBExportPartitionSupplier;
     private MongoDBSourceConfig currentMongoDBSourceConfig;
     private ExecutorService currentExecutor;
+    private volatile int forceRefreshAttempts = 0;
+    private volatile long lastForceRefreshTime = 0;
 
     public MongoTasksRefresher(final Buffer<Record<Event>> buffer,
                                final EnhancedSourceCoordinator sourceCoordinator,
@@ -81,10 +85,37 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
                 currentExecutor.shutdownNow();
                 refreshJobs(pluginConfig);
                 currentMongoDBSourceConfig = pluginConfig;
+                forceRefreshAttempts = 0;
+                lastForceRefreshTime = 0;
             } catch (Exception e) {
                 executorRefreshErrorsCounter.increment();
                 LOG.error("Refreshing executor failed.", e);
             }
+        }
+    }
+
+    public void forceRefresh() {
+        if (forceRefreshAttempts >= MAX_FORCE_REFRESH_ATTEMPTS) {
+            LOG.warn("Max force refresh attempts ({}) reached. Waiting for next scheduled credential refresh.",
+                    MAX_FORCE_REFRESH_ATTEMPTS);
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        final long backoff = BASE_BACKOFF_MS * (1L << forceRefreshAttempts);
+        if (now - lastForceRefreshTime < backoff) {
+            return;
+        }
+        lastForceRefreshTime = now;
+        forceRefreshAttempts++;
+        LOG.info("Forcing credential refresh due to authentication failure (attempt {}/{})",
+                forceRefreshAttempts, MAX_FORCE_REFRESH_ATTEMPTS);
+        try {
+            currentExecutor.shutdownNow();
+            refreshJobs(currentMongoDBSourceConfig);
+            credentialsChangeCounter.increment();
+        } catch (final Exception e) {
+            executorRefreshErrorsCounter.increment();
+            LOG.error("Forced refresh failed.", e);
         }
     }
 
@@ -98,7 +129,7 @@ public class MongoTasksRefresher implements PluginConfigObserver<MongoDBSourceCo
         }
         if (pluginConfig.getCollections().stream().anyMatch(CollectionConfig::isStream)) {
             runnables.add(new StreamScheduler(
-                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, s3PathPrefix, pluginMetrics, documentDBAggregateMetrics));
+                    sourceCoordinator, buffer, acknowledgementSetManager, pluginConfig, s3PathPrefix, pluginMetrics, documentDBAggregateMetrics, this));
         }
         this.currentExecutor = executorServiceFunction.apply(runnables.size());
         runnables.forEach(currentExecutor::submit);
