@@ -22,8 +22,10 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOpti
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 
 public class S3SourceConfig {
@@ -104,6 +106,10 @@ public class S3SourceConfig {
     @JsonProperty("data_selection")
     private S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
 
+    @JsonProperty("filters")
+    @Valid
+    private Map<String, S3ScanKeyPathOption> filters;
+
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
         if(s3SelectOptions == null)
@@ -136,6 +142,16 @@ public class S3SourceConfig {
             return false;
         }
 
+        return true;
+    }
+
+    @AssertTrue(message = "Top-level filters cannot be used together with scan bucket-level filter. Use one or the other.")
+    boolean isFiltersNotUsedWithScanBucketFilter() {
+        if (filters != null && !filters.isEmpty() && s3ScanScanOptions != null && s3ScanScanOptions.getBuckets() != null) {
+            return s3ScanScanOptions.getBuckets().stream()
+                    .noneMatch(bucket -> bucket.getS3ScanBucketOption() != null
+                            && bucket.getS3ScanBucketOption().getS3ScanFilter() != null);
+        }
         return true;
     }
 
@@ -221,5 +237,9 @@ public class S3SourceConfig {
 
     public S3DataSelection getDataSelection() {
         return dataSelection;
+    }
+
+    public Map<String, S3ScanKeyPathOption> getFilters() {
+        return filters != null ? filters : Collections.emptyMap();
     }
 }

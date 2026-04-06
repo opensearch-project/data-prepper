@@ -67,6 +67,7 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME = "sqsMessagesAccessDenied";
     static final String SQS_MESSAGE_THROTTLED_METRIC_NAME = "sqsMessagesThrottled";
     static final String SQS_RESOURCE_NOT_FOUND_METRIC_NAME = "sqsResourceNotFound";
+    static final String S3_OBJECTS_FILTERED_METRIC_NAME = "s3ObjectsFiltered";
 
     private final S3SourceConfig s3SourceConfig;
     private final SqsClient sqsClient;
@@ -74,6 +75,7 @@ public class SqsWorker implements Runnable {
     private final SqsOptions sqsOptions;
     private final S3EventFilter objectCreatedFilter;
     private final S3EventFilter evenBridgeObjectCreatedFilter;
+    private final S3ObjectFilteringHelper objectFilteringHelper;
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsReceiveMessagesFailedCounter;
     private final Counter sqsMessagesDeletedCounter;
@@ -86,6 +88,7 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessageAccessDeniedCounter;
     private final Counter sqsMessageThrottledCounter;
     private final Counter sqsResourceNotFoundCounter;
+    private final Counter s3ObjectsFilteredCounter;
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private final SqsMessageParser sqsMessageParser;
@@ -110,6 +113,7 @@ public class SqsWorker implements Runnable {
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new S3ObjectCreatedFilter();
         evenBridgeObjectCreatedFilter = new EventBridgeObjectCreatedFilter();
+        objectFilteringHelper = new S3ObjectFilteringHelper(s3SourceConfig.getFilters());
         sqsMessageParser = new SqsMessageParser(s3SourceConfig);
         failedAttemptCount = 0;
         parsedMessageVisibilityTimesMap = new HashMap<>();
@@ -126,6 +130,7 @@ public class SqsWorker implements Runnable {
         sqsMessageAccessDeniedCounter = pluginMetrics.counter(SQS_MESSAGE_ACCESS_DENIED_METRIC_NAME);
         sqsMessageThrottledCounter = pluginMetrics.counter(SQS_MESSAGE_THROTTLED_METRIC_NAME);
         sqsResourceNotFoundCounter = pluginMetrics.counter(SQS_RESOURCE_NOT_FOUND_METRIC_NAME);
+        s3ObjectsFilteredCounter = pluginMetrics.counter(S3_OBJECTS_FILTERED_METRIC_NAME);
     }
 
     @Override
@@ -234,11 +239,11 @@ public class SqsWorker implements Runnable {
                 if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.S3)
                         && !parsedMessage.isEmptyNotification()
                         && isS3EventNameCreated(parsedMessage)) {
-                    parsedMessagesToRead.add(parsedMessage);
+                    addParsedMessageByFilter(parsedMessage, parsedMessagesToRead, deleteMessageBatchRequestEntryCollection);
                 }
                 else if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.EVENTBRIDGE)
                         && isEventBridgeEventTypeCreated(parsedMessage)) {
-                    parsedMessagesToRead.add(parsedMessage);
+                    addParsedMessageByFilter(parsedMessage, parsedMessagesToRead, deleteMessageBatchRequestEntryCollection);
                 }
                 else {
                     // TODO: Delete these only if on_error is configured to delete_messages.
@@ -452,6 +457,19 @@ public class SqsWorker implements Runnable {
 
     private boolean isEventBridgeEventTypeCreated(final ParsedMessage parsedMessage) {
         return evenBridgeObjectCreatedFilter.filter(parsedMessage).isPresent();
+    }
+
+    private void addParsedMessageByFilter(final ParsedMessage parsedMessage,
+                                          final List<ParsedMessage> parsedMessagesToRead,
+                                          final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries) {
+        if (objectFilteringHelper.isKeyMatchingFilters(parsedMessage.getBucketName(), parsedMessage.getObjectKey())) {
+            parsedMessagesToRead.add(parsedMessage);
+        } else {
+            LOG.debug("S3 object {} in bucket {} did not match configured filters. Deleting SQS message.",
+                    parsedMessage.getObjectKey(), parsedMessage.getBucketName());
+            s3ObjectsFilteredCounter.increment();
+            deleteMessageBatchRequestEntries.add(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
+        }
     }
 
     private S3ObjectReference populateS3Reference(final String bucketName, final String objectKey) {
