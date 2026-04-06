@@ -30,5 +30,6 @@ pipelines.yaml
 run-dataprepper.sh
 trace-tester.py
 
-# Claude project instructions
+# Claude Code
+.claude/settings.local.json
 CLAUDE.md
