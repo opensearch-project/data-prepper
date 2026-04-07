@@ -159,7 +159,7 @@ git-release-notes {previousMajor}.{previousMinor}.{previousPatch}..{major}.{mino
 git switch main
 ```
 
-Once the change log ready, create a PR to merge it into `main`.
+Once the change log is ready, create a PR to merge it into `main`.
 Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
 
 
