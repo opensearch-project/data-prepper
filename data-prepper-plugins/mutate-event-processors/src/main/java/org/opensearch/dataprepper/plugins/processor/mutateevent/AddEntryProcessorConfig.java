@@ -159,8 +159,8 @@ public class AddEntryProcessorConfig {
 
         @JsonProperty("flatten_key")
         @JsonPropertyDescription(
-                "When true and used with iterate_on, treats the key as a plain string. When false and used with iterate_on, treats the key as a json pointer. " + 
-                "Has no effect when not used with iterate_on.")
+                "When true and used with iterate_on, treats the key as a plain string. When false and used with iterate_on, treats the key as a json pointer. " +
+                        "Has no effect when not used with iterate_on.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="iterate_on")
         })
@@ -231,7 +231,7 @@ public class AddEntryProcessorConfig {
         }
 
         public boolean getFlattenKey(){
-                return flattenKey;
+            return flattenKey;
         }
 
         public boolean getDisableRootKeys() {
@@ -329,30 +329,8 @@ public class AddEntryProcessorConfig {
                      final boolean flattenKey,
                      final String addToElementWhen)
         {
-            if (key != null && metadataKey != null) {
-                throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
-            }
-            if (key == null && metadataKey == null) {
-                throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
-            }
-            if (metadataKey != null && iterateOn != null) {
-                throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
-            }
-            if (iterateOn == null && addToElementWhen != null) {
-                throw new InvalidPluginConfigurationException("add_to_element_when only applies when iterate_on is configured.");
-            }
-
-            this.key = key;
-            this.metadataKey = metadataKey;
-            this.value = value;
-            this.format = format;
-            this.valueExpression = valueExpression;
-            this.overwriteIfKeyExists = overwriteIfKeyExists;
-            this.appendIfKeyExists = appendIfKeyExists;
-            this.addWhen = addWhen;
-            this.iterateOn = iterateOn;
-            this.flattenKey = flattenKey;
-            this.addToElementWhen = addToElementWhen;
+            this(key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                    iterateOn, flattenKey, true, false, addToElementWhen);
         }
 
         public Entry(final String key,
@@ -366,31 +344,8 @@ public class AddEntryProcessorConfig {
                      final String iterateOn,
                      final String addToElementWhen)
         {
-            if (key != null && metadataKey != null) {
-                throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
-            }
-            if (key == null && metadataKey == null) {
-                throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
-            }
-            if (metadataKey != null && iterateOn != null) {
-                throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
-            }
-
-            if (iterateOn == null && addToElementWhen != null) {
-                throw new InvalidPluginConfigurationException("add_to_element_when only applies when iterate_on is configured.");
-            }
-
-            this.key = key;
-            this.metadataKey = metadataKey;
-            this.value = value;
-            this.format = format;
-            this.valueExpression = valueExpression;
-            this.overwriteIfKeyExists = overwriteIfKeyExists;
-            this.appendIfKeyExists = appendIfKeyExists;
-            this.addWhen = addWhen;
-            this.iterateOn = iterateOn;
-            this.flattenKey = true;
-            this.addToElementWhen = addToElementWhen;
+            this(key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                    iterateOn, true, true, false, addToElementWhen);
         }
 
         public Entry() {
