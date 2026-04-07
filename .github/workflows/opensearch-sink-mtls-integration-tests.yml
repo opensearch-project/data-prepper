@@ -1,0 +1,109 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+name: Integration Tests - OpenSearch sink mTLS client certificate
+
+on:
+  push:
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
+      - '*gradle*'
+  pull_request:
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
+      - '*gradle*'
+  workflow_dispatch:
+
+jobs:
+  mtls-integration-tests:
+    strategy:
+      matrix:
+        java: [11]
+        opensearch:
+          - 2.19.5
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java }}
+
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v6
+
+      - name: Generate client certificates
+        run: |
+          openssl req -x509 -newkey rsa:2048 -keyout ca-key.pem -out ca-cert.pem -days 1 -nodes -subj "/CN=TestCA"
+          openssl req -newkey rsa:2048 -keyout client-key.pem -out client-csr.pem -nodes -subj "/CN=DataPrepper"
+          openssl x509 -req -in client-csr.pem -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out client-cert.pem -days 1
+          rm -f client-csr.pem ca-cert.srl
+
+      - name: Start OpenSearch with demo config
+        run: |
+          docker run -d --name opensearch-mtls -p 9200:9200 -p 9600:9600 \
+            -e "discovery.type=single-node" \
+            -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=yourStrongPassword123!" \
+            opensearchproject/opensearch:${{ matrix.opensearch }}
+
+      - name: Wait for OpenSearch to be available
+        run: |
+          for i in $(seq 1 120); do
+            if curl -sk -u admin:'yourStrongPassword123!' https://localhost:9200 >/dev/null 2>&1; then
+              echo "OpenSearch ready after ${i} seconds"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Enable mTLS on OpenSearch
+        run: |
+          docker cp ca-cert.pem opensearch-mtls:/usr/share/opensearch/config/
+          docker exec opensearch-mtls bash -c "
+            if grep -q 'clientauth_mode' /usr/share/opensearch/config/opensearch.yml; then
+              sed -i 's/clientauth_mode:.*/clientauth_mode: REQUIRE/' /usr/share/opensearch/config/opensearch.yml
+            else
+              echo 'plugins.security.ssl.http.clientauth_mode: REQUIRE' >> /usr/share/opensearch/config/opensearch.yml
+            fi
+          "
+          docker exec opensearch-mtls bash -c "
+            sed -i '/http.*pemtrustedcas_filepath/s|:.*|: ca-cert.pem|' /usr/share/opensearch/config/opensearch.yml
+          "
+          docker restart opensearch-mtls
+
+      - name: Wait for mTLS OpenSearch to restart
+        run: |
+          sleep 10
+          for i in $(seq 1 120); do
+            if curl -sk --cert client-cert.pem --key client-key.pem -u admin:'yourStrongPassword123!' https://localhost:9200 >/dev/null 2>&1; then
+              echo "mTLS OpenSearch ready after ${i} seconds"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run mTLS integration tests
+        run: |
+          ./gradlew :data-prepper-plugins:opensearch:integrationTest \
+            --tests "org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchClientCertIT" \
+            -Dtests.opensearch.host=localhost:9200 \
+            -Dtests.opensearch.user=admin \
+            -Dtests.opensearch.password='yourStrongPassword123!' \
+            -Dtests.mtls.client.cert=$PWD/client-cert.pem \
+            -Dtests.mtls.client.key=$PWD/client-key.pem
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-prepper-opensearch-mtls-integration-tests-${{ matrix.opensearch }}-java-${{ matrix.java }}
+          path: '**/test-results/**/*.xml'

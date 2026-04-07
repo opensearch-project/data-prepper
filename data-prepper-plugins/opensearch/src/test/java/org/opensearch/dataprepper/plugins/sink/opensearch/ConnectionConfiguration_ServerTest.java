@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +27,7 @@ import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -181,6 +183,88 @@ class ConnectionConfiguration_ServerTest {
             assertThat(infoResponse, notNullValue());
             assertThat(infoResponse.clusterName(), equalTo("opensearch"));
             assertThat(infoResponse.clusterUuid(), equalTo(clusterUuid));
+        }
+    }
+
+    @Nested
+    class ClientCertificateConfiguration {
+        private WireMockServer mtlsWireMockServer;
+        private String mtlsHost;
+
+        private final String clientCertPath = Objects.requireNonNull(
+                getClass().getClassLoader().getResource("test-client-cert.pem")).getFile();
+        private final String clientKeyPath = Objects.requireNonNull(
+                getClass().getClassLoader().getResource("test-client-key.pem")).getFile();
+
+        @BeforeEach
+        void setUp() {
+            mtlsWireMockServer = new WireMockServer(options()
+                    .httpDisabled(true)
+                    .dynamicHttpsPort()
+                    .keystorePath("src/test/resources/test_keystore.jks")
+                    .keystorePassword("password")
+                    .keyManagerPassword("password")
+                    .needClientAuth(true)
+                    .trustStorePath("src/test/resources/test-client-truststore.jks")
+                    .trustStorePassword("changeit")
+            );
+            mtlsWireMockServer.start();
+
+            mtlsHost = "https://localhost:" + mtlsWireMockServer.httpsPort();
+
+            final Map<String, Object> responseBody = Map.of(
+                    "name", "opensearch",
+                    "cluster_name", "opensearch",
+                    "cluster_uuid", UUID.randomUUID().toString(),
+                    "version", Map.of(
+                            "number", "2.10.0",
+                            "build_hash", "abcdefg",
+                            "build_date", "20241212",
+                            "build_type", "testing",
+                            "distribution", "datapreppertesting",
+                            "build_snapshot", "false",
+                            "lucene_version", "8",
+                            "minimum_wire_compatibility_version", "2.10.0",
+                            "minimum_index_compatibility_version", "2.10.0"
+                    ),
+                    "tagline", "You Know, for Search"
+            );
+            mtlsWireMockServer.stubFor(get("/").willReturn(jsonResponse(responseBody, 200)));
+        }
+
+        @AfterEach
+        void tearDown() {
+            if (mtlsWireMockServer != null) {
+                mtlsWireMockServer.stop();
+            }
+        }
+
+        @Test
+        void createClient_with_client_cert_succeeds_on_mtls_server() throws IOException {
+            final ConnectionConfiguration objectUnderTest = new ConnectionConfiguration.Builder(Collections.singletonList(mtlsHost))
+                    .withInsecure(true)
+                    .withClientCert(clientCertPath)
+                    .withClientKey(clientKeyPath)
+                    .build();
+
+            final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
+            assertThat(client, notNullValue());
+
+            final MainResponse infoResponse = client.info(RequestOptions.DEFAULT);
+            assertThat(infoResponse, notNullValue());
+            assertThat(infoResponse.getClusterName(), equalTo("opensearch"));
+        }
+
+        @Test
+        void createClient_without_client_cert_fails_on_mtls_server() {
+            final ConnectionConfiguration objectUnderTest = new ConnectionConfiguration.Builder(Collections.singletonList(mtlsHost))
+                    .withInsecure(true)
+                    .build();
+
+            final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
+            assertThat(client, notNullValue());
+
+            assertThrows(Exception.class, () -> client.info(RequestOptions.DEFAULT));
         }
     }
 }

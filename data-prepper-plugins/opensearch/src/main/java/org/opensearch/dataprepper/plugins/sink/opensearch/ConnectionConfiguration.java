@@ -17,6 +17,10 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
@@ -43,17 +47,22 @@ import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.util.Collection;
 import java.time.Duration;
 import java.time.temporal.ValueRange;
 import java.util.List;
@@ -101,6 +110,8 @@ public class ConnectionConfiguration {
   private final String serverlessVpceId;
   private final boolean requestCompressionEnabled;
   private final AuthConfig authConfig;
+  private final Path clientCertPath;
+  private final Path clientKeyPath;
 
   List<String> getHosts() {
     return hosts;
@@ -170,6 +181,14 @@ public class ConnectionConfiguration {
     return authConfig;
   }
 
+  Path getClientCertPath() {
+    return clientCertPath;
+  }
+
+  Path getClientKeyPath() {
+    return clientKeyPath;
+  }
+
   private ConnectionConfiguration(final Builder builder) {
     this.hosts = builder.hosts;
     this.username = builder.username;
@@ -191,6 +210,8 @@ public class ConnectionConfiguration {
     this.serverlessVpceId = builder.serverlessVpceId;
     this.requestCompressionEnabled = builder.requestCompressionEnabled;
     this.authConfig = builder.authConfig;
+    this.clientCertPath = builder.clientCertPath;
+    this.clientKeyPath = builder.clientKeyPath;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final OpenSearchSinkConfig openSearchSinkConfig){
@@ -202,6 +223,12 @@ public class ConnectionConfiguration {
     final AuthConfig authConfig = openSearchSinkConfig.getAuthConfig();
     if (authConfig != null) {
       builder = builder.withAuthConfig(authConfig);
+      if (authConfig.getClientCertificate() != null) {
+        builder = builder.withClientCert(authConfig.getClientCertificate());
+      }
+      if (authConfig.getClientKey() != null) {
+        builder = builder.withClientKey(authConfig.getClientKey());
+      }
     } else {
       if (username != null) {
         builder = builder.withUsername(username);
@@ -264,7 +291,7 @@ public class ConnectionConfiguration {
     } else if (certPath != null) {
       builder.withCert(certPath);
     }
-    
+
     final String proxy = openSearchSinkConfig.getProxy();
     if (proxy != null) {
       builder = builder.withProxy(proxy);
@@ -385,7 +412,9 @@ public class ConnectionConfiguration {
 
   private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
     final SSLContext sslContext;
-    if(certPath != null) {
+    if (clientCertPath != null && clientKeyPath != null) {
+      sslContext = getSSLContextWithClientCert();
+    } else if(certPath != null) {
       sslContext = getCAStrategy(certPath);
     } else if(this.insecure) {
       sslContext = getTrustAllStrategy();
@@ -401,19 +430,93 @@ public class ConnectionConfiguration {
     }
   }
 
+  private SSLContext getSSLContextWithClientCert() {
+    LOG.info("Using client certificate authentication.");
+    try {
+      SSLContextBuilder sslContextBuilder = SSLContexts.custom();
+
+      if (certPath != null) {
+        sslContextBuilder.loadTrustMaterial(loadTrustStore(certPath), null);
+      } else if (insecure) {
+        sslContextBuilder.loadTrustMaterial(null, new TrustAllStrategy());
+      }
+
+      final KeyStore keyStore = loadClientKeyStore(clientCertPath, clientKeyPath);
+      sslContextBuilder.loadKeyMaterial(keyStore, "".toCharArray());
+
+      return sslContextBuilder.build();
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to create SSL context with client certificate", ex);
+    }
+  }
+
+  private static KeyStore loadTrustStore(final Path caCertPath) {
+    try {
+      final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+      final Collection<? extends Certificate> certs;
+      try (InputStream is = Files.newInputStream(caCertPath)) {
+        certs = factory.generateCertificates(is);
+      }
+      final KeyStore trustStore = KeyStore.getInstance("pkcs12");
+      trustStore.load(null, null);
+      int idx = 0;
+      for (final Certificate ca : certs) {
+        trustStore.setCertificateEntry("ca-" + idx++, ca);
+      }
+      return trustStore;
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to load trust store", ex);
+    }
+  }
+
+  private static KeyStore loadClientKeyStore(final Path clientCertFilePath, final Path keyPath) {
+    try {
+      final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+      final Collection<? extends Certificate> certs;
+      try (InputStream is = Files.newInputStream(clientCertFilePath)) {
+        certs = factory.generateCertificates(is);
+      }
+
+      final PrivateKey privateKey = loadPrivateKey(keyPath);
+
+      final KeyStore keyStore = KeyStore.getInstance("pkcs12");
+      keyStore.load(null, null);
+      keyStore.setKeyEntry("client", privateKey, "".toCharArray(), certs.toArray(new Certificate[0]));
+
+      return keyStore;
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to load client certificate and key", ex);
+    }
+  }
+
+  private static PrivateKey loadPrivateKey(final Path keyPath) {
+    try {
+      final String keyContent = Files.readString(keyPath);
+      try (PEMParser pemParser = new PEMParser(new StringReader(keyContent))) {
+        final Object object = pemParser.readObject();
+        if (object == null) {
+          throw new RuntimeException("Failed to parse PEM content from " + keyPath);
+        }
+        final JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+
+        if (object instanceof PEMKeyPair) {
+          return converter.getPrivateKey(((PEMKeyPair) object).getPrivateKeyInfo());
+        } else if (object instanceof PrivateKeyInfo) {
+          return converter.getPrivateKey((PrivateKeyInfo) object);
+        } else {
+          throw new RuntimeException("Unsupported PEM object type: " + object.getClass().getName());
+        }
+      }
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to load private key from " + keyPath, ex);
+    }
+  }
+
   private SSLContext getCAStrategy(Path certPath) {
     LOG.info("Using the cert provided in the config.");
     try {
-      CertificateFactory factory = CertificateFactory.getInstance("X.509");
-      Certificate trustedCa;
-      try (InputStream is = Files.newInputStream(certPath)) {
-        trustedCa = factory.generateCertificate(is);
-      }
-      KeyStore trustStore = KeyStore.getInstance("pkcs12");
-      trustStore.load(null, null);
-      trustStore.setCertificateEntry("ca", trustedCa);
       SSLContextBuilder sslContextBuilder = SSLContexts.custom()
-              .loadTrustMaterial(trustStore, null);
+              .loadTrustMaterial(loadTrustStore(certPath), null);
       return sslContextBuilder.build();
     } catch (Exception ex) {
       throw new RuntimeException(ex.getMessage(), ex);
@@ -474,6 +577,18 @@ public class ConnectionConfiguration {
     TrustManager[] trustManagers = createTrustManagers(certPath, insecure);
     if(trustManagers.length > 0) {
       apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+    }
+    if (clientCertPath != null && clientKeyPath != null) {
+      final KeyStore keyStore = loadClientKeyStore(clientCertPath, clientKeyPath);
+      try {
+        final KeyManagerFactory keyManagerFactory =
+                KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        keyManagerFactory.init(keyStore, "".toCharArray());
+        final KeyManager[] keyManagers = keyManagerFactory.getKeyManagers();
+        apacheHttpClientBuilder.tlsKeyManagersProvider(() -> keyManagers);
+      } catch (Exception ex) {
+        throw new RuntimeException("Failed to create key managers for client certificate", ex);
+      }
     }
   }
 
@@ -536,6 +651,8 @@ public class ConnectionConfiguration {
     private String serverlessVpceId;
     private boolean requestCompressionEnabled;
     private AuthConfig authConfig;
+    private Path clientCertPath;
+    private Path clientKeyPath;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
       final Arn arn = getArn(awsStsRoleArn);
@@ -601,6 +718,32 @@ public class ConnectionConfiguration {
     public Builder withInsecure(final boolean insecure) {
       this.insecure = insecure;
       return this;
+    }
+
+    public Builder withClientCert(final String clientCertificate) {
+      checkArgument(clientCertificate != null, "client_certificate cannot be null");
+      this.clientCertPath = resolvePemPath(clientCertificate, "client-cert-");
+      return this;
+    }
+
+    public Builder withClientKey(final String clientKey) {
+      checkArgument(clientKey != null, "client_key cannot be null");
+      this.clientKeyPath = resolvePemPath(clientKey, "client-key-");
+      return this;
+    }
+
+    private static Path resolvePemPath(final String content, final String tempFilePrefix) {
+      if (content.startsWith("-----BEGIN")) {
+        try {
+          final Path tempFile = Files.createTempFile(tempFilePrefix, ".pem");
+          Files.writeString(tempFile, content);
+          tempFile.toFile().deleteOnExit();
+          return tempFile;
+        } catch (Exception ex) {
+          throw new RuntimeException("Failed to write inline PEM content to temp file", ex);
+        }
+      }
+      return new File(content).toPath();
     }
 
     public Builder withAwsSigv4(final boolean awsSigv4) {
