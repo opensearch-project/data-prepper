@@ -81,23 +81,6 @@ See the [README](release/script/release-notes/README.md) for the script for inst
 Once the release notes are ready, create a PR to merge them into `main`.
 Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
 
-### Create changelog
-
-You can create a changelog using [git-release-notes](https://github.com/ariatemplates/git-release-notes).
-
-```
-git fetch upstream
-git switch {major}.{minor}
-git fetch upstream --tags
-git pull
-git-release-notes {previousMajor}.{previousMinor}.{previousPatch}..HEAD markdown > release/release-notes/data-prepper.change-log-{major}.{minor}.{patch}.md
-git switch main
-```
-
-Once the change log ready, create a PR to merge it into `main`.
-Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
-
-
 
 ## <a name="performing-a-release">Performing a release</a>
 
@@ -162,6 +145,23 @@ You can also check the Maven artifacts after the promote stage completes by view
 ## <a name="post-release">Post release</a>
 
 After the release, there are a few other steps to clean up the repository.
+
+### Create changelog
+
+You can create a changelog using [git-release-notes](https://github.com/ariatemplates/git-release-notes).
+
+```
+git fetch upstream
+git switch {major}.{minor}
+git fetch upstream --tags
+git pull
+git-release-notes {previousMajor}.{previousMinor}.{previousPatch}..{major}.{minor}.{patch} markdown > release/release-notes/data-prepper.change-log-{major}.{minor}.{patch}.md
+git switch main
+```
+
+Once the change log ready, create a PR to merge it into `main`.
+Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
+
 
 ### Update the release notes
 
