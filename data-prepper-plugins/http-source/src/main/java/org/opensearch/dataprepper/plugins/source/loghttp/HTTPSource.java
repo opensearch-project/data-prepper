@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
@@ -50,6 +51,8 @@ public class HTTPSource implements Source<Record<Log>> {
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private ByteDecoder byteDecoder;
     private final InputCodec codec;
+    private final List<String> metadataHeaders;
+    private final HttpHeaderExtractor httpHeaderExtractor;
 
     @DataPrepperPluginConstructor
     public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
@@ -59,6 +62,7 @@ public class HTTPSource implements Source<Record<Log>> {
         this.pipelineName = pipelineDescription.getPipelineName();
         this.byteDecoder = new JsonDecoder();
         this.certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
+        this.metadataHeaders = sourceConfig.getMetadataHeaders();
         final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
         final PluginSetting authenticationPluginSetting;
 
@@ -84,6 +88,7 @@ public class HTTPSource implements Source<Record<Log>> {
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
         }
+        httpHeaderExtractor = new HttpHeaderExtractor(metadataHeaders);
     }
 
     @Override
@@ -94,7 +99,7 @@ public class HTTPSource implements Source<Record<Log>> {
         if (server == null) {
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
             CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics, codec);
+            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics, codec, httpHeaderExtractor);
             server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
