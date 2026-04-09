@@ -9,6 +9,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.metric.Gauge;
 import org.opensearch.dataprepper.model.metric.Histogram;
@@ -27,13 +30,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-public final class TSDBDocumentBuilder {
+public final class TSDBDocumentBuilder implements CustomDocumentBuilder {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSDBDocumentBuilder.class);
     private static final String NAME_LABEL = "__name__";
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public List<String> build(final Event event) {
+    @Override
+    public List<String> buildDocuments(final Event event) {
         if (!(event instanceof Metric)) {
             throw new IllegalArgumentException(
                     "TSDB index_type requires Metric events. Received: " + event.getClass().getName());
@@ -171,45 +175,14 @@ public final class TSDBDocumentBuilder {
     }
 
     private static String buildJsonDoc(final String labels, final long timestamp, final double value) {
-        final StringBuilder sb = new StringBuilder(labels.length() + 64);
-        sb.append("{\"labels\":\"");
-        appendJsonEscaped(sb, labels);
-        sb.append("\",\"timestamp\":");
-        sb.append(timestamp);
-        sb.append(",\"value\":");
-        sb.append(value);
-        sb.append('}');
-        return sb.toString();
-    }
-
-    private static void appendJsonEscaped(final StringBuilder sb, final String s) {
-        for (int i = 0; i < s.length(); i++) {
-            final char c = s.charAt(i);
-            switch (c) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                default:
-                    if (c < 0x20) {
-                        sb.append("\\u00");
-                        sb.append(HEX_CHARS[(c >> 4) & 0xF]);
-                        sb.append(HEX_CHARS[c & 0xF]);
-                    } else {
-                        sb.append(c);
-                    }
-            }
+        final ObjectNode node = OBJECT_MAPPER.createObjectNode();
+        node.put("labels", labels);
+        node.put("timestamp", timestamp);
+        node.put("value", value);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(node);
+        } catch (final JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize TSDB document", e);
         }
     }
 

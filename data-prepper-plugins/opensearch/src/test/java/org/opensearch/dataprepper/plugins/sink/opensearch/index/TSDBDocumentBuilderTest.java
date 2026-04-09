@@ -44,8 +44,6 @@ class TSDBDocumentBuilderTest {
         builder = new TSDBDocumentBuilder();
     }
 
-    // --- Gauge Tests ---
-
     @Test
     void build_gauge_returns_single_document() throws Exception {
         final Map<String, Object> attributes = Map.of("host", "server-01");
@@ -57,7 +55,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
 
         assertEquals(1, docs.size());
         final Map<String, Object> doc = parseJson(docs.get(0));
@@ -75,15 +73,13 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
 
         assertEquals(1, docs.size());
         final Map<String, Object> doc = parseJson(docs.get(0));
         assertEquals("__name__ memory_usage", doc.get("labels"));
         assertEquals(85.0, ((Number) doc.get("value")).doubleValue(), 0.001);
     }
-
-    // --- Sum Tests ---
 
     @Test
     void build_monotonic_sum_adds_total_suffix() throws Exception {
@@ -97,7 +93,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("SUM")
                 .build();
 
-        final List<String> docs = builder.build(sum);
+        final List<String> docs = builder.buildDocuments(sum);
 
         assertEquals(1, docs.size());
         final Map<String, Object> doc = parseJson(docs.get(0));
@@ -115,7 +111,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("SUM")
                 .build();
 
-        final List<String> docs = builder.build(sum);
+        final List<String> docs = builder.buildDocuments(sum);
 
         assertEquals(1, docs.size());
         final Map<String, Object> doc = parseJson(docs.get(0));
@@ -132,15 +128,12 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("SUM")
                 .build();
 
-        final List<String> docs = builder.build(sum);
+        final List<String> docs = builder.buildDocuments(sum);
 
         assertEquals(1, docs.size());
         final Map<String, Object> doc = parseJson(docs.get(0));
-        // Should NOT double-append _total
         assertEquals("__name__ http_requests_total", doc.get("labels"));
     }
-
-    // --- Histogram Tests ---
 
     @Test
     void build_histogram_returns_bucket_plus_count_plus_sum_documents() throws Exception {
@@ -156,37 +149,30 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("HISTOGRAM")
                 .build();
 
-        final List<String> docs = builder.build(histogram);
+        final List<String> docs = builder.buildDocuments(histogram);
 
-        // 4 bucket docs + 1 _count + 1 _sum = 6
         assertEquals(6, docs.size());
 
-        // Bucket 1: cumulative = 5
         final Map<String, Object> bucket1 = parseJson(docs.get(0));
         assertEquals("__name__ request_duration_bucket le 0.1 method GET", bucket1.get("labels"));
         assertEquals(5.0, ((Number) bucket1.get("value")).doubleValue(), 0.001);
 
-        // Bucket 2: cumulative = 10
         final Map<String, Object> bucket2 = parseJson(docs.get(1));
         assertEquals("__name__ request_duration_bucket le 0.5 method GET", bucket2.get("labels"));
         assertEquals(10.0, ((Number) bucket2.get("value")).doubleValue(), 0.001);
 
-        // Bucket 3: cumulative = 15
         final Map<String, Object> bucket3 = parseJson(docs.get(2));
         assertEquals("__name__ request_duration_bucket le 1 method GET", bucket3.get("labels"));
         assertEquals(15.0, ((Number) bucket3.get("value")).doubleValue(), 0.001);
 
-        // Bucket 4 (+Inf): cumulative = 20
         final Map<String, Object> bucket4 = parseJson(docs.get(3));
         assertEquals("__name__ request_duration_bucket le +Inf method GET", bucket4.get("labels"));
         assertEquals(20.0, ((Number) bucket4.get("value")).doubleValue(), 0.001);
 
-        // _count document
         final Map<String, Object> countDoc = parseJson(docs.get(4));
         assertEquals("__name__ request_duration_count method GET", countDoc.get("labels"));
         assertEquals(20.0, ((Number) countDoc.get("value")).doubleValue(), 0.001);
 
-        // _sum document
         final Map<String, Object> sumDoc = parseJson(docs.get(5));
         assertEquals("__name__ request_duration_sum method GET", sumDoc.get("labels"));
         assertEquals(5.5, ((Number) sumDoc.get("value")).doubleValue(), 0.001);
@@ -204,15 +190,13 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("HISTOGRAM")
                 .build();
 
-        final List<String> docs = builder.build(histogram);
+        final List<String> docs = builder.buildDocuments(histogram);
 
         for (final String jsonDoc : docs) {
             final Map<String, Object> doc = parseJson(jsonDoc);
             assertEquals(TEST_TIMESTAMP_MILLIS, ((Number) doc.get("timestamp")).longValue());
         }
     }
-
-    // --- Summary Tests ---
 
     @Test
     void build_summary_returns_quantile_plus_count_plus_sum_documents() throws Exception {
@@ -232,33 +216,26 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("SUMMARY")
                 .build();
 
-        final List<String> docs = builder.build(summary);
+        final List<String> docs = builder.buildDocuments(summary);
 
-        // 2 quantile docs + 1 _count + 1 _sum = 4
         assertEquals(4, docs.size());
 
-        // Quantile 0.5
         final Map<String, Object> q1 = parseJson(docs.get(0));
         assertEquals("__name__ rpc_latency quantile 0.5 service api", q1.get("labels"));
         assertEquals(0.2, ((Number) q1.get("value")).doubleValue(), 0.001);
 
-        // Quantile 0.99
         final Map<String, Object> q2 = parseJson(docs.get(1));
         assertEquals("__name__ rpc_latency quantile 0.99 service api", q2.get("labels"));
         assertEquals(0.8, ((Number) q2.get("value")).doubleValue(), 0.001);
 
-        // _count
         final Map<String, Object> countDoc = parseJson(docs.get(2));
         assertEquals("__name__ rpc_latency_count service api", countDoc.get("labels"));
         assertEquals(1000.0, ((Number) countDoc.get("value")).doubleValue(), 0.001);
 
-        // _sum
         final Map<String, Object> sumDoc = parseJson(docs.get(3));
         assertEquals("__name__ rpc_latency_sum service api", sumDoc.get("labels"));
         assertEquals(300.5, ((Number) sumDoc.get("value")).doubleValue(), 0.001);
     }
-
-    // --- Label Sorting Tests ---
 
     @Test
     void labels_are_sorted_lexicographically() throws Exception {
@@ -275,14 +252,11 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
         final Map<String, Object> doc = parseJson(docs.get(0));
 
-        // Sorted: __name__, app, host, zone
         assertEquals("__name__ cpu_temp app myservice host server-01 zone us-east", doc.get("labels"));
     }
-
-    // --- Label Sanitization Tests ---
 
     @Test
     void label_values_with_spaces_are_sanitized() throws Exception {
@@ -296,7 +270,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
         final Map<String, Object> doc = parseJson(docs.get(0));
 
         assertTrue(((String) doc.get("labels")).contains("handler /api/items_with_spaces"));
@@ -304,7 +278,6 @@ class TSDBDocumentBuilderTest {
 
     @Test
     void label_keys_with_invalid_chars_are_sanitized() throws Exception {
-        // key "123" should become "_123" (digit-first gets underscore prepended)
         final Map<String, Object> attributes = Map.of("123", "val");
 
         final JacksonGauge gauge = JacksonGauge.builder()
@@ -315,7 +288,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
         final Map<String, Object> doc = parseJson(docs.get(0));
 
         assertTrue(((String) doc.get("labels")).contains("_123 val"));
@@ -333,7 +306,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
         final Map<String, Object> doc = parseJson(docs.get(0));
 
         assertTrue(((String) doc.get("labels")).contains("key_with_dash val"));
@@ -341,7 +314,6 @@ class TSDBDocumentBuilderTest {
 
     @Test
     void extra_label_is_merge_inserted_at_correct_sorted_position() throws Exception {
-        // "le" sorts between __name__ and "method" (l < m)
         final Map<String, Object> attributes = new HashMap<>();
         attributes.put("method", "GET");
         attributes.put("region", "us-east");
@@ -357,7 +329,7 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("HISTOGRAM")
                 .build();
 
-        final List<String> docs = builder.build(histogram);
+        final List<String> docs = builder.buildDocuments(histogram);
         final Map<String, Object> bucketDoc = parseJson(docs.get(0));
 
         assertEquals("__name__ duration_bucket le 0.5 method GET region us-east", bucketDoc.get("labels"));
@@ -365,7 +337,6 @@ class TSDBDocumentBuilderTest {
 
     @Test
     void extra_label_sorting_after_all_attributes() throws Exception {
-        // "quantile" sorts after "app" (q > a)
         final Map<String, Object> attributes = Map.of("app", "web");
         final List<Quantile> quantiles = Arrays.asList(new DefaultQuantile(0.99, 1.0));
 
@@ -380,13 +351,11 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("SUMMARY")
                 .build();
 
-        final List<String> docs = builder.build(summary);
+        final List<String> docs = builder.buildDocuments(summary);
         final Map<String, Object> quantileDoc = parseJson(docs.get(0));
 
         assertEquals("__name__ latency app web quantile 0.99", quantileDoc.get("labels"));
     }
-
-    // --- Timestamp Tests ---
 
     @Test
     void build_with_valid_timestamp() throws Exception {
@@ -397,13 +366,11 @@ class TSDBDocumentBuilderTest {
                 .withEventKind("GAUGE")
                 .build();
 
-        final List<String> docs = builder.build(gauge);
+        final List<String> docs = builder.buildDocuments(gauge);
         final Map<String, Object> doc = parseJson(docs.get(0));
 
         assertEquals(TEST_TIMESTAMP_MILLIS, ((Number) doc.get("timestamp")).longValue());
     }
-
-    // --- Non-Metric Event Test ---
 
     @Test
     void build_throws_for_non_metric_event() {
@@ -412,7 +379,7 @@ class TSDBDocumentBuilderTest {
                 .withData(Map.of("message", "hello"))
                 .build();
 
-        assertThrows(IllegalArgumentException.class, () -> builder.build(event));
+        assertThrows(IllegalArgumentException.class, () -> builder.buildDocuments(event));
     }
 
     private Map<String, Object> parseJson(final String json) throws Exception {

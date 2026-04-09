@@ -153,7 +153,6 @@ class OpenSearchSinkTsdbIT {
         }
     }
 
-    // --- Index Initialization ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -169,7 +168,6 @@ class OpenSearchSinkTsdbIT {
         final Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
-        // Query mappings via alias (TSDB uses NoIsmPolicyManagement so index name may not follow -000001 pattern)
         final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
                 OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
         final Request mappingRequest = new Request(HttpMethod.GET, indexAlias + "/_mappings" + extraURI);
@@ -182,7 +180,6 @@ class OpenSearchSinkTsdbIT {
         final Map<String, Object> mappings = (Map<String, Object>) ((Map<String, Object>) mappingResult.get(actualIndex)).get("mappings");
         assertThat(mappings, notNullValue());
 
-        // Verify TSDB-specific mapping fields
         @SuppressWarnings("unchecked")
         final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
         assertThat(properties, notNullValue());
@@ -190,11 +187,8 @@ class OpenSearchSinkTsdbIT {
         assertThat(properties.containsKey("timestamp"), equalTo(true));
         assertThat(properties.containsKey("value"), equalTo(true));
 
-        // TSDB uses NoIsmPolicyManagement — no ISM policy should be attached
-        // (unlike metric-analytics which has ISM)
     }
 
-    // --- Gauge Output ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -222,7 +216,6 @@ class OpenSearchSinkTsdbIT {
         assertThat(((Number) doc.get("value")).doubleValue(), closeTo(72.5, 0.001));
         assertThat(doc.get("timestamp"), notNullValue());
 
-        // Verify metrics
         final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
@@ -230,7 +223,6 @@ class OpenSearchSinkTsdbIT {
         Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     }
 
-    // --- Sum (Counter) Output ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -255,11 +247,9 @@ class OpenSearchSinkTsdbIT {
         assertThat(sources, hasSize(1));
 
         final Map<String, Object> doc = sources.get(0);
-        // Monotonic sum should have _total suffix
         assertThat(doc.get("labels"), equalTo("__name__ http_requests_total method GET"));
         assertThat(((Number) doc.get("value")).doubleValue(), closeTo(100.0, 0.001));
 
-        // Verify metrics
         final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
@@ -267,7 +257,6 @@ class OpenSearchSinkTsdbIT {
         Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     }
 
-    // --- Histogram Expansion ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -291,20 +280,16 @@ class OpenSearchSinkTsdbIT {
 
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TSDB);
         final List<Map<String, Object>> sources = getSearchResponseDocSources(indexAlias);
-        // 4 bucket docs + 1 _count + 1 _sum = 6
         assertThat(sources, hasSize(6));
 
-        // Collect labels for verification
         final List<String> labels = sources.stream()
                 .map(s -> (String) s.get("labels"))
                 .collect(Collectors.toList());
 
-        // Verify bucket docs exist with cumulative counts
         assertThat(labels.stream().filter(l -> l.contains("request_duration_bucket")).count(), equalTo(4L));
         assertThat(labels.stream().filter(l -> l.contains("request_duration_count")).count(), equalTo(1L));
         assertThat(labels.stream().filter(l -> l.contains("request_duration_sum")).count(), equalTo(1L));
 
-        // Verify cumulative bucket values
         final Map<String, Double> labelToValue = sources.stream()
                 .collect(Collectors.toMap(s -> (String) s.get("labels"), s -> ((Number) s.get("value")).doubleValue()));
 
@@ -315,14 +300,12 @@ class OpenSearchSinkTsdbIT {
         assertThat(labelToValue.get("__name__ request_duration_count method GET"), closeTo(20.0, 0.001));
         assertThat(labelToValue.get("__name__ request_duration_sum method GET"), closeTo(5.5, 0.001));
 
-        // Verify document success count matches expanded document count
         final List<Measurement> documentsSuccess = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
         assertThat(documentsSuccess.size(), equalTo(1));
         assertThat(documentsSuccess.get(0).getValue(), closeTo(6.0, 0));
 
-        // Verify no errors
         final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
@@ -330,7 +313,6 @@ class OpenSearchSinkTsdbIT {
         Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     }
 
-    // --- Summary Expansion ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -358,7 +340,6 @@ class OpenSearchSinkTsdbIT {
 
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TSDB);
         final List<Map<String, Object>> sources = getSearchResponseDocSources(indexAlias);
-        // 2 quantile docs + 1 _count + 1 _sum = 4
         assertThat(sources, hasSize(4));
 
         final Map<String, Double> labelToValue = sources.stream()
@@ -369,7 +350,6 @@ class OpenSearchSinkTsdbIT {
         assertThat(labelToValue.get("__name__ rpc_latency_count service api"), closeTo(1000.0, 0.001));
         assertThat(labelToValue.get("__name__ rpc_latency_sum service api"), closeTo(300.5, 0.001));
 
-        // Verify metrics
         final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
@@ -377,7 +357,6 @@ class OpenSearchSinkTsdbIT {
         Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     }
 
-    // --- Multiple Metrics in Single Batch ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -408,10 +387,8 @@ class OpenSearchSinkTsdbIT {
 
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TSDB);
         final List<Map<String, Object>> sources = getSearchResponseDocSources(indexAlias);
-        // 1 gauge + 1 sum = 2 documents
         assertThat(sources, hasSize(2));
 
-        // Verify metrics
         final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
@@ -419,7 +396,6 @@ class OpenSearchSinkTsdbIT {
         Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     }
 
-    // --- Re-instantiation (no duplicate index) ---
 
     @Test
     @DisabledIf(value = "isES6", disabledReason = "TSDB is not supported for ES 6")
@@ -433,7 +409,6 @@ class OpenSearchSinkTsdbIT {
         Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
-        // Reinstantiate sink — should not fail
         createObjectUnderTest(config, true);
 
         request = new Request(HttpMethod.HEAD, indexAlias);
@@ -441,7 +416,6 @@ class OpenSearchSinkTsdbIT {
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     }
 
-    // --- Helper methods ---
 
     private OpenSearchSink createObjectUnderTest(final OpenSearchSinkConfig openSearchSinkConfig, final boolean doInitialize) {
         final SinkContext sinkContext = mock(SinkContext.class);

@@ -56,7 +56,6 @@ public class IndexManagerFactory {
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
             case TRACE_ANALYTICS_SERVICE_MAP:
-            case TSDB:
                 indexManager = new TraceAnalyticsServiceMapIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
