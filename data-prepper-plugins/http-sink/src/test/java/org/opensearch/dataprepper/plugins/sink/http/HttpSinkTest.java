@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -16,14 +17,12 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTypeOptions;
-import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.http.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.ThresholdOptions;
-import org.opensearch.dataprepper.plugins.sink.http.configuration.HTTPMethodOptions;
-import org.opensearch.dataprepper.plugins.sink.http.handler.HttpAuthOptions;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,12 +30,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class HttpSinkTest {
 
-     HTTPSink httpSink;
+     HttpSink httpSink;
 
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
@@ -51,11 +51,11 @@ public class HttpSinkTest {
 
     private ThresholdOptions thresholdOptions;
 
-    private AwsAuthenticationOptions awsAuthenticationOptions;
+    private AwsConfig awsConfig;
 
     private OutputCodec codec;
 
-    private HttpAuthOptions httpAuthOptions;
+    private PluginMetrics pluginMetrics;
 
 
     @BeforeEach
@@ -68,33 +68,31 @@ public class HttpSinkTest {
         thresholdOptions = mock(ThresholdOptions.class);
         sinkContext = mock(SinkContext.class);
         codec = mock(OutputCodec.class);
-        httpAuthOptions = mock(HttpAuthOptions.class);
-        awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
+        awsConfig = mock(AwsConfig.class);
+        pluginMetrics = mock(PluginMetrics.class);
         when(pluginSetting.getPipelineName()).thenReturn("log-pipeline");
-        PluginModel codecConfiguration = new PluginModel("http", new HashMap<>());
+        when(pipelineDescription.getPipelineName()).thenReturn("log-pipeline");
+        PluginModel codecConfiguration = new PluginModel("ndjson", new HashMap<>());
         when(httpSinkConfiguration.getCodec()).thenReturn(codecConfiguration);
-        when(httpSinkConfiguration.getBufferType()).thenReturn(BufferTypeOptions.LOCALFILE);
-        when(httpAuthOptions.getUrl()).thenReturn("http://localhost:8080");
-        when(httpSinkConfiguration.getHttpMethod()).thenReturn(HTTPMethodOptions.POST);
-        when(httpSinkConfiguration.getAuthType()).thenReturn(AuthTypeOptions.UNAUTHENTICATED);
+        when(pluginFactory.loadPlugin(any(), any())).thenReturn(codec);
+        when(httpSinkConfiguration.getUrl()).thenReturn("http://localhost:8080");
+        when(httpSinkConfiguration.getConnectionTimeout()).thenReturn(Duration.ofSeconds(10));
         Map<String, Object> dlqSetting = new HashMap<>();
         dlqSetting.put("bucket", "dlq.test");
         dlqSetting.put("key_path_prefix", "\\dlq");
         PluginModel dlq = new PluginModel("s3",dlqSetting);
-        when(httpSinkConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(httpSinkConfiguration.getDlqStsRoleARN()).thenReturn("arn:aws:iam::1234567890:role/app-test");
-        when(httpSinkConfiguration.getDlqStsRegion()).thenReturn("ap-south-1");
-        when(httpSinkConfiguration.getDlq()).thenReturn(dlq);
+        when(httpSinkConfiguration.getAwsConfig()).thenReturn(awsConfig);
         when(httpSinkConfiguration.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(thresholdOptions.getEventCount()).thenReturn(10);
-        when(httpSinkConfiguration.getDlqFile()).thenReturn("\\dlq");
+        when(thresholdOptions.getMaxEvents()).thenReturn(10);
+        when(thresholdOptions.getMaxRequestSize()).thenReturn(ByteCount.parse("50mb"));
+        when(thresholdOptions.getFlushTimeOut()).thenReturn(Duration.ofSeconds(10));
         when(sinkContext.getIncludeKeys()).thenReturn(new ArrayList<>());
         when(sinkContext.getExcludeKeys()).thenReturn(new ArrayList<>());
     }
 
-    private HTTPSink createObjectUnderTest() {
-        return new HTTPSink(pluginSetting, httpSinkConfiguration, pluginFactory, pipelineDescription, sinkContext,
-                awsCredentialsSupplier);
+    private HttpSink createObjectUnderTest() {
+        return new HttpSink(pluginSetting, httpSinkConfiguration, pluginFactory, pipelineDescription, sinkContext,
+                awsCredentialsSupplier, pluginMetrics);
     }
     @Test
     void test_http_sink_plugin_isReady_positive() {

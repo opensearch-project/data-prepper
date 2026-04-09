@@ -28,6 +28,8 @@ dependencies {
     implementation project(':data-prepper-plugins:parse-json-processor')
     implementation 'software.amazon.awssdk:sts'
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
 
 test {
@@ -35,6 +37,16 @@ test {
 }
 
 sourceSets {
+    main {
+        java {
+            exclude '**/service/WebhookService.java'
+        }
+    }
+    test {
+        java {
+            exclude '**/service/WebhookServiceTest.java'
+        }
+    }
     integrationTest {
         java {
             compileClasspath += main.output + test.output
@@ -57,9 +69,8 @@ task integrationTest(type: Test) {
     useJUnitPlatform()
 
     classpath = sourceSets.integrationTest.runtimeClasspath
-    systemProperty 'tests.http.sink.http.endpoint', System.getProperty('tests.http.sink.http.endpoint')
-    systemProperty 'tests.http.sink.region', System.getProperty('tests.http.sink.region')
-    systemProperty 'tests.http.sink.bucket', System.getProperty('tests.http.sink.bucket')
+    systemProperty 'tests.aws.region', System.getProperty('tests.aws.region')
+    systemProperty 'tests.aws.role', System.getProperty('tests.aws.role')
 
     filter {
         includeTestsMatching '*IT'

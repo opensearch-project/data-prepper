@@ -12,8 +12,6 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
@@ -144,8 +142,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         }
         requestBuilder.rawQueryParameters(nvpToMapParams(uriBuilder.getQueryParams()));
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
-
-        AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
 
         ExecutionAttributes attributes = new ExecutionAttributes();
         attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
