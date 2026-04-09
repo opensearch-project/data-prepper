@@ -133,7 +133,7 @@
             },
             "text": {
               "type": "keyword",
-              "ignore_above": "32"
+              "ignore_above": 32
             }
           }
         },
@@ -147,7 +147,7 @@
           "type": "date_nanos"
         },
         "observedTime": {
-          "path": "date_nanos"
+          "type": "date_nanos"
         },
         "traceId": {
           "type": "keyword",
@@ -164,4 +164,3 @@
     }
   }
 }
-

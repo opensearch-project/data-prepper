@@ -123,14 +123,16 @@ public class PrometheusSinkConfigurationTest {
     }
 
     @Test
-    void prometheus_sink_config_test_with_http_url_is_valid() throws JsonProcessingException {
+    void prometheus_sink_config_test_with_http_url_and_insecure_is_valid() throws JsonProcessingException {
         final String HTTP_SINK_YAML =
             " url: \"http://localhost:8080/test\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n";
         final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(HTTP_SINK_YAML, PrometheusSinkConfiguration.class);
         assertTrue(prometheusSinkConfiguration.isValidConfig());
+        assertTrue(prometheusSinkConfiguration.isHttpsOrInsecure());
     }
 
     @Test
@@ -148,6 +150,7 @@ public class PrometheusSinkConfigurationTest {
     void prometheus_sink_config_test_with_basic_auth() throws JsonProcessingException {
         final String AUTH_SINK_YAML =
             " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n" +
@@ -164,6 +167,7 @@ public class PrometheusSinkConfigurationTest {
     void prometheus_sink_config_test_without_auth_returns_null() throws JsonProcessingException {
         final String NO_AUTH_YAML =
             " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n";
@@ -192,6 +196,7 @@ public class PrometheusSinkConfigurationTest {
     void prometheus_sink_config_test_basic_auth_without_aws_is_valid() throws JsonProcessingException {
         final String AUTH_ONLY_YAML =
             " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n" +
@@ -207,6 +212,7 @@ public class PrometheusSinkConfigurationTest {
     void prometheus_sink_config_test_bearer_token_is_rejected() throws JsonProcessingException {
         final String BEARER_TOKEN_YAML =
             " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n" +
@@ -221,11 +227,64 @@ public class PrometheusSinkConfigurationTest {
     void prometheus_sink_config_test_without_bearer_token_is_valid() throws JsonProcessingException {
         final String NO_BEARER_YAML =
             " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
                     " encoding: \"snappy\" \n" +
                     " remote_write_version: \"0.1.0\" \n" +
                     " content_type: \"application/x-protobuf\" \n";
         final PrometheusSinkConfiguration config = objectMapper.readValue(NO_BEARER_YAML, PrometheusSinkConfiguration.class);
         assertTrue(config.isValidBearerTokenConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_insecure_defaults_to_false() {
+        final PrometheusSinkConfiguration config = new PrometheusSinkConfiguration();
+        assertFalse(config.isInsecure());
+    }
+
+    @Test
+    void prometheus_sink_config_http_url_without_insecure_is_invalid() throws JsonProcessingException {
+        final String HTTP_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(HTTP_YAML, PrometheusSinkConfiguration.class);
+        assertFalse(config.isHttpsOrInsecure());
+    }
+
+    @Test
+    void prometheus_sink_config_http_url_with_insecure_true_is_valid() throws JsonProcessingException {
+        final String HTTP_YAML =
+            " url: \"http://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(HTTP_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(config.isHttpsOrInsecure());
+    }
+
+    @Test
+    void prometheus_sink_config_https_url_without_insecure_is_valid() throws JsonProcessingException {
+        final String HTTPS_YAML =
+            " url: \"https://localhost:9090/api/v1/write\"\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(HTTPS_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(config.isHttpsOrInsecure());
+    }
+
+    @Test
+    void prometheus_sink_config_https_url_with_insecure_true_is_valid() throws JsonProcessingException {
+        final String HTTPS_YAML =
+            " url: \"https://localhost:9090/api/v1/write\"\n" +
+                    " insecure: true\n" +
+                    " encoding: \"snappy\" \n" +
+                    " remote_write_version: \"0.1.0\" \n" +
+                    " content_type: \"application/x-protobuf\" \n";
+        final PrometheusSinkConfiguration config = objectMapper.readValue(HTTPS_YAML, PrometheusSinkConfiguration.class);
+        assertTrue(config.isHttpsOrInsecure());
     }
 
     @Test

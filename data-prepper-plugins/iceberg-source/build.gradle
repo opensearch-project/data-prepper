@@ -47,6 +47,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
 
     integrationTestImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     integrationTestImplementation project(':data-prepper-core')

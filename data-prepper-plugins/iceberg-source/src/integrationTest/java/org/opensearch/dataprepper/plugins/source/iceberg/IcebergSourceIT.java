@@ -302,7 +302,8 @@ public class IcebergSourceIT {
         final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
         coordinator.createPartition(new LeaderPartition());
 
-        return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager);
+        return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager,
+                org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory());
     }
 
     private EnhancedSourceCoordinator createInMemoryCoordinator() {

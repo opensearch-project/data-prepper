@@ -57,6 +57,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexMan
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -335,6 +336,71 @@ class OpenSearchSinkIT {
             // Check managed index
             await().atMost(1, TimeUnit.SECONDS).untilAsserted(() ->
                 assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.LOGS_ISM_POLICY))
+            );
+        }
+    }
+
+    @Test
+    @DisabledIf(value = "isES6", disabledReason = LOG_INGESTION_TEST_DISABLED_REASON)
+    @Timeout(value = 50, unit = TimeUnit.SECONDS)
+    void testInstantiateSinkLogsPlainWithTemplateTypeUsesIndexType() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
+                IndexType.LOG_ANALYTICS_PLAIN.getValue(),
+                null,
+                TemplateType.INDEX_TEMPLATE.getTypeName(),
+                null);
+        OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+
+        final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.LOG_ANALYTICS_PLAIN);
+        final String expectedIndexTemplateName = indexAlias + "-index-template";
+
+        // Verify composable index template is created
+        Request getTemplateRequest = new Request(HttpMethod.GET, "/_index_template/" + expectedIndexTemplateName);
+        Response getTemplateResponse = client.performRequest(getTemplateRequest);
+        assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
+        String getTemplateResponseBody = EntityUtils.toString(getTemplateResponse.getEntity());
+        @SuppressWarnings("unchecked") final List<Map<String, Map<String, Object>>> indexTemplates =
+                (List<Map<String, Map<String, Object>>>) createContentParser(XContentType.JSON.xContent(), getTemplateResponseBody)
+                        .map().get("index_templates");
+        assertThat(indexTemplates, notNullValue());
+        assertThat(indexTemplates.isEmpty(), equalTo(false));
+        @SuppressWarnings("unchecked") final List<String> indexPatterns =
+                (List<String>) indexTemplates.get(0).get("index_template").get("index_patterns");
+        assertThat(indexPatterns, hasItem(indexAlias + "-*"));
+
+        Request request = new Request(HttpMethod.HEAD, indexAlias);
+        Response response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        final String index = String.format("%s-000001", indexAlias);
+        final Map<String, Object> mappings = getIndexMappings(index);
+        assertThat(mappings, notNullValue());
+        assertThat((boolean) mappings.get("date_detection"), equalTo(false));
+
+        if (isOSBundle()) {
+            await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
+                        assertThat(getIndexPolicyId(index), equalTo(IndexConstants.LOGS_ISM_POLICY));
+                    }
+            );
+        }
+
+        // roll over initial index
+        request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
+        request.setJsonEntity("{ \"conditions\" : { } }\n");
+        response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        // Instantiate sink again
+        sink = createObjectUnderTest(openSearchSinkConfig, true);
+        // Make sure no new write index *-000001 is created under alias
+        final String rolloverIndexName = String.format("%s-000002", indexAlias);
+        request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
+        response = client.performRequest(request);
+        assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
+
+        if (isOSBundle()) {
+            await().atMost(1, TimeUnit.SECONDS).untilAsserted(() ->
+                    assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.LOGS_ISM_POLICY))
             );
         }
     }

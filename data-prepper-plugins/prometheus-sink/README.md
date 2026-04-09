@@ -8,7 +8,7 @@ The Prometheus sink should be configured as part of a Data Prepper pipeline YAML
 
 ### Open Source Prometheus (No Auth)
 
-To use with a vanilla Prometheus instance, provide an `http://` or `https://` URL. No `aws` block is needed.
+To use with a vanilla Prometheus instance, provide an `https://` URL. If using `http://`, set `insecure: true`. No `aws` block is needed.
 
 Prometheus must be started with the `--web.enable-remote-write-receiver` flag.
 
@@ -18,8 +18,9 @@ pipeline:
   sink:
     - prometheus:
         url: "http://localhost:9090/api/v1/write"
+        insecure: true
         threshold:
-          max_events: 500
+          max_events: 1000
           flush_interval: 5s
 ```
 
@@ -32,7 +33,7 @@ pipeline:
   ...
   sink:
     - prometheus:
-        url: "http://localhost:9090/api/v1/write"
+        url: "https://localhost:9090/api/v1/write"
         authentication:
           http_basic:
             username: "promuser"
@@ -53,7 +54,7 @@ pipeline:
           region: "us-east-2"
           sts_role_arn: "arn:aws:iam::123456789012:role/data-prepper-prometheus-role"
         threshold:
-          max_events: 500
+          max_events: 1000
           flush_interval: 5s
 ```
 
@@ -72,12 +73,13 @@ pipeline:
 
 | Option | Description |
 |--------|-------------|
-| `url` | The Prometheus Remote Write endpoint URL. Supports `http://` and `https://` schemes. When `aws` is configured, `https://` is required. |
+| `url` | The Prometheus Remote Write endpoint URL. Supports `https://` by default. To use `http://`, set `insecure` to `true`. When `aws` is configured, `https://` is required. |
 
 ### Optional
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `insecure` | `false` | When `true`, allows `http://` URLs. By default, only `https://` URLs are permitted. |
 | `aws` | `null` | AWS configuration for SigV4 signing. When present, requests are signed with AWS credentials. See [AWS Configuration](#aws-configuration). |
 | `authentication` | `null` | HTTP Basic authentication credentials. See [Authentication](#authentication). Cannot be used with `aws`. |
 | `encoding` | `snappy` | Compression encoding. Currently only `snappy` is supported. |
@@ -95,7 +97,7 @@ pipeline:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max_events` | `500` | Maximum number of events to buffer before flushing. |
+| `max_events` | `1000` | Maximum number of events to buffer before flushing. |
 | `max_request_size` | `1048576` (1 MB) | Maximum request size in bytes before flushing. |
 | `flush_interval` | `10000` (ms) | Maximum time in milliseconds to wait before flushing the buffer. |
 
