@@ -1,0 +1,4 @@
+plugin_name: "rds-joins"
+apply_when:
+  - "$..source.rds"
+  - "$..source.rds.joins"
