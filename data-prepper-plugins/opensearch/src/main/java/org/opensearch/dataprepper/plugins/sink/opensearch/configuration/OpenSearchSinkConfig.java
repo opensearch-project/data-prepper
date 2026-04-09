@@ -165,6 +165,22 @@ public class OpenSearchSinkConfig {
     private List<ActionConfiguration> actions = null;
 
     @Getter
+    @Valid
+    @JsonProperty("script")
+    private ScriptConfiguration scriptConfiguration = null;
+
+    @AssertTrue(message = "script can only be used with update or upsert actions.")
+    public boolean isScriptActionValid() {
+        if (scriptConfiguration == null) {
+            return true;
+        }
+        final String effectiveAction = action != null ? action : OpenSearchBulkActions.INDEX.toString();
+        return effectiveAction.contains("${") ||
+                effectiveAction.equalsIgnoreCase(OpenSearchBulkActions.UPDATE.toString()) ||
+                effectiveAction.equalsIgnoreCase(OpenSearchBulkActions.UPSERT.toString());
+    }
+
+    @Getter
     @JsonProperty("document_root_key")
     private String documentRootKey = null;
 
