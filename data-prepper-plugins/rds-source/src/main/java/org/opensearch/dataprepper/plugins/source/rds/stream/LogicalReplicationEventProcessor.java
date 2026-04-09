@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnType;
@@ -124,6 +125,10 @@ public class LogicalReplicationEventProcessor {
         this.streamPartition = streamPartition;
         this.sourceConfig = sourceConfig;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        if (sourceConfig.getJoinConfig() != null && sourceConfig.getJoinConfig().getRelations() != null) {
+            recordConverter.setJoinMetadataEnricher(
+                    new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
+        }
         this.buffer = buffer;
         bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         this.pluginMetrics = pluginMetrics;
@@ -428,7 +433,8 @@ public class LogicalReplicationEventProcessor {
                 primaryKeys,
                 eventTimestampMillis,
                 eventTimestampMillis,
-                streamEventType);
+                streamEventType,
+                tableMetadata.getColumnNames());
         pipelineEvents.add(pipelineEvent);
     }
 

@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
@@ -124,6 +125,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        if (sourceConfig.getJoinConfig() != null && sourceConfig.getJoinConfig().getRelations() != null) {
+            recordConverter.setJoinMetadataEnricher(
+                    new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
+        }
         this.s3Prefix = s3Prefix;
         tableNames = dbTableMetadata.getTableColumnDataTypeMap().keySet();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
@@ -413,7 +418,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     primaryKeys,
                     eventTimestampMillis,
                     eventTimestampMillis,
-                    streamEventType);
+                    streamEventType,
+                    tableMetadata.getColumnNames());
             pipelineEvents.add(pipelineEvent);
         }
 
