@@ -61,7 +61,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumul
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ScriptConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
@@ -91,10 +90,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;

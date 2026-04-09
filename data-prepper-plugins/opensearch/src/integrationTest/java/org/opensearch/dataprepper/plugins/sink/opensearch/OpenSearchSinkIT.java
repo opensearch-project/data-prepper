@@ -529,7 +529,7 @@ class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 799.0 : 2058.0;
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 830.0 : 2058.0;
         assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
         assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
     }
@@ -615,7 +615,7 @@ class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1085.0 : 2072.0;
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1114.0 : 2072.0;
         assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
         assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
@@ -677,7 +677,7 @@ class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 376.0 : 265.0;
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 410.0 : 265.0;
         assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
         assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
