@@ -139,6 +139,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String pipeline;
   private final String action;
   private final List<ActionConfiguration> actions;
+  private final ScriptManager scriptManager;
   private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
@@ -208,6 +209,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
+    this.scriptManager = new ScriptManager(openSearchSinkConfig.getIndexConfiguration().getScriptConfiguration(), expressionEvaluator);
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.versionType = openSearchSinkConfig.getIndexConfiguration().getVersionType();
     this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
@@ -342,7 +344,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     return initialized;
   }
 
-  private BulkOperation getBulkOperationForAction(final String action,
+  BulkOperation getBulkOperationForAction(final String action,
                                                   final SerializedJson document,
                                                   final Long version,
                                                   final String indexName,
@@ -380,18 +382,22 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         }
 
 
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString())) ?
-              new UpdateOperation.Builder<>()
+          final boolean isUpsert = StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString());
+          final UpdateOperation.Builder<Object> updateOperationBuilder = new UpdateOperation.Builder<>()
                   .index(indexName)
-                  .document(filteredJsonNode)
-                  .upsert(filteredJsonNode)
-                  .versionType(versionType)
-                  .version(version) :
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(filteredJsonNode)
                   .versionType(versionType)
                   .version(version);
+
+          if (scriptManager.isScriptEnabled()) {
+              updateOperationBuilder.script(scriptManager.buildScript(jsonNode, document.getResolvedScriptParameters().orElse(null)));
+              updateOperationBuilder.upsert(filteredJsonNode);
+              updateOperationBuilder.scriptedUpsert(true);
+          } else if (isUpsert) {
+              updateOperationBuilder.document(filteredJsonNode).upsert(filteredJsonNode);
+          } else {
+              updateOperationBuilder.document(filteredJsonNode);
+          }
+
           docId.ifPresent(updateOperationBuilder::id);
           routing.ifPresent(updateOperationBuilder::routing);
           bulkOperation = new BulkOperation.Builder()
@@ -596,7 +602,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
-    return SerializedJson.fromStringAndOptionals(document, docId, routingValue, null);
+    return SerializedJson.builder()
+            .withJsonString(document)
+            .withDocumentId(docId)
+            .withRoutingField(routingValue)
+            .withResolvedScriptParameters(scriptManager.resolveParams(event))
+            .build();
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
