@@ -88,8 +88,6 @@
         index: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.index>>"
         action: "upsert"
         document_id: "${getMetadata(\"_primary_key\")}"
-        document_version: "${getMetadata(\"document_version\")}"
-        version_type: "external"
         script:
           source: "String[] fields = params.fields.splitOnToken(','); if (params.is_parent == 'true') { if (params.is_delete == 'true') { ctx.op = 'delete' } else { for (String f : fields) { if (params.doc.containsKey(f)) { ctx._source[f] = params.doc[f] } } } } else { String arr = params.child_table_name; String pkName = params.child_pk_name; String pkVal = params.child_pk_value; if (!ctx._source.containsKey(arr)) { ctx._source[arr] = [] } ctx._source[arr].removeIf(e -> e[pkName].toString() == pkVal); if (params.is_delete != 'true') { def entry = [:]; for (String f : fields) { if (params.doc.containsKey(f)) { entry[f] = params.doc[f] } } entry[pkName] = params.doc[pkName]; ctx._source[arr].add(entry) } }"
           params:
