@@ -32,4 +32,8 @@ public class JoinRelation {
     @NotBlank
     @JsonProperty("child_key")
     private String childKey;
+
+    @NotBlank
+    @JsonProperty("child_primary_key")
+    private String childPrimaryKey;
 }

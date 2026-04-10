@@ -15,20 +15,26 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinRelation;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Enriches CDC events with join metadata so the OpenSearch sink can
  * denormalize related tables into a single document using scripted upsert.
  *
- * Adds the following metadata attributes:
+ * <p>Metadata attributes set on each event:</p>
  * <ul>
  *   <li>{@code _table} - source table name</li>
- *   <li>{@code _fields} - comma-separated column names belonging to this table</li>
+ *   <li>{@code _fields} - comma-separated column names (excluding join keys)</li>
  *   <li>{@code _is_delete} - "true" if this is a delete event</li>
- *   <li>{@code _primary_key} - the document ID for the denormalized document (parent key value)</li>
+ *   <li>{@code _is_parent} - "true" if the event is from the parent table</li>
+ *   <li>{@code _primary_key} - document ID (parent key value)</li>
+ *   <li>{@code _child_table_name} - array field name for child data in the document</li>
+ *   <li>{@code _child_pk_name} - child primary key field name (for array lookup)</li>
+ *   <li>{@code _child_pk_value} - child primary key value (for array lookup)</li>
  * </ul>
  */
 public class JoinMetadataEnricher {
@@ -36,9 +42,12 @@ public class JoinMetadataEnricher {
     static final String JOIN_TABLE_METADATA = "_table";
     static final String JOIN_FIELDS_METADATA = "_fields";
     static final String JOIN_IS_DELETE_METADATA = "_is_delete";
+    static final String JOIN_IS_PARENT_METADATA = "_is_parent";
     static final String JOIN_PRIMARY_KEY_METADATA = "_primary_key";
+    static final String JOIN_CHILD_TABLE_NAME_METADATA = "_child_table_name";
+    static final String JOIN_CHILD_PK_NAME_METADATA = "_child_pk_name";
+    static final String JOIN_CHILD_PK_VALUE_METADATA = "_child_pk_value";
 
-    /** tableName -> JoinRelation */
     private final Map<String, JoinRelation> parentTableRelations;
     private final Map<String, JoinRelation> childTableRelations;
 
@@ -63,13 +72,31 @@ public class JoinMetadataEnricher {
             return;
         }
 
+        final boolean isParent = parentTableRelations.containsKey(tableName);
         final EventMetadata metadata = event.getMetadata();
-        metadata.setAttribute(JOIN_TABLE_METADATA, tableName);
-        metadata.setAttribute(JOIN_FIELDS_METADATA, String.join(",", columnNames));
-        metadata.setAttribute(JOIN_IS_DELETE_METADATA, String.valueOf(isDelete));
 
-        final String primaryKeyValue = resolvePrimaryKey(event, tableName, relation);
-        metadata.setAttribute(JOIN_PRIMARY_KEY_METADATA, primaryKeyValue);
+        // Filter out join key columns from fields
+        final Set<String> excludeKeys = getExcludeKeys(relation, isParent);
+        final String fields = columnNames.stream()
+                .filter(col -> !excludeKeys.contains(col))
+                .collect(Collectors.joining(","));
+
+        metadata.setAttribute(JOIN_TABLE_METADATA, tableName);
+        metadata.setAttribute(JOIN_FIELDS_METADATA, fields);
+        metadata.setAttribute(JOIN_IS_DELETE_METADATA, String.valueOf(isDelete));
+        metadata.setAttribute(JOIN_IS_PARENT_METADATA, String.valueOf(isParent));
+
+        // Document ID is always the parent key value
+        final String parentKeyField = isParent ? relation.getParentKey() : relation.getChildKey();
+        metadata.setAttribute(JOIN_PRIMARY_KEY_METADATA, event.get(parentKeyField, String.class));
+
+        // Child array metadata
+        metadata.setAttribute(JOIN_CHILD_TABLE_NAME_METADATA, relation.getChildTable());
+        metadata.setAttribute(JOIN_CHILD_PK_NAME_METADATA, relation.getChildPrimaryKey());
+        if (!isParent) {
+            metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA,
+                    event.get(relation.getChildPrimaryKey(), String.class));
+        }
     }
 
     private JoinRelation getRelation(final String tableName) {
@@ -77,12 +104,13 @@ public class JoinMetadataEnricher {
         return relation != null ? relation : childTableRelations.get(tableName);
     }
 
-    private String resolvePrimaryKey(final Event event, final String tableName, final JoinRelation relation) {
-        // For parent table, the document ID is the parent key value
-        // For child table, the document ID is the foreign key value (which references the parent key)
-        final String keyField = tableName.equals(relation.getParentTable())
-                ? relation.getParentKey()
-                : relation.getChildKey();
-        return event.get(keyField, String.class);
+    private Set<String> getExcludeKeys(final JoinRelation relation, final boolean isParent) {
+        final Set<String> keys = new HashSet<>();
+        keys.add(relation.getParentKey());
+        keys.add(relation.getChildKey());
+        if (!isParent) {
+            keys.add(relation.getChildPrimaryKey());
+        }
+        return keys;
     }
 }
