@@ -23,21 +23,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class MapEntriesProcessorConfigTest {
+class WrapEntriesProcessorConfigTest {
 
     @Test
     void defaults_are_correct() {
-        final MapEntriesProcessorConfig config = new MapEntriesProcessorConfig();
+        final WrapEntriesProcessorConfig config = new WrapEntriesProcessorConfig();
         assertThat(config.getTarget(), nullValue());
         assertThat(config.getExcludeNullEmptyValues(), equalTo(false));
         assertThat(config.getAppendIfTargetExists(), equalTo(false));
-        assertThat(config.getMapEntriesWhen(), nullValue());
+        assertThat(config.getWrapEntriesWhen(), nullValue());
         assertThat(config.getTagsOnFailure(), nullValue());
     }
 
     @Test
     void getEffectiveTarget_returns_target_when_set() throws Exception {
-        final MapEntriesProcessorConfig config = new MapEntriesProcessorConfig();
+        final WrapEntriesProcessorConfig config = new WrapEntriesProcessorConfig();
         setField(config, "source", "/names");
         setField(config, "target", "/agents");
         assertThat(config.getEffectiveTarget(), equalTo("/agents"));
@@ -45,17 +45,17 @@ class MapEntriesProcessorConfigTest {
 
     @Test
     void getEffectiveTarget_returns_source_when_target_is_null() throws Exception {
-        final MapEntriesProcessorConfig config = new MapEntriesProcessorConfig();
+        final WrapEntriesProcessorConfig config = new WrapEntriesProcessorConfig();
         setField(config, "source", "/names");
         assertThat(config.getEffectiveTarget(), equalTo("/names"));
     }
 
     @Test
-    void validateExpressions_with_invalid_map_entries_when_throws_InvalidPluginConfigurationException() throws Exception {
-        final MapEntriesProcessorConfig config = new MapEntriesProcessorConfig();
+    void validateExpressions_with_invalid_wrap_entries_when_throws_InvalidPluginConfigurationException() throws Exception {
+        final WrapEntriesProcessorConfig config = new WrapEntriesProcessorConfig();
         final String condition = UUID.randomUUID().toString();
         final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
-        setField(config, "mapEntriesWhen", condition);
+        setField(config, "wrapEntriesWhen", condition);
         when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, () -> config.validateExpressions(expressionEvaluator));
@@ -63,7 +63,7 @@ class MapEntriesProcessorConfigTest {
 
     @Test
     void validateExpressions_with_empty_target_throws_InvalidPluginConfigurationException() throws Exception {
-        final MapEntriesProcessorConfig config = new MapEntriesProcessorConfig();
+        final WrapEntriesProcessorConfig config = new WrapEntriesProcessorConfig();
         final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
         setField(config, "target", "");
 

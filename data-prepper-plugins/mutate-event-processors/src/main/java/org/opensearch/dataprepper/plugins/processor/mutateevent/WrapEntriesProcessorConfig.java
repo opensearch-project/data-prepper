@@ -24,9 +24,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>map_entries</code> processor wraps each element of a primitive array " +
+@JsonClassDescription("The <code>wrap_entries</code> processor wraps each element of a primitive array " +
         "into an object using a configured key name.")
-public class MapEntriesProcessorConfig {
+public class WrapEntriesProcessorConfig {
 
     @NotNull
     @NotEmpty
@@ -63,13 +63,13 @@ public class MapEntriesProcessorConfig {
             "instead of overwriting. Default is <code>false</code>.")
     private boolean appendIfTargetExists = false;
 
-    @JsonProperty("map_entries_when")
+    @JsonProperty("wrap_entries_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> " +
             "that will be evaluated to determine whether the processor will be run on the event.")
     @ExampleValues({
         @Example(value = "/type == \"tagged\"", description = "Only process events where type is 'tagged'.")
     })
-    private String mapEntriesWhen;
+    private String wrapEntriesWhen;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
@@ -95,8 +95,8 @@ public class MapEntriesProcessorConfig {
         return appendIfTargetExists;
     }
 
-    public String getMapEntriesWhen() {
-        return mapEntriesWhen;
+    public String getWrapEntriesWhen() {
+        return wrapEntriesWhen;
     }
 
     public List<String> getTagsOnFailure() {
@@ -108,11 +108,11 @@ public class MapEntriesProcessorConfig {
             throw new InvalidPluginConfigurationException("target must not be empty when specified.");
         }
 
-        if (mapEntriesWhen != null && !expressionEvaluator.isValidExpressionStatement(mapEntriesWhen)) {
+        if (wrapEntriesWhen != null && !expressionEvaluator.isValidExpressionStatement(wrapEntriesWhen)) {
             throw new InvalidPluginConfigurationException(
-                    String.format("map_entries_when \"%s\" is not a valid expression statement. " +
+                    String.format("wrap_entries_when \"%s\" is not a valid expression statement. " +
                                     "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
-                            mapEntriesWhen));
+                            wrapEntriesWhen));
         }
     }
 

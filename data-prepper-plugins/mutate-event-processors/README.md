@@ -647,7 +647,7 @@ will end up with this after processing:
 * `tags_on_failure` - (optional): a list of tags to add to event metadata when the event fails to process
 
 
-## MapEntriesProcessor
+## WrapEntriesProcessor
 A processor that wraps each element of a primitive array into an object using a configured key name. This enables downstream processors like `add_entries` and `delete_entries` with `iterate_on`, which require `List<Map<String, Object>>` and cannot operate on primitive arrays.
 
 ### Basic Usage
@@ -660,7 +660,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - map_entries:
+    - wrap_entries:
         source: "/names"
         key: "name"
   sink:
@@ -682,7 +682,7 @@ When run, the processor will parse the message into the following output:
 If you want to keep the original array and write the wrapped objects to a different key, use the `target` option:
 ```yaml
   processor:
-    - map_entries:
+    - wrap_entries:
         source: "/items"
         target: "/inventory_items"
         key: "product"
@@ -699,13 +699,13 @@ Output:
 ```
 
 ### Conditional Processing
-Use `map_entries_when` to only process events matching a condition:
+Use `wrap_entries_when` to only process events matching a condition:
 ```yaml
   processor:
-    - map_entries:
+    - wrap_entries:
         source: "/tags"
         key: "value"
-        map_entries_when: '/type == "tagged"'
+        wrap_entries_when: '/type == "tagged"'
 ```
 
 Only events where `type` equals `"tagged"` will be processed.
@@ -714,7 +714,7 @@ Only events where `type` equals `"tagged"` will be processed.
 A common use case is wrapping a primitive array so that `add_entries` with `iterate_on` can operate on it:
 ```yaml
   processor:
-    - map_entries:
+    - wrap_entries:
         source: "/names"
         key: "name"
     - add_entries:
@@ -729,7 +729,7 @@ Input:
 {"names": ["alice", "bob"]}
 ```
 
-After `map_entries`:
+After `wrap_entries`:
 ```json
 {"names": [{"name": "alice"}, {"name": "bob"}]}
 ```
@@ -745,7 +745,7 @@ After `add_entries`:
 * `key` - (required) - The key name to use in each resulting object
 * `exclude_null_empty_values` - (optional) - When set to `true`, null and empty string elements are filtered out before wrapping. Default is `false`
 * `append_if_target_exists` - (optional) - When set to `true`, appends results to the existing target array instead of overwriting. Default is `false`
-* `map_entries_when` - (optional) - A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) that determines whether the processor runs on the event. Evaluated at the root event level.
+* `wrap_entries_when` - (optional) - A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) that determines whether the processor runs on the event. Evaluated at the root event level.
 * `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the event fails to process
 
 ### Edge Case Behavior

@@ -23,22 +23,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@DataPrepperPlugin(name = "map_entries", pluginType = Processor.class, pluginConfigurationType = MapEntriesProcessorConfig.class)
-public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+@DataPrepperPlugin(name = "wrap_entries", pluginType = Processor.class, pluginConfigurationType = WrapEntriesProcessorConfig.class)
+public class WrapEntriesProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MapEntriesProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WrapEntriesProcessor.class);
 
-    private final MapEntriesProcessorConfig config;
+    private final WrapEntriesProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public MapEntriesProcessor(final PluginMetrics pluginMetrics,
-                               final MapEntriesProcessorConfig config,
+    public WrapEntriesProcessor(final PluginMetrics pluginMetrics,
+                               final WrapEntriesProcessorConfig config,
                                final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
@@ -52,8 +52,8 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
             final Event event = record.getData();
 
             try {
-                if (config.getMapEntriesWhen() != null
-                        && !expressionEvaluator.evaluateConditional(config.getMapEntriesWhen(), event)) {
+                if (config.getWrapEntriesWhen() != null
+                        && !expressionEvaluator.evaluateConditional(config.getWrapEntriesWhen(), event)) {
                     continue;
                 }
 
@@ -106,7 +106,9 @@ public class MapEntriesProcessor extends AbstractProcessor<Record<Event>, Record
                     continue;
                 }
             }
-            result.add(Collections.singletonMap(key, element));
+            final Map<String, Object> entry = new HashMap<>();
+            entry.put(key, element);
+            result.add(entry);
         }
 
 

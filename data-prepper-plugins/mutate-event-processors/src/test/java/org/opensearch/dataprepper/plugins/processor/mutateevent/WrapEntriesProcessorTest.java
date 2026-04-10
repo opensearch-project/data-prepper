@@ -35,13 +35,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class MapEntriesProcessorTest {
+class WrapEntriesProcessorTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private MapEntriesProcessorConfig config;
+    private WrapEntriesProcessorConfig config;
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
@@ -53,19 +53,17 @@ class MapEntriesProcessorTest {
         lenient().when(config.getEffectiveTarget()).thenReturn("/names");
         lenient().when(config.getExcludeNullEmptyValues()).thenReturn(false);
         lenient().when(config.getAppendIfTargetExists()).thenReturn(false);
-        lenient().when(config.getMapEntriesWhen()).thenReturn(null);
+        lenient().when(config.getWrapEntriesWhen()).thenReturn(null);
         lenient().when(config.getTagsOnFailure()).thenReturn(null);
     }
 
-    private MapEntriesProcessor createObjectUnderTest() {
-        return new MapEntriesProcessor(pluginMetrics, config, expressionEvaluator);
+    private WrapEntriesProcessor createObjectUnderTest() {
+        return new WrapEntriesProcessor(pluginMetrics, config, expressionEvaluator);
     }
 
     private Record<Event> createEvent(final Map<String, Object> data) {
         return new Record<>(JacksonEvent.builder().withEventType("event").withData(data).build());
     }
-
-    // --- Constructor validation delegation ---
 
     @Test
     void constructor_delegates_validation_to_config() {
@@ -74,8 +72,6 @@ class MapEntriesProcessorTest {
         verify(config).validateExpressions(expressionEvaluator);
     }
 
-
-    // --- Basic wrapping ---
 
     @Test
     void doExecute_with_string_array_wraps_each_element_into_object_in_place() {
@@ -117,8 +113,6 @@ class MapEntriesProcessorTest {
         assertThat(output.get(1), equalTo(Map.of("name", 42)));
         assertThat(output.get(2), equalTo(Map.of("name", true)));
     }
-
-    // --- Null and empty handling ---
 
     @Test
     void doExecute_with_null_elements_wraps_nulls_into_objects_by_default() {
@@ -170,8 +164,6 @@ class MapEntriesProcessorTest {
         assertThat(((List<?>) output).size(), is(0));
     }
 
-    // --- Skip conditions ---
-
     @Test
     void doExecute_with_missing_source_key_skips_event_and_leaves_it_unchanged() {
         final Record<Event> record = createEvent(Map.of("other", "value"));
@@ -199,8 +191,6 @@ class MapEntriesProcessorTest {
         final List<?> output = result.get(0).getData().get("/names", List.class);
         assertThat(output.isEmpty(), is(true));
     }
-
-    // --- Append mode ---
 
     @Test
     void doExecute_with_append_enabled_merges_new_entries_into_existing_target_list() {
@@ -249,8 +239,6 @@ class MapEntriesProcessorTest {
         assertThat(result.get(0).getData().get("/result", String.class), equalTo("not-a-list"));
     }
 
-    // --- Overwrite mode ---
-
     @Test
     void doExecute_with_existing_target_overwrites_with_wrapped_objects_by_default() {
         when(config.getEffectiveTarget()).thenReturn("/result");
@@ -267,12 +255,10 @@ class MapEntriesProcessorTest {
         assertThat(output.get(0), equalTo(Map.of("name", "alpha")));
     }
 
-    // --- Multiple records ---
-
     @Test
     void doExecute_with_multiple_records_wraps_only_matching_and_leaves_non_matching_unchanged() {
         final String condition = "/type == \"users\"";
-        when(config.getMapEntriesWhen()).thenReturn(condition);
+        when(config.getWrapEntriesWhen()).thenReturn(condition);
 
         final Record<Event> matchingRecord = createEvent(new java.util.HashMap<>(Map.of(
                 "names", Arrays.asList("alpha", "beta"), "type", "users")));
@@ -291,5 +277,51 @@ class MapEntriesProcessorTest {
 
         final List<?> unmatchedOutput = result.get(1).getData().get("/names", List.class);
         assertThat(unmatchedOutput, equalTo(Arrays.asList("gamma")));
+    }
+
+    @Test
+    void doExecute_with_map_elements_wraps_each_map_into_object() {
+        final Record<Event> record = createEvent(Map.of("names",
+                Arrays.asList(Map.of("name", "alpha"), Map.of("name", "beta"))));
+
+        final List<Record<Event>> result = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+
+        final List<Map<String, Object>> output = result.get(0).getData().get("/names", List.class);
+        assertThat(output.size(), is(2));
+        assertThat(output.get(0), equalTo(Map.of("name", Map.of("name", "alpha"))));
+        assertThat(output.get(1), equalTo(Map.of("name", Map.of("name", "beta"))));
+    }
+
+    @Test
+    void doExecute_with_list_elements_wraps_each_list_into_object() {
+        final Record<Event> record = createEvent(Map.of("names",
+                Arrays.asList(Arrays.asList("alpha1", "beta1"), Arrays.asList("alpha2", "beta2"))));
+
+        final List<Record<Event>> result = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+
+        final List<Map<String, Object>> output = result.get(0).getData().get("/names", List.class);
+        assertThat(output.size(), is(2));
+        assertThat(output.get(0), equalTo(Map.of("name", Arrays.asList("alpha1", "beta1"))));
+        assertThat(output.get(1), equalTo(Map.of("name", Arrays.asList("alpha2", "beta2"))));
+    }
+
+    @Test
+    void doExecute_with_multiple_processors_wraps_outer_and_inner_lists() {
+        when(config.getSource()).thenReturn("/names", "/names/0/name", "/names/1/name");
+        when(config.getEffectiveTarget()).thenReturn("/names", "/names/0/name", "/names/1/name");
+
+        final Record<Event> record = createEvent(Map.of("names",
+                Arrays.asList(Arrays.asList("alpha1", "beta1"), Arrays.asList("alpha2", "beta2"))));
+
+        final WrapEntriesProcessor objectUnderTest = createObjectUnderTest();
+
+        final List<Record<Event>> firstPassResult = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> secondPassResult = (List<Record<Event>>) objectUnderTest.doExecute(firstPassResult);
+        final List<Record<Event>> thirdPassResult = (List<Record<Event>>) objectUnderTest.doExecute(secondPassResult);
+
+        final List<Map<String, Object>> output = thirdPassResult.get(0).getData().get("/names", List.class);
+        assertThat(output.size(), is(2));
+        assertThat(output.get(0), equalTo(Map.of("name", Arrays.asList(Map.of("name", "alpha1"), Map.of("name", "beta1")))));
+        assertThat(output.get(1), equalTo(Map.of("name", Arrays.asList(Map.of("name", "alpha2"), Map.of("name", "beta2")))));
     }
 }

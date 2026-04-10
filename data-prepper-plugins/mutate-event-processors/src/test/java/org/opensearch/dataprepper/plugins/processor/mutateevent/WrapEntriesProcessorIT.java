@@ -26,12 +26,12 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-@DataPrepperPluginTest(pluginName = "map_entries", pluginType = Processor.class)
-class MapEntriesProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
+@DataPrepperPluginTest(pluginName = "wrap_entries", pluginType = Processor.class)
+class WrapEntriesProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
 
     @Test
-    void doExecute_with_map_entries_when_expression_filters_records(
-            @PluginConfigurationFile("map_entries_when_filters_records.yaml")
+    void doExecute_with_wrap_entries_when_expression_filters_records(
+            @PluginConfigurationFile("wrap_entries_when_filters_records.yaml")
             final Processor<Record<Event>, Record<Event>> objectUnderTest) {
         final Record<Event> matchingRecord = new Record<>(JacksonEvent.builder()
                 .withEventType("event")
