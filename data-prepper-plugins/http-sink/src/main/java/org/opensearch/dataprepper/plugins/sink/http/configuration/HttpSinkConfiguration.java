@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,7 +21,7 @@ import java.util.Map;
 import java.util.List;
 
 public class HttpSinkConfiguration {
-
+    static final boolean DEFAULT_INSECURE = false;
     static final int DEFAULT_UPLOAD_RETRIES = 3;
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
     public static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
@@ -42,6 +48,12 @@ public class HttpSinkConfiguration {
 
     @JsonProperty("request_timeout")
     private Duration requestTimeout;
+
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("insecure_skip_verify")
+    private boolean insecureSkipVerify = DEFAULT_INSECURE;
 
     @JsonProperty("connection_timeout")
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
@@ -86,6 +98,11 @@ public class HttpSinkConfiguration {
 
     public Duration getConnectionTimeout() {
         return connectionTimeout;
+    }
+
+    @Valid
+    public boolean isValidConfig() {
+        return (insecure && awsConfig == null) || (!insecure && awsConfig != null);
     }
 
 }

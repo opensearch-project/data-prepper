@@ -37,16 +37,6 @@ test {
 }
 
 sourceSets {
-    main {
-        java {
-            exclude '**/service/WebhookService.java'
-        }
-    }
-    test {
-        java {
-            exclude '**/service/WebhookServiceTest.java'
-        }
-    }
     integrationTest {
         java {
             compileClasspath += main.output + test.output

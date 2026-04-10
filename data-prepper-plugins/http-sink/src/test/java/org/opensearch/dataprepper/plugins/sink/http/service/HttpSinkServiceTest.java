@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +36,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
-import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
+import org.opensearch.dataprepper.plugins.sink.http.HttpEndpointResponse;
 import org.opensearch.dataprepper.plugins.sink.http.HttpSinkSender;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.ThresholdOptions;
@@ -122,7 +128,7 @@ public class HttpSinkServiceTest {
         ReflectivelySetField.setField(ThresholdOptions.class,httpSinkConfig.getThresholdOptions(),"flushTimeout", Duration.ofNanos(1));
         ReflectivelySetField.setField(ThresholdOptions.class,httpSinkConfig.getThresholdOptions(),"maxEvents", eventCount);
         HttpSinkSender httpSender = mock(HttpSinkSender.class);
-        when(httpSender.send(any(byte[].class))).thenReturn(new HttpEndPointResponse(httpSinkConfig.getUrl(), 200));
+        when(httpSender.send(any(byte[].class))).thenReturn(new HttpEndpointResponse(httpSinkConfig.getUrl(), 200));
         SinkMetrics sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Event");
         return new HttpSinkService(
                 httpSinkConfig,
@@ -156,7 +162,7 @@ public class HttpSinkServiceTest {
         ReflectivelySetField.setField(ThresholdOptions.class,httpSinkConfiguration.getThresholdOptions(),"flushTimeout", Duration.ofNanos(1));
         ReflectivelySetField.setField(ThresholdOptions.class,httpSinkConfiguration.getThresholdOptions(),"maxEvents", 1);
         HttpSinkSender httpSender = mock(HttpSinkSender.class);
-        when(httpSender.send(any(byte[].class))).thenReturn(new HttpEndPointResponse(httpSinkConfiguration.getUrl(), 500, "internal server error"));
+        when(httpSender.send(any(byte[].class))).thenReturn(new HttpEndpointResponse(httpSinkConfiguration.getUrl(), 500, "internal server error"));
         SinkMetrics sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Event");
         final HttpSinkService objectUnderTest = new HttpSinkService(
                 httpSinkConfiguration,

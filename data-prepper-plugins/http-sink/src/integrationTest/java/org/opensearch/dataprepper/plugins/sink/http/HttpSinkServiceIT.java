@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -81,7 +87,7 @@ public class HttpSinkServiceIT {
     private Counter httpSinkRecordsSuccessCounter;
 
     @Mock
-    private HttpEndPointResponse httpEndPointResponse;
+    private HttpEndpointResponse httpEndpointResponse;
 
     @Mock
     NdjsonOutputConfig ndjsonOutputConfig;
@@ -92,9 +98,9 @@ public class HttpSinkServiceIT {
         final String configYaml = MessageFormat.format(config, (Object) urlString, "unauthenticated");
         this.httpSinkConfiguration = objectMapper.readValue(configYaml, HttpSinkConfiguration.class);
         this.httpSinkSender = mock(HttpSinkSender.class);
-        httpEndPointResponse = mock(HttpEndPointResponse.class);
-        when(httpEndPointResponse.getStatusCode()).thenReturn(200);
-        when(httpSinkSender.send(any())).thenReturn(httpEndPointResponse);
+        httpEndpointResponse = mock(HttpEndpointResponse.class);
+        when(httpEndpointResponse.getStatusCode()).thenReturn(200);
+        when(httpSinkSender.send(any())).thenReturn(httpEndpointResponse);
         sinkMetrics = mock(SinkMetrics.class);
     }
 

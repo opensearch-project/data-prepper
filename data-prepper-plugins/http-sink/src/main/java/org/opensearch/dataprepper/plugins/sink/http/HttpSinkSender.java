@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http;
 
 import com.linecorp.armeria.client.ClientFactory;
@@ -12,7 +18,6 @@ import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.slf4j.Logger;
@@ -27,19 +32,20 @@ import java.util.Set;
 
 public class HttpSinkSender {
     private static final Logger LOG = LoggerFactory.getLogger(HttpSinkSender.class);
-    private static final String HTTP_METHOD = "post";
     private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(408, 429, 500, 502, 503, 504);
     private static final Set<Integer> AUTH_ERROR_CODES = Set.of(401, 403);
 
-    private final HttpSinkSigV4Signer signer;
+    private final AuthenticationDecorator authenticationDecorator;
     private final WebClient webClient;
     private final HttpSinkConfiguration config;
     private final int maxRetries;
     private final long retryIntervalMs;
     private final SinkMetrics sinkMetrics;
 
-    public HttpSinkSender(final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final HttpSinkConfiguration config, final SinkMetrics sinkMetrics) {
-        this.signer = awsCredentialsSupplier != null ? new HttpSinkSigV4Signer(awsCredentialsSupplier, config) : null;
+    public HttpSinkSender(final AuthenticationDecorator authenticationDecorator,
+                          @Nonnull final HttpSinkConfiguration config,
+                          final SinkMetrics sinkMetrics) {
+        this.authenticationDecorator = authenticationDecorator;
         this.webClient = buildWebClient(config);
         this.config = config;
         this.sinkMetrics = sinkMetrics;
@@ -56,15 +62,15 @@ public class HttpSinkSender {
                 .build();
     }
 
-    public HttpEndPointResponse send(final byte[] payload) {
-        HttpEndPointResponse response = null;
+    public HttpEndpointResponse send(final byte[] payload) {
+        HttpEndpointResponse response = null;
         int attempt = 0;
         
         while (attempt <= maxRetries) {
             try {
                 final HttpRequest request = buildHttpRequest(payload);
                 if (request == null) {
-                    return new HttpEndPointResponse(config.getUrl(), 0, "Failed to build request");
+                    return new HttpEndpointResponse(config.getUrl(), 0, "Failed to build request");
                 }
 
                 response = webClient.execute(request)
@@ -72,32 +78,28 @@ public class HttpSinkSender {
                         .thenApply(resp -> {
                             int statusCode = resp.status().code();
                             String responseBody = resp.content().toStringUtf8();
-                            return new HttpEndPointResponse(config.getUrl(), statusCode, responseBody);
+                            return new HttpEndpointResponse(config.getUrl(), statusCode, responseBody);
                         })
                         .exceptionally(throwable -> {
                             LOG.error("Request failed", throwable);
-                            return new HttpEndPointResponse(config.getUrl(), 0, throwable.getMessage());
+                            return new HttpEndpointResponse(config.getUrl(), 0, throwable.getMessage());
                         })
                         .join();
 
-                // Success - no retry needed
                 if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
                     return response;
                 }
 
-                // Auth errors - do not retry
                 if (AUTH_ERROR_CODES.contains(response.getStatusCode())) {
                     LOG.error("Authentication error ({}), not retrying", response.getStatusCode());
                     return response;
                 }
 
-                // Non-retryable error - do not retry
                 if (!RETRYABLE_STATUS_CODES.contains(response.getStatusCode())) {
                     LOG.error("Non-retryable error ({}), message({}) not retrying", response.getStatusCode(), response.getErrMessage());
                     return response;
                 }
 
-                // Retryable error - retry if attempts remain
                 if (attempt < maxRetries) {
                     LOG.warn("Retryable error ({}), attempt {}/{}, retrying after {}ms", 
                             response.getStatusCode(), attempt + 1, maxRetries, retryIntervalMs);
@@ -108,24 +110,24 @@ public class HttpSinkSender {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOG.error("Retry interrupted", e);
-                return new HttpEndPointResponse(config.getUrl(), 0, "Retry interrupted: " + e.getMessage());
+                return new HttpEndpointResponse(config.getUrl(), 0, "Retry interrupted: " + e.getMessage());
             } catch (Exception e) {
                 LOG.error("Failed to execute request, attempt {}/{}", attempt + 1, maxRetries + 1, e);
                 if (attempt >= maxRetries) {
-                    return new HttpEndPointResponse(config.getUrl(), 0, e.getMessage());
+                    return new HttpEndpointResponse(config.getUrl(), 0, e.getMessage());
                 }
                 try {
                     Thread.sleep(retryIntervalMs);
                     sinkMetrics.incrementRetries(1);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    return new HttpEndPointResponse(config.getUrl(), 0, "Retry interrupted: " + ie.getMessage());
+                    return new HttpEndpointResponse(config.getUrl(), 0, "Retry interrupted: " + ie.getMessage());
                 }
             }
             attempt++;
         }
         
-        return response != null ? response : new HttpEndPointResponse(config.getUrl(), 0, "Max retries exceeded");
+        return response != null ? response : new HttpEndpointResponse(config.getUrl(), 0, "Max retries exceeded");
     }
 
     private SdkHttpFullRequest createSdkHttpRequest(final String url, @Nonnull final byte[] payload) {
@@ -133,11 +135,6 @@ public class HttpSinkSender {
                 .method(SdkHttpMethod.POST)
                 .uri(URI.create(url))
                 .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream());
-
-        if (signer != null) {
-            builder.putHeader("x-amz-content-sha256", "required");
-        }
-
 
         if (config.getCustomHeaderOptions() != null) {
             config.getCustomHeaderOptions().forEach((key, values) -> 
@@ -150,11 +147,8 @@ public class HttpSinkSender {
     private HttpRequest buildHttpRequest(final byte[] payload) {
         SdkHttpFullRequest sdkHttpRequest = createSdkHttpRequest(config.getUrl(), payload);
 
-        if (signer != null) {
-            sdkHttpRequest = signer.signRequest(sdkHttpRequest);
-            if (sdkHttpRequest == null) {
-                return null;
-            }
+        if (authenticationDecorator != null) {
+            sdkHttpRequest = authenticationDecorator.authenticate(sdkHttpRequest);
         }
 
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()

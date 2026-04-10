@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http.service;
 
 import org.opensearch.dataprepper.common.sink.DefaultSinkFlushResult;
@@ -13,7 +19,7 @@ import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
-import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
+import org.opensearch.dataprepper.plugins.sink.http.HttpEndpointResponse;
 import org.opensearch.dataprepper.plugins.sink.http.HttpSinkSender;
 
 import java.io.ByteArrayOutputStream;
@@ -44,19 +50,14 @@ public class HttpSinkFlushableBuffer implements SinkFlushableBuffer {
         final List<Event> events = getEvents();
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            boolean isFirst = true;
+            final OutputCodec.Writer writer = codec.createWriter(outputStream, buffer.get(0).getEvent(), codecContext);
             for (final SinkBufferEntry entry : buffer) {
-                final Event event = entry.getEvent();
-                if (isFirst) {
-                    codec.start(outputStream, event, codecContext);
-                    isFirst = false;
-                }
-                codec.writeEvent(event, outputStream);
+                writer.writeEvent(entry.getEvent());
             }
-            codec.complete(outputStream);
+            writer.complete();
 
             final byte[] data = outputStream.toByteArray();
-            final HttpEndPointResponse response = httpSender.send(data);
+            final HttpEndpointResponse response = httpSender.send(data);
 
             if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
                 sinkMetrics.incrementRequestsSuccessCounter(1);
