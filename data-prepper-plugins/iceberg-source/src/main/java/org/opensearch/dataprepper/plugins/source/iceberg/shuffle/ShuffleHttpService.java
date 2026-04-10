@@ -19,6 +19,8 @@ import com.linecorp.armeria.server.annotation.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+
 /**
  * HTTP service that serves shuffle data files to remote SHUFFLE_READ workers.
  */
@@ -41,7 +43,7 @@ public class ShuffleHttpService {
             reader.close();
 
             final byte[] bytes = new byte[offsets.length * Long.BYTES];
-            java.nio.ByteBuffer.wrap(bytes).asLongBuffer().put(offsets);
+            ByteBuffer.wrap(bytes).asLongBuffer().put(offsets);
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, bytes);
         } catch (final Exception e) {
             LOG.error("Failed to serve index for snapshot={} task={}", snapshotId, taskId, e);
