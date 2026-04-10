@@ -43,7 +43,7 @@ public class JoinMetadataEnricher {
     static final String JOIN_FIELDS_METADATA = "_fields";
     static final String JOIN_IS_DELETE_METADATA = "_is_delete";
     static final String JOIN_IS_PARENT_METADATA = "_is_parent";
-    static final String JOIN_PRIMARY_KEY_METADATA = "_primary_key";
+    static final String JOIN_PRIMARY_KEY_METADATA = MetadataKeyAttributes.JOIN_PRIMARY_KEY_METADATA;
     static final String JOIN_CHILD_TABLE_NAME_METADATA = "_child_table_name";
     static final String JOIN_CHILD_PK_NAME_METADATA = "_child_pk_name";
     static final String JOIN_CHILD_PK_VALUE_METADATA = "_child_pk_value";
