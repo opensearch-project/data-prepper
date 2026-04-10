@@ -27,8 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,10 +43,12 @@ public class ScrapeTargetScraper {
     private final HttpHeaders commonHeaders;
     private final ClientFactory clientFactory;
     private final boolean isCustomFactory;
+    private final ScrapeRequestAuthenticator authenticator;
     private final Map<String, WebClient> clientCache = new ConcurrentHashMap<>();
 
     public ScrapeTargetScraper(final PrometheusScrapeConfig config) {
         this.config = config;
+        this.authenticator = ScrapeRequestAuthenticator.create(config.getAuthentication());
         this.commonHeaders = buildCommonHeaders();
         this.clientFactory = buildClientFactory();
         this.isCustomFactory = (clientFactory != ClientFactory.ofDefault());
@@ -62,7 +63,12 @@ public class ScrapeTargetScraper {
      */
     public String scrape(final String url) {
         final URI uri = URI.create(url);
-        final String baseUri = uri.getScheme() + "://" + uri.getAuthority();
+        final String baseUri;
+        try {
+            baseUri = new URI(uri.getScheme(), uri.getAuthority(), null, null, null).toString();
+        } catch (final URISyntaxException e) {
+            throw new RuntimeException("Invalid scrape target URL: " + url, e);
+        }
         final String path = uri.getRawPath() != null && !uri.getRawPath().isEmpty()
                 ? uri.getRawPath() : "/";
         final String pathWithQuery = uri.getRawQuery() != null
@@ -102,17 +108,8 @@ public class ScrapeTargetScraper {
         final HttpHeadersBuilder builder = HttpHeaders.builder()
                 .add(HttpHeaderNames.ACCEPT, ACCEPT_HEADER_VALUE);
 
-        if (config.getAuthentication() != null) {
-            if (config.getAuthentication().getHttpBasic() != null) {
-                final String credentials = config.getAuthentication().getHttpBasic().getUsername()
-                        + ":" + config.getAuthentication().getHttpBasic().getPassword();
-                final String encoded = Base64.getEncoder()
-                        .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-                builder.add(HttpHeaderNames.AUTHORIZATION, "Basic " + encoded);
-            } else if (config.getAuthentication().getBearerToken() != null) {
-                builder.add(HttpHeaderNames.AUTHORIZATION,
-                        "Bearer " + config.getAuthentication().getBearerToken());
-            }
+        if (authenticator != null) {
+            authenticator.applyAuth(builder);
         }
 
         return builder.build();

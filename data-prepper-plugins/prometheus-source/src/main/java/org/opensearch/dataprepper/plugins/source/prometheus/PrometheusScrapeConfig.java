@@ -11,7 +11,9 @@ package org.opensearch.dataprepper.plugins.source.prometheus;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
@@ -66,5 +68,21 @@ public class PrometheusScrapeConfig {
 
     public String getSslCertificateFile() {
         return sslCertificateFile;
+    }
+
+    @AssertTrue(message = "All target URLs must use HTTPS unless insecure is set to true.")
+    public boolean isTargetUrlSchemeValid() {
+        if (insecure || targets == null) {
+            return true;
+        }
+        for (final ScrapeTargetConfig target : targets) {
+            if (target.getUrl() != null) {
+                final String scheme = URI.create(target.getUrl()).getScheme();
+                if ("http".equalsIgnoreCase(scheme)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
