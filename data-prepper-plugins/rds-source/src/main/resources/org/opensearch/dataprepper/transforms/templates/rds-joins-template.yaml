@@ -85,6 +85,8 @@
     - opensearch:
         hosts: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.hosts>>"
         aws: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.aws>>"
+        username: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.username>>"
+        password: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.password>>"
         index: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.index>>"
         action: "upsert"
         document_id: "${getMetadata(\"_primary_key\")}"
