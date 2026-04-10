@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemorySourceCoordinationStore;
 
 import java.time.Duration;
@@ -176,7 +177,7 @@ public class IcebergSourceIT {
         final TableConfig configB = mock(TableConfig.class);
 
         when(configA.getTableName()).thenReturn(TEST_NAMESPACE + "." + tableNameA);
-        when(configA.getCatalog()).thenReturn(Collections.emptyMap());
+        when(configA.getCatalog()).thenReturn(null);
         when(configA.getIdentifierColumns()).thenReturn(List.of("id"));
         when(configA.isDisableExport()).thenReturn(false);
 
@@ -193,7 +194,7 @@ public class IcebergSourceIT {
         final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
         coordinator.createPartition(new LeaderPartition());
         final IcebergService service = new IcebergService(coordinator, sourceConfig, pluginMetrics,
-                acknowledgementSetManager, org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory());
+                acknowledgementSetManager, TestEventFactory.getTestEventFactory());
         final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer = createMockBuffer();
         service.start(buffer);
 
@@ -367,11 +368,11 @@ public class IcebergSourceIT {
         when(tableConfig.isDisableExport()).thenReturn(disableExport);
 
         if (useSharedCatalog) {
-            when(tableConfig.getCatalog()).thenReturn(Collections.emptyMap());
+            when(tableConfig.getCatalog()).thenReturn(null);
             when(sourceConfig.getCatalog()).thenReturn(helper.catalogProperties());
         } else {
             when(tableConfig.getCatalog()).thenReturn(helper.catalogProperties());
-            when(sourceConfig.getCatalog()).thenReturn(Collections.emptyMap());
+            when(sourceConfig.getCatalog()).thenReturn(null);
         }
 
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
@@ -382,7 +383,7 @@ public class IcebergSourceIT {
         coordinator.createPartition(new LeaderPartition());
 
         return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager,
-                org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory());
+                TestEventFactory.getTestEventFactory());
     }
 
     private EnhancedSourceCoordinator createInMemoryCoordinator() {

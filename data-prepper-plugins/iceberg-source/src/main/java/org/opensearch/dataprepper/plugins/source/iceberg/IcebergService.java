@@ -69,7 +69,7 @@ public class IcebergService {
             LOG.info("Loading catalog and table for {}", tableName);
 
             final Map<String, String> catalogProps = new HashMap<>(
-                    tableConfig.getCatalog().isEmpty() ? sourceConfig.getCatalog() : tableConfig.getCatalog());
+                    tableConfig.getCatalog() != null ? tableConfig.getCatalog() : sourceConfig.getCatalog());
             final Catalog catalog = CatalogUtil.buildIcebergCatalog(tableName, catalogProps, null);
 
             final TableIdentifier tableId = TableIdentifier.parse(tableName);
