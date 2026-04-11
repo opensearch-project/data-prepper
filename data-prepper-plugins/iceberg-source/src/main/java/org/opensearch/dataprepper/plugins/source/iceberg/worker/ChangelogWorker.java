@@ -386,7 +386,8 @@ public class ChangelogWorker implements Runnable {
 
     private synchronized void incrementSnapshotCompletionCount(final String snapshotKey) {
         final String completionKey = "snapshot-completion-" + snapshotKey;
-        while (true) {
+        final int maxRetries = 10;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
             final Optional<EnhancedSourcePartition> partitionOpt = sourceCoordinator.getPartition(completionKey);
             if (partitionOpt.isEmpty()) {
                 LOG.error("Failed to get completion status for {}", completionKey);
@@ -400,11 +401,12 @@ public class ChangelogWorker implements Runnable {
             gs.setProgressState(progress);
             try {
                 sourceCoordinator.saveProgressStateForPartition(gs, Duration.ZERO);
-                break;
+                return;
             } catch (final Exception e) {
-                LOG.warn("Completion count update conflict for {}, retrying", completionKey);
+                LOG.warn("Completion count update conflict for {}, attempt {}/{}", completionKey, attempt + 1, maxRetries);
             }
         }
+        throw new RuntimeException("Failed to update completion count for " + completionKey + " after " + maxRetries + " attempts");
     }
 
     // TODO: Replace format switch with FormatModelRegistry when available (Iceberg 1.11+).
@@ -647,7 +649,8 @@ public class ChangelogWorker implements Runnable {
 
     private synchronized void registerShuffleWriteLocation(final long snapshotId, final String taskId, final String nodeAddress) {
         final String locationKey = "shuffle-locations-" + snapshotId;
-        while (true) {
+        final int maxRetries = 10;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
             final Optional<EnhancedSourcePartition> partitionOpt = sourceCoordinator.getPartition(locationKey);
             if (partitionOpt.isEmpty()) {
                 LOG.error("Failed to get shuffle location state for {}", locationKey);
@@ -661,9 +664,10 @@ public class ChangelogWorker implements Runnable {
                 sourceCoordinator.saveProgressStateForPartition(gs, Duration.ZERO);
                 return;
             } catch (final Exception e) {
-                LOG.warn("Location update conflict for {}, retrying", locationKey);
+                LOG.warn("Location update conflict for {}, attempt {}/{}", locationKey, attempt + 1, maxRetries);
             }
         }
+        throw new RuntimeException("Failed to register shuffle write location for " + locationKey + " after " + maxRetries + " attempts");
     }
 
     private void markShuffleFailed(final String snapshotIdStr) {
