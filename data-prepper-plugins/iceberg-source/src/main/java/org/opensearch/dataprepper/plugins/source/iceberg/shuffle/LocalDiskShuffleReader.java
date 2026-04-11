@@ -28,6 +28,7 @@ import java.util.List;
 public class LocalDiskShuffleReader implements ShuffleReader {
 
     private static final LZ4FastDecompressor DECOMPRESSOR = LZ4Factory.fastestInstance().fastDecompressor();
+    private static final int BLOCK_HEADER_SIZE = Integer.BYTES + Integer.BYTES;
 
     private final Path dataFilePath;
     private final Path indexFilePath;
@@ -99,7 +100,7 @@ public class LocalDiskShuffleReader implements ShuffleReader {
         final int uncompressedSize = buf.getInt();
         final int compressedSize = buf.getInt();
         final byte[] uncompressed = new byte[uncompressedSize];
-        DECOMPRESSOR.decompress(block, 8, uncompressed, 0, uncompressedSize);
+        DECOMPRESSOR.decompress(block, BLOCK_HEADER_SIZE, uncompressed, 0, uncompressedSize);
         return uncompressed;
     }
 
@@ -110,7 +111,7 @@ public class LocalDiskShuffleReader implements ShuffleReader {
             final int recordLength = buf.getInt();
             final byte operation = buf.get();
             final int changeOrdinal = buf.getInt();
-            final byte[] serialized = new byte[recordLength - 1 - 4];
+            final byte[] serialized = new byte[recordLength - ShuffleRecord.OPERATION_SIZE - ShuffleRecord.CHANGE_ORDINAL_SIZE];
             buf.get(serialized);
             records.add(new ShuffleRecord(operation, changeOrdinal, serialized));
         }

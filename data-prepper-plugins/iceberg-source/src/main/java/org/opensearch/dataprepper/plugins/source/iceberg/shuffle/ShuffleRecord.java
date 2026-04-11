@@ -17,6 +17,9 @@ public class ShuffleRecord {
     public static final byte OP_DELETE = 0;
     public static final byte OP_INSERT = 1;
 
+    static final int OPERATION_SIZE = Byte.BYTES;
+    static final int CHANGE_ORDINAL_SIZE = Integer.BYTES;
+
     private final byte operation;
     private final int changeOrdinal;
     private final byte[] serializedRecord;

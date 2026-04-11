@@ -42,6 +42,9 @@ class LocalDiskShuffleWriter implements ShuffleWriter {
 
     private static final LZ4Factory LZ4 = LZ4Factory.fastestInstance();
 
+    /** [4 bytes: uncompressed size][4 bytes: compressed size] */
+    private static final int BLOCK_HEADER_SIZE = Integer.BYTES + Integer.BYTES;
+
     private final Path dataFilePath;
     private final Path indexFilePath;
     private final int numPartitions;
@@ -95,11 +98,11 @@ class LocalDiskShuffleWriter implements ShuffleWriter {
                         compressed, 0, maxCompressedLength);
 
                 // Write: [uncompressed size][compressed size][compressed data]
-                final byte[] header = new byte[8];
+                final byte[] header = new byte[BLOCK_HEADER_SIZE];
                 ByteBuffer.wrap(header).putInt(uncompressed.length).putInt(compressedLength);
                 out.write(header);
                 out.write(compressed, 0, compressedLength);
-                currentOffset += 8 + compressedLength;
+                currentOffset += BLOCK_HEADER_SIZE + compressedLength;
             }
             offsets[numPartitions] = currentOffset;
         } catch (final IOException e) {
@@ -128,8 +131,8 @@ class LocalDiskShuffleWriter implements ShuffleWriter {
     private static byte[] serializeRecords(final List<BufferedRecord> records) {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         for (final BufferedRecord record : records) {
-            final int recordLength = 1 + 4 + record.serializedRecord.length;
-            final byte[] header = new byte[4 + 1 + 4];
+            final int recordLength = ShuffleRecord.OPERATION_SIZE + ShuffleRecord.CHANGE_ORDINAL_SIZE + record.serializedRecord.length;
+            final byte[] header = new byte[Integer.BYTES + ShuffleRecord.OPERATION_SIZE + ShuffleRecord.CHANGE_ORDINAL_SIZE];
             ByteBuffer.wrap(header)
                     .putInt(recordLength)
                     .put(record.operation)
