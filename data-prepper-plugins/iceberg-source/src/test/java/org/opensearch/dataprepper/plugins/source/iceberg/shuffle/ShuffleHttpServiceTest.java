@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
+import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
@@ -32,6 +33,7 @@ class ShuffleHttpServiceTest {
 
     private Path tempDir;
     private Server server;
+    private ClientFactory clientFactory;
     private WebClient client;
 
     @BeforeEach
@@ -46,11 +48,17 @@ class ShuffleHttpServiceTest {
         server = sb.build();
         server.start().join();
 
-        client = WebClient.of("http://127.0.0.1:" + server.activeLocalPort());
+        clientFactory = ClientFactory.builder().build();
+        client = WebClient.builder("http://127.0.0.1:" + server.activeLocalPort())
+                .factory(clientFactory)
+                .build();
     }
 
     @AfterEach
     void tearDown() {
+        if (clientFactory != null) {
+            clientFactory.close();
+        }
         if (server != null) {
             server.stop().join();
         }

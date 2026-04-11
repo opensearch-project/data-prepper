@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.LocalDiskShuffleStorage;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpServer;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpService;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
@@ -69,7 +70,7 @@ public class IcebergService {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
         this.pluginFactory = pluginFactory;
-        final Path shuffleBaseDir = Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+        final Path shuffleBaseDir = resolveShuffleBaseDir(sourceConfig.getShuffleConfig());
         this.shuffleStorage = new LocalDiskShuffleStorage(shuffleBaseDir);
         this.shuffleStorage.cleanupAll();
     }
@@ -132,6 +133,16 @@ public class IcebergService {
         runnableList.forEach(executor::submit);
     }
 
+    private static Path resolveShuffleBaseDir(final ShuffleConfig shuffleConfig) {
+        if (shuffleConfig != null && shuffleConfig.getStoragePath() != null) {
+            return Path.of(shuffleConfig.getStoragePath());
+        }
+        final String dataPrepperDir = System.getProperty("data-prepper.dir");
+        if (dataPrepperDir != null) {
+            return Path.of(dataPrepperDir, "data", "shuffle");
+        }
+        return Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+    }
 
     private ArmeriaHttpAuthenticationProvider loadAuthenticationProvider() {
         final PluginModel authConfig = sourceConfig.getShuffleConfig().getAuthentication();
@@ -147,6 +158,7 @@ public class IcebergService {
         pluginSetting.setPipelineName("iceberg-source");
         return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, pluginSetting);
     }
+
     public void shutdown() {
         LOG.info("Shutting down Iceberg service");
         if (executor != null) {

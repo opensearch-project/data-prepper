@@ -89,4 +89,16 @@ class ShuffleConfigTest {
         final ShuffleConfig config = deserialize(Map.of("ssl", false));
         assertThat(config.getAuthentication(), is(nullValue()));
     }
+
+    @Test
+    void storage_path_is_deserialized() throws Exception {
+        final ShuffleConfig config = deserialize(Map.of("ssl", false, "storage_path", "/custom/shuffle"));
+        assertThat(config.getStoragePath(), equalTo("/custom/shuffle"));
+    }
+
+    @Test
+    void storage_path_defaults_to_null() throws Exception {
+        final ShuffleConfig config = deserialize(Map.of("ssl", false));
+        assertThat(config.getStoragePath(), is(nullValue()));
+    }
 }

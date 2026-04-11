@@ -34,6 +34,9 @@ public class ShuffleConfig extends BaseHttpServerConfig {
     @JsonProperty("target_partition_size")
     private ByteCount targetPartitionSize = ByteCount.parse(DEFAULT_TARGET_PARTITION_SIZE);
 
+    @JsonProperty("storage_path")
+    private String storagePath;
+
     @JsonProperty("ssl")
     private boolean ssl = true;
 
@@ -82,6 +85,8 @@ public class ShuffleConfig extends BaseHttpServerConfig {
     public int getPartitions() { return partitions; }
 
     public long getTargetPartitionSizeBytes() { return targetPartitionSize.getBytes(); }
+
+    public String getStoragePath() { return storagePath; }
 
     public int getServerPort() { return getPort(); }
 
