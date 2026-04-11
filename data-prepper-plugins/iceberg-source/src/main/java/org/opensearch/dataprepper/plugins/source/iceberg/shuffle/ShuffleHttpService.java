@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.regex.Pattern;
 
 /**
  * HTTP service that serves shuffle data files to remote SHUFFLE_READ workers.
@@ -27,6 +28,8 @@ import java.nio.ByteBuffer;
 public class ShuffleHttpService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShuffleHttpService.class);
+    private static final Pattern SNAPSHOT_ID_PATTERN = Pattern.compile("\\d+");
+    private static final Pattern TASK_ID_PATTERN = Pattern.compile("[0-9a-f]+");
 
     private final ShuffleStorage shuffleStorage;
 
@@ -37,6 +40,9 @@ public class ShuffleHttpService {
     @Get("/{snapshotId}/{taskId}/index")
     public HttpResponse getIndex(@Param("snapshotId") final String snapshotId,
                                  @Param("taskId") final String taskId) {
+        if (isInvalidSnapshotId(snapshotId) || isInvalidTaskId(taskId)) {
+            return HttpResponse.of(HttpStatus.BAD_REQUEST);
+        }
         try {
             final ShuffleReader reader = shuffleStorage.createReader(snapshotId, taskId);
             final long[] offsets = reader.readIndex();
@@ -56,6 +62,9 @@ public class ShuffleHttpService {
                                 @Param("taskId") final String taskId,
                                 @Param("offset") final long offset,
                                 @Param("length") final int length) {
+        if (isInvalidSnapshotId(snapshotId) || isInvalidTaskId(taskId) || offset < 0 || length < 0) {
+            return HttpResponse.of(HttpStatus.BAD_REQUEST);
+        }
         if (length == 0) {
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, new byte[0]);
         }
@@ -73,6 +82,9 @@ public class ShuffleHttpService {
 
     @Delete("/{snapshotId}")
     public HttpResponse cleanup(@Param("snapshotId") final String snapshotId) {
+        if (isInvalidSnapshotId(snapshotId)) {
+            return HttpResponse.of(HttpStatus.BAD_REQUEST);
+        }
         try {
             shuffleStorage.cleanup(snapshotId);
             LOG.info("Cleaned up shuffle files for snapshot {}", snapshotId);
@@ -81,5 +93,13 @@ public class ShuffleHttpService {
             LOG.warn("Failed to clean up shuffle files for snapshot {}", snapshotId, e);
             return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private static boolean isInvalidSnapshotId(final String snapshotId) {
+        return snapshotId == null || !SNAPSHOT_ID_PATTERN.matcher(snapshotId).matches();
+    }
+
+    private static boolean isInvalidTaskId(final String taskId) {
+        return taskId == null || !TASK_ID_PATTERN.matcher(taskId).matches();
     }
 }

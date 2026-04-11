@@ -40,7 +40,7 @@ class ShuffleNodeClientTest {
         storage = new LocalDiskShuffleStorage(tempDir);
 
         // Write test shuffle data
-        try (ShuffleWriter writer = storage.createWriter("snap1", "task1", 4)) {
+        try (ShuffleWriter writer = storage.createWriter("12345", "abcd1234", 4)) {
             writer.addRecord(0, ShuffleRecord.OP_INSERT, 0, new byte[]{1, 2, 3});
             writer.addRecord(2, ShuffleRecord.OP_DELETE, 0, new byte[]{4, 5});
             writer.finish();
@@ -76,7 +76,7 @@ class ShuffleNodeClientTest {
 
     @Test
     void pullIndex_returnsOffsets() throws Exception {
-        final long[] offsets = client.pullIndex("localhost", "snap1", "task1");
+        final long[] offsets = client.pullIndex("localhost", "12345", "abcd1234");
 
         // 4 partitions + 1 = 5 offsets
         assertThat(offsets.length, is(5));
@@ -93,11 +93,11 @@ class ShuffleNodeClientTest {
 
     @Test
     void pullData_returnsCompressedBlock() throws Exception {
-        final long[] offsets = client.pullIndex("localhost", "snap1", "task1");
+        final long[] offsets = client.pullIndex("localhost", "12345", "abcd1234");
         final long offset = offsets[0];
         final int length = (int) (offsets[1] - offsets[0]);
 
-        final byte[] data = client.pullData("localhost", "snap1", "task1", offset, length);
+        final byte[] data = client.pullData("localhost", "12345", "abcd1234", offset, length);
 
         assertThat(data, notNullValue());
         assertThat(data.length, is(length));
@@ -127,17 +127,17 @@ class ShuffleNodeClientTest {
 
     @Test
     void requestCleanup_deletesShuffleFiles() throws Exception {
-        assertThat(storage.getTaskIds("snap1"), hasSize(1));
+        assertThat(storage.getTaskIds("12345"), hasSize(1));
 
         // Test the DELETE endpoint directly with a synchronous call to avoid flakiness
         final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
         final java.net.http.HttpResponse<Void> response = httpClient.send(
                 java.net.http.HttpRequest.newBuilder(
-                        java.net.URI.create("http://localhost:" + port + "/shuffle/snap1"))
+                        java.net.URI.create("http://localhost:" + port + "/shuffle/12345"))
                         .DELETE().build(),
                 java.net.http.HttpResponse.BodyHandlers.discarding());
         assertThat(response.statusCode(), is(200));
-        assertThat(storage.getTaskIds("snap1"), hasSize(0));
+        assertThat(storage.getTaskIds("12345"), hasSize(0));
     }
 
     @Test
