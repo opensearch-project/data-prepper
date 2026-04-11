@@ -19,7 +19,9 @@ import com.linecorp.armeria.server.annotation.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.util.regex.Pattern;
 
 /**
@@ -51,9 +53,15 @@ public class ShuffleHttpService {
             final byte[] bytes = new byte[offsets.length * Long.BYTES];
             ByteBuffer.wrap(bytes).asLongBuffer().put(offsets);
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, bytes);
+        } catch (final UncheckedIOException e) {
+            if (e.getCause() instanceof NoSuchFileException) {
+                return HttpResponse.of(HttpStatus.NOT_FOUND);
+            }
+            LOG.error("Failed to serve index for snapshot={} task={}", snapshotId, taskId, e);
+            return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (final Exception e) {
             LOG.error("Failed to serve index for snapshot={} task={}", snapshotId, taskId, e);
-            return HttpResponse.of(HttpStatus.NOT_FOUND);
+            return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -73,6 +81,13 @@ public class ShuffleHttpService {
             final byte[] data = reader.readBytes(offset, length);
             reader.close();
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, data);
+        } catch (final UncheckedIOException e) {
+            if (e.getCause() instanceof NoSuchFileException) {
+                return HttpResponse.of(HttpStatus.NOT_FOUND);
+            }
+            LOG.error("Failed to serve data for snapshot={} task={} offset={} length={}",
+                    snapshotId, taskId, offset, length, e);
+            return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (final Exception e) {
             LOG.error("Failed to serve data for snapshot={} task={} offset={} length={}",
                     snapshotId, taskId, offset, length, e);
