@@ -38,16 +38,18 @@ public class LocalDiskShuffleStorage implements ShuffleStorage {
     }
 
     Path dataFilePath(final String snapshotId, final String taskId) {
-        return baseDir.resolve(snapshotId).resolve("shuffle-" + taskId + DATA_SUFFIX);
+        final Path snapshotDir = validateSubdirectory(baseDir.resolve(snapshotId));
+        return validateSubdirectory(snapshotDir.resolve("shuffle-" + taskId + DATA_SUFFIX));
     }
 
     Path indexFilePath(final String snapshotId, final String taskId) {
-        return baseDir.resolve(snapshotId).resolve("shuffle-" + taskId + INDEX_SUFFIX);
+        final Path snapshotDir = validateSubdirectory(baseDir.resolve(snapshotId));
+        return validateSubdirectory(snapshotDir.resolve("shuffle-" + taskId + INDEX_SUFFIX));
     }
 
     @Override
     public ShuffleWriter createWriter(final String snapshotId, final String taskId, final int numPartitions) {
-        final Path snapshotDir = baseDir.resolve(snapshotId);
+        final Path snapshotDir = validateSubdirectory(baseDir.resolve(snapshotId));
         try {
             Files.createDirectories(snapshotDir);
         } catch (final IOException e) {
@@ -84,7 +86,7 @@ public class LocalDiskShuffleStorage implements ShuffleStorage {
 
     @Override
     public List<String> getTaskIds(final String snapshotId) {
-        final Path snapshotDir = baseDir.resolve(snapshotId);
+        final Path snapshotDir = validateSubdirectory(baseDir.resolve(snapshotId));
         final List<String> taskIds = new ArrayList<>();
         if (!Files.exists(snapshotDir)) {
             return taskIds;
@@ -103,7 +105,7 @@ public class LocalDiskShuffleStorage implements ShuffleStorage {
 
     @Override
     public void cleanup(final String snapshotId) {
-        final Path snapshotDir = baseDir.resolve(snapshotId);
+        final Path snapshotDir = validateSubdirectory(baseDir.resolve(snapshotId));
         deleteDirectory(snapshotDir);
     }
 
@@ -112,6 +114,13 @@ public class LocalDiskShuffleStorage implements ShuffleStorage {
         deleteDirectory(baseDir);
     }
 
+    private Path validateSubdirectory(final Path path) {
+        final Path normalized = path.normalize();
+        if (!normalized.startsWith(baseDir)) {
+            throw new IllegalArgumentException("Invalid path: resolved path is outside the base directory");
+        }
+        return normalized;
+    }
     private void deleteDirectory(final Path dir) {
         if (!Files.exists(dir)) {
             return;
