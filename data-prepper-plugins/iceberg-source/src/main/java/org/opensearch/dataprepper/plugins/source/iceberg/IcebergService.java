@@ -134,14 +134,18 @@ public class IcebergService {
     }
 
     private static Path resolveShuffleBaseDir(final ShuffleConfig shuffleConfig) {
-        if (shuffleConfig != null && shuffleConfig.getStoragePath() != null) {
-            return Path.of(shuffleConfig.getStoragePath());
+        final Path baseDir;
+        if (shuffleConfig.getStoragePath() != null) {
+            baseDir = Path.of(shuffleConfig.getStoragePath());
+        } else {
+            final String dataPrepperDir = System.getProperty("data-prepper.dir");
+            if (dataPrepperDir != null) {
+                baseDir = Path.of(dataPrepperDir, "data", "shuffle");
+            } else {
+                baseDir = Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+            }
         }
-        final String dataPrepperDir = System.getProperty("data-prepper.dir");
-        if (dataPrepperDir != null) {
-            return Path.of(dataPrepperDir, "data", "shuffle");
-        }
-        return Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+        return baseDir.resolve(String.valueOf(shuffleConfig.getServerPort()));
     }
 
     private ArmeriaHttpAuthenticationProvider loadAuthenticationProvider() {

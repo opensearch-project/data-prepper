@@ -85,12 +85,14 @@ class LocalDiskShuffleStorageTest {
     }
 
     @Test
-    void cleanupAll_removesBaseDirectory() throws Exception {
+    void cleanupAll_removesContentsButKeepsBaseDirectory() throws Exception {
         writeTask("snap1", "task1", 2);
         writeTask("snap2", "task1", 2);
 
         storage.cleanupAll();
-        assertThat(Files.exists(tempDir), is(false));
+        assertThat(Files.exists(tempDir), is(true));
+        assertThat(storage.getTaskIds("snap1"), hasSize(0));
+        assertThat(storage.getTaskIds("snap2"), hasSize(0));
     }
 
     @Test

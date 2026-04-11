@@ -111,7 +111,20 @@ public class LocalDiskShuffleStorage implements ShuffleStorage {
 
     @Override
     public void cleanupAll() {
-        deleteDirectory(baseDir);
+        if (!Files.exists(baseDir)) {
+            return;
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(baseDir)) {
+            for (final Path entry : stream) {
+                if (Files.isDirectory(entry)) {
+                    deleteDirectory(entry);
+                } else {
+                    Files.deleteIfExists(entry);
+                }
+            }
+        } catch (final IOException e) {
+            LOG.warn("Failed to clean up shuffle base directory: {}", baseDir, e);
+        }
     }
 
     private Path validateSubdirectory(final Path path) {
