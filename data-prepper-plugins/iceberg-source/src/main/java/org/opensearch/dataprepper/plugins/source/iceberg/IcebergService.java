@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +158,7 @@ public class IcebergService {
             LOG.warn("Creating shuffle HTTP server without authentication. This is not secure.");
             LOG.warn("To set up authentication for the shuffle server, configure the 'authentication' option under 'shuffle' in the iceberg source configuration.");
             pluginSetting = new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME,
-                    java.util.Collections.emptyMap());
+                    Collections.emptyMap());
         }
         pluginSetting.setPipelineName("iceberg-source");
         return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, pluginSetting);
