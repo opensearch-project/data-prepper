@@ -14,11 +14,15 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
@@ -48,6 +52,7 @@ public class IcebergService {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final EventFactory eventFactory;
+    private final PluginFactory pluginFactory;
     private final ShuffleStorage shuffleStorage;
     private ShuffleHttpServer shuffleHttpServer;
     private ExecutorService executor;
@@ -56,12 +61,14 @@ public class IcebergService {
                           final IcebergSourceConfig sourceConfig,
                           final PluginMetrics pluginMetrics,
                           final AcknowledgementSetManager acknowledgementSetManager,
-                          final EventFactory eventFactory) {
+                          final EventFactory eventFactory,
+                          final PluginFactory pluginFactory) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
+        this.pluginFactory = pluginFactory;
         final Path shuffleBaseDir = Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
         this.shuffleStorage = new LocalDiskShuffleStorage(shuffleBaseDir);
         this.shuffleStorage.cleanupAll();
@@ -72,7 +79,8 @@ public class IcebergService {
 
         // Start shuffle HTTP server
         final ShuffleHttpService shuffleHttpService = new ShuffleHttpService(shuffleStorage);
-        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService);
+        final ArmeriaHttpAuthenticationProvider authenticationProvider = loadAuthenticationProvider();
+        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService, authenticationProvider);
         shuffleHttpServer.start();
 
         // Load all tables upfront. Single point of Table lifecycle management.
@@ -124,6 +132,21 @@ public class IcebergService {
         runnableList.forEach(executor::submit);
     }
 
+
+    private ArmeriaHttpAuthenticationProvider loadAuthenticationProvider() {
+        final PluginModel authConfig = sourceConfig.getShuffleConfig().getAuthentication();
+        final PluginSetting pluginSetting;
+        if (authConfig != null) {
+            pluginSetting = new PluginSetting(authConfig.getPluginName(), authConfig.getPluginSettings());
+        } else {
+            LOG.warn("Creating shuffle HTTP server without authentication. This is not secure.");
+            LOG.warn("To set up authentication for the shuffle server, configure the 'authentication' option under 'shuffle' in the iceberg source configuration.");
+            pluginSetting = new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME,
+                    java.util.Collections.emptyMap());
+        }
+        pluginSetting.setPipelineName("iceberg-source");
+        return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, pluginSetting);
+    }
     public void shutdown() {
         LOG.info("Shutting down Iceberg service");
         if (executor != null) {

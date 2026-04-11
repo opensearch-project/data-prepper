@@ -18,7 +18,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 class ShuffleConfigTest {
 
@@ -71,5 +73,20 @@ class ShuffleConfigTest {
                 "ssl_insecure_disable_verification", value
         ));
         assertThat(config.isSslInsecureDisableVerification(), is(value));
+    }
+
+    @Test
+    void authentication_is_deserialized() throws Exception {
+        final ShuffleConfig config = deserialize(Map.of(
+                "ssl", false,
+                "authentication", Map.of("http_basic", Map.of("username", "admin", "password", "secret"))
+        ));
+        assertThat(config.getAuthentication().getPluginName(), equalTo("http_basic"));
+    }
+
+    @Test
+    void authentication_defaults_to_null() throws Exception {
+        final ShuffleConfig config = deserialize(Map.of("ssl", false));
+        assertThat(config.getAuthentication(), is(nullValue()));
     }
 }

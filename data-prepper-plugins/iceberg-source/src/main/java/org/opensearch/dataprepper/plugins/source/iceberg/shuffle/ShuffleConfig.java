@@ -17,7 +17,7 @@ import jakarta.validation.constraints.Min;
 import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
-@JsonIgnoreProperties({"path", "compression", "authentication", "health_check_service",
+@JsonIgnoreProperties({"path", "compression", "health_check_service",
         "unauthenticated_health_check", "request_timeout", "thread_count",
         "max_connection_count", "max_pending_requests", "max_request_length"})
 public class ShuffleConfig extends BaseHttpServerConfig {

@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
@@ -84,6 +85,9 @@ public class IcebergSourceIT {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private PluginFactory pluginFactory;
 
     private final List<org.opensearch.dataprepper.model.record.Record<Event>> receivedRecords =
             Collections.synchronizedList(new ArrayList<>());
@@ -388,7 +392,7 @@ public class IcebergSourceIT {
         coordinator.createPartition(new LeaderPartition());
 
         return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager,
-                org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory());
+                org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory(), pluginFactory);
     }
 
     private org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig createTestShuffleConfig() {

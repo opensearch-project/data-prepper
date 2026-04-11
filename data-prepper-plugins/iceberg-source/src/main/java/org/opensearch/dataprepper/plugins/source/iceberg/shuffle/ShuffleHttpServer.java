@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
 import com.linecorp.armeria.server.Server;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
@@ -30,11 +31,14 @@ public class ShuffleHttpServer {
 
     private final ShuffleConfig config;
     private final ShuffleHttpService service;
+    private final ArmeriaHttpAuthenticationProvider authenticationProvider;
     private Server server;
 
-    public ShuffleHttpServer(final ShuffleConfig config, final ShuffleHttpService service) {
+    public ShuffleHttpServer(final ShuffleConfig config, final ShuffleHttpService service,
+                             final ArmeriaHttpAuthenticationProvider authenticationProvider) {
         this.config = config;
         this.service = service;
+        this.authenticationProvider = authenticationProvider;
     }
 
     public void start() {
@@ -50,7 +54,7 @@ public class ShuffleHttpServer {
                 serverConfig, LOG, PluginMetrics.fromNames("shuffle", "iceberg-source"),
                 "shuffle-server", "iceberg-cdc-pipeline");
 
-        server = createServer.createHTTPServer(certificateProvider, null, service, "/shuffle");
+        server = createServer.createHTTPServer(certificateProvider, authenticationProvider, service, "/shuffle");
         final CompletableFuture<Void> future = server.start();
         future.join();
         LOG.info("Shuffle HTTP server started on port {}", config.getServerPort());
