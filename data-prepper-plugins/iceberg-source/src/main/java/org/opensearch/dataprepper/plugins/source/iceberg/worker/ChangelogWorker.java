@@ -642,7 +642,7 @@ public class ChangelogWorker implements Runnable {
         int hash = 0;
         for (final String col : identifierColumns) {
             final Object val = record.getField(col);
-            hash = 31 * hash + (val != null ? val.hashCode() : 0);
+            hash = 31 * hash + (val != null ? val.toString().hashCode() : 0);
         }
         return Math.floorMod(hash, numPartitions);
     }
