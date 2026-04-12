@@ -22,6 +22,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Schema and partition spec definition for auto-creating Iceberg tables
+ * from pipeline YAML configuration.
+ */
 public class SchemaConfig {
 
     @JsonProperty("columns")

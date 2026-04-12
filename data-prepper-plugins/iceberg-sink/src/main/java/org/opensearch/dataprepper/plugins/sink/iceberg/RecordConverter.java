@@ -41,6 +41,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Converts a Data Prepper event (Map) to an Iceberg {@link GenericRecord}
+ * using the table schema, with type coercion for mismatched types.
+ */
 public class RecordConverter {
 
     private final Schema schema;

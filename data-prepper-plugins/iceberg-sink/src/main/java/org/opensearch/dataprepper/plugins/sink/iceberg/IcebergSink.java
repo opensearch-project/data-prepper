@@ -34,6 +34,10 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.function.Function;
 
+/**
+ * Iceberg sink plugin that writes Data Prepper events into Apache Iceberg tables.
+ * Supports append-only writes and row-level deletes (equality delete) for CDC operations.
+ */
 @Experimental
 @DataPrepperPlugin(name = "iceberg", pluginType = Sink.class, pluginConfigurationType = IcebergSinkConfig.class)
 public class IcebergSink extends AbstractSink<Record<Event>> implements UsesEnhancedSinkCoordination {

@@ -20,6 +20,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Configuration for the Iceberg sink plugin.
+ */
 public class IcebergSinkConfig {
 
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofMinutes(5);

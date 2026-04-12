@@ -10,6 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.iceberg;
 
+/**
+ * CDC operation types resolved from event metadata.
+ * Maps source-specific operation strings (e.g. Debezium's "c", "u", "d")
+ * to Iceberg write operations.
+ */
 public enum CdcOperation {
     INSERT,
     UPDATE,
