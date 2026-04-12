@@ -29,6 +29,7 @@ import org.apache.iceberg.io.TaskWriter;
 import org.apache.iceberg.io.UnpartitionedWriter;
 import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.types.TypeUtil;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,7 +211,7 @@ public class TaskWriterManager {
 
         void writeDelete(final Record record) throws IOException {
             final GenericRecord keyRecord = GenericRecord.create(deleteSchema);
-            for (final org.apache.iceberg.types.Types.NestedField field : deleteSchema.columns()) {
+            for (final Types.NestedField field : deleteSchema.columns()) {
                 keyRecord.setField(field.name(), record.getField(field.name()));
             }
             route(record).deleteKey(keyRecord);

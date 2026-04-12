@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.sink.iceberg;
 
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
 import java.math.BigDecimal;
@@ -41,7 +42,7 @@ public class SchemaInference {
     }
 
     @SuppressWarnings("unchecked")
-    static org.apache.iceberg.types.Type inferType(final Object value, final AtomicInteger fieldId) {
+    static Type inferType(final Object value, final AtomicInteger fieldId) {
         if (value == null) {
             return Types.StringType.get();
         } else if (value instanceof Boolean) {

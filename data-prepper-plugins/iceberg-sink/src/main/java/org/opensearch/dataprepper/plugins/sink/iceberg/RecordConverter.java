@@ -18,9 +18,11 @@ import org.apache.iceberg.variants.ShreddedObject;
 import org.apache.iceberg.variants.ValueArray;
 import org.apache.iceberg.variants.Variant;
 import org.apache.iceberg.variants.VariantMetadata;
+import org.apache.iceberg.variants.VariantValue;
 import org.apache.iceberg.variants.Variants;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,9 +30,14 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.TemporalAccessor;
 import java.util.Base64;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -151,7 +158,7 @@ public class RecordConverter {
         } else {
             decimal = new BigDecimal(value.toString());
         }
-        return decimal.setScale(type.scale(), java.math.RoundingMode.HALF_UP);
+        return decimal.setScale(type.scale(), RoundingMode.HALF_UP);
     }
 
     private LocalDate toDate(final Object value) {
@@ -168,9 +175,9 @@ public class RecordConverter {
         return LocalTime.parse(value.toString());
     }
 
-    private static final java.time.format.DateTimeFormatter FLEXIBLE_TIMESTAMP_FORMATTER =
-            new java.time.format.DateTimeFormatterBuilder()
-                    .append(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    private static final DateTimeFormatter FLEXIBLE_TIMESTAMP_FORMATTER =
+            new DateTimeFormatterBuilder()
+                    .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                     .optionalStart().appendOffsetId().optionalEnd()
                     .toFormatter();
 
@@ -185,7 +192,7 @@ public class RecordConverter {
         if (value instanceof Number) {
             return Instant.ofEpochMilli(((Number) value).longValue()).atOffset(ZoneOffset.UTC);
         }
-        final java.time.temporal.TemporalAccessor parsed =
+        final TemporalAccessor parsed =
                 FLEXIBLE_TIMESTAMP_FORMATTER.parseBest(value.toString(), OffsetDateTime::from, LocalDateTime::from);
         if (parsed instanceof OffsetDateTime) {
             return (OffsetDateTime) parsed;
@@ -198,7 +205,7 @@ public class RecordConverter {
             return LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(((Number) value).longValue()), ZoneOffset.UTC);
         }
-        final java.time.temporal.TemporalAccessor parsed =
+        final TemporalAccessor parsed =
                 FLEXIBLE_TIMESTAMP_FORMATTER.parseBest(value.toString(), OffsetDateTime::from, LocalDateTime::from);
         if (parsed instanceof LocalDateTime) {
             return (LocalDateTime) parsed;
@@ -250,13 +257,13 @@ public class RecordConverter {
     }
 
     private VariantMetadata buildVariantMetadata(final Object value) {
-        final java.util.Set<String> fieldNames = new java.util.LinkedHashSet<>();
+        final Set<String> fieldNames = new LinkedHashSet<>();
         collectFieldNames(value, fieldNames);
         return fieldNames.isEmpty() ? Variants.emptyMetadata() : Variants.metadata(fieldNames);
     }
 
     @SuppressWarnings("unchecked")
-    private void collectFieldNames(final Object value, final java.util.Set<String> fieldNames) {
+    private void collectFieldNames(final Object value, final Set<String> fieldNames) {
         if (value instanceof Map) {
             final Map<String, Object> map = (Map<String, Object>) value;
             fieldNames.addAll(map.keySet());
@@ -267,7 +274,7 @@ public class RecordConverter {
     }
 
     @SuppressWarnings("unchecked")
-    private org.apache.iceberg.variants.VariantValue buildVariantValue(
+    private VariantValue buildVariantValue(
             final Object value, final VariantMetadata metadata) {
         if (value == null) {
             return Variants.ofNull();

@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.sink.iceberg;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ public class SchemaConfig {
         final AtomicInteger fieldId = new AtomicInteger(1);
         final List<Types.NestedField> fields = new ArrayList<>();
         for (final ColumnConfig col : columns) {
-            final org.apache.iceberg.types.Type type = Types.fromPrimitiveString(col.getType());
+            final Type type = Types.fromPrimitiveString(col.getType());
             if (col.isRequired()) {
                 fields.add(Types.NestedField.required(fieldId.getAndIncrement(), col.getName(), type));
             } else {

@@ -15,6 +15,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -22,6 +23,7 @@ import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.WriteResult;
+import org.apache.iceberg.types.Type;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -50,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class IcebergSinkService {
 
@@ -371,7 +374,7 @@ public class IcebergSinkService {
                     .withPluginId("iceberg")
                     .withPipelineName(dlqPushHandler.getPluginSetting().getPipelineName())
                     .withFailedData(event.toJsonString())
-                    .withTimestamp(java.time.Instant.now())
+                    .withTimestamp(Instant.now())
                     .build();
             dlqPushHandler.perform(Collections.singletonList(dlqObject));
         } catch (final Exception e) {
@@ -406,11 +409,11 @@ public class IcebergSinkService {
         }
 
         // Add new columns
-        final org.apache.iceberg.UpdateSchema updateSchema = ctx.table.updateSchema();
+        final UpdateSchema updateSchema = ctx.table.updateSchema();
         boolean hasChanges = false;
         for (final Map.Entry<String, Object> entry : data.entrySet()) {
             if (ctx.table.schema().findField(entry.getKey()) == null) {
-                final org.apache.iceberg.types.Type type = SchemaInference.inferType(entry.getValue(), new java.util.concurrent.atomic.AtomicInteger(ctx.table.schema().highestFieldId() + 1));
+                final Type type = SchemaInference.inferType(entry.getValue(), new AtomicInteger(ctx.table.schema().highestFieldId() + 1));
                 updateSchema.addColumn(entry.getKey(), type);
                 hasChanges = true;
             }

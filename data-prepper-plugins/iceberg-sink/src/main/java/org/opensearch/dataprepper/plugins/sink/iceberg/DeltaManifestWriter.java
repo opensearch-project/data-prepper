@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.iceberg;
 
+import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.ManifestFile;
@@ -151,7 +152,7 @@ public class DeltaManifestWriter {
         try {
             return table.properties().containsKey("format-version")
                     ? Integer.parseInt(table.properties().get("format-version"))
-                    : ((org.apache.iceberg.BaseTable) table).operations().current().formatVersion();
+                    : ((BaseTable) table).operations().current().formatVersion();
         } catch (final Exception e) {
             return 2;
         }
