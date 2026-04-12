@@ -19,6 +19,8 @@ import org.apache.iceberg.types.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SchemaConfig {
 
@@ -61,16 +63,25 @@ public class SchemaConfig {
             } else if ("hour".equals(transform)) {
                 builder.hour(column);
             } else if (transform.startsWith("bucket")) {
-                final int numBuckets = Integer.parseInt(transform.replaceAll("[^0-9]", ""));
+                final int numBuckets = parseTransformArg(transform, "bucket");
                 builder.bucket(column, numBuckets);
             } else if (transform.startsWith("truncate")) {
-                final int width = Integer.parseInt(transform.replaceAll("[^0-9]", ""));
+                final int width = parseTransformArg(transform, "truncate");
                 builder.truncate(column, width);
             } else {
                 throw new IllegalArgumentException("Unsupported partition transform: " + transform);
             }
         }
         return builder.build();
+    }
+
+    private static int parseTransformArg(final String transform, final String name) {
+        final Matcher matcher = Pattern.compile("^" + name + "\\[(\\d+)]$").matcher(transform);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(
+                    "Invalid partition transform: '" + transform + "'. Expected format: " + name + "[N]");
+        }
+        return Integer.parseInt(matcher.group(1));
     }
 
     public static class ColumnConfig {
