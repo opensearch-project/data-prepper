@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -255,7 +256,7 @@ class RecordConverterTest {
         );
         final RecordConverter converter = new RecordConverter(schema);
 
-        final java.util.HashMap<String, Object> data = new java.util.HashMap<>();
+        final HashMap<String, Object> data = new HashMap<>();
         data.put("col", null);
         final GenericRecord record = converter.convert(data);
         assertNull(record.getField("col"));

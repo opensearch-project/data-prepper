@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.sink.iceberg;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -126,7 +127,7 @@ class IcebergSinkConfigTest {
     @Test
     void ackPollInterval_customValue() throws Exception {
         final IcebergSinkConfig config = new IcebergSinkConfig();
-        org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField(
+        ReflectivelySetField.setField(
                 IcebergSinkConfig.class, config, "ackPollInterval", Duration.ofSeconds(10));
         assertEquals(Duration.ofSeconds(10), config.getAckPollInterval());
     }
