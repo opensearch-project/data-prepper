@@ -64,6 +64,9 @@ public class IcebergSinkConfig {
     @JsonProperty("table_location")
     private String tableLocation;
 
+    @JsonProperty("ack_poll_interval")
+    private Duration ackPollInterval = Duration.ofSeconds(5);
+
     public Map<String, String> getCatalog() {
         return catalog;
     }
@@ -110,5 +113,9 @@ public class IcebergSinkConfig {
 
     public String getTableLocation() {
         return tableLocation;
+    }
+
+    public Duration getAckPollInterval() {
+        return ackPollInterval;
     }
 }

@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.iceberg.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.sink.iceberg.coordination.partition.WriteResultPartition;
@@ -37,13 +38,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class IcebergSinkService {
 
@@ -66,7 +72,11 @@ public class IcebergSinkService {
     private final boolean dynamicRouting;
     private final ConcurrentHashMap<String, TableContext> tableContexts;
     private final ConcurrentHashMap<Long, ConcurrentHashMap<String, TaskWriterManager>> writersByThread;
+    private final ConcurrentHashMap<Long, List<EventHandle>> currentEventHandles;
+    private final ConcurrentHashMap<String, List<EventHandle>> pendingEventHandles;
     private final ExecutorService commitSchedulerExecutor;
+    private final ScheduledExecutorService ackPollExecutor;
+    private volatile Instant lastAckPollTime;
 
     public IcebergSinkService(final IcebergSinkConfig config,
                               final EnhancedSourceCoordinator coordinator,
@@ -74,17 +84,25 @@ public class IcebergSinkService {
                               final DlqPushHandler dlqPushHandler,
                               final PluginMetrics pluginMetrics) {
         this.config = config;
-        this.coordinator = coordinator;
         this.expressionEvaluator = expressionEvaluator;
         this.dlqPushHandler = dlqPushHandler;
         this.recordsSucceeded = pluginMetrics.counter(RECORDS_SUCCEEDED);
         this.recordsFailed = pluginMetrics.counter(RECORDS_FAILED);
         this.flushCount = pluginMetrics.counter(FLUSH_COUNT);
         this.commitCount = pluginMetrics.counter(COMMIT_COUNT);
+
+        if (coordinator == null) {
+            throw new IllegalStateException(
+                    "Iceberg sink requires source_coordination to be configured in data-prepper-config.yaml.");
+        }
+        this.coordinator = coordinator;
+
         this.catalog = CatalogUtil.buildIcebergCatalog("iceberg-sink", config.getCatalog(), null);
         this.dynamicRouting = config.getTableIdentifier().contains("${");
         this.tableContexts = new ConcurrentHashMap<>();
         this.writersByThread = new ConcurrentHashMap<>();
+        this.currentEventHandles = new ConcurrentHashMap<>();
+        this.pendingEventHandles = new ConcurrentHashMap<>();
 
         // Validate: dynamic routing + schema definition is not allowed
         if (dynamicRouting && config.getSchemaConfig() != null) {
@@ -98,15 +116,18 @@ public class IcebergSinkService {
         }
 
         // Start CommitScheduler
-        if (coordinator == null) {
-            throw new IllegalStateException(
-                    "Iceberg sink requires source_coordination to be configured in data-prepper-config.yaml.");
-        }
         coordinator.createPartition(new LeaderPartition());
         commitSchedulerExecutor = Executors.newSingleThreadExecutor();
         final CommitScheduler commitScheduler = new CommitScheduler(
                 coordinator, catalog, config.getCommitInterval(), commitCount);
         commitSchedulerExecutor.submit(commitScheduler);
+
+        // Start ack polling
+        this.lastAckPollTime = Instant.now();
+        this.ackPollExecutor = Executors.newSingleThreadScheduledExecutor();
+        final long pollMillis = config.getAckPollInterval().toMillis();
+        ackPollExecutor.scheduleAtFixedRate(this::releaseCommittedEventHandles,
+                pollMillis, pollMillis, TimeUnit.MILLISECONDS);
 
         LOG.info("Initialized IcebergSinkService, dynamicRouting={}", dynamicRouting);
     }
@@ -160,6 +181,10 @@ public class IcebergSinkService {
                 }
                 writerManager.write(icebergRecord, operation);
                 recordsSucceeded.increment();
+                final EventHandle handle = event.getEventHandle();
+                if (handle != null) {
+                    currentEventHandles.computeIfAbsent(threadId, id -> new ArrayList<>()).add(handle);
+                }
             } catch (final Exception e) {
                 LOG.error("Failed to convert/write event, sending to DLQ", e);
                 sendToDlq(event, "Failed to convert/write: " + e.getMessage());
@@ -200,6 +225,17 @@ public class IcebergSinkService {
                         }
                     }
                 }));
+
+        if (ackPollExecutor != null) {
+            ackPollExecutor.shutdownNow();
+        }
+
+        pendingEventHandles.values().forEach(handles ->
+                handles.forEach(h -> h.release(false)));
+        pendingEventHandles.clear();
+        currentEventHandles.values().forEach(handles ->
+                handles.forEach(h -> h.release(false)));
+        currentEventHandles.clear();
 
         if (commitSchedulerExecutor != null) {
             commitSchedulerExecutor.shutdownNow();
@@ -280,12 +316,18 @@ public class IcebergSinkService {
 
     private void registerWriteResult(final String tableIdentifier, final WriteResult result) {
         final TableContext ctx = tableContexts.get(tableIdentifier);
-        if (ctx == null || coordinator == null) {
+        if (ctx == null) {
             return;
         }
         try {
             final WriteResultState state = ctx.deltaManifestWriter.write(tableIdentifier, result);
-            coordinator.createPartition(new WriteResultPartition(UUID.randomUUID().toString(), state));
+            final String partitionId = UUID.randomUUID().toString();
+            final long threadId = Thread.currentThread().getId();
+            final List<EventHandle> handles = currentEventHandles.remove(threadId);
+            coordinator.createPartition(new WriteResultPartition(partitionId, state));
+            if (handles != null && !handles.isEmpty()) {
+                pendingEventHandles.put(partitionId, handles);
+            }
         } catch (final IOException e) {
             LOG.error("Failed to write delta manifest for table {}", tableIdentifier, e);
         }
@@ -295,6 +337,27 @@ public class IcebergSinkService {
         final EventHandle handle = event.getEventHandle();
         if (handle != null) {
             handle.release(success);
+        }
+    }
+
+    private void releaseCommittedEventHandles() {
+        if (pendingEventHandles.isEmpty()) {
+            return;
+        }
+        try {
+            final Instant checkSince = lastAckPollTime;
+            lastAckPollTime = Instant.now();
+            final List<EnhancedSourcePartition> completed =
+                    coordinator.queryCompletedPartitions(WriteResultPartition.PARTITION_TYPE, checkSince);
+            for (final EnhancedSourcePartition partition : completed) {
+                final String partitionKey = partition.getPartitionKey();
+                final List<EventHandle> handles = pendingEventHandles.remove(partitionKey);
+                if (handles != null) {
+                    handles.forEach(h -> h.release(true));
+                }
+            }
+        } catch (final Exception e) {
+            LOG.error("Failed to poll for committed partitions", e);
         }
     }
 

@@ -116,4 +116,18 @@ class IcebergSinkConfigTest {
         ));
         assertNull(config.getDlq());
     }
+
+    @Test
+    void defaults_ackPollInterval() {
+        final IcebergSinkConfig config = new IcebergSinkConfig();
+        assertEquals(Duration.ofSeconds(5), config.getAckPollInterval());
+    }
+
+    @Test
+    void ackPollInterval_customValue() throws Exception {
+        final IcebergSinkConfig config = new IcebergSinkConfig();
+        org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField(
+                IcebergSinkConfig.class, config, "ackPollInterval", Duration.ofSeconds(10));
+        assertEquals(Duration.ofSeconds(10), config.getAckPollInterval());
+    }
 }
