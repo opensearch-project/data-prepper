@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.iceberg;
 
-import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.ManifestFile;
@@ -18,6 +17,7 @@ import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestWriter;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableUtil;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
@@ -57,7 +57,7 @@ public class DeltaManifestWriter {
         final String basePath = table.location() + "/metadata/delta-" + UUID.randomUUID();
         final FileIO io = table.io();
         final PartitionSpec spec = table.spec();
-        final int formatVersion = formatVersion();
+        final int formatVersion = TableUtil.formatVersion(table);
 
         String dataManifestEncoded = null;
         String deleteManifestEncoded = null;
@@ -148,13 +148,4 @@ public class DeltaManifestWriter {
         return writer.toManifestFile();
     }
 
-    private int formatVersion() {
-        try {
-            return table.properties().containsKey("format-version")
-                    ? Integer.parseInt(table.properties().get("format-version"))
-                    : ((BaseTable) table).operations().current().formatVersion();
-        } catch (final Exception e) {
-            return 2;
-        }
-    }
 }
