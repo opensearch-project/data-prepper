@@ -444,9 +444,6 @@ public class IcebergSinkService {
     }
 
     private void validateIdentifierColumns(final IcebergSinkConfig config) {
-        if (config.getIdentifierColumns().isEmpty()) {
-            return;
-        }
         final TableContext ctx = tableContexts.get(config.getTableIdentifier());
         if (ctx == null) {
             return;
@@ -457,6 +454,11 @@ public class IcebergSinkService {
                 throw new IllegalArgumentException(
                         "identifier_columns contains unknown column '" + name + "' not found in table " + config.getTableIdentifier());
             }
+        }
+        if (config.getOperation() != null && config.getIdentifierColumns().isEmpty() && schema.identifierFieldIds().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "operation is configured but no identifier columns are available. " +
+                    "Set identifier_columns in the pipeline YAML or identifier-field-ids in the table schema.");
         }
     }
 
