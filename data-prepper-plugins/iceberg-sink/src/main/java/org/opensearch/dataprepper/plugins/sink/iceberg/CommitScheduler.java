@@ -58,6 +58,8 @@ public class CommitScheduler implements Runnable {
 
     private LeaderPartition leaderPartition;
 
+    private volatile boolean shutdownRequested;
+
     public CommitScheduler(final EnhancedSourceCoordinator coordinator,
                            final Catalog catalog,
                            final Duration commitInterval,
@@ -69,11 +71,19 @@ public class CommitScheduler implements Runnable {
         this.tableStates = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Requests graceful shutdown. The CommitScheduler will execute one final commit cycle
+     * to flush any pending WriteResultPartitions, then exit.
+     */
+    public void requestShutdown() {
+        shutdownRequested = true;
+    }
+
     @Override
     public void run() {
         LOG.info("Starting CommitScheduler");
 
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!shutdownRequested) {
             try {
                 // Attempt to become leader if not already
                 if (leaderPartition == null) {
@@ -92,11 +102,13 @@ public class CommitScheduler implements Runnable {
 
                 Thread.sleep(commitInterval.toMillis());
             } catch (final InterruptedException e) {
+                if (shutdownRequested) {
+                    LOG.info("CommitScheduler interrupted for shutdown, executing final commit");
+                    break;
+                }
                 LOG.info("CommitScheduler interrupted");
                 break;
             } catch (final Exception e) {
-                // Commit failed but leader should retain leadership to retry next cycle.
-                // Extend lease to prevent another node from taking over during transient errors.
                 LOG.error("Error in commit cycle", e);
                 if (leaderPartition != null) {
                     try {
@@ -109,10 +121,18 @@ public class CommitScheduler implements Runnable {
             }
         }
 
-        LOG.info("CommitScheduler stopped");
+        // Final commit cycle to flush any remaining WriteResultPartitions from shutdown
         if (leaderPartition != null) {
+            try {
+                commitPendingResults();
+                LOG.info("Final commit cycle completed");
+            } catch (final Exception e) {
+                LOG.error("Failed to execute final commit during shutdown", e);
+            }
             coordinator.giveUpPartition(leaderPartition);
         }
+
+        LOG.info("CommitScheduler stopped");
     }
 
     private void commitPendingResults() throws Exception {

@@ -453,23 +453,16 @@ public class IcebergSinkIT {
             throw error.get();
         }
 
-        // Wait for flush and commit
-        Thread.sleep(3000);
-        service.output(Collections.emptyList());
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(30))
-                .pollInterval(Duration.ofSeconds(1))
-                .untilAsserted(() -> {
-                    final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
-                    table.refresh();
-                    assertEquals(20, readAll(table).size());
-                });
+        // shutdown() flushes all writers, registers results, and waits for final commit
+        service.shutdown();
+
+        // Verify all 20 records committed
+        final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
+        table.refresh();
+        assertEquals(20, readAll(table).size());
 
         // Verify schema has 3 columns
-        final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
         assertEquals(3, table.schema().columns().size());
-
-        service.shutdown();
     }
 
     private EnhancedSourceCoordinator createInMemoryCoordinator() {

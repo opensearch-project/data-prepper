@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,6 +63,7 @@ public class IcebergSinkService {
     static final String RECORDS_FAILED = "icebergSinkRecordsFailed";
     static final String FLUSH_COUNT = "icebergSinkFlushCount";
     static final String COMMIT_COUNT = "icebergSinkCommitCount";
+    private static final Duration SHUTDOWN_COMMIT_TIMEOUT = Duration.ofSeconds(30);
 
     private final IcebergSinkConfig config;
     private final Catalog catalog;
@@ -78,6 +80,7 @@ public class IcebergSinkService {
     private final ConcurrentHashMap<Long, List<EventHandle>> currentEventHandles;
     private final ConcurrentHashMap<String, List<EventHandle>> pendingEventHandles;
     private final ExecutorService commitSchedulerExecutor;
+    private final CommitScheduler commitScheduler;
     private final ScheduledExecutorService ackPollExecutor;
     private volatile Instant lastAckPollTime;
 
@@ -122,7 +125,7 @@ public class IcebergSinkService {
         // Start CommitScheduler
         coordinator.createPartition(new LeaderPartition());
         commitSchedulerExecutor = Executors.newSingleThreadExecutor();
-        final CommitScheduler commitScheduler = new CommitScheduler(
+        commitScheduler = new CommitScheduler(
                 coordinator, catalog, config.getCommitInterval(), commitCount);
         commitSchedulerExecutor.submit(commitScheduler);
 
@@ -155,7 +158,7 @@ public class IcebergSinkService {
             final Event event = record.getData();
             try {
                 final String resolvedTable = resolveTableIdentifier(event);
-                final TableContext ctx = getOrCreateTableContext(resolvedTable, event);
+                TableContext ctx = getOrCreateTableContext(resolvedTable, event);
                 if (ctx == null) {
                     LOG.error("Failed to resolve table for event, sending to DLQ");
                     sendToDlq(event, "Failed to resolve table");
@@ -165,7 +168,8 @@ public class IcebergSinkService {
                 }
 
                 TaskWriterManager writerManager = threadWriters.computeIfAbsent(
-                        resolvedTable, t -> new TaskWriterManager(ctx.table, config));
+                        resolvedTable, t -> new TaskWriterManager(
+                                tableContexts.get(resolvedTable).table, config));
 
                 // Recreate writer if schema has changed (e.g. by another thread's evolveSchema)
                 if (writerManager.schemaId() != ctx.table.schema().schemaId()) {
@@ -182,6 +186,8 @@ public class IcebergSinkService {
                 // Schema evolution: detect new fields
                 if (config.isSchemaEvolution() && hasNewFields(data, ctx)) {
                     evolveSchema(ctx, data, resolvedTable, threadWriters);
+                    writerManager = threadWriters.get(resolvedTable);
+                    ctx = tableContexts.get(resolvedTable);
                 }
 
                 final GenericRecord icebergRecord = ctx.converter.convert(data);
@@ -222,6 +228,7 @@ public class IcebergSinkService {
     }
 
     public void shutdown() {
+        // Flush all writers and register results in coordination store
         writersByThread.forEach((threadId, threadWriters) ->
                 threadWriters.forEach((tableName, writerManager) -> {
                     try {
@@ -240,20 +247,33 @@ public class IcebergSinkService {
                     }
                 }));
 
+        // Graceful shutdown: let CommitScheduler execute a final commit cycle
+        if (commitSchedulerExecutor != null) {
+            commitScheduler.requestShutdown();
+            commitSchedulerExecutor.shutdownNow();
+            try {
+                if (!commitSchedulerExecutor.awaitTermination(
+                        SHUTDOWN_COMMIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                    LOG.warn("CommitScheduler did not complete final commit within timeout");
+                }
+            } catch (final InterruptedException e) {
+                LOG.warn("Interrupted while waiting for CommitScheduler shutdown");
+                Thread.currentThread().interrupt();
+            }
+        }
+
         if (ackPollExecutor != null) {
             ackPollExecutor.shutdownNow();
         }
 
         pendingEventHandles.values().forEach(handles ->
                 handles.forEach(h -> h.release(false)));
+        LOG.debug("Shutdown: released {} pending EventHandle groups", pendingEventHandles.size());
         pendingEventHandles.clear();
         currentEventHandles.values().forEach(handles ->
                 handles.forEach(h -> h.release(false)));
+        LOG.debug("Shutdown: released {} current EventHandle groups", currentEventHandles.size());
         currentEventHandles.clear();
-
-        if (commitSchedulerExecutor != null) {
-            commitSchedulerExecutor.shutdownNow();
-        }
 
         if (catalog instanceof AutoCloseable) {
             try {
@@ -368,6 +388,7 @@ public class IcebergSinkService {
                 final List<EventHandle> handles = pendingEventHandles.remove(partitionKey);
                 if (handles != null) {
                     handles.forEach(h -> h.release(true));
+                    LOG.debug("Released {} EventHandles for partition {}", handles.size(), partitionKey);
                 }
             }
         } catch (final Exception e) {
