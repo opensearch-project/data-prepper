@@ -116,6 +116,7 @@ public class IcebergSinkService {
         // For static routing, load/create table eagerly
         if (!dynamicRouting) {
             getOrCreateTableContext(config.getTableIdentifier(), null);
+            validateIdentifierColumns(config);
         }
 
         // Start CommitScheduler
@@ -431,6 +432,23 @@ public class IcebergSinkService {
             ctx.refresh();
             // Recreate writer with new schema
             threadWriters.put(tableIdentifier, new TaskWriterManager(ctx.table, config));
+        }
+    }
+
+    private void validateIdentifierColumns(final IcebergSinkConfig config) {
+        if (config.getIdentifierColumns().isEmpty()) {
+            return;
+        }
+        final TableContext ctx = tableContexts.get(config.getTableIdentifier());
+        if (ctx == null) {
+            return;
+        }
+        final Schema schema = ctx.table.schema();
+        for (final String name : config.getIdentifierColumns()) {
+            if (schema.findField(name) == null) {
+                throw new IllegalArgumentException(
+                        "identifier_columns contains unknown column '" + name + "' not found in table " + config.getTableIdentifier());
+            }
         }
     }
 

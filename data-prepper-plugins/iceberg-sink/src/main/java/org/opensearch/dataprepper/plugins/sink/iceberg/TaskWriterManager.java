@@ -173,7 +173,14 @@ public class TaskWriterManager {
     private static Set<Integer> resolveIdentifierFieldIds(final Table table, final IcebergSinkConfig config) {
         if (!config.getIdentifierColumns().isEmpty()) {
             return config.getIdentifierColumns().stream()
-                    .map(name -> table.schema().findField(name).fieldId())
+                    .map(name -> {
+                        final Types.NestedField field = table.schema().findField(name);
+                        if (field == null) {
+                            throw new IllegalArgumentException(
+                                    "identifier_columns contains unknown column '" + name + "' not found in table " + table.name());
+                        }
+                        return field.fieldId();
+                    })
                     .collect(Collectors.toSet());
         }
         return table.schema().identifierFieldIds();
