@@ -70,6 +70,10 @@ public class TaskWriterManager {
         this.lastFlushTime = Instant.now();
     }
 
+    public int schemaId() {
+        return table.schema().schemaId();
+    }
+
     public void write(final Record record, final CdcOperation operation) throws IOException {
         if (!cdcEnabled || operation == CdcOperation.INSERT) {
             writer.write(record);

@@ -10,7 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.iceberg;
 
+import org.apache.iceberg.AppendFiles;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
@@ -18,8 +20,10 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.types.Types;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,12 +39,21 @@ import org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLease
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.plugins.sink.iceberg.coordination.PartitionFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -103,10 +116,10 @@ public class IcebergSinkIT {
         }
 
         // Flush and commit directly (no coordination store in this test)
-        final org.apache.iceberg.io.WriteResult result = writerManager.flush();
+        final WriteResult result = writerManager.flush();
         final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
-        final org.apache.iceberg.AppendFiles append = table.newAppend();
-        java.util.Arrays.stream(result.dataFiles()).forEach(append::appendFile);
+        final AppendFiles append = table.newAppend();
+        Arrays.stream(result.dataFiles()).forEach(append::appendFile);
         append.commit();
 
         // Verify
@@ -134,21 +147,21 @@ public class IcebergSinkIT {
         writerManager.write(converter.convert(Map.of("id", 2, "name", "bob")), CdcOperation.INSERT);
 
         // Flush and commit first batch
-        org.apache.iceberg.io.WriteResult result1 = writerManager.flush();
-        org.apache.iceberg.RowDelta rowDelta1 = table.newRowDelta();
-        java.util.Arrays.stream(result1.dataFiles()).forEach(rowDelta1::addRows);
-        java.util.Arrays.stream(result1.deleteFiles()).forEach(rowDelta1::addDeletes);
+        WriteResult result1 = writerManager.flush();
+        RowDelta rowDelta1 = table.newRowDelta();
+        Arrays.stream(result1.dataFiles()).forEach(rowDelta1::addRows);
+        Arrays.stream(result1.deleteFiles()).forEach(rowDelta1::addDeletes);
         rowDelta1.commit();
 
         // DELETE id=1
         writerManager.write(converter.convert(Map.of("id", 1, "name", "alice")), CdcOperation.DELETE);
 
         // Flush and commit second batch
-        org.apache.iceberg.io.WriteResult result2 = writerManager.flush();
+        WriteResult result2 = writerManager.flush();
         table.refresh();
-        org.apache.iceberg.RowDelta rowDelta2 = table.newRowDelta();
-        java.util.Arrays.stream(result2.dataFiles()).forEach(rowDelta2::addRows);
-        java.util.Arrays.stream(result2.deleteFiles()).forEach(rowDelta2::addDeletes);
+        RowDelta rowDelta2 = table.newRowDelta();
+        Arrays.stream(result2.dataFiles()).forEach(rowDelta2::addRows);
+        Arrays.stream(result2.deleteFiles()).forEach(rowDelta2::addDeletes);
         rowDelta2.commit();
 
         // Verify: only id=2 remains
@@ -211,12 +224,12 @@ public class IcebergSinkIT {
         );
         catalog.createTable(TableIdentifier.of(namespace, tableName), initialSchema);
 
-        final Map<String, Object> configMap = new java.util.HashMap<>();
+        final Map<String, Object> configMap = new HashMap<>();
         configMap.put("catalog", catalogProperties());
         configMap.put("table_identifier", namespace + "." + tableName);
         configMap.put("schema_evolution", true);
-        final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
         final IcebergSinkConfig config = mapper.convertValue(configMap, IcebergSinkConfig.class);
         final IcebergSinkService service = new IcebergSinkService(config, createInMemoryCoordinator(), null, null, PluginMetrics.fromNames("iceberg", "test"));
 
@@ -254,9 +267,9 @@ public class IcebergSinkIT {
         writerManager.write(converter.convert(Map.of("id", 2, "category", "B")));
         writerManager.write(converter.convert(Map.of("id", 3, "category", "A")));
 
-        final org.apache.iceberg.io.WriteResult result = writerManager.flush();
-        final org.apache.iceberg.AppendFiles append = table.newAppend();
-        java.util.Arrays.stream(result.dataFiles()).forEach(append::appendFile);
+        final WriteResult result = writerManager.flush();
+        final AppendFiles append = table.newAppend();
+        Arrays.stream(result.dataFiles()).forEach(append::appendFile);
         append.commit();
 
         table.refresh();
@@ -277,8 +290,8 @@ public class IcebergSinkIT {
         configMap.put("table_identifier", namespace + "." + tableName);
         configMap.put("commit_interval", "PT1S");
         configMap.put("flush_interval", "PT1S");
-        final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
         final IcebergSinkConfig config = mapper.convertValue(configMap, IcebergSinkConfig.class);
 
         final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
@@ -303,9 +316,9 @@ public class IcebergSinkIT {
         service.output(List.of(new org.opensearch.dataprepper.model.record.Record<>(triggerEvent)));
 
         // Wait for CommitScheduler to commit
-        org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(30))
-                .pollInterval(java.time.Duration.ofSeconds(1))
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofSeconds(1))
                 .untilAsserted(() -> {
                     final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
                     table.refresh();
@@ -331,14 +344,130 @@ public class IcebergSinkIT {
         configMap.put("auto_create", true);
         configMap.put("schema", schemaConfig);
         configMap.put("table_properties", Map.of("write.format.default", "orc"));
-        final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
         final IcebergSinkConfig config = mapper.convertValue(configMap, IcebergSinkConfig.class);
         final IcebergSinkService service = new IcebergSinkService(config, createInMemoryCoordinator(), null, null,
                 PluginMetrics.fromNames("iceberg", "test"));
 
         final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
         assertEquals("orc", table.properties().get("write.format.default"));
+
+        service.shutdown();
+    }
+
+    @Test
+    void schemaEvolution_concurrentThreads() throws Exception {
+        final String tableName = "schema_evo_concurrent_test";
+        final Schema initialSchema = new Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.required(2, "name", Types.StringType.get())
+        );
+        catalog.createTable(TableIdentifier.of(namespace, tableName), initialSchema);
+
+        final Map<String, Object> configMap = new HashMap<>();
+        configMap.put("catalog", catalogProperties());
+        configMap.put("table_identifier", namespace + "." + tableName);
+        configMap.put("schema_evolution", true);
+        configMap.put("flush_interval", "PT1S");
+        configMap.put("commit_interval", "PT1S");
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        final IcebergSinkConfig config = mapper.convertValue(configMap, IcebergSinkConfig.class);
+        final IcebergSinkService service = new IcebergSinkService(config, createInMemoryCoordinator(), null, null, PluginMetrics.fromNames("iceberg", "test"));
+
+        // Phase 1: Thread 2 triggers schema evolution by sending events with new field "age"
+        // Phase 2: After schema change is confirmed, thread 1 sends events with the new field
+        //          This forces thread 1 to detect the stale writer and recreate it
+        final CyclicBarrier startBarrier = new CyclicBarrier(2);
+        final CountDownLatch schemaChanged = new CountDownLatch(1);
+        final AtomicReference<Exception> error = new AtomicReference<>();
+
+        final Thread thread2 = new Thread(() -> {
+            try {
+                startBarrier.await();
+                // Send event with new field to trigger schema evolution
+                for (int i = 100; i < 105; i++) {
+                    final Event event = EVENT_FACTORY.eventBuilder(EventBuilder.class)
+                            .withEventType("event")
+                            .withData(Map.of("id", i, "name", "thread2-" + i, "age", 20 + i))
+                            .build();
+                    service.output(List.of(new org.opensearch.dataprepper.model.record.Record<>(event)));
+                }
+                // Wait until schema change is visible in catalog
+                Awaitility.await()
+                        .atMost(Duration.ofSeconds(10))
+                        .pollInterval(Duration.ofMillis(200))
+                        .until(() -> {
+                            final Table t = catalog.loadTable(TableIdentifier.of(namespace, tableName));
+                            t.refresh();
+                            return t.schema().columns().size() == 3;
+                        });
+                schemaChanged.countDown();
+                // Send more events after schema change
+                for (int i = 105; i < 110; i++) {
+                    final Event event = EVENT_FACTORY.eventBuilder(EventBuilder.class)
+                            .withEventType("event")
+                            .withData(Map.of("id", i, "name", "thread2-" + i, "age", 20 + i))
+                            .build();
+                    service.output(List.of(new org.opensearch.dataprepper.model.record.Record<>(event)));
+                }
+            } catch (final Exception e) {
+                error.compareAndSet(null, e);
+                schemaChanged.countDown();
+            }
+        });
+
+        final Thread thread1 = new Thread(() -> {
+            try {
+                startBarrier.await();
+                // Send events with original schema
+                for (int i = 0; i < 5; i++) {
+                    final Event event = EVENT_FACTORY.eventBuilder(EventBuilder.class)
+                            .withEventType("event")
+                            .withData(Map.of("id", i, "name", "thread1-" + i))
+                            .build();
+                    service.output(List.of(new org.opensearch.dataprepper.model.record.Record<>(event)));
+                }
+                // Wait for thread 2 to complete schema evolution
+                schemaChanged.await(30, TimeUnit.SECONDS);
+                // Now send events with the new field on a thread that has a stale writer
+                for (int i = 5; i < 10; i++) {
+                    final Event event = EVENT_FACTORY.eventBuilder(EventBuilder.class)
+                            .withEventType("event")
+                            .withData(Map.of("id", i, "name", "thread1-" + i, "age", 40 + i))
+                            .build();
+                    service.output(List.of(new org.opensearch.dataprepper.model.record.Record<>(event)));
+                }
+            } catch (final Exception e) {
+                error.compareAndSet(null, e);
+            }
+        });
+
+        thread1.start();
+        thread2.start();
+        thread1.join(60_000);
+        thread2.join(60_000);
+
+        if (error.get() != null) {
+            throw error.get();
+        }
+
+        // Wait for flush and commit
+        Thread.sleep(3000);
+        service.output(Collections.emptyList());
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofSeconds(1))
+                .untilAsserted(() -> {
+                    final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
+                    table.refresh();
+                    assertEquals(20, readAll(table).size());
+                });
+
+        // Verify schema has 3 columns
+        final Table table = catalog.loadTable(TableIdentifier.of(namespace, tableName));
+        assertEquals(3, table.schema().columns().size());
 
         service.shutdown();
     }
@@ -396,8 +525,8 @@ public class IcebergSinkIT {
         if (schemaConfig != null) {
             map.put("schema", schemaConfig);
         }
-        final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
         return mapper.convertValue(map, IcebergSinkConfig.class);
     }
 }

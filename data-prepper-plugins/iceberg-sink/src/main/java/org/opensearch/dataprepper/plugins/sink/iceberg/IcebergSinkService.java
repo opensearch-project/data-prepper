@@ -164,8 +164,18 @@ public class IcebergSinkService {
                     continue;
                 }
 
-                final TaskWriterManager writerManager = threadWriters.computeIfAbsent(
+                TaskWriterManager writerManager = threadWriters.computeIfAbsent(
                         resolvedTable, t -> new TaskWriterManager(ctx.table, config));
+
+                // Recreate writer if schema has changed (e.g. by another thread's evolveSchema)
+                if (writerManager.schemaId() != ctx.table.schema().schemaId()) {
+                    final WriteResult staleResult = writerManager.flush();
+                    if (staleResult.dataFiles().length > 0 || staleResult.deleteFiles().length > 0) {
+                        registerWriteResult(resolvedTable, staleResult);
+                    }
+                    writerManager = new TaskWriterManager(ctx.table, config);
+                    threadWriters.put(resolvedTable, writerManager);
+                }
 
                 final Map<String, Object> data = event.toMap();
 
@@ -427,10 +437,8 @@ public class IcebergSinkService {
             } catch (final Exception e) {
                 LOG.warn("Schema evolution failed (may have been done by another node), refreshing", e);
             }
-            // Refresh table and recreate context
             ctx.table.refresh();
-            ctx.refresh();
-            // Recreate writer with new schema
+            tableContexts.put(tableIdentifier, new TableContext(ctx.table));
             threadWriters.put(tableIdentifier, new TaskWriterManager(ctx.table, config));
         }
     }
@@ -466,16 +474,11 @@ public class IcebergSinkService {
      */
     static class TableContext {
         final Table table;
-        RecordConverter converter;
-        DeltaManifestWriter deltaManifestWriter;
+        final RecordConverter converter;
+        final DeltaManifestWriter deltaManifestWriter;
 
         TableContext(final Table table) {
             this.table = table;
-            this.converter = new RecordConverter(table.schema());
-            this.deltaManifestWriter = new DeltaManifestWriter(table);
-        }
-
-        void refresh() {
             this.converter = new RecordConverter(table.schema());
             this.deltaManifestWriter = new DeltaManifestWriter(table);
         }
