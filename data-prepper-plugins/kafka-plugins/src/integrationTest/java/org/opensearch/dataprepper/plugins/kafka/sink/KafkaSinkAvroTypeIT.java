@@ -61,9 +61,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 
-/**
- * Enabled as a github action workflow
- */
 public class KafkaSinkAvroTypeIT {
     private static final int TEST_ID = 123456;
 

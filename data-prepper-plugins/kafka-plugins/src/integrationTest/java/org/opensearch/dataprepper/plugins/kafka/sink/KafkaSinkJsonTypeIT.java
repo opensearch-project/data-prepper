@@ -47,6 +47,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -145,8 +146,6 @@ public class KafkaSinkJsonTypeIT {
         kafkaSink.doInitialize();
         kafkaSink.doOutput(records);
 
-        Thread.sleep(4000);
-
         consumeAndVerifyMessages(records);
     }
 
@@ -161,9 +160,7 @@ public class KafkaSinkJsonTypeIT {
             }
             created.set(true);
         }
-        while (!created.get()) {
-            Thread.sleep(1000);
-        }
+        await().atMost(Duration.ofSeconds(30)).until(created::get);
     }
 
     private void consumeAndVerifyMessages(List<Record<Event>> expectedRecords) {
@@ -177,15 +174,14 @@ public class KafkaSinkJsonTypeIT {
             kafkaConsumer.subscribe(Collections.singletonList(testTopic));
 
             List<JsonNode> consumed = new ArrayList<>();
-            int maxRetries = 15;
-            while (consumed.size() < expectedRecords.size() && maxRetries-- > 0) {
+            await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
                 ConsumerRecords<String, JsonNode> records = kafkaConsumer.poll(Duration.ofSeconds(2));
                 for (ConsumerRecord<String, JsonNode> record : records) {
                     consumed.add(record.value());
                 }
-            }
+                assertThat(consumed.size(), equalTo(expectedRecords.size()));
+            });
 
-            assertThat(consumed.size(), equalTo(expectedRecords.size()));
             for (int i = 0; i < expectedRecords.size(); i++) {
                 Event expectedEvent = expectedRecords.get(i).getData();
                 JsonNode actual = consumed.get(i);
