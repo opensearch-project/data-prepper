@@ -131,6 +131,7 @@ public class KafkaSourceJsonTypeIT {
         sourceConfig = mock(KafkaSourceConfig.class);
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
+        timer = mock(Timer.class);
         buffer = mock(Buffer.class);
         encryptionConfig = mock(EncryptionConfig.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
