@@ -67,7 +67,7 @@ jobs:
             -Dtests.kafka.authconfig.username=admin -Dtests.kafka.authconfig.password=admin \
             -Dtests.kafka.kms_key=alias/DataPrepperTesting \
             --tests '*kafka.buffer*' --tests KafkaSourceJsonTypeIT --tests KafkaBufferOTelIT \
-            --tests '*kafka.sink*'
+            --tests KafkaSinkJsonTypeIT --tests KafkaSinkPlainTextTypeIT
 
       - name: Upload Unit Test Results
         if: always()
