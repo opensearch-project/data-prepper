@@ -113,7 +113,7 @@ public class BulkOperationFactory {
                 .version(version);
 
         if (scriptManager.isScriptEnabled()) {
-            builder.script(scriptManager.buildScript(jsonNode, document.getResolvedScriptParameters().orElse(null)));
+            builder.script(scriptManager.buildScript(filteredJsonNode, document.getResolvedScriptParameters().orElse(null)));
             if (isUpsert) {
                 builder.upsert(filteredJsonNode);
                 builder.scriptedUpsert(true);
