@@ -69,7 +69,8 @@ public class HttpSink extends AbstractSink<Record<Event>> {
         final SinkMetrics sinkMetrics = new DefaultSinkMetrics(pluginMetrics, "Event");
 
         final AuthenticationDecorator authDecorator = httpSinkConfiguration.getAwsConfig() != null
-                ? new AwsAuthenticationDecorator(awsCredentialsSupplier, httpSinkConfiguration.getAwsConfig())
+                ? new AwsAuthenticationDecorator(awsCredentialsSupplier, httpSinkConfiguration.getAwsConfig(),
+                        httpSinkConfiguration.getAwsSigv4ServiceName())
                 : null;
 
         final HttpSinkSender httpSender = new HttpSinkSender(authDecorator, httpSinkConfiguration, sinkMetrics);

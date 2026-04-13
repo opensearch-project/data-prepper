@@ -22,9 +22,6 @@ import org.opensearch.dataprepper.common.sink.SinkMetrics;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.http.SdkHttpMethod;
 
 import javax.annotation.Nonnull;
 import java.net.URI;
@@ -65,19 +62,17 @@ public class HttpSinkSender {
     public HttpEndpointResponse send(final byte[] payload) {
         HttpEndpointResponse response = null;
         int attempt = 0;
-        
+
         while (attempt <= maxRetries) {
             try {
                 final HttpRequest request = buildHttpRequest(payload);
-                if (request == null) {
-                    return new HttpEndpointResponse(config.getUrl(), 0, "Failed to build request");
-                }
 
                 response = webClient.execute(request)
                         .aggregate()
                         .thenApply(resp -> {
                             int statusCode = resp.status().code();
                             String responseBody = resp.content().toStringUtf8();
+
                             return new HttpEndpointResponse(config.getUrl(), statusCode, responseBody);
                         })
                         .exceptionally(throwable -> {
@@ -101,7 +96,7 @@ public class HttpSinkSender {
                 }
 
                 if (attempt < maxRetries) {
-                    LOG.warn("Retryable error ({}), attempt {}/{}, retrying after {}ms", 
+                    LOG.warn("Retryable error ({}), attempt {}/{}, retrying after {}ms",
                             response.getStatusCode(), attempt + 1, maxRetries, retryIntervalMs);
                     Thread.sleep(retryIntervalMs);
                     sinkMetrics.incrementRetries(1);
@@ -126,41 +121,30 @@ public class HttpSinkSender {
             }
             attempt++;
         }
-        
+
         return response != null ? response : new HttpEndpointResponse(config.getUrl(), 0, "Max retries exceeded");
     }
 
-    private SdkHttpFullRequest createSdkHttpRequest(final String url, @Nonnull final byte[] payload) {
-        final SdkHttpFullRequest.Builder builder = SdkHttpFullRequest.builder()
-                .method(SdkHttpMethod.POST)
-                .uri(URI.create(url))
-                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream());
-
-        if (config.getCustomHeaderOptions() != null) {
-            config.getCustomHeaderOptions().forEach((key, values) -> 
-                values.forEach(value -> builder.appendHeader(key, value))
-            );
+    private HttpRequest buildHttpRequest(final byte[] payload) {
+        if (authenticationDecorator != null) {
+            return authenticationDecorator.buildRequest(config.getUrl(), payload, config.getCustomHeaderOptions());
         }
-        return builder.build();
+        return buildPlainHttpRequest(payload);
     }
 
-    private HttpRequest buildHttpRequest(final byte[] payload) {
-        SdkHttpFullRequest sdkHttpRequest = createSdkHttpRequest(config.getUrl(), payload);
-
-        if (authenticationDecorator != null) {
-            sdkHttpRequest = authenticationDecorator.authenticate(sdkHttpRequest);
-        }
-
+    private HttpRequest buildPlainHttpRequest(final byte[] payload) {
+        final URI uri = URI.create(config.getUrl());
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
                 .method(HttpMethod.POST)
-                .scheme(sdkHttpRequest.getUri().getScheme())
-                .path(sdkHttpRequest.getUri().getRawPath())
-                .authority(sdkHttpRequest.getUri().getAuthority());
+                .scheme(uri.getScheme())
+                .path(uri.getRawPath())
+                .authority(uri.getAuthority());
 
-        sdkHttpRequest.headers().forEach((k, vList) -> {
-                vList.forEach(v -> headersBuilder.add(k, v));
-            }
-        );
+        if (config.getCustomHeaderOptions() != null) {
+            config.getCustomHeaderOptions().forEach((key, values) ->
+                    values.forEach(value -> headersBuilder.add(key, value))
+            );
+        }
 
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(payload));
     }

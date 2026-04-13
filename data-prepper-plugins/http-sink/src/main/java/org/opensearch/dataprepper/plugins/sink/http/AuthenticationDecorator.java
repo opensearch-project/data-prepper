@@ -10,8 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.http;
 
-import software.amazon.awssdk.http.SdkHttpFullRequest;
+import com.linecorp.armeria.common.HttpRequest;
+
+import java.util.List;
+import java.util.Map;
 
 public interface AuthenticationDecorator {
-    SdkHttpFullRequest authenticate(SdkHttpFullRequest request);
+    HttpRequest buildRequest(String url, byte[] payload, Map<String, List<String>> customHeaders);
 }

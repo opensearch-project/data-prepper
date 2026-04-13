@@ -58,6 +58,9 @@ public class HttpSinkConfiguration {
     @JsonProperty("connection_timeout")
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
+    @JsonProperty("aws_sigv4_service_name")
+    private String awsSigv4ServiceName;
+
     @JsonProperty("custom_headers")
     private Map<String, List<String>> customHeaderOptions;
 
@@ -94,6 +97,10 @@ public class HttpSinkConfiguration {
 
     public Duration getRequestTimeout() {
         return requestTimeout;
+    }
+
+    public String getAwsSigv4ServiceName() {
+        return awsSigv4ServiceName;
     }
 
     public Duration getConnectionTimeout() {

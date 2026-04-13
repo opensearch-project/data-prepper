@@ -344,6 +344,14 @@ class HttpSinkIT {
             java.lang.reflect.Field thresholdField = HttpSinkConfiguration.class.getDeclaredField("thresholdOptions");
             thresholdField.setAccessible(true);
             thresholdField.set(config, thresholdOptions);
+
+            java.lang.reflect.Field retryIntervalField = HttpSinkConfiguration.class.getDeclaredField("httpRetryInterval");
+            retryIntervalField.setAccessible(true);
+            retryIntervalField.set(config, Duration.ofSeconds(3));
+
+            java.lang.reflect.Field serviceNameField = HttpSinkConfiguration.class.getDeclaredField("awsSigv4ServiceName");
+            serviceNameField.setAccessible(true);
+            serviceNameField.set(config, "test");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -372,6 +380,16 @@ class HttpSinkIT {
             java.lang.reflect.Field awsField = HttpSinkConfiguration.class.getDeclaredField("awsConfig");
             awsField.setAccessible(true);
             awsField.set(config, awsConfig);
+
+            java.lang.reflect.Field retryIntervalField = HttpSinkConfiguration.class.getDeclaredField("httpRetryInterval");
+            retryIntervalField.setAccessible(true);
+            retryIntervalField.set(config, Duration.ofSeconds(3));
+
+            java.lang.reflect.Field serviceNameField = HttpSinkConfiguration.class.getDeclaredField("awsSigv4ServiceName");
+            serviceNameField.setAccessible(true);
+            serviceNameField.set(config, "test");
+
+
 
         } catch (Exception e) {
             throw new RuntimeException(e);
