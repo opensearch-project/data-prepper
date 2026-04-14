@@ -317,7 +317,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             bulkRequestSupplier,
             pipeline,
             PLUGIN_NAME,
-            openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null);
+            openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
+            isExternalVersionType(openSearchSinkConfig.getIndexConfiguration().getVersionType()));
 
     if (queryExecutorService != null) {
       existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
@@ -671,6 +672,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           maybeServerlessOptions.get().getVpceId()
       );
     }
+  }
+
+  private static boolean isExternalVersionType(final VersionType versionType) {
+    return versionType != null && (versionType == VersionType.External || versionType == VersionType.ExternalGte);
   }
 
   private DlqObject createDlqObjectFromEvent(final Event event,
