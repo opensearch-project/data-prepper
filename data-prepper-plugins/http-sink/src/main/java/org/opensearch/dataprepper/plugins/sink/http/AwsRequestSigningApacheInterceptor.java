@@ -1,19 +1,15 @@
 /*
- * Copyright OpenSearch Contributors. All Rights Reserved.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
- * the License. A copy of the License is located at
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  *
- * http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
- * and limitations under the License.
  */
+
 package org.opensearch.dataprepper.plugins.sink.http;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
@@ -144,8 +140,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         }
         requestBuilder.rawQueryParameters(nvpToMapParams(uriBuilder.getQueryParams()));
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
-
-        AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
 
         ExecutionAttributes attributes = new ExecutionAttributes();
         attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
