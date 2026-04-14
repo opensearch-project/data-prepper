@@ -49,6 +49,7 @@ import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClie
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleRecord;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleWriter;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,8 @@ public class ChangelogWorker implements Runnable {
                            final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer,
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final EventFactory eventFactory,
-                           final ShuffleStorage shuffleStorage) {
+                           final ShuffleStorage shuffleStorage,
+                           final Certificate certificate) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.tables = tables;
@@ -95,7 +97,7 @@ public class ChangelogWorker implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
         this.shuffleStorage = shuffleStorage;
-        this.shuffleNodeClient = new ShuffleNodeClient(sourceConfig.getShuffleConfig());
+        this.shuffleNodeClient = new ShuffleNodeClient(sourceConfig.getShuffleConfig(), certificate);
         this.localNodeAddress = ShuffleNodeClient.resolveLocalAddress();
     }
 

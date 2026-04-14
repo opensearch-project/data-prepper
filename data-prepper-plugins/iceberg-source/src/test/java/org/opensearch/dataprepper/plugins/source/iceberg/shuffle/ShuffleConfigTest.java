@@ -76,18 +76,28 @@ class ShuffleConfigTest {
     }
 
     @Test
-    void authentication_is_deserialized() throws Exception {
+    void authentication_is_ignored() throws Exception {
         final ShuffleConfig config = deserialize(Map.of(
                 "ssl", false,
                 "authentication", Map.of("http_basic", Map.of("username", "admin", "password", "secret"))
         ));
-        assertThat(config.getAuthentication().getPluginName(), equalTo("http_basic"));
+        assertThat(config.getAuthentication(), is(nullValue()));
     }
 
     @Test
-    void authentication_defaults_to_null() throws Exception {
+    void ssl_client_auth_defaults_to_false() throws Exception {
         final ShuffleConfig config = deserialize(Map.of("ssl", false));
-        assertThat(config.getAuthentication(), is(nullValue()));
+        assertThat(config.isSslClientAuth(), is(false));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true", "false"})
+    void ssl_client_auth_is_deserialized(final boolean value) throws Exception {
+        final ShuffleConfig config = deserialize(Map.of(
+                "ssl", false,
+                "ssl_client_auth", value
+        ));
+        assertThat(config.isSslClientAuth(), is(value));
     }
 
     @Test

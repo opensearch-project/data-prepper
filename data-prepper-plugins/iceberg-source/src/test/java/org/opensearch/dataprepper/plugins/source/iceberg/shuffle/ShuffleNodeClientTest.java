@@ -57,7 +57,7 @@ class ShuffleNodeClientTest {
 
         final ShuffleConfig config = createConfig(port);
 
-        client = new ShuffleNodeClient(config);
+        client = new ShuffleNodeClient(config, null);
     }
 
     private static ShuffleConfig createConfig(final int port) throws Exception {

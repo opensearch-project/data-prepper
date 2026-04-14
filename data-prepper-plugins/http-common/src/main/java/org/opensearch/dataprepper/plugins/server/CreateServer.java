@@ -20,6 +20,7 @@ import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.netty.handler.ssl.ClientAuth;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
@@ -312,6 +313,27 @@ public class CreateServer {
             final ArmeriaHttpAuthenticationProvider authenticationProvider,
             final Object annotatedService,
             final String path) {
+        return createHTTPServer(certificateProvider, authenticationProvider, annotatedService, path, false);
+    }
+
+    /**
+     * Creates a lightweight HTTP server with TLS support, optional authentication, and optional mutual TLS.
+     * Intended for internal node-to-node communication (e.g. shuffle data transfer)
+     * where throttling, health checks, and buffer integration are not needed.
+     *
+     * @param certificateProvider TLS certificate provider, or null if SSL is disabled
+     * @param authenticationProvider authentication decorator, or null to skip authentication
+     * @param annotatedService Armeria annotated service to register
+     * @param path base path for the annotated service
+     * @param mutualTls if true, require client certificate authentication (mTLS)
+     * @return configured Armeria Server
+     */
+    public Server createHTTPServer(
+            final CertificateProvider certificateProvider,
+            final ArmeriaHttpAuthenticationProvider authenticationProvider,
+            final Object annotatedService,
+            final String path,
+            final boolean mutualTls) {
         final ServerBuilder sb = Server.builder();
         sb.disableServerHeader();
 
@@ -321,6 +343,14 @@ public class CreateServer {
             sb.https(serverConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
+
+            if (mutualTls) {
+                LOG.info("Mutual TLS is enabled for {}.", sourceName);
+                sb.tlsCustomizer(sslContextBuilder -> sslContextBuilder
+                        .trustManager(new ByteArrayInputStream(
+                                certificate.getCertificate().getBytes(StandardCharsets.UTF_8)))
+                        .clientAuth(ClientAuth.REQUIRE));
+            }
         } else {
             LOG.warn("Creating {} without SSL/TLS. This is not secure.", sourceName);
             sb.http(serverConfiguration.getPort());

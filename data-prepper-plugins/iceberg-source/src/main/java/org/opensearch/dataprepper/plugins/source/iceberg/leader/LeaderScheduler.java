@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClient;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShufflePartitionCoalescer;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,7 @@ public class LeaderScheduler implements Runnable {
     private final Map<String, Table> tables;
     private final ShuffleStorage shuffleStorage;
     private final ShuffleConfig shuffleConfig;
+    private final Certificate certificate;
     private final TaskGrouper taskGrouper = new TaskGrouper();
     private LeaderPartition leaderPartition;
 
@@ -71,13 +73,15 @@ public class LeaderScheduler implements Runnable {
                            final Duration pollingInterval,
                            final Map<String, Table> tables,
                            final ShuffleStorage shuffleStorage,
-                           final ShuffleConfig shuffleConfig) {
+                           final ShuffleConfig shuffleConfig,
+                           final Certificate certificate) {
         this.sourceCoordinator = sourceCoordinator;
         this.tableConfigs = tableConfigs;
         this.pollingInterval = pollingInterval;
         this.tables = tables;
         this.shuffleStorage = shuffleStorage;
         this.shuffleConfig = shuffleConfig;
+        this.certificate = certificate;
     }
 
     @Override
@@ -413,7 +417,7 @@ public class LeaderScheduler implements Runnable {
         LOG.info("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
 
         final int numPartitions = shuffleConfig.getPartitions();
-        final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig);
+        final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig, certificate);
         final long[] partitionSizes = client.collectPartitionSizes(
                 shuffleStorage, snapshotIdStr, completedTaskIds, completedNodeAddresses, numPartitions);
 
@@ -510,7 +514,7 @@ public class LeaderScheduler implements Runnable {
         final Optional<EnhancedSourcePartition> locationPartition = sourceCoordinator.getPartition(locationKey);
         locationPartition.ifPresent(p -> {
             final Map<String, Object> locations = ((GlobalState) p).getProgressState().orElse(Map.of());
-            final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig);
+            final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig, certificate);
             locations.values().stream()
                     .map(String::valueOf)
                     .distinct()

@@ -14,15 +14,11 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
@@ -37,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +49,6 @@ public class IcebergService {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final EventFactory eventFactory;
-    private final PluginFactory pluginFactory;
     private final ShuffleStorage shuffleStorage;
     private ShuffleHttpServer shuffleHttpServer;
     private ExecutorService executor;
@@ -63,14 +57,12 @@ public class IcebergService {
                           final IcebergSourceConfig sourceConfig,
                           final PluginMetrics pluginMetrics,
                           final AcknowledgementSetManager acknowledgementSetManager,
-                          final EventFactory eventFactory,
-                          final PluginFactory pluginFactory) {
+                          final EventFactory eventFactory) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
-        this.pluginFactory = pluginFactory;
         final Path shuffleBaseDir = resolveShuffleBaseDir(sourceConfig.getShuffleConfig());
         this.shuffleStorage = new LocalDiskShuffleStorage(shuffleBaseDir);
         this.shuffleStorage.cleanupAll();
@@ -81,8 +73,7 @@ public class IcebergService {
 
         // Start shuffle HTTP server
         final ShuffleHttpService shuffleHttpService = new ShuffleHttpService(shuffleStorage);
-        final ArmeriaHttpAuthenticationProvider authenticationProvider = loadAuthenticationProvider();
-        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService, authenticationProvider);
+        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService);
         shuffleHttpServer.start();
 
         // Load all tables upfront. Single point of Table lifecycle management.
@@ -125,10 +116,12 @@ public class IcebergService {
         // Start schedulers with shared table references
         final List<Runnable> runnableList = new ArrayList<>();
 
+        final var certificate = shuffleHttpServer.getCertificate();
+
         runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs,
-                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig()));
+                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig(), certificate));
         runnableList.add(new ChangelogWorker(
-                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage));
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate));
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
@@ -147,21 +140,6 @@ public class IcebergService {
             }
         }
         return baseDir.resolve(String.valueOf(shuffleConfig.getServerPort()));
-    }
-
-    private ArmeriaHttpAuthenticationProvider loadAuthenticationProvider() {
-        final PluginModel authConfig = sourceConfig.getShuffleConfig().getAuthentication();
-        final PluginSetting pluginSetting;
-        if (authConfig != null) {
-            pluginSetting = new PluginSetting(authConfig.getPluginName(), authConfig.getPluginSettings());
-        } else {
-            LOG.warn("Creating shuffle HTTP server without authentication. This is not secure.");
-            LOG.warn("To set up authentication for the shuffle server, configure the 'authentication' option under 'shuffle' in the iceberg source configuration.");
-            pluginSetting = new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME,
-                    Collections.emptyMap());
-        }
-        pluginSetting.setPipelineName("iceberg-source");
-        return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, pluginSetting);
     }
 
     public void shutdown() {

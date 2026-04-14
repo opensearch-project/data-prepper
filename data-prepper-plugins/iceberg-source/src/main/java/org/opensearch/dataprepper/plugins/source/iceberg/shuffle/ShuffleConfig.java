@@ -17,7 +17,9 @@ import jakarta.validation.constraints.Min;
 import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
-@JsonIgnoreProperties({"path", "compression", "health_check_service",
+// Node-to-node authentication uses mutual TLS (ssl_client_auth) instead of
+// plugin-based authentication, so the inherited "authentication" field is not used.
+@JsonIgnoreProperties({"path", "compression", "authentication", "health_check_service",
         "unauthenticated_health_check", "request_timeout", "thread_count",
         "max_connection_count", "max_pending_requests", "max_request_length"})
 public class ShuffleConfig extends BaseHttpServerConfig {
@@ -39,6 +41,9 @@ public class ShuffleConfig extends BaseHttpServerConfig {
 
     @JsonProperty("ssl")
     private boolean ssl = true;
+
+    @JsonProperty("ssl_client_auth")
+    private boolean sslClientAuth = false;
 
     @JsonProperty("ssl_insecure_disable_verification")
     private boolean sslInsecureDisableVerification = false;
@@ -91,4 +96,6 @@ public class ShuffleConfig extends BaseHttpServerConfig {
     public int getServerPort() { return getPort(); }
 
     public boolean isSslInsecureDisableVerification() { return sslInsecureDisableVerification; }
+
+    public boolean isSslClientAuth() { return sslClientAuth; }
 }

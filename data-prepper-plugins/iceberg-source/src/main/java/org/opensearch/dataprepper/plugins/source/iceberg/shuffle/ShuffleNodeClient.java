@@ -11,17 +11,21 @@
 package org.opensearch.dataprepper.plugins.source.iceberg.shuffle;
 
 import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.ClientFactoryBuilder;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.RequestHeaders;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +45,10 @@ public class ShuffleNodeClient {
     private final ClientFactory clientFactory;
     private final Map<String, WebClient> clientCache = new ConcurrentHashMap<>();
 
-    public ShuffleNodeClient(final ShuffleConfig config) {
+    public ShuffleNodeClient(final ShuffleConfig config, final Certificate certificate) {
         this.scheme = config.isSsl() ? "https" : "http";
         this.port = config.getServerPort();
-        this.clientFactory = buildClientFactory(config);
+        this.clientFactory = buildClientFactory(config, certificate);
     }
 
     public long[] pullIndex(final String nodeAddress, final String snapshotId, final String taskId) throws Exception {
@@ -165,12 +169,26 @@ public class ShuffleNodeClient {
         throw new RuntimeException("Failed to pull " + description + " after " + MAX_RETRIES + " retries");
     }
 
-    private static ClientFactory buildClientFactory(final ShuffleConfig config) {
-        if (config.isSsl() && config.isSslInsecureDisableVerification()) {
-            return ClientFactory.builder()
-                    .tlsNoVerify()
-                    .build();
+    private static ClientFactory buildClientFactory(final ShuffleConfig config, final Certificate certificate) {
+        if (!config.isSsl()) {
+            return ClientFactory.ofDefault();
         }
-        return ClientFactory.ofDefault();
+
+        final ClientFactoryBuilder builder = ClientFactory.builder();
+
+        if (config.isSslInsecureDisableVerification()) {
+            builder.tlsNoVerify();
+        } else if (certificate != null) {
+            builder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))));
+        }
+
+        if (config.isSslClientAuth() && certificate != null) {
+            builder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.keyManager(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8))));
+        }
+
+        return builder.build();
     }
 }
