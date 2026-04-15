@@ -18,7 +18,11 @@ import org.opensearch.dataprepper.test.plugins.DataPrepperPluginTest;
 import org.opensearch.dataprepper.test.plugins.PluginConfigurationFile;
 import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStandardTestSuite;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
