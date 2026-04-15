@@ -143,7 +143,8 @@ public class DataFileLoader implements Runnable {
                             primaryKeys,
                             snapshotTime,
                             eventVersionNumber,
-                            null);
+                            null,
+                            new java.util.ArrayList<>(event.toMap().keySet()));
 
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(transformedEvent);

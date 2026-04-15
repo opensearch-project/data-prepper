@@ -84,19 +84,23 @@
   sink:
     - opensearch:
         hosts: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.hosts>>"
-        aws: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.aws>>"
         username: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.username>>"
         password: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.password>>"
+        insecure: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.insecure>>"
         index: "<<$.<<pipeline-name>>.sink[?(@.opensearch)].opensearch.index>>"
         action: "upsert"
         document_id: "${getMetadata(\"_primary_key\")}"
         script:
-          source: "String[] fields = params.fields.splitOnToken(','); if (params.is_parent == 'true') { if (params.is_delete == 'true') { ctx.op = 'delete' } else { for (String f : fields) { if (params.doc.containsKey(f)) { ctx._source[f] = params.doc[f] } } } } else { String arr = params.child_table_name; String pkName = params.child_pk_name; String pkVal = params.child_pk_value; if (!ctx._source.containsKey(arr)) { ctx._source[arr] = [] } ctx._source[arr].removeIf(e -> e[pkName].toString() == pkVal); if (params.is_delete != 'true') { def entry = [:]; for (String f : fields) { if (params.doc.containsKey(f)) { entry[f] = params.doc[f] } } entry[pkName] = params.doc[pkName]; ctx._source[arr].add(entry) } }"
+          source: "String table = params.table; String vf = params.version_field; long incomingVersion = Long.parseLong(params.version); String[] fields = params.fields.splitOnToken(','); if (!ctx._source.containsKey(vf)) { ctx._source[vf] = [:] } if (params.is_parent == 'true' || params.join_type == 'one_to_one') { long storedVersion = ctx._source[vf].containsKey(table) ? ctx._source[vf][table] : -1L; if (incomingVersion <= storedVersion) { ctx.op = 'none'; return } ctx._source[vf][table] = incomingVersion; if (params.is_delete == 'true') { for (String f : fields) { ctx._source.remove(f) } ctx._source[vf].remove(table); if (ctx._source[vf].isEmpty()) { ctx.op = 'delete' } } else { for (String f : fields) { if (params.doc.containsKey(f)) { ctx._source[f] = params.doc[f] } } } } else { String arr = params.child_table_name; String pkName = params.child_pk_name; String pkVal = params.child_pk_value; String rowKey = table + ':' + pkVal; long storedVersion = ctx._source[vf].containsKey(rowKey) ? ctx._source[vf][rowKey] : -1L; if (incomingVersion <= storedVersion) { ctx.op = 'none'; return } if (!ctx._source.containsKey(arr)) { ctx._source[arr] = [] } ctx._source[arr].removeIf(e -> e[pkName].toString() == pkVal); if (params.is_delete != 'true') { def entry = [:]; for (String f : fields) { if (params.doc.containsKey(f)) { entry[f] = params.doc[f] } } entry[pkName] = params.doc[pkName]; ctx._source[arr].add(entry); ctx._source[vf][rowKey] = incomingVersion; int max = Integer.parseInt(params.max_child_records); if (ctx._source[arr].size() > max) { def removed = ctx._source[arr].remove(0); ctx._source[vf].remove(table + ':' + removed[pkName].toString()) } } else { ctx._source[vf].remove(rowKey); ctx._source[arr].removeIf(e -> e[pkName].toString() == pkVal); if (ctx._source[vf].isEmpty()) { ctx.op = 'delete' } } }"
           params:
             table: "${getMetadata(\"_table\")}"
+            version: "${getMetadata(\"document_version\")}"
+            version_field: "<<$.<<pipeline-name>>.source.rds.joins.version_field>>"
             fields: "${getMetadata(\"_fields\")}"
             is_delete: "${getMetadata(\"_is_delete\")}"
             is_parent: "${getMetadata(\"_is_parent\")}"
+            join_type: "${getMetadata(\"_join_type\")}"
+            max_child_records: "${getMetadata(\"_max_child_records\")}"
             child_table_name: "${getMetadata(\"_child_table_name\")}"
             child_pk_name: "${getMetadata(\"_child_pk_name\")}"
             child_pk_value: "${getMetadata(\"_child_pk_value\")}"

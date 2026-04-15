@@ -23,4 +23,7 @@ public class JoinConfig {
     @Valid
     @JsonProperty("relations")
     private List<JoinRelation> relations = Collections.emptyList();
+
+    @JsonProperty("version_field")
+    private String versionField = "__versions";
 }

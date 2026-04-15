@@ -117,6 +117,7 @@ public class BulkOperationFactory {
             if (isUpsert) {
                 builder.upsert(filteredJsonNode);
                 builder.scriptedUpsert(true);
+                builder.retryOnConflict(3);
             }
         } else if (isUpsert) {
             builder.document(filteredJsonNode).upsert(filteredJsonNode);

@@ -417,7 +417,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     bulkAction,
                     primaryKeys,
                     eventTimestampMillis,
-                    eventTimestampMillis,
+                    recordConverter.getVersionNumber(eventTimestampMillis),
                     streamEventType,
                     tableMetadata.getColumnNames());
             pipelineEvents.add(pipelineEvent);

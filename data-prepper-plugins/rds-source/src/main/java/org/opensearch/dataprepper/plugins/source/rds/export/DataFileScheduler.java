@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -85,6 +86,10 @@ public class DataFileScheduler implements Runnable {
         codec = new ParquetInputCodec(eventFactory);
         objectReader = new S3ObjectReader(s3Client);
         recordConverter = new ExportRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        if (sourceConfig.getJoinConfig() != null && sourceConfig.getJoinConfig().getRelations() != null) {
+            recordConverter.setJoinMetadataEnricher(
+                    new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
+        }
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;

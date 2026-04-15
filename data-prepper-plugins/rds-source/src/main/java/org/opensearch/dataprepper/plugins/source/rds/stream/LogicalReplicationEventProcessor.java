@@ -432,7 +432,7 @@ public class LogicalReplicationEventProcessor {
                 bulkAction,
                 primaryKeys,
                 eventTimestampMillis,
-                eventTimestampMillis,
+                recordConverter.getVersionNumber(eventTimestampMillis),
                 streamEventType,
                 tableMetadata.getColumnNames());
         pipelineEvents.add(pipelineEvent);

@@ -47,6 +47,8 @@ public class JoinMetadataEnricher {
     static final String JOIN_CHILD_TABLE_NAME_METADATA = "_child_table_name";
     static final String JOIN_CHILD_PK_NAME_METADATA = "_child_pk_name";
     static final String JOIN_CHILD_PK_VALUE_METADATA = "_child_pk_value";
+    static final String JOIN_TYPE_METADATA = "_join_type";
+    static final String JOIN_MAX_CHILD_RECORDS_METADATA = "_max_child_records";
 
     private final Map<String, JoinRelation> parentTableRelations;
     private final Map<String, JoinRelation> childTableRelations;
@@ -93,9 +95,13 @@ public class JoinMetadataEnricher {
         // Child array metadata
         metadata.setAttribute(JOIN_CHILD_TABLE_NAME_METADATA, relation.getChildTable());
         metadata.setAttribute(JOIN_CHILD_PK_NAME_METADATA, relation.getChildPrimaryKey());
+        metadata.setAttribute(JOIN_TYPE_METADATA, relation.getJoinType());
+        metadata.setAttribute(JOIN_MAX_CHILD_RECORDS_METADATA, String.valueOf(relation.getMaxChildRecords()));
         if (!isParent) {
             metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA,
                     event.get(relation.getChildPrimaryKey(), String.class));
+        } else {
+            metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA, "");
         }
     }
 
