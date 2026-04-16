@@ -10,9 +10,13 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.configuration;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
+
+import java.util.List;
 
 @Getter
 public class JoinRelation {
@@ -25,17 +29,20 @@ public class JoinRelation {
     @JsonProperty("child")
     private String childTable;
 
-    @NotBlank
+    @NotEmpty
     @JsonProperty("parent_key")
-    private String parentKey;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<String> parentKey;
 
-    @NotBlank
+    @NotEmpty
     @JsonProperty("child_key")
-    private String childKey;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<String> childKey;
 
-    @NotBlank
+    @NotEmpty
     @JsonProperty("child_primary_key")
-    private String childPrimaryKey;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<String> childPrimaryKey;
 
     @JsonProperty("join_type")
     private String joinType = "one_to_many";

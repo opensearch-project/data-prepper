@@ -310,6 +310,19 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
         final List<OpenSearchBulkActions> bulkActions = new ArrayList<>();
         final List<Serializable[]> rows = new ArrayList<>();
+
+        // Determine if this is a join child table with a FK column to track
+        final JoinMetadataEnricher joinEnricher = recordConverter.getJoinMetadataEnricher();
+        final List<String> childKeyColumns = joinEnricher != null ? joinEnricher.getChildKeyColumns(tableMetadata.getTableName()) : null;
+        final int[] childKeyIndices;
+        if (childKeyColumns != null) {
+            childKeyIndices = childKeyColumns.stream()
+                    .mapToInt(col -> tableMetadata.getColumnNames().indexOf(col))
+                    .toArray();
+        } else {
+            childKeyIndices = null;
+        }
+
         for (int rowNum = 0; rowNum < data.getRows().size(); rowNum++) {
             // `row` contains data before update as key and data after update as value
             Map.Entry<Serializable[], Serializable[]> row = data.getRows().get(rowNum);
@@ -324,6 +337,23 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     break;
                 }
             }
+
+            // Detect FK (join key) change — emit DELETE from old parent doc
+            if (childKeyIndices != null) {
+                boolean fkChanged = false;
+                for (int idx : childKeyIndices) {
+                    if (idx >= 0 && !row.getKey()[idx].equals(row.getValue()[idx])) {
+                        fkChanged = true;
+                        break;
+                    }
+                }
+                if (fkChanged) {
+                    LOG.debug("Join key changed, emitting delete for old parent");
+                    rows.add(row.getKey());
+                    bulkActions.add(OpenSearchBulkActions.DELETE);
+                }
+            }
+
             // add index event for the new row data
             rows.add(row.getValue());
             bulkActions.add(OpenSearchBulkActions.INDEX);

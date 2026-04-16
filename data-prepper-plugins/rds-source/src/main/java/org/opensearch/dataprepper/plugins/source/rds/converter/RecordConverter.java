@@ -49,6 +49,10 @@ public abstract class RecordConverter {
         this.joinMetadataEnricher = joinMetadataEnricher;
     }
 
+    public JoinMetadataEnricher getJoinMetadataEnricher() {
+        return joinMetadataEnricher;
+    }
+
     public Event convert(final Event event,
                          final String databaseName,
                          final String schemaName,

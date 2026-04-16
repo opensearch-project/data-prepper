@@ -21,22 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Enriches CDC events with join metadata so the OpenSearch sink can
- * denormalize related tables into a single document using scripted upsert.
- *
- * <p>Metadata attributes set on each event:</p>
- * <ul>
- *   <li>{@code _table} - source table name</li>
- *   <li>{@code _fields} - comma-separated column names (excluding join keys)</li>
- *   <li>{@code _is_delete} - "true" if this is a delete event</li>
- *   <li>{@code _is_parent} - "true" if the event is from the parent table</li>
- *   <li>{@code _primary_key} - document ID (parent key value)</li>
- *   <li>{@code _child_table_name} - array field name for child data in the document</li>
- *   <li>{@code _child_pk_name} - child primary key field name (for array lookup)</li>
- *   <li>{@code _child_pk_value} - child primary key value (for array lookup)</li>
- * </ul>
- */
 public class JoinMetadataEnricher {
 
     static final String JOIN_TABLE_METADATA = "_table";
@@ -68,6 +52,15 @@ public class JoinMetadataEnricher {
         return parentTableRelations.containsKey(tableName) || childTableRelations.containsKey(tableName);
     }
 
+    /**
+     * Returns the child key columns for a child table, or null if not a child table.
+     * Used to detect FK changes in UPDATE events.
+     */
+    public List<String> getChildKeyColumns(final String tableName) {
+        final JoinRelation relation = childTableRelations.get(tableName);
+        return relation != null ? relation.getChildKey() : null;
+    }
+
     public void enrich(final Event event, final String tableName, final List<String> columnNames, final boolean isDelete) {
         final JoinRelation relation = getRelation(tableName);
         if (relation == null) {
@@ -88,18 +81,25 @@ public class JoinMetadataEnricher {
         metadata.setAttribute(JOIN_IS_DELETE_METADATA, String.valueOf(isDelete));
         metadata.setAttribute(JOIN_IS_PARENT_METADATA, String.valueOf(isParent));
 
-        // Document ID is always the parent key value
-        final String parentKeyField = isParent ? relation.getParentKey() : relation.getChildKey();
-        metadata.setAttribute(JOIN_PRIMARY_KEY_METADATA, event.get(parentKeyField, String.class));
+        // Document ID: composite key values joined with |
+        final List<String> parentKeyFields = isParent ? relation.getParentKey() : relation.getChildKey();
+        final String primaryKeyValue = parentKeyFields.stream()
+                .map(k -> event.get(k, String.class))
+                .collect(Collectors.joining("|"));
+        metadata.setAttribute(JOIN_PRIMARY_KEY_METADATA, primaryKeyValue);
 
         // Child array metadata
         metadata.setAttribute(JOIN_CHILD_TABLE_NAME_METADATA, relation.getChildTable());
-        metadata.setAttribute(JOIN_CHILD_PK_NAME_METADATA, relation.getChildPrimaryKey());
+        // Child PK name/value: composite joined with |
+        final String childPkName = String.join("|", relation.getChildPrimaryKey());
+        metadata.setAttribute(JOIN_CHILD_PK_NAME_METADATA, childPkName);
         metadata.setAttribute(JOIN_TYPE_METADATA, relation.getJoinType());
         metadata.setAttribute(JOIN_MAX_CHILD_RECORDS_METADATA, String.valueOf(relation.getMaxChildRecords()));
         if (!isParent) {
-            metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA,
-                    event.get(relation.getChildPrimaryKey(), String.class));
+            final String childPkValue = relation.getChildPrimaryKey().stream()
+                    .map(k -> event.get(k, String.class))
+                    .collect(Collectors.joining("|"));
+            metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA, childPkValue);
         } else {
             metadata.setAttribute(JOIN_CHILD_PK_VALUE_METADATA, "");
         }
@@ -112,10 +112,10 @@ public class JoinMetadataEnricher {
 
     private Set<String> getExcludeKeys(final JoinRelation relation, final boolean isParent) {
         final Set<String> keys = new HashSet<>();
-        keys.add(relation.getParentKey());
-        keys.add(relation.getChildKey());
+        keys.addAll(relation.getParentKey());
+        keys.addAll(relation.getChildKey());
         if (!isParent) {
-            keys.add(relation.getChildPrimaryKey());
+            keys.addAll(relation.getChildPrimaryKey());
         }
         return keys;
     }
