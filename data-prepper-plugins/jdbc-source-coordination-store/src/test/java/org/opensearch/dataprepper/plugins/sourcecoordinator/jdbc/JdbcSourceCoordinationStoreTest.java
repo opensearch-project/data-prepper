@@ -39,8 +39,10 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -441,6 +443,8 @@ class JdbcSourceCoordinationStoreTest {
         when(preparedStatement.executeUpdate()).thenThrow(new SQLException("error"));
 
         store.deleteExpiredItems();
+
+        verify(preparedStatement).executeUpdate();
     }
 
     @Test
@@ -462,6 +466,8 @@ class JdbcSourceCoordinationStoreTest {
         store.close();
 
         verify(mockDataSource).close();
+        // ttlExecutor is created internally when TTL is configured.
+        // We verify indirectly that close() does not throw when ttlExecutor is non-null.
     }
 
     @Test
@@ -478,7 +484,7 @@ class JdbcSourceCoordinationStoreTest {
         createInitializedStore();
 
         // createTable calls prepareStatement for CREATE TABLE and CREATE INDEX
-        verify(connection, org.mockito.Mockito.atLeast(2)).prepareStatement(anyString());
+        verify(connection, atLeast(2)).prepareStatement(anyString());
     }
 
     @Test
@@ -496,14 +502,18 @@ class JdbcSourceCoordinationStoreTest {
                 .thenReturn(createIndexStmt);
 
         createInitializedStore();
+
+        assertThat(store, is(notNullValue()));
     }
 
     @Test
-    void initializeStore_with_connection_properties() throws Exception {
+    void initializeStore_with_connection_properties() {
         settings = new JdbcStoreSettings(
                 "jdbc:postgresql://localhost/test", "user", "pass",
                 null, true, null, null, Map.of("ssl", "true"));
         createInitializedStore();
+
+        assertThat(store, is(notNullValue()));
     }
 
     @Test
@@ -556,6 +566,143 @@ class JdbcSourceCoordinationStoreTest {
                 "source-1", "node-1", Duration.ofMinutes(10));
 
         assertThat(result.isPresent(), is(true));
+    }
+
+    @Test
+    void createTable_throws_on_non_index_sql_exception() throws Exception {
+        settings = new JdbcStoreSettings(
+                "jdbc:postgresql://localhost/test", "user", "pass",
+                null, false, null, null, null);
+
+        final PreparedStatement createTableStmt = mock(PreparedStatement.class);
+        final PreparedStatement createIndexStmt = mock(PreparedStatement.class);
+        when(createIndexStmt.execute()).thenThrow(new SQLException("unexpected error", "42000"));
+
+        when(connection.prepareStatement(anyString()))
+                .thenReturn(createTableStmt)
+                .thenReturn(createIndexStmt);
+
+        assertThrows(RuntimeException.class, () -> createInitializedStore());
+    }
+
+    @Test
+    void createTable_throws_on_create_table_failure() throws Exception {
+        settings = new JdbcStoreSettings(
+                "jdbc:postgresql://localhost/test", "user", "pass",
+                null, false, null, null, null);
+
+        when(preparedStatement.execute()).thenThrow(new SQLException("connection lost"));
+
+        assertThrows(RuntimeException.class, () -> createInitializedStore());
+    }
+
+    @Test
+    void createTable_handles_mysql_duplicate_index() throws Exception {
+        settings = new JdbcStoreSettings(
+                "jdbc:postgresql://localhost/test", "user", "pass",
+                null, false, null, null, null);
+
+        final PreparedStatement createTableStmt = mock(PreparedStatement.class);
+        final PreparedStatement createIndexStmt = mock(PreparedStatement.class);
+        final SQLException mysqlDuplicate = new SQLException("Duplicate key name", "HY000", 1061);
+        when(createIndexStmt.execute()).thenThrow(mysqlDuplicate);
+
+        when(connection.prepareStatement(anyString()))
+                .thenReturn(createTableStmt)
+                .thenReturn(createIndexStmt);
+
+        createInitializedStore();
+    }
+
+    @Test
+    void tryCreatePartitionItem_returns_false_on_non_constraint_sql_exception() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenThrow(new SQLException("connection lost", "08001"));
+
+        final boolean result = store.tryCreatePartitionItem(
+                "source-1", "partition-1", SourcePartitionStatus.UNASSIGNED, 0L, null, false);
+
+        assertThat(result, is(false));
+    }
+
+    @Test
+    void tryAcquireAvailablePartition_returns_assigned_expired() throws Exception {
+        createInitializedStore();
+
+        final ResultSet assignedRs = mock(ResultSet.class);
+        when(assignedRs.next()).thenReturn(true, false);
+        mockResultSetOnRs(assignedRs);
+        lenient().when(assignedRs.getString("source_partition_status")).thenReturn("ASSIGNED");
+
+        final PreparedStatement queryStmt = mock(PreparedStatement.class);
+        when(queryStmt.executeQuery()).thenReturn(assignedRs);
+
+        final PreparedStatement updateStmt = mock(PreparedStatement.class);
+        when(updateStmt.executeUpdate()).thenReturn(1);
+
+        when(connection.prepareStatement(anyString()))
+                .thenReturn(queryStmt)
+                .thenReturn(updateStmt);
+
+        final Optional<SourcePartitionStoreItem> result = store.tryAcquireAvailablePartition(
+                "source-1", "node-1", Duration.ofMinutes(10));
+
+        assertThat(result.isPresent(), is(true));
+        assertThat(result.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_sets_null_priority_for_closed_with_null_reopen() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        final JdbcPartitionItem item = createTestItem("source-1", "partition-1", SourcePartitionStatus.CLOSED, 0);
+        item.setReOpenAt(null);
+
+        store.tryUpdateSourcePartitionItem(item);
+
+        assertThat(item.getPartitionPriority(), is(nullValue()));
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_priority_override_ignored_for_non_unassigned() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        final JdbcPartitionItem item = createTestItem("source-1", "partition-1", SourcePartitionStatus.ASSIGNED, 0);
+        item.setPartitionOwnershipTimeout(Instant.now().plusSeconds(600));
+
+        store.tryUpdateSourcePartitionItem(item, Instant.now());
+
+        assertThat(item.getPartitionPriority(), equalTo(item.getPartitionOwnershipTimeout().toString()));
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_handles_null_closed_count() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        final JdbcPartitionItem item = createTestItem("source-1", "partition-1", SourcePartitionStatus.UNASSIGNED, 0);
+        item.setClosedCount(null);
+
+        store.tryUpdateSourcePartitionItem(item);
+
+        assertThat(item.getVersion(), equalTo(1L));
+    }
+
+    @Test
+    void deleteExpiredItems_no_items_deleted() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(0);
+
+        store.deleteExpiredItems();
+
+        verify(preparedStatement).executeUpdate();
     }
 
     private JdbcPartitionItem createTestItem(final String sourceId, final String partitionKey,
