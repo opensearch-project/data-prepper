@@ -25,6 +25,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -77,7 +78,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
         }
         hikariConfig.setDataSourceProperties(props);
 
-        this.dataSource = new HikariDataSource(hikariConfig);
+        this.dataSource = createDataSource(hikariConfig);
 
         if (!settings.skipTableCreation()) {
             createTable();
@@ -92,6 +93,10 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
             ttlExecutor.scheduleAtFixedRate(this::deleteExpiredItems,
                     60, TTL_CLEANUP_INTERVAL.toSeconds(), TimeUnit.SECONDS);
         }
+    }
+
+    HikariDataSource createDataSource(final HikariConfig hikariConfig) {
+        return new HikariDataSource(hikariConfig);
     }
 
     private void createTable() {
@@ -216,7 +221,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
                 stmt.setObject(7, LocalDateTime.ofInstant(
                         Instant.now().plus(settings.getTtl()), ZoneOffset.UTC));
             } else {
-                stmt.setNull(7, java.sql.Types.TIMESTAMP);
+                stmt.setNull(7, Types.TIMESTAMP);
             }
             stmt.executeUpdate();
             return true;
@@ -442,7 +447,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
         if (instant != null) {
             stmt.setObject(index, LocalDateTime.ofInstant(instant, ZoneOffset.UTC));
         } else {
-            stmt.setNull(index, java.sql.Types.TIMESTAMP);
+            stmt.setNull(index, Types.TIMESTAMP);
         }
     }
 
