@@ -10,8 +10,8 @@ test-pipeline:
     unused:
   processor:
     - filter_list:
-        source: "scores"
-        keep_when: '/value > 50'
+        iterate_on: "scores"
+        keep_element_when: '/value > 50'
         filter_list_when: '/type == "grades"'
   sink:
     - unused:

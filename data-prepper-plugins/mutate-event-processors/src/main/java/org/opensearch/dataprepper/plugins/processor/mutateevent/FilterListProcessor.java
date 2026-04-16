@@ -30,6 +30,7 @@ import java.util.Objects;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 @DataPrepperPlugin(name = "filter_list", pluginType = Processor.class, pluginConfigurationType = FilterListProcessorConfig.class)
 public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -61,16 +62,22 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
 
                 final List<Object> sourceList;
                 try {
-                    sourceList = recordEvent.get(config.getSource(), List.class);
+                    sourceList = recordEvent.get(config.getIterateOn(), List.class);
                 } catch (final Exception e) {
-                    LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
-                            config.getSource(), recordEvent, e);
+                    LOG.atWarn()
+                            .addMarker(EVENT)
+                            .addMarker(SENSITIVE)
+                            .setMessage("Given source path [{}] is not valid on record [{}]")
+                            .addArgument(config.getIterateOn())
+                            .addArgument(recordEvent)
+                            .setCause(e)
+                            .log();
                     addTagsOnFailure(recordEvent);
                     continue;
                 }
 
                 if (sourceList == null) {
-                    LOG.debug("Source list at path [{}] is null, skipping event", config.getSource());
+                    LOG.debug("Source list at path [{}] is null, skipping event", config.getIterateOn());
                     continue;
                 }
 
@@ -85,21 +92,27 @@ public class FilterListProcessor extends AbstractProcessor<Record<Event>, Record
                             : Collections.singletonMap("value", element);
 
                     try {
-                        // TODO: Revisit this per-element Event construction when ExpressionEvaluator/JsonPointer
+                        // TODO(#6609): Revisit this per-element Event construction when ExpressionEvaluator/JsonPointer
                         // internals support a lighter evaluation path that avoids full tree conversion.
                         final Event elementEvent = JacksonEvent.builder()
                                 .withEventType("event")
                                 .withData(contextMap)
                                 .build();
 
-                        if (expressionEvaluator.evaluateConditional(config.getKeepWhen(), elementEvent)) {
+                        if (expressionEvaluator.evaluateConditional(config.getKeepElementWhen(), elementEvent)) {
                             filteredList.add(element);
                         }
                     } catch (final Exception e) {
                         failedElementCount++;
                         failedElements.add(element);
-                        LOG.warn(EVENT, "Error evaluating keep_when expression [{}] for element in source list at path [{}]",
-                                config.getKeepWhen(), config.getSource(), e);
+                        LOG.atWarn()
+                                .addMarker(EVENT)
+                                .addMarker(SENSITIVE)
+                                .setMessage("Error evaluating keep_element_when expression [{}] for element in source list at path [{}]")
+                                .addArgument(config.getKeepElementWhen())
+                                .addArgument(config.getIterateOn())
+                                .setCause(e)
+                                .log();
                     }
                 }
 

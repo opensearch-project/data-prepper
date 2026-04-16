@@ -53,24 +53,24 @@ class FilterListProcessorTest {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
-    private static final String KEEP_WHEN_EXPRESSION = "/type == \"cve\"";
+    private static final String KEEP_ELEMENT_WHEN_EXPRESSION = "/type == \"cve\"";
     private static final String SOURCE_KEY = "identifiers";
 
     @BeforeEach
     void setUp() {
-        lenient().when(mockConfig.getSource()).thenReturn(SOURCE_KEY);
+        lenient().when(mockConfig.getIterateOn()).thenReturn(SOURCE_KEY);
         lenient().when(mockConfig.getTarget()).thenReturn(SOURCE_KEY);
-        lenient().when(mockConfig.getKeepWhen()).thenReturn(KEEP_WHEN_EXPRESSION);
+        lenient().when(mockConfig.getKeepElementWhen()).thenReturn(KEEP_ELEMENT_WHEN_EXPRESSION);
         lenient().when(mockConfig.getFilterListWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(null);
-        lenient().when(expressionEvaluator.isValidExpressionStatement(KEEP_WHEN_EXPRESSION)).thenReturn(true);
+        lenient().when(expressionEvaluator.isValidExpressionStatement(KEEP_ELEMENT_WHEN_EXPRESSION)).thenReturn(true);
         lenient().doCallRealMethod().when(mockConfig).validateExpressions(expressionEvaluator);
     }
 
     @Test
     void invalid_keep_when_throws_InvalidPluginConfigurationException() {
         final String invalidExpression = UUID.randomUUID().toString();
-        when(mockConfig.getKeepWhen()).thenReturn(invalidExpression);
+        when(mockConfig.getKeepElementWhen()).thenReturn(invalidExpression);
         when(expressionEvaluator.isValidExpressionStatement(invalidExpression)).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
@@ -90,7 +90,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -115,7 +115,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -146,7 +146,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -166,7 +166,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(false);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -183,7 +183,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(true);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -271,7 +271,7 @@ class FilterListProcessorTest {
         final Record<Event> testRecord = createTestRecord();
 
         when(expressionEvaluator.evaluateConditional(filterListWhen, testRecord.getData())).thenReturn(true);
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(false);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -286,7 +286,7 @@ class FilterListProcessorTest {
     @Test
     void test_filter_with_nested_source_path() {
         final String nestedSource = "vulnerability/identifiers";
-        when(mockConfig.getSource()).thenReturn(nestedSource);
+        when(mockConfig.getIterateOn()).thenReturn(nestedSource);
         when(mockConfig.getTarget()).thenReturn(nestedSource);
 
         final FilterListProcessor processor = createObjectUnderTest();
@@ -299,7 +299,7 @@ class FilterListProcessorTest {
         final Event event = JacksonEvent.builder().withData(data).withEventType("event").build();
         final Record<Event> testRecord = new Record<>(event);
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event e = invocation.getArgument(1);
                     return "cve".equals(e.get("type", String.class));
@@ -329,7 +329,7 @@ class FilterListProcessorTest {
         final Event event = JacksonEvent.builder().withData(data).withEventType("event").build();
         final Record<Event> testRecord = new Record<>(event);
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(true);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -344,7 +344,7 @@ class FilterListProcessorTest {
     @Test
     void test_filter_primitive_string_list() {
         final String keepWhen = "/value != \"\"";
-        when(mockConfig.getKeepWhen()).thenReturn(keepWhen);
+        when(mockConfig.getKeepElementWhen()).thenReturn(keepWhen);
         when(expressionEvaluator.isValidExpressionStatement(keepWhen)).thenReturn(true);
 
         final FilterListProcessor processor = createObjectUnderTest();
@@ -379,7 +379,7 @@ class FilterListProcessorTest {
     @Test
     void test_filter_primitive_number_list() {
         final String keepWhen = "/value > 0";
-        when(mockConfig.getKeepWhen()).thenReturn(keepWhen);
+        when(mockConfig.getKeepElementWhen()).thenReturn(keepWhen);
         when(expressionEvaluator.isValidExpressionStatement(keepWhen)).thenReturn(true);
 
         final FilterListProcessor processor = createObjectUnderTest();
@@ -415,7 +415,7 @@ class FilterListProcessorTest {
     @Test
     void test_filter_primitive_list_with_nulls() {
         final String keepWhen = "/value != null";
-        when(mockConfig.getKeepWhen()).thenReturn(keepWhen);
+        when(mockConfig.getKeepElementWhen()).thenReturn(keepWhen);
         when(expressionEvaluator.isValidExpressionStatement(keepWhen)).thenReturn(true);
 
         final FilterListProcessor processor = createObjectUnderTest();
@@ -451,7 +451,7 @@ class FilterListProcessorTest {
         final FilterListProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(true)
                 .thenThrow(new RuntimeException("expression error"))
                 .thenReturn(true);
@@ -472,7 +472,7 @@ class FilterListProcessorTest {
         final Record<Event> record1 = createTestRecord();
         final Record<Event> record2 = createTestRecord();
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -497,7 +497,7 @@ class FilterListProcessorTest {
         final Record<Event> testRecord = createTestRecord();
 
         when(expressionEvaluator.evaluateConditional(filterListWhen, testRecord.getData())).thenReturn(true);
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -535,7 +535,7 @@ class FilterListProcessorTest {
 
         when(expressionEvaluator.evaluateConditional(filterListWhen, record1.getData())).thenReturn(true);
         when(expressionEvaluator.evaluateConditional(filterListWhen, record2.getData())).thenReturn(false);
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenAnswer(invocation -> {
                     Event event = invocation.getArgument(1);
                     return "cve".equals(event.get("type", String.class));
@@ -584,7 +584,7 @@ class FilterListProcessorTest {
         final Event event = JacksonEvent.builder().withData(data).withEventType("event").build();
         final Record<Event> testRecord = new Record<>(event);
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(true);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
@@ -618,7 +618,7 @@ class FilterListProcessorTest {
         doThrow(new RuntimeException("unexpected error")).when(event).put(any(String.class), any());
         final Record<Event> testRecord = new Record<>(event);
 
-        when(expressionEvaluator.evaluateConditional(eq(KEEP_WHEN_EXPRESSION), any(Event.class)))
+        when(expressionEvaluator.evaluateConditional(eq(KEEP_ELEMENT_WHEN_EXPRESSION), any(Event.class)))
                 .thenReturn(true);
 
         final List<Record<Event>> resultRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));

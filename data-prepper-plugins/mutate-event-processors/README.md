@@ -822,8 +822,8 @@ pipeline:
       format: "json"
   processor:
     - filter_list:
-        source: "items"
-        keep_when: '/status == "active"'
+        iterate_on: "items"
+        keep_element_when: '/status == "active"'
   sink:
     - stdout:
 ```
@@ -847,9 +847,9 @@ You can write the filtered result to a different key, leaving the original array
 ```yaml
   processor:
     - filter_list:
-        source: "items"
+        iterate_on: "items"
         target: "active_items"
-        keep_when: '/status == "active"'
+        keep_element_when: '/status == "active"'
 ```
 
 With the same input, the output will be:
@@ -868,8 +868,8 @@ For arrays of primitives (strings, numbers, booleans), each element is accessibl
 ```yaml
   processor:
     - filter_list:
-        source: "tags"
-        keep_when: '/value != ""'
+        iterate_on: "tags"
+        keep_element_when: '/value != ""'
 ```
 
 With the following input:
@@ -889,8 +889,8 @@ Another example filtering numbers:
 ```yaml
   processor:
     - filter_list:
-        source: "scores"
-        keep_when: '/value > 50'
+        iterate_on: "scores"
+        keep_element_when: '/value > 50'
 ```
 
 With the following input:
@@ -907,13 +907,13 @@ The output will be:
 
 ### Using both conditions
 
-The `filter_list_when` condition controls whether the processor runs at all (evaluated against the root event), while `keep_when` controls which elements are kept (evaluated per element):
+The `filter_list_when` condition controls whether the processor runs at all (evaluated against the root event), while `keep_element_when` controls which elements are kept (evaluated per element):
 
 ```yaml
   processor:
     - filter_list:
-        source: "items"
-        keep_when: '/status == "active"'
+        iterate_on: "items"
+        keep_element_when: '/status == "active"'
         filter_list_when: '/env == "production"'
 ```
 
@@ -942,16 +942,16 @@ The processor is skipped entirely and the event passes through unchanged:
 ```
 
 ### Configuration
-* `source` - (required) - The key of the array field to filter. Supports nested paths (e.g. `outer_key/inner_list`).
-* `target` - (optional) - The key to write the filtered array to. Defaults to the `source` key (in-place filtering). Supports nested paths.
-* `keep_when` - (required) - A [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) evaluated per element. Elements where this expression evaluates to `true` are kept. For object elements, the expression is evaluated against the object's fields directly (e.g. `/status == "active"`). For primitive elements, the value is accessible via `/value` (e.g. `/value > 50`). When no elements match, the result is an empty list `[]`.
+* `iterate_on` - (required) - The key of the array field to filter. Supports nested paths (e.g. `outer_key/inner_list`).
+* `target` - (optional) - The key to write the filtered array to. Defaults to the `iterate_on` key (in-place filtering). Supports nested paths.
+* `keep_element_when` - (required) - A [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) evaluated per element. Elements where this expression evaluates to `true` are kept. For object elements, the expression is evaluated against the object's fields directly (e.g. `/status == "active"`). For primitive elements, the value is accessible via `/value` (e.g. `/value > 50`). When no elements match, the result is an empty list `[]`.
 * `filter_list_when` - (optional) - A [Data Prepper expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) evaluated against the root event. When provided, the processor only runs if this condition is `true`. By default, all events are processed.
 * `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the processor fails to process the event.
 
 **Edge case behavior:**
-- If the `source` key does not exist or its value is `null`, the processor is a no-op and the event passes through unchanged.
-- If the `source` value is not a list (e.g. a string or number), the processor logs a warning and adds `tags_on_failure` if configured.
-- `null` elements within the list are evaluated normally. For example, with `keep_when: '/value != null'`, null elements are filtered out while non-null elements are kept.
+- If the `iterate_on` key does not exist or its value is `null`, the processor is a no-op and the event passes through unchanged.
+- If the `iterate_on` value is not a list (e.g. a string or number), the processor logs a warning and adds `tags_on_failure` if configured.
+- `null` elements within the list are evaluated normally. For example, with `keep_element_when: '/value != null'`, null elements are filtered out while non-null elements are kept.
 
 ___
 

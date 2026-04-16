@@ -30,13 +30,13 @@ public class FilterListProcessorConfig {
 
     @NotNull
     @NotEmpty
-    @JsonProperty("source")
+    @JsonProperty("iterate_on")
     @JsonPropertyDescription("The key of the array field to filter. Supports nested paths.")
     @ExampleValues({
             @Example(value = "my-list", description = "Filters the 'my-list' array at the root of the event."),
             @Example(value = "outer-key/my-list", description = "Filters the 'my-list' array nested under 'outer-key'.")
     })
-    private String source;
+    private String iterateOn;
 
     @JsonProperty("target")
     @JsonPropertyDescription("The key to write the filtered array to. Defaults to the source key (in-place). " +
@@ -48,14 +48,17 @@ public class FilterListProcessorConfig {
 
     @NotNull
     @NotEmpty
-    @JsonProperty("keep_when")
+    @JsonProperty("keep_element_when")
     @JsonPropertyDescription("An expression evaluated per element. Elements where this expression evaluates to true are kept. " +
-            "The expression is evaluated against each element of the array as if it were a standalone event.")
+            "The expression is evaluated against each element of the array as if it were a standalone event. " +
+            "For primitive elements (strings, numbers, booleans), the element value is accessible via the key <code>/value</code>.")
     @ExampleValues({
             @Example(value = "/status == \"active\"", description = "Keeps only elements where 'status' equals 'active'."),
-            @Example(value = "/score > 50", description = "Keeps only elements where 'score' is greater than 50.")
+            @Example(value = "/score > 50", description = "Keeps only elements where 'score' is greater than 50."),
+            @Example(value = "/value > 50", description = "Keeps only primitive elements where the value is greater than 50."),
+            @Example(value = "/value != \"\"", description = "Keeps only non-empty string primitive elements.")
     })
-    private String keepWhen;
+    private String keepElementWhen;
 
     @JsonProperty("filter_list_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
@@ -70,16 +73,16 @@ public class FilterListProcessorConfig {
     @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
     private List<String> tagsOnFailure;
 
-    public String getSource() {
-        return source;
+    public String getIterateOn() {
+        return iterateOn;
     }
 
     public String getTarget() {
-        return target != null ? target : source;
+        return target != null ? target : iterateOn;
     }
 
-    public String getKeepWhen() {
-        return keepWhen;
+    public String getKeepElementWhen() {
+        return keepElementWhen;
     }
 
     public String getFilterListWhen() {
@@ -98,11 +101,11 @@ public class FilterListProcessorConfig {
                             getFilterListWhen()));
         }
 
-        if (!expressionEvaluator.isValidExpressionStatement(getKeepWhen())) {
+        if (!expressionEvaluator.isValidExpressionStatement(getKeepElementWhen())) {
             throw new InvalidPluginConfigurationException(
-                    String.format("keep_when %s is not a valid expression statement. " +
+                    String.format("keep_element_when %s is not a valid expression statement. " +
                                     "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
-                            getKeepWhen()));
+                            getKeepElementWhen()));
         }
     }
 }

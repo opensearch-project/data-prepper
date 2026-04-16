@@ -10,8 +10,8 @@ test-pipeline:
     unused:
   processor:
     - filter_list:
-        source: "items"
+        iterate_on: "items"
         target: "active_items"
-        keep_when: '/status == "active"'
+        keep_element_when: '/status == "active"'
   sink:
     - unused:

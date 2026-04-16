@@ -37,14 +37,14 @@ class FilterListProcessorConfigTest {
     @Test
     void test_default_target_returns_source_when_target_not_set() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
-        setField(config, "source", "my_source");
+        setField(config, "iterateOn", "my_source");
         assertThat(config.getTarget(), is(equalTo("my_source")));
     }
 
     @Test
     void test_target_returns_explicit_target_when_set() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
-        setField(config, "source", "my_source");
+        setField(config, "iterateOn", "my_source");
         setField(config, "target", "my_target");
         assertThat(config.getTarget(), is(equalTo("my_target")));
     }
@@ -65,15 +65,15 @@ class FilterListProcessorConfigTest {
     void test_getters_return_set_values() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
 
-        setField(config, "source", "my_source");
+        setField(config, "iterateOn", "my_source");
         setField(config, "target", "my_target");
-        setField(config, "keepWhen", "/type == \"cve\"");
+        setField(config, "keepElementWhen", "/type == \"cve\"");
         setField(config, "filterListWhen", "/enabled == true");
         setField(config, "tagsOnFailure", List.of("tag1"));
 
-        assertThat(config.getSource(), is(equalTo("my_source")));
+        assertThat(config.getIterateOn(), is(equalTo("my_source")));
         assertThat(config.getTarget(), is(equalTo("my_target")));
-        assertThat(config.getKeepWhen(), is(equalTo("/type == \"cve\"")));
+        assertThat(config.getKeepElementWhen(), is(equalTo("/type == \"cve\"")));
         assertThat(config.getFilterListWhen(), is(equalTo("/enabled == true")));
         assertThat(config.getTagsOnFailure(), is(equalTo(List.of("tag1"))));
     }
@@ -81,7 +81,7 @@ class FilterListProcessorConfigTest {
     @Test
     void test_validateExpressions_throws_when_keep_when_is_invalid() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
-        setField(config, "keepWhen", "invalid");
+        setField(config, "keepElementWhen", "invalid");
         when(expressionEvaluator.isValidExpressionStatement("invalid")).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, () -> config.validateExpressions(expressionEvaluator));
@@ -90,7 +90,7 @@ class FilterListProcessorConfigTest {
     @Test
     void test_validateExpressions_throws_when_filter_list_when_is_invalid() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
-        setField(config, "keepWhen", "/type == \"cve\"");
+        setField(config, "keepElementWhen", "/type == \"cve\"");
         setField(config, "filterListWhen", "invalid");
         when(expressionEvaluator.isValidExpressionStatement("invalid")).thenReturn(false);
 
@@ -100,7 +100,7 @@ class FilterListProcessorConfigTest {
     @Test
     void test_validateExpressions_does_not_throw_when_expressions_are_valid() throws NoSuchFieldException, IllegalAccessException {
         final FilterListProcessorConfig config = new FilterListProcessorConfig();
-        setField(config, "keepWhen", "/type == \"cve\"");
+        setField(config, "keepElementWhen", "/type == \"cve\"");
         setField(config, "filterListWhen", "/enabled == true");
         when(expressionEvaluator.isValidExpressionStatement("/type == \"cve\"")).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("/enabled == true")).thenReturn(true);
