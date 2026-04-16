@@ -54,6 +54,55 @@ then when we run with the same input, the processor will parse the message into 
 {"message": "value", "newMessage": "new value"}
 ```
 
+### Iterating over arrays with `iterate_on`
+
+The `iterate_on` option allows adding entries to each element of an array. Combined with `disable_root_keys` and `evaluate_when_on_element`, you can reference root-level fields and apply per-element conditions.
+
+```yaml
+pipeline:
+  source:
+    http:
+  processor:
+    - add_entries:
+        entries:
+          - key: "title"
+            value_expression: "/alert_title"
+            iterate_on: "vulns"
+            disable_root_keys: false
+            add_to_element_when: '/severity == "critical"'
+            evaluate_when_on_element: true
+  sink:
+    - stdout:
+```
+
+Given the following input:
+```json
+{
+  "alert_title": "SQL Injection Detected",
+  "vulns": [
+    {"cve": "CVE-2024-001", "severity": "critical"},
+    {"cve": "CVE-2024-002", "severity": "low"},
+    {"cve": "CVE-2024-003", "severity": "critical"}
+  ]
+}
+```
+
+The processor will produce:
+```json
+{
+  "alert_title": "SQL Injection Detected",
+  "vulns": [
+    {"cve": "CVE-2024-001", "severity": "critical", "title": "SQL Injection Detected"},
+    {"cve": "CVE-2024-002", "severity": "low"},
+    {"cve": "CVE-2024-003", "severity": "critical", "title": "SQL Injection Detected"}
+  ]
+}
+```
+
+In this example:
+- `disable_root_keys: false` allows `value_expression: "/alert_title"` to resolve from the root event
+- `evaluate_when_on_element: true` evaluates `add_to_element_when` against each element, so only elements with `severity == "critical"` receive the new key
+
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
   * `key` - (required) - The key of the new entry to be added. One of `key` or `metadata_key` is required.
@@ -62,6 +111,8 @@ then when we run with the same input, the processor will parse the message into 
   * `format` - (optional) - A format string to use as value of the new entry to be added. For example, `${key1}-${ke2}` where `key1` and `key2` are existing keys in the event. Required if `value` is not specified.
   * `value_expression` - (optional) - An expression string to use as value of the new entry to be added. For example, `/key` where `key` is an existing key in the event of type Number/String/Boolean. Expressions can also contain functions returning Number/String/Integer. For example `length(/key)` would return the length of the `key` in the event and key must of String type. Please see [expressions syntax document](https://github.com/opensearch-project/data-prepper/blob/2.3/docs/expression_syntax.md) for complete list of supported functions. Required if `value` and `format are not specified.
   * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
+  * `disable_root_keys` - (optional) - When set to `false` and used with `iterate_on`, resolves `value_expression` and `format` against the root event instead of the individual array element. This allows referencing root-level fields during array iteration. Has no effect without `iterate_on`. Default is `true`.
+  * `evaluate_when_on_element` - (optional) - When set to `true` and used with `iterate_on` and `add_to_element_when`, evaluates the `add_to_element_when` condition against each individual array element instead of the root event. This enables per-element conditional logic during array iteration. Default is `false`.
 
 ___
 
@@ -646,6 +697,116 @@ will end up with this after processing:
 * `convert_field_to_list` - (optional): default to false; if true, will convert fields to lists instead of objects
 * `tags_on_failure` - (optional): a list of tags to add to event metadata when the event fails to process
 
+
+## WrapEntriesProcessor
+A processor that wraps each element of a primitive array into an object using a configured key name. This enables downstream processors like `add_entries` and `delete_entries` with `iterate_on`, which require `List<Map<String, Object>>` and cannot operate on primitive arrays.
+
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - wrap_entries:
+        source: "/names"
+        key: "name"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+```json
+{"names": ["alice", "bob", "charlie"]}
+```
+
+When run, the processor will parse the message into the following output:
+
+```json
+{"names": [{"name": "alice"}, {"name": "bob"}, {"name": "charlie"}]}
+```
+
+### Writing to a Separate Target
+If you want to keep the original array and write the wrapped objects to a different key, use the `target` option:
+```yaml
+  processor:
+    - wrap_entries:
+        source: "/items"
+        target: "/inventory_items"
+        key: "product"
+```
+
+Input:
+```json
+{"items": ["laptop", "monitor", "keyboard"]}
+```
+
+Output:
+```json
+{"items": ["laptop", "monitor", "keyboard"], "inventory_items": [{"product": "laptop"}, {"product": "monitor"}, {"product": "keyboard"}]}
+```
+
+### Conditional Processing
+Use `wrap_entries_when` to only process events matching a condition:
+```yaml
+  processor:
+    - wrap_entries:
+        source: "/tags"
+        key: "value"
+        wrap_entries_when: '/type == "tagged"'
+```
+
+Only events where `type` equals `"tagged"` will be processed.
+
+### Chaining with add_entries
+A common use case is wrapping a primitive array so that `add_entries` with `iterate_on` can operate on it:
+```yaml
+  processor:
+    - wrap_entries:
+        source: "/names"
+        key: "name"
+    - add_entries:
+        iterate_on: "/names"
+        entries:
+          - key: "greeting"
+            format: "Hello, ${name}"
+```
+
+Input:
+```json
+{"names": ["alice", "bob"]}
+```
+
+After `wrap_entries`:
+```json
+{"names": [{"name": "alice"}, {"name": "bob"}]}
+```
+
+After `add_entries`:
+```json
+{"names": [{"name": "alice", "greeting": "Hello, alice"}, {"name": "bob", "greeting": "Hello, bob"}]}
+```
+
+### Configuration
+* `source` - (required) - The key of the primitive array to transform (JSON Pointer)
+* `target` - (optional) - The key to write the resulting object array to. Defaults to `source` (in-place). Must not be empty when specified.
+* `key` - (required) - The key name to use in each resulting object
+* `exclude_null_empty_values` - (optional) - When set to `true`, null and empty string elements are filtered out before wrapping. Default is `false`
+* `append_if_target_exists` - (optional) - When set to `true`, appends results to the existing target array instead of overwriting. Default is `false`
+* `wrap_entries_when` - (optional) - A [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/) that determines whether the processor runs on the event. Evaluated at the root event level.
+* `tags_on_failure` - (optional) - A list of tags to add to the event metadata when the event fails to process
+
+### Edge Case Behavior
+* If the `source` key does not exist in the event, the processor silently skips the event (no-op). A debug-level log is emitted.
+* If the `source` value is not a list (e.g., a string or number), the processor skips the event (no-op) and adds `tags_on_failure` if configured.
+* If the `source` list is empty, the processor does nothing — the empty list remains as-is.
+* If no elements remain after filtering (when `exclude_null_empty_values` is `true` and all elements are null or empty), the target is written as an empty list `[]`.
+* Null elements within the list are wrapped like any other value by default: `[null]` becomes `[{"key": null}]`. Use `exclude_null_empty_values: true` to filter them out.
+
+___
 
 ## FilterListProcessor
 A processor that filters elements within an array field by evaluating a condition against each element, keeping only those where the condition is true. It supports arrays of objects and arrays of primitives (strings, numbers, booleans).

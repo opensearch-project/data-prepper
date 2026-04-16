@@ -196,7 +196,7 @@ public final class ApmServiceMapMetricsUtil {
             // Create latency_seconds histogram (only if there are duration samples)
             if (!state.getLatencyDurations().isEmpty()) {
                 metrics.add(createJacksonStandardHistogram(
-                        "latency_seconds",
+                        "latency",
                         "Request latency in seconds",
                         state.getLatencyDurations(),
                         metricKey.getLabels(),

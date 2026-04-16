@@ -16,6 +16,7 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
+import com.linecorp.armeria.common.RequestHeadersBuilder;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -33,6 +34,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
@@ -50,6 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -60,6 +64,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -98,6 +103,12 @@ class LogHTTPServiceTest {
 
     @Mock
     private InputCodec codec;
+
+    @Mock
+    private Buffer<Record<Log>> blockingBuffer;
+
+    @Mock
+    private HttpHeaderExtractor httpHeaderExtractor;
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -390,6 +401,59 @@ class LogHTTPServiceTest {
         }
     }
 
+    
+    @Test
+    public void processRequestAttachesHeadersToEventMetadata() throws Exception {
+        when(blockingBuffer.getMaxRequestSize()).thenReturn(Optional.empty());
+        when(blockingBuffer.getOptimalRequestSize()).thenReturn(Optional.empty());
+        Map<String, Object> headers = Map.of("x-tenant-id", "tenant-abc", "x-region", "us-west-2");
+        when(httpHeaderExtractor.extractHeaders(any(AggregatedHttpRequest.class))).thenReturn(headers);
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics, null, httpHeaderExtractor);
+        AggregatedHttpRequest testRequest = generateRequestWithHeaders(2, Map.of("X-Tenant-Id", "tenant-abc", "X-Region", "us-west-2"));
+
+        logHTTPService.processRequest(testRequest);
+
+        verify(httpHeaderExtractor).extractHeaders(testRequest);
+        ArgumentCaptor<List<Record<Log>>> captor = ArgumentCaptor.forClass(List.class);
+        verify(blockingBuffer).writeAll(captor.capture(), eq(TEST_TIMEOUT_IN_MILLIS));
+        List<Record<Log>> records = captor.getValue();
+        assertThat(records.size(), equalTo(2));
+        for (Record<Log> record : records) {
+            assertThat(record.getData().getMetadata().getAttribute("headers/x-tenant-id"), equalTo("tenant-abc"));
+            assertThat(record.getData().getMetadata().getAttribute("headers/x-region"), equalTo("us-west-2"));
+        }
+    }
+
+    @Test
+    public void processRequestWithCodecAttachesHeadersToEventMetadata() throws Exception {
+        when(blockingBuffer.getMaxRequestSize()).thenReturn(Optional.empty());
+        when(blockingBuffer.getOptimalRequestSize()).thenReturn(Optional.empty());
+        Map<String, Object> headers = Map.of("x-tenant-id", "tenant-xyz");
+        when(httpHeaderExtractor.extractHeaders(any(AggregatedHttpRequest.class))).thenReturn(headers);
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics, codec, httpHeaderExtractor);
+
+        doAnswer(invocation -> {
+            Consumer<Record<Event>> consumer = invocation.getArgument(1);
+            Log log1 = JacksonLog.builder().withData(Map.of("msg", "log1")).getThis().build();
+            Log log2 = JacksonLog.builder().withData(Map.of("msg", "log2")).getThis().build();
+            consumer.accept(new Record<>(log1));
+            consumer.accept(new Record<>(log2));
+            return null;
+        }).when(codec).parse(any(InputStream.class), any());
+
+        AggregatedHttpRequest testRequest = generateRequestWithHeaders(1, Map.of("X-Tenant-Id", "tenant-xyz"));
+
+        logHTTPService.processRequest(testRequest);
+
+        verify(httpHeaderExtractor).extractHeaders(testRequest);
+        ArgumentCaptor<List<Record<Log>>> captor = ArgumentCaptor.forClass(List.class);
+        verify(blockingBuffer).writeAll(captor.capture(), eq(TEST_TIMEOUT_IN_MILLIS));
+        List<Record<Log>> records = captor.getValue();
+        assertThat(records.size(), equalTo(2));
+        for (Record<Log> record : records) {
+            assertThat(record.getData().getMetadata().getAttribute("headers/x-tenant-id"), equalTo("tenant-xyz"));
+        }
+    }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,
             ExecutionException, InterruptedException {
@@ -415,5 +479,23 @@ class LogHTTPServiceTest {
                 .build();
         HttpData httpData = HttpData.ofUtf8("{");
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
+    }
+
+    private AggregatedHttpRequest generateRequestWithHeaders(int numJson, Map<String, String> customHeaders)
+            throws JsonProcessingException, ExecutionException, InterruptedException {
+        RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(HttpMethod.POST)
+                .path("/log/ingest");
+        for (Map.Entry<String, String> entry : customHeaders.entrySet()) {
+            headersBuilder.add(entry.getKey(), entry.getValue());
+        }
+        List<Map<String, Object>> jsonList = new ArrayList<>();
+        for (int i = 0; i < numJson; i++) {
+            jsonList.add(Collections.singletonMap("log", UUID.randomUUID().toString()));
+        }
+        String content = mapper.writeValueAsString(jsonList);
+        HttpData httpData = HttpData.ofUtf8(content);
+        return HttpRequest.of(headersBuilder.build(), httpData).aggregate().get();
     }
 }

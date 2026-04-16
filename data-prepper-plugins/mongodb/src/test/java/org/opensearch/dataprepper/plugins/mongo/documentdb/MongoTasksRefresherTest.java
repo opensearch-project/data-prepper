@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.mongo.export.ExportWorker;
 import org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -266,6 +267,81 @@ class MongoTasksRefresherTest {
         verify(executorService).submit(any(StreamScheduler.class));
         verify(executorService).shutdownNow();
         verifyNoMoreInteractions(executorServiceFunction);
+    }
 
+    @Test
+    void testForceRefreshRestartsExecutor() {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        final ExecutorService newExecutorService = mock(ExecutorService.class);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
+        objectUnderTest.forceRefresh();
+        verify(executorService).shutdownNow();
+        verify(credentialsChangeCounter).increment();
+        verify(executorServiceFunction, times(2)).apply(eq(3));
+    }
+
+    @Test
+    void testForceRefreshStopsAfterMaxAttempts() throws Exception {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(mock(ExecutorService.class));
+        objectUnderTest.forceRefresh();
+        resetLastForceRefreshTime(objectUnderTest);
+        objectUnderTest.forceRefresh();
+        resetLastForceRefreshTime(objectUnderTest);
+        objectUnderTest.forceRefresh();
+        resetLastForceRefreshTime(objectUnderTest);
+        // 4th attempt should be ignored (max reached)
+        objectUnderTest.forceRefresh();
+        verify(credentialsChangeCounter, times(3)).increment();
+    }
+
+    @Test
+    void testForceRefreshCounterResetsOnCredentialChange() throws Exception {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        when(executorServiceFunction.apply(anyInt())).thenReturn(mock(ExecutorService.class));
+        objectUnderTest.forceRefresh();
+        resetLastForceRefreshTime(objectUnderTest);
+        objectUnderTest.forceRefresh();
+        resetLastForceRefreshTime(objectUnderTest);
+        objectUnderTest.forceRefresh();
+        // Simulate credential change via update()
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(credentialsConfig);
+        when(credentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(credentialsConfig.getPassword()).thenReturn(TEST_PASSWORD);
+        final MongoDBSourceConfig newSourceConfig = mock(MongoDBSourceConfig.class);
+        when(newSourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
+        final MongoDBSourceConfig.AuthenticationConfig newCredentialsConfig = mock(
+                MongoDBSourceConfig.AuthenticationConfig.class);
+        when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
+        when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
+        objectUnderTest.update(newSourceConfig);
+        // Force refresh should work again after counter reset
+        objectUnderTest.forceRefresh();
+        // 3 from forceRefresh + 1 from update + 1 from forceRefresh after reset
+        verify(credentialsChangeCounter, times(5)).increment();
+    }
+
+    @Test
+    void testForceRefreshHandlesException() {
+        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+        when(pluginMetrics.counter(EXECUTOR_REFRESH_ERRORS)).thenReturn(executorRefreshErrorsCounter);
+        final MongoTasksRefresher objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(sourceConfig);
+        doThrow(RuntimeException.class).when(executorService).shutdownNow();
+        objectUnderTest.forceRefresh();
+        verify(executorRefreshErrorsCounter).increment();
+    }
+
+    private void resetLastForceRefreshTime(final MongoTasksRefresher refresher) throws Exception {
+        final Field field = MongoTasksRefresher.class.getDeclaredField("lastForceRefreshTime");
+        field.setAccessible(true);
+        field.setLong(refresher, 0);
     }
 }

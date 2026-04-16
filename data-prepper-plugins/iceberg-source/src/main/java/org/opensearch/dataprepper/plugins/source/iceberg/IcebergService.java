@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
@@ -41,16 +42,19 @@ public class IcebergService {
     private final IcebergSourceConfig sourceConfig;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EventFactory eventFactory;
     private ExecutorService executor;
 
     public IcebergService(final EnhancedSourceCoordinator sourceCoordinator,
                           final IcebergSourceConfig sourceConfig,
                           final PluginMetrics pluginMetrics,
-                          final AcknowledgementSetManager acknowledgementSetManager) {
+                          final AcknowledgementSetManager acknowledgementSetManager,
+                          final EventFactory eventFactory) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
     }
 
     public void start(final Buffer<Record<Event>> buffer) {
@@ -98,7 +102,7 @@ public class IcebergService {
 
         runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs, sourceConfig.getPollingInterval(), tables));
         runnableList.add(new ChangelogWorker(
-                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager));
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory));
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);

@@ -17,6 +17,7 @@ import java.util.List;
 
 public class SqsSinkBatchEntry {
     private final List<EventHandle> eventHandles;
+    private final List<Event> events;
     private final String groupId;
     private final String deDupId;
     private final Buffer buffer;
@@ -29,6 +30,7 @@ public class SqsSinkBatchEntry {
 
     public SqsSinkBatchEntry(final Buffer buffer, final String groupId, final String deDupId, final OutputCodec codec, final OutputCodecContext codecContext) {
         this.eventHandles = new ArrayList<>();
+        this.events = new ArrayList<>();
         this.buffer = buffer;
         completed = false;
         this.groupId = groupId;
@@ -58,6 +60,7 @@ public class SqsSinkBatchEntry {
             writer = codec.createWriter(buffer.getOutputStream(), null, codecContext);
         }
         writer.writeEvent(event);
+        events.add(event);
         eventHandles.add(event.getEventHandle());
         eventCount++;
     }
@@ -89,6 +92,10 @@ public class SqsSinkBatchEntry {
 
     public int getEventCount() {
         return eventCount;
+    }
+
+    public List<Event> getEvents() {
+        return events;
     }
 
 }

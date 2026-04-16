@@ -19,7 +19,8 @@ import org.apache.iceberg.variants.VariantObject;
 import org.apache.iceberg.variants.VariantValue;
 import org.apache.iceberg.variants.PhysicalType;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -45,10 +46,12 @@ public class ChangelogRecordConverter {
 
     private final String tableName;
     private final List<String> identifierColumns;
+    private final EventFactory eventFactory;
 
-    public ChangelogRecordConverter(final String tableName, final List<String> identifierColumns) {
+    public ChangelogRecordConverter(final String tableName, final List<String> identifierColumns, final EventFactory eventFactory) {
         this.tableName = tableName;
         this.identifierColumns = identifierColumns;
+        this.eventFactory = eventFactory;
     }
 
     public Event convert(final Record record,
@@ -61,7 +64,7 @@ public class ChangelogRecordConverter {
             data.put(field.name(), convertValue(value, field.type()));
         }
 
-        final Event event = JacksonEvent.builder()
+        final Event event = eventFactory.eventBuilder(EventBuilder.class)
                 .withEventType(EVENT_TYPE)
                 .withData(data)
                 .build();

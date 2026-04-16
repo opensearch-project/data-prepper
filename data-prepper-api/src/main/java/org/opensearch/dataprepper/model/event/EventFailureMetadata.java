@@ -11,5 +11,15 @@ package org.opensearch.dataprepper.model.event;
 
 public interface EventFailureMetadata {
     EventFailureMetadata with(String key, Object value);
+
+    EventFailureMetadata withPluginId(String value);
+
+    EventFailureMetadata withPluginName(String value);
+
+    EventFailureMetadata withPipelineName(String value);
+
+    EventFailureMetadata withErrorMessage(Object value);
+
+
 }
 

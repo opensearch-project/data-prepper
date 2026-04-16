@@ -20,7 +20,9 @@ import org.apache.iceberg.variants.VariantArray;
 import org.apache.iceberg.variants.VariantObject;
 import org.apache.iceberg.variants.VariantPrimitive;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,6 +38,8 @@ import static org.mockito.Mockito.when;
 
 class ChangelogRecordConverterTest {
 
+    private static final EventFactory EVENT_FACTORY = TestEventFactory.getTestEventFactory();
+
     private static final Schema TEST_SCHEMA = new Schema(
             Types.NestedField.required(1, "id", Types.IntegerType.get()),
             Types.NestedField.optional(2, "name", Types.StringType.get()),
@@ -44,7 +48,7 @@ class ChangelogRecordConverterTest {
 
     @Test
     void convert_insertOperation_setsCorrectMetadata() {
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Record record = GenericRecord.create(TEST_SCHEMA);
         record.setField("id", 1);
         record.setField("name", "Alice");
@@ -64,7 +68,7 @@ class ChangelogRecordConverterTest {
 
     @Test
     void convert_deleteOperation_setsDeleteBulkAction() {
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Record record = GenericRecord.create(TEST_SCHEMA);
         record.setField("id", 1);
         record.setField("name", "Alice");
@@ -78,7 +82,7 @@ class ChangelogRecordConverterTest {
 
     @Test
     void convert_multipleIdentifierColumns_concatenatedWithPipe() {
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id", "name"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id", "name"), EVENT_FACTORY);
         final Record record = GenericRecord.create(TEST_SCHEMA);
         record.setField("id", 1);
         record.setField("name", "Alice");
@@ -91,7 +95,7 @@ class ChangelogRecordConverterTest {
 
     @Test
     void convert_noIdentifierColumns_noDocumentId() {
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of());
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of(), EVENT_FACTORY);
         final Record record = GenericRecord.create(TEST_SCHEMA);
         record.setField("id", 1);
         record.setField("name", "Alice");
@@ -108,7 +112,7 @@ class ChangelogRecordConverterTest {
                 Types.NestedField.required(1, "id", Types.IntegerType.get()),
                 Types.NestedField.optional(2, "price", Types.DecimalType.of(10, 2))
         );
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Record record = GenericRecord.create(schema);
         record.setField("id", 1);
         record.setField("price", new BigDecimal("123.45"));
@@ -124,7 +128,7 @@ class ChangelogRecordConverterTest {
                 Types.NestedField.required(1, "id", Types.IntegerType.get()),
                 Types.NestedField.optional(2, "created", Types.DateType.get())
         );
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Record record = GenericRecord.create(schema);
         record.setField("id", 1);
         record.setField("created", LocalDate.of(2024, 1, 15));
@@ -136,7 +140,7 @@ class ChangelogRecordConverterTest {
 
     @Test
     void convert_nullField_preservedAsNull() {
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Record record = GenericRecord.create(TEST_SCHEMA);
         record.setField("id", 1);
         record.setField("name", null);
@@ -165,7 +169,7 @@ class ChangelogRecordConverterTest {
         record.setField("id", 1);
         record.setField("address", addressRecord);
 
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Event event = converter.convert(record, schema, "INSERT", 12345L);
 
         @SuppressWarnings("unchecked")
@@ -199,7 +203,7 @@ class ChangelogRecordConverterTest {
         record.setField("id", 1);
         record.setField("data", variant);
 
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Event event = converter.convert(record, schema, "INSERT", 12345L);
 
         @SuppressWarnings("unchecked")
@@ -237,7 +241,7 @@ class ChangelogRecordConverterTest {
         record.setField("id", 1);
         record.setField("tags", variant);
 
-        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"));
+        final ChangelogRecordConverter converter = new ChangelogRecordConverter("test_table", List.of("id"), EVENT_FACTORY);
         final Event event = converter.convert(record, schema, "INSERT", 12345L);
 
         @SuppressWarnings("unchecked")

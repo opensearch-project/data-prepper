@@ -1182,7 +1182,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         event = resultList.get(2).getData();
         assertThat(event.get("name", String.class), equalTo("fault"));
         event = resultList.get(3).getData();
-        assertThat(event.get("name", String.class), equalTo("latency_seconds"));
+        assertThat(event.get("name", String.class), equalTo("latency"));
         event = resultList.get(4).getData();
         String sourceNodeName4 = event.get("sourceNode/keyAttributes/name", String.class);
         event = resultList.get(5).getData();

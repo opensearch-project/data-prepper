@@ -298,7 +298,7 @@ class ApmServiceMapMetricsUtilTest {
         List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
 
         // Then
-        assertEquals(3, metrics.size()); // Only request, error, fault (no latency_seconds)
+        assertEquals(3, metrics.size()); // Only request, error, fault (no latency)
     }
 
     @Test
@@ -521,7 +521,7 @@ class ApmServiceMapMetricsUtilTest {
         List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
 
         // Then
-        assertEquals(4, metrics.size()); // request, error, fault, latency_seconds
+        assertEquals(4, metrics.size()); // request, error, fault, latency
 
         // Verify metric names
         List<String> metricNames = metrics.stream()
@@ -530,7 +530,7 @@ class ApmServiceMapMetricsUtilTest {
         assertTrue(metricNames.contains("request"));
         assertTrue(metricNames.contains("error"));
         assertTrue(metricNames.contains("fault"));
-        assertTrue(metricNames.contains("latency_seconds"));
+        assertTrue(metricNames.contains("latency"));
     }
 
     @Test
