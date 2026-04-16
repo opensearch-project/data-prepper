@@ -102,6 +102,7 @@ setOperatorExpression
     : setOperatorExpression setOperator setInitializer
     | unaryOperatorExpression
     | arithmeticUnaryExpression
+    | arithmeticExpression
     ;
 
 setOperator
