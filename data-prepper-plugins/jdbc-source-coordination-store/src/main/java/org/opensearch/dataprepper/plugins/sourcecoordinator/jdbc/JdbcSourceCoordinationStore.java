@@ -36,11 +36,12 @@ import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @DataPrepperPlugin(name = "jdbc",
         pluginType = SourceCoordinationStore.class,
         pluginConfigurationType = JdbcStoreSettings.class)
-public class JdbcSourceCoordinationStore implements SourceCoordinationStore {
+public class JdbcSourceCoordinationStore implements SourceCoordinationStore, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(JdbcSourceCoordinationStore.class);
     private static final String UNIQUE_VIOLATION_SQLSTATE = "23505";
@@ -49,6 +50,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore {
     private static final Duration TTL_CLEANUP_INTERVAL = Duration.ofHours(1);
 
     private final JdbcStoreSettings settings;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
     private HikariDataSource dataSource;
     private ScheduledExecutorService ttlExecutor;
 
@@ -59,6 +61,10 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore {
 
     @Override
     public void initializeStore() {
+        if (!initialized.compareAndSet(false, true)) {
+            LOG.debug("JDBC coordination store already initialized, skipping");
+            return;
+        }
         final HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setJdbcUrl(settings.getUrl());
         hikariConfig.setMaximumPoolSize(settings.getMaxPoolSize());
@@ -380,6 +386,16 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore {
         } catch (final SQLException e) {
             throw new PartitionUpdateException(
                     String.format("Failed to delete partition %s", item.getSourcePartitionKey()), e);
+        }
+    }
+
+    @Override
+    public void close() {
+        if (ttlExecutor != null) {
+            ttlExecutor.shutdownNow();
+        }
+        if (dataSource != null) {
+            dataSource.close();
         }
     }
 
