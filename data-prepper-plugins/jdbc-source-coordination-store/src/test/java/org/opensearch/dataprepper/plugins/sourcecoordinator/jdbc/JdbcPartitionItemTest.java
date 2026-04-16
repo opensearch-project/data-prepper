@@ -14,8 +14,10 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 class JdbcPartitionItemTest {
 
@@ -35,31 +37,31 @@ class JdbcPartitionItemTest {
         item.setPartitionPriority(now.toString());
         item.setVersion(5);
 
-        assertEquals("source-1", item.getSourceIdentifier());
-        assertEquals("partition-1", item.getSourcePartitionKey());
-        assertEquals("owner-1", item.getPartitionOwner());
-        assertEquals("{\"offset\":100}", item.getPartitionProgressState());
-        assertEquals(SourcePartitionStatus.ASSIGNED, item.getSourcePartitionStatus());
-        assertEquals(now, item.getPartitionOwnershipTimeout());
-        assertEquals(now.plusSeconds(60), item.getReOpenAt());
-        assertEquals(3L, item.getClosedCount());
-        assertEquals(now.toString(), item.getPartitionPriority());
-        assertEquals(5, item.getVersion());
+        assertThat(item.getSourceIdentifier(), equalTo("source-1"));
+        assertThat(item.getSourcePartitionKey(), equalTo("partition-1"));
+        assertThat(item.getPartitionOwner(), equalTo("owner-1"));
+        assertThat(item.getPartitionProgressState(), equalTo("{\"offset\":100}"));
+        assertThat(item.getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
+        assertThat(item.getPartitionOwnershipTimeout(), equalTo(now));
+        assertThat(item.getReOpenAt(), equalTo(now.plusSeconds(60)));
+        assertThat(item.getClosedCount(), equalTo(3L));
+        assertThat(item.getPartitionPriority(), equalTo(now.toString()));
+        assertThat(item.getVersion(), equalTo(5L));
     }
 
     @Test
     void defaults_are_null_or_zero() {
         final JdbcPartitionItem item = new JdbcPartitionItem();
 
-        assertNull(item.getSourceIdentifier());
-        assertNull(item.getSourcePartitionKey());
-        assertNull(item.getPartitionOwner());
-        assertNull(item.getPartitionProgressState());
-        assertNull(item.getSourcePartitionStatus());
-        assertNull(item.getPartitionOwnershipTimeout());
-        assertNull(item.getReOpenAt());
-        assertNull(item.getClosedCount());
-        assertNull(item.getPartitionPriority());
-        assertEquals(0, item.getVersion());
+        assertThat(item.getSourceIdentifier(), is(nullValue()));
+        assertThat(item.getSourcePartitionKey(), is(nullValue()));
+        assertThat(item.getPartitionOwner(), is(nullValue()));
+        assertThat(item.getPartitionProgressState(), is(nullValue()));
+        assertThat(item.getSourcePartitionStatus(), is(nullValue()));
+        assertThat(item.getPartitionOwnershipTimeout(), is(nullValue()));
+        assertThat(item.getReOpenAt(), is(nullValue()));
+        assertThat(item.getClosedCount(), is(nullValue()));
+        assertThat(item.getPartitionPriority(), is(nullValue()));
+        assertThat(item.getVersion(), equalTo(0L));
     }
 }

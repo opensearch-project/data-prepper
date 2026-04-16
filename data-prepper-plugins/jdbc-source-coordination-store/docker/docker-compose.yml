@@ -1,0 +1,26 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dataprepper
+      POSTGRES_USER: dp_user
+      POSTGRES_PASSWORD: dp_pass
+    ports:
+      - "5433:5432"
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: dataprepper
+      MYSQL_USER: dp_user
+      MYSQL_PASSWORD: dp_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3307:3306"

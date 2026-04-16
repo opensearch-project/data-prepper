@@ -14,11 +14,11 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcStoreSettingsTest {
 
@@ -28,14 +28,14 @@ class JdbcStoreSettingsTest {
                 "jdbc:postgresql://localhost/db", "user", "pass",
                 null, null, null, null, null);
 
-        assertEquals("jdbc:postgresql://localhost/db", settings.getUrl());
-        assertEquals("user", settings.getUsername());
-        assertEquals("pass", settings.getPassword());
-        assertEquals("source_coordination", settings.getTableName());
-        assertFalse(settings.skipTableCreation());
-        assertEquals(5, settings.getMaxPoolSize());
-        assertNull(settings.getTtl());
-        assertNull(settings.getConnectionProperties());
+        assertThat(settings.getUrl(), equalTo("jdbc:postgresql://localhost/db"));
+        assertThat(settings.getUsername(), equalTo("user"));
+        assertThat(settings.getPassword(), equalTo("pass"));
+        assertThat(settings.getTableName(), equalTo("source_coordination"));
+        assertThat(settings.skipTableCreation(), is(false));
+        assertThat(settings.getMaxPoolSize(), equalTo(5));
+        assertThat(settings.getTtl(), is(nullValue()));
+        assertThat(settings.getConnectionProperties(), is(nullValue()));
     }
 
     @Test
@@ -45,11 +45,11 @@ class JdbcStoreSettingsTest {
                 "custom_table", true, 10, Duration.ofHours(24),
                 Map.of("ssl", "true"));
 
-        assertEquals("custom_table", settings.getTableName());
-        assertTrue(settings.skipTableCreation());
-        assertEquals(10, settings.getMaxPoolSize());
-        assertEquals(Duration.ofHours(24), settings.getTtl());
-        assertEquals(Map.of("ssl", "true"), settings.getConnectionProperties());
+        assertThat(settings.getTableName(), equalTo("custom_table"));
+        assertThat(settings.skipTableCreation(), is(true));
+        assertThat(settings.getMaxPoolSize(), equalTo(10));
+        assertThat(settings.getTtl(), equalTo(Duration.ofHours(24)));
+        assertThat(settings.getConnectionProperties(), equalTo(Map.of("ssl", "true")));
     }
 
     @Test

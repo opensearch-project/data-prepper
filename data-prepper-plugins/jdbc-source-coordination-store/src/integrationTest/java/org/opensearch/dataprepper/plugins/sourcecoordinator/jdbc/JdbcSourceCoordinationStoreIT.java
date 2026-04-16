@@ -22,12 +22,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcSourceCoordinationStoreIT {
 
@@ -59,21 +61,21 @@ class JdbcSourceCoordinationStoreIT {
 
     @Test
     void initializeStore_creates_table() {
-        assertTrue(store.tryCreatePartitionItem(
-                SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false));
+        assertThat(store.tryCreatePartitionItem(
+                SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false), is(true));
     }
 
     @Test
     void initializeStore_is_idempotent() {
         store.initializeStore();
-        assertTrue(store.tryCreatePartitionItem(
-                SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false));
+        assertThat(store.tryCreatePartitionItem(
+                SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false), is(true));
     }
 
     @Test
     void tryCreatePartitionItem_returns_false_for_duplicate() {
-        assertTrue(store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false));
-        assertFalse(store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false));
+        assertThat(store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false), is(true));
+        assertThat(store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false), is(false));
     }
 
     @Test
@@ -81,17 +83,17 @@ class JdbcSourceCoordinationStoreIT {
         store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, "{\"k\":\"v\"}", false);
 
         final Optional<SourcePartitionStoreItem> result = store.getSourcePartitionItem(SOURCE_ID, "p1");
-        assertTrue(result.isPresent());
-        assertEquals(SOURCE_ID, result.get().getSourceIdentifier());
-        assertEquals("p1", result.get().getSourcePartitionKey());
-        assertEquals(SourcePartitionStatus.UNASSIGNED, result.get().getSourcePartitionStatus());
-        assertEquals("{\"k\":\"v\"}", result.get().getPartitionProgressState());
-        assertEquals(0L, result.get().getClosedCount());
+        assertThat(result.isPresent(), is(true));
+        assertThat(result.get().getSourceIdentifier(), equalTo(SOURCE_ID));
+        assertThat(result.get().getSourcePartitionKey(), equalTo("p1"));
+        assertThat(result.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.UNASSIGNED));
+        assertThat(result.get().getPartitionProgressState(), equalTo("{\"k\":\"v\"}"));
+        assertThat(result.get().getClosedCount(), equalTo(0L));
     }
 
     @Test
     void getSourcePartitionItem_returns_empty_for_nonexistent() {
-        assertFalse(store.getSourcePartitionItem(SOURCE_ID, "nonexistent").isPresent());
+        assertThat(store.getSourcePartitionItem(SOURCE_ID, "nonexistent").isPresent(), is(false));
     }
 
     @Test
@@ -105,9 +107,9 @@ class JdbcSourceCoordinationStoreIT {
         store.tryUpdateSourcePartitionItem(item);
 
         final SourcePartitionStoreItem updated = store.getSourcePartitionItem(SOURCE_ID, "p1").get();
-        assertEquals(SourcePartitionStatus.ASSIGNED, updated.getSourcePartitionStatus());
-        assertEquals("node-1", updated.getPartitionOwner());
-        assertNotNull(updated.getPartitionOwnershipTimeout());
+        assertThat(updated.getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
+        assertThat(updated.getPartitionOwner(), equalTo("node-1"));
+        assertThat(updated.getPartitionOwnershipTimeout(), is(notNullValue()));
     }
 
     @Test
@@ -133,31 +135,30 @@ class JdbcSourceCoordinationStoreIT {
         final Optional<SourcePartitionStoreItem> acquired = store.tryAcquireAvailablePartition(
                 SOURCE_ID, "node-1", Duration.ofMinutes(10));
 
-        assertTrue(acquired.isPresent());
-        assertEquals(SourcePartitionStatus.ASSIGNED, acquired.get().getSourcePartitionStatus());
-        assertEquals("node-1", acquired.get().getPartitionOwner());
+        assertThat(acquired.isPresent(), is(true));
+        assertThat(acquired.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
+        assertThat(acquired.get().getPartitionOwner(), equalTo("node-1"));
     }
 
     @Test
     void tryAcquireAvailablePartition_returns_empty_when_none_available() {
-        assertFalse(store.tryAcquireAvailablePartition(
-                SOURCE_ID, "node-1", Duration.ofMinutes(10)).isPresent());
+        assertThat(store.tryAcquireAvailablePartition(
+                SOURCE_ID, "node-1", Duration.ofMinutes(10)).isPresent(), is(false));
     }
 
     @Test
-    void tryAcquireAvailablePartition_acquires_expired_assigned() throws InterruptedException {
+    void tryAcquireAvailablePartition_acquires_expired_assigned() {
         store.tryCreatePartitionItem(SOURCE_ID, "p1", SourcePartitionStatus.UNASSIGNED, 0L, null, false);
 
         final Optional<SourcePartitionStoreItem> first = store.tryAcquireAvailablePartition(
                 SOURCE_ID, "node-1", Duration.ofSeconds(2));
-        assertTrue(first.isPresent());
+        assertThat(first.isPresent(), is(true));
 
-        Thread.sleep(3000);
+        await().atMost(10, TimeUnit.SECONDS).until(() ->
+                store.tryAcquireAvailablePartition(SOURCE_ID, "node-2", Duration.ofMinutes(10)).isPresent());
 
-        final Optional<SourcePartitionStoreItem> second = store.tryAcquireAvailablePartition(
-                SOURCE_ID, "node-2", Duration.ofMinutes(10));
-        assertTrue(second.isPresent());
-        assertEquals("node-2", second.get().getPartitionOwner());
+        final SourcePartitionStoreItem reacquired = store.getSourcePartitionItem(SOURCE_ID, "p1").get();
+        assertThat(reacquired.getPartitionOwner(), equalTo("node-2"));
     }
 
     @Test
@@ -172,8 +173,8 @@ class JdbcSourceCoordinationStoreIT {
 
         final Optional<SourcePartitionStoreItem> acquired = store.tryAcquireAvailablePartition(
                 SOURCE_ID, "node-1", Duration.ofMinutes(10));
-        assertTrue(acquired.isPresent());
-        assertEquals("node-1", acquired.get().getPartitionOwner());
+        assertThat(acquired.isPresent(), is(true));
+        assertThat(acquired.get().getPartitionOwner(), equalTo("node-1"));
     }
 
     @Test
@@ -183,7 +184,7 @@ class JdbcSourceCoordinationStoreIT {
 
         store.tryDeletePartitionItem(item);
 
-        assertFalse(store.getSourcePartitionItem(SOURCE_ID, "p1").isPresent());
+        assertThat(store.getSourcePartitionItem(SOURCE_ID, "p1").isPresent(), is(false));
     }
 
     @Test
@@ -193,7 +194,7 @@ class JdbcSourceCoordinationStoreIT {
         store.tryCreatePartitionItem("other-source", "p3", SourcePartitionStatus.UNASSIGNED, 0L, null, false);
 
         final List<SourcePartitionStoreItem> items = store.queryAllSourcePartitionItems(SOURCE_ID);
-        assertEquals(2, items.size());
+        assertThat(items.size(), equalTo(2));
     }
 
     @Test
@@ -203,8 +204,8 @@ class JdbcSourceCoordinationStoreIT {
 
         final List<SourcePartitionStoreItem> items = store.querySourcePartitionItemsByStatus(
                 SOURCE_ID, SourcePartitionStatus.UNASSIGNED, Instant.EPOCH.toString());
-        assertEquals(1, items.size());
-        assertEquals("p1", items.get(0).getSourcePartitionKey());
+        assertThat(items.size(), equalTo(1));
+        assertThat(items.get(0).getSourcePartitionKey(), equalTo("p1"));
     }
 
     @Test
@@ -225,12 +226,11 @@ class JdbcSourceCoordinationStoreIT {
         item.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
         ttlStore.tryUpdateSourcePartitionItem(item);
 
-        assertTrue(ttlStore.getSourcePartitionItem(SOURCE_ID, "p1").isPresent());
+        assertThat(ttlStore.getSourcePartitionItem(SOURCE_ID, "p1").isPresent(), is(true));
 
-        Thread.sleep(3000);
-
-        ttlStore.deleteExpiredItems();
-
-        assertFalse(ttlStore.getSourcePartitionItem(SOURCE_ID, "p1").isPresent());
+        await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            ttlStore.deleteExpiredItems();
+            return !ttlStore.getSourcePartitionItem(SOURCE_ID, "p1").isPresent();
+        });
     }
 }
