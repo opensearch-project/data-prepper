@@ -60,10 +60,12 @@ public class NodeOperationDetail {
         this.timestamp = DateTimeFormatter.ISO_INSTANT.format(timestamp);
         this.nodeConnectionHash = String.valueOf(Objects.hash(sourceNode, targetNode));
 
-        if (sourceOperation != null && sourceOperation.getName() != null) {
-            final String targetOpName = targetOperation != null ? targetOperation.getName() : null;
+        final String sourceOpName = sourceOperation != null ? sourceOperation.getName() : null;
+        final String targetOpName = targetOperation != null ? targetOperation.getName() : null;
+
+        if (sourceOpName != null || targetOpName != null) {
             this.operationConnectionHash = String.valueOf(
-                    Objects.hash(sourceNode, targetNode, sourceOperation.getName(), targetOpName));
+                    Objects.hash(sourceNode, targetNode, sourceOpName, targetOpName));
         } else {
             this.operationConnectionHash = null;
         }
