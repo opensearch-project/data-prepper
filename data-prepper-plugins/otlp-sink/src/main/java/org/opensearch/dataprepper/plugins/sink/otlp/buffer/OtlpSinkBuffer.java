@@ -6,9 +6,11 @@
 package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.MessageLite;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import lombok.Getter;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -16,6 +18,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
+import org.opensearch.dataprepper.plugins.sink.otlp.codec.OtlpLogEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.utils.Pair;
@@ -30,17 +33,22 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A back-pressure buffer for OTLP sink.
+ * A back-pressure buffer for OTLP sink that supports both traces and logs.
  */
 public class OtlpSinkBuffer {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpSinkBuffer.class);
     private static final int SAFETY_FACTOR = 10;
     private static final int MIN_QUEUE_CAPACITY = 2000;
 
-    private final BlockingQueue<Record<Span>> queue;
-    private final OTelProtoStandardCodec.OTelProtoEncoder encoder;
+    private final BlockingQueue<Record<Event>> queue;
     private final OtlpHttpSender sender;
     private final OtlpSinkMetrics sinkMetrics;
+    private final boolean isLogSignal;
+
+    // Trace encoding (only used when isLogSignal=false)
+    private final OTelProtoStandardCodec.OTelProtoEncoder traceEncoder;
+    // Log encoding (only used when isLogSignal=true)
+    private final OtlpLogEncoder logEncoder;
 
     private final int maxEvents;
     private final long maxBatchBytes;
@@ -58,8 +66,13 @@ public class OtlpSinkBuffer {
      * @param config      the OTLP sink configuration
      * @param sinkMetrics the metrics collector to use
      */
-    public OtlpSinkBuffer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics));
+    public OtlpSinkBuffer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier,
+                           @Nonnull final OtlpSinkConfig config,
+                           @Nonnull final OtlpSinkMetrics sinkMetrics) {
+        this(config, sinkMetrics,
+                new OTelProtoStandardCodec.OTelProtoEncoder(),
+                new OtlpLogEncoder(),
+                new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics));
     }
 
     /**
@@ -68,12 +81,17 @@ public class OtlpSinkBuffer {
     @VisibleForTesting
     OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
                    @Nonnull final OtlpSinkMetrics sinkMetrics,
-                   @Nonnull final OTelProtoStandardCodec.OTelProtoEncoder encoder,
+                   @Nonnull final OTelProtoStandardCodec.OTelProtoEncoder traceEncoder,
+                   @Nonnull final OtlpLogEncoder logEncoder,
                    @Nonnull final OtlpHttpSender sender) {
 
         this.sinkMetrics = sinkMetrics;
-        this.encoder = encoder;
+        this.traceEncoder = traceEncoder;
+        this.logEncoder = logEncoder;
         this.sender = sender;
+
+        // Detect signal type from config
+        this.isLogSignal = config.isLogSignal();
 
         this.maxEvents = config.getMaxEvents();
         this.maxBatchBytes = config.getMaxBatchSize();
@@ -120,50 +138,50 @@ public class OtlpSinkBuffer {
     }
 
     /**
-     * Enqueues a span record for later batching and sending.
+     * Enqueues an event record for later batching and sending.
      * <p>
      * This will block if the internal queue is full, guaranteeing
      * lossless delivery during normal operations.
-     * On interruption, the span is still rejected and
+     * On interruption, the event is still rejected and
      * error metrics are incremented.
      *
-     * @param record the span record to enqueue
+     * @param record the event record to enqueue
      */
-    public void add(final Record<Span> record) {
+    public void add(final Record<Event> record) {
         try {
             queue.put(record);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Interrupted while enqueuing span", e);
+            LOG.error("Interrupted while enqueuing event", e);
             sinkMetrics.incrementFailedSpansCount(1);
             sinkMetrics.incrementErrorsCount();
         }
     }
 
     /**
-     * Worker loop that batches spans by count, size, or time and then flushes them.
+     * Worker loop that batches events by count, size, or time and then flushes them.
      * <p>
      * Continues running as long as {@link #running} is true or the queue is not empty.
      * Handles encoding failures, timeout-based flush, and final flush on shutdown.
      */
     private void run() {
-        final List<Pair<ResourceSpans, EventHandle>> batch = new ArrayList<>();
+        final List<Pair<MessageLite, EventHandle>> batch = new ArrayList<>();
         long batchSize = 0;
         long lastFlush = System.currentTimeMillis();
 
         while (true) {
             try {
                 final long now = System.currentTimeMillis();
-                final Record<Span> record = queue.poll(100, TimeUnit.MILLISECONDS);
+                final Record<Event> record = queue.poll(100, TimeUnit.MILLISECONDS);
 
                 if (record != null) {
                     try {
-                        final ResourceSpans resourceSpans = encoder.convertToResourceSpans(record.getData());
+                        final MessageLite encoded = encodeRecord(record);
                         final EventHandle eventHandle = record.getData().getEventHandle();
-                        batch.add(Pair.of(resourceSpans, eventHandle));
-                        batchSize += resourceSpans.getSerializedSize();
+                        batch.add(Pair.of(encoded, eventHandle));
+                        batchSize += encoded.getSerializedSize();
                     } catch (final Exception e) {
-                        LOG.error("Failed to encode span, skipping", e);
+                        LOG.error("Failed to encode event, skipping", e);
                         sinkMetrics.incrementFailedSpansCount(1);
                         sinkMetrics.incrementErrorsCount();
                     }
@@ -173,7 +191,7 @@ public class OtlpSinkBuffer {
                 final boolean flushByTime = !batch.isEmpty() && (now - lastFlush >= flushTimeoutMillis);
 
                 if (flushBySize || flushByTime) {
-                    sender.send(batch);
+                    sender.send(batch, isLogSignal);
                     batch.clear();
                     batchSize = 0;
                     lastFlush = now;
@@ -188,15 +206,22 @@ public class OtlpSinkBuffer {
                     LOG.debug("Worker interrupted while polling, continuing...");
                     sinkMetrics.incrementErrorsCount();
                 }
-
-                // Continue to loop if still running
             }
         }
 
-        // Final flush
         if (!batch.isEmpty()) {
-            sender.send(batch);
+            sender.send(batch, isLogSignal);
             batch.clear();
         }
+    }
+
+    private MessageLite encodeRecord(final Record<Event> record) throws Exception {
+        if (isLogSignal) {
+            return logEncoder.encode(record.getData());
+        }
+        if (!(record.getData() instanceof Span)) {
+            throw new IllegalArgumentException("Expected Span event for traces signal_type, got: " + record.getData().getClass().getSimpleName());
+        }
+        return traceEncoder.convertToResourceSpans((Span) record.getData());
     }
 }

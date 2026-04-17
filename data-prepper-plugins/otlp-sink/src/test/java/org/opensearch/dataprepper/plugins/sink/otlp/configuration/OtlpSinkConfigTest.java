@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -263,5 +264,127 @@ class OtlpSinkConfigTest {
             final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
             config.getAwsRegion();  // must trigger parsing logic
         });
+    }
+
+    @Test
+    void testSignalType_defaultsToTraces() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertEquals("traces", config.getSignalType());
+        assertFalse(config.isLogSignal());
+    }
+
+    @Test
+    void testSignalType_logs() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
+                "signal_type: logs"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertEquals("logs", config.getSignalType());
+        assertTrue(config.isLogSignal());
+    }
+
+    @Test
+    void testSignalType_logsCaseInsensitive() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
+                "signal_type: LOGS"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertTrue(config.isLogSignal());
+    }
+
+    @Test
+    void testAdditionalHeaders_defaultsToEmpty() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertNotNull(config.getAdditionalHeaders());
+        assertTrue(config.getAdditionalHeaders().isEmpty());
+    }
+
+    @Test
+    void testAdditionalHeaders_deserialization() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
+                "additional_headers:",
+                "  x-custom-header: my-value",
+                "  x-another: another-value"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertEquals(2, config.getAdditionalHeaders().size());
+        assertEquals("my-value", config.getAdditionalHeaders().get("x-custom-header"));
+        assertEquals("another-value", config.getAdditionalHeaders().get("x-another"));
+    }
+
+    @Test
+    void testGetServiceName_returnsNullWhenNotSet() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertNull(config.getServiceName());
+    }
+
+    @Test
+    void testGetServiceName_returnsValueWhenSet() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws:",
+                "  service_name: my-service"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertEquals("my-service", config.getServiceName());
+    }
+
+    @Test
+    void testAwsRegion_fromAwsConfigBlock() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws:",
+                "  region: eu-west-1"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertThat(config.getAwsRegion(), equalTo(Region.EU_WEST_1));
+    }
+
+    @Test
+    void testAwsRegion_awsConfigTakesPrecedenceOverEndpoint() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"https://xray.us-east-1.amazonaws.com\"",
+                "aws:",
+                "  region: eu-west-1"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        // aws.region should take precedence over endpoint parsing
+        assertThat(config.getAwsRegion(), equalTo(Region.EU_WEST_1));
     }
 }

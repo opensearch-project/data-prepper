@@ -8,9 +8,8 @@ to any OTLP Protobuf-compatible endpoint.
 
 ## Known Limitations
 
-- Currently, supports only trace data (spans). Support for metrics and logs will be added in future releases.
+- Currently, supports trace and log data. Support for metrics will be added in future releases.
 - No support for DQL-based loss-less delivery in this release.
-- Only AWS X-Ray-compatible OTLP endpoints are currently supported (`https://xray.<region>.amazonaws.com/v1/traces`).
 - Only OTLP over HTTP is supported; gRPC is not yet supported.
 
 ---
@@ -63,25 +62,58 @@ otlp_pipeline:
           sts_external_id: external-id-value
 ```
 
+### Log Pipeline Configuration
+
+Use this to send log events to an OTLP-compatible log ingestion endpoint.
+
+```yaml
+log_pipeline:
+  source:
+    http:
+      port: 2021
+      path: "/logs"
+
+  sink:
+    - otlp:
+        endpoint: "https://my-otlp-endpoint.example.com:443/v1/logs"
+        signal_type: logs
+        max_retries: 3
+        threshold:
+          max_events: 100
+          flush_timeout: 5s
+        aws:
+          service_name: my-service
+          region: us-east-1
+          sts_role_arn: arn:aws:iam::123456789012:role/MyRole
+        additional_headers:
+          x-custom-header: my-value
+```
+
 ---
 
 ## Configuration Options
 
-| Property                   | Type     | Required | Default               | Description                                                                                              |
-|----------------------------|----------|----------|-----------------------|----------------------------------------------------------------------------------------------------------|
-| `endpoint`                 | `String` | Yes      | —                     | AWS X-Ray OTLP endpoint where spans will be sent.                                                        |
-| `max_retries`              | `int`    | No       | `5`                   | Maximum number of retry attempts on HTTP send failures.                                                  |
-| **threshold**              | `Object` | No       | —                     | Controls batching behavior. See below for sub-properties.                                                |
-| `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of spans per batch. Use `0` to disable count-based flushing. Must be ≥ 0.                 |
-| `threshold.max_batch_size` | `String` | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                    |   
-| `threshold.flush_timeout`  | `String` | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)               |
-| **aws**                    | `Object` | Yes      | —                     | AWS authentication settings. Use `{}` if no STS role is needed. See below.                               |
-| `aws.sts_role_arn`         | `String` | No       | —                     | IAM Role ARN that Data Prepper (or OSI) assumes to send spans to X-Ray on behalf of a customer account.  |
-| `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId. |
+| Property                   | Type              | Required | Default               | Description                                                                                              |
+|----------------------------|-------------------|----------|-----------------------|----------------------------------------------------------------------------------------------------------|
+| `endpoint`                 | `String`          | Yes      | —                     | OTLP endpoint where data will be sent.                                                                   |
+| `signal_type`              | `String`          | No       | `traces`              | Signal type to send: `traces` or `logs`.                                                                 |
+| `max_retries`              | `int`             | No       | `5`                   | Maximum number of retry attempts on HTTP send failures.                                                  |
+| **threshold**              | `Object`          | No       | —                     | Controls batching behavior. See below for sub-properties.                                                |
+| `threshold.max_events`     | `int`             | No       | `512` (recommended)   | Maximum number of events per batch. Use `0` to disable count-based flushing. Must be ≥ 0.                |
+| `threshold.max_batch_size` | `String`          | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                    |   
+| `threshold.flush_timeout`  | `String`          | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)               |
+| **aws**                    | `Object`          | Yes      | —                     | AWS authentication settings. Use `{}` if no STS role is needed. See below.                               |
+| `aws.sts_role_arn`         | `String`          | No       | —                     | IAM Role ARN that Data Prepper assumes to send data to the endpoint on behalf of a customer account.     |
+| `aws.sts_external_id`      | `String`          | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId. |
+| `aws.region`               | `String`          | No       | parsed from endpoint  | AWS region for SigV4 signing. Falls back to parsing from the endpoint URL if not set.                    |
+| `aws.service_name`         | `String`          | No       | `xray`                | SigV4 signing service name. Override for non-X-Ray OTLP endpoints.                                      |
+| `additional_headers`       | `Map<String,String>` | No    | `{}`                  | Custom HTTP headers added to every outgoing request after SigV4 signing.                                 |
 
 **Additional Notes:**
 
-- `aws.region` is automatically derived from the endpoint.
+- `aws.region` can be set explicitly or is automatically derived from the endpoint. Explicit `aws.region` takes precedence.
+- `aws.service_name` defaults to `xray` for backward compatibility with existing X-Ray trace pipelines.
+- `additional_headers` are injected after SigV4 signing, so they are not included in the signature.
 
 ---
 

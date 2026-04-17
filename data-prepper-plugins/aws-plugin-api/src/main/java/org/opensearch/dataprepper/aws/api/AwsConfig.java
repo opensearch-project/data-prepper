@@ -37,6 +37,9 @@ public class AwsConfig {
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
 
+    @JsonProperty("service_name")
+    private String serviceName;
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -51,5 +54,9 @@ public class AwsConfig {
 
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public String getServiceName() {
+        return serviceName;
     }
 }

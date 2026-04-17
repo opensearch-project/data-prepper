@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.sink.otlp.buffer.OtlpSinkBuffer;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import software.amazon.awssdk.regions.Region;
@@ -36,7 +36,6 @@ class OtlpSinkTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // Arrange: stub out config, metrics, setting
         mockAwsCredSupplier = mock(AwsCredentialsSupplier.class);
         mockConfig = mock(OtlpSinkConfig.class);
         when(mockConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
@@ -48,10 +47,8 @@ class OtlpSinkTest {
         when(mockSetting.getPipelineName()).thenReturn("pipeline");
         when(mockSetting.getName()).thenReturn("otlp");
 
-        // Create the real sink
         target = new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting);
 
-        // Replace its private buffer with a mock
         mockBuffer = mock(OtlpSinkBuffer.class);
         final Field bufferField = OtlpSink.class.getDeclaredField("buffer");
         bufferField.setAccessible(true);
@@ -60,23 +57,17 @@ class OtlpSinkTest {
 
     @Test
     void testInitialize_startsBuffer() {
-        // Act
         target.initialize();
-
-        // Assert
         verify(mockBuffer).start();
     }
 
     @Test
     void testOutput_addsEveryRecordToBuffer() {
-        // Arrange
-        @SuppressWarnings("unchecked") final Record<Span> r1 = mock(Record.class);
-        @SuppressWarnings("unchecked") final Record<Span> r2 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r1 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Event> r2 = mock(Record.class);
 
-        // Act
         target.output(List.of(r1, r2));
 
-        // Assert
         verify(mockBuffer).add(r1);
         verify(mockBuffer).add(r2);
         verifyNoMoreInteractions(mockBuffer);
@@ -86,30 +77,23 @@ class OtlpSinkTest {
     void testIsReady_returnsTrueOnlyAfterInitialization() {
         when(mockBuffer.isRunning()).thenReturn(true);
 
-        // Not initialized yet
         assertFalse(target.isReady());
 
-        // Initialize, which sets 'initialized = true' and starts the buffer
         target.initialize();
         assertTrue(target.isReady());
 
-        // Now simulate buffer being not running
         when(mockBuffer.isRunning()).thenReturn(false);
         assertFalse(target.isReady());
     }
 
     @Test
     void testShutdown_stopsBuffer() {
-        // Act
         target.shutdown();
-
-        // Assert
         verify(mockBuffer).stop();
     }
 
     @Test
     void testConstructor_doesNotThrow() {
-        // Just ensure the three-arg constructor still works
         assertDoesNotThrow(() -> new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting));
     }
 }

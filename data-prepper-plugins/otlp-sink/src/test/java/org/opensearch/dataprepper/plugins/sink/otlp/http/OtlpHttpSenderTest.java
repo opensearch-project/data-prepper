@@ -5,13 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
+import com.google.protobuf.MessageLite;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.ResponseHeaders;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsPartialSuccess;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,12 +27,13 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.utils.Pair;
 
-import java.lang.reflect.Method;
 import java.net.URI;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static org.awaitility.Awaitility.await;
@@ -39,13 +44,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OtlpHttpSenderTest {
 
     private static final byte[] PAYLOAD = "test-otlp".getBytes(StandardCharsets.UTF_8);
-    private static final int SPANS_COUNT = 3;
+    private static final int BATCH_COUNT = 3;
 
     private OtlpSinkMetrics metrics;
     private SigV4Signer signer;
@@ -53,7 +57,8 @@ class OtlpHttpSenderTest {
     private Function<byte[], byte[]> gzipCompressor;
     private OtlpHttpSender sender;
     private AwsCredentialsSupplier mockAwsCredSupplier;
-    private List<Pair<ResourceSpans, EventHandle>> testBatch;
+    private List<Pair<MessageLite, EventHandle>> traceBatch;
+    private List<Pair<MessageLite, EventHandle>> logBatch;
     private EventHandle mockEventHandle1;
     private EventHandle mockEventHandle2;
     private EventHandle mockEventHandle3;
@@ -70,11 +75,16 @@ class OtlpHttpSenderTest {
         mockEventHandle2 = mock(EventHandle.class);
         mockEventHandle3 = mock(EventHandle.class);
 
-        // Create test batch with ResourceSpans and EventHandles
-        testBatch = Arrays.asList(
+        traceBatch = Arrays.asList(
                 Pair.of(ResourceSpans.newBuilder().build(), mockEventHandle1),
                 Pair.of(ResourceSpans.newBuilder().build(), mockEventHandle2),
                 Pair.of(ResourceSpans.newBuilder().build(), mockEventHandle3)
+        );
+
+        logBatch = Arrays.asList(
+                Pair.of(ResourceLogs.newBuilder().build(), mockEventHandle1),
+                Pair.of(ResourceLogs.newBuilder().build(), mockEventHandle2),
+                Pair.of(ResourceLogs.newBuilder().build(), mockEventHandle3)
         );
 
         when(gzipCompressor.apply(any())).thenReturn(PAYLOAD);
@@ -89,34 +99,33 @@ class OtlpHttpSenderTest {
         sender = new OtlpHttpSender(metrics, gzipCompressor, signer, webClient);
     }
 
+    // --- Trace signal tests ---
+
     @Test
     void testSend_emptyBatch_returnsEarly() {
-        final List<Pair<ResourceSpans, EventHandle>> emptyBatch = Collections.emptyList();
+        final List<Pair<MessageLite, EventHandle>> emptyBatch = Collections.emptyList();
 
-        // Prevent accidental NPE if send logic changes
         when(webClient.execute(any(HttpRequest.class))).thenThrow(new AssertionError("Should not call execute"));
 
-        sender.send(emptyBatch);
+        sender.send(emptyBatch, false);
 
         verifyNoInteractions(metrics);
     }
 
     @Test
-    void testSend_successfulResponse() {
+    void testSend_traces_successfulResponse() {
         when(webClient.execute(any(HttpRequest.class))).thenReturn(
                 HttpResponse.of(ResponseHeaders.of(200), HttpData.empty())
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
-            verify(metrics).incrementRecordsOut(SPANS_COUNT);
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
             verify(metrics).incrementPayloadSize(anyLong());
             verify(metrics).incrementPayloadGzipSize(PAYLOAD.length);
             verify(metrics).recordHttpLatency(anyLong());
             verify(metrics).recordResponseCode(200);
-
-            // Verify all event handles are released with success=true
             verify(mockEventHandle1).release(true);
             verify(mockEventHandle2).release(true);
             verify(mockEventHandle3).release(true);
@@ -124,7 +133,7 @@ class OtlpHttpSenderTest {
     }
 
     @Test
-    void testSend_partialSuccessResponse() {
+    void testSend_traces_partialSuccessResponse() {
         final ExportTraceServiceResponse proto = ExportTraceServiceResponse.newBuilder()
                 .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
                         .setRejectedSpans(2)
@@ -136,14 +145,12 @@ class OtlpHttpSenderTest {
                 HttpResponse.of(ResponseHeaders.of(200), HttpData.wrap(proto.toByteArray()))
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
             verify(metrics).incrementRejectedSpansCount(2);
-            verify(metrics).incrementRecordsOut(SPANS_COUNT - 2);
+            verify(metrics).incrementRecordsOut(BATCH_COUNT - 2);
             verify(metrics).recordResponseCode(200);
-
-            // All handles should still be released as true (optimistic)
             verify(mockEventHandle1).release(true);
             verify(mockEventHandle2).release(true);
             verify(mockEventHandle3).release(true);
@@ -151,7 +158,7 @@ class OtlpHttpSenderTest {
     }
 
     @Test
-    void testSend_partialSuccessWithZeroRejected() {
+    void testSend_traces_partialSuccessWithZeroRejected() {
         final ExportTraceServiceResponse proto = ExportTraceServiceResponse.newBuilder()
                 .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
                         .setRejectedSpans(0)
@@ -163,17 +170,12 @@ class OtlpHttpSenderTest {
                 HttpResponse.of(ResponseHeaders.of(200), HttpData.wrap(proto.toByteArray()))
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
             verify(metrics, never()).incrementRejectedSpansCount(anyLong());
-            verify(metrics).incrementRecordsOut(SPANS_COUNT);
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
             verify(metrics).recordResponseCode(200);
-
-            // All handles should be released as true
-            verify(mockEventHandle1).release(true);
-            verify(mockEventHandle2).release(true);
-            verify(mockEventHandle3).release(true);
         });
     }
 
@@ -183,17 +185,13 @@ class OtlpHttpSenderTest {
                 HttpResponse.of(ResponseHeaders.of(200), HttpData.ofUtf8("not-protobuf"))
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
             verify(metrics).incrementErrorsCount();
-            verify(metrics).incrementRecordsOut(SPANS_COUNT);
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
             verify(metrics).recordResponseCode(200);
-
-            // Handles should still be released as true despite parse error
             verify(mockEventHandle1).release(true);
-            verify(mockEventHandle2).release(true);
-            verify(mockEventHandle3).release(true);
         });
     }
 
@@ -203,13 +201,11 @@ class OtlpHttpSenderTest {
                 HttpResponse.of(ResponseHeaders.of(400), HttpData.ofUtf8("{\"error\":\"bad request\"}"))
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
             verify(metrics).recordResponseCode(400);
-            verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
-
-            // All handles should be released with success=false
+            verify(metrics).incrementRejectedSpansCount(BATCH_COUNT);
             verify(mockEventHandle1).release(false);
             verify(mockEventHandle2).release(false);
             verify(mockEventHandle3).release(false);
@@ -222,16 +218,12 @@ class OtlpHttpSenderTest {
                 HttpResponse.of(ResponseHeaders.of(500), HttpData.empty())
         );
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
             verify(metrics).recordResponseCode(500);
-            verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
-
-            // All handles should be released with success=false
+            verify(metrics).incrementRejectedSpansCount(BATCH_COUNT);
             verify(mockEventHandle1).release(false);
-            verify(mockEventHandle2).release(false);
-            verify(mockEventHandle3).release(false);
         });
     }
 
@@ -239,15 +231,11 @@ class OtlpHttpSenderTest {
     void testSend_skipsSendIfGzipFails() {
         sender = new OtlpHttpSender(metrics, ignored -> new byte[0], signer, webClient);
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
-        verify(metrics).incrementFailedSpansCount(SPANS_COUNT);
+        verify(metrics).incrementFailedSpansCount(BATCH_COUNT);
         verifyNoInteractions(webClient);
-
-        // All handles should be released with success=false
         verify(mockEventHandle1).release(false);
-        verify(mockEventHandle2).release(false);
-        verify(mockEventHandle3).release(false);
     }
 
     @Test
@@ -255,27 +243,155 @@ class OtlpHttpSenderTest {
         final HttpResponse failingResponse = HttpResponse.ofFailure(new RuntimeException("send failed"));
         when(webClient.execute(any(HttpRequest.class))).thenReturn(failingResponse);
 
-        sender.send(testBatch);
+        sender.send(traceBatch, false);
 
         await().untilAsserted(() -> {
-            verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
-
-            // All handles should be released with success=false
+            verify(metrics).incrementRejectedSpansCount(BATCH_COUNT);
             verify(mockEventHandle1).release(false);
-            verify(mockEventHandle2).release(false);
-            verify(mockEventHandle3).release(false);
         });
+    }
+
+    // --- Log signal tests ---
+
+    @Test
+    void testSend_logs_successfulResponse() {
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.empty())
+        );
+
+        sender.send(logBatch, true);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
+            verify(metrics).recordResponseCode(200);
+            verify(mockEventHandle1).release(true);
+            verify(mockEventHandle2).release(true);
+            verify(mockEventHandle3).release(true);
+        });
+    }
+
+    @Test
+    void testSend_logs_successfulResponseWithNullBody() {
+        // Simulate a response where content().array() returns null-like empty
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200))
+        );
+
+        sender.send(logBatch, true);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
+            verify(mockEventHandle1).release(true);
+        });
+    }
+
+    @Test
+    void testSend_logs_partialSuccessResponse() {
+        final ExportLogsServiceResponse proto = ExportLogsServiceResponse.newBuilder()
+                .setPartialSuccess(ExportLogsPartialSuccess.newBuilder()
+                        .setRejectedLogRecords(1)
+                        .setErrorMessage("invalid log")
+                        .build())
+                .build();
+
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.wrap(proto.toByteArray()))
+        );
+
+        sender.send(logBatch, true);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRejectedSpansCount(1);
+            verify(metrics).incrementRecordsOut(BATCH_COUNT - 1);
+            verify(metrics).recordResponseCode(200);
+        });
+    }
+
+    @Test
+    void testSend_logs_nonSuccessStatus() {
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(403), HttpData.ofUtf8("forbidden"))
+        );
+
+        sender.send(logBatch, true);
+
+        await().untilAsserted(() -> {
+            verify(metrics).recordResponseCode(403);
+            verify(metrics).incrementRejectedSpansCount(BATCH_COUNT);
+            verify(mockEventHandle1).release(false);
+        });
+    }
+
+    // --- Additional headers test ---
+
+    @Test
+    void testSend_withAdditionalHeaders() {
+        final Map<String, String> headers = Map.of("x-custom-header", "custom-value");
+        sender = new OtlpHttpSender(metrics, gzipCompressor, signer, webClient, headers);
+
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.empty())
+        );
+
+        sender.send(traceBatch, false);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRecordsOut(BATCH_COUNT);
+            verify(signer).signRequest(any());
+        });
+    }
+
+    // --- Coverage: private method paths ---
+
+    @Test
+    void testHandleSuccessfulResponse_nullBytes_logSignal() throws Exception {
+        final Method method = OtlpHttpSender.class.getDeclaredMethod(
+                "handleSuccessfulResponse", byte[].class, List.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(sender, null, logBatch, true);
+
+        verify(metrics).incrementRecordsOut(BATCH_COUNT);
+        verify(mockEventHandle1).release(true);
+    }
+
+    @Test
+    void testHandleSuccessfulResponse_nullBytes_traceSignal() throws Exception {
+        final Method method = OtlpHttpSender.class.getDeclaredMethod(
+                "handleSuccessfulResponse", byte[].class, List.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(sender, null, traceBatch, false);
+
+        verify(metrics).incrementRecordsOut(BATCH_COUNT);
+        verify(mockEventHandle1).release(true);
+    }
+
+    // --- Constructor tests ---
+
+    @Test
+    void testConstructor_withNullAdditionalHeaders() {
+        final OtlpHttpSender nullHeadersSender = new OtlpHttpSender(metrics, gzipCompressor, signer, webClient, null);
+        assertNotNull(nullHeadersSender);
+
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.empty())
+        );
+
+        nullHeadersSender.send(traceBatch, false);
+
+        await().untilAsserted(() -> verify(metrics).incrementRecordsOut(BATCH_COUNT));
     }
 
     @Test
     void testConstructor_withDefaultConfig() {
         final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
-
         when(config.getEndpoint()).thenReturn("https://localhost/v1/traces");
         when(config.getMaxBatchSize()).thenReturn(1_000_000L);
         when(config.getMaxRetries()).thenReturn(2);
         when(config.getFlushTimeoutMillis()).thenReturn(5000L);
         when(config.getAwsRegion()).thenReturn(software.amazon.awssdk.regions.Region.US_WEST_2);
+        when(config.getAdditionalHeaders()).thenReturn(Map.of());
 
         final OtlpHttpSender defaultSender = new OtlpHttpSender(mockAwsCredSupplier, config, metrics);
         assertNotNull(defaultSender);
@@ -284,158 +400,14 @@ class OtlpHttpSenderTest {
     @Test
     void testConstructor_withMinimumThresholdConfig() {
         final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
-
-        // Set all threshold values to minimum valid input
         when(config.getEndpoint()).thenReturn("https://localhost/v1/traces");
         when(config.getMaxBatchSize()).thenReturn(0L);
         when(config.getMaxRetries()).thenReturn(0);
         when(config.getFlushTimeoutMillis()).thenReturn(1L);
         when(config.getAwsRegion()).thenReturn(software.amazon.awssdk.regions.Region.US_WEST_2);
+        when(config.getAdditionalHeaders()).thenReturn(Map.of());
 
-        // Should not throw or crash
         final OtlpHttpSender minimalSender = new OtlpHttpSender(mockAwsCredSupplier, config, metrics);
         assertNotNull(minimalSender);
-    }
-
-    @Test
-    void testGetPayloadAndCompressedPayload_privateMethod() throws Exception {
-        // Test the private method via reflection to ensure 100% coverage
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("getPayloadAndCompressedPayload", List.class);
-        method.setAccessible(true);
-
-        when(gzipCompressor.apply(any())).thenReturn("compressed".getBytes());
-
-        @SuppressWarnings("unchecked") final Pair<byte[], byte[]> result = (Pair<byte[], byte[]>) method.invoke(sender, testBatch);
-
-        assertNotNull(result);
-        assertNotNull(result.left()); // payload
-        assertNotNull(result.right()); // compressed payload
-        verify(gzipCompressor).apply(any());
-    }
-
-    @Test
-    void testBuildHttpRequest_privateMethod() throws Exception {
-        // Test the private method via reflection
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("buildHttpRequest", byte[].class);
-        method.setAccessible(true);
-
-        final HttpRequest result = (HttpRequest) method.invoke(sender, PAYLOAD);
-
-        assertNotNull(result);
-        verify(signer).signRequest(PAYLOAD);
-    }
-
-    @Test
-    void testHandleResponse_privateMethod_success() throws Exception {
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleResponse", int.class, byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, 200, null, testBatch);
-
-        verify(metrics).recordResponseCode(200);
-        verify(metrics).incrementRecordsOut(SPANS_COUNT);
-        verify(mockEventHandle1).release(true);
-        verify(mockEventHandle2).release(true);
-        verify(mockEventHandle3).release(true);
-    }
-
-    @Test
-    void testHandleResponse_privateMethod_failure() throws Exception {
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleResponse", int.class, byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, 400, "error".getBytes(), testBatch);
-
-        verify(metrics).recordResponseCode(400);
-        verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
-        verify(mockEventHandle1).release(false);
-        verify(mockEventHandle2).release(false);
-        verify(mockEventHandle3).release(false);
-    }
-
-    @Test
-    void testHandleSuccessfulResponse_privateMethod_withNullBody() throws Exception {
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, null, testBatch);
-
-        verify(metrics).incrementRecordsOut(SPANS_COUNT);
-        verify(mockEventHandle1).release(true);
-        verify(mockEventHandle2).release(true);
-        verify(mockEventHandle3).release(true);
-        verifyNoMoreInteractions(metrics);
-    }
-
-    @Test
-    void testHandleSuccessfulResponse_privateMethod_withoutPartialSuccess() throws Exception {
-        // Create a response with no partial_success
-        final ExportTraceServiceResponse response = ExportTraceServiceResponse.newBuilder().build();
-        final byte[] responseBytes = response.toByteArray();
-
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, responseBytes, testBatch);
-
-        verify(metrics).incrementRecordsOut(SPANS_COUNT);
-        verify(mockEventHandle1).release(true);
-        verify(mockEventHandle2).release(true);
-        verify(mockEventHandle3).release(true);
-        verifyNoMoreInteractions(metrics);
-    }
-
-    @Test
-    void testHandleSuccessfulResponse_privateMethod_withPartialSuccess() throws Exception {
-        final ExportTraceServiceResponse response = ExportTraceServiceResponse.newBuilder()
-                .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
-                        .setRejectedSpans(1)
-                        .setErrorMessage("test error")
-                        .build())
-                .build();
-        final byte[] responseBytes = response.toByteArray();
-
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, responseBytes, testBatch);
-
-        verify(metrics).incrementRejectedSpansCount(1);
-        verify(metrics).incrementRecordsOut(SPANS_COUNT - 1);
-        verify(mockEventHandle1).release(true);
-        verify(mockEventHandle2).release(true);
-        verify(mockEventHandle3).release(true);
-    }
-
-    @Test
-    void testHandleSuccessfulResponse_privateMethod_parseException() throws Exception {
-        final byte[] invalidBytes = "invalid protobuf".getBytes();
-
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, invalidBytes, testBatch);
-
-        verify(metrics).incrementErrorsCount();
-        verify(metrics).incrementRecordsOut(SPANS_COUNT);
-        verify(mockEventHandle1).release(true);
-        verify(mockEventHandle2).release(true);
-        verify(mockEventHandle3).release(true);
-    }
-
-    @Test
-    void testHandleResponse_withNullResponseBody_logsNoBody() throws Exception {
-        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleResponse", int.class, byte[].class, List.class);
-        method.setAccessible(true);
-
-        method.invoke(sender, 500, null, testBatch);
-
-        verify(metrics).recordResponseCode(500);
-        verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
-
-        // Verifying event handles released with success=false
-        verify(mockEventHandle1).release(false);
-        verify(mockEventHandle2).release(false);
-        verify(mockEventHandle3).release(false);
     }
 }

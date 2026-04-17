@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.MessageLite;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.client.retry.Backoff;
 import com.linecorp.armeria.client.retry.RetryRuleWithContent;
@@ -16,8 +17,11 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -31,12 +35,14 @@ import software.amazon.awssdk.utils.Pair;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using an Ameria client.
+ * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using an Armeria client.
+ * Supports both trace (ExportTraceServiceRequest) and log (ExportLogsServiceRequest) payloads.
  */
 public class OtlpHttpSender {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpHttpSender.class);
@@ -46,6 +52,7 @@ public class OtlpHttpSender {
     private final WebClient webClient;
     private final OtlpSinkMetrics sinkMetrics;
     private final Function<byte[], byte[]> gzipCompressor;
+    private final Map<String, String> additionalHeaders;
 
     /**
      * Constructor for the OtlpHttpSender.
@@ -54,8 +61,11 @@ public class OtlpHttpSender {
      * @param config The configuration for the OTLP sink plugin.
      * @param sinkMetrics The metrics for the OTLP sink plugin.
      */
-    public OtlpHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(awsCredentialsSupplier, config), buildWebClient(config));
+    public OtlpHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier,
+                          @Nonnull final OtlpSinkConfig config,
+                          @Nonnull final OtlpSinkMetrics sinkMetrics) {
+        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(awsCredentialsSupplier, config),
+                buildWebClient(config), config.getAdditionalHeaders());
     }
 
     /**
@@ -64,11 +74,16 @@ public class OtlpHttpSender {
     @VisibleForTesting
     OtlpHttpSender(@Nonnull final OtlpSinkMetrics sinkMetrics, @Nonnull final Function<byte[], byte[]> gzipCompressor,
                    final SigV4Signer signer, final WebClient webClient) {
+        this(sinkMetrics, gzipCompressor, signer, webClient, Map.of());
+    }
 
+    OtlpHttpSender(@Nonnull final OtlpSinkMetrics sinkMetrics, @Nonnull final Function<byte[], byte[]> gzipCompressor,
+                   final SigV4Signer signer, final WebClient webClient, final Map<String, String> additionalHeaders) {
         this.sinkMetrics = sinkMetrics;
         this.gzipCompressor = gzipCompressor;
         this.signer = signer;
         this.webClient = webClient;
+        this.additionalHeaders = additionalHeaders != null ? additionalHeaders : Map.of();
     }
 
     /**
@@ -78,7 +93,7 @@ public class OtlpHttpSender {
      * See: <a href="https://opentelemetry.io/docs/specs/otlp/#otlphttp-response">OTLP/HTTP Response</a>
      * <p>
      * We are not using the Retry-After header for dynamic backoff because:
-     * - Armeria’s retry rule API expects a boolean decision or fixed Backoff.
+     * - Armeria's retry rule API expects a boolean decision or fixed Backoff.
      * - Applying Retry-After semantics would require a custom Backoff implementation,
      * adding complexity with minimal benefit for most OTLP endpoints.
      * - Our exponential backoff already handles typical retry intervals gracefully.
@@ -106,27 +121,41 @@ public class OtlpHttpSender {
     }
 
     /**
-     * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
-     *
-     * @param batch the batch of spans to send
+     * Sends a batch of encoded OTLP records (either ResourceSpans or ResourceLogs).
      */
-    public void send(@Nonnull final List<Pair<ResourceSpans, EventHandle>> batch) {
+    public void send(@Nonnull final List<Pair<MessageLite, EventHandle>> batch, final boolean isLogSignal) {
         if (batch.isEmpty()) {
             return;
         }
 
-        // Defensive copy to avoid ConcurrentModificationException
-        final List<Pair<ResourceSpans, EventHandle>> immutableBatch = List.copyOf(batch);
+        final List<Pair<MessageLite, EventHandle>> immutableBatch = List.copyOf(batch);
+        final int count = immutableBatch.size();
 
-        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(immutableBatch);
-        final int spans = immutableBatch.size();
-        if (payloadAndCompressedPayload.right().length == 0) {
-            sinkMetrics.incrementFailedSpansCount(spans);
+        final byte[] payload;
+        if (isLogSignal) {
+            final ExportLogsServiceRequest request = ExportLogsServiceRequest.newBuilder()
+                    .addAllResourceLogs(immutableBatch.stream()
+                            .map(p -> (ResourceLogs) p.left())
+                            .collect(Collectors.toList()))
+                    .build();
+            payload = request.toByteArray();
+        } else {
+            final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
+                    .addAllResourceSpans(immutableBatch.stream()
+                            .map(p -> (ResourceSpans) p.left())
+                            .collect(Collectors.toList()))
+                    .build();
+            payload = request.toByteArray();
+        }
+
+        final byte[] compressedPayload = gzipCompressor.apply(payload);
+        if (compressedPayload.length == 0) {
+            sinkMetrics.incrementFailedSpansCount(count);
             releaseAllEventHandle(immutableBatch, false);
             return;
         }
 
-        final HttpRequest request = buildHttpRequest(payloadAndCompressedPayload.right());
+        final HttpRequest request = buildHttpRequest(compressedPayload);
         final long startTime = System.currentTimeMillis();
 
         webClient.execute(request)
@@ -134,29 +163,19 @@ public class OtlpHttpSender {
                 .thenAccept(response -> {
                     final long latency = System.currentTimeMillis() - startTime;
                     sinkMetrics.recordHttpLatency(latency);
-                    sinkMetrics.incrementPayloadSize(payloadAndCompressedPayload.left().length);
-                    sinkMetrics.incrementPayloadGzipSize(payloadAndCompressedPayload.right().length);
+                    sinkMetrics.incrementPayloadSize(payload.length);
+                    sinkMetrics.incrementPayloadGzipSize(compressedPayload.length);
 
                     final int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    handleResponse(statusCode, responseBytes, immutableBatch);
+                    handleResponse(statusCode, responseBytes, immutableBatch, isLogSignal);
                 })
                 .exceptionally(e -> {
-                    LOG.error("Failed to send {} spans.", spans, e);
-                    sinkMetrics.incrementRejectedSpansCount(spans);
+                    LOG.error("Failed to send {} events.", count, e);
+                    sinkMetrics.incrementRejectedSpansCount(count);
                     releaseAllEventHandle(immutableBatch, false);
                     return null;
                 });
-    }
-
-    private Pair<byte[], byte[]> getPayloadAndCompressedPayload(final List<Pair<ResourceSpans, EventHandle>> batch) {
-        final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
-                .addAllResourceSpans(batch.stream().map(Pair::left).collect(Collectors.toList()))
-                .build();
-        final byte[] payload = request.toByteArray();
-        final byte[] compressedPayload = gzipCompressor.apply(payload);
-
-        return Pair.of(payload, compressedPayload);
     }
 
     private HttpRequest buildHttpRequest(final byte[] compressedPayload) {
@@ -168,16 +187,20 @@ public class OtlpHttpSender {
                 .path(signedRequest.getUri().getRawPath())
                 .authority(signedRequest.getUri().getAuthority());
 
-        // ONLY use the signed headers
         signedRequest.headers().forEach((k, vList) -> vList.forEach(v -> headersBuilder.add(k, v)));
+
+        // Add user-configured additional headers (e.g. x-amzn-data-stream-name)
+        additionalHeaders.forEach(headersBuilder::add);
+
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(compressedPayload));
     }
 
-    private void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<ResourceSpans, EventHandle>> batch) {
+    private void handleResponse(final int statusCode, final byte[] responseBytes,
+                                final List<Pair<MessageLite, EventHandle>> batch, final boolean isLogSignal) {
         sinkMetrics.recordResponseCode(statusCode);
 
         if (statusCode >= 200 && statusCode < 300) {
-            handleSuccessfulResponse(responseBytes, batch);
+            handleSuccessfulResponse(responseBytes, batch, isLogSignal);
             return;
         }
 
@@ -193,44 +216,51 @@ public class OtlpHttpSender {
     /**
      * Handles a successful OTLP response with partial success.
      */
-    private void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<ResourceSpans, EventHandle>> batch) {
-        final int spans = batch.size();
+    private void handleSuccessfulResponse(final byte[] responseBytes,
+                                          final List<Pair<MessageLite, EventHandle>> batch,
+                                          final boolean isLogSignal) {
+        final int count = batch.size();
         if (responseBytes == null) {
-            sinkMetrics.incrementRecordsOut(spans);
+            sinkMetrics.incrementRecordsOut(count);
             releaseAllEventHandle(batch, true);
             return;
         }
 
         try {
-            final ExportTraceServiceResponse otlpResponse = ExportTraceServiceResponse.parseFrom(responseBytes);
+            long rejected = 0;
+            String errorMessage = "";
 
-            if (otlpResponse.hasPartialSuccess()) {
-                final var partial = otlpResponse.getPartialSuccess();
-                final long rejectedSpans = partial.getRejectedSpans();
-                final String errorMessage = partial.getErrorMessage();
-                if (rejectedSpans > 0) {
-                    LOG.error("OTLP Partial Success: rejectedSpans={}, message={}", rejectedSpans, errorMessage);
-                    sinkMetrics.incrementRejectedSpansCount(rejectedSpans);
+            if (isLogSignal) {
+                final ExportLogsServiceResponse resp = ExportLogsServiceResponse.parseFrom(responseBytes);
+                if (resp.hasPartialSuccess()) {
+                    rejected = resp.getPartialSuccess().getRejectedLogRecords();
+                    errorMessage = resp.getPartialSuccess().getErrorMessage();
                 }
-
-                final long deliveredSpans = spans - rejectedSpans;
-                sinkMetrics.incrementRecordsOut(deliveredSpans);
-
-                // Optimistically release all as true, no per-span granularity
-                releaseAllEventHandle(batch, true);
             } else {
-                sinkMetrics.incrementRecordsOut(spans);
-                releaseAllEventHandle(batch, true);
+                final ExportTraceServiceResponse resp = ExportTraceServiceResponse.parseFrom(responseBytes);
+                if (resp.hasPartialSuccess()) {
+                    rejected = resp.getPartialSuccess().getRejectedSpans();
+                    errorMessage = resp.getPartialSuccess().getErrorMessage();
+                }
             }
+
+            if (rejected > 0) {
+                LOG.error("OTLP Partial Success: rejected={}, message={}", rejected, errorMessage);
+                sinkMetrics.incrementRejectedSpansCount(rejected);
+            }
+
+            sinkMetrics.incrementRecordsOut(count - rejected);
+            releaseAllEventHandle(batch, true);
+
         } catch (final Exception e) {
-            LOG.error("Could not parse OTLP response as ExportTraceServiceResponse: {}", e.getMessage());
+            LOG.error("Could not parse OTLP response: {}", e.getMessage());
             sinkMetrics.incrementErrorsCount();
-            sinkMetrics.incrementRecordsOut(spans);
+            sinkMetrics.incrementRecordsOut(count);
             releaseAllEventHandle(batch, true);
         }
     }
 
-    private void releaseAllEventHandle(@Nonnull final List<Pair<ResourceSpans, EventHandle>> batch, final boolean success) {
+    private void releaseAllEventHandle(@Nonnull final List<Pair<MessageLite, EventHandle>> batch, final boolean success) {
         batch.forEach(pair -> pair.right().release(success));
     }
 }

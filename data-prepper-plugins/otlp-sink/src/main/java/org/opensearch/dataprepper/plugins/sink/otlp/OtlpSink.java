@@ -11,10 +11,10 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.sink.otlp.buffer.OtlpSinkBuffer;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
@@ -31,7 +31,7 @@ import java.util.Collection;
         pluginType = Sink.class,
         pluginConfigurationType = OtlpSinkConfig.class
 )
-public class OtlpSink extends AbstractSink<Record<Span>> {
+public class OtlpSink extends AbstractSink<Record<Event>> {
     private volatile boolean initialized = false;
 
     private final OtlpSinkBuffer buffer;
@@ -68,8 +68,8 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
      * @param records Records to be output
      */
     @Override
-    public void doOutput(@Nonnull final Collection<Record<Span>> records) {
-        for (final Record<Span> record : records) {
+    public void doOutput(@Nonnull final Collection<Record<Event>> records) {
+        for (final Record<Event> record : records) {
             buffer.add(record);
         }
     }

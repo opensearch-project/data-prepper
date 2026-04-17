@@ -71,4 +71,31 @@ class SigV4SignerTest {
         assertEquals("application/x-protobuf", request.firstMatchingHeader("Content-Type").orElse(null));
         assertEquals("https://xray.us-west-2.amazonaws.com/v1/traces", request.getUri().toString());
     }
+
+    @Test
+    void testSignRequest_withCustomServiceName() {
+        final String endpoint = "https://my-endpoint.us-west-2.amazonaws.com/v1/logs";
+        when(mockConfig.getEndpoint()).thenReturn(endpoint);
+        when(mockConfig.getServiceName()).thenReturn("my-service");
+
+        target = new SigV4Signer(mockSupplier, mockConfig);
+        final SdkHttpFullRequest request = target.signRequest(PAYLOAD);
+
+        assertNotNull(request);
+        assertEquals("POST", request.method().name());
+        assertTrue(request.headers().containsKey("Authorization"));
+        assertEquals(endpoint, request.getUri().toString());
+    }
+
+    @Test
+    void testSignRequest_withNullServiceName_usesXrayDefault() {
+        when(mockConfig.getEndpoint()).thenReturn(null);
+        when(mockConfig.getServiceName()).thenReturn(null);
+
+        target = new SigV4Signer(mockSupplier, mockConfig);
+        final SdkHttpFullRequest request = target.signRequest(PAYLOAD);
+
+        assertNotNull(request);
+        assertEquals("https://xray.us-west-2.amazonaws.com/v1/traces", request.getUri().toString());
+    }
 }

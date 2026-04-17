@@ -5,15 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.sink.otlp.codec.OtlpLogEncoder;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
@@ -31,8 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -45,7 +50,8 @@ class OtlpSinkBufferTest {
 
     private OtlpSinkConfig config;
     private OtlpSinkMetrics metrics;
-    private OTelProtoStandardCodec.OTelProtoEncoder encoder;
+    private OTelProtoStandardCodec.OTelProtoEncoder traceEncoder;
+    private OtlpLogEncoder logEncoder;
     private OtlpHttpSender sender;
     private OtlpSinkBuffer buffer;
     private AwsCredentialsSupplier mockAwsCredSupplier;
@@ -59,13 +65,15 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(1_000_000L);
         when(config.getFlushTimeoutMillis()).thenReturn(10L);
         when(config.getAwsRegion()).thenReturn(Region.of("us-west-2"));
+        when(config.isLogSignal()).thenReturn(false);
 
         metrics = mock(OtlpSinkMetrics.class);
-        encoder = mock(OTelProtoStandardCodec.OTelProtoEncoder.class);
+        traceEncoder = mock(OTelProtoStandardCodec.OTelProtoEncoder.class);
+        logEncoder = mock(OtlpLogEncoder.class);
         sender = mock(OtlpHttpSender.class);
         mockAwsCredSupplier = mock(AwsCredentialsSupplier.class);
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
     }
 
     @AfterEach
@@ -94,7 +102,7 @@ class OtlpSinkBufferTest {
     @Test
     void testQueueCapacityCalculation_withHighMaxEvents() {
         when(config.getMaxEvents()).thenReturn(500);
-        final OtlpSinkBuffer highCapacityBuffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        final OtlpSinkBuffer highCapacityBuffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         assertNotNull(highCapacityBuffer);
         highCapacityBuffer.stop();
     }
@@ -102,7 +110,7 @@ class OtlpSinkBufferTest {
     @Test
     void testQueueCapacityCalculation_withLowMaxEvents() {
         when(config.getMaxEvents()).thenReturn(1);
-        final OtlpSinkBuffer lowCapacityBuffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        final OtlpSinkBuffer lowCapacityBuffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         assertNotNull(lowCapacityBuffer);
         lowCapacityBuffer.stop();
     }
@@ -114,14 +122,14 @@ class OtlpSinkBufferTest {
 
     @Test
     void testAddHandlesInterruptedException() throws Exception {
-        @SuppressWarnings("unchecked") final BlockingQueue<Record<Span>> badQueue = mock(BlockingQueue.class);
+        @SuppressWarnings("unchecked") final BlockingQueue<Record<Event>> badQueue = mock(BlockingQueue.class);
         doThrow(new InterruptedException()).when(badQueue).put(any());
 
         final Field queueField = OtlpSinkBuffer.class.getDeclaredField("queue");
         queueField.setAccessible(true);
         queueField.set(buffer, badQueue);
 
-        final Record<Span> rec = mock(Record.class);
+        final Record<Event> rec = mock(Record.class);
         buffer.add(rec);
 
         verify(metrics).incrementFailedSpansCount(1);
@@ -130,19 +138,17 @@ class OtlpSinkBufferTest {
 
     @Test
     void testWorkerThreadHandlesEncodeException() throws Exception {
-        // First call throws exception, second call succeeds
-        when(encoder.convertToResourceSpans(any(Span.class)))
+        when(traceEncoder.convertToResourceSpans(any(Span.class)))
                 .thenThrow(new RuntimeException("boom"))
                 .thenReturn(ResourceSpans.getDefaultInstance());
 
-        final Record<Span> rec1 = createMockRecord();
-        final Record<Span> rec2 = createMockRecord();
+        final Record<Event> rec1 = createMockSpanRecord();
+        final Record<Event> rec2 = createMockSpanRecord();
 
         buffer.start();
         buffer.add(rec1);
         buffer.add(rec2);
 
-        // Wait for processing to complete
         await().atMost(2, SECONDS).untilAsserted(() -> {
             verify(metrics).incrementFailedSpansCount(1);
             verify(metrics, atLeastOnce()).incrementErrorsCount();
@@ -150,8 +156,7 @@ class OtlpSinkBufferTest {
 
         buffer.stop();
 
-        // The second record should have been processed and sent
-        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
     }
 
     @Test
@@ -160,19 +165,15 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any(Span.class))).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any(Span.class))).thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec1 = createMockRecord();
-        final Record<Span> rec2 = createMockRecord();
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
 
-        buffer.add(rec1);
-        buffer.add(rec2);
-
-        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
         buffer.stop();
     }
 
@@ -184,15 +185,14 @@ class OtlpSinkBufferTest {
 
         final ResourceSpans largeResourceSpans = mock(ResourceSpans.class);
         when(largeResourceSpans.getSerializedSize()).thenReturn(150);
-        when(encoder.convertToResourceSpans(any(Span.class))).thenReturn(largeResourceSpans);
+        when(traceEncoder.convertToResourceSpans(any(Span.class))).thenReturn(largeResourceSpans);
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec = createMockRecord();
-        buffer.add(rec);
+        buffer.add(createMockSpanRecord());
 
-        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
         buffer.stop();
     }
 
@@ -202,16 +202,14 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(50L);
 
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any(Span.class))).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any(Span.class))).thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec = createMockRecord();
-        buffer.add(rec);
+        buffer.add(createMockSpanRecord());
 
-        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
         buffer.stop();
     }
 
@@ -221,25 +219,24 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        TimeUnit.MILLISECONDS.sleep(200); // Let it poll empty queue
+        TimeUnit.MILLISECONDS.sleep(200);
 
         buffer.stop();
-        verify(sender, never()).send(anyList());
+        verify(sender, never()).send(anyList(), anyBoolean());
     }
 
     @Test
     void testEventHandleIncludedInBatch() throws Exception {
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any(Span.class))).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any(Span.class))).thenReturn(ResourceSpans.getDefaultInstance());
 
         final EventHandle eventHandle = mock(EventHandle.class);
-        final Record<Span> rec = mock(Record.class);
         final Span span = mock(Span.class);
-        when(rec.getData()).thenReturn(span);
         when(span.getEventHandle()).thenReturn(eventHandle);
+        @SuppressWarnings("unchecked") final Record<Event> rec = mock(Record.class);
+        when(rec.getData()).thenReturn(span);
 
         buffer.start();
         buffer.add(rec);
@@ -247,7 +244,7 @@ class OtlpSinkBufferTest {
         TimeUnit.MILLISECONDS.sleep(100);
         buffer.stop();
 
-        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
         verify(span).getEventHandle();
     }
 
@@ -312,7 +309,7 @@ class OtlpSinkBufferTest {
         executorField.setAccessible(true);
         executorField.set(buffer, mockExecutor);
 
-        buffer.stop(); // Set running to false
+        buffer.stop();
 
         buffer.restartWorker();
 
@@ -321,10 +318,9 @@ class OtlpSinkBufferTest {
 
     @Test
     void testRunWithInterruptedException() throws Exception {
-        final OtlpSinkBuffer localBuffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        final OtlpSinkBuffer localBuffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
 
-        // Override the internal queue to throw InterruptedException
-        final BlockingQueue<Record<Span>> interruptingQueue = mock(BlockingQueue.class);
+        @SuppressWarnings("unchecked") final BlockingQueue<Record<Event>> interruptingQueue = mock(BlockingQueue.class);
         when(interruptingQueue.poll(anyLong(), any(TimeUnit.class))).thenThrow(new InterruptedException());
         when(interruptingQueue.isEmpty()).thenReturn(true);
 
@@ -334,7 +330,7 @@ class OtlpSinkBufferTest {
 
         localBuffer.start();
 
-        TimeUnit.MILLISECONDS.sleep(100); // Let the thread hit the poll
+        TimeUnit.MILLISECONDS.sleep(100);
 
         localBuffer.stop();
 
@@ -345,10 +341,9 @@ class OtlpSinkBufferTest {
 
     @Test
     void testRunWithInterruptedException_whileRunning() throws Exception {
-        final OtlpSinkBuffer localBuffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        final OtlpSinkBuffer localBuffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
 
-        // Override the internal queue to throw InterruptedException first, then return null
-        final BlockingQueue<Record<Span>> interruptingQueue = mock(BlockingQueue.class);
+        @SuppressWarnings("unchecked") final BlockingQueue<Record<Event>> interruptingQueue = mock(BlockingQueue.class);
         when(interruptingQueue.poll(anyLong(), any(TimeUnit.class)))
                 .thenThrow(new InterruptedException())
                 .thenReturn(null);
@@ -360,7 +355,7 @@ class OtlpSinkBufferTest {
 
         localBuffer.start();
 
-        TimeUnit.MILLISECONDS.sleep(200); // Let the thread hit the poll and continue
+        TimeUnit.MILLISECONDS.sleep(200);
 
         localBuffer.stop();
 
@@ -376,11 +371,10 @@ class OtlpSinkBufferTest {
             throw new AssertionError("simulated fatal crash");
         });
 
-        buffer = new OtlpSinkBuffer(config, metrics, crashingEncoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, crashingEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> record = createMockRecord();
-        buffer.add(record);
+        buffer.add(createMockSpanRecord());
 
         await().atMost(2, SECONDS).untilAsserted(() -> {
             verify(metrics, atLeastOnce()).incrementErrorsCount();
@@ -389,29 +383,23 @@ class OtlpSinkBufferTest {
 
     @Test
     void testFinalFlushAfterStopFlushesBatch() throws Exception {
-        // Configure buffer to *not* flush by size or time
-        when(config.getMaxEvents()).thenReturn(1000); // very high
-        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE); // very high
-        when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE); // effectively disables time-based flush
+        when(config.getMaxEvents()).thenReturn(1000);
+        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
+        when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any())).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any())).thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> record = createMockRecord();
-        buffer.add(record);
+        buffer.add(createMockSpanRecord());
 
-        // Wait briefly to ensure the record is picked up
         TimeUnit.MILLISECONDS.sleep(100);
 
-        // Stop should trigger the final flush
         buffer.stop();
 
-        // Verify final flush triggered send
         await().atMost(1, SECONDS).untilAsserted(() ->
-                verify(sender).send(anyList())
+                verify(sender).send(anyList(), eq(false))
         );
     }
 
@@ -421,15 +409,13 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        // Don't add any records
         TimeUnit.MILLISECONDS.sleep(50);
         buffer.stop();
 
-        // Verify no send was called since batch was empty
-        verify(sender, never()).send(anyList());
+        verify(sender, never()).send(anyList(), anyBoolean());
     }
 
     @Test
@@ -438,28 +424,23 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any())).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any())).thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> record = createMockRecord();
-        buffer.add(record);
+        buffer.add(createMockSpanRecord());
 
         TimeUnit.MILLISECONDS.sleep(100);
         buffer.stop();
 
-        // Should only flush on final flush, not by count
         await().atMost(1, SECONDS).untilAsserted(() ->
-                verify(sender, times(1)).send(anyList())
+                verify(sender, times(1)).send(anyList(), eq(false))
         );
     }
 
     @Test
     void testDaemonThreadConfiguration() {
-        // This test verifies that the thread is created as non-daemon
-        // We can't directly test this, but we can verify the thread factory is called
         buffer.start();
         assertTrue(buffer.isRunning());
         buffer.stop();
@@ -476,21 +457,17 @@ class OtlpSinkBufferTest {
         when(resourceSpans1.getSerializedSize()).thenReturn(20);
         when(resourceSpans2.getSerializedSize()).thenReturn(35);
 
-        when(encoder.convertToResourceSpans(any(Span.class)))
+        when(traceEncoder.convertToResourceSpans(any(Span.class)))
                 .thenReturn(resourceSpans1)
                 .thenReturn(resourceSpans2);
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec1 = createMockRecord();
-        final Record<Span> rec2 = createMockRecord();
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
 
-        buffer.add(rec1);
-        buffer.add(rec2);
-
-        // Total size: 20 + 35 = 55, which exceeds 50
-        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList()));
+        await().atMost(1, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(false)));
         buffer.stop();
     }
 
@@ -500,51 +477,39 @@ class OtlpSinkBufferTest {
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        final ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-        when(encoder.convertToResourceSpans(any())).thenReturn(resourceSpans);
+        when(traceEncoder.convertToResourceSpans(any())).thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec1 = createMockRecord();
-        final Record<Span> rec2 = createMockRecord();
-        final Record<Span> rec3 = createMockRecord();
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
 
-        buffer.add(rec1);
-        buffer.add(rec2);
-        buffer.add(rec3);
-
-        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender, times(3)).send(anyList()));
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender, times(3)).send(anyList(), eq(false)));
         buffer.stop();
     }
 
     @Test
     void testEncodingFailureDoesNotStopProcessing() throws Exception {
-        // Configure to process multiple records
         when(config.getMaxEvents()).thenReturn(2);
         when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
         when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
 
-        // First and third succeed, second fails
-        when(encoder.convertToResourceSpans(any(Span.class)))
+        when(traceEncoder.convertToResourceSpans(any(Span.class)))
                 .thenReturn(ResourceSpans.getDefaultInstance())
                 .thenThrow(new RuntimeException("encoding error"))
                 .thenReturn(ResourceSpans.getDefaultInstance());
 
-        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
         buffer.start();
 
-        final Record<Span> rec1 = createMockRecord();
-        final Record<Span> rec2 = createMockRecord();
-        final Record<Span> rec3 = createMockRecord();
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
+        buffer.add(createMockSpanRecord());
 
-        buffer.add(rec1);
-        buffer.add(rec2);
-        buffer.add(rec3);
-
-        // Should still send the batch with the 2 successful records
         await().atMost(2, SECONDS).untilAsserted(() -> {
-            verify(sender).send(anyList());
+            verify(sender).send(anyList(), eq(false));
             verify(metrics).incrementFailedSpansCount(1);
             verify(metrics, atLeastOnce()).incrementErrorsCount();
         });
@@ -552,12 +517,85 @@ class OtlpSinkBufferTest {
         buffer.stop();
     }
 
-    private Record<Span> createMockRecord() {
-        final Record<Span> record = mock(Record.class);
+    // --- Log signal tests ---
+
+    @Test
+    void testLogSignal_usesLogEncoder() throws Exception {
+        when(config.isLogSignal()).thenReturn(true);
+        when(config.getMaxEvents()).thenReturn(1);
+        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
+        when(config.getFlushTimeoutMillis()).thenReturn(Long.MAX_VALUE);
+
+        when(logEncoder.encode(any(Event.class))).thenReturn(ResourceLogs.getDefaultInstance());
+
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
+        buffer.start();
+
+        buffer.add(createMockEventRecord());
+
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(sender).send(anyList(), eq(true)));
+        verify(logEncoder).encode(any(Event.class));
+        buffer.stop();
+    }
+
+    @Test
+    void testLogSignal_encodingFailureIncrementsMetrics() throws Exception {
+        when(config.isLogSignal()).thenReturn(true);
+        when(config.getMaxEvents()).thenReturn(1);
+        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
+        when(config.getFlushTimeoutMillis()).thenReturn(50L);
+
+        when(logEncoder.encode(any(Event.class))).thenThrow(new RuntimeException("log encode failed"));
+
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
+        buffer.start();
+
+        buffer.add(createMockEventRecord());
+
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(metrics).incrementFailedSpansCount(1);
+            verify(metrics, atLeastOnce()).incrementErrorsCount();
+        });
+
+        buffer.stop();
+    }
+
+    @Test
+    void testTraceSignal_rejectsNonSpanEvent() throws Exception {
+        when(config.isLogSignal()).thenReturn(false);
+        when(config.getMaxEvents()).thenReturn(1);
+        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE);
+        when(config.getFlushTimeoutMillis()).thenReturn(50L);
+
+        buffer = new OtlpSinkBuffer(config, metrics, traceEncoder, logEncoder, sender);
+        buffer.start();
+
+        // Add a plain Event (not a Span) in trace mode
+        buffer.add(createMockEventRecord());
+
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(metrics).incrementFailedSpansCount(1);
+            verify(metrics, atLeastOnce()).incrementErrorsCount();
+        });
+
+        buffer.stop();
+    }
+
+    private Record<Event> createMockSpanRecord() {
+        @SuppressWarnings("unchecked") final Record<Event> record = mock(Record.class);
         final Span span = mock(Span.class);
         final EventHandle eventHandle = mock(EventHandle.class);
         when(record.getData()).thenReturn(span);
         when(span.getEventHandle()).thenReturn(eventHandle);
+        return record;
+    }
+
+    private Record<Event> createMockEventRecord() {
+        @SuppressWarnings("unchecked") final Record<Event> record = mock(Record.class);
+        final Event event = mock(Event.class);
+        final EventHandle eventHandle = mock(EventHandle.class);
+        when(record.getData()).thenReturn(event);
+        when(event.getEventHandle()).thenReturn(eventHandle);
         return record;
     }
 }

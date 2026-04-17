@@ -16,6 +16,7 @@ import software.amazon.awssdk.regions.Region;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -71,12 +72,39 @@ public class OtlpSinkConfig {
     @Valid
     private AwsConfig awsConfig;
 
+    @JsonProperty("additional_headers")
+    private Map<String, String> additionalHeaders = Map.of();
+
+    @Getter
+    @JsonProperty("signal_type")
+    private String signalType = "traces";
+
+    public Map<String, String> getAdditionalHeaders() {
+        return additionalHeaders;
+    }
+
+    public boolean isLogSignal() {
+        return "logs".equalsIgnoreCase(signalType);
+    }
+
+    public String getServiceName() {
+        if (awsConfig == null || awsConfig.getServiceName() == null) {
+            return null;
+        }
+        return awsConfig.getServiceName();
+    }
+
     /**
-     * Get AWS region from the provided endpoint.
-     *
-     * @return the AWS region
+     * Get AWS region from the aws config block, or fall back to parsing the endpoint.
      */
     public Region getAwsRegion() {
+        if (awsConfig != null && awsConfig.getAwsRegion() != null) {
+            return awsConfig.getAwsRegion();
+        }
+        return parseRegionFromEndpoint();
+    }
+
+    private Region parseRegionFromEndpoint() {
         try {
             final String host = URI.create(this.endpoint).getHost();
             if (host == null) {
