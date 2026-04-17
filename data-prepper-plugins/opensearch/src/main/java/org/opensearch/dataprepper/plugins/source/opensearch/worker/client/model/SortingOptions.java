@@ -66,7 +66,7 @@ public class SortingOptions {
     private static SortingOptions fromSortConfig(final SortConfig sortConfig) {
         final SortingOptions sortingOptions = new SortingOptions();
         sortingOptions.fieldName = sortConfig.getName();
-        sortingOptions.order = sortConfig.getOrder().getOpensearchName();
+        sortingOptions.order = sortConfig.getOrder().getSortOrderValue();
         return sortingOptions;
     }
 }

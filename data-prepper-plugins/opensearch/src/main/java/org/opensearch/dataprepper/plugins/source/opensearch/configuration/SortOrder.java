@@ -28,11 +28,11 @@ public enum SortOrder {
             ));
 
     private final String optionName;
-    private final String opensearchName;
+    private final String sortOrderValue;
 
-    SortOrder(final String optionName, final String opensearchName) {
+    SortOrder(final String optionName, final String sortOrderValue) {
         this.optionName = optionName;
-        this.opensearchName = opensearchName;
+        this.sortOrderValue = sortOrderValue;
     }
 
     @JsonValue
@@ -40,8 +40,8 @@ public enum SortOrder {
         return optionName;
     }
 
-    public String getOpensearchName() {
-        return opensearchName;
+    public String getSortOrderValue() {
+        return sortOrderValue;
     }
 
     @JsonCreator
