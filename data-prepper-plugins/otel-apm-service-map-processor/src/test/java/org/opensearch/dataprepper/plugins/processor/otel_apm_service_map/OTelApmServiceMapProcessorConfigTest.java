@@ -35,6 +35,8 @@ public class OTelApmServiceMapProcessorConfigTest {
         assertThat(otelApmServiceMapProcessorConfig.getWindowDuration(), equalTo(Duration.ofSeconds(OTelApmServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION_SECONDS)));
         assertThat(otelApmServiceMapProcessorConfig.getDbPath(), equalTo(OTelApmServiceMapProcessorConfig.DEFAULT_DB_PATH));
         assertThat(otelApmServiceMapProcessorConfig.getGroupByAttributes(), equalTo(Collections.emptyList()));
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampSource(), equalTo(MetricTimestampSource.ARRIVAL_TIME));
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampGranularity(), equalTo(MetricTimestampGranularity.SECONDS));
     }
 
     @Test
@@ -50,5 +52,33 @@ public class OTelApmServiceMapProcessorConfigTest {
         assertThat(otelApmServiceMapProcessorConfig.getWindowDuration(), equalTo(TEST_WINDOW_DURATION));
         assertThat(otelApmServiceMapProcessorConfig.getDbPath(), equalTo(TEST_DB_PATH));
         assertThat(otelApmServiceMapProcessorConfig.getGroupByAttributes(), equalTo(TEST_ATTRIBUTES));
+    }
+
+    @Test
+    public void testDefaultMetricTimestampSource() {
+        otelApmServiceMapProcessorConfig = createObjectUnderTest();
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampSource(), equalTo(MetricTimestampSource.ARRIVAL_TIME));
+    }
+
+    @Test
+    public void testCustomMetricTimestampSource() throws NoSuchFieldException, IllegalAccessException {
+        otelApmServiceMapProcessorConfig = createObjectUnderTest();
+        ReflectivelySetField.setField(OTelApmServiceMapProcessorConfig.class, otelApmServiceMapProcessorConfig,
+                "metricTimestampSource", MetricTimestampSource.SPAN_END_TIME);
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampSource(), equalTo(MetricTimestampSource.SPAN_END_TIME));
+    }
+
+    @Test
+    public void testDefaultMetricTimestampGranularity() {
+        otelApmServiceMapProcessorConfig = createObjectUnderTest();
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampGranularity(), equalTo(MetricTimestampGranularity.SECONDS));
+    }
+
+    @Test
+    public void testCustomMetricTimestampGranularity() throws NoSuchFieldException, IllegalAccessException {
+        otelApmServiceMapProcessorConfig = createObjectUnderTest();
+        ReflectivelySetField.setField(OTelApmServiceMapProcessorConfig.class, otelApmServiceMapProcessorConfig,
+                "metricTimestampGranularity", MetricTimestampGranularity.MINUTES);
+        assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampGranularity(), equalTo(MetricTimestampGranularity.MINUTES));
     }
 }
