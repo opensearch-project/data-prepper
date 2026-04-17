@@ -73,9 +73,9 @@ public class SearchConfigurationTest {
         assertThat(searchConfiguration.getSort(), notNullValue());
         assertThat(searchConfiguration.getSort().size(), equalTo(2));
         assertThat(searchConfiguration.getSort().get(0).getName(), equalTo("@timestamp"));
-        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo("descending"));
+        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo(SortOrder.DESCENDING));
         assertThat(searchConfiguration.getSort().get(1).getName(), equalTo("_id"));
-        assertThat(searchConfiguration.getSort().get(1).getOrder(), equalTo("ascending"));
+        assertThat(searchConfiguration.getSort().get(1).getOrder(), equalTo(SortOrder.ASCENDING));
     }
 
     @Test
@@ -90,6 +90,6 @@ public class SearchConfigurationTest {
         assertThat(searchConfiguration.getSort(), notNullValue());
         assertThat(searchConfiguration.getSort().size(), equalTo(1));
         assertThat(searchConfiguration.getSort().get(0).getName(), equalTo("created_at"));
-        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo("ascending"));
+        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo(SortOrder.ASCENDING));
     }
 }

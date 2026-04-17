@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class SortConfigTest {
@@ -31,7 +32,7 @@ class SortConfigTest {
 
         assertThat(sortConfig, notNullValue());
         assertThat(sortConfig.getName(), equalTo("@timestamp"));
-        assertThat(sortConfig.getOrder(), equalTo("ascending"));
+        assertThat(sortConfig.getOrder(), equalTo(SortOrder.ASCENDING));
     }
 
     @Test
@@ -42,7 +43,7 @@ class SortConfigTest {
 
         assertThat(sortConfig, notNullValue());
         assertThat(sortConfig.getName(), equalTo("@timestamp"));
-        assertThat(sortConfig.getOrder(), equalTo("descending"));
+        assertThat(sortConfig.getOrder(), equalTo(SortOrder.DESCENDING));
     }
 
     @Test
@@ -53,33 +54,15 @@ class SortConfigTest {
 
         assertThat(sortConfig, notNullValue());
         assertThat(sortConfig.getName(), equalTo("_id"));
-        assertThat(sortConfig.getOrder(), equalTo("ascending"));
+        assertThat(sortConfig.getOrder(), equalTo(SortOrder.ASCENDING));
     }
 
     @Test
-    void valid_order_ascending_returns_true() throws Exception {
-        final String yaml = "name: \"@timestamp\"\norder: ascending\n";
-
-        final SortConfig sortConfig = objectMapper.readValue(yaml, SortConfig.class);
-
-        assertThat(sortConfig.isOrderValid(), equalTo(true));
-    }
-
-    @Test
-    void valid_order_descending_returns_true() throws Exception {
-        final String yaml = "name: \"@timestamp\"\norder: descending\n";
-
-        final SortConfig sortConfig = objectMapper.readValue(yaml, SortConfig.class);
-
-        assertThat(sortConfig.isOrderValid(), equalTo(true));
-    }
-
-    @Test
-    void invalid_order_returns_false() throws Exception {
+    void invalid_order_deserializes_to_null() throws Exception {
         final String yaml = "name: \"@timestamp\"\norder: invalid\n";
 
         final SortConfig sortConfig = objectMapper.readValue(yaml, SortConfig.class);
 
-        assertThat(sortConfig.isOrderValid(), equalTo(false));
+        assertThat(sortConfig.getOrder(), nullValue());
     }
 }
