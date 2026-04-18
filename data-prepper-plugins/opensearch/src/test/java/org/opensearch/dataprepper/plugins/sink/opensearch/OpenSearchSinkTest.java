@@ -21,6 +21,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -51,6 +52,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
@@ -605,5 +607,60 @@ public class OpenSearchSinkTest {
         
         // Verify the dataStreamIndex was set correctly
         assertThat(objectUnderTest, notNullValue());
+    }
+
+    @ParameterizedTest
+    @MethodSource("externalVersionTypeProvider")
+    void initialize_sets_isExternalVersioning_true_on_BulkRetryStrategy_for_external_version_types(
+            final VersionType versionType) throws Exception {
+        when(indexConfiguration.getVersionType()).thenReturn(versionType);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        final BulkRetryStrategy bulkRetryStrategy = getField(objectUnderTest, "bulkRetryStrategy");
+        final boolean isExternalVersioning = getField(bulkRetryStrategy, "isExternalVersioning");
+        assertThat(isExternalVersioning, equalTo(true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonExternalVersionTypeProvider")
+    void initialize_sets_isExternalVersioning_false_on_BulkRetryStrategy_for_non_external_version_types(
+            final VersionType versionType) throws Exception {
+        lenient().when(indexConfiguration.getVersionType()).thenReturn(versionType);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        final BulkRetryStrategy bulkRetryStrategy = getField(objectUnderTest, "bulkRetryStrategy");
+        final boolean isExternalVersioning = getField(bulkRetryStrategy, "isExternalVersioning");
+        assertThat(isExternalVersioning, equalTo(false));
+    }
+
+    private static Stream<Arguments> externalVersionTypeProvider() {
+        return Stream.of(
+                Arguments.of(VersionType.External),
+                Arguments.of(VersionType.ExternalGte)
+        );
+    }
+
+    private static Stream<Arguments> nonExternalVersionTypeProvider() {
+        return Stream.of(
+                Arguments.of(VersionType.Internal),
+                Arguments.of((VersionType) null)
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getField(final Object target, final String fieldName) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return (T) field.get(target);
     }
 }
