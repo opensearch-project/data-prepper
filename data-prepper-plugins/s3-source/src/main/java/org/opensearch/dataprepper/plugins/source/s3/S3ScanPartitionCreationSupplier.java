@@ -56,7 +56,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
     private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
-    private final S3ObjectFilteringHelper objectFilteringHelper;
+    private final S3ObjectKeyFilter objectFilteringHelper;
 
     public S3ScanPartitionCreationSupplier(final S3Client s3Client,
                                            final BucketOwnerProvider bucketOwnerProvider,
@@ -65,7 +65,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                                            final FolderPartitioningOptions folderPartitioningOptions,
                                            final boolean deleteS3ObjectsOnRead,
                                            final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
-                                           final S3ObjectFilteringHelper objectFilteringHelper) {
+                                           final S3ObjectKeyFilter objectFilteringHelper) {
 
         this.s3Client = s3Client;
         this.bucketOwnerProvider = bucketOwnerProvider;

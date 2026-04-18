@@ -168,7 +168,7 @@ public class ScanObjectWorker implements Runnable {
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
         this.acknowledgmentSetTimeout = s3SourceConfig.getS3ScanScanOptions().getAcknowledgmentTimeout();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator, new S3ObjectFilteringHelper(s3SourceConfig.getFilters()));
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator, new S3ObjectKeyFilter(s3SourceConfig.getFilters()));
         this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
         this.objectsToDeleteForAcknowledgmentSets = new ConcurrentHashMap<>();
     }

@@ -147,12 +147,15 @@ public class S3SourceConfig {
 
     @AssertTrue(message = "Top-level filters cannot be used together with scan bucket-level filter. Use one or the other.")
     boolean isFiltersNotUsedWithScanBucketFilter() {
-        if (filters != null && !filters.isEmpty() && s3ScanScanOptions != null && s3ScanScanOptions.getBuckets() != null) {
-            return s3ScanScanOptions.getBuckets().stream()
-                    .noneMatch(bucket -> bucket.getS3ScanBucketOption() != null
-                            && bucket.getS3ScanBucketOption().getS3ScanFilter() != null);
+        if (filters == null || filters.isEmpty()) {
+            return true;
         }
-        return true;
+        if (s3ScanScanOptions == null || s3ScanScanOptions.getBuckets() == null) {
+            return true;
+        }
+        return s3ScanScanOptions.getBuckets().stream()
+                .map(bucket -> bucket.getS3ScanBucketOption())
+                .noneMatch(option -> option != null && option.getS3ScanFilter() != null);
     }
 
     public NotificationTypeOption getNotificationType() {

@@ -75,7 +75,7 @@ public class SqsWorker implements Runnable {
     private final SqsOptions sqsOptions;
     private final S3EventFilter objectCreatedFilter;
     private final S3EventFilter evenBridgeObjectCreatedFilter;
-    private final S3ObjectFilteringHelper objectFilteringHelper;
+    private final S3ObjectKeyFilter objectFilteringHelper;
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsReceiveMessagesFailedCounter;
     private final Counter sqsMessagesDeletedCounter;
@@ -113,7 +113,7 @@ public class SqsWorker implements Runnable {
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new S3ObjectCreatedFilter();
         evenBridgeObjectCreatedFilter = new EventBridgeObjectCreatedFilter();
-        objectFilteringHelper = new S3ObjectFilteringHelper(s3SourceConfig.getFilters());
+        objectFilteringHelper = new S3ObjectKeyFilter(s3SourceConfig.getFilters());
         sqsMessageParser = new SqsMessageParser(s3SourceConfig);
         failedAttemptCount = 0;
         parsedMessageVisibilityTimesMap = new HashMap<>();

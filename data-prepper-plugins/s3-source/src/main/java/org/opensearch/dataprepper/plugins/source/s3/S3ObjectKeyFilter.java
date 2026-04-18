@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Helper class for applying top-level S3 object key filters (include_prefix and exclude_suffix).
+ * Filters S3 objects by key using top-level include_prefix and exclude_suffix options.
  */
-public class S3ObjectFilteringHelper {
+public class S3ObjectKeyFilter {
 
     private final Map<String, S3ScanKeyPathOption> filters;
 
-    public S3ObjectFilteringHelper(final Map<String, S3ScanKeyPathOption> filters) {
+    public S3ObjectKeyFilter(final Map<String, S3ScanKeyPathOption> filters) {
         this.filters = filters;
     }
 
