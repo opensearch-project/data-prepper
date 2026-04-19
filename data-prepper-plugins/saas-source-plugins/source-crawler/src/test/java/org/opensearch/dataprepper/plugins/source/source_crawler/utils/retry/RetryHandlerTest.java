@@ -117,7 +117,7 @@ class RetryHandlerTest {
     }
 
     @Test
-    void executeWithRetry_WithNonRetryableError_ThrowsExceptionImmediately() {
+    void executeWithRetry_WithNonRetryableError_ThrowsNonRetryableSaaSCrawlerException() {
         final HttpClientErrorException clientException = new HttpClientErrorException(
                 HttpStatus.BAD_REQUEST, "Bad Request");
         final Supplier<String> operation = () -> {
@@ -127,16 +127,17 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(eq(clientException), eq(0),
                 eq(credentialRenewal))).thenReturn(RetryDecision.stop());
 
-        final HttpClientErrorException exception = assertThrows(HttpClientErrorException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
-        assertThat(exception, equalTo(clientException));
+        assertThat(exception.isRetryable(), equalTo(false));
+        assertThat(exception.getCause(), equalTo(clientException));
         verify(statusCodeHandler, times(1)).handleStatusCode(eq(clientException), eq(0),
                 eq(credentialRenewal));
     }
 
     @Test
-    void executeWithRetry_WithStopDecisionAndException_ThrowsCustomException() {
+    void executeWithRetry_WithStopDecisionAndException_ThrowsNonRetryableSaaSCrawlerException() {
         final HttpClientErrorException clientException = new HttpClientErrorException(
                 HttpStatus.FORBIDDEN, "Forbidden");
         final SecurityException customException = new SecurityException("Access denied");
@@ -148,14 +149,16 @@ class RetryHandlerTest {
                 eq(credentialRenewal)))
                 .thenReturn(RetryDecision.stopWithException(customException));
 
-        final SecurityException exception = assertThrows(SecurityException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
+        assertThat(exception.isRetryable(), equalTo(false));
         assertThat(exception.getMessage(), equalTo("Access forbidden: Access denied"));
+        assertThat(exception.getCause(), equalTo(customException));
     }
 
     @Test
-    void executeWithRetry_ExceedingMaxRetries_ThrowsHttpServerErrorException() {
+    void executeWithRetry_ExceedingMaxRetries_ThrowsRetryableSaaSCrawlerException() {
         final Supplier<String> operation = () -> {
             throw new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE);
         };
@@ -163,10 +166,12 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
                 eq(credentialRenewal))).thenReturn(RetryDecision.retry());
 
-        final HttpServerErrorException exception = assertThrows(HttpServerErrorException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
-        assertThat(exception.getStatusCode(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(exception.isRetryable(), equalTo(true));
+        assertThat(exception.getCause(), instanceOf(HttpServerErrorException.class));
+        assertThat(((HttpServerErrorException) exception.getCause()).getStatusCode(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
         verify(statusCodeHandler, times(MAX_RETRIES)).handleStatusCode(
                 any(HttpServerErrorException.class), anyInt(), eq(credentialRenewal));
     }
@@ -242,7 +247,7 @@ class RetryHandlerTest {
     }
 
     @Test
-    void executeWithRetry_WithInterruptedException_ThrowsRuntimeException() {
+    void executeWithRetry_WithInterruptedException_ThrowsRetryableSaaSCrawlerException() {
         final Supplier<String> operation = () -> {
             throw new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE);
         };
@@ -255,10 +260,11 @@ class RetryHandlerTest {
                     return SLEEP_TIME_MS;
                 });
 
-        final RuntimeException exception = assertThrows(RuntimeException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
         assertThat(exception.getMessage(), equalTo("Retry interrupted"));
+        assertThat(exception.isRetryable(), equalTo(true));
         assertThat(exception.getCause(), instanceOf(InterruptedException.class));
     }
 
@@ -273,10 +279,11 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(eq(notFoundException), eq(0),
                 eq(credentialRenewal))).thenReturn(RetryDecision.stop());
 
-        final HttpClientErrorException exception = assertThrows(HttpClientErrorException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal));
 
-        assertThat(exception, equalTo(notFoundException));
+        assertThat(exception.isRetryable(), equalTo(false));
+        assertThat(exception.getCause(), equalTo(notFoundException));
         verify(statusCodeHandler, times(1)).handleStatusCode(eq(notFoundException), eq(0),
                 eq(credentialRenewal));
     }
@@ -336,10 +343,12 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
                 eq(credentialRenewal))).thenReturn(RetryDecision.retry());
 
-        final HttpServerErrorException exception = assertThrows(HttpServerErrorException.class,
+        final SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> handlerWithLimitedRetries.executeWithRetry(operation, credentialRenewal));
 
-        assertThat(exception.getStatusCode(), equalTo(HttpStatus.INTERNAL_SERVER_ERROR));
+        assertThat(exception.isRetryable(), equalTo(true));
+        assertThat(exception.getCause(), instanceOf(HttpServerErrorException.class));
+        assertThat(((HttpServerErrorException) exception.getCause()).getStatusCode(), equalTo(HttpStatus.INTERNAL_SERVER_ERROR));
         verify(statusCodeHandler, times(2)).handleStatusCode(any(HttpServerErrorException.class),
                 anyInt(), eq(credentialRenewal));
     }
@@ -402,7 +411,7 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(any(HttpServerErrorException.class), anyInt(),
                 eq(credentialRenewal))).thenReturn(RetryDecision.retry());
 
-        assertThrows(HttpServerErrorException.class,
+        assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler));
 
         verify(failureHandler, times(MAX_RETRIES)).run(); // Called exactly MAX_RETRIES times
@@ -419,7 +428,7 @@ class RetryHandlerTest {
         when(statusCodeHandler.handleStatusCode(eq(clientException), eq(0),
                 eq(credentialRenewal))).thenReturn(RetryDecision.stop());
 
-        assertThrows(HttpClientErrorException.class,
+        assertThrows(SaaSCrawlerException.class,
                 () -> retryHandler.executeWithRetry(operation, credentialRenewal, failureHandler));
 
         verify(failureHandler, times(1)).run(); // Called once before stopping

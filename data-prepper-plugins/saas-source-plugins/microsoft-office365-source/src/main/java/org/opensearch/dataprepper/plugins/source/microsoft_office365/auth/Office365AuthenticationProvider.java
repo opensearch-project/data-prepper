@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.RetryHandler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.retry.DefaultRetryStrategy;
@@ -98,7 +99,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
                 Map<String, Object> tokenResponse = response.getBody();
 
                 if (tokenResponse == null || tokenResponse.get("access_token") == null) {
-                    throw new IllegalStateException("Invalid token response: missing access_token");
+                    throw new SaaSCrawlerException("Invalid token response: missing access_token", false);
                 }
 
                 this.accessToken = (String) tokenResponse.get("access_token");
