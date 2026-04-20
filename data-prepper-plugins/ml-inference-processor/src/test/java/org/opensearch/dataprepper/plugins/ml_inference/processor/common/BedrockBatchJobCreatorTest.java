@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
+import software.amazon.awssdk.regions.Region;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -18,21 +20,28 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.ConnectorActionType;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.RemoteConnectorExecutor;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -61,6 +70,9 @@ public class BedrockBatchJobCreatorTest {
 
     @Mock
     private PluginSetting pluginSetting;
+
+    @Mock
+    private AwsAuthenticationOptions awsAuthenticationOptions;
 
     private BedrockBatchJobCreator bedrockBatchJobCreator;
     private Counter counter;
@@ -374,10 +386,123 @@ public class BedrockBatchJobCreatorTest {
         assertEquals(timestampBefore, timestampAfter);
     }
 
-    // Helper method to access private lastRetryTimestamp field using reflection
+    // --- direct-connector (built-in model) path ---
+
+    @Test
+    void testCreateMLBatchJob_withBuiltInConnector_callsConnectorExecutorOnSuccess() throws Exception {
+        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
+        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
+        stubConfigForDirectConnector();
+
+        final Event event = mock(Event.class);
+        final Record<Event> record = new Record<>(event);
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            final List<Record<Event>> resultRecords = new ArrayList<>();
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+
+            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
+            assertEquals(1, resultRecords.size());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_withBuiltInConnector_doesNotUseMLCommonsPath() throws Exception {
+        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
+        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
+        stubConfigForDirectConnector();
+
+        final Event event = mock(Event.class);
+        final Record<Event> record = new Record<>(event);
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
+
+            // Verify the ml-commons host URL path is never consulted when a built-in connector is used.
+            verify(mlProcessorConfig, never()).getHostUrl();
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_withBuiltInConnector_onThrottle_addsToRetryQueue() throws Exception {
+        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
+        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
+        stubConfigForDirectConnector();
+
+        final Event event = mock(Event.class);
+        final Record<Event> record = new Record<>(event);
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            final List<Record<Event>> resultRecords = new ArrayList<>();
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+
+            assertTrue(resultRecords.isEmpty());
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_withBuiltInConnector_onFailure_throwsMLBatchJobException() throws Exception {
+        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
+        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
+        stubConfigForDirectConnector();
+
+        final Event event = mock(Event.class);
+        final Record<Event> record = new Record<>(event);
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+        when(event.toJsonString()).thenReturn("event");
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "server error"), 1));
+
+            final MLBatchJobException ex = assertThrows(MLBatchJobException.class,
+                    () -> bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>()));
+
+            assertTrue(ex.getMessage().contains("Failed to process 1 records out of 1 total records"));
+            verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
+        }
+    }
+
+    private void stubConfigForDirectConnector() {
+        when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        when(mlProcessorConfig.getJobRoleArn()).thenReturn("arn:aws:iam::123456789012:role/TestRole");
+    }
+
+    // --- helpers ---
+
     private long getLastRetryTimestamp(BedrockBatchJobCreator creator) throws Exception {
-        java.lang.reflect.Field field = BedrockBatchJobCreator.class.getDeclaredField("lastRetryTimestamp");
+        Field field = BedrockBatchJobCreator.class.getDeclaredField("lastRetryTimestamp");
         field.setAccessible(true);
         return (long) field.get(creator);
+    }
+
+    private void injectConnectorExecutor(final BedrockBatchJobCreator creator,
+                                         final RemoteConnectorExecutor executor) throws Exception {
+        final Field field = BedrockBatchJobCreator.class.getDeclaredField("connectorExecutor");
+        field.setAccessible(true);
+        field.set(creator, executor);
     }
 }

@@ -105,6 +105,12 @@ public class MLProcessorConfig {
     @DurationMax(seconds = 300)
     private Duration retryInterval = Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS);
 
+    @JsonPropertyDescription("IAM role ARN that the batch inference service assumes to read input data from S3 "
+            + "and write output data to S3. Only required when action_type is batch_predict and the model_id is supported in the ml_inference processor. This role is passed in the "
+            + "batch job request body and is distinct from the role used to sign the API call (configured via aws.sts_role_arn).")
+    @JsonProperty("job_role_arn")
+    private String jobRoleArn;
+
     @JsonProperty("dlq")
     private PluginModel dlq;
 
@@ -123,6 +129,8 @@ public class MLProcessorConfig {
     }
 
     public List<String> getTagsOnFailure() { return tagsOnFailure; }
+
+    public String getJobRoleArn() { return jobRoleArn; }
 
     public PluginModel getDlq() {
         return dlq;

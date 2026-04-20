@@ -16,13 +16,21 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.AbstractConnector;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.BuiltInConnectors;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.Connector;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.ConnectorActionType;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.ConnectorExecutorFactory;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.RemoteConnectorExecutor;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
@@ -40,6 +48,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private final Lock processingLock;
     private final long retryIntervalMillis;
     private volatile long lastRetryTimestamp;
+    private final RemoteConnectorExecutor connectorExecutor;
 
     private static final String BEDROCK_PAYLOAD_TEMPLATE = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://\"}}," +
             "\"jobName\": \"\", \"outputDataConfig\": {\"s3OutputDataConfig\": {\"s3Uri\": \"s3://\"}}}}";
@@ -50,6 +59,21 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         this.processingLock = new ReentrantLock();
         this.retryIntervalMillis = mlProcessorConfig.getRetryInterval().toMillis();
         this.lastRetryTimestamp = System.currentTimeMillis();
+        this.connectorExecutor = buildConnectorExecutor(mlProcessorConfig, awsCredentialsSupplier);
+    }
+
+    private static RemoteConnectorExecutor buildConnectorExecutor(final MLProcessorConfig config,
+                                                                   final AwsCredentialsSupplier supplier) {
+        return BuiltInConnectors.findConnectorJson(config.getModelId())
+                .map(json -> {
+                    try {
+                        final Connector connector = AbstractConnector.fromJson(json);
+                        return ConnectorExecutorFactory.create(connector, config, supplier);
+                    } catch (final Exception e) {
+                        throw new RuntimeException("Failed to initialize connector for model: " + config.getModelId(), e);
+                    }
+                })
+                .orElse(null);
     }
 
     @Override
@@ -95,12 +119,24 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                                RetryRecord throttledRecord) {
         try {
             String s3Uri = generateS3Uri(record);
-            String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
 
-            RetryUtil.RetryResult result = retryWithBackoffWithResult(
-                    () -> mlCommonRequester.sendRequestToMLCommons(payload),
-                    LOG
-            );
+            // When a built-in connector was resolved for the model_id, send directly to the
+            // model provider (e.g. Bedrock) via the typed RemoteConnectorExecutor.
+            // All other model IDs continue to use the existing ml-commons path.
+            final RetryUtil.RetryResult result;
+            if (connectorExecutor != null) {
+                final Map<String, String> parameters = buildBatchPredictParameters(s3Uri);
+                result = retryWithBackoffWithResult(
+                        () -> connectorExecutor.executeAction(ConnectorActionType.BATCH_PREDICT, parameters),
+                        LOG
+                );
+            } else {
+                final String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
+                result = retryWithBackoffWithResult(
+                        () -> mlCommonRequester.sendRequestToMLCommons(payload),
+                        LOG
+                );
+            }
 
             if (result.isSuccess()) {
                 String logMessage = throttledRecord != null ?
@@ -326,6 +362,32 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                         : record.getData().get(inputKey, String.class))
                 .orElseThrow(() -> new IllegalArgumentException("Missing 'S3 Key' in record."));
         return "s3://" + bucket + "/" + key;
+    }
+
+    /**
+     * Builds the runtime parameters map for a direct BATCH_PREDICT request
+     */
+    private Map<String, String> buildBatchPredictParameters(final String s3InputUri) {
+        try {
+            final ObjectNode inputConfig = OBJECT_MAPPER.createObjectNode();
+            inputConfig.set("s3InputDataConfig", OBJECT_MAPPER.createObjectNode().put("s3Uri", s3InputUri));
+
+            final ObjectNode outputConfig = OBJECT_MAPPER.createObjectNode();
+            outputConfig.set("s3OutputDataConfig", OBJECT_MAPPER.createObjectNode().put("s3Uri", mlProcessorConfig.getOutputPath()));
+
+            final Map<String, String> parameters = new HashMap<>();
+            // region, roleArn, jobName, inputDataConfig, outputDataConfig are per-invocation.
+            // model/service_name/dimensions/normalize/embeddingTypes come from connector defaults.
+            parameters.put("region", mlProcessorConfig.getAwsAuthenticationOptions().getAwsRegion().id());
+            parameters.put("jobName", generateJobName());
+            parameters.put("roleArn", mlProcessorConfig.getJobRoleArn());
+            parameters.put("inputDataConfig", OBJECT_MAPPER.writeValueAsString(inputConfig));
+            parameters.put("outputDataConfig", OBJECT_MAPPER.writeValueAsString(outputConfig));
+            return parameters;
+        } catch (final Exception e) {
+            LOG.error("Failed to build Bedrock batch predict parameters for S3Uri: {}", s3InputUri, e);
+            throw new RuntimeException("Failed to build Bedrock batch predict parameters", e);
+        }
     }
 
     private String createPayloadBedrock(String S3Uri, MLProcessorConfig mlProcessorConfig) {
