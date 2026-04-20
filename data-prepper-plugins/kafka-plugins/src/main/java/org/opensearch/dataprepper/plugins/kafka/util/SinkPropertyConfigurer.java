@@ -5,14 +5,21 @@
 
 package org.opensearch.dataprepper.plugins.kafka.util;
 
-
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.json.JsonSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,8 +117,10 @@ public class SinkPropertyConfigurer {
 
         setCommonServerProperties(properties, kafkaProducerConfig);
 
-        if (kafkaProducerConfig.getSchemaConfig() != null) {
-            setSchemaProps(kafkaProducerConfig.getSerdeFormat(), kafkaProducerConfig.getSchemaConfig(), properties);
+        if (kafkaProducerConfig.getSchemaConfig() == null) {
+            setPropertiesForMessageFormatWithoutSchema(kafkaProducerConfig.getTopic().getSerdeFormat(), properties);
+        } else {
+            setSchemaProps(kafkaProducerConfig.getTopic().getSerdeFormat(), kafkaProducerConfig.getSchemaConfig(), properties);
         }
         if (kafkaProducerConfig.getKafkaProducerProperties() != null) {
             setPropertiesProviderByKafkaProducer(kafkaProducerConfig.getKafkaProducerProperties(), properties);
@@ -150,15 +159,31 @@ public class SinkPropertyConfigurer {
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
 
-    private static void validateForRegistryURL(final String serdeFormat, final SchemaConfig schemaConfig) {
+    private static void setPropertiesForMessageFormatWithoutSchema(final MessageFormat serdeFormat, final Properties properties) {
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        switch (serdeFormat) {
+            case JSON:
+                properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+                break;
+            default:
+            case PLAINTEXT:
+                properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+                break;
+        }
+    }
 
-        if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
+    private static void validateForRegistryURL(final MessageFormat serdeFormat, final SchemaConfig schemaConfig) {
+
+        if (serdeFormat == MessageFormat.AVRO) {
             if (schemaConfig == null || schemaConfig.getRegistryURL() == null ||
                     schemaConfig.getRegistryURL().isBlank() || schemaConfig.getRegistryURL().isEmpty()) {
                 throw new RuntimeException("Schema registry is mandatory when serde type is avro");
             }
         }
-        if (serdeFormat.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
+        if (schemaConfig.getType() == SchemaRegistryType.CONFLUENT && StringUtils.isBlank(schemaConfig.getRegistryURL())) {
+            throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
+        }
+        if (serdeFormat == MessageFormat.PLAINTEXT) {
             if (schemaConfig != null &&
                     schemaConfig.getRegistryURL() != null) {
                 throw new RuntimeException("Schema registry is not required for type plaintext");
@@ -166,13 +191,14 @@ public class SinkPropertyConfigurer {
         }
     }
 
-    public static void setSchemaProps(final String serdeFormat, final SchemaConfig schemaConfig, final Properties properties) {
-        validateForRegistryURL(serdeFormat, schemaConfig);
-        final String registryURL = schemaConfig != null ? schemaConfig.getRegistryURL() : null;
-        if (registryURL != null && !registryURL.isEmpty()) {
-            properties.put(REGISTRY_URL, registryURL);
+    public static void setSchemaProps(final MessageFormat serdeFormat, final SchemaConfig schemaConfig, final Properties properties) {
+        if (schemaConfig.getType() == SchemaRegistryType.AWS_GLUE) {
+            return;
         }
+        
+        validateForRegistryURL(serdeFormat, schemaConfig);
         setSchemaCredentialsConfig(schemaConfig, properties);
+        setPropertiesForSchemaType(serdeFormat, schemaConfig, properties);
     }
 
     public static void setSchemaCredentialsConfig(final SchemaConfig schemaConfig,final Properties properties) {
@@ -186,8 +212,27 @@ public class SinkPropertyConfigurer {
         }
     }
 
-    private static void setPropertiesProviderByKafkaProducer(final KafkaProducerProperties producerProperties, final
-    Properties properties) {
+    private static void setPropertiesForSchemaType(final MessageFormat serdeFormat, final SchemaConfig schemaConfig, final Properties properties) {
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        properties.put(REGISTRY_URL, schemaConfig.getRegistryURL());
+        properties.put("auto.register.schemas", "false");
+        
+        switch (serdeFormat) {
+            case JSON:
+                properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaJsonSchemaSerializer.class);
+                properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
+                break;
+            case AVRO:
+                properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+                break;
+            case PLAINTEXT:
+            default:
+                properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+                break;
+        }
+    }
+
+    private static void setPropertiesProviderByKafkaProducer(final KafkaProducerProperties producerProperties, final Properties properties) {
 
         if (producerProperties.getBufferMemory() != null) {
             properties.put(BUFFER_MEMORY, ByteCount.parse(producerProperties.getBufferMemory()).getBytes());
@@ -317,7 +362,7 @@ public class SinkPropertyConfigurer {
         Properties properties = new Properties();
         setCommonServerProperties(properties, kafkaProducerConfig);
         KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
-        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopic().getRetentionPeriod());
+        properties.put(org.apache.kafka.common.config.TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopic().getRetentionPeriod());
         return properties;
     }
 
