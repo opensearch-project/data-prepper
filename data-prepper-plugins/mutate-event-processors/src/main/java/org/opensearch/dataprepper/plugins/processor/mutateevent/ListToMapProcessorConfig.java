@@ -65,6 +65,10 @@ public class ListToMapProcessorConfig {
         }
     }
 
+    @JsonProperty
+    @JsonPropertyDescription("If true, the configured <code>source</code> field will be deleted after the JSON data is parsed into separate fields.")
+    private boolean deleteSource = false;
+
     @NotEmpty
     @NotNull
     @JsonProperty("source")
@@ -125,6 +129,10 @@ public class ListToMapProcessorConfig {
         @Example(value = "/some-key == \"test\"", description = "The operation will run when the value of the key is 'test'.")
     })
     private String listToMapWhen;
+
+    public boolean isDeleteSourceRequested() {
+        return deleteSource;
+    }
 
     public String getSource() {
         return source;
