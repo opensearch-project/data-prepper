@@ -35,15 +35,13 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -66,7 +64,7 @@ public class SplitEventProcessorTest {
                .withData(data)
                .withEventType("event")
                .build();
-        
+
         DefaultEventHandle eventHandle = (DefaultEventHandle) event.getEventHandle();
 
         eventHandle.addAcknowledgementSet(mockAcknowledgementSet);
@@ -114,7 +112,7 @@ public class SplitEventProcessorTest {
         testData.put("k1", "v1 v2");
         final Record<Event> record = createTestRecord(testData);
         when(mockConfig.getDelimiter()).thenReturn(" ");
-        
+
         final SplitEventProcessor objectUnderTest = new SplitEventProcessor(pluginMetrics, mockConfig);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
 
@@ -133,7 +131,7 @@ public class SplitEventProcessorTest {
         testData.put("k1", "v1  v2");
         final Record<Event> record = createTestRecord(testData);
         when(mockConfig.getDelimiter()).thenReturn(" ");
-        
+
         final SplitEventProcessor objectUnderTest = new SplitEventProcessor(pluginMetrics, mockConfig);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(record));
         for(Record r: editedRecords){
@@ -213,10 +211,11 @@ public class SplitEventProcessorTest {
     }
 
     @Test
-    void testFailureWithDelimiterRegexAndDelimiterDefinedMissing() {
+    void testConstructorAllowsNoDelimiter() {
         when(mockConfig.getDelimiter()).thenReturn(null);
         when(mockConfig.getDelimiterRegex()).thenReturn(null);
-        assertThrows(IllegalArgumentException.class, () -> new SplitEventProcessor(pluginMetrics, mockConfig));
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        assertThat(processor.arrayMode, equalTo(true));
     }
 
     @ParameterizedTest
@@ -236,7 +235,7 @@ public class SplitEventProcessorTest {
             Event event = testRecord.getData();
             eventHandle = (DefaultEventHandle) event.getEventHandle();
             acknowledgementSet = eventHandle.getAcknowledgementSet();
-            assertEquals(originalAcknowledgementSet, acknowledgementSet);
+            assertThat(originalAcknowledgementSet, equalTo(acknowledgementSet));
         }
     }
 
@@ -350,8 +349,7 @@ public class SplitEventProcessorTest {
 
         Record resultRecord = splitEventProcessor.createNewRecordFromEvent(recordEvent, splitValue);
         Event editedEvent = (Event) resultRecord.getData();
-        // Assertions
-        assertEquals(editedEvent.getMetadata(),recordEvent.getMetadata());
+        assertThat(editedEvent.getMetadata(), equalTo(recordEvent.getMetadata()));
     }
 
     @Test
@@ -375,19 +373,240 @@ public class SplitEventProcessorTest {
         splitEventProcessor.addToAcknowledgementSetFromOriginEvent(recordEvent, spyEvent);
 
         DefaultEventHandle spyEventHandle = (DefaultEventHandle) spyEvent.getEventHandle();
-        // Verify that the add method is called on the acknowledgement set
         verify(spyEventHandle).addEventHandle(recordEvent.getEventHandle());
 
         AcknowledgementSet spyAckSet = spyEventHandle.getAcknowledgementSet();
         DefaultEventHandle eventHandle = (DefaultEventHandle) recordEvent.getEventHandle();
         AcknowledgementSet ackSet1 = eventHandle.getAcknowledgementSet();
 
-        assertEquals(spyAckSet, ackSet1);
+        assertThat(spyAckSet, equalTo(ackSet1));
     }
 
     @Test
     void testIsReadyForShutdown() {
-        assertTrue(splitEventProcessor.isReadyForShutdown());
+        assertThat(splitEventProcessor.isReadyForShutdown(), equalTo(true));
     }
-    
+
+    @Test
+    void testArraySplitWithStringElements() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of("a", "b", "c"));
+        testData.put("k2", "preserved");
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(3));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("a"));
+        assertThat(results.get(0).getData().get("k2", String.class), equalTo("preserved"));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo("b"));
+        assertThat(results.get(2).getData().get("k1", Object.class), equalTo("c"));
+    }
+
+    @Test
+    void testArraySplitWithObjectElements() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of(Map.of("name", "Alice"), Map.of("name", "Bob")));
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(2));
+        assertThat(results.get(0).getData().get("k1", Map.class), equalTo(Map.of("name", "Alice")));
+        assertThat(results.get(1).getData().get("k1", Map.class), equalTo(Map.of("name", "Bob")));
+    }
+
+    @Test
+    void testArraySplitWithSingleElement() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of("only"));
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("only"));
+    }
+
+    @Test
+    void testArraySplitWithEmptyArray() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of());
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+    }
+
+    @Test
+    void testArraySplitWithMixedTypes() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of("text", 42, true));
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(3));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("text"));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo(42));
+        assertThat(results.get(2).getData().get("k1", Object.class), equalTo(true));
+    }
+
+    @Test
+    void testArraySplitWithNestedArrays() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of(List.of(1, 2), List.of(3, 4)));
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(2));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo(List.of(1, 2)));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo(List.of(3, 4)));
+    }
+
+    @Test
+    void testArrayModeWithIntegerValuePassesThrough() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", 42);
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo(42));
+    }
+
+    @Test
+    void testArraySplitPreservesOtherFields() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of("a", "b"));
+        testData.put("host", "server1");
+        testData.put("level", "info");
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(2));
+        assertThat(results.get(0).getData().get("host", String.class), equalTo("server1"));
+        assertThat(results.get(0).getData().get("level", String.class), equalTo("info"));
+        assertThat(results.get(1).getData().get("host", String.class), equalTo("server1"));
+        assertThat(results.get(1).getData().get("level", String.class), equalTo("info"));
+    }
+
+    @Test
+    void testArraySplitFieldMissing() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("other", "value");
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+        assertThat(results.get(0).getData().get("other", String.class), equalTo("value"));
+    }
+
+    @Test
+    void testStringFieldWithNoDelimiterPassesThrough() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", "just a string");
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+        assertThat(results.get(0).getData().get("k1", String.class), equalTo("just a string"));
+    }
+
+    @Test
+    void testArraySplitMultipleRecordsMixed() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        List<Record<Event>> records = new ArrayList<>();
+
+        final Map<String, Object> arrayData = new HashMap<>();
+        arrayData.put("k1", List.of("x", "y"));
+        records.add(createTestRecord(arrayData));
+
+        final Map<String, Object> stringData = new HashMap<>();
+        stringData.put("k1", "no split");
+        records.add(createTestRecord(stringData));
+
+        final Map<String, Object> arrayData2 = new HashMap<>();
+        arrayData2.put("k1", List.of("a", "b", "c"));
+        records.add(createTestRecord(arrayData2));
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(records);
+
+        assertThat(results, hasSize(6));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("x"));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo("y"));
+        assertThat(results.get(2).getData().get("k1", String.class), equalTo("no split"));
+        assertThat(results.get(3).getData().get("k1", Object.class), equalTo("a"));
+        assertThat(results.get(4).getData().get("k1", Object.class), equalTo("b"));
+        assertThat(results.get(5).getData().get("k1", Object.class), equalTo("c"));
+    }
+
+    @Test
+    void testArraySplitAcknowledgementSet() {
+        when(mockConfig.getDelimiter()).thenReturn(null);
+        when(mockConfig.getDelimiterRegex()).thenReturn(null);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", List.of("a", "b", "c"));
+        final Record<Event> record = createTestRecord(testData);
+
+        DefaultEventHandle originalHandle = (DefaultEventHandle) record.getData().getEventHandle();
+        AcknowledgementSet originalAckSet = originalHandle.getAcknowledgementSet();
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(3));
+        DefaultEventHandle lastHandle = (DefaultEventHandle) results.get(2).getData().getEventHandle();
+        assertThat(lastHandle.getAcknowledgementSet(), equalTo(originalAckSet));
+    }
 }

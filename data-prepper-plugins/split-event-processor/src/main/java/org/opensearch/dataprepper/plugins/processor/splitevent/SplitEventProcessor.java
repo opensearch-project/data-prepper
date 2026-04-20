@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -32,6 +33,7 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
     final String delimiterRegex;
     final String field;
     final Pattern pattern;
+    final boolean arrayMode;
     private final Function<String, String[]> splitter;
 
     @DataPrepperPluginConstructor
@@ -44,17 +46,23 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
         if(delimiterRegex != null && !delimiterRegex.isEmpty()
                 && delimiter != null && !delimiter.isEmpty()) {
             throw new IllegalArgumentException("delimiter and delimiter_regex cannot be defined at the same time");
-        } else if((delimiterRegex == null || delimiterRegex.isEmpty()) &&
-                (delimiter == null || delimiter.isEmpty())) {
-            throw new IllegalArgumentException("delimiter or delimiter_regex needs to be defined");
         }
 
-        if(delimiterRegex != null && !delimiterRegex.isEmpty()) {
+        boolean hasDelimiter = (delimiter != null && !delimiter.isEmpty());
+        boolean hasRegex = (delimiterRegex != null && !delimiterRegex.isEmpty());
+
+        if (hasRegex) {
             pattern = Pattern.compile(delimiterRegex);
             splitter = pattern::split;
-        } else {
+            arrayMode = false;
+        } else if (hasDelimiter) {
             splitter = inputString -> inputString.split(delimiter);
             pattern = null;
+            arrayMode = false;
+        } else {
+            splitter = null;
+            pattern = null;
+            arrayMode = true;
         }
     }
 
@@ -68,38 +76,66 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
                 newRecords.add(record);
                 continue;
             }
-            
+
             final Object value = recordEvent.get(field, Object.class);
 
-            //split record according to delimiter
-            final String[] splitValues = splitter.apply((String) value);
-
-           // when no splits or empty value use the original record
-           if(splitValues.length <= 1) {
-                newRecords.add(record);
+            if (arrayMode) {
+                if (value instanceof List) {
+                    splitArrayField(record, recordEvent, (List<?>) value, newRecords);
+                } else {
+                    newRecords.add(record);
+                }
                 continue;
-           }
-
-            //create new events for the splits 
-            for (int i = 0; i < splitValues.length-1 ; i++) {
-                Record newRecord = createNewRecordFromEvent(recordEvent, splitValues[i]);
-                addToAcknowledgementSetFromOriginEvent((Event) newRecord.getData(), recordEvent);
-                newRecords.add(newRecord);
             }
 
-            // Modify original event to hold the last split
-            recordEvent.put(field, splitValues[splitValues.length-1]);
-            newRecords.add(record);
+            if (!(value instanceof String)) {
+                newRecords.add(record);
+                continue;
+            }
+
+            final String[] splitValues = splitter.apply((String) value);
+
+            if(splitValues.length <= 1) {
+                newRecords.add(record);
+                continue;
+            }
+
+            splitIntoRecords(record, recordEvent, splitValues, newRecords);
         }
         return newRecords;
     }
 
-    protected Record createNewRecordFromEvent(final Event recordEvent, String splitValue) {
+    private void splitArrayField(final Record<Event> record, final Event recordEvent,
+                                 final List<?> arrayValue, final Collection<Record<Event>> newRecords) {
+        if (arrayValue.size() <= 1) {
+            if (arrayValue.size() == 1) {
+                recordEvent.put(field, arrayValue.get(0));
+            }
+            newRecords.add(record);
+            return;
+        }
+
+        splitIntoRecords(record, recordEvent, arrayValue.toArray(), newRecords);
+    }
+
+    private void splitIntoRecords(final Record<Event> record, final Event recordEvent,
+                                  final Object[] values, final Collection<Record<Event>> newRecords) {
+        for (int i = 0; i < values.length - 1; i++) {
+            Record newRecord = createNewRecordFromEvent(recordEvent, values[i]);
+            addToAcknowledgementSetFromOriginEvent((Event) newRecord.getData(), recordEvent);
+            newRecords.add(newRecord);
+        }
+
+        recordEvent.put(field, values[values.length - 1]);
+        newRecords.add(record);
+    }
+
+    protected Record createNewRecordFromEvent(final Event recordEvent, Object splitValue) {
         Record newRecord;
         JacksonEvent newRecordEvent;
 
         newRecordEvent = JacksonEvent.fromEvent(recordEvent);
-        newRecordEvent.put(field,(Object) splitValue);
+        newRecordEvent.put(field, splitValue);
         newRecord = new Record<>(newRecordEvent);
         return newRecord;
     }
