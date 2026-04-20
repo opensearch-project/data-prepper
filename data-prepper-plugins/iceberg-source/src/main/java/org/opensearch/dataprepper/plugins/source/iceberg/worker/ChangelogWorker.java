@@ -646,6 +646,8 @@ public class ChangelogWorker implements Runnable {
             final Object val = record.getField(col);
             hash = 31 * hash + (val != null ? val.toString().hashCode() : 0);
         }
+        // floorMod always returns a non-negative result, unlike % which can return negative values
+        // when the hash is negative (e.g. String.hashCode() can produce negative values).
         return Math.floorMod(hash, numPartitions);
     }
 

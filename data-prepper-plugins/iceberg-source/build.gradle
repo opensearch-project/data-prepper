@@ -46,7 +46,7 @@ dependencies {
 
     implementation libs.armeria.core
 
-    implementation 'org.lz4:lz4-java:1.8.0'
+    implementation libs.lz4
 
     implementation 'software.amazon.awssdk:glue'
     implementation 'software.amazon.awssdk:s3'

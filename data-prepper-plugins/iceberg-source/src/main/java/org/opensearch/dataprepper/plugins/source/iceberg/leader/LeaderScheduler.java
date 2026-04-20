@@ -413,6 +413,9 @@ public class LeaderScheduler implements Runnable {
         for (final Map.Entry<String, Object> entry : locationMap.entrySet()) {
             completedTaskIds.add(entry.getKey());
             completedNodeAddresses.add(String.valueOf(entry.getValue()));
+            LOG.debug("Shuffle write location: taskId={} nodeAddress={} valueType={}",
+                    entry.getKey(), entry.getValue(),
+                    entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "null");
         }
         LOG.info("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
 

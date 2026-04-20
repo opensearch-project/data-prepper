@@ -46,9 +46,10 @@ public class ShuffleHttpService {
             return HttpResponse.of(HttpStatus.BAD_REQUEST);
         }
         try {
-            final ShuffleReader reader = shuffleStorage.createReader(snapshotId, taskId);
-            final long[] offsets = reader.readIndex();
-            reader.close();
+            final long[] offsets;
+            try (ShuffleReader reader = shuffleStorage.createReader(snapshotId, taskId)) {
+                offsets = reader.readIndex();
+            }
 
             final byte[] bytes = new byte[offsets.length * Long.BYTES];
             ByteBuffer.wrap(bytes).asLongBuffer().put(offsets);
@@ -77,9 +78,10 @@ public class ShuffleHttpService {
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, new byte[0]);
         }
         try {
-            final ShuffleReader reader = shuffleStorage.createReader(snapshotId, taskId);
-            final byte[] data = reader.readBytes(offset, length);
-            reader.close();
+            final byte[] data;
+            try (ShuffleReader reader = shuffleStorage.createReader(snapshotId, taskId)) {
+                data = reader.readBytes(offset, length);
+            }
             return HttpResponse.of(HttpStatus.OK, MediaType.OCTET_STREAM, data);
         } catch (final UncheckedIOException e) {
             if (e.getCause() instanceof NoSuchFileException) {

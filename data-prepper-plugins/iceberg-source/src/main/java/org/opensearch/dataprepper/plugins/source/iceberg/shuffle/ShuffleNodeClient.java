@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -154,11 +155,11 @@ public class ShuffleNodeClient {
             try {
                 final AggregatedHttpResponse response = client.get(path).aggregate().join();
                 if (response.status().equals(HttpStatus.OK)) {
-                    try (var content = response.content()) {
-                        return content.array();
-                    }
+                    return response.content().array();
                 }
                 LOG.warn("HTTP pull failed for {}: status={} attempt={}/{}", description, response.status(), attempt, MAX_RETRIES);
+            } catch (final CompletionException e) {
+                LOG.warn("HTTP pull failed for {}: attempt={}/{}", description, attempt, MAX_RETRIES, e.getCause());
             } catch (final Exception e) {
                 LOG.warn("HTTP pull failed for {}: attempt={}/{}", description, attempt, MAX_RETRIES, e);
             }
