@@ -45,4 +45,47 @@ class GeoInetAddressTest {
         assertThat(actual, notNullValue());
         assertThat(actual.isPresent(), equalTo(false));
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"10.0.0.1", "172.16.0.1", "192.168.1.1"})
+    void privateIpAcceptedWhenLookupEnabled(String privateIpAddress) {
+        final Optional<InetAddress> actual = GeoInetAddress.usableInetFromString(privateIpAddress, true);
+        assertThat(actual, notNullValue());
+        assertThat(actual.isPresent(), equalTo(true));
+        assertThat(actual.get(), equalTo(InetAddresses.forString(privateIpAddress)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"10.0.0.1", "172.16.0.1", "192.168.1.1"})
+    void privateIpRejectedWhenLookupDisabled(String privateIpAddress) {
+        final Optional<InetAddress> actual = GeoInetAddress.usableInetFromString(privateIpAddress, false);
+        assertThat(actual, notNullValue());
+        assertThat(actual.isPresent(), equalTo(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"127.0.0.1", "::1"})
+    void loopbackAcceptedWhenLookupEnabled(String loopbackAddress) {
+        final Optional<InetAddress> actual = GeoInetAddress.usableInetFromString(loopbackAddress, true);
+        assertThat(actual, notNullValue());
+        assertThat(actual.isPresent(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"93.184.216.34", "2607:f8b0:4005:805::200e"})
+    void publicIpWorksInBothModes(String publicIpAddress) {
+        final Optional<InetAddress> withFlag = GeoInetAddress.usableInetFromString(publicIpAddress, true);
+        final Optional<InetAddress> withoutFlag = GeoInetAddress.usableInetFromString(publicIpAddress, false);
+        assertThat(withFlag.isPresent(), equalTo(true));
+        assertThat(withoutFlag.isPresent(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"123", "255.255.255.999", "true", "[1,2,3]"})
+    void invalidIpRejectedInBothModes(String invalidIpAddress) {
+        final Optional<InetAddress> withFlag = GeoInetAddress.usableInetFromString(invalidIpAddress, true);
+        final Optional<InetAddress> withoutFlag = GeoInetAddress.usableInetFromString(invalidIpAddress, false);
+        assertThat(withFlag.isPresent(), equalTo(false));
+        assertThat(withoutFlag.isPresent(), equalTo(false));
+    }
 }

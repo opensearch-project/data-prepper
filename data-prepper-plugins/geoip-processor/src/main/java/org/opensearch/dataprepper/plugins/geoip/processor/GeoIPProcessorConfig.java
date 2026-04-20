@@ -52,6 +52,11 @@ public class GeoIPProcessorConfig {
     })
     private String whenCondition;
 
+    @JsonProperty("lookup_private_addresses")
+    @JsonPropertyDescription("When set to <code>true</code>, the processor will also enrich private/internal IP addresses (e.g. 10.x, 172.16.x, 192.168.x, loopback). " +
+            "This is useful when using custom MMDB files enriched with internal IPAM data. Default is <code>false</code>.")
+    private boolean lookupPrivateAddresses = false;
+
     /**
      * Get List of entries
      * @return List of EntryConfig
@@ -90,5 +95,9 @@ public class GeoIPProcessorConfig {
      */
     public String getWhenCondition() {
         return whenCondition;
+    }
+
+    public boolean getLookupPrivateAddresses() {
+        return lookupPrivateAddresses;
     }
 }
