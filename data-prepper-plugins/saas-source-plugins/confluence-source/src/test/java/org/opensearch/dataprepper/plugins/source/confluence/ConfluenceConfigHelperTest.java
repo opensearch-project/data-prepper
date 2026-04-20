@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
@@ -151,6 +152,21 @@ public class ConfluenceConfigHelperTest {
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
 
         when(oauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
+        assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
+
+    @Test
+    void testValidateConfigBearerToken() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerToken()).thenReturn(null);
+        assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+
+        when(authenticationConfig.getBearerToken()).thenReturn("");
+        assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+
+        when(authenticationConfig.getBearerToken()).thenReturn("valid-token");
         assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 }

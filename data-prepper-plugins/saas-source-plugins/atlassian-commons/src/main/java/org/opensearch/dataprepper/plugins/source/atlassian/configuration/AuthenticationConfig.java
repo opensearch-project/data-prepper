@@ -16,6 +16,7 @@ import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BASIC;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.OAUTH2;
 
 
@@ -29,16 +30,23 @@ public class AuthenticationConfig {
     @Valid
     private Oauth2Config oauth2Config;
 
-    @AssertTrue(message = "Authentication config should have either basic or oauth2")
+    @JsonProperty("bearer_token")
+    private String bearerToken;
+
+    @AssertTrue(message = "Authentication config should have exactly one of basic, oauth2, or bearer_token")
     private boolean isValidAuthenticationConfig() {
         boolean hasBasic = basicConfig != null;
         boolean hasOauth = oauth2Config != null;
-        return hasBasic ^ hasOauth;
+        boolean hasBearer = bearerToken != null && !bearerToken.isBlank();
+        int count = (hasBasic ? 1 : 0) + (hasOauth ? 1 : 0) + (hasBearer ? 1 : 0);
+        return count == 1;
     }
 
     public String getAuthType() {
         if (basicConfig != null) {
             return BASIC;
+        } else if (bearerToken != null && !bearerToken.isBlank()) {
+            return BEARER_TOKEN;
         } else {
             return OAUTH2;
         }

@@ -13,12 +13,14 @@ package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianBearerTokenAuthConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.OAUTH2;
 
 @Configuration
@@ -31,6 +33,8 @@ public class CustomRestTemplateConfig {
         ClientHttpRequestInterceptor httpInterceptor;
         if (OAUTH2.equals(config.getAuthType())) {
             httpInterceptor = new OAuth2RequestInterceptor(authConfig);
+        } else if (BEARER_TOKEN.equals(config.getAuthType())) {
+            httpInterceptor = new BearerTokenInterceptor((AtlassianBearerTokenAuthConfig) authConfig);
         } else {
             httpInterceptor = new BasicAuthInterceptor(config);
         }
