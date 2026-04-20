@@ -40,7 +40,7 @@ public class KinesisShardRecordProcessorFactory implements ShardRecordProcessorF
         this.buffer = buffer;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
-        this.kinesisRecordConverter = new KinesisRecordConverter(codec);
+        this.kinesisRecordConverter = new KinesisRecordConverter(codec, pluginMetrics);
     }
 
     @Override

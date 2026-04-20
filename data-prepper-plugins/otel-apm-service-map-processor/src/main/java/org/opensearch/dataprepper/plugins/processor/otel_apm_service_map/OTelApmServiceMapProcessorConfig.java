@@ -43,6 +43,16 @@ public class OTelApmServiceMapProcessorConfig {
             "when present on the span's resource attributes. Only applied to primary Service objects, not dependency services.")
     private List<String> groupByAttributes = Collections.emptyList();
 
+    @JsonProperty("metric_timestamp_source")
+    @JsonPropertyDescription("The timestamp source for emitted metrics. 'arrival_time' (default) uses processing time " +
+            "at window evaluation, avoiding late-span data loss in Prometheus/AMP. 'span_end_time' uses the span's endTime field.")
+    private MetricTimestampSource metricTimestampSource = MetricTimestampSource.ARRIVAL_TIME;
+
+    @JsonProperty("metric_timestamp_granularity")
+    @JsonPropertyDescription("The truncation granularity for metric and service map timestamps. " +
+            "'seconds' (default) truncates to second boundaries. 'minutes' truncates to minute boundaries.")
+    private MetricTimestampGranularity metricTimestampGranularity = MetricTimestampGranularity.SECONDS;
+
     public Duration getWindowDuration() {
         return windowDuration;
     }
@@ -53,5 +63,13 @@ public class OTelApmServiceMapProcessorConfig {
 
     public List<String> getGroupByAttributes() {
         return groupByAttributes != null ? Collections.unmodifiableList(groupByAttributes) : Collections.emptyList();
+    }
+
+    public MetricTimestampSource getMetricTimestampSource() {
+        return metricTimestampSource;
+    }
+
+    public MetricTimestampGranularity getMetricTimestampGranularity() {
+        return metricTimestampGranularity;
     }
 }

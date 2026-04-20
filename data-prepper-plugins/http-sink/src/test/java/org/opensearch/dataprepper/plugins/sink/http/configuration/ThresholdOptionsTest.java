@@ -1,33 +1,42 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http.configuration;
 
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
+import java.time.Duration;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class ThresholdOptionsTest {
     private static final String DEFAULT_BYTE_CAPACITY = "50mb";
-    private static final int DEFAULT_EVENT_COUNT = 0;
+    private static final int DEFAULT_EVENT_COUNT = 100;
+    private static final Duration DEFAULT_EVENT_COLLECT_TIMEOUT = Duration.ofSeconds(10);
 
     @Test
     void default_byte_capacity_test() {
-        MatcherAssert.assertThat(new ThresholdOptions().getMaximumSize().getBytes(),
+        MatcherAssert.assertThat(new ThresholdOptions().getMaxRequestSize().getBytes(),
                 equalTo(ByteCount.parse(DEFAULT_BYTE_CAPACITY).getBytes()));
     }
 
     @Test
     void get_event_collection_duration_test() {
-        assertThat(new ThresholdOptions().getEventCollectTimeOut(), equalTo(null));
+        assertThat(new ThresholdOptions().getFlushTimeOut(), equalTo(DEFAULT_EVENT_COLLECT_TIMEOUT));
     }
 
     @Test
     void get_event_count_test() {
-        assertThat(new ThresholdOptions().getEventCount(), equalTo(DEFAULT_EVENT_COUNT));
+        assertThat(new ThresholdOptions().getMaxEvents(), equalTo(DEFAULT_EVENT_COUNT));
     }
 }

@@ -1,7 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
+
 package org.opensearch.dataprepper.plugins.sink.http.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,43 +24,45 @@ import java.time.Duration;
  */
 public class ThresholdOptions {
 
-    private static final String DEFAULT_BYTE_CAPACITY = "50mb";
+    private static final String DEFAULT_MAX_REQUEST_SIZE = "50mb";
+    private static final int DEFAULT_MAX_EVENTS = 100;
+    private static final Duration DEFAULT_FLUSH_TIMEOUT = Duration.ofSeconds(10);
 
-    @JsonProperty("event_count")
-    @Size(min = 0, max = 10000000, message = "event_count size should be between 0 and 10000000")
+    @JsonProperty("max_events")
+    @Size(min = 1, max = 10000000, message = "event_count size should be between 0 and 10000000")
     @NotNull
-    private int eventCount;
+    private int maxEvents = DEFAULT_MAX_EVENTS;
 
-    @JsonProperty("maximum_size")
-    private String maximumSize = DEFAULT_BYTE_CAPACITY;
+    @JsonProperty("max_request_size")
+    private String maxRequestSize = DEFAULT_MAX_REQUEST_SIZE;
 
-    @JsonProperty("event_collect_timeout")
+    @JsonProperty("flush_timeout")
     @DurationMin(seconds = 1)
     @DurationMax(seconds = 3600)
     @NotNull
-    private Duration eventCollectTimeOut;
+    private Duration flushTimeout = DEFAULT_FLUSH_TIMEOUT;
 
     /**
      * Read event collection duration configuration.
      * @return  event collect time out.
      */
-    public Duration getEventCollectTimeOut() {
-        return eventCollectTimeOut;
+    public Duration getFlushTimeOut() {
+        return flushTimeout;
     }
 
     /**
      * Read byte capacity configuration.
      * @return maximum byte count.
      */
-    public ByteCount getMaximumSize() {
-        return ByteCount.parse(maximumSize);
+    public ByteCount getMaxRequestSize() {
+        return ByteCount.parse(maxRequestSize);
     }
 
     /**
      * Read the event count configuration.
      * @return event count.
      */
-    public int getEventCount() {
-        return eventCount;
+    public int getMaxEvents() {
+        return maxEvents;
     }
 }
