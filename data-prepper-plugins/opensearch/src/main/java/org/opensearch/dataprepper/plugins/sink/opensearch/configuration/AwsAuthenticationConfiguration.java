@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
@@ -37,6 +38,9 @@ public class AwsAuthenticationConfiguration {
     @JsonProperty("serverless_options")
     private ServerlessOptions serverlessOptions;
 
+    @JsonProperty("semantic_enrichment")
+    private SemanticEnrichmentConfig semanticEnrichmentConfig;
+
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
     }
@@ -59,6 +63,10 @@ public class AwsAuthenticationConfiguration {
 
     public ServerlessOptions getServerlessOptions() {
         return serverlessOptions;
+    }
+
+    public SemanticEnrichmentConfig getSemanticEnrichmentConfig() {
+        return semanticEnrichmentConfig;
     }
 }
 

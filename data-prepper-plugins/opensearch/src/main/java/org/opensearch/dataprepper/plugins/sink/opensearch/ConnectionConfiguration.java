@@ -102,7 +102,7 @@ public class ConnectionConfiguration {
   private final boolean requestCompressionEnabled;
   private final AuthConfig authConfig;
 
-  List<String> getHosts() {
+  public List<String> getHosts() {
     return hosts;
   }
 

@@ -103,8 +103,8 @@ public class IndexConfiguration {
     private final String versionExpression;
     private final VersionType versionType;
     private final boolean normalizeIndex;
-
     private final ScriptConfiguration scriptConfiguration;
+    private final SemanticEnrichmentConfig semanticEnrichmentConfig;
 
     private final String queryWhen;
 
@@ -134,6 +134,7 @@ public class IndexConfiguration {
         this.versionType = builder.versionType;
         this.normalizeIndex = builder.normalizeIndex;
         this.queryOnBulkFailures = builder.queryOnIndexingFailure;
+        this.semanticEnrichmentConfig = builder.semanticEnrichmentConfig;
 
         determineTemplateType(builder);
 
@@ -179,6 +180,7 @@ public class IndexConfiguration {
         this.actions = builder.actions;
         this.scriptConfiguration = builder.scriptConfiguration;
         this.documentRootKey = builder.documentRootKey;
+
         this.queryWhen = builder.queryWhen;
         this.queryTerm = builder.queryTerm;
         this.queryActionOnFound = builder.actionOnFound;
@@ -282,6 +284,11 @@ public class IndexConfiguration {
                 .withDocumentRootKey(openSearchSinkConfig.getDocumentRootKey())
                 .withDistributionVersion(openSearchSinkConfig.getDistributionVersion());
 
+        final AwsAuthenticationConfiguration awsConfig = openSearchSinkConfig.getAwsAuthenticationOptions();
+        if (awsConfig != null && awsConfig.getSemanticEnrichmentConfig() != null) {
+            builder = builder.withSemanticEnrichmentConfig(awsConfig.getSemanticEnrichmentConfig());
+        }
+
 
         final String versionExpression = openSearchSinkConfig.getVersionExpression();
         builder = builder.withVersionExpression(versionExpression);
@@ -329,6 +336,9 @@ public class IndexConfiguration {
         return builder.build();
     }
 
+    public SemanticEnrichmentConfig getSemanticEnrichmentConfig() {
+        return semanticEnrichmentConfig;
+    }
 
     public IndexType getIndexType() {
         return indexType;
@@ -541,6 +551,7 @@ public class IndexConfiguration {
         private Duration queryDuration;
         private boolean queryOnIndexingFailure;
 
+        private SemanticEnrichmentConfig semanticEnrichmentConfig;
         private Integer queryAsyncLimit;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -779,6 +790,11 @@ public class IndexConfiguration {
 
         public Builder withQueryAsyncLimit(final Integer queryAsyncLimit) {
             this.queryAsyncLimit = queryAsyncLimit;
+            return this;
+        }
+
+        public Builder withSemanticEnrichmentConfig(final SemanticEnrichmentConfig semanticEnrichmentConfig) {
+            this.semanticEnrichmentConfig = semanticEnrichmentConfig;
             return this;
         }
 
