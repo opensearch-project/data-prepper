@@ -86,7 +86,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Pattern to match overlay directives like "<<overlay sink[*].opensearch>>"
      * The captured group is the target path (e.g., "sink[*].opensearch")
      */
-    private final Pattern OVERLAY_PATTERN = Pattern.compile("^<<overlay\\s+(.+?)>>$");
+    private static final Pattern OVERLAY_PATTERN = Pattern.compile("^<<overlay\\s+(.+?)>>$");
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -647,13 +647,8 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             Map.Entry<String, JsonNode> entry = fields.next();
             String fieldName = entry.getKey();
             JsonNode sourceValue = entry.getValue();
-            JsonNode targetValue = target.get(fieldName);
 
-            if (targetValue != null && targetValue.isObject() && sourceValue.isObject()) {
-                deepMerge((ObjectNode) targetValue, (ObjectNode) sourceValue);
-            } else {
-                target.set(fieldName, sourceValue);
-            }
+            target.set(fieldName, sourceValue);
         }
     }
 

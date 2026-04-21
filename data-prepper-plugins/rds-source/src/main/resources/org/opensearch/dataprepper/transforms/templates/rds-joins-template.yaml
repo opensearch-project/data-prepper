@@ -61,7 +61,7 @@
           max_connections: 100
           acquire_timeout: 20s
 "<<pipeline-name>>-s3":
-  workers: "<<$.<<pipeline-name>>.workers>>"
+  workers: 1
   delay: "<<$.<<pipeline-name>>.delay>>"
   buffer: "<<$.<<pipeline-name>>.buffer>>"
   source:
@@ -94,15 +94,14 @@
   <<overlay sink[*].opensearch>>:
     action: "upsert"
     document_id: "${getMetadata(\"_primary_key\")}"
-    template_content: "{\"mappings\":{\"properties\":{\"<<$.<<pipeline-name>>.source.rds.joins.version_field>>\":{\"type\":\"object\",\"enabled\":false}}}}"
+    bulk_size: 3
     script:
       source: |
         // --- RDS Join Denormalization Script ---
         // Merges parent/child table CDC events into a single denormalized document.
-        // Uses per-table versioning for parent/1:1 and per-row versioning for 1:N children
-        // to handle out-of-order events. Per-row versioning (e.g. __versions["order_items:14"])
-        // is required for 1:N because multiple child rows from the same table can share the
-        // same CDC timestamp — per-table versioning would discard all but the first as stale.
+        // Uses per-table versioning for all cases. The S3 sub-pipeline uses workers:1
+        // to guarantee sequential processing, so per-table versioning is safe even
+        // for 1:N children — the monotonic version counter ensures unique versions.
 
         String table = params.table;
         String vf = params.version_field;
@@ -113,15 +112,15 @@
           ctx._source[vf] = [:]
         }
 
-        if (params.is_parent == 'true' || params.join_type == 'one_to_one') {
-          // --- Parent table or 1:1 child: per-table versioning ---
-          long storedVersion = ctx._source[vf].containsKey(table) ? ctx._source[vf][table] : -1L;
-          if (incomingVersion <= storedVersion) {
-            ctx.op = 'none';
-            return
-          }
-          ctx._source[vf][table] = incomingVersion;
+        long storedVersion = ctx._source[vf].containsKey(table) ? ctx._source[vf][table] : -1L;
+        if (incomingVersion <= storedVersion) {
+          ctx.op = 'none';
+          return
+        }
+        ctx._source[vf][table] = incomingVersion;
 
+        if (params.is_parent == 'true' || params.join_type == 'one_to_one') {
+          // --- Parent or 1:1 child: merge fields directly into document ---
           if (params.is_delete == 'true') {
             if (params.is_parent == 'true') {
               // Parent delete = full document delete.
@@ -139,17 +138,10 @@
             }
           }
         } else {
-          // --- 1:N child: per-row versioning ---
+          // --- 1:N child: manage nested array ---
           String arr = params.child_table_name;
           String[] pkNames = params.child_pk_name.splitOnToken('|');
           String pkVal = params.child_pk_value;
-          String rowKey = table + ':' + pkVal;
-
-          long storedVersion = ctx._source[vf].containsKey(rowKey) ? ctx._source[vf][rowKey] : -1L;
-          if (incomingVersion <= storedVersion) {
-            ctx.op = 'none';
-            return
-          }
 
           if (!ctx._source.containsKey(arr)) {
             ctx._source[arr] = []
@@ -166,29 +158,20 @@
           });
 
           if (params.is_delete != 'true') {
-            // Insert/Update: add entry to array
             def entry = [:];
             for (String f : fields) {
               if (params.doc.containsKey(f)) { entry[f] = params.doc[f] }
             }
             for (String pk : pkNames) { entry[pk] = params.doc[pk] }
             ctx._source[arr].add(entry);
-            ctx._source[vf][rowKey] = incomingVersion;
 
             // Enforce max_child_records cap (FIFO eviction)
             int max = Integer.parseInt(params.max_child_records);
             if (ctx._source[arr].size() > max) {
-              def removed = ctx._source[arr].remove(0);
-              String rv = '';
-              for (int i = 0; i < pkNames.length; i++) {
-                if (i > 0) rv += '|';
-                rv += removed[pkNames[i]].toString()
-              }
-              ctx._source[vf].remove(table + ':' + rv)
+              ctx._source[arr].remove(0)
             }
           } else {
-            // Delete: remove version key
-            ctx._source[vf].remove(rowKey);
+            ctx._source[vf].remove(table);
             if (ctx._source[vf].isEmpty()) { ctx.op = 'delete' }
           }
         }

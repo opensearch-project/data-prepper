@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.rds.configuration;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
@@ -49,4 +50,9 @@ public class JoinRelation {
 
     @JsonProperty("max_child_records")
     private int maxChildRecords = 1000;
+
+    @AssertTrue(message = "parent_key and child_key must have the same number of columns")
+    public boolean isKeyLengthValid() {
+        return parentKey != null && childKey != null && parentKey.size() == childKey.size();
+    }
 }
