@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,7 @@ public class RuleEvaluator {
 
             // Pre-parse all rules and sort by specificity (most conditions first)
             // so more specific rules like rds-joins match before generic rds
-            List<ParsedRule> parsedRules = new java.util.ArrayList<>();
+            List<ParsedRule> parsedRules = new ArrayList<>();
             for (RuleStream ruleStream : ruleStreams) {
                 try {
                     RuleTransformerModel model = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);

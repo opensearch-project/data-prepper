@@ -45,7 +45,7 @@ public class JoinRelation {
     private List<String> childPrimaryKey;
 
     @JsonProperty("join_type")
-    private String joinType = "one_to_many";
+    private JoinType joinType = JoinType.ONE_TO_MANY;
 
     @JsonProperty("max_child_records")
     private int maxChildRecords = 1000;

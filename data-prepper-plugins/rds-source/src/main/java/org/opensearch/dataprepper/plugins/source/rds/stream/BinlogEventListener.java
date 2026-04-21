@@ -53,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -342,7 +343,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             if (childKeyIndices != null) {
                 boolean fkChanged = false;
                 for (int idx : childKeyIndices) {
-                    if (idx >= 0 && !row.getKey()[idx].equals(row.getValue()[idx])) {
+                    if (idx >= 0 && !Objects.equals(row.getKey()[idx], row.getValue()[idx])) {
                         fkChanged = true;
                         break;
                     }

@@ -93,7 +93,7 @@ public class JoinMetadataEnricher {
         // Child PK name/value: composite joined with |
         final String childPkName = String.join("|", relation.getChildPrimaryKey());
         metadata.setAttribute(JOIN_CHILD_PK_NAME_METADATA, childPkName);
-        metadata.setAttribute(JOIN_TYPE_METADATA, relation.getJoinType());
+        metadata.setAttribute(JOIN_TYPE_METADATA, relation.getJoinType().getValue());
         metadata.setAttribute(JOIN_MAX_CHILD_RECORDS_METADATA, String.valueOf(relation.getMaxChildRecords()));
         if (!isParent) {
             final String childPkValue = relation.getChildPrimaryKey().stream()
