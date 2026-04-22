@@ -41,7 +41,11 @@ public class LastReleasedVersionProvider {
 
     static String getLastReleasedMajorVersion(final InputStream metadataStream, final String currentVersion) throws Exception {
         final String majorVersion = currentVersion.split("\\.")[0];
-        final Document doc = DocumentBuilderFactory.newInstance()
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
+        final Document doc = dbf
             .newDocumentBuilder()
             .parse(metadataStream);
         
