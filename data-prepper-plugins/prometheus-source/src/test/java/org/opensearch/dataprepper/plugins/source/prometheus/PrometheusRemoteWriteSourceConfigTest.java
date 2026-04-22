@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.prometheus;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class PrometheusRemoteWriteSourceConfigTest {
@@ -45,5 +46,11 @@ class PrometheusRemoteWriteSourceConfigTest {
     void testDefaultHealthCheckDisabled() {
         final PrometheusRemoteWriteSourceConfig config = new PrometheusRemoteWriteSourceConfig();
         assertThat(config.hasHealthCheckService(), equalTo(false));
+    }
+
+    @Test
+    void testDefaultScrapeConfigIsNull() {
+        final PrometheusRemoteWriteSourceConfig config = new PrometheusRemoteWriteSourceConfig();
+        assertThat(config.getScrapeConfig(), nullValue());
     }
 }

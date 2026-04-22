@@ -24,7 +24,7 @@ public class TableConfig {
     private String tableName;
 
     @JsonProperty("catalog")
-    private Map<String, String> catalog = Collections.emptyMap();
+    private Map<String, String> catalog;
 
     @JsonProperty("identifier_columns")
     private List<String> identifierColumns = Collections.emptyList();

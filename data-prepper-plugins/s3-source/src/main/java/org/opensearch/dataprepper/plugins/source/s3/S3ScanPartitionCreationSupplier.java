@@ -56,13 +56,16 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
     private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
+    private final S3ObjectKeyFilter objectFilteringHelper;
+
     public S3ScanPartitionCreationSupplier(final S3Client s3Client,
                                            final BucketOwnerProvider bucketOwnerProvider,
                                            final List<ScanOptions> scanOptionsList,
                                            final S3ScanSchedulingOptions schedulingOptions,
                                            final FolderPartitioningOptions folderPartitioningOptions,
                                            final boolean deleteS3ObjectsOnRead,
-                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator) {
+                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                                           final S3ObjectKeyFilter objectFilteringHelper) {
 
         this.s3Client = s3Client;
         this.bucketOwnerProvider = bucketOwnerProvider;
@@ -71,6 +74,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         this.folderPartitioningOptions = folderPartitioningOptions;
         this.deleteS3ObjectsOnRead = deleteS3ObjectsOnRead;
         this.sourceCoordinator = sourceCoordinator;
+        this.objectFilteringHelper = objectFilteringHelper;
     }
 
     @Override
@@ -145,6 +149,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                     .filter(keyTimestampPair -> !keyTimestampPair.left().endsWith("/"))
                     .filter(keyTimestampPair -> excludeKeyPaths.stream()
                             .noneMatch(excludeItem -> keyTimestampPair.left().endsWith(excludeItem)))
+                    .filter(keyTimestampPair -> objectFilteringHelper.isKeyMatchingFilters(bucket, keyTimestampPair.left()))
                     .filter(keyTimestampPair -> isKeyMatchedBetweenTimeRange(keyTimestampPair.right(), startDateTime, endDateTime, isFirstScan))
                     .map(Pair::left)
                     .map(objectKey -> PartitionIdentifier.builder().withPartitionKey(String.format(BUCKET_OBJECT_PARTITION_KEY_FORMAT, bucket, objectKey)).build())
