@@ -18,6 +18,9 @@ public class BearerTokenHttpRequestAuthenticator implements HttpRequestAuthentic
     private final String headerValue;
 
     public BearerTokenHttpRequestAuthenticator(final String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Bearer token must not be null or blank");
+        }
         this.headerValue = "Bearer " + token;
     }
 

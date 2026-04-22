@@ -21,6 +21,7 @@ public class HttpClientAuthenticationConfig {
     private HttpBasicConfig httpBasic;
 
     @JsonProperty("bearer_token")
+    @NotBlank
     private String bearerToken;
 
     public HttpBasicConfig getHttpBasic() {

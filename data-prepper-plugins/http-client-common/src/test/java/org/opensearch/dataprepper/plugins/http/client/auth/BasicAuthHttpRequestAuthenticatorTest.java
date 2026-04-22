@@ -14,6 +14,9 @@ import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpHeaders;
 import com.linecorp.armeria.common.HttpHeadersBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -22,6 +25,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BasicAuthHttpRequestAuthenticatorTest {
 
@@ -67,5 +71,19 @@ class BasicAuthHttpRequestAuthenticatorTest {
         final String encoded = builder.build().get(HttpHeaderNames.AUTHORIZATION).substring("Basic ".length());
         final String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8);
         assertThat(decoded, equalTo("user:"));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void constructor_throwsOnNullOrBlankUsername(final String username) {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BasicAuthHttpRequestAuthenticator(username, "password"));
+    }
+
+    @Test
+    void constructor_throwsOnNullPassword() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BasicAuthHttpRequestAuthenticator("user", null));
     }
 }

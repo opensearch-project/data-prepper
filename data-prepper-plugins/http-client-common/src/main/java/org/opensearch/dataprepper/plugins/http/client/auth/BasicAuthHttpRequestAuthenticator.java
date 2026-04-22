@@ -21,6 +21,12 @@ public class BasicAuthHttpRequestAuthenticator implements HttpRequestAuthenticat
     private final String headerValue;
 
     public BasicAuthHttpRequestAuthenticator(final String username, final String password) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username must not be null or blank");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password must not be null");
+        }
         final String credentials = username + ":" + password;
         this.headerValue = "Basic " + Base64.getEncoder()
                 .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));

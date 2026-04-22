@@ -14,9 +14,13 @@ import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpHeaders;
 import com.linecorp.armeria.common.HttpHeadersBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BearerTokenHttpRequestAuthenticatorTest {
 
@@ -43,5 +47,13 @@ class BearerTokenHttpRequestAuthenticatorTest {
 
         assertThat(builder.build().get(HttpHeaderNames.AUTHORIZATION),
                 equalTo("Bearer " + longToken));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void constructor_throwsOnNullOrBlankToken(final String token) {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BearerTokenHttpRequestAuthenticator(token));
     }
 }
