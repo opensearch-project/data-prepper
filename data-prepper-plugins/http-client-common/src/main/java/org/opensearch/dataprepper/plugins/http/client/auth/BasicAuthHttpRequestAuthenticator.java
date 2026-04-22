@@ -7,7 +7,8 @@
  * compatible open source license.
  *
  */
-package org.opensearch.dataprepper.plugins.source.prometheus;
+
+package org.opensearch.dataprepper.plugins.http.client.auth;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpHeadersBuilder;
@@ -15,18 +16,18 @@ import com.linecorp.armeria.common.HttpHeadersBuilder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-final class BasicAuthenticator implements ScrapeRequestAuthenticator {
+public class BasicAuthHttpRequestAuthenticator implements HttpRequestAuthenticator {
 
-    private final String encodedCredentials;
+    private final String headerValue;
 
-    BasicAuthenticator(final String username, final String password) {
+    public BasicAuthHttpRequestAuthenticator(final String username, final String password) {
         final String credentials = username + ":" + password;
-        this.encodedCredentials = Base64.getEncoder()
+        this.headerValue = "Basic " + Base64.getEncoder()
                 .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
     public void applyAuth(final HttpHeadersBuilder builder) {
-        builder.add(HttpHeaderNames.AUTHORIZATION, "Basic " + encodedCredentials);
+        builder.add(HttpHeaderNames.AUTHORIZATION, headerValue);
     }
 }

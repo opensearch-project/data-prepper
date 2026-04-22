@@ -7,21 +7,22 @@
  * compatible open source license.
  *
  */
-package org.opensearch.dataprepper.plugins.source.prometheus;
+
+package org.opensearch.dataprepper.plugins.http.client.auth;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpHeadersBuilder;
 
-final class BearerTokenAuthenticator implements ScrapeRequestAuthenticator {
+public class BearerTokenHttpRequestAuthenticator implements HttpRequestAuthenticator {
 
-    private final String token;
+    private final String headerValue;
 
-    BearerTokenAuthenticator(final String token) {
-        this.token = token;
+    public BearerTokenHttpRequestAuthenticator(final String token) {
+        this.headerValue = "Bearer " + token;
     }
 
     @Override
     public void applyAuth(final HttpHeadersBuilder builder) {
-        builder.add(HttpHeaderNames.AUTHORIZATION, "Bearer " + token);
+        builder.add(HttpHeaderNames.AUTHORIZATION, headerValue);
     }
 }
