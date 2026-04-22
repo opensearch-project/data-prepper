@@ -32,8 +32,8 @@ public class LastReleasedVersionProvider {
         final String groupPath = group.replace('.', '/');
         final String metadataUrl = String.format("https://repo1.maven.org/maven2/%s/%s/maven-metadata.xml", groupPath, artifactId);
         
-        try {
-            return getLastReleasedMajorVersion(new URL(metadataUrl).openStream(), currentVersion);
+        try (InputStream stream = new URL(metadataUrl).openStream()) {
+            return getLastReleasedMajorVersion(stream, currentVersion);
         } catch (final Exception e) {
             return null;
         }
