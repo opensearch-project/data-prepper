@@ -111,8 +111,12 @@ public final class TSDBDocumentBuilder implements CustomDocumentBuilder {
 
         if (quantiles != null) {
             for (final Quantile q : quantiles) {
+                final double qValue = q.getValue() != null ? q.getValue() : 0.0;
+                if (!Double.isFinite(qValue)) {
+                    continue;
+                }
                 final String labels = buildLabels(baseName, sortedAttrs, "quantile", formatDouble(q.getQuantile()));
-                documents.add(buildJsonDoc(labels, timestamp, q.getValue() != null ? q.getValue() : 0.0));
+                documents.add(buildJsonDoc(labels, timestamp, qValue));
             }
         }
 

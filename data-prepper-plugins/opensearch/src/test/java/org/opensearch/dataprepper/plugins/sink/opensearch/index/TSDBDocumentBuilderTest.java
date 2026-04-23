@@ -382,6 +382,87 @@ class TSDBDocumentBuilderTest {
         assertThrows(IllegalArgumentException.class, () -> builder.buildDocuments(event));
     }
 
+    @Test
+    void build_summary_skips_quantiles_with_NaN_values() throws Exception {
+        final Map<String, Object> attributes = Map.of("service", "api");
+        final List<Quantile> quantiles = Arrays.asList(
+                new DefaultQuantile(0.5, Double.NaN),
+                new DefaultQuantile(0.99, 0.8)
+        );
+        final JacksonSummary summary = JacksonSummary.builder()
+                .withName("rpc_latency")
+                .withQuantiles(quantiles)
+                .withQuantilesValueCount(2)
+                .withCount(1000L)
+                .withSum(300.5)
+                .withTime(TEST_TIME)
+                .withAttributes(attributes)
+                .withEventKind("SUMMARY")
+                .build();
+
+        final List<String> docs = builder.buildDocuments(summary);
+
+        assertEquals(3, docs.size());
+
+        final Map<String, Object> q1 = parseJson(docs.get(0));
+        assertEquals("__name__ rpc_latency quantile 0.99 service api", q1.get("labels"));
+        assertEquals(0.8, ((Number) q1.get("value")).doubleValue(), 0.001);
+
+        final Map<String, Object> countDoc = parseJson(docs.get(1));
+        assertEquals("__name__ rpc_latency_count service api", countDoc.get("labels"));
+
+        final Map<String, Object> sumDoc = parseJson(docs.get(2));
+        assertEquals("__name__ rpc_latency_sum service api", sumDoc.get("labels"));
+    }
+
+    @Test
+    void build_summary_skips_all_quantiles_when_all_NaN() throws Exception {
+        final List<Quantile> quantiles = Arrays.asList(
+                new DefaultQuantile(0.5, Double.NaN),
+                new DefaultQuantile(0.99, Double.NaN)
+        );
+        final JacksonSummary summary = JacksonSummary.builder()
+                .withName("rpc_latency")
+                .withQuantiles(quantiles)
+                .withQuantilesValueCount(2)
+                .withCount(0L)
+                .withSum(0.0)
+                .withTime(TEST_TIME)
+                .withAttributes(Map.of())
+                .withEventKind("SUMMARY")
+                .build();
+
+        final List<String> docs = builder.buildDocuments(summary);
+
+        assertEquals(2, docs.size());
+        assertTrue(parseJson(docs.get(0)).get("labels").toString().contains("_count"));
+        assertTrue(parseJson(docs.get(1)).get("labels").toString().contains("_sum"));
+    }
+
+    @Test
+    void build_summary_skips_quantiles_with_infinite_values() throws Exception {
+        final List<Quantile> quantiles = Arrays.asList(
+                new DefaultQuantile(0.5, Double.POSITIVE_INFINITY),
+                new DefaultQuantile(0.99, 0.5)
+        );
+        final JacksonSummary summary = JacksonSummary.builder()
+                .withName("latency")
+                .withQuantiles(quantiles)
+                .withQuantilesValueCount(2)
+                .withCount(100L)
+                .withSum(50.0)
+                .withTime(TEST_TIME)
+                .withAttributes(Map.of())
+                .withEventKind("SUMMARY")
+                .build();
+
+        final List<String> docs = builder.buildDocuments(summary);
+
+        assertEquals(3, docs.size());
+        final Map<String, Object> q1 = parseJson(docs.get(0));
+        assertEquals(0.5, ((Number) q1.get("value")).doubleValue(), 0.001);
+    }
+
     private Map<String, Object> parseJson(final String json) throws Exception {
         return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
     }
