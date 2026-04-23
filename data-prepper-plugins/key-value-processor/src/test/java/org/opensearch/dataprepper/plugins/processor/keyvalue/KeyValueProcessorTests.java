@@ -32,7 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.PatternSyntaxException;
+import org.opensearch.dataprepper.model.pattern.PatternSyntaxException;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -1009,7 +1009,24 @@ public class KeyValueProcessorTests {
     void testShutdownIsReady() {
         assertThat(createObjectUnderTest().isReadyForShutdown(), is(true));
     }
-
+        
+    @Test
+    void testKeyValueProcessorWithRe2j() {
+        System.setProperty("dataprepper.pattern.provider", "re2j");
+        try {
+            when(mockConfig.getFieldDelimiterRegex()).thenReturn("&");
+            when(mockConfig.getKeyValueDelimiterRegex()).thenReturn("=");
+            KeyValueProcessor processor = createObjectUnderTest();
+            
+            final Record<Event> record = getMessage("key1=value1&key2=value2");
+            final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+            
+            assertThat(editedRecords.size(), equalTo(1));
+        } finally {
+            System.clearProperty("dataprepper.pattern.provider");
+        }
+    }
+    
     private Record<Event> getMessage(String message) {
         final Map<String, Object> testData = new HashMap();
         testData.put("message", message);
