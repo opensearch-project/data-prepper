@@ -1,0 +1,22 @@
+{
+  "use_absolute_paths": true,
+  "mappings": [
+    {
+      "source": [
+        "california.${type}.capital",
+        "oregon.${type}.capital"
+      ],
+      "targets": [
+        {
+          "target": "majorCapitals",
+          "map": {
+            "caAdministrativeCapital": "Sacramento",
+            "caFinancialCapital": "San Francisco",
+            "orAdministrativeCapital": "Salem",
+            "orFinancialCapital": "Portland"
+          }
+        }
+      ]
+    }
+  ]
+}
