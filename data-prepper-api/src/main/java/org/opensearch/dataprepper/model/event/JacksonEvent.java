@@ -481,9 +481,8 @@ public class JacksonEvent implements Event {
         }
 
         for (final String key : keys) {
-            final Object value = other.get(key, Object.class);
-            if (value != null) {
-                put(key, value);
+            if (other.containsKey(key)) {
+                put(key, other.get(key, Object.class));
             }
         }
     }
