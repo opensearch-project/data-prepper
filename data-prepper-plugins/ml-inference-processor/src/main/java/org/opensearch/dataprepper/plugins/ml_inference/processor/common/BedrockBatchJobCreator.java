@@ -68,12 +68,17 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                 .map(json -> {
                     try {
                         final Connector connector = AbstractConnector.fromJson(json);
-                        return ConnectorExecutorFactory.create(connector, config, supplier);
+                        final RemoteConnectorExecutor executor = ConnectorExecutorFactory.create(connector, config, supplier);
+                        LOG.info("Using built-in connector for model: {}", config.getModelId());
+                        return executor;
                     } catch (final Exception e) {
                         throw new RuntimeException("Failed to initialize connector for model: " + config.getModelId(), e);
                     }
                 })
-                .orElse(null);
+                .orElseGet(() -> {
+                    LOG.debug("No built-in connector for model: {}, using ml-commons path", config.getModelId());
+                    return null;
+                });
     }
 
     @Override
@@ -125,12 +130,14 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
             // All other model IDs continue to use the existing ml-commons path.
             final RetryUtil.RetryResult result;
             if (connectorExecutor != null) {
+                LOG.debug("Submitting BATCH_PREDICT via built-in connector for: {}", s3Uri);
                 final Map<String, String> parameters = buildBatchPredictParameters(s3Uri);
                 result = retryWithBackoffWithResult(
                         () -> connectorExecutor.executeAction(ConnectorActionType.BATCH_PREDICT, parameters),
                         LOG
                 );
             } else {
+                LOG.debug("Submitting BATCH_PREDICT via ml-commons for: {}", s3Uri);
                 final String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
                 result = retryWithBackoffWithResult(
                         () -> mlCommonRequester.sendRequestToMLCommons(payload),

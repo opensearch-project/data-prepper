@@ -10,6 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.ml_inference.processor.connector;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +37,8 @@ import java.util.Optional;
  * </ul>
  */
 public final class BuiltInConnectors {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BuiltInConnectors.class);
 
     /**
      * Model ID for Amazon Bedrock Titan Text Embeddings V2.
@@ -64,10 +69,13 @@ public final class BuiltInConnectors {
         final String resourcePath = RESOURCE_BASE + modelId + ".json";
         final InputStream stream = BuiltInConnectors.class.getClassLoader().getResourceAsStream(resourcePath);
         if (stream == null) {
+            LOG.debug("No built-in connector found for model: {}", modelId);
             return Optional.empty();
         }
         try (stream) {
-            return Optional.of(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+            final String json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            LOG.info("Loaded built-in connector definition for model: {}", modelId);
+            return Optional.of(json);
         } catch (final IOException e) {
             throw new RuntimeException("Failed to load built-in connector definition for model: " + modelId, e);
         }

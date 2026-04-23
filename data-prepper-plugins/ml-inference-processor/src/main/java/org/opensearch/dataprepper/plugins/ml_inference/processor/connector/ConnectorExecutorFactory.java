@@ -13,6 +13,8 @@ package org.opensearch.dataprepper.plugins.ml_inference.processor.connector;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.annotation.ConnectorExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
  * the annotation at static initialisation time.
  */
 public final class ConnectorExecutorFactory {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ConnectorExecutorFactory.class);
 
     /**
      * All {@link RemoteConnectorExecutor} implementations. Each must carry a
@@ -70,14 +74,18 @@ public final class ConnectorExecutorFactory {
                                                  final MLProcessorConfig config,
                                                  final AwsCredentialsSupplier supplier) {
         final String protocol = connector.getProtocol();
+        LOG.debug("Creating connector executor for protocol: {}", protocol);
         final Class<? extends RemoteConnectorExecutor> executorClass = REGISTRY.get(protocol);
         if (executorClass == null) {
+            LOG.error("No connector executor registered for protocol '{}'. Registered protocols: {}", protocol, REGISTRY.keySet());
             throw new IllegalArgumentException("No connector executor registered for protocol: " + protocol);
         }
         try {
             final Constructor<? extends RemoteConnectorExecutor> constructor =
                     executorClass.getConstructor(Connector.class, MLProcessorConfig.class, AwsCredentialsSupplier.class);
-            return constructor.newInstance(connector, config, supplier);
+            final RemoteConnectorExecutor executor = constructor.newInstance(connector, config, supplier);
+            LOG.info("Created connector executor '{}' for protocol: {}", executorClass.getSimpleName(), protocol);
+            return executor;
         } catch (final Exception e) {
             throw new RuntimeException(
                     "Failed to instantiate connector executor for protocol: " + protocol, e);

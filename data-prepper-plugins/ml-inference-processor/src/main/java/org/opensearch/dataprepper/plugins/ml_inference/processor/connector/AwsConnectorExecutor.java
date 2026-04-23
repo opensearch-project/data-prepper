@@ -117,6 +117,7 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
         final String serviceName = connector.getServiceName();
         final String regionStr = merged.getOrDefault("region",
                 config.getAwsAuthenticationOptions().getAwsRegion().id());
+        LOG.debug("Signing SigV4 request: service={}, region={}, uri={}", serviceName, regionStr, url);
         final SdkHttpFullRequest signedRequest = signRequest(request, serviceName, Region.of(regionStr));
 
         final HttpExecuteRequest executeRequest = HttpExecuteRequest.builder()

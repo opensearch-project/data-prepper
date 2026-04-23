@@ -10,6 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.ml_inference.processor.connector;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 /**
@@ -20,6 +23,8 @@ import java.util.Map;
  * HTTP transport to {@link #sendRequest} in the concrete subclass.
  */
 public abstract class AbstractConnectorExecutor implements RemoteConnectorExecutor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractConnectorExecutor.class);
 
     /**
      * {@inheritDoc}
@@ -33,6 +38,8 @@ public abstract class AbstractConnectorExecutor implements RemoteConnectorExecut
         final Connector connector = getConnector();
         final String actionName = actionType.name();
 
+        LOG.debug("Executing action '{}' on connector '{}'", actionName, connector.getName());
+
         final Map<String, String> merged = connector.mergeParameters(runtimeParameters);
 
         final ConnectorAction action = connector.findAction(actionName)
@@ -42,6 +49,7 @@ public abstract class AbstractConnectorExecutor implements RemoteConnectorExecut
         final String url = connector.getActionEndpoint(actionName, merged);
         final String payload = connector.createPayload(actionName, merged);
 
+        LOG.debug("Sending {} request to: {}", action.getMethod(), url);
         sendRequest(action, url, payload, merged);
     }
 
