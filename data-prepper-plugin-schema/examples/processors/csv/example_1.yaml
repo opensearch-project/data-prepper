@@ -1,0 +1,10 @@
+csv-pipeline:
+source:
+  file:
+    path: "/full/path/to/ingest.csv"
+    record_type: "event"
+processor:
+  - csv:
+      column_names: ["col1", "col2"]
+sink:
+  - stdout:

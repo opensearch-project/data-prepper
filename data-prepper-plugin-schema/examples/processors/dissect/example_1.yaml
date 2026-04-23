@@ -1,0 +1,12 @@
+dissect-pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - dissect:
+      map:
+        log: "%{Date} %{Time} %{Log_Type}: %{Message}"
+sink:
+  - stdout:

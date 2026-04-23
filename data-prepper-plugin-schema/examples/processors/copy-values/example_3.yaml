@@ -1,0 +1,7 @@
+processor:
+  - copy_values:
+      from_list: mylist
+      to_list: newlist
+      entries:
+        - from_key: name
+          to_key: fruit_name

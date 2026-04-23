@@ -1,0 +1,16 @@
+translate-pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - translate:
+      mappings:
+        - source: "status"
+          targets:
+            - target: "translated_result"
+              map:
+                404: "Not Found"
+sink:
+  - stdout:

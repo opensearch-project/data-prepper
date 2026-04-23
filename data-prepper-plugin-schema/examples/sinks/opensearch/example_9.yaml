@@ -1,0 +1,4 @@
+sink:
+opensearch:
+  hosts: ["https://your-fgac-amazon-opensearch-service-endpoint"]
+  aws_sigv4: true
