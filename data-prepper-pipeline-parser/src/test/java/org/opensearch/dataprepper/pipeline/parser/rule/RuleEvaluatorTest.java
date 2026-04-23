@@ -95,6 +95,47 @@ class RuleEvaluatorTest {
     }
 
     @Test
+    void test_moreSpecificRule_matchesFirst_whenMultipleRulesApply() throws IOException {
+        // rds-joins rule has 2 conditions, rds rule has 1 condition.
+        // Both match an RDS pipeline with joins config.
+        // The more specific rule (rds-joins) should win.
+        String rdsRulePath = "src/test/resources/transformation/rules/rds-rule.yaml";
+        String rdsJoinsRulePath = "src/test/resources/transformation/rules/rds-joins-rule.yaml";
+        String templatePath = "src/test/resources/transformation/templates/testSource/rds-joins-template.yaml";
+
+        String pipelineName = "test-pipeline";
+        Map<String, Object> joinsConfig = new HashMap<>();
+        joinsConfig.put("version_field", "__versions");
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("joins", joinsConfig);
+        final PluginModel source = new PluginModel("rds", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+
+        // Load both rules — rds rule first (less specific), rds-joins second (more specific)
+        RuleStream rdsRule = new RuleStream("rds-rule.yaml", new FileInputStream(rdsRulePath));
+        RuleStream rdsJoinsRule = new RuleStream("rds-joins-rule.yaml", new FileInputStream(rdsJoinsRulePath));
+        when(transformersFactory.loadRules()).thenReturn(List.of(rdsRule, rdsJoinsRule));
+        when(transformersFactory.getPluginTemplateFileStream("rds-joins"))
+                .thenReturn(new FileInputStream(templatePath));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+        RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+
+        assertTrue(result.isEvaluatedResult());
+        assertEquals(pipelineName, result.getPipelineName());
+        // The rds-joins template should be selected, not the generic rds template
+        assertTrue(result.getPipelineTemplateModel() != null);
+    }
+
+    @Test
     void testThrowsExceptionOnFileError() {
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
         String pipelineName = "test-pipeline";

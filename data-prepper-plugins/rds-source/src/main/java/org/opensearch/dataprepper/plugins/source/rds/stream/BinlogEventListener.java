@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
@@ -52,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -124,6 +126,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        if (sourceConfig.getJoinConfig() != null && sourceConfig.getJoinConfig().getRelations() != null) {
+            recordConverter.setJoinMetadataEnricher(
+                    new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
+        }
         this.s3Prefix = s3Prefix;
         tableNames = dbTableMetadata.getTableColumnDataTypeMap().keySet();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
@@ -305,6 +311,19 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
         final List<OpenSearchBulkActions> bulkActions = new ArrayList<>();
         final List<Serializable[]> rows = new ArrayList<>();
+
+        // Determine if this is a join child table with a FK column to track
+        final JoinMetadataEnricher joinEnricher = recordConverter.getJoinMetadataEnricher();
+        final List<String> childKeyColumns = joinEnricher != null ? joinEnricher.getChildKeyColumns(tableMetadata.getTableName()) : null;
+        final int[] childKeyIndices;
+        if (childKeyColumns != null) {
+            childKeyIndices = childKeyColumns.stream()
+                    .mapToInt(col -> tableMetadata.getColumnNames().indexOf(col))
+                    .toArray();
+        } else {
+            childKeyIndices = null;
+        }
+
         for (int rowNum = 0; rowNum < data.getRows().size(); rowNum++) {
             // `row` contains data before update as key and data after update as value
             Map.Entry<Serializable[], Serializable[]> row = data.getRows().get(rowNum);
@@ -319,6 +338,23 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     break;
                 }
             }
+
+            // Detect FK (join key) change — emit DELETE from old parent doc
+            if (childKeyIndices != null) {
+                boolean fkChanged = false;
+                for (int idx : childKeyIndices) {
+                    if (idx >= 0 && !Objects.equals(row.getKey()[idx], row.getValue()[idx])) {
+                        fkChanged = true;
+                        break;
+                    }
+                }
+                if (fkChanged) {
+                    LOG.debug("Join key changed, emitting delete for old parent");
+                    rows.add(row.getKey());
+                    bulkActions.add(OpenSearchBulkActions.DELETE);
+                }
+            }
+
             // add index event for the new row data
             rows.add(row.getValue());
             bulkActions.add(OpenSearchBulkActions.INDEX);
@@ -412,8 +448,9 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     bulkAction,
                     primaryKeys,
                     eventTimestampMillis,
-                    eventTimestampMillis,
-                    streamEventType);
+                    recordConverter.getVersionNumber(eventTimestampMillis),
+                    streamEventType,
+                    tableMetadata.getColumnNames());
             pipelineEvents.add(pipelineEvent);
         }
 
