@@ -9,28 +9,19 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
-import software.amazon.awssdk.http.HttpExecuteRequest;
-import software.amazon.awssdk.http.HttpExecuteResponse;
-import software.amazon.awssdk.http.SdkHttpClient;
-import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.http.SdkHttpMethod;
-import software.amazon.awssdk.http.SdkHttpResponse;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.opensearch.OpenSearchClient;
+import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,14 +29,6 @@ import java.util.Map;
 public class SemanticEnrichmentIndexCreator {
 
     private static final Logger LOG = LoggerFactory.getLogger(SemanticEnrichmentIndexCreator.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String AOSS_SERVICE_NAME = "aoss";
-    private static final String ES_SERVICE_NAME = "es";
-    private static final String AOSS_ENDPOINT_FORMAT = "https://aoss.%s.amazonaws.com/";
-    private static final String ES_ENDPOINT_FORMAT = "https://es.%s.amazonaws.com/2021-01-01/opensearch/domain/%s/index";
-    private static final String AOSS_CREATE_INDEX_TARGET = "OpenSearchServerless.CreateIndex";
-    private static final String AOSS_CONTENT_TYPE = "application/x-amz-json-1.0";
-    private static final String ES_CONTENT_TYPE = "application/json";
 
     private final AwsCredentialsProvider credentialsProvider;
     private final Region region;
@@ -53,14 +36,35 @@ public class SemanticEnrichmentIndexCreator {
     private final String collectionIdOrDomainName;
 
     public SemanticEnrichmentIndexCreator(final AwsCredentialsSupplier awsCredentialsSupplier,
-                                          final ConnectionConfiguration connectionConfiguration) {
+                                          final ConnectionConfiguration connectionConfiguration,
+                                          final SemanticEnrichmentConfig semanticConfig) {
         final AwsCredentialsOptions awsCredentialsOptions = connectionConfiguration.createAwsCredentialsOptions();
         this.credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
         this.region = awsCredentialsOptions.getRegion();
         this.serverless = connectionConfiguration.isServerless();
-        this.collectionIdOrDomainName = serverless
-                ? extractCollectionId(connectionConfiguration.getHosts())
-                : extractDomainName(connectionConfiguration.getHosts());
+        this.collectionIdOrDomainName = resolveCollectionIdOrDomainName(
+                semanticConfig, connectionConfiguration.getHosts());
+    }
+
+    private String resolveCollectionIdOrDomainName(final SemanticEnrichmentConfig semanticConfig,
+                                                   final List<String> hosts) {
+        if (serverless) {
+            if (semanticConfig.getCollectionName() != null && !semanticConfig.getCollectionName().isEmpty()) {
+                LOG.info("Using configured collection_name: {}", semanticConfig.getCollectionName());
+                return semanticConfig.getCollectionName();
+            }
+
+            LOG.info("collection_name not configured, extracting from host URL");
+            return extractCollectionId(hosts);
+        }
+
+        if (semanticConfig.getDomainName() != null && !semanticConfig.getDomainName().isEmpty()) {
+            LOG.info("Using configured domain_name: {}", semanticConfig.getDomainName());
+            return semanticConfig.getDomainName();
+        }
+
+        LOG.info("domain_name not configured, extracting from host URL");
+        return extractDomainName(hosts);
     }
 
     public void createIndex(final String indexName, final SemanticEnrichmentConfig semanticConfig) throws IOException {
@@ -73,87 +77,82 @@ public class SemanticEnrichmentIndexCreator {
 
     private void createServerlessIndex(final String indexName,
                                        final SemanticEnrichmentConfig semanticConfig) throws IOException {
-        LOG.info("Creating index [{}] with semantic enrichment via AOSS control plane for fields {}",
+        LOG.info("Creating serverless index [{}] with semantic enrichment for fields {}",
                 indexName, semanticConfig.getFields());
 
-        final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("id", collectionIdOrDomainName);
-        body.put("indexName", indexName);
-        body.put("indexSchema", buildIndexSchema(semanticConfig));
+        try (final OpenSearchServerlessClient client = OpenSearchServerlessClient.builder()
+                .region(region)
+                .credentialsProvider(credentialsProvider)
+                .build()) {
 
-        final URI endpoint = URI.create(String.format(AOSS_ENDPOINT_FORMAT, region.id()));
-        final SdkHttpFullRequest request = SdkHttpFullRequest.builder()
-                .uri(endpoint)
-                .method(SdkHttpMethod.POST)
-                .putHeader("Content-Type", AOSS_CONTENT_TYPE)
-                .putHeader("X-Amz-Target", AOSS_CREATE_INDEX_TARGET)
-                .contentStreamProvider(() -> toStream(body))
-                .build();
+            client.createIndex(software.amazon.awssdk.services.opensearchserverless.model.CreateIndexRequest.builder()
+                    .id(collectionIdOrDomainName)
+                    .indexName(indexName)
+                    .indexSchema(Document.fromMap(toDocumentMap(buildIndexSchema(semanticConfig))))
+                    .build());
 
-        executeSignedRequest(request, AOSS_SERVICE_NAME, indexName, "AOSS control plane");
+            LOG.info("Successfully created serverless index [{}] with semantic enrichment", indexName);
+
+        } catch (final software.amazon.awssdk.services.opensearchserverless.model.ConflictException e) {
+            LOG.info("Index [{}] already exists, skipping creation", indexName);
+        } catch (final software.amazon.awssdk.core.exception.SdkException e) {
+            throw new IOException(String.format(
+                    "Failed to create index [%s] via serverless control plane: %s", indexName, e.getMessage()), e);
+        }
     }
 
     private void createManagedDomainIndex(final String indexName,
                                           final SemanticEnrichmentConfig semanticConfig) throws IOException {
-        LOG.info("Creating index [{}] with semantic enrichment via OpenSearch Service control plane for fields {}",
+        LOG.info("Creating managed domain index [{}] with semantic enrichment for fields {}",
                 indexName, semanticConfig.getFields());
 
-        final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("IndexName", indexName);
-        body.put("IndexSchema", buildIndexSchema(semanticConfig));
+        try (final OpenSearchClient client = OpenSearchClient.builder()
+                .region(region)
+                .credentialsProvider(credentialsProvider)
+                .build()) {
 
-        final URI endpoint = URI.create(String.format(ES_ENDPOINT_FORMAT, region.id(), collectionIdOrDomainName));
-        final SdkHttpFullRequest request = SdkHttpFullRequest.builder()
-                .uri(endpoint)
-                .method(SdkHttpMethod.POST)
-                .putHeader("Content-Type", ES_CONTENT_TYPE)
-                .contentStreamProvider(() -> toStream(body))
-                .build();
+            client.createIndex(software.amazon.awssdk.services.opensearch.model.CreateIndexRequest.builder()
+                    .domainName(collectionIdOrDomainName)
+                    .indexName(indexName)
+                    .indexSchema(Document.fromMap(toDocumentMap(buildIndexSchema(semanticConfig))))
+                    .build());
 
-        executeSignedRequest(request, ES_SERVICE_NAME, indexName, "OpenSearch Service control plane");
-    }
+            LOG.info("Successfully created managed domain index [{}] with semantic enrichment", indexName);
 
-    private void executeSignedRequest(final SdkHttpFullRequest request,
-                                      final String serviceName,
-                                      final String indexName,
-                                      final String apiDescription) throws IOException {
-        final Aws4Signer signer = Aws4Signer.create();
-        final Aws4SignerParams signerParams = Aws4SignerParams.builder()
-                .awsCredentials(credentialsProvider.resolveCredentials())
-                .signingName(serviceName)
-                .signingRegion(region)
-                .build();
-
-        final SdkHttpFullRequest signedRequest = signer.sign(request, signerParams);
-
-        try (final SdkHttpClient httpClient = ApacheHttpClient.builder().build()) {
-            final HttpExecuteRequest executeRequest = HttpExecuteRequest.builder()
-                    .request(signedRequest)
-                    .contentStreamProvider(signedRequest.contentStreamProvider().orElse(null))
-                    .build();
-
-            final HttpExecuteResponse response = httpClient.prepareRequest(executeRequest).call();
-            final SdkHttpResponse httpResponse = response.httpResponse();
-            final int statusCode = httpResponse.statusCode();
-
-            String responseBody = "";
-            if (response.responseBody().isPresent()) {
-                responseBody = new String(response.responseBody().get().readAllBytes(), StandardCharsets.UTF_8);
-            }
-
-            if (statusCode >= 200 && statusCode < 300) {
-                LOG.info("Successfully created index [{}] with semantic enrichment via {}", indexName, apiDescription);
-            } else if (responseBody.contains("ConflictException") || responseBody.contains("ResourceAlreadyExistsException")) {
-                LOG.info("Index [{}] already exists, skipping creation", indexName);
-            } else {
-                throw new IOException(String.format(
-                        "Failed to create index [%s] via %s. Status: %d, Response: %s",
-                        indexName, apiDescription, statusCode, responseBody));
-            }
+        } catch (final software.amazon.awssdk.services.opensearch.model.ResourceAlreadyExistsException e) {
+            LOG.info("Index [{}] already exists, skipping creation", indexName);
+        } catch (final software.amazon.awssdk.services.opensearch.model.ConflictException e) {
+            LOG.info("Index [{}] already exists, skipping creation", indexName);
+        } catch (final software.amazon.awssdk.core.exception.SdkException e) {
+            throw new IOException(String.format(
+                    "Failed to create index [%s] via managed domain control plane: %s", indexName, e.getMessage()), e);
         }
     }
 
-    private Map<String, Object> buildIndexSchema(final SemanticEnrichmentConfig semanticConfig) {
+    @SuppressWarnings("unchecked")
+    private Map<String, Document> toDocumentMap(final Map<String, Object> map) {
+        final Map<String, Document> result = new LinkedHashMap<>();
+        for (final Map.Entry<String, Object> entry : map.entrySet()) {
+            result.put(entry.getKey(), toDocument(entry.getValue()));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Document toDocument(final Object value) {
+        if (value instanceof Map) {
+            return Document.fromMap(toDocumentMap((Map<String, Object>) value));
+        } else if (value instanceof String) {
+            return Document.fromString((String) value);
+        } else if (value instanceof Integer || value instanceof Long || value instanceof Double || value instanceof Float) {
+            return Document.fromNumber(value.toString());
+        } else if (value instanceof Boolean) {
+            return Document.fromBoolean((Boolean) value);
+        }
+        return Document.fromString(String.valueOf(value));
+    }
+
+    Map<String, Object> buildIndexSchema(final SemanticEnrichmentConfig semanticConfig) {
         final Map<String, Object> properties = new LinkedHashMap<>();
         for (final String field : semanticConfig.getFields()) {
             final Map<String, Object> fieldMapping = new LinkedHashMap<>();
@@ -167,40 +166,20 @@ public class SemanticEnrichmentIndexCreator {
         return Map.of("mappings", Map.of("properties", properties));
     }
 
-    private ByteArrayInputStream toStream(final Map<String, Object> body) {
-        try {
-            return new ByteArrayInputStream(OBJECT_MAPPER.writeValueAsBytes(body));
-        } catch (final IOException e) {
-            throw new RuntimeException("Failed to serialize request body", e);
-        }
-    }
-
     static String extractCollectionId(final List<String> hosts) {
         final String hostname = getHostname(hosts);
-        if (!hostname.contains(".aoss.")) {
-            throw new IllegalArgumentException(
-                    "Host does not appear to be an AOSS endpoint: " + hostname +
-                            ". Semantic enrichment via AOSS control plane requires a serverless collection.");
-        }
         return hostname.split("\\.")[0];
     }
 
     static String extractDomainName(final List<String> hosts) {
         final String hostname = getHostname(hosts);
-        // Managed domain format: search-{domain-name}-{random}.{region}.es.amazonaws.com
-        // or vpc-{domain-name}-{random}.{region}.es.amazonaws.com
-        if (!hostname.contains(".es.amazonaws.com")) {
-            throw new IllegalArgumentException(
-                    "Host does not appear to be a managed OpenSearch domain: " + hostname +
-                            ". Expected format: search-{domain}-{id}.{region}.es.amazonaws.com");
-        }
-        final String prefix = hostname.split("\\.")[0]; // e.g., search-my-domain-abc123
+        final String prefix = hostname.split("\\.")[0];
         final String withoutSearchPrefix = prefix.replaceFirst("^(search-|vpc-)", "");
-        // Remove the trailing random ID: last hyphen-separated segment
         final int lastHyphen = withoutSearchPrefix.lastIndexOf('-');
         if (lastHyphen <= 0) {
             throw new IllegalArgumentException(
-                    "Unable to extract domain name from host: " + hostname);
+                    "Unable to extract domain name from host: " + hostname +
+                            ". Please set the 'domain_name' option in semantic_enrichment config.");
         }
         return withoutSearchPrefix.substring(0, lastHyphen);
     }

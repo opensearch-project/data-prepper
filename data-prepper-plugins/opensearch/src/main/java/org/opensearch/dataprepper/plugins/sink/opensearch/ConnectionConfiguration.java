@@ -122,7 +122,7 @@ public class ConnectionConfiguration {
     return password;
   }
 
-  boolean isAwsSigv4() {
+  public boolean isAwsSigv4() {
     return awsSigv4;
   }
 

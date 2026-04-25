@@ -1,10 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
@@ -22,8 +18,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguratio
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +47,7 @@ class SemanticEnrichmentIndexCreatorTest {
     class ExtractCollectionIdTests {
 
         @Test
-        void extractCollectionId_validAossEndpoint_returnsCollectionId() {
+        void extractCollectionId_returnsFirstSegmentOfHostname() {
             final String collectionId = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
             final List<String> hosts = List.of("https://" + collectionId + ".us-west-2.aoss.amazonaws.com");
 
@@ -76,16 +70,6 @@ class SemanticEnrichmentIndexCreatorTest {
         }
 
         @Test
-        void extractCollectionId_nonAossEndpoint_throwsIllegalArgumentException() {
-            final List<String> hosts = List.of("https://search-mydomain-abc123.us-west-2.es.amazonaws.com");
-
-            final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                    () -> SemanticEnrichmentIndexCreator.extractCollectionId(hosts));
-
-            assertThat(exception.getMessage(), notNullValue());
-        }
-
-        @Test
         void extractCollectionId_nullHosts_throwsIllegalArgumentException() {
             assertThrows(IllegalArgumentException.class,
                     () -> SemanticEnrichmentIndexCreator.extractCollectionId(null));
@@ -95,14 +79,6 @@ class SemanticEnrichmentIndexCreatorTest {
         void extractCollectionId_emptyHosts_throwsIllegalArgumentException() {
             assertThrows(IllegalArgumentException.class,
                     () -> SemanticEnrichmentIndexCreator.extractCollectionId(Collections.emptyList()));
-        }
-
-        @Test
-        void extractCollectionId_invalidUri_throwsException() {
-            final List<String> hosts = List.of("not-a-valid-uri");
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> SemanticEnrichmentIndexCreator.extractCollectionId(hosts));
         }
     }
 
@@ -149,16 +125,6 @@ class SemanticEnrichmentIndexCreatorTest {
         }
 
         @Test
-        void extractDomainName_nonEsEndpoint_throwsIllegalArgumentException() {
-            final List<String> hosts = List.of("https://abc123.us-west-2.aoss.amazonaws.com");
-
-            final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                    () -> SemanticEnrichmentIndexCreator.extractDomainName(hosts));
-
-            assertThat(exception.getMessage(), notNullValue());
-        }
-
-        @Test
         void extractDomainName_nullHosts_throwsIllegalArgumentException() {
             assertThrows(IllegalArgumentException.class,
                     () -> SemanticEnrichmentIndexCreator.extractDomainName(null));
@@ -168,14 +134,6 @@ class SemanticEnrichmentIndexCreatorTest {
         void extractDomainName_emptyHosts_throwsIllegalArgumentException() {
             assertThrows(IllegalArgumentException.class,
                     () -> SemanticEnrichmentIndexCreator.extractDomainName(Collections.emptyList()));
-        }
-
-        @Test
-        void extractDomainName_invalidUri_throwsException() {
-            final List<String> hosts = List.of("not-a-valid-uri");
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> SemanticEnrichmentIndexCreator.extractDomainName(hosts));
         }
 
         @ParameterizedTest
@@ -200,67 +158,110 @@ class SemanticEnrichmentIndexCreatorTest {
             final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
                     .withRegion(Region.US_WEST_2)
                     .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
 
             when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
-            when(awsCredentialsSupplier.getProvider(awsCredentialsOptions)).thenReturn(awsCredentialsProvider);
             when(connectionConfiguration.isServerless()).thenReturn(true);
             when(connectionConfiguration.getHosts()).thenReturn(
                     List.of("https://" + collectionId + ".us-west-2.aoss.amazonaws.com"));
 
             final SemanticEnrichmentIndexCreator creator =
-                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration);
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
 
             assertThat(creator, notNullValue());
         }
 
         @Test
-        void constructor_serverlessFalse_extractsDomainName() {
+        void constructor_serverless_usesConfiguredCollectionName() {
+            final String collectionName = UUID.randomUUID().toString();
+            final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                    .withRegion(Region.US_WEST_2)
+                    .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+            when(semanticConfig.getCollectionName()).thenReturn(collectionName);
+
+            when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
+            when(connectionConfiguration.isServerless()).thenReturn(true);
+
+            final SemanticEnrichmentIndexCreator creator =
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
+
+            assertThat(creator, notNullValue());
+        }
+
+        @Test
+        void constructor_serverless_fallsBackToHostnameExtraction_whenCollectionNameEmpty() {
+            final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                    .withRegion(Region.US_WEST_2)
+                    .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+            when(semanticConfig.getCollectionName()).thenReturn("");
+
+            when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
+            when(connectionConfiguration.isServerless()).thenReturn(true);
+            when(connectionConfiguration.getHosts()).thenReturn(
+                    List.of("https://abc123def456.us-west-2.aoss.amazonaws.com"));
+
+            final SemanticEnrichmentIndexCreator creator =
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
+
+            assertThat(creator, notNullValue());
+        }
+
+        @Test
+        void constructor_managedDomain_usesConfiguredDomainName() {
+            final String domainName = UUID.randomUUID().toString();
             final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
                     .withRegion(Region.US_EAST_1)
                     .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+            when(semanticConfig.getDomainName()).thenReturn(domainName);
 
             when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
-            when(awsCredentialsSupplier.getProvider(awsCredentialsOptions)).thenReturn(awsCredentialsProvider);
+            when(connectionConfiguration.isServerless()).thenReturn(false);
+
+            final SemanticEnrichmentIndexCreator creator =
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
+
+            assertThat(creator, notNullValue());
+        }
+
+        @Test
+        void constructor_managedDomain_fallsBackToHostnameExtraction_whenDomainNameNotConfigured() {
+            final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                    .withRegion(Region.US_EAST_1)
+                    .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+            when(semanticConfig.getDomainName()).thenReturn(null);
+
+            when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
             when(connectionConfiguration.isServerless()).thenReturn(false);
             when(connectionConfiguration.getHosts()).thenReturn(
                     List.of("https://search-mydomain-abc123.us-east-1.es.amazonaws.com"));
 
             final SemanticEnrichmentIndexCreator creator =
-                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration);
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
 
             assertThat(creator, notNullValue());
         }
 
         @Test
-        void constructor_serverlessWithInvalidHost_throwsException() {
+        void constructor_managedDomain_fallsBackToHostnameExtraction_whenDomainNameEmpty() {
             final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
                     .withRegion(Region.US_WEST_2)
                     .build();
+            final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+            when(semanticConfig.getDomainName()).thenReturn("");
 
             when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
-            when(awsCredentialsSupplier.getProvider(awsCredentialsOptions)).thenReturn(awsCredentialsProvider);
-            when(connectionConfiguration.isServerless()).thenReturn(true);
-            when(connectionConfiguration.getHosts()).thenReturn(
-                    List.of("https://search-mydomain-abc123.us-west-2.es.amazonaws.com"));
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration));
-        }
-
-        @Test
-        void constructor_managedWithInvalidHost_throwsException() {
-            final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
-                    .withRegion(Region.US_WEST_2)
-                    .build();
-
-            when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
-            when(awsCredentialsSupplier.getProvider(awsCredentialsOptions)).thenReturn(awsCredentialsProvider);
             when(connectionConfiguration.isServerless()).thenReturn(false);
             when(connectionConfiguration.getHosts()).thenReturn(
-                    List.of("https://abc123.us-west-2.aoss.amazonaws.com"));
+                    List.of("https://search-testdomain-abc123.us-west-2.es.amazonaws.com"));
 
-            assertThrows(IllegalArgumentException.class,
-                    () -> new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration));
+            final SemanticEnrichmentIndexCreator creator =
+                    new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
+
+            assertThat(creator, notNullValue());
         }
     }
 
@@ -268,13 +269,13 @@ class SemanticEnrichmentIndexCreatorTest {
     class BuildIndexSchemaTests {
 
         @Test
-        void buildIndexSchema_singleField_createsCorrectMapping() throws Exception {
+        void buildIndexSchema_singleField_createsCorrectMapping() {
             final String fieldName = UUID.randomUUID().toString();
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
             when(config.getFields()).thenReturn(List.of(fieldName));
             when(config.getLanguage()).thenReturn("english");
 
-            final Map<String, Object> result = invokeBuildIndexSchema(config);
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
             assertThat(result, hasKey("mappings"));
             @SuppressWarnings("unchecked")
@@ -294,14 +295,14 @@ class SemanticEnrichmentIndexCreatorTest {
         }
 
         @Test
-        void buildIndexSchema_multipleFields_createsAllMappings() throws Exception {
+        void buildIndexSchema_multipleFields_createsAllMappings() {
             final String field1 = UUID.randomUUID().toString();
             final String field2 = UUID.randomUUID().toString();
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
             when(config.getFields()).thenReturn(List.of(field1, field2));
             when(config.getLanguage()).thenReturn("english");
 
-            final Map<String, Object> result = invokeBuildIndexSchema(config);
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
             @SuppressWarnings("unchecked")
             final Map<String, Object> mappings = (Map<String, Object>) result.get("mappings");
@@ -312,14 +313,14 @@ class SemanticEnrichmentIndexCreatorTest {
         }
 
         @Test
-        void buildIndexSchema_customLanguage_usesCustomLanguage() throws Exception {
+        void buildIndexSchema_customLanguage_usesCustomLanguage() {
             final String fieldName = UUID.randomUUID().toString();
             final String language = UUID.randomUUID().toString();
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
             when(config.getFields()).thenReturn(List.of(fieldName));
             when(config.getLanguage()).thenReturn(language);
 
-            final Map<String, Object> result = invokeBuildIndexSchema(config);
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
             @SuppressWarnings("unchecked")
             final Map<String, Object> mappings = (Map<String, Object>) result.get("mappings");
@@ -331,59 +332,19 @@ class SemanticEnrichmentIndexCreatorTest {
             final Map<String, String> semanticEnrichment = (Map<String, String>) fieldMapping.get("semantic_enrichment");
             assertThat(semanticEnrichment.get("language_options"), equalTo(language));
         }
-
-        @SuppressWarnings("unchecked")
-        private Map<String, Object> invokeBuildIndexSchema(final SemanticEnrichmentConfig config) throws Exception {
-            final Method method = SemanticEnrichmentIndexCreator.class
-                    .getDeclaredMethod("buildIndexSchema", SemanticEnrichmentConfig.class);
-            method.setAccessible(true);
-            try {
-                return (Map<String, Object>) method.invoke(createDefaultCreator(), config);
-            } catch (final InvocationTargetException e) {
-                if (e.getCause() instanceof RuntimeException) {
-                    throw (RuntimeException) e.getCause();
-                }
-                throw e;
-            }
-        }
     }
 
-    @Nested
-    class ToStreamTests {
-
-        @Test
-        void toStream_validBody_producesValidJson() throws Exception {
-            final Method method = SemanticEnrichmentIndexCreator.class
-                    .getDeclaredMethod("toStream", Map.class);
-            method.setAccessible(true);
-
-            final Map<String, Object> body = Map.of("key", "value", "number", 42);
-
-            final java.io.ByteArrayInputStream stream =
-                    (java.io.ByteArrayInputStream) method.invoke(createDefaultCreator(), body);
-
-            final String json = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-            assertThat(json, notNullValue());
-
-            final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> parsed = mapper.readValue(json, Map.class);
-            assertThat(parsed.get("key"), equalTo("value"));
-            assertThat(parsed.get("number"), equalTo(42));
-        }
-    }
 
     private SemanticEnrichmentIndexCreator createDefaultCreator() {
         final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
                 .withRegion(Region.US_WEST_2)
                 .build();
+        final SemanticEnrichmentConfig semanticConfig = mock(SemanticEnrichmentConfig.class);
+        when(semanticConfig.getDomainName()).thenReturn("testdomain");
 
         when(connectionConfiguration.createAwsCredentialsOptions()).thenReturn(awsCredentialsOptions);
-        when(awsCredentialsSupplier.getProvider(awsCredentialsOptions)).thenReturn(awsCredentialsProvider);
         when(connectionConfiguration.isServerless()).thenReturn(false);
-        when(connectionConfiguration.getHosts()).thenReturn(
-                List.of("https://search-testdomain-abc123.us-west-2.es.amazonaws.com"));
 
-        return new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration);
+        return new SemanticEnrichmentIndexCreator(awsCredentialsSupplier, connectionConfiguration, semanticConfig);
     }
 }

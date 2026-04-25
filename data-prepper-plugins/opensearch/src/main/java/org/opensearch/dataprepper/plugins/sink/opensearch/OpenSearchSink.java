@@ -73,8 +73,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentConfig;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentIndexCreator;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilderFactory;
@@ -299,8 +298,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     // Attempt to update the serverless network policy if required argument are given.
     maybeUpdateServerlessNetworkPolicy();
 
-    // Create index with semantic enrichment via AOSS control plane if configured.
-    maybeCreateServerlessSemanticEnrichmentIndex();
+    // Create index with semantic enrichment via AWS control plane (AOSS or managed domain) if configured.
+    new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
+            connectionConfiguration,
+            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
+            configuredIndexAlias);
 
     indexManager.setupIndex();
 
@@ -701,25 +703,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private static boolean isExternalVersionType(final VersionType versionType) {
     return versionType != null && (versionType == VersionType.External || versionType == VersionType.ExternalGte);
-  }
-
-  private void maybeCreateServerlessSemanticEnrichmentIndex() throws IOException {
-    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
-    final SemanticEnrichmentConfig semanticConfig = openSearchSinkConfig.getIndexConfiguration()
-            .getSemanticEnrichmentConfig();
-    if (semanticConfig == null || semanticConfig.getFields() == null
-            || semanticConfig.getFields().isEmpty()) {
-      return;
-    }
-
-    if (!connectionConfiguration.isAwsSigv4()) {
-      LOG.warn("Semantic enrichment is only supported with AWS OpenSearch. Skipping index creation.");
-      return;
-    }
-
-    final SemanticEnrichmentIndexCreator indexCreator = new SemanticEnrichmentIndexCreator(
-            awsCredentialsSupplier, connectionConfiguration);
-    indexCreator.createIndex(configuredIndexAlias, semanticConfig);
   }
 
   private DlqObject createDlqObjectFromEvent(final Event event,

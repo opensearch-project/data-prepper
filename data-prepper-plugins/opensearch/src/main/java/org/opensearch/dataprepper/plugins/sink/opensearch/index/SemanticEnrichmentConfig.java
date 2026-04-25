@@ -22,11 +22,25 @@ public class SemanticEnrichmentConfig {
     @JsonProperty("language")
     private String language = DEFAULT_LANGUAGE;
 
+    @JsonProperty("collection_name")
+    private String collectionName;
+
+    @JsonProperty("domain_name")
+    private String domainName;
+
     public List<String> getFields() {
         return fields;
     }
 
     public String getLanguage() {
         return language;
+    }
+
+    public String getCollectionName() {
+        return collectionName;
+    }
+
+    public String getDomainName() {
+        return domainName;
     }
 }

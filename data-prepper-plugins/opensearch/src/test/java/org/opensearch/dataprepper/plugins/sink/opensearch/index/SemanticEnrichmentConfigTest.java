@@ -1,10 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
@@ -77,5 +73,43 @@ class SemanticEnrichmentConfigTest {
     @Test
     void testDefaultLanguage_isEnglish() {
         assertThat(SemanticEnrichmentConfig.DEFAULT_LANGUAGE, equalTo("english"));
+    }
+
+    @Test
+    void testDeserialize_withDomainName_success() throws Exception {
+        final String domainName = UUID.randomUUID().toString();
+        final String json = String.format("{\"fields\":[\"text\"],\"domain_name\":\"%s\"}", domainName);
+
+        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
+
+        assertThat(config.getDomainName(), equalTo(domainName));
+    }
+
+    @Test
+    void testDeserialize_withoutDomainName_returnsNull() throws Exception {
+        final String json = "{\"fields\":[\"text\"]}";
+
+        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
+
+        assertThat(config.getDomainName(), nullValue());
+    }
+
+    @Test
+    void testDeserialize_withCollectionName_success() throws Exception {
+        final String collectionName = UUID.randomUUID().toString();
+        final String json = String.format("{\"fields\":[\"text\"],\"collection_name\":\"%s\"}", collectionName);
+
+        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
+
+        assertThat(config.getCollectionName(), equalTo(collectionName));
+    }
+
+    @Test
+    void testDeserialize_withoutCollectionName_returnsNull() throws Exception {
+        final String json = "{\"fields\":[\"text\"]}";
+
+        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
+
+        assertThat(config.getCollectionName(), nullValue());
     }
 }
