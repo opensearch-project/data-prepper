@@ -103,7 +103,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
         final String tableName = settings.getTableName();
         final String createTableSql = "CREATE TABLE IF NOT EXISTS " + tableName + " ("
                 + "source_identifier VARCHAR(256) NOT NULL, "
-                + "source_partition_key VARCHAR(256) NOT NULL, "
+                + "source_partition_key VARCHAR(512) NOT NULL, "
                 + "partition_owner VARCHAR(256), "
                 + "partition_progress_state TEXT, "
                 + "source_partition_status VARCHAR(20) NOT NULL, "
