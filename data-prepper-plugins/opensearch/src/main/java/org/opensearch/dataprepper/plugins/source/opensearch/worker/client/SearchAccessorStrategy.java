@@ -145,9 +145,9 @@ public class SearchAccessorStrategy {
 
     private SearchAccessor createSearchAccessorForServerlessCollection(final PluginComponentRefresher clientRefresher) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
-            LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
+            LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'point_in_time'");
             return new OpenSearchAccessor(clientRefresher,
-                    SearchContextType.NONE);
+                    SearchContextType.POINT_IN_TIME);
         } else {
             if ( SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
                 throw new InvalidPluginConfigurationException("A search_context_type of scroll is not supported for serverless collections");

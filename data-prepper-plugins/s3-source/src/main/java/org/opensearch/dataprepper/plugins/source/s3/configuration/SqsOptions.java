@@ -22,6 +22,7 @@ public class SqsOptions {
     private static final Duration DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT = Duration.ofHours(2);
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
+    private static final Duration DEFAULT_SHUTDOWN_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("queue_url")
     @NotBlank(message = "SQS URL cannot be null or empty")
@@ -59,6 +60,10 @@ public class SqsOptions {
     @Min(1)
     private Integer maxReceiveAttempts;
 
+    @JsonProperty("shutdown_timeout")
+    @DurationMin(seconds = 30)
+    private Duration shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
+
     public String getSqsUrl() {
         return sqsUrl;
     }
@@ -87,5 +92,11 @@ public class SqsOptions {
         return pollDelay;
     }
 
-    public Integer getMaxReceiveAttempts() { return maxReceiveAttempts; }
+    public Integer getMaxReceiveAttempts() {
+        return maxReceiveAttempts;
+    }
+
+    public Duration getShutdownTimeout() {
+        return shutdownTimeout;
+    }
 }

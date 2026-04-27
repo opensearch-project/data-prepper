@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.time.Duration;
 import java.util.function.Supplier;
 
@@ -34,7 +36,12 @@ import java.util.function.Supplier;
  * utilize subscription-based operations.
  * 
  * Most methods return void for efficient standalone usage. The error() method supports chaining for error handling scenarios.
+ * 
+ * <h3>Dependency Injection</h3>
+ * This class supports both Spring dependency injection via @Named/@Inject and manual instantiation for backward compatibility.
+ * The @Inject constructor provides default settings suitable for most use cases, while the manual constructors allow full customization.
  */
+@Named
 public class VendorAPIMetricsRecorder {
 
     // Search operation metrics
@@ -55,16 +62,16 @@ public class VendorAPIMetricsRecorder {
     private final Timer authLatencyTimer;
 
     // Start subscription operation metrics
-    private final Counter subscriptionSuccessCounter;
-    private final Counter subscriptionFailureCounter;
-    private final Timer subscriptionLatencyTimer;
-    private final Counter subscriptionCallsCounter;
+    private Counter subscriptionSuccessCounter;
+    private Counter subscriptionFailureCounter;
+    private Timer subscriptionLatencyTimer;
+    private Counter subscriptionCallsCounter;
 
     // List subscription operation metrics
-    private final Counter listSubscriptionSuccessCounter;
-    private final Counter listSubscriptionFailureCounter;
-    private final Timer listSubscriptionLatencyTimer;
-    private final Counter listSubscriptionCallsCounter;
+    private Counter listSubscriptionSuccessCounter;
+    private Counter listSubscriptionFailureCounter;
+    private Timer listSubscriptionLatencyTimer;
+    private Counter listSubscriptionCallsCounter;
 
     private final Timer bufferWriteLatencyTimer;
     private final Counter bufferWriteAttemptsCounter;
@@ -85,14 +92,15 @@ public class VendorAPIMetricsRecorder {
     private final Counter retryableErrorsCounter;
     
     private final PluginMetrics pluginMetrics;
-    private final boolean enableSubscriptionMetrics;
+    private boolean enableSubscriptionMetrics;
 
     /**
-     * Creates a unified VendorAPIMetricsRecorder with all operation types.
-     * Subscription metrics are enabled by default for backward compatibility.
+     * Constructor for both dependency injection and manual instantiation.
+     * Subscription metrics disabled by default for performance - Office365 should use the two-parameter constructor.
      * 
      * @param pluginMetrics The plugin metrics instance
      */
+    @Inject
     public VendorAPIMetricsRecorder(PluginMetrics pluginMetrics) {
         this(pluginMetrics, false);
     }
@@ -168,6 +176,34 @@ public class VendorAPIMetricsRecorder {
         this.nonRetryableErrorsCounter = pluginMetrics.counter("nonRetryableErrors");
         this.retryableErrorsCounter = pluginMetrics.counter("retryableErrors");
     }
+
+    /**
+     * Enables subscription metrics and initializes them if not already created.
+     * This method should be called early in plugin initialization before subscription metrics are used.
+     * 
+     * @param enabled Whether to enable subscription metrics collection
+     */
+    public void enableSubscriptionMetrics() {
+        if (!enableSubscriptionMetrics && subscriptionSuccessCounter == null) {
+            initializeSubscriptionMetrics();
+        }
+        this.enableSubscriptionMetrics = true;
+    }
+
+    private void initializeSubscriptionMetrics() {
+        // Start subscription metrics
+        this.subscriptionSuccessCounter = pluginMetrics.counter("startSubscriptionRequestsSuccess");
+        this.subscriptionFailureCounter = pluginMetrics.counter("startSubscriptionRequestsFailed");
+        this.subscriptionLatencyTimer = pluginMetrics.timer("startSubscriptionRequestLatency");
+        this.subscriptionCallsCounter = pluginMetrics.counter("startSubscriptionApiCalls");
+
+        // List subscription metrics
+        this.listSubscriptionSuccessCounter = pluginMetrics.counter("listSubscriptionRequestsSuccess");
+        this.listSubscriptionFailureCounter = pluginMetrics.counter("listSubscriptionRequestsFailed");
+        this.listSubscriptionLatencyTimer = pluginMetrics.timer("listSubscriptionRequestLatency");
+        this.listSubscriptionCallsCounter = pluginMetrics.counter("listSubscriptionApiCalls");
+    }
+
 
     // Search operation methods
     public void recordSearchSuccess() {

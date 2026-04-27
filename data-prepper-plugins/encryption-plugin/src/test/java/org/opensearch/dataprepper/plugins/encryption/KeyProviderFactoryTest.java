@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.encryption;
@@ -10,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.kms.KmsClient;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -20,6 +25,9 @@ import static org.mockito.Mockito.when;
 class KeyProviderFactoryTest {
     @Mock
     private KmsEncryptionEngineConfiguration kmsEncryptionEngineConfiguration;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     @Mock
     private KmsClient kmsClient;
@@ -34,7 +42,7 @@ class KeyProviderFactoryTest {
     @Test
     void testCreateKmsKeyProvider() {
         when(kmsEncryptionEngineConfiguration.createKmsClient()).thenReturn(kmsClient);
-        assertThat(keyProviderFactory.createKmsKeyProvider(kmsEncryptionEngineConfiguration),
+        assertThat(keyProviderFactory.createKmsKeyProvider(kmsEncryptionEngineConfiguration, pluginMetrics),
                 instanceOf(KmsKeyProvider.class));
     }
 }

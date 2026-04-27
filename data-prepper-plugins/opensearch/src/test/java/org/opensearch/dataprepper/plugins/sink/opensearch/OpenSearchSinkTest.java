@@ -11,6 +11,9 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
@@ -18,6 +21,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -48,12 +52,14 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -353,6 +359,62 @@ public class OpenSearchSinkTest {
         verify(dynamicDocumentVersionDroppedEvents).increment();
     }
 
+    @ParameterizedTest
+    @MethodSource("invalidVersionExceptionProvider")
+    void doOutput_with_invalid_version_expression_does_not_add_event_to_bulk_request(
+            final Class<? extends RuntimeException> exceptionType) throws IOException {
+        when(pluginSetting.getName()).thenReturn("opensearch");
+        final String versionExpression = UUID.randomUUID().toString();
+        when(indexConfiguration.getVersionExpression()).thenReturn(versionExpression);
+
+        final Event event = mock(JacksonEvent.class);
+        final String document = UUID.randomUUID().toString();
+        when(event.toJsonString()).thenReturn(document);
+        final EventHandle eventHandle = mock(EventHandle.class);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        final String index = UUID.randomUUID().toString();
+        when(event.formatString(versionExpression, expressionEvaluator)).thenThrow(exceptionType);
+        when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
+        final Record<Event> eventRecord = new Record<>(event);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        when(indexManager.getIndexName(anyString())).thenReturn(index);
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        final DlqObject.Builder dlqObjectBuilder = mock(DlqObject.Builder.class);
+        when(dlqObjectBuilder.withEventHandle(eventHandle)).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withFailedData(any(FailedDlqData.class))).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginName(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginId(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPipelineName(pipelineDescription.getPipelineName())).thenReturn(dlqObjectBuilder);
+        when(dlqObject.getFailedData()).thenReturn(mock(FailedDlqData.class));
+        doNothing().when(dlqObject).releaseEventHandle(false);
+        when(dlqObjectBuilder.build()).thenReturn(dlqObject);
+
+        try (final MockedStatic<DocumentBuilder> documentBuilderMockedStatic = mockStatic(DocumentBuilder.class);
+             final MockedStatic<DlqObject> dlqObjectMockedStatic = mockStatic(DlqObject.class)) {
+            documentBuilderMockedStatic.when(() -> DocumentBuilder.build(eq(event), eq(null), eq(null), eq(null), eq(null)))
+                    .thenReturn(UUID.randomUUID().toString());
+            dlqObjectMockedStatic.when(DlqObject::builder).thenReturn(dlqObjectBuilder);
+            objectUnderTest.doOutput(List.of(eventRecord));
+        }
+
+        verify(dynamicDocumentVersionDroppedEvents).increment();
+        verify(event, times(0)).getJsonNode();
+    }
+
+    private static Stream<Arguments> invalidVersionExceptionProvider() {
+        return Stream.of(
+                Arguments.of(NumberFormatException.class),
+                Arguments.of(RuntimeException.class)
+        );
+    }
+
     @Test
     void test_routing_field_in_document() throws IOException {
         String routingFieldKey = UUID.randomUUID().toString();
@@ -545,5 +607,60 @@ public class OpenSearchSinkTest {
         
         // Verify the dataStreamIndex was set correctly
         assertThat(objectUnderTest, notNullValue());
+    }
+
+    @ParameterizedTest
+    @MethodSource("externalVersionTypeProvider")
+    void initialize_sets_isExternalVersioning_true_on_BulkRetryStrategy_for_external_version_types(
+            final VersionType versionType) throws Exception {
+        when(indexConfiguration.getVersionType()).thenReturn(versionType);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        final BulkRetryStrategy bulkRetryStrategy = getField(objectUnderTest, "bulkRetryStrategy");
+        final boolean isExternalVersioning = getField(bulkRetryStrategy, "isExternalVersioning");
+        assertThat(isExternalVersioning, equalTo(true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonExternalVersionTypeProvider")
+    void initialize_sets_isExternalVersioning_false_on_BulkRetryStrategy_for_non_external_version_types(
+            final VersionType versionType) throws Exception {
+        lenient().when(indexConfiguration.getVersionType()).thenReturn(versionType);
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+
+        final BulkRetryStrategy bulkRetryStrategy = getField(objectUnderTest, "bulkRetryStrategy");
+        final boolean isExternalVersioning = getField(bulkRetryStrategy, "isExternalVersioning");
+        assertThat(isExternalVersioning, equalTo(false));
+    }
+
+    private static Stream<Arguments> externalVersionTypeProvider() {
+        return Stream.of(
+                Arguments.of(VersionType.External),
+                Arguments.of(VersionType.ExternalGte)
+        );
+    }
+
+    private static Stream<Arguments> nonExternalVersionTypeProvider() {
+        return Stream.of(
+                Arguments.of(VersionType.Internal),
+                Arguments.of((VersionType) null)
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getField(final Object target, final String fieldName) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return (T) field.get(target);
     }
 }

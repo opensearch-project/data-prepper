@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelectio
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanProcessingCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -34,8 +35,9 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -104,6 +106,10 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
     private final Map<String, Map<String, S3DataSelection>> bucketDataSelectionMap;
 
+    private final Map<String, List<S3ScanProcessingCondition>> bucketProcessingConditionsMap;
+
+    private final S3ScanProcessingConditionEvaluator processingConditionEvaluator;
+
     private final Duration acknowledgmentSetTimeout;
 
     public ScanObjectWorker(final S3Client s3Client,
@@ -115,7 +121,9 @@ public class ScanObjectWorker implements Runnable {
                             final AcknowledgementSetManager acknowledgementSetManager,
                             final S3ObjectDeleteWorker s3ObjectDeleteWorker,
                             final long backOffMs,
-                            final PluginMetrics pluginMetrics){
+                            final PluginMetrics pluginMetrics,
+                            final S3ScanProcessingConditionEvaluator processingConditionEvaluator,
+                            final Map<String, List<S3ScanProcessingCondition>> bucketProcessingConditionsMap){
         this.s3Client = s3Client;
         this.backOffMs = backOffMs;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
@@ -144,6 +152,9 @@ public class ScanObjectWorker implements Runnable {
                 }
             }
         }
+        this.bucketProcessingConditionsMap = bucketProcessingConditionsMap != null
+                ? Collections.unmodifiableMap(bucketProcessingConditionsMap) : Collections.emptyMap();
+        this.processingConditionEvaluator = processingConditionEvaluator;
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.deleteS3ObjectsOnRead = s3SourceConfig.isDeleteS3ObjectsOnRead();
@@ -157,7 +168,7 @@ public class ScanObjectWorker implements Runnable {
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
         this.acknowledgmentSetTimeout = s3SourceConfig.getS3ScanScanOptions().getAcknowledgmentTimeout();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator);
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator, new S3ObjectKeyFilter(s3SourceConfig.getFilters()));
         this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
         this.objectsToDeleteForAcknowledgmentSets = new ConcurrentHashMap<>();
     }
@@ -224,6 +235,24 @@ public class ScanObjectWorker implements Runnable {
 
         final String bucket = objectToProcess.get().getPartitionKey().split("\\|")[0];
         final String objectKey = objectToProcess.get().getPartitionKey().split("\\|")[1];
+
+        final List<S3ScanProcessingCondition> conditions = bucketProcessingConditionsMap.get(bucket);
+        final Optional<S3ScanProcessingCondition> unmetCondition = processingConditionEvaluator.firstUnmetCondition(bucket, objectKey, conditions);
+        if (unmetCondition.isPresent()) {
+            final S3ScanProcessingCondition failedCondition = unmetCondition.get();
+            final Duration retryDelay = failedCondition.getRetryDelay();
+            final int maxRetry = failedCondition.getMaxRetry();
+            final Long closedCount = objectToProcess.get().getPartitionClosedCount();
+            if (closedCount != null && closedCount + 1 >= maxRetry) {
+                LOG.warn("Max retries ({}) reached for processing conditions on {}/{}, processing object as-is",
+                        maxRetry, bucket, objectKey);
+            } else {
+                LOG.info("Processing conditions not met for {}/{}, rescheduling after {}", bucket, objectKey, retryDelay);
+                sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), retryDelay, maxRetry, false);
+                partitionKeys.remove(objectToProcess.get().getPartitionKey());
+                return;
+            }
+        }
 
         try {
             AcknowledgementSet acknowledgementSet = null;

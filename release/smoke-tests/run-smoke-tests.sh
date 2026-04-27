@@ -1,7 +1,13 @@
 #!/bin/bash
 
+#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
 
 set -e
 
@@ -31,11 +37,12 @@ function usage() {
     echo "Optional arguments:"
     echo -e "-h\t\tPrint this message."
     echo -e "-i IMAGE_NAME\tOverride the docker image name name (ex: opensearch-data-prepper or data-prepper)."
+    echo -e "-a ARCHITECTURE\tSpecify the architecture (x64 or arm64)."
     echo "--------------------------------------------------------------------------"
 }
 
 
-while getopts "hv:r::o::i::" arg; do
+while getopts "hv:r::o::i::a::" arg; do
     case $arg in
         h)
             usage
@@ -47,6 +54,9 @@ while getopts "hv:r::o::i::" arg; do
         i)
             export IMAGE_NAME=$OPTARG
             ;;
+        a)
+            export ARCHITECTURE=$OPTARG
+            ;;
         ?)
             echo "Invalid option: -${arg}"
             end_tests 1
@@ -54,9 +64,28 @@ while getopts "hv:r::o::i::" arg; do
     esac
 done
 
+# Set Docker platform based on architecture
+if [ "${ARCHITECTURE}" = "arm64" ]; then
+    export DOCKER_DEFAULT_PLATFORM="linux/arm64"
+else
+    export DOCKER_DEFAULT_PLATFORM="linux/amd64"
+fi
+
 export DOCKER_IMAGE="${IMAGE_NAME}:${TAG_NAME}"
 
 echo "Will smoke test image \"${DOCKER_IMAGE}\""
+
+if [ -n "${ARCHITECTURE}" ]; then
+    echo "Validating image architecture..."
+    ACTUAL_ARCH=$(docker run --rm --entrypoint uname "${DOCKER_IMAGE}" -m)
+    EXPECTED_UNAME=$([ "${ARCHITECTURE}" = "arm64" ] && echo "aarch64" || echo "x86_64")
+    
+    if [ "${ACTUAL_ARCH}" != "${EXPECTED_UNAME}" ]; then
+        echo -e "\033[0;31mArchitecture mismatch: expected ${ARCHITECTURE} (${EXPECTED_UNAME}) but image is ${ACTUAL_ARCH}\033[0m"
+        end_tests 1
+    fi
+    echo "Architecture validated: ${ACTUAL_ARCH}"
+fi
 
 ./gradlew -PendToEndDataPrepperImage=${IMAGE_NAME} -PendToEndDataPrepperTag=${TAG_NAME} :e2e-test:log:basicLogEndToEndTest
 sleep 1

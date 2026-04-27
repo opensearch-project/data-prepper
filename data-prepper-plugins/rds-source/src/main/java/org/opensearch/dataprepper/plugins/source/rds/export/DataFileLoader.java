@@ -133,7 +133,7 @@ public class DataFileLoader implements Runnable {
                     transformEvent(event, fullTableName, EngineType.fromString(progressState.getEngineType()));
 
                     final long snapshotTime = progressState.getSnapshotTime();
-                    final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
+                    final long eventVersionNumber = recordConverter.getVersionNumber(snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis());
                     final Event transformedEvent = recordConverter.convert(
                             event,
                             progressState.getSourceDatabase(),
@@ -143,7 +143,8 @@ public class DataFileLoader implements Runnable {
                             primaryKeys,
                             snapshotTime,
                             eventVersionNumber,
-                            null);
+                            null,
+                            new java.util.ArrayList<>(event.toMap().keySet()));
 
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(transformedEvent);

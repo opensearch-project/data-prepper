@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.source;
@@ -16,6 +20,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,6 +30,7 @@ import java.util.Objects;
  */
 
 public class KafkaSourceConfig implements KafkaConsumerConfig {
+    public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(Integer.MAX_VALUE);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -52,6 +58,9 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @JsonProperty("acknowledgments")
     private Boolean acknowledgementsEnabled = false;
 
+    @JsonProperty("acknowledgments_timeout")
+    private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
+
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
 
@@ -59,8 +68,14 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
         return clientDnsLookup;
     }
 
+    @Override
     public boolean getAcknowledgementsEnabled() {
         return acknowledgementsEnabled;
+    }
+
+    @Override
+    public Duration getAcknowledgementsTimeout() {
+        return acknowledgementsTimeout;
     }
 
     public List<? extends TopicConsumerConfig> getTopics() {

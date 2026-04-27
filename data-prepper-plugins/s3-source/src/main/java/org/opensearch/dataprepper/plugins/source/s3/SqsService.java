@@ -25,7 +25,6 @@ import java.util.stream.IntStream;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
-    static final long SHUTDOWN_TIMEOUT = 30L;
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
     private final SqsClient sqsClient;
@@ -60,7 +59,7 @@ public class SqsService {
         executorService.shutdown();
         sqsWorkers.forEach(SqsWorker::stop);
         try {
-            if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(s3SourceConfig.getSqsOptions().getShutdownTimeout().getSeconds(), TimeUnit.SECONDS)) {
                 LOG.warn("Failed to terminate SqsWorkers");
                 executorService.shutdownNow();
             }

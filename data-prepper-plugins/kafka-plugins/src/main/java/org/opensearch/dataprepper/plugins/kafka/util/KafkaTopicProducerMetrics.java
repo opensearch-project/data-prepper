@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -31,6 +32,7 @@ public class KafkaTopicProducerMetrics {
     static final String NUMBER_OF_RAW_DATA_SEND_ERRORS = "numberOfRawDataSendErrors";
     static final String NUMBER_OF_RECORD_SEND_ERRORS = "numberOfRecordSendErrors";
     static final String NUMBER_OF_RECORD_PROCESSING_ERRORS = "numberOfRecordProcessingErrors";
+    static final String PRODUCE_DATA_PREPARATION_TIME = "produceDataPreparationTime";
     private final String topicName;
     private Map<String, String> metricsNameMap;
     private Map<KafkaProducer, Map<String, Double>> metricValues;
@@ -40,6 +42,7 @@ public class KafkaTopicProducerMetrics {
     private final Counter numberOfRawDataSendErrors;
     private final Counter numberOfRecordSendErrors;
     private final Counter numberOfRecordProcessingErrors;
+    private final Timer produceDataPreparationTimer;
 
     public KafkaTopicProducerMetrics(final String topicName, final PluginMetrics pluginMetrics,
                                      final boolean topicNameInMetrics) {
@@ -52,6 +55,7 @@ public class KafkaTopicProducerMetrics {
         this.numberOfRawDataSendErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RAW_DATA_SEND_ERRORS, topicNameInMetrics));
         this.numberOfRecordSendErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORD_SEND_ERRORS, topicNameInMetrics));
         this.numberOfRecordProcessingErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORD_PROCESSING_ERRORS, topicNameInMetrics));
+        this.produceDataPreparationTimer = pluginMetrics.timer(getTopicMetricName(PRODUCE_DATA_PREPARATION_TIME, topicNameInMetrics));
     }
 
     private void initializeMetricNamesMap(final boolean topicNameInMetrics) {
@@ -103,6 +107,10 @@ public class KafkaTopicProducerMetrics {
 
     public Counter getNumberOfRecordProcessingErrors() {
         return numberOfRecordProcessingErrors;
+    }
+
+    public Timer getProduceDataPreparationTimer() {
+        return produceDataPreparationTimer;
     }
 
     private String getTopicMetricName(final String metricName, final boolean topicNameInMetrics) {

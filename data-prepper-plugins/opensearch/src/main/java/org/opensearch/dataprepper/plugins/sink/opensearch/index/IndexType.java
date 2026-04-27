@@ -15,6 +15,7 @@ public enum IndexType {
     TRACE_ANALYTICS_RAW("trace-analytics-raw"),
     TRACE_ANALYTICS_RAW_PLAIN("trace-analytics-plain-raw"),
     TRACE_ANALYTICS_SERVICE_MAP("trace-analytics-service-map"),
+    OTEL_APM_SERVICE_MAP("otel-v2-apm-service-map"),
     LOG_ANALYTICS("log-analytics"),
     LOG_ANALYTICS_PLAIN("log-analytics-plain"),
     METRIC_ANALYTICS("metric-analytics"),

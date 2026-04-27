@@ -19,12 +19,14 @@ import org.opensearch.dataprepper.test.plugins.DataPrepperPluginTest;
 import org.opensearch.dataprepper.test.plugins.PluginConfigurationFile;
 import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStandardTestSuite;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -32,11 +34,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 @DataPrepperPluginTest(pluginName = "drop_events", pluginType = Processor.class)
 class DropEventsProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
-    @Test
-    void drops_records_when_value_is_empty_string(
-            @PluginConfigurationFile("drop_when_value_is_empty_string.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
-            final EventFactory eventFactory) {
+    private static final int MAX_THREADS = 5;
 
+    private void createEventsAndExecute(final Processor<Record<Event>, Record<Event>> objectUnderTest,
+            final EventFactory eventFactory) {
         final List<Event> allEvents = new LinkedList<>();
         final List<Event> expectedEventsAfterProcessor = new LinkedList<>();
         for(int i = 0; i < 5; i++) {
@@ -68,5 +69,34 @@ class DropEventsProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
         final List<Event> outputEvents = outputRecords.stream().map(Record::getData).collect(Collectors.toList());
 
         assertThat(outputEvents, equalTo(expectedEventsAfterProcessor));
+    }
+
+    @Test
+    void drops_records_when_value_is_empty_string(
+            @PluginConfigurationFile("drop_when_value_is_empty_string.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
+            final EventFactory eventFactory) {
+        createEventsAndExecute(objectUnderTest, eventFactory);
+    }
+
+    @Test
+    void drops_records_when_value_is_empty_string_with_multiple_threads(
+            @PluginConfigurationFile("drop_when_value_is_empty_string.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
+            final EventFactory eventFactory) throws Exception {
+
+        AtomicInteger numSuccess = new AtomicInteger(0);
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < MAX_THREADS; i++) {
+            threads.add(new Thread(() -> {
+                createEventsAndExecute(objectUnderTest, eventFactory);
+                numSuccess.incrementAndGet();
+            }));
+        }
+        for (int i = 0; i < MAX_THREADS; i++) {
+            threads.get(i).start();
+        }
+        for (int i = 0; i < MAX_THREADS; i++) {
+            threads.get(i).join();
+        }
+        assertThat(numSuccess.get(), equalTo(MAX_THREADS));
     }
 }

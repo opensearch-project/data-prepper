@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
@@ -156,7 +160,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
                 consumerFactory = mock;
-                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(consumers);
+                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), anyBoolean())).thenReturn(consumers);
             });
             final MockedConstruction<KafkaAdminAccessor> adminAccessorMock =
                 mockConstruction(KafkaAdminAccessor.class, (mock, context) -> kafkaAdminAccessor = mock);
@@ -385,8 +389,8 @@ class KafkaBufferTest {
         }
 
         @Test
-        void writeBytes_sets_and_clears_MDC() throws Exception {
-            createObjectUnderTest().writeBytes(new byte[] {}, UUID.randomUUID().toString(), 100);
+        void doWriteBytes_sets_and_clears_MDC() throws Exception {
+            createObjectUnderTest().doWriteBytes(new byte[] {}, UUID.randomUUID().toString(), 100);
 
             mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
             mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
@@ -525,4 +529,5 @@ class KafkaBufferTest {
                       option, org.hamcrest.Matchers.notNullValue());
         }
     }
+
 }

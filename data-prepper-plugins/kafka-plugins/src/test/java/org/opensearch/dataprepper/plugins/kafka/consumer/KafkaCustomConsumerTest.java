@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
@@ -17,6 +21,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.ArgumentCaptor;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.model.CheckpointState;
@@ -61,15 +67,20 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +166,7 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -200,6 +212,7 @@ public class KafkaCustomConsumerTest {
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
+        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(Duration.ofSeconds(Integer.MAX_VALUE));
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
                 acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
@@ -687,6 +700,87 @@ public class KafkaCustomConsumerTest {
         Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
         Assertions.assertTrue(offsetsAfterFailedCommit.isEmpty(),
             "Offsets should be cleared after non-rebalance exception");
+    }
+
+    @Test
+    public void testConsumeRecords_AuthenticationException_IncrementsCounterAndUsesBackoff() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords();
+
+        verify(authErrorCounter, times(1)).increment();
+        verify(consumer).sleepMillis(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis());
+    }
+
+    @Test
+    public void testConsumeRecords_MultipleAuthFailures_UsesExponentialBackoff() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+
+        Assertions.assertFalse(shutdownInProgress.get(),
+                "Consumer should not shut down on auth failures");
+        ArgumentCaptor<Long> sleepCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());
+        List<Long> sleepValues = sleepCaptor.getAllValues();
+        assertThat(sleepValues.get(0), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis()));
+        assertThat(sleepValues.get(1), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis() * 2));
+        assertThat(sleepValues.get(2), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis() * 4));
+    }
+
+    @Test
+    public void testConsumeRecords_SuccessfulPollResetsAuthFailureCounter() throws Exception {
+        String topic = topicConfig.getName();
+        Counter authErrorCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(authErrorCounter);
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(60000));
+
+        AuthenticationException authException = new AuthenticationException("Auth failed");
+        consumerRecords = createPlainTextRecords(topic, 0L);
+
+        when(kafkaConsumer.poll(any(Duration.class)))
+                .thenThrow(authException)
+                .thenThrow(authException)
+                .thenReturn(consumerRecords);
+
+        consumer = spy(createObjectUnderTest("plaintext", false));
+        doNothing().when(consumer).sleepMillis(anyLong());
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords(); // auth failure 1
+        consumer.consumeRecords(); // auth failure 2
+        consumer.consumeRecords(); // success - resets backoff
+
+        // Next auth failure should use initial backoff again
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(authException);
+        consumer.consumeRecords(); // auth failure after reset
+
+        ArgumentCaptor<Long> sleepCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());
+        List<Long> sleepValues = sleepCaptor.getAllValues();
+        assertThat(sleepValues.get(2), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis()));
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {

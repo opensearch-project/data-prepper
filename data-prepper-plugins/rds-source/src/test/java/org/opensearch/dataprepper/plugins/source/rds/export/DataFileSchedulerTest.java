@@ -43,11 +43,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -185,6 +187,69 @@ class DataFileSchedulerTest {
         verify(exportFileSuccessCounter, never()).increment();
         verify(exportFileErrorCounter).increment();
         verify(sourceCoordinator).giveUpPartition(dataFilePartition);
+    }
+
+    @Test
+    void test_when_getPartition_initially_returns_empty_then_retries_and_updates_load_status() {
+        final String exportTaskId = UUID.randomUUID().toString();
+
+        final GlobalState loadStatusGlobalState = mock(GlobalState.class);
+        final int totalFiles = 5;
+        final Map<String, Object> loadStatusMap = new LoadStatus(totalFiles, totalFiles - 2).toMap();
+        when(loadStatusGlobalState.getProgressState()).thenReturn(Optional.of(loadStatusMap));
+
+        // First call returns empty (transient failure), second call returns valid state
+        when(sourceCoordinator.getPartition(exportTaskId))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(loadStatusGlobalState));
+
+        createObjectUnderTest().updateLoadStatus(exportTaskId, Duration.ofSeconds(2));
+
+        verify(sourceCoordinator).saveProgressStateForPartition(any(GlobalState.class), isNull());
+    }
+
+    @Test
+    void test_when_last_file_loaded_with_stream_enabled_then_creates_stream_trigger_partition() {
+        final String exportTaskId = UUID.randomUUID().toString();
+        final String dbIdentifier = UUID.randomUUID().toString();
+        when(sourceConfig.isStreamEnabled()).thenReturn(true);
+        when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
+
+        final GlobalState loadStatusGlobalState = mock(GlobalState.class);
+        final int totalFiles = 3;
+        final Map<String, Object> loadStatusMap = new LoadStatus(totalFiles, totalFiles - 1).toMap();
+        when(loadStatusGlobalState.getProgressState()).thenReturn(Optional.of(loadStatusMap));
+        when(sourceCoordinator.getPartition(exportTaskId)).thenReturn(Optional.of(loadStatusGlobalState));
+
+        createObjectUnderTest().updateLoadStatus(exportTaskId, Duration.ofSeconds(2));
+
+        verify(sourceCoordinator).createPartition(any(GlobalState.class));
+    }
+
+    @Test
+    void test_when_createPartition_throws_transiently_then_retries_and_partition_is_completed() {
+        final String exportTaskId = UUID.randomUUID().toString();
+        final String dbIdentifier = UUID.randomUUID().toString();
+        when(sourceConfig.isStreamEnabled()).thenReturn(true);
+        when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
+
+        final GlobalState loadStatusGlobalState = mock(GlobalState.class);
+        final int totalFiles = 3;
+        final Map<String, Object> loadStatusMap = new LoadStatus(totalFiles, totalFiles - 1).toMap();
+        when(loadStatusGlobalState.getProgressState()).thenReturn(Optional.of(loadStatusMap));
+        when(sourceCoordinator.getPartition(exportTaskId)).thenReturn(Optional.of(loadStatusGlobalState));
+
+        // createPartition throws once then succeeds — verifies retry behavior
+        when(sourceCoordinator.createPartition(any(GlobalState.class)))
+                .thenThrow(new RuntimeException("DynamoDB error"))
+                .thenReturn(true);
+
+        createObjectUnderTest().updateLoadStatus(exportTaskId, Duration.ofSeconds(2));
+
+        // saveProgressStateForPartition must be called exactly once — no retry/overshoot
+        verify(sourceCoordinator, times(1)).saveProgressStateForPartition(any(GlobalState.class), isNull());
+        // createPartition retried: first threw, second succeeded
+        verify(sourceCoordinator, times(2)).createPartition(any(GlobalState.class));
     }
 
     @Disabled("Flaky test, needs to be fixed")

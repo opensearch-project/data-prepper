@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,11 +156,13 @@ public class ScrollWorker implements SearchWorker {
         LOG.info("Started processing for index: '{}'", indexName);
 
         final Integer batchSize = openSearchSourceConfiguration.getSearchConfiguration().getBatchSize();
+        final List<SortingOptions> sortingOptions = SortingOptions.fromSortConfigs(openSearchSourceConfiguration.getSearchConfiguration().getSort());
 
         final CreateScrollResponse createScrollResponse = searchAccessor.createScroll(CreateScrollRequest.builder()
                 .withScrollTime(SCROLL_TIME_PER_BATCH)
                 .withSize(openSearchSourceConfiguration.getSearchConfiguration().getBatchSize())
                 .withIndex(indexName)
+                .withSortOptions(sortingOptions)
                 .build());
 
         writeDocumentsToBuffer(createScrollResponse.getDocuments(), acknowledgementSet);
@@ -186,10 +189,10 @@ public class ScrollWorker implements SearchWorker {
                     throw e;
                 }
             } while (searchScrollResponse.getDocuments().size() == batchSize);
-        }
 
-        LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
-                searchScrollResponse.getDocuments().size(), batchSize);
+            LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
+                        searchScrollResponse.getDocuments().size(), batchSize);
+        }
 
         deleteScroll(createScrollResponse.getScrollId());
 

@@ -1,12 +1,15 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -17,10 +20,6 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.VersionType;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import org.opensearch.client.opensearch.core.bulk.CreateOperation;
-import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
-import org.opensearch.client.opensearch.core.bulk.IndexOperation;
-import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -135,6 +134,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String pipeline;
   private final String action;
   private final List<ActionConfiguration> actions;
+  private final ScriptManager scriptManager;
+  private final BulkOperationFactory bulkOperationFactory;
   private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
@@ -153,7 +154,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private final SinkContext sinkContext;
   private final ExpressionEvaluator expressionEvaluator;
-  private final boolean useEventInBulkOperation;
+  private boolean useEventInBulkOperation;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
   private DataStreamDetector dataStreamDetector;
@@ -187,7 +188,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
     this.expressionEvaluator = expressionEvaluator;
     this.pipeline = pipelineDescription.getPipelineName();
-    this.useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -205,6 +205,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
+    this.scriptManager = new ScriptManager(openSearchSinkConfig.getIndexConfiguration().getScriptConfiguration(), expressionEvaluator);
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.versionType = openSearchSinkConfig.getIndexConfiguration().getVersionType();
     this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
@@ -216,6 +217,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.lastFlushTimeMap = new ConcurrentHashMap<>();
     this.pluginConfigObservable = pluginConfigObservable;
     this.objectMapper = new ObjectMapper();
+    this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager, objectMapper, isUsingDocumentFilters());
     this.queryExecutorService = openSearchSinkConfig.getIndexConfiguration().getQueryTerm() != null ?
             Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("existing-document-query-manager")) : null;
 
@@ -230,6 +232,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void doInitialize() {
     try {
         doInitializeInternal();
+        // getFailurePipeline() does not return valid value in the constructor. Earliest it can be used
+        // is in doInitialize()
+        useEventInBulkOperation = (getFailurePipeline() != null || sinkContext.getForwardToPipelines().size() > 0);
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
         this.shutdown();
@@ -312,7 +317,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             bulkRequestSupplier,
             pipeline,
             PLUGIN_NAME,
-            openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null);
+            openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
+            isExternalVersionType(openSearchSinkConfig.getIndexConfiguration().getVersionType()));
 
     if (queryExecutorService != null) {
       existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
@@ -334,92 +340,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @Override
   public boolean isReady() {
     return initialized;
-  }
-
-  private BulkOperation getBulkOperationForAction(final String action,
-                                                  final SerializedJson document,
-                                                  final Long version,
-                                                  final String indexName,
-                                                  final JsonNode jsonNode) {
-    BulkOperation bulkOperation;
-    final Optional<String> docId = document.getDocumentId();
-    final Optional<String> routing = document.getRoutingField();
-    final Optional<String> pipeline = document.getPipelineField();
-
-    if (StringUtils.equals(action, OpenSearchBulkActions.CREATE.toString())) {
-       final CreateOperation.Builder<Object> createOperationBuilder =
-         new CreateOperation.Builder<>()
-             .index(indexName)
-             .document(document);
-       docId.ifPresent(createOperationBuilder::id);
-       routing.ifPresent(createOperationBuilder::routing);
-       pipeline.ifPresent(createOperationBuilder::pipeline);
-
-       bulkOperation = new BulkOperation.Builder()
-                           .create(createOperationBuilder.build())
-                           .build();
-       return bulkOperation;
-    }
-    if (StringUtils.equals(action, OpenSearchBulkActions.UPDATE.toString()) ||
-        StringUtils.equals(action, OpenSearchBulkActions.UPSERT.toString())) {
-
-        JsonNode filteredJsonNode = jsonNode;
-        try {
-          if (isUsingDocumentFilters()) {
-            filteredJsonNode = objectMapper.reader().readTree(document.getSerializedJson());
-          }
-        } catch (final IOException e) {
-          throw new RuntimeException(
-                  String.format("An exception occurred while deserializing a document for the %s action: %s", action, e.getMessage()));
-        }
-
-
-          final UpdateOperation.Builder<Object> updateOperationBuilder = (StringUtils.equals(action.toLowerCase(), OpenSearchBulkActions.UPSERT.toString())) ?
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(filteredJsonNode)
-                  .upsert(filteredJsonNode)
-                  .versionType(versionType)
-                  .version(version) :
-              new UpdateOperation.Builder<>()
-                  .index(indexName)
-                  .document(filteredJsonNode)
-                  .versionType(versionType)
-                  .version(version);
-          docId.ifPresent(updateOperationBuilder::id);
-          routing.ifPresent(updateOperationBuilder::routing);
-          bulkOperation = new BulkOperation.Builder()
-                              .update(updateOperationBuilder.build())
-                              .build();
-          return bulkOperation;
-    }
-    if (StringUtils.equals(action, OpenSearchBulkActions.DELETE.toString())) {
-      final DeleteOperation.Builder deleteOperationBuilder =
-        new DeleteOperation.Builder().index(indexName);
-      docId.ifPresent(deleteOperationBuilder::id);
-      routing.ifPresent(deleteOperationBuilder::routing);
-      bulkOperation = new BulkOperation.Builder()
-                          .delete(deleteOperationBuilder
-                                  .versionType(versionType)
-                                  .version(version)
-                                  .build())
-                          .build();
-      return bulkOperation;
-    }
-    // Default to "index"
-    final IndexOperation.Builder<Object> indexOperationBuilder =
-      new IndexOperation.Builder<>()
-              .index(indexName)
-              .document(document)
-              .version(version)
-              .versionType(versionType);
-    docId.ifPresent(indexOperationBuilder::id);
-    routing.ifPresent(indexOperationBuilder::routing);
-    pipeline.ifPresent(indexOperationBuilder::pipeline);
-    bulkOperation = new BulkOperation.Builder()
-                        .index(indexOperationBuilder.build())
-                        .build();
-    return bulkOperation;
   }
 
   @Override
@@ -473,18 +393,26 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           versionExpressionEvaluationResult = event.formatString(versionExpression, expressionEvaluator);
           version = Long.valueOf(event.formatString(versionExpression, expressionEvaluator));
         } catch (final NumberFormatException e) {
+          // Skip this event from the bulk request after sending to DLQ to avoid
+          // including events with invalid versions in the OpenSearch bulk request.
+          // See https://github.com/opensearch-project/data-prepper/issues/6601
           final String errorMessage = String.format(
                   "Unable to convert the result of evaluating document_version '%s' to Long for an Event. The evaluation result '%s' must be a valid Long type", versionExpression, versionExpressionEvaluationResult
           );
           LOG.error(errorMessage);
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
+          continue;
         } catch (final RuntimeException e) {
+          // Skip this event from the bulk request after sending to DLQ to avoid
+          // including events with invalid versions in the OpenSearch bulk request.
+          // See https://github.com/opensearch-project/data-prepper/issues/6601
           final String errorMessage = String.format(
                   "There was an exception when evaluating the document_version '%s': %s", versionExpression, e.getMessage());
           LOG.error(errorMessage + " Check the dlq if configured to see more details about the affected Event");
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, errorMessage)), e);
           dynamicDocumentVersionDroppedEvents.increment();
+          continue;
         }
       }
 
@@ -521,7 +449,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperation bulkOperation;
 
       try {
-        bulkOperation = getBulkOperationForAction(eventAction, document, version, indexName, event.getJsonNode());
+        bulkOperation = bulkOperationFactory.create(eventAction, document, version, indexName, event.getJsonNode());
       } catch (final Exception e) {
         LOG.error("An exception occurred while constructing the bulk operation for a document: ", e);
         logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
@@ -582,7 +510,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
-    return SerializedJson.fromStringAndOptionals(document, docId, routingValue, null);
+    return SerializedJson.builder()
+            .withJsonString(document)
+            .withDocumentId(docId)
+            .withRoutingField(routingValue)
+            .withResolvedScriptParameters(scriptManager.resolveParams(event))
+            .build();
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
@@ -637,10 +570,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
         if (event != null) {
             event.updateFailureMetadata()
-                .with("pluginId", dlqObject.getPluginId())
-                .with("pluginName", dlqObject.getPluginName())
-                .with("pipelineName", dlqObject.getPipelineName())
-                .with("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                .withPluginId(dlqObject.getPluginId())
+                .withPluginName(dlqObject.getPluginName())
+                .withPipelineName(dlqObject.getPipelineName())
+                .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
                 .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
                 .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
                 .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
@@ -716,7 +649,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void shutdown() {
     super.shutdown();
     closeFiles();
-    openSearchClient.shutdown();
+    if (openSearchClient != null) {
+      openSearchClient.shutdown();
+    }
     if (queryExecutorService != null && existingDocumentQueryManager != null) {
       existingDocumentQueryManager.stop();
       queryExecutorService.shutdown();
@@ -737,6 +672,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
           maybeServerlessOptions.get().getVpceId()
       );
     }
+  }
+
+  private static boolean isExternalVersionType(final VersionType versionType) {
+    return versionType != null && (versionType == VersionType.External || versionType == VersionType.ExternalGte);
   }
 
   private DlqObject createDlqObjectFromEvent(final Event event,

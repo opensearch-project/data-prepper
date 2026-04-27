@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
@@ -83,7 +87,8 @@ public class KafkaCustomConsumerFactory {
                                                              final AtomicBoolean shutdownInProgress,
                                                              final boolean topicNameInMetrics,
                                                              final CircuitBreaker circuitBreaker,
-                                                             final CompressionOption compressionConfig) {
+                                                             final CompressionOption compressionConfig,
+                                                             final boolean invokeCallbackOnExpiry) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
@@ -113,7 +118,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig, invokeCallbackOnExpiry));
 
             });
         } catch (Exception e) {

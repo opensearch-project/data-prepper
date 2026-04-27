@@ -1,3 +1,12 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
 name: Release Artifacts
 
 on:
@@ -9,7 +18,8 @@ on:
         type: boolean
       release-latest-tag:
         description: >
-          Whether to create latest tag of docker image or not. This will update the latest tag to point to this version. You should set this when releasing the latest version, but not patches to old versions.
+          Whether to create latest tag of docker image or not. This will update the latest tag to point to this version. 
+          You should set this when releasing the latest version, but not patches to old versions.
         required: true
         type: boolean
 
@@ -17,6 +27,7 @@ permissions:
   id-token: write
   contents: write
   issues: write
+  pull-requests: write
 
 jobs:
   build:
@@ -25,18 +36,19 @@ jobs:
 
     steps:
     - name: Set up JDK
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v5
       with:
         java-version: 11
+        distribution: temurin
     - name: Checkout Data Prepper
-      uses: actions/checkout@v2
+      uses: actions/checkout@v6
     - name: Get Version
       run:  grep '^version=' gradle.properties >> $GITHUB_ENV
     - name: Build Jar Files
       run: ./gradlew --parallel --max-workers 2 build
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
         aws-region: us-east-1
@@ -55,53 +67,67 @@ jobs:
 
     - name: Log into Amazon ECR Public
       id: login-ecr
-      uses: docker/login-action@v1
+      uses: docker/login-action@v4
       with:
         registry: public.ecr.aws
       env:
         AWS_REGION: us-east-1
     - name: Build and Push Multi-Architecture Docker Image to Staging ECR
-      run: ./gradlew :release:docker:dockerMultiArchitecture -PdockerRepository=${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+      run: ./gradlew :release:docker:dockerMultiArchitecturePush -PdockerRepository=${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
 
   validate-docker:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        architecture: [x64, arm64]
+      fail-fast: false
+    runs-on: ${{ matrix.architecture == 'x64' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
     needs: build
     timeout-minutes: 30
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
       - name: Smoke Test Docker Image
         run: |
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
-          ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
+          ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }} -a ${{ matrix.architecture }}
 
   validate-archive:
     strategy:
       matrix:
-        include:
-          - image : "eclipse-temurin:11"
+        config:
+          - image: "eclipse-temurin:11"
             archive: opensearch-data-prepper
-          - image : "eclipse-temurin:17"
+          - image: "eclipse-temurin:17"
             archive: opensearch-data-prepper
-          - image : "ubuntu:latest"
+          - image: "eclipse-temurin:21"
+            archive: opensearch-data-prepper
+          - image: "ubuntu:latest"
             archive: opensearch-data-prepper-jdk
+        architecture: [x64, arm64]
       fail-fast: false
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.architecture == 'x64' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
     needs: build
     timeout-minutes: 30
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
       - name: Smoke Test Tarball Files
-        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }} -i ${{ matrix.image }} -t ${{ matrix.archive }}
+        run: >-
+          ./release/smoke-tests/run-tarball-files-smoke-tests.sh
+          -u ${{ secrets.ARCHIVES_PUBLIC_URL }}
+          -v ${{ env.version }}
+          -n ${{ github.run_number }}
+          -i ${{ matrix.config.image }}
+          -t ${{ matrix.config.archive }}
+          -a ${{ matrix.architecture }}
 
   promote:
     runs-on: ubuntu-latest
@@ -109,12 +135,17 @@ jobs:
     permissions:
       contents: write
       issues: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Get Version
-        run: grep '^version=' gradle.properties >> $GITHUB_ENV
+        id: get_version
+        run: |
+          grep '^version=' gradle.properties >> $GITHUB_ENV
+          echo "version=$(grep '^version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
       - name: Get Approvers
         id: get_approvers
@@ -166,3 +197,50 @@ jobs:
           tag_name: 'refs/tags/${{ env.version }}'
           files: |
             release-description.yaml
+
+  generate-changelog:
+    runs-on: ubuntu-latest
+    needs: promote
+
+    steps:
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch Tags
+        run: git fetch origin --tags
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install git-release-notes
+        run: npm install -g git-release-notes
+
+      - name: Generate Changelog
+        run: release/script/changelog/generate-changelog.sh ${{ needs.promote.outputs.version }}
+
+      - name: GitHub App token
+        id: github_app_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ steps.github_app_token.outputs.token }}
+          add-paths: |
+            release/release-notes/data-prepper.change-log-${{ needs.promote.outputs.version }}.md
+          commit-message: 'Add Data Prepper ${{ needs.promote.outputs.version }} changelog.'
+          signoff: true
+          branch: changelog-${{ needs.promote.outputs.version }}
+          delete-branch: true
+          base: main
+          title: 'Data Prepper ${{ needs.promote.outputs.version }} changelog'
+          body: |
+            Adds the Data Prepper ${{ needs.promote.outputs.version }} changelog generated by git-release-notes.

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
@@ -14,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 public abstract class SqsSinkExecutor {
     private static final Logger LOG = LoggerFactory.getLogger(SqsSinkExecutor.class);
@@ -82,7 +87,7 @@ public abstract class SqsSinkExecutor {
         if (failedStatus != null) {
             pushFailedObjectsToDlq(failedStatus);
         } else {
-            recordLatency((double)System.nanoTime() - startTime);
+            recordLatency(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
         }
     }
     
@@ -96,7 +101,7 @@ public abstract class SqsSinkExecutor {
     public abstract boolean willExceedMaxBatchSize(final Event event, final long estimatedSize) throws Exception;
     public abstract boolean exceedsMaxEventSizeThreshold(final long estimatedSize);
     public abstract long getEstimatedSize(final Event event) throws Exception;
-    public abstract void recordLatency(double latencyMillis);
+    public abstract void recordLatency(long amount, TimeUnit timeUnit);
 
     public abstract void lock();
     public abstract void unlock();

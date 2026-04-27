@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 plugins {
@@ -16,7 +20,7 @@ configurations.all {
 group 'org.opensearch.dataprepper.test.performance'
 
 dependencies {
-    gatlingImplementation 'software.amazon.awssdk:auth:2.39.5'
+    gatlingImplementation 'software.amazon.awssdk:auth:2.41.19'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
 

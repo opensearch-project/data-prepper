@@ -1,0 +1,190 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+"<<pipeline-name>>":
+  workers: "<<$.<<pipeline-name>>.workers>>"
+  delay: "<<$.<<pipeline-name>>.delay>>"
+  buffer: "<<$.<<pipeline-name>>.buffer>>"
+  source:
+    rds: "<<$.<<pipeline-name>>.source.rds>>"
+  routes:
+    - initial_load: 'getMetadata("ingestion_type") == "EXPORT"'
+    - stream_load: 'getMetadata("ingestion_type") == "STREAM"'
+  sink:
+    - s3:
+        routes:
+          - initial_load
+        aws:
+          region:  "<<$.<<pipeline-name>>.source.rds.s3_region>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.rds.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.rds.aws.sts_header_overrides>>"
+        bucket: "<<$.<<pipeline-name>>.source.rds.s3_bucket>>"
+        threshold:
+          event_collect_timeout: "120s"
+          maximum_size: "2mb"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        codec:
+          event_json:
+        default_bucket_owner: "<<FUNCTION_NAME:getAccountIdFromRole,PARAMETER:$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+    - s3:
+        routes:
+          - stream_load
+        aws:
+          region:  "<<$.<<pipeline-name>>.source.rds.s3_region>>"
+          sts_role_arn: "<<$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+          sts_external_id: "<<$.<<pipeline-name>>.source.rds.aws.sts_external_id>>"
+          sts_header_overrides: "<<$.<<pipeline-name>>.source.rds.aws.sts_header_overrides>>"
+        bucket: "<<$.<<pipeline-name>>.source.rds.s3_bucket>>"
+        threshold:
+          event_collect_timeout: "15s"
+          maximum_size: "1mb"
+        aggregate_threshold:
+          maximum_size: "128mb"
+          flush_capacity_ratio: 0
+        object_key:
+          path_prefix: "${getMetadata(\"s3_partition_key\")}"
+        codec:
+          event_json:
+        default_bucket_owner: "<<FUNCTION_NAME:getAccountIdFromRole,PARAMETER:$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+        client:
+          max_connections: 100
+          acquire_timeout: 20s
+"<<pipeline-name>>-s3":
+  workers: 1
+  delay: "<<$.<<pipeline-name>>.delay>>"
+  buffer: "<<$.<<pipeline-name>>.buffer>>"
+  source:
+    s3:
+      codec:
+        event_json:
+      compression: "none"
+      aws:
+        region:  "<<$.<<pipeline-name>>.source.rds.s3_region>>"
+        sts_role_arn: "<<$.<<pipeline-name>>.source.rds.aws.sts_role_arn>>"
+        sts_external_id: "<<$.<<pipeline-name>>.source.rds.aws.sts_external_id>>"
+        sts_header_overrides: "<<$.<<pipeline-name>>.source.rds.aws.sts_header_overrides>>"
+      acknowledgments: true
+      delete_s3_objects_on_read: true
+      disable_s3_metadata_in_event: true
+      scan:
+        acknowledgment_timeout: "PT10M"
+        folder_partitions:
+          depth: "<<FUNCTION_NAME:calculateDepthForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"
+          max_objects_per_ownership: 50
+        buckets:
+          - bucket:
+              name: "<<$.<<pipeline-name>>.source.rds.s3_bucket>>"
+              filter:
+                include_prefix: ["<<FUNCTION_NAME:getIncludePrefixForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"]
+        scheduling:
+          interval: "20s"
+  processor: "<<$.<<pipeline-name>>.processor>>"
+  sink: "<<$.<<pipeline-name>>.sink>>"
+  <<overlay sink[*].opensearch>>:
+    action: "upsert"
+    document_id: "${getMetadata(\"_primary_key\")}"
+    bulk_size: 3
+    script:
+      source: |
+        // --- RDS Join Denormalization Script ---
+        // Merges parent/child table CDC events into a single denormalized document.
+        // Uses per-table versioning for all cases. The S3 sub-pipeline uses workers:1
+        // to guarantee sequential processing, so per-table versioning is safe even
+        // for 1:N children — the monotonic version counter ensures unique versions.
+
+        String table = params.table;
+        String vf = params.version_field;
+        long incomingVersion = Long.parseLong(params.version);
+        String[] fields = params.fields.splitOnToken(',');
+
+        if (!ctx._source.containsKey(vf)) {
+          ctx._source[vf] = [:]
+        }
+
+        long storedVersion = ctx._source[vf].containsKey(table) ? ctx._source[vf][table] : -1L;
+        if (incomingVersion <= storedVersion) {
+          ctx.op = 'none';
+          return
+        }
+        ctx._source[vf][table] = incomingVersion;
+
+        if (params.is_parent == 'true' || params.join_type == 'one_to_one') {
+          // --- Parent or 1:1 child: merge fields directly into document ---
+          if (params.is_delete == 'true') {
+            if (params.is_parent == 'true') {
+              // Parent delete = full document delete.
+              // RDS FK cascades will generate child DELETE events that become no-ops.
+              ctx.op = 'delete';
+              return
+            }
+            // 1:1 child delete — remove child fields only
+            for (String f : fields) { ctx._source.remove(f) }
+            ctx._source[vf].remove(table);
+            if (ctx._source[vf].isEmpty()) { ctx.op = 'delete' }
+          } else {
+            for (String f : fields) {
+              if (params.doc.containsKey(f)) { ctx._source[f] = params.doc[f] }
+            }
+          }
+        } else {
+          // --- 1:N child: manage nested array ---
+          String arr = params.child_table_name;
+          String[] pkNames = params.child_pk_name.splitOnToken('|');
+          String pkVal = params.child_pk_value;
+
+          if (!ctx._source.containsKey(arr)) {
+            ctx._source[arr] = []
+          }
+
+          // Remove existing entry with same PK (for update or delete)
+          ctx._source[arr].removeIf(e -> {
+            String v = '';
+            for (int i = 0; i < pkNames.length; i++) {
+              if (i > 0) v += '|';
+              v += e[pkNames[i]].toString()
+            }
+            return v == pkVal
+          });
+
+          if (params.is_delete != 'true') {
+            def entry = [:];
+            for (String f : fields) {
+              if (params.doc.containsKey(f)) { entry[f] = params.doc[f] }
+            }
+            for (String pk : pkNames) { entry[pk] = params.doc[pk] }
+            ctx._source[arr].add(entry);
+
+            // Enforce max_child_records cap (FIFO eviction)
+            int max = Integer.parseInt(params.max_child_records);
+            if (ctx._source[arr].size() > max) {
+              ctx._source[arr].remove(0)
+            }
+          } else {
+            ctx._source[vf].remove(table);
+            if (ctx._source[vf].isEmpty()) { ctx.op = 'delete' }
+          }
+        }
+      params:
+        table: "${getMetadata(\"_table\")}"
+        version: "${getMetadata(\"document_version\")}"
+        version_field: "<<$.<<pipeline-name>>.source.rds.joins.version_field>>"
+        fields: "${getMetadata(\"_fields\")}"
+        is_delete: "${getMetadata(\"_is_delete\")}"
+        is_parent: "${getMetadata(\"_is_parent\")}"
+        join_type: "${getMetadata(\"_join_type\")}"
+        max_child_records: "${getMetadata(\"_max_child_records\")}"
+        child_table_name: "${getMetadata(\"_child_table_name\")}"
+        child_pk_name: "${getMetadata(\"_child_pk_name\")}"
+        child_pk_value: "${getMetadata(\"_child_pk_value\")}"
+  routes: "<<$.<<pipeline-name>>.routes>>"

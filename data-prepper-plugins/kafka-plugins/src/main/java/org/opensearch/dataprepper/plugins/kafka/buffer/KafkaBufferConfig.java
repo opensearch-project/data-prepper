@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
@@ -29,6 +33,7 @@ import java.util.Optional;
 
 class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
+    static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofHours(Integer.MAX_VALUE);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
@@ -54,6 +59,9 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("drain_timeout")
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
+
+    @JsonProperty("acknowledgements_timeout")
+    private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
@@ -142,6 +150,12 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    @Override
+    @JsonIgnore
+    public Duration getAcknowledgementsTimeout() {
+        return acknowledgementsTimeout;
     }
 
     @JsonIgnore

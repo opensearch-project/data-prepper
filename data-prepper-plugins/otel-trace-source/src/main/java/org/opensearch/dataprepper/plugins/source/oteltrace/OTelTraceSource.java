@@ -26,6 +26,10 @@ import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpService;
 import org.slf4j.Logger;
@@ -35,9 +39,10 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 
-@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
+@DataPrepperPlugin(name = "otlp_traces",
+        deprecatedName = "otel_trace_source",
+        pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
-    private static final String PLUGIN_NAME = "otel_trace_source";
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
 
 
@@ -88,11 +93,12 @@ public class OTelTraceSource implements Source<Record<Object>> {
             configureTLS(serverBuilder);
             configureTaskExecutor(serverBuilder);
 
-            configureGrpcService(serverBuilder, buffer);
+            final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = (oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
+            configureGrpcService(serverBuilder, oTelProtoDecoder, buffer);
 
             // needed until clarified if unframedRequests should survive
             if (!oTelTraceSourceConfig.enableUnframedRequests()) {
-                configureHttpService(serverBuilder, buffer);
+                configureHttpService(serverBuilder, oTelProtoDecoder, buffer);
             }
 
             server = serverBuilder.build();
@@ -126,8 +132,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
-        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, oTelTraceSourceConfig, pluginMetrics, pipelineName).create(buffer, serverBuilder);
+    private void configureGrpcService(ServerBuilder serverBuilder, final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, Buffer<Record<Object>> buffer) {
+        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, otelProtoDecoder, oTelTraceSourceConfig, pluginMetrics, pipelineName).create(buffer, serverBuilder);
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.service(grpcService);
@@ -136,8 +142,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
-        new HttpService(pluginMetrics, oTelTraceSourceConfig, pluginFactory).create(serverBuilder, buffer);
+    private void configureHttpService(ServerBuilder serverBuilder, final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, Buffer<Record<Object>> buffer) {
+        new HttpService(pluginMetrics, otelProtoDecoder, oTelTraceSourceConfig, pluginFactory).create(serverBuilder, buffer);
     }
 
     private void configureHeadersAndHealthCheck(ServerBuilder serverBuilder) {

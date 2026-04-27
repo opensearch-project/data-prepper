@@ -60,6 +60,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+
 public class KafkaSinkAvroTypeIT {
     private static final int TEST_ID = 123456;
 

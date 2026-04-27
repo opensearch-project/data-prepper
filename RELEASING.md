@@ -40,52 +40,35 @@ Steps:
 2. Select `New label`
 3. Name the branch `backport {major}.minor`. For example, `backport 2.6`
 
-### Update versions
-
-The OpenSearch Data Prepper version is defined in the [`gradle.properties`](https://github.com/opensearch-project/data-prepper/blob/main/gradle.properties)  file.
-We must update this whenever we create a new release.
-We will need two PRs to update it.
-
-#### Update on release branch
-
-For the current release branch, update the version to the new version.
-You may either need to update by removing the `-SNAPSHOT` or by updating the patch version.
-
-For example, when we released `2.6.2`, the property was set as `version=2.6.2`.
-You can see the [exact commit here](https://github.com/opensearch-project/data-prepper/blob/2.6.2/gradle.properties#L8).
-
-Create a PR that targets the release branch with the change.
-Do not create a PR to `main` for this.
-
 #### Update on the main branch
+
+The OpenSearch Data Prepper version is defined in the [`gradle.properties`](https://github.com/opensearch-project/data-prepper/blob/main/gradle.properties) file.
+After creating a new branch, we must also bump the version for the `main` branch to the next version.
 
 If you have just created a release branch, you should also create a PR on the `main` branch to bump the version.
 
-For example, if you have started the `2.7` branch, you will need to update the `main` branch from `2.6.0-SNAPSHOT` to `2.7.0-SNAPSHOT`.
+For example, if you have started the `2.7` branch, you will need to update the `main` branch from `2.7.0-SNAPSHOT` to `2.8.0-SNAPSHOT`.
 
-#### Update the version of DataPrepperVersion
+### Prepare release branch
 
-If you have just created a release branch, you should also create a PR on the `main` branch to bump the version in `DataPrepperVersion`.
-
-Steps:
-1. Modify the `DataPrepperVersion` class to update `CURRENT_VERSION` to the next version.
-2. Create a PR targeting `main`
-
-Note: This step can be automated through [#4877](https://github.com/opensearch-project/data-prepper/issues/4877).
-
-### Update the THIRD-PARTY file
-
-We should update the `THIRD-PARTY` file for every release.
-OpenSearch Data Prepper has a GitHub action that will generate this and create a PR with the updated file.
+For any release, you must prepare the release branch.
+This is applicable for new major/minor releases and patch releases.
 
 Steps:
-* Go the [Third Party Generate action](https://github.com/opensearch-project/data-prepper/actions/workflows/third-party-generate.yml)
+* Go the [Prepare Release Branch](https://github.com/opensearch-project/data-prepper/actions/workflows/release-prepare-branch.yml) action.
 * Select `Run workflow`
-* Choose the branch you are releasing. e.g. `2.6`
+* Choose the branch you are releasing. e.g. `2.15`
 * Press `Run workflow`
 * Wait for a new PR to be created
 * Spot check the PR, approve and merge
 
+
+This action will create a PR that updates files as necessary
+
+* `gradle.properties`
+* `THIRD-PARTY`
+
+Approve this and merge it before proceeding with the release.
 
 ### Prepare release notes
 
@@ -97,23 +80,6 @@ See the [README](release/script/release-notes/README.md) for the script for inst
 
 Once the release notes are ready, create a PR to merge them into `main`.
 Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
-
-### Create changelog
-
-You can create a changelog using [git-release-notes](https://github.com/ariatemplates/git-release-notes).
-
-```
-git fetch upstream
-git switch {major}.{minor}
-git fetch upstream --tags
-git pull
-git-release-notes {previousMajor}.{previousMinor}.{previousPatch}..HEAD markdown > release/release-notes/data-prepper.change-log-{major}.{minor}.{patch}.md
-git switch main
-```
-
-Once the change log ready, create a PR to merge it into `main`.
-Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
-
 
 
 ## <a name="performing-a-release">Performing a release</a>
@@ -179,6 +145,23 @@ You can also check the Maven artifacts after the promote stage completes by view
 ## <a name="post-release">Post release</a>
 
 After the release, there are a few other steps to clean up the repository.
+
+### Create changelog
+
+You can create a changelog using [git-release-notes](https://github.com/ariatemplates/git-release-notes).
+
+```
+git fetch upstream
+git switch {major}.{minor}
+git fetch upstream --tags
+git pull
+git-release-notes {previousMajor}.{previousMinor}.{previousPatch}..{major}.{minor}.{patch} markdown > release/release-notes/data-prepper.change-log-{major}.{minor}.{patch}.md
+git switch main
+```
+
+Once the change log is ready, create a PR to merge it into `main`.
+Also tag this with the `backport {major}.{minor}` to create a PR that you can merge into your release branch.
+
 
 ### Update the release notes
 

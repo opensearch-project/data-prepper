@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.peerforwarder.discovery;
@@ -343,7 +347,9 @@ class AwsCloudMapPeerListProviderTest {
 
             waitUntilPeerListPopulated(objectUnderTest);
 
-            assertThat(listenerEndpoints.size(), equalTo(knownIpPeers.size()));
+            await().atMost(5, TimeUnit.SECONDS)
+                    .pollDelay(100, TimeUnit.MILLISECONDS)
+                    .untilAsserted(() -> assertThat(listenerEndpoints.size(), equalTo(knownIpPeers.size())));
 
             final Set<String> observedIps = listenerEndpoints.stream()
                     .map(Endpoint::ipAddr)

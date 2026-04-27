@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -51,11 +52,10 @@ public class DataFileScheduler implements Runnable {
 
     private static final Duration DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT = Duration.ofMinutes(30);
 
-
+    static final int CREATE_PARTITION_MAX_RETRIES = 3;
     static final String EXPORT_S3_OBJECTS_PROCESSED_COUNT = "exportS3ObjectsProcessed";
     static final String EXPORT_S3_OBJECTS_ERROR_COUNT = "exportS3ObjectsErrors";
     static final String ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE = "activeExportS3ObjectConsumers";
-
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final ExecutorService executor;
@@ -86,6 +86,10 @@ public class DataFileScheduler implements Runnable {
         codec = new ParquetInputCodec(eventFactory);
         objectReader = new S3ObjectReader(s3Client);
         recordConverter = new ExportRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
+        if (sourceConfig.getJoinConfig() != null && sourceConfig.getJoinConfig().getRelations() != null) {
+            recordConverter.setJoinMetadataEnricher(
+                    new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
+        }
         executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
@@ -176,19 +180,22 @@ public class DataFileScheduler implements Runnable {
         numOfWorkers.incrementAndGet();
     }
 
-    private void updateLoadStatus(String exportTaskId, Duration timeout) {
+    void updateLoadStatus(String exportTaskId, Duration timeout) {
 
         Instant endTime = Instant.now().plus(timeout);
+        LoadStatus loadStatus = null;
+        boolean savedSuccessfully = false;
         // Keep retrying in case update fails due to conflicts until timed out
         while (Instant.now().isBefore(endTime)) {
             Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition(exportTaskId);
             if (globalStatePartition.isEmpty()) {
                 LOG.error("Failed to get data file load status for {}", exportTaskId);
-                return;
+                // Transient read failures should be retried
+                continue;
             }
 
             GlobalState globalState = (GlobalState) globalStatePartition.get();
-            LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
+            loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
             loadStatus.setLoadedFiles(loadStatus.getLoadedFiles() + 1);
             LOG.info("Current data file load status: total {} loaded {}", loadStatus.getTotalFiles(), loadStatus.getLoadedFiles());
 
@@ -196,13 +203,22 @@ public class DataFileScheduler implements Runnable {
 
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
-                if (sourceConfig.isStreamEnabled() && loadStatus.getLoadedFiles() == loadStatus.getTotalFiles()) {
-                    LOG.info("All exports are done, streaming can continue...");
-                    sourceCoordinator.createPartition(new GlobalState("stream-for-" + sourceConfig.getDbIdentifier(), null));
-                }
+                savedSuccessfully = true;
                 break;
             } catch (Exception e) {
                 LOG.error("Failed to update the global status, looks like the status was out of date, will retry..");
+            }
+        }
+
+        if (savedSuccessfully && sourceConfig.isStreamEnabled() && loadStatus.getLoadedFiles() == loadStatus.getTotalFiles()) {
+            LOG.info("All exports are done, streaming can continue...");
+            for (int attempt = 0; attempt < CREATE_PARTITION_MAX_RETRIES; attempt++) {
+                try {
+                    sourceCoordinator.createPartition(new GlobalState("stream-for-" + sourceConfig.getDbIdentifier(), null));
+                    break;
+                } catch (Exception e) {
+                    LOG.error("Failed to create stream trigger partition for {} (attempt {}), will retry", sourceConfig.getDbIdentifier(), attempt + 1, e);
+                }
             }
         }
     }

@@ -302,10 +302,14 @@ public class PrometheusTimeSeries {
         final boolean isGauge = metric.getKind().equals(Metric.KIND.GAUGE.toString());
         final boolean isCounter = metric.getKind().equals(Metric.KIND.SUM.toString()) &&
                 ((Sum) metric).isMonotonic() &&
-                ((Sum) metric).getAggregationTemporality().equals("AGGREGATION_TEMPORALITY_CUMULATIVE");
+                "AGGREGATION_TEMPORALITY_CUMULATIVE".equals(((Sum) metric).getAggregationTemporality());
 
         StringBuilder metricNameBuilder = new StringBuilder(sanitizeName(name, true, false));
         String suffix = isCounter ? TOTAL_SUFFIX : "";
+
+        if (unit == null) {
+            return metricNameBuilder.append(suffix).toString();
+        }
 
         if (unit.startsWith("{")) {
             return metricNameBuilder.append(suffix).toString();

@@ -23,6 +23,9 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType
 import org.opensearch.dataprepper.plugins.kafka.configuration.ScramAuthConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
+import org.apache.kafka.common.utils.ExponentialBackoff;
+import java.time.Duration;
+
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
@@ -287,6 +290,8 @@ public class KafkaSecurityConfigurer {
                         .clusterArn(awsMskConfig.getArn())
                         .build();
 
+        final ExponentialBackoff backoff = new ExponentialBackoff(
+                Duration.ofSeconds(10).toMillis(), 2, Duration.ofMinutes(10).toMillis(), 0);
         int numRetries = 0;
         boolean retryable;
         GetBootstrapBrokersResponse result = null;
@@ -294,10 +299,24 @@ public class KafkaSecurityConfigurer {
             retryable = false;
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
-            } catch (KafkaException | StsException e) {
-                log.info("Failed to get bootstrap server information from MSK. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
+            } catch (StsException e) {
+                if (e.statusCode() == 403) {
+                    throw new RuntimeException("Access denied when calling STS to get bootstrap server information from MSK. " +
+                            "Verify that the role exists and the trust policy is correctly configured.", e);
+                }
+                long backoffMs = backoff.backoff(numRetries);
+                log.info("Failed to get bootstrap server information from MSK due to STS error. Retrying after {} ms (attempt {}/{})",
+                        backoffMs, numRetries + 1, MAX_KAFKA_CLIENT_RETRIES, e);
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException exp) {}
+                retryable = true;
+            } catch (KafkaException e) {
+                long backoffMs = backoff.backoff(numRetries);
+                log.info("Failed to get bootstrap server information from MSK due to Kafka error. Retrying after {} ms (attempt {}/{})",
+                        backoffMs, numRetries + 1, MAX_KAFKA_CLIENT_RETRIES, e);
+                try {
+                    Thread.sleep(backoffMs);
                 } catch (InterruptedException exp) {}
                 retryable = true;
             } catch (Exception e) {

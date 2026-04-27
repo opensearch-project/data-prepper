@@ -1,0 +1,66 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+name: Gradle - Check buildSrc
+
+on:
+  push:
+    paths:
+      - 'buildSrc/**'
+      - '*gradle*'
+  pull_request:
+    paths:
+      - 'buildSrc/**'
+      - '*gradle*'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        java: [11, 17, 21]
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up JDK ${{ matrix.java }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java }}
+        distribution: temurin
+
+    - name: Checkout Data Prepper
+      uses: actions/checkout@v6
+    - name: Check Gradle buildSrc
+      run: ./gradlew -p buildSrc check
+    - name: Upload Unit Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: data-prepper-test-results-java-${{ matrix.java }}
+        path: '**/test-results/**/*.xml'
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: "test-results/**/*.xml"

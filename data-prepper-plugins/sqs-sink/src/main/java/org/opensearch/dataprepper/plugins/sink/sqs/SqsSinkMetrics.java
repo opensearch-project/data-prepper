@@ -1,13 +1,20 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+
+import java.util.concurrent.TimeUnit;
 
 public class SqsSinkMetrics {
     public static final String SQS_SINK_REQUESTS_SUCCEEDED = "sqsSinkRequestsSucceeded";
@@ -20,7 +27,7 @@ public class SqsSinkMetrics {
     private final Counter sqsSinkEventsSucceeded;
     private final Counter sqsSinkRequestsFailed;
     private final Counter sqsSinkEventsFailed;
-    private final DistributionSummary sqsSinkRequestLatency;
+    private final Timer sqsSinkRequestLatency;
     private final DistributionSummary sqsSinkRequestSize;
 
     public SqsSinkMetrics(final PluginMetrics pluginMetrics) {
@@ -28,7 +35,7 @@ public class SqsSinkMetrics {
         this.sqsSinkEventsSucceeded = pluginMetrics.counter(SQS_SINK_EVENTS_SUCCEEDED);
         this.sqsSinkRequestsFailed = pluginMetrics.counter(SQS_SINK_REQUESTS_FAILED);
         this.sqsSinkEventsFailed = pluginMetrics.counter(SQS_SINK_EVENTS_FAILED);
-        this.sqsSinkRequestLatency = pluginMetrics.summary(SQS_SINK_REQUEST_LATENCY);
+        this.sqsSinkRequestLatency = pluginMetrics.timer(SQS_SINK_REQUEST_LATENCY);
         this.sqsSinkRequestSize = pluginMetrics.summary(SQS_SINK_REQUEST_SIZE);
     }
 
@@ -48,8 +55,8 @@ public class SqsSinkMetrics {
         sqsSinkRequestsFailed.increment(value);
     }
 
-    public void recordRequestLatency(double value) {
-        sqsSinkRequestLatency.record(value);
+    public void recordRequestLatency(final long amount, final TimeUnit timeUnit) {
+        sqsSinkRequestLatency.record(amount, timeUnit);
     }
 
     public void recordRequestSize(double value) {

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.acknowledgements;
@@ -25,4 +29,7 @@ public class InactiveAcknowledgementSetManager implements AcknowledgementSetMana
         throw new UnsupportedOperationException("create operation not supported");
     }
 
+    public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry) {
+        throw new UnsupportedOperationException("create operation not supported");
+    }
 }

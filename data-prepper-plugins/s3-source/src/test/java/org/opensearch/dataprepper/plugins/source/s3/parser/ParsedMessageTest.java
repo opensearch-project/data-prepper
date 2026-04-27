@@ -32,7 +32,7 @@ class ParsedMessageTest {
         message = mock(Message.class);
         testBucketName = UUID.randomUUID().toString();
         testDecodedObjectKey = UUID.randomUUID().toString();
-        testSize = RANDOM.nextInt(1_000_000_000) + 1;
+        testSize = Math.abs(RANDOM.nextLong() % 1_000_000_000_000L) + 1;
     }
 
     @Test
@@ -168,7 +168,7 @@ class ParsedMessageTest {
 
             when(bucket.getName()).thenReturn(testBucketName);
             when(object.getUrlDecodedKey()).thenReturn(testDecodedObjectKey);
-            when(object.getSize()).thenReturn((int) testSize);
+            when(object.getSize()).thenReturn(testSize);
             when(s3EventBridgeNotification.getDetailType()).thenReturn(testDetailType);
             when(s3EventBridgeNotification.getTime()).thenReturn(testEventTime);
         }

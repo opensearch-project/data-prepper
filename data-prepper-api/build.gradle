@@ -9,6 +9,7 @@
 
 plugins {
     id 'data-prepper.publish'
+    id 'data-prepper.library-compatibility'
 }
 
 dependencies {
@@ -25,6 +26,7 @@ dependencies {
     testImplementation libs.commons.io
     testImplementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 }
+
 
 jacocoTestCoverageVerification {
     dependsOn(jacocoTestReport)

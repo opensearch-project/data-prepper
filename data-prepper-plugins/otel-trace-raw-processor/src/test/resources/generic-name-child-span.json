@@ -1,0 +1,21 @@
+{
+  "traceId": "GENERIC_NAME_TRACE_ID",
+  "spanId": "GENERIC_NAME_CHILD_SPAN_ID",
+  "traceState": "GENERIC_NAME_TRACE_STATE",
+  "kind": "SPAN_KIND_SERVER",
+  "name": "GET",
+  "startTime": "2020-08-20T05:40:43.178010200Z",
+  "durationInNanos": 29160000,
+  "endTime": "2020-08-20T05:40:43.207170200Z",
+  "parentSpanId": "GENERIC_NAME_ROOT_SPAN_ID",
+  "attributes": {
+    "http.response.status_code": 200,
+    "http.request.method": "GET",
+    "http.path": "/api/users/123"
+  },
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}

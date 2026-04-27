@@ -99,7 +99,12 @@ public class LeaderScheduler implements Runnable {
                 if(leaderPartition != null) {
                     // Extend the timeout
                     // will always be a leader until shutdown
-                    coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                    try {
+                        coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                    } catch (Exception ex) {
+                        LOG.error("Failed to update ownership for leader partition. Will attempt to reacquire this partition...");
+                        leaderPartition = null;
+                    }
                 }
                 try {
                     Thread.sleep(leaseInterval.toMillis());

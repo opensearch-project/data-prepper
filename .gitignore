@@ -13,9 +13,28 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 # output folder created when we run test cases
 **/out/
 
+# Eclipse/IDE compiled output
+**/bin/
+*.project
+*.classpath
+*.factorypath
+**/.settings/**
+*.prefs
+
 # Development tools
 .DS_Store
 .idea
 *.iml
 .kiro
 .vscode
+
+# Manual testing files (should not be committed)
+MANUAL_TEST.md
+data-prepper-config.yaml
+pipelines.yaml
+run-dataprepper.sh
+trace-tester.py
+
+# Claude Code
+.claude/settings.local.json
+CLAUDE.md
