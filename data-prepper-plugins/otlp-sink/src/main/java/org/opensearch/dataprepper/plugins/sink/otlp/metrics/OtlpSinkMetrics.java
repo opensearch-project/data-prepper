@@ -69,21 +69,43 @@ public class OtlpSinkMetrics {
     }
 
     /**
-     * Increments the count of spans that were explicitly rejected by the OTLP endpoint.
+     * Increments the count of records that were explicitly rejected by the OTLP endpoint.
+     * This applies to all signal types: spans, metrics, and logs.
      *
-     * @param count The number of spans rejected.
+     * @param count The number of records rejected.
      */
-    public void incrementRejectedSpansCount(final long count) {
-        pluginMetrics.counter("rejectedSpansCount").increment(count);
+    public void incrementRejectedRecordsCount(final long count) {
+        pluginMetrics.counter("rejectedRecordsCount").increment(count);
     }
 
     /**
-     * Increments the count of spans that failed to be processed by the sink.
+     * Increments the per-signal rejected counter.
      *
-     * @param count The number of spans failed.
+     * @param signalType The signal type (e.g., "Traces", "Metrics", "Logs").
+     * @param count The number of records rejected.
      */
-    public void incrementFailedSpansCount(final long count) {
-        pluginMetrics.counter("failedSpansCount").increment(count);
+    public void incrementRejectedSignalCount(final String signalType, final long count) {
+        pluginMetrics.counter("rejected" + signalType + "Count").increment(count);
+    }
+
+    /**
+     * Increments the count of records that failed to be processed by the sink.
+     * This applies to all signal types: spans, metrics, and logs.
+     *
+     * @param count The number of records failed.
+     */
+    public void incrementFailedRecordsCount(final long count) {
+        pluginMetrics.counter("failedRecordsCount").increment(count);
+    }
+
+    /**
+     * Increments the per-signal failed counter.
+     *
+     * @param signalType The signal type (e.g., "Traces", "Metrics", "Logs").
+     * @param count The number of records failed.
+     */
+    public void incrementFailedSignalCount(final String signalType, final long count) {
+        pluginMetrics.counter("failed" + signalType + "Count").increment(count);
     }
 
     /**

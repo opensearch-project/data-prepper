@@ -24,13 +24,14 @@ import java.net.URI;
  * before sending them to the AWS OTLP endpoint.
  */
 class SigV4Signer {
-    private static final String SERVICE_NAME = "xray";
+    private static final String DEFAULT_SERVICE_NAME = "xray";
     private static final String OTLP_PATH = "/v1/traces";
     private final Aws4Signer signer = Aws4Signer.create();
 
     private final AwsCredentialsProvider credentialsProvider;
     private final Region region;
     private final URI endpointUri;
+    private final String serviceName;
 
     /**
      * Constructs a SigV4 signer helper.
@@ -40,6 +41,7 @@ class SigV4Signer {
      */
     SigV4Signer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config) {
         this.region = config.getAwsRegion();
+        this.serviceName = config.getServiceName() != null ? config.getServiceName() : DEFAULT_SERVICE_NAME;
 
         this.credentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                 .withRegion(region)
@@ -69,7 +71,7 @@ class SigV4Signer {
 
         return signer.sign(unsignedRequest, Aws4SignerParams.builder()
                 .signingRegion(region)
-                .signingName(SERVICE_NAME)
+                .signingName(serviceName)
                 .awsCredentials(credentialsProvider.resolveCredentials())
                 .build());
     }

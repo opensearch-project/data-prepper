@@ -71,4 +71,34 @@ class SigV4SignerTest {
         assertEquals("application/x-protobuf", request.firstMatchingHeader("Content-Type").orElse(null));
         assertEquals("https://xray.us-west-2.amazonaws.com/v1/traces", request.getUri().toString());
     }
+
+    @Test
+    void testSignRequest_withCustomServiceName() {
+        final String endpoint = "https://logs.us-west-2.amazonaws.com/v1/logs";
+        when(mockConfig.getEndpoint()).thenReturn(endpoint);
+        when(mockConfig.getServiceName()).thenReturn("logs");
+
+        target = new SigV4Signer(mockSupplier, mockConfig);
+        final SdkHttpFullRequest request = target.signRequest(PAYLOAD);
+
+        assertNotNull(request);
+        assertTrue(request.headers().containsKey("Authorization"));
+        // The Authorization header should contain the custom service name in the credential scope
+        final String authHeader = request.firstMatchingHeader("Authorization").orElse("");
+        assertTrue(authHeader.contains("logs/aws4_request"));
+    }
+
+    @Test
+    void testSignRequest_defaultsToXrayServiceName() {
+        final String endpoint = "https://xray.us-west-2.amazonaws.com/v1/traces";
+        when(mockConfig.getEndpoint()).thenReturn(endpoint);
+        when(mockConfig.getServiceName()).thenReturn(null);
+
+        target = new SigV4Signer(mockSupplier, mockConfig);
+        final SdkHttpFullRequest request = target.signRequest(PAYLOAD);
+
+        assertNotNull(request);
+        final String authHeader = request.firstMatchingHeader("Authorization").orElse("");
+        assertTrue(authHeader.contains("xray/aws4_request"));
+    }
 }
