@@ -505,22 +505,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
             eventMetadata.setAttribute("kafka_key", key);
         }
-        Headers headers = consumerRecord.headers();
-        if (headers != null) {
-            Map<String, Object> headerData = new HashMap<>();
-            for (Header header: headers) {
-                byte[] headerValue = header.value();
-                if (headerValue == null) {
-                    headerData.put(header.key(), null);
-                    continue;
-                }
-                String strValue = new String(header.value(), StandardCharsets.UTF_8);
-                if (Arrays.equals(headerValue, strValue.getBytes())) {
-                    headerData.put(header.key(), strValue);
-                    continue;
-                }
-                headerData.put(header.key(), headerValue);
-            }
+        Map<String, Object> headerData = KafkaHeadersExtractor.extractMessageHeaders(consumerRecord.headers());
+        if (headerData != null) {
             eventMetadata.setAttribute("kafka_headers", headerData);
         }
         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, now.toEpochMilli());
