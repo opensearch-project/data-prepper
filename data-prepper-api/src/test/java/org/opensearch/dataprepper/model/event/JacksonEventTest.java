@@ -718,6 +718,17 @@ public class JacksonEventTest {
     }
 
     @Test
+    void merge_with_keys_overwrites_existing_value_with_null() {
+        event.put("a", "original");
+        final String jsonString = "{\"a\": null}";
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent, List.of("a"));
+
+        assertThat(event.containsKey("a"), equalTo(true));
+        assertThat(event.get("a", Object.class), equalTo(null));
+    }
+
+    @Test
     void merge_with_keys_skips_missing_keys_in_other() {
         event.put("existing", "value");
         final String jsonString = "{\"a\": \"alpha\"}";

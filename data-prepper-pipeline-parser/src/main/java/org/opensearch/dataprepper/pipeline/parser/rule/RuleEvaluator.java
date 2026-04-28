@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -91,10 +92,23 @@ public class RuleEvaluator {
         try {
             Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
 
-            //walk through all rules and return first valid
+            // Pre-parse all rules and sort by specificity (most conditions first)
+            // so more specific rules like rds-joins match before generic rds
+            List<ParsedRule> parsedRules = new ArrayList<>();
             for (RuleStream ruleStream : ruleStreams) {
                 try {
-                    rulesModel = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
+                    RuleTransformerModel model = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
+                    parsedRules.add(new ParsedRule(model, ruleStream.getName()));
+                } finally {
+                    ruleStream.close();
+                }
+            }
+            parsedRules.sort((a, b) -> Integer.compare(
+                    b.model.getApplyWhen().size(), a.model.getApplyWhen().size()));
+
+            //walk through all rules and return first valid
+            for (ParsedRule parsedRule : parsedRules) {
+                    rulesModel = parsedRule.model;
                     List<String> rules = rulesModel.getApplyWhen();
                     String pluginName = rulesModel.getPluginName();
                     boolean allRulesValid = true;
@@ -107,7 +121,7 @@ public class RuleEvaluator {
                                 break;
                             }
                         } catch (PathNotFoundException e) {
-                            LOG.debug("Json Path not found for {}", ruleStream.getName());
+                            LOG.debug("Json Path not found for {}", parsedRule.fileName);
                             allRulesValid = false;
                             break;
                         }
@@ -116,13 +130,10 @@ public class RuleEvaluator {
                     if (allRulesValid) {
                         return RuleFileEvaluation.builder()
                                 .withPluginName(pluginName)
-                                .withRuleFileName(ruleStream.getName())
+                                .withRuleFileName(parsedRule.fileName)
                                 .withResult(true)
                                 .build();
                     }
-                } finally {
-                    ruleStream.close();
-                }
             }
 
         } catch (FileNotFoundException e) {
@@ -143,4 +154,13 @@ public class RuleEvaluator {
                 .build();
     }
 
+    private static class ParsedRule {
+        final RuleTransformerModel model;
+        final String fileName;
+
+        ParsedRule(RuleTransformerModel model, String fileName) {
+            this.model = model;
+            this.fileName = fileName;
+        }
+    }
 }
