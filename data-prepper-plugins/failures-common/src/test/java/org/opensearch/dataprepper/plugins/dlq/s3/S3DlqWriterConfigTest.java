@@ -40,6 +40,11 @@ public class S3DlqWriterConfigTest {
         assertThat(new S3DlqWriterConfig().getForcePathStyle(), is(equalTo(false)));
     }
 
+    @Test
+    public void testDefaultLegacyMD5PluginEnabled() {
+        assertThat(new S3DlqWriterConfig().getLegacyMd5PluginEnabled(), is(equalTo(false)));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"foobar", "arn:aws:es:us-west-2:123456789012:domain/bogus-domain",
         "arn:aws:iam::123456789012:group/bogus-group"})
@@ -72,6 +77,15 @@ public class S3DlqWriterConfigTest {
     public void getS3ClientWithValidAccessStyle(final boolean forcePathStyle) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "forcePathStyle", forcePathStyle);
+        final S3Client s3Client = config.getS3Client();
+        assertThat(s3Client, is(notNullValue()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void getS3ClientWithLegacyMD5PluginEnabled(final boolean legacyMd5PluginEnabled) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "legacyMd5PluginEnabled", legacyMd5PluginEnabled);
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }

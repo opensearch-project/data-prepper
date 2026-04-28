@@ -39,6 +39,11 @@ class DlqPushHandlerTest {
 
     private static final String KEY_PATH_PREFIX_VALUE = "dlq/";
 
+    private static final String LEGACY_MD5_PLUGIN_ENABLED = "legacy_md5_plugin_enabled";
+
+    private static final boolean LEGACY_MD5_PLUGIN_ENABLED_TRUE = true;
+    private static final boolean LEGACY_MD5_PLUGIN_ENABLED_FALSE = false;
+
     private static final String FORCE_PATH_STYLE = "force_path_style";
 
     private static final boolean FORCE_PATH_STYLE_TRUE = true;
@@ -81,6 +86,48 @@ class DlqPushHandlerTest {
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
         SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
         dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE);
+
+        PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+        dlqPushHandler.perform(pluginSetting, failedDlqData);
+        Assertions.assertNotNull(pluginFactory);
+        verify(dlqWriter).write(anyList(), anyString(), anyString());
+    }
+
+    @Test
+    void perform_for_dlq_s3_success_legacymd5pluginenabled_true() throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put(BUCKET,BUCKET_VALUE);
+        props.put(KEY_PATH_PREFIX,KEY_PATH_PREFIX_VALUE);
+        props.put(LEGACY_MD5_PLUGIN_ENABLED,LEGACY_MD5_PLUGIN_ENABLED_TRUE);
+
+        when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
+
+        when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
+        doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
+        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE,LEGACY_MD5_PLUGIN_ENABLED_TRUE);
+
+        PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+        dlqPushHandler.perform(pluginSetting, failedDlqData);
+        Assertions.assertNotNull(pluginFactory);
+        verify(dlqWriter).write(anyList(), anyString(), anyString());
+    }
+
+    @Test
+    void perform_for_dlq_s3_success_legacymd5pluginenabled_false() throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put(BUCKET,BUCKET_VALUE);
+        props.put(KEY_PATH_PREFIX,KEY_PATH_PREFIX_VALUE);
+        props.put(LEGACY_MD5_PLUGIN_ENABLED,LEGACY_MD5_PLUGIN_ENABLED_FALSE);
+
+        when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
+
+        when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
+        doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
+        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE,LEGACY_MD5_PLUGIN_ENABLED_FALSE);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
         pluginSetting.setPipelineName(PIPELINE_NAME);

@@ -12,10 +12,14 @@ import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
+import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.LegacyMd5Plugin;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -37,6 +41,7 @@ public class S3DlqWriterConfig {
     private static final String AWS_IAM = "iam";
     private static final String S3_PREFIX = "s3://";
     private static final boolean FORCE_PATH_STYLE = false;
+    private static final boolean LEGACY_MD5_PLUGIN_ENABLED = false;
 
     @JsonProperty("bucket")
     @NotEmpty
@@ -53,6 +58,9 @@ public class S3DlqWriterConfig {
 
     @JsonProperty("force_path_style")
     private boolean forcePathStyle = FORCE_PATH_STYLE;
+
+    @JsonProperty("legacy_md5_plugin_enabled")
+    private boolean legacyMd5PluginEnabled = LEGACY_MD5_PLUGIN_ENABLED;
 
     @JsonProperty("sts_role_arn")
     @Size(min = 20, max = 2048, message = "sts_role_arn length should be between 1 and 2048 characters")
@@ -82,6 +90,10 @@ public class S3DlqWriterConfig {
 
     public boolean getForcePathStyle() {
         return forcePathStyle;
+    }
+
+    public boolean getLegacyMd5PluginEnabled() {
+        return legacyMd5PluginEnabled;
     }
 
     public Region getRegion() {
@@ -141,13 +153,20 @@ public class S3DlqWriterConfig {
     }
 
     public S3Client getS3Client() {
-        return S3Client.builder()
+        S3ClientBuilder s3ClientBuilder = S3Client.builder()
             .region(this.getRegion())
             .forcePathStyle(this.getForcePathStyle())
             .credentialsProvider(this.getAwsCredentialsProvider())
             .overrideConfiguration(ClientOverrideConfiguration.builder()
                 .retryPolicy(RetryPolicy.builder().numRetries(MAX_NUMBER_OF_RETRIES).build())
-                .build())
-            .build();
+                .build());
+
+        if (legacyMd5PluginEnabled == true) {
+          s3ClientBuilder.requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+            .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+            .addPlugin(LegacyMd5Plugin.create());
+        }
+
+        return  s3ClientBuilder.build();
     }
 }
