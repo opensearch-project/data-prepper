@@ -16,7 +16,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ValidRegex;
@@ -28,7 +27,6 @@ public class SplitEventProcessorConfig {
     static final String DELIMITER_REGEX_KEY = "delimiter_regex";
 
     @NotEmpty
-    @NotNull
     @JsonProperty("field")
     @JsonPropertyDescription("The event field to be split. When no delimiter is specified, the field is treated as an array and each element becomes a separate event.")
     private String field;

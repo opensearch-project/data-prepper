@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,50 +28,43 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-
 @DataPrepperPlugin(name = "split_event", pluginType = Processor.class, pluginConfigurationType = SplitEventProcessorConfig.class)
-public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record<Event>>{
-    final String delimiter;
-    final String delimiterRegex;
-    final String field;
-    final Pattern pattern;
-    final boolean arrayMode;
+public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private static final Logger LOG = LoggerFactory.getLogger(SplitEventProcessor.class);
+
+    private final String field;
     private final Function<String, String[]> splitter;
 
     @DataPrepperPluginConstructor
     public SplitEventProcessor(final PluginMetrics pluginMetrics, final SplitEventProcessorConfig config) {
         super(pluginMetrics);
-        this.delimiter = config.getDelimiter();
-        this.delimiterRegex = config.getDelimiterRegex();
         this.field = config.getField();
 
-        if(delimiterRegex != null && !delimiterRegex.isEmpty()
+        final String delimiter = config.getDelimiter();
+        final String delimiterRegex = config.getDelimiterRegex();
+
+        if (delimiterRegex != null && !delimiterRegex.isEmpty()
                 && delimiter != null && !delimiter.isEmpty()) {
             throw new IllegalArgumentException("delimiter and delimiter_regex cannot be defined at the same time");
         }
 
-        boolean hasDelimiter = (delimiter != null && !delimiter.isEmpty());
-        boolean hasRegex = (delimiterRegex != null && !delimiterRegex.isEmpty());
+        final boolean hasRegex = (delimiterRegex != null && !delimiterRegex.isEmpty());
 
         if (hasRegex) {
-            pattern = Pattern.compile(delimiterRegex);
+            final Pattern pattern = Pattern.compile(delimiterRegex);
             splitter = pattern::split;
-            arrayMode = false;
-        } else if (hasDelimiter) {
-            splitter = inputString -> inputString.split(delimiter);
-            pattern = null;
-            arrayMode = false;
+        } else if (delimiter != null && !delimiter.isEmpty()) {
+            final Pattern literalPattern = Pattern.compile(Pattern.quote(delimiter));
+            splitter = literalPattern::split;
         } else {
             splitter = null;
-            pattern = null;
-            arrayMode = true;
         }
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        Collection<Record<Event>> newRecords = new ArrayList<>();
-        for(final Record<Event> record : records) {
+        final Collection<Record<Event>> newRecords = new ArrayList<>();
+        for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
             if (!recordEvent.containsKey(field)) {
@@ -79,23 +74,31 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
 
             final Object value = recordEvent.get(field, Object.class);
 
-            if (arrayMode) {
-                if (value instanceof List) {
-                    splitArrayField(record, recordEvent, (List<?>) value, newRecords);
-                } else {
-                    newRecords.add(record);
-                }
+            if (value == null) {
+                newRecords.add(record);
+                continue;
+            }
+
+            if (value instanceof List<?>) {
+                splitArrayField(record, recordEvent, (List<?>) value, newRecords);
+                continue;
+            }
+
+            if (splitter == null) {
+                LOG.debug("Field '{}' is not an array and no delimiter is configured, passing through unchanged", field);
+                newRecords.add(record);
                 continue;
             }
 
             if (!(value instanceof String)) {
+                LOG.debug("Field '{}' has non-string, non-array value of type {}, passing through unchanged", field, value.getClass().getSimpleName());
                 newRecords.add(record);
                 continue;
             }
 
             final String[] splitValues = splitter.apply((String) value);
 
-            if(splitValues.length <= 1) {
+            if (splitValues.length <= 1) {
                 newRecords.add(record);
                 continue;
             }
@@ -121,8 +124,8 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
     private void splitIntoRecords(final Record<Event> record, final Event recordEvent,
                                   final Object[] values, final Collection<Record<Event>> newRecords) {
         for (int i = 0; i < values.length - 1; i++) {
-            Record newRecord = createNewRecordFromEvent(recordEvent, values[i]);
-            addToAcknowledgementSetFromOriginEvent((Event) newRecord.getData(), recordEvent);
+            final Record<Event> newRecord = createNewRecordFromEvent(recordEvent, values[i]);
+            addToAcknowledgementSetFromOriginEvent(newRecord.getData(), recordEvent);
             newRecords.add(newRecord);
         }
 
@@ -130,18 +133,14 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
         newRecords.add(record);
     }
 
-    protected Record createNewRecordFromEvent(final Event recordEvent, Object splitValue) {
-        Record newRecord;
-        JacksonEvent newRecordEvent;
-
-        newRecordEvent = JacksonEvent.fromEvent(recordEvent);
+    private Record<Event> createNewRecordFromEvent(final Event recordEvent, final Object splitValue) {
+        final JacksonEvent newRecordEvent = JacksonEvent.fromEvent(recordEvent);
         newRecordEvent.put(field, splitValue);
-        newRecord = new Record<>(newRecordEvent);
-        return newRecord;
+        return new Record<>(newRecordEvent);
     }
 
-    protected void addToAcknowledgementSetFromOriginEvent(Event recordEvent, Event originRecordEvent) {
-        DefaultEventHandle eventHandle = (DefaultEventHandle) originRecordEvent.getEventHandle();
+    private void addToAcknowledgementSetFromOriginEvent(final Event recordEvent, final Event originRecordEvent) {
+        final DefaultEventHandle eventHandle = (DefaultEventHandle) originRecordEvent.getEventHandle();
         if (eventHandle != null) {
             eventHandle.addEventHandle(recordEvent.getEventHandle());
         }
