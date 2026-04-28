@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,11 +48,15 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
                 if (result == true) {
-                    sourceCoordinator.closePartition(
-                            indexPartition.getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
-                            true);
+                    if (isSingleScanMode(openSearchSourceConfiguration)) {
+                        sourceCoordinator.completePartition(indexPartition.getPartitionKey(), true);
+                    } else {
+                        sourceCoordinator.closePartition(
+                                indexPartition.getPartitionKey(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
+                                true);
+                    }
 
                     LOG.info("Received acknowledgment of completion from sink for index {}", indexPartition.getPartitionKey());
                 } else {
@@ -70,6 +75,9 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), OWNERSHIP_TIMEOUT);
             acknowledgementSet.complete();
+        } else if (isSingleScanMode(openSearchSourceConfiguration)) {
+            sourceCoordinator.completePartition(indexPartition.getPartitionKey(), false);
+            LOG.info("Completed processing of index {} (single_scan mode; index will not be rescheduled)", indexPartition.getPartitionKey());
         } else {
             sourceCoordinator.closePartition(
                     indexPartition.getPartitionKey(),
@@ -78,6 +86,11 @@ public class WorkerCommonUtils {
                     false);
             LOG.info("Completed processing of index {}", indexPartition.getPartitionKey());
         }
+    }
+
+    private static boolean isSingleScanMode(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        return java.util.Objects.nonNull(openSearchSourceConfiguration.getSchedulingParameterConfiguration())
+                && DiscoveryMode.SINGLE_SCAN.equals(openSearchSourceConfiguration.getSchedulingParameterConfiguration().getDiscoveryMode());
     }
 
     static long calculateExponentialBackoffAndJitter(final int retryCount) {

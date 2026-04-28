@@ -27,6 +27,16 @@ public class SchedulingParameterConfigurationTest {
         assertThat(schedulingParameterConfiguration.isStartTimeValid(), equalTo(true));
         assertThat(schedulingParameterConfiguration.getStartTime().isBefore(Instant.now()), equalTo(true));
         assertThat(schedulingParameterConfiguration.getInterval(), equalTo(Duration.ofHours(8)));
+        assertThat(schedulingParameterConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.PERIODIC));
+    }
+
+    @Test
+    void single_scan_discovery_mode_from_yaml() throws JsonProcessingException {
+        final String yaml = "  discovery_mode: SINGLE_SCAN\n";
+
+        final SchedulingParameterConfiguration config = objectMapper.readValue(yaml, SchedulingParameterConfiguration.class);
+
+        assertThat(config.getDiscoveryMode(), equalTo(DiscoveryMode.SINGLE_SCAN));
     }
 
     @Test

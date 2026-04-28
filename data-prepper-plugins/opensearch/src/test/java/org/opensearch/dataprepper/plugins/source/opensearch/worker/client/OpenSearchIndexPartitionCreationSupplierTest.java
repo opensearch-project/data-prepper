@@ -24,23 +24,33 @@ import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier.SINGLE_SCAN_COMPLETE;
 
 @ExtendWith(MockitoExtension.class)
 public class OpenSearchIndexPartitionCreationSupplierTest {
@@ -258,6 +268,104 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
 
         assertThat(partitionIdentifierList, notNullValue());
+    }
+
+    @Test
+    void apply_with_single_scan_mode_returns_empty_when_flag_already_set() {
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        // Refresher is wired through the constructor but should not be used when the scan is already completed
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
+
+        final OpenSearchIndexPartitionCreationSupplier objectUnderTest = createObjectUnderTest();
+
+        final Map<String, Object> globalStateMap = new HashMap<>();
+        globalStateMap.put(SINGLE_SCAN_COMPLETE, Boolean.TRUE);
+
+        final List<PartitionIdentifier> partitionIdentifierList = objectUnderTest.apply(globalStateMap);
+
+        assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList.isEmpty(), equalTo(true));
+        verify(opensearchClientRefresher, never()).get();
+    }
+
+    @Test
+    void apply_with_single_scan_mode_sets_flag_after_discovering_partitions() throws IOException {
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
+
+        final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
+        final IndicesResponse indicesResponse = mock(IndicesResponse.class);
+        final IndicesRecord indicesRecord = mock(IndicesRecord.class);
+        when(indicesRecord.index()).thenReturn("my-index");
+        when(indicesResponse.valueBody()).thenReturn(List.of(indicesRecord));
+        when(openSearchCatClient.indices()).thenReturn(indicesResponse);
+        when(openSearchClient.cat()).thenReturn(openSearchCatClient);
+
+        final Map<String, Object> globalStateMap = new HashMap<>();
+
+        final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(globalStateMap);
+
+        assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList, hasSize(1));
+        assertThat(globalStateMap, hasEntry(SINGLE_SCAN_COMPLETE, Boolean.TRUE));
+    }
+
+    @Test
+    void apply_with_periodic_mode_does_not_set_single_scan_flag() throws IOException {
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
+
+        final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
+        final IndicesResponse indicesResponse = mock(IndicesResponse.class);
+        when(indicesResponse.valueBody()).thenReturn(Collections.emptyList());
+        when(openSearchCatClient.indices()).thenReturn(indicesResponse);
+        when(openSearchClient.cat()).thenReturn(openSearchCatClient);
+
+        final Map<String, Object> globalStateMap = new HashMap<>();
+
+        createObjectUnderTest().apply(globalStateMap);
+
+        assertThat(globalStateMap, not(hasEntry(SINGLE_SCAN_COMPLETE, Boolean.TRUE)));
+    }
+
+    @Test
+    void apply_with_periodic_mode_and_completed_flag_still_performs_discovery() throws IOException {
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
+        when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
+        when(clusterClientFactory.getClientRefresher()).thenReturn(opensearchClientRefresher);
+
+        final OpenSearchCatClient openSearchCatClient = mock(OpenSearchCatClient.class);
+        final IndicesResponse indicesResponse = mock(IndicesResponse.class);
+        when(indicesResponse.valueBody()).thenReturn(Collections.emptyList());
+        when(openSearchCatClient.indices()).thenReturn(indicesResponse);
+        when(openSearchClient.cat()).thenReturn(openSearchCatClient);
+
+        final Map<String, Object> globalStateMap = new HashMap<>();
+        // A stale flag left in state should be ignored in PERIODIC mode
+        globalStateMap.put(SINGLE_SCAN_COMPLETE, Boolean.TRUE);
+
+        createObjectUnderTest().apply(globalStateMap);
+
+        // cat/indices was actually called, confirming discovery ran despite the flag
+        verify(openSearchCatClient).indices();
     }
 
     private static Stream<Arguments> opensearchCatIndicesExceptions() {
