@@ -8,7 +8,7 @@
 #
 
 "<<pipeline-name>>":
-  workers: "<<$.<<pipeline-name>>.workers>>"
+  workers: 1
   delay: "<<$.<<pipeline-name>>.delay>>"
   buffer: "<<$.<<pipeline-name>>.buffer>>"
   source:
