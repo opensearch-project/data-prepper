@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
@@ -38,11 +37,9 @@ public class KafkaHeadersExtractorTest {
         RecordHeaders headers = new RecordHeaders();
 
         int testIntValue = random.nextInt(500);
-        //int testIntValue = 50;
         byte[] intBytes = ByteBuffer.allocate(4).putInt(testIntValue).array();
 
-        //double testDoubleValue = random.nextDouble();
-        double testDoubleValue = 4.0d;
+        double testDoubleValue = random.nextDouble();
         byte[] doubleBytes = ByteBuffer.allocate(8).putDouble(testDoubleValue).array();
         headers.add(TEST_STRING_HEADER_KEY, testStringHeader.getBytes(StandardCharsets.UTF_8));
         headers.add(TEST_INT_HEADER_KEY, intBytes);

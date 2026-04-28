@@ -335,20 +335,17 @@ public class KafkaCustomConsumerTest {
         });
         assertEquals(consumer.getNumRecordsCommitted(), 2L);
 
-        for (Record<Event> record: bufferedRecords) {
-            Event event = record.getData();
-            String value1 = event.get(testKey1, String.class);
-            String value2 = event.get(testKey2, String.class);
-            assertTrue(value1 != null || value2 != null);
-            if (value1 != null) {
-                assertEquals(value1, testValue1);
-            }
-            if (value2 != null) {
-                assertEquals(value2, testValue2);
-            }
-            assertNotNull(event.getMetadata().getExternalOriginationTime());
-            assertNotNull(event.getEventHandle().getExternalOriginationTime());
-        }
+        Event event = bufferedRecords.get(0).getData();
+        String value1 = event.get(testKey1, String.class);
+        assertEquals(value1, testValue1);
+        assertNotNull(event.getMetadata().getExternalOriginationTime());
+        assertNotNull(event.getEventHandle().getExternalOriginationTime());
+
+        event = bufferedRecords.get(1).getData();
+        String value2 = event.get(testKey2, String.class);
+        assertEquals(value2, testValue2);
+        assertNotNull(event.getMetadata().getExternalOriginationTime());
+        assertNotNull(event.getEventHandle().getExternalOriginationTime());
 
         verify(topicMetrics).recordTimeBetweenPolls();
     }
@@ -377,25 +374,25 @@ public class KafkaCustomConsumerTest {
         });
         assertEquals(consumer.getNumRecordsCommitted(), 2L);
 
-        for (Record<Event> record: bufferedRecords) {
-            Event event = record.getData();
-            String value1 = event.get(testKey1, String.class);
-            String value2 = event.get(testKey2, String.class);
-            Map<String, Object> attributes = event.getMetadata().getAttributes();
-            Map<String, Object> kafkaHeaders = (Map<String, Object>) attributes.get("kafka_headers");
-            assertThat(kafkaHeaders.get("test-string-header"), equalTo(testStringHeader));
-            assertTrue(value1 != null || value2 != null);
-            if (value1 != null) {
-                assertEquals(value1, testValue1);
-                assertThat(kafkaHeaders.get("test-int-header"), notNullValue());
-            }
-            if (value2 != null) {
-                assertEquals(value2, testValue2);
-                assertThat(kafkaHeaders.get("test-double-header"), notNullValue());
-            }
-            assertNotNull(event.getMetadata().getExternalOriginationTime());
-            assertNotNull(event.getEventHandle().getExternalOriginationTime());
-        }
+        Event event = bufferedRecords.get(0).getData();
+        String value1 = event.get(testKey1, String.class);
+        assertEquals(value1, testValue1);
+        assertNotNull(event.getMetadata().getExternalOriginationTime());
+        assertNotNull(event.getEventHandle().getExternalOriginationTime());
+        Map<String, Object> attributes = event.getMetadata().getAttributes();
+        Map<String, Object> kafkaHeaders = (Map<String, Object>) attributes.get("kafka_headers");
+        assertThat(kafkaHeaders.get("test-string-header"), equalTo(testStringHeader));
+        assertThat(kafkaHeaders.get("test-int-header"), notNullValue());
+
+        event = bufferedRecords.get(1).getData();
+        String value2 = event.get(testKey2, String.class);
+        assertEquals(value2, testValue2);
+        assertNotNull(event.getMetadata().getExternalOriginationTime());
+        assertNotNull(event.getEventHandle().getExternalOriginationTime());
+        attributes = event.getMetadata().getAttributes();
+        kafkaHeaders = (Map<String, Object>) attributes.get("kafka_headers");
+        assertThat(kafkaHeaders.get("test-string-header"), equalTo(testStringHeader));
+        assertThat(kafkaHeaders.get("test-double-header"), notNullValue());
 
         verify(topicMetrics).recordTimeBetweenPolls();
     }
@@ -795,7 +792,7 @@ public class KafkaCustomConsumerTest {
         consumer.consumeRecords();
         consumer.consumeRecords();
 
-        Assertions.assertFalse(shutdownInProgress.get(),
+        assertFalse(shutdownInProgress.get(),
                 "Consumer should not shut down on auth failures");
         ArgumentCaptor<Long> sleepCaptor = ArgumentCaptor.forClass(Long.class);
         verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());

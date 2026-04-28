@@ -18,22 +18,30 @@ public class KafkaHeadersExtractor {
             return null;
         }
         Map<String, Object> headerData = new HashMap<>();
-        for (Header header: headers) {
+        for (Header header : headers) {
             byte[] headerValue = header.value();
             if (headerValue == null) {
                 headerData.put(header.key(), null);
                 continue;
             }
-            String strValue = new String(header.value(), StandardCharsets.UTF_8);
-            System.out.println("____"+headerValue.length+"...."+strValue.getBytes().length);
-            if (Arrays.equals(headerValue, strValue.getBytes())) {
-                System.out.println("___1___key_"+header.key());
+            String strValue = new String(headerValue, StandardCharsets.UTF_8);
+            if (Arrays.equals(headerValue, strValue.getBytes(StandardCharsets.UTF_8))
+                    && isPrintableString(strValue)) {
                 headerData.put(header.key(), strValue);
-                continue;
+            } else {
+                headerData.put(header.key(), headerValue);
             }
-            System.out.println("___2___key_"+header.key());
-            headerData.put(header.key(), headerValue);
         }
         return headerData;
+    }
+
+    private static boolean isPrintableString(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isISOControl(c) && c != '\t' && c != '\n' && c != '\r') {
+                return false;
+            }
+        }
+        return true;
     }
 }
