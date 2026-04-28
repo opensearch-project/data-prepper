@@ -27,6 +27,8 @@ import java.util.Optional;
 
 public class BulkOperationFactory {
 
+    static final int SCRIPTED_UPSERT_RETRY_ON_CONFLICT = 3;
+
     private final VersionType versionType;
     private final ScriptManager scriptManager;
     private final ObjectMapper objectMapper;
@@ -117,6 +119,7 @@ public class BulkOperationFactory {
             if (isUpsert) {
                 builder.upsert(filteredJsonNode);
                 builder.scriptedUpsert(true);
+                builder.retryOnConflict(SCRIPTED_UPSERT_RETRY_ON_CONFLICT);
             }
         } else if (isUpsert) {
             builder.document(filteredJsonNode).upsert(filteredJsonNode);
