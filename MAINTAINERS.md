@@ -16,6 +16,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Karsten Schnitter      | [KarstenSchnitter](https://github.com/KarstenSchnitter)   | SAP         |
 | David Venable          | [dlvenable](https://github.com/dlvenable)                 | Amazon      |
 | Hai Yan                | [oeyh](https://github.com/oeyh)                           | Amazon      |
+| Xun Zhang              | [Zhangxunmt](https://github.com/Zhangxunmt)               | Amazon      |
 
 
 ## Emeritus
