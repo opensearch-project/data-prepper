@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,14 +184,15 @@ public class PitWorker implements SearchWorker, Runnable {
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
         SearchWithSearchAfterResults searchWithSearchAfterResults = null;
+        final List<SortingOptions> sortingOptions = SortingOptions.fromSortConfigs(searchConfiguration.getSort());
 
-        // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
             searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
                     .withPitId(openSearchIndexProgressState.getPitId())
                     .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
                     .withPaginationSize(searchConfiguration.getBatchSize())
                     .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
+                    .withSortOptions(sortingOptions)
                     .build());
 
             searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {

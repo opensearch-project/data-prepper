@@ -31,6 +31,7 @@ public abstract class RecordConverter {
 
     private final String s3Prefix;
     private final List<String> folderNames;
+    private JoinMetadataEnricher joinMetadataEnricher;
 
     static final String S3_BUFFER_PREFIX = "buffer";
     static final String S3_PATH_DELIMITER = "/";
@@ -44,6 +45,14 @@ public abstract class RecordConverter {
         folderNames = s3PartitionCreator.createPartitions();
     }
 
+    public void setJoinMetadataEnricher(final JoinMetadataEnricher joinMetadataEnricher) {
+        this.joinMetadataEnricher = joinMetadataEnricher;
+    }
+
+    public JoinMetadataEnricher getJoinMetadataEnricher() {
+        return joinMetadataEnricher;
+    }
+
     public Event convert(final Event event,
                          final String databaseName,
                          final String schemaName,
@@ -52,7 +61,8 @@ public abstract class RecordConverter {
                          final List<String> primaryKeys,
                          final long eventCreateTimeEpochMillis,
                          final long eventVersionNumber,
-                         final StreamEventType eventType) {
+                         final StreamEventType eventType,
+                         final List<String> columnNames) {
 
         EventMetadata eventMetadata = event.getMetadata();
 
@@ -83,7 +93,37 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreateTimeEpochMillis);
         eventMetadata.setAttribute(EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
 
+        if (joinMetadataEnricher != null && joinMetadataEnricher.isJoinTable(tableName)) {
+            final boolean isDelete = bulkAction == OpenSearchBulkActions.DELETE;
+            joinMetadataEnricher.enrich(event, tableName, columnNames, isDelete);
+
+            // For child tables, override S3 partition key to use the join key (parent key value)
+            // so related parent and child events land in the same S3 folder
+            final String joinPrimaryKey = (String) eventMetadata.getAttribute(MetadataKeyAttributes.JOIN_PRIMARY_KEY_METADATA);
+            if (joinPrimaryKey != null) {
+                final String joinPartitionKey = s3Prefix + S3_PATH_DELIMITER + S3_BUFFER_PREFIX + S3_PATH_DELIMITER + hashKeyToPartition(joinPrimaryKey);
+                eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, joinPartitionKey);
+            }
+        }
+
         return event;
+    }
+
+    /**
+     * @deprecated Use {@link #convert(Event, String, String, String, OpenSearchBulkActions, List, long, long, StreamEventType, List)} instead.
+     */
+    @Deprecated
+    public Event convert(final Event event,
+                         final String databaseName,
+                         final String schemaName,
+                         final String tableName,
+                         final OpenSearchBulkActions bulkAction,
+                         final List<String> primaryKeys,
+                         final long eventCreateTimeEpochMillis,
+                         final long eventVersionNumber,
+                         final StreamEventType eventType) {
+        return convert(event, databaseName, schemaName, tableName, bulkAction, primaryKeys,
+                eventCreateTimeEpochMillis, eventVersionNumber, eventType, null);
     }
 
     abstract String getIngestionType();

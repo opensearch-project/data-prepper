@@ -136,6 +136,7 @@ public final class BulkRetryStrategy {
     private final Counter documentsVersionConflictErrors;
     private final Counter documentsDuplicates;
     private final ExistingDocumentQueryManager existingDocumentQueryManager;
+    private final boolean isExternalVersioning;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -167,8 +168,10 @@ public final class BulkRetryStrategy {
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
                              final String pipelineName,
                              final String pluginName,
-                             final ExistingDocumentQueryManager existingDocumentQueryManager) {
+                             final ExistingDocumentQueryManager existingDocumentQueryManager,
+                             final boolean isExternalVersioning) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
+        this.isExternalVersioning = isExternalVersioning;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.successfulOperationsHandler = successfulOperationsHandler;
@@ -323,9 +326,9 @@ public final class BulkRetryStrategy {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
-                    // Skip logging the error for version conflicts
+                    // Skip logging the error for version conflicts when using external versioning
                     final ErrorCause error = bulkItemResponse.error();
-                    if (error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+                    if (isExternalVersioning && error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
                         continue;
                     }
                     LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
@@ -401,11 +404,11 @@ public final class BulkRetryStrategy {
 
                     if (canRetryItem(bulkItemResponse, attemptNumber)) {
                         requestToReissue.addOperation(bulkOperation);
-                    } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    } else if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
-                        // This is not a successfully sent document, so do not add to "successfulOperations"
-                        // and just release the eventHandle
+                        // When using external versioning, version conflicts are expected and not true errors.
+                        // Release the eventHandle without counting as a document error.
                         bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
@@ -441,20 +444,20 @@ public final class BulkRetryStrategy {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (isItemInError(bulkItemResponse)) {
-                if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
-                    // This is not a successfully sent document, so do not add to "successfulOperations"
-                    // and just release the eventHandle
+                    // When using external versioning, version conflicts are expected and not true errors.
+                    // Release the eventHandle without counting as a document error.
                     bulkOperation.releaseEventHandle(true);
                 } else {
                     failures.add(FailedBulkOperation.builder()
                             .withBulkOperation(bulkOperation)
                             .withBulkResponseItem(bulkItemResponse)
                             .build());
+                    documentErrorsCounter.increment();
+                    getDocumentStatusCounter(bulkItemResponse.status()).increment();
                 }
-                documentErrorsCounter.increment();
-                getDocumentStatusCounter(bulkItemResponse.status()).increment();
             } else {
                 sentDocumentsCounter.increment();
                 if(isDuplicateDocument(bulkItemResponse)) {

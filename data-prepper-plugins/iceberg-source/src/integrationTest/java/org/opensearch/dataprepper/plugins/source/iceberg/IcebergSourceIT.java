@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemorySourceCoordinationStore;
 
 import java.time.Duration;
@@ -137,6 +138,75 @@ public class IcebergSourceIT {
             }
         } finally {
             service.shutdown();
+        }
+    }
+
+    @Test
+    void export_with_shared_catalog_config() throws Exception {
+        final Table table = helper.createTable(TEST_NAMESPACE, TEST_TABLE, TEST_SCHEMA);
+        helper.appendRows(table, List.of(
+                helper.newRecord(TEST_SCHEMA, 1, "Alice", 30),
+                helper.newRecord(TEST_SCHEMA, 2, "Bob", 25)
+        ));
+
+        final IcebergService service = createService(false, true);
+        final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer = createMockBuffer();
+        service.start(buffer);
+
+        try {
+            await().atMost(30, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(2))));
+            assertThat(receivedRecords, hasSize(2));
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test
+    void export_with_mixed_catalog_config() throws Exception {
+        // Table A uses shared catalog, Table B overrides with its own catalog (same catalog in test, but exercises the override path)
+        final String tableNameA = "mixed_a";
+        final String tableNameB = "mixed_b";
+        final Table tableA = helper.createTable(TEST_NAMESPACE, tableNameA, TEST_SCHEMA);
+        final Table tableB = helper.createTable(TEST_NAMESPACE, tableNameB, TEST_SCHEMA);
+        helper.appendRows(tableA, List.of(helper.newRecord(TEST_SCHEMA, 1, "Alice", 30)));
+        helper.appendRows(tableB, List.of(helper.newRecord(TEST_SCHEMA, 2, "Bob", 25)));
+
+        final IcebergSourceConfig sourceConfig = mock(IcebergSourceConfig.class);
+        final TableConfig configA = mock(TableConfig.class);
+        final TableConfig configB = mock(TableConfig.class);
+
+        when(configA.getTableName()).thenReturn(TEST_NAMESPACE + "." + tableNameA);
+        when(configA.getCatalog()).thenReturn(null);
+        when(configA.getIdentifierColumns()).thenReturn(List.of("id"));
+        when(configA.isDisableExport()).thenReturn(false);
+
+        when(configB.getTableName()).thenReturn(TEST_NAMESPACE + "." + tableNameB);
+        when(configB.getCatalog()).thenReturn(helper.catalogProperties());
+        when(configB.getIdentifierColumns()).thenReturn(List.of("id"));
+        when(configB.isDisableExport()).thenReturn(false);
+
+        when(sourceConfig.getCatalog()).thenReturn(helper.catalogProperties());
+        when(sourceConfig.getTables()).thenReturn(List.of(configA, configB));
+        when(sourceConfig.getPollingInterval()).thenReturn(Duration.ofSeconds(5));
+        when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(sourceConfig.getShuffleConfig()).thenReturn(createTestShuffleConfig());
+
+        final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
+        coordinator.createPartition(new LeaderPartition());
+        final IcebergService service = new IcebergService(coordinator, sourceConfig, pluginMetrics,
+                acknowledgementSetManager, TestEventFactory.getTestEventFactory());
+        final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer = createMockBuffer();
+        service.start(buffer);
+
+        try {
+            await().atMost(30, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(2))));
+            assertThat(receivedRecords, hasSize(2));
+        } finally {
+            service.shutdown();
+            helper.dropTable(TEST_NAMESPACE, tableNameA);
+            helper.dropTable(TEST_NAMESPACE, tableNameB);
         }
     }
 
@@ -255,7 +325,7 @@ public class IcebergSourceIT {
         ));
 
         final String fullTableName = TEST_NAMESPACE + "." + partitionedTable;
-        final IcebergService service = createServiceForTable(fullTableName, List.of("id"), false);
+        final IcebergService service = createServiceForTable(fullTableName, List.of("id"), false, false);
         final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer = createMockBuffer();
         service.start(buffer);
 
@@ -363,12 +433,17 @@ public class IcebergSourceIT {
     }
 
     private IcebergService createService(final boolean disableExport) throws Exception {
-        return createServiceForTable(TEST_NAMESPACE + "." + TEST_TABLE, List.of("id"), disableExport);
+        return createServiceForTable(TEST_NAMESPACE + "." + TEST_TABLE, List.of("id"), disableExport, false);
+    }
+
+    private IcebergService createService(final boolean disableExport, final boolean useSharedCatalog) throws Exception {
+        return createServiceForTable(TEST_NAMESPACE + "." + TEST_TABLE, List.of("id"), disableExport, useSharedCatalog);
     }
 
     private IcebergService createServiceForTable(final String fullTableName,
                                                   final List<String> identifierColumns,
-                                                  final boolean disableExport) throws Exception {
+                                                  final boolean disableExport,
+                                                  final boolean useSharedCatalog) throws Exception {
 
         // Build config via reflection since fields are private
         final IcebergSourceConfig sourceConfig = mock(IcebergSourceConfig.class);
@@ -379,6 +454,14 @@ public class IcebergSourceIT {
         when(tableConfig.getIdentifierColumns()).thenReturn(identifierColumns);
         when(tableConfig.isDisableExport()).thenReturn(disableExport);
 
+        if (useSharedCatalog) {
+            when(tableConfig.getCatalog()).thenReturn(null);
+            when(sourceConfig.getCatalog()).thenReturn(helper.catalogProperties());
+        } else {
+            when(tableConfig.getCatalog()).thenReturn(helper.catalogProperties());
+            when(sourceConfig.getCatalog()).thenReturn(null);
+        }
+
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
         when(sourceConfig.getPollingInterval()).thenReturn(Duration.ofSeconds(5));
         lenient().when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
@@ -388,7 +471,7 @@ public class IcebergSourceIT {
         coordinator.createPartition(new LeaderPartition());
 
         return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager,
-                org.opensearch.dataprepper.event.TestEventFactory.getTestEventFactory());
+                TestEventFactory.getTestEventFactory());
     }
 
     private org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig createTestShuffleConfig() {

@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ScriptConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryForExistingDocumentConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
@@ -103,6 +104,8 @@ public class IndexConfiguration {
     private final VersionType versionType;
     private final boolean normalizeIndex;
 
+    private final ScriptConfiguration scriptConfiguration;
+
     private final String queryWhen;
 
     private final Duration queryDuration;
@@ -174,6 +177,7 @@ public class IndexConfiguration {
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.actions = builder.actions;
+        this.scriptConfiguration = builder.scriptConfiguration;
         this.documentRootKey = builder.documentRootKey;
         this.queryWhen = builder.queryWhen;
         this.queryTerm = builder.queryTerm;
@@ -293,6 +297,18 @@ public class IndexConfiguration {
             builder = builder.withAction(openSearchSinkConfig.getAction(), expressionEvaluator);
         }
 
+        final ScriptConfiguration scriptConfiguration = openSearchSinkConfig.getScriptConfiguration();
+        if (scriptConfiguration != null) {
+            builder = builder.withScriptConfiguration(scriptConfiguration);
+        }
+
+        if (scriptConfiguration != null && openSearchSinkConfig.getVersionType() != null
+                && VersionType.External.jsonValue().equals(openSearchSinkConfig.getVersionType())) {
+            throw new InvalidPluginConfigurationException(
+                    "document_version_type 'external' is incompatible with script configuration. " +
+                    "OpenSearch does not support external versioning with scripted upserts.");
+        }
+
         AwsAuthenticationConfiguration awsAuthenticationConfiguration = openSearchSinkConfig.getAwsAuthenticationOptions();
         if (awsAuthenticationConfiguration != null) {
             builder = builder.withServerless(awsAuthenticationConfiguration.isServerlessCollection());
@@ -370,6 +386,10 @@ public class IndexConfiguration {
 
     public List<ActionConfiguration> getActions() {
         return actions;
+    }
+
+    public ScriptConfiguration getScriptConfiguration() {
+        return scriptConfiguration;
     }
 
     public String getS3AwsRegion() {
@@ -501,6 +521,7 @@ public class IndexConfiguration {
         private Optional<String> ismPolicyFile;
         private String action;
         private List<ActionConfiguration> actions;
+        private ScriptConfiguration scriptConfiguration;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private String s3AwsStsExternalId;
@@ -626,6 +647,11 @@ public class IndexConfiguration {
                 }
             }
             this.actions = actions;
+            return this;
+        }
+
+        public Builder withScriptConfiguration(final ScriptConfiguration scriptConfiguration) {
+            this.scriptConfiguration = scriptConfiguration;
             return this;
         }
 

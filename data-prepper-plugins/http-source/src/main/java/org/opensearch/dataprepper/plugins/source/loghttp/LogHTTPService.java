@@ -28,13 +28,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 
 /*
 * A HTTP service for log ingestion to be executed by BlockingTaskExecutor.
 */
+
 @Blocking
 public class LogHTTPService {
     private static final int SERIALIZATION_OVERHEAD = 1024;
@@ -60,22 +62,32 @@ public class LogHTTPService {
     private final Timer requestProcessDuration;
     private Integer bufferMaxRequestLength;
     private Integer bufferOptimalRequestLength;
+    private final HttpHeaderExtractor httpHeaderExtractor;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
                           final PluginMetrics pluginMetrics,
-                          final InputCodec codec) {
+                          final InputCodec codec,
+                          final HttpHeaderExtractor httpHeaderExtractor) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.bufferMaxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
         this.bufferOptimalRequestLength = buffer.getOptimalRequestSize().isPresent() ? buffer.getOptimalRequestSize().get(): null;
         this.codec = codec;
+        this.httpHeaderExtractor = httpHeaderExtractor;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         requestsOverOptimalSizeCounter = pluginMetrics.counter(REQUESTS_OVER_OPTIMAL_SIZE);
         requestsOverMaximumSizeCounter = pluginMetrics.counter(REQUESTS_OVER_MAXIMUM_SIZE);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+    }
+
+    public LogHTTPService(final int bufferWriteTimeoutInMillis,
+                          final Buffer<Record<Log>> buffer,
+                          final PluginMetrics pluginMetrics,
+                          final InputCodec codec) {
+        this(bufferWriteTimeoutInMillis, buffer, pluginMetrics, codec, new HttpHeaderExtractor(Collections.emptySet()));
     }
 
     @Post
@@ -92,6 +104,7 @@ public class LogHTTPService {
 
     HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         final HttpData content = aggregatedHttpRequest.content();
+        final Map<String, Object> extractedHeaders = Collections.unmodifiableMap(httpHeaderExtractor.extractHeaders(aggregatedHttpRequest));
 
         if (buffer.isByteBuffer()) {
             if (bufferMaxRequestLength != null && bufferOptimalRequestLength != null && content.array().length > bufferOptimalRequestLength) {
@@ -140,6 +153,12 @@ public class LogHTTPService {
                 );
             }
 
+            if (!extractedHeaders.isEmpty()) {
+                for (Record<Log> record : records) {
+                    record.getData().getMetadata().setAttribute("headers", extractedHeaders);
+                }
+            }
+
             try {
                 buffer.writeAll(records, bufferWriteTimeoutInMillis);
             } catch (Exception e) {
@@ -171,13 +190,10 @@ public class LogHTTPService {
         }
     }
 
-    private Record<Log> buildRecordLog(String json) {
-
-        final JacksonLog log = JacksonLog.builder()
+    private Record<Log> buildRecordLog(final String json) {
+        final JacksonLog.Builder builder = JacksonLog.builder()
                 .withData(json)
-                .getThis()
-                .build();
-
-        return new Record<>(log);
+                .getThis();
+        return new Record<>(builder.build());
     }
 }
