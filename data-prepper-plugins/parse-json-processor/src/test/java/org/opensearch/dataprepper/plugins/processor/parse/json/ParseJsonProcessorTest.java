@@ -154,7 +154,8 @@ public class ParseJsonProcessorTest {
         when(processorConfig.getNormalizeKeys()).thenReturn(true);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
         Map<String, Object> data = Map.of("key^2", 1, "key%5", Map.of("key&6", "value6"));
-        Map<String, Object> expectedResult = Map.of("key_2", 1, "key_5", Map.of("key_6", "value6"));
+        // % is valid in event keys, so key%5 is not normalized; ^ and & are invalid and replaced with _
+        Map<String, Object> expectedResult = Map.of("key_2", 1, "key%5", Map.of("key_6", "value6"));
         final String serializedMessage = objectMapper.writeValueAsString(data);
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
         assertThatKeyEquals(parsedEvent, source, expectedResult);

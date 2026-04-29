@@ -304,9 +304,10 @@ public class KeyValueProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final Event event = editedRecords.get(0).getData();
 
-        assertThat(event.containsKey("key_1"), is(true));
+        // % is valid in event keys, so key%1 is not normalized; ^ is invalid and replaced with _
+        assertThat(event.containsKey("key%1"), is(true));
         assertThat(event.containsKey("key_2"), is(true));
-        assertThat(event.get("key_1", Object.class), is("value1"));
+        assertThat(event.get("key%1", Object.class), is("value1"));
         assertThat(event.get("key_2", Object.class), is("value2"));
     }
 
