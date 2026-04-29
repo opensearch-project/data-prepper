@@ -24,10 +24,8 @@ import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 
 import java.io.IOException;
@@ -272,9 +270,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_single_scan_mode_returns_empty_when_flag_already_set() {
-        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
-        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
 
         // Refresher is wired through the constructor but should not be used when the scan is already completed
         when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
@@ -294,9 +290,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_single_scan_mode_sets_flag_after_discovering_partitions() throws IOException {
-        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
-        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
 
         when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
         when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
@@ -321,9 +315,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_periodic_mode_does_not_set_single_scan_flag() throws IOException {
-        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
-        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(false);
 
         when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
         when(opensearchClientRefresher.get()).thenReturn(openSearchClient);
@@ -344,9 +336,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
     @Test
     void apply_with_periodic_mode_and_completed_flag_still_performs_discovery() throws IOException {
-        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
-        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(false);
 
         when(opensearchClientRefresher.getComponentClass()).thenReturn(OpenSearchClient.class);
         when(opensearchClientRefresher.get()).thenReturn(openSearchClient);

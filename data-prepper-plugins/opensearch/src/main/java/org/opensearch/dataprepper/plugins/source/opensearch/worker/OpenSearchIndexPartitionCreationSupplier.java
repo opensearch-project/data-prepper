@@ -13,7 +13,6 @@ import org.opensearch.client.opensearch.cat.IndicesResponse;
 import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSearchIndex;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.ClusterClientFactory;
@@ -79,7 +78,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
             partitions = Collections.emptyList();
         }
 
-        if (isSingleScanMode() && Objects.nonNull(globalStateMap)) {
+        if (openSearchSourceConfiguration.isSingleScanMode() && Objects.nonNull(globalStateMap)) {
             globalStateMap.put(SINGLE_SCAN_COMPLETE, Boolean.TRUE);
             LOG.info("Discovery mode is SINGLE_SCAN. Completed one-time index discovery with {} partitions.", partitions.size());
         }
@@ -87,13 +86,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         return partitions;
     }
 
-    private boolean isSingleScanMode() {
-        return Objects.nonNull(openSearchSourceConfiguration.getSchedulingParameterConfiguration())
-                && DiscoveryMode.SINGLE_SCAN.equals(openSearchSourceConfiguration.getSchedulingParameterConfiguration().getDiscoveryMode());
-    }
-
     private boolean isSingleScanCompleted(final Map<String, Object> globalStateMap) {
-        return isSingleScanMode()
+        return openSearchSourceConfiguration.isSingleScanMode()
                 && Objects.nonNull(globalStateMap)
                 && Boolean.TRUE.equals(globalStateMap.get(SINGLE_SCAN_COMPLETE));
     }

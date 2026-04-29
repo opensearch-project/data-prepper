@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 
 import java.time.Duration;
@@ -70,7 +69,7 @@ public class WorkerCommonUtilsCompletionTest {
     @Test
     void completeIndexPartition_in_periodic_mode_without_acknowledgments_calls_closePartition() {
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(false);
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ofHours(8));
         when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
 
@@ -84,7 +83,7 @@ public class WorkerCommonUtilsCompletionTest {
     @Test
     void completeIndexPartition_in_single_scan_mode_without_acknowledgments_calls_completePartition() {
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
 
         WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
                 indexPartition, sourceCoordinator);
@@ -109,7 +108,7 @@ public class WorkerCommonUtilsCompletionTest {
     @Test
     void createAcknowledgmentSet_in_periodic_mode_invokes_closePartition_on_successful_ack() {
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.PERIODIC);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(false);
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ofHours(8));
         when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
 
@@ -130,7 +129,7 @@ public class WorkerCommonUtilsCompletionTest {
     @Test
     void createAcknowledgmentSet_in_single_scan_mode_invokes_completePartition_on_successful_ack() {
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
-        when(schedulingParameterConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.SINGLE_SCAN);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
 
         @SuppressWarnings("unchecked")
         final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);

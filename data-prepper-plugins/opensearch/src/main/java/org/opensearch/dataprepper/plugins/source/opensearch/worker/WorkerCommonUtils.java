@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,7 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
                 if (result == true) {
-                    if (isSingleScanMode(openSearchSourceConfiguration)) {
+                    if (openSearchSourceConfiguration.isSingleScanMode()) {
                         sourceCoordinator.completePartition(indexPartition.getPartitionKey(), true);
                     } else {
                         sourceCoordinator.closePartition(
@@ -75,7 +74,7 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), OWNERSHIP_TIMEOUT);
             acknowledgementSet.complete();
-        } else if (isSingleScanMode(openSearchSourceConfiguration)) {
+        } else if (openSearchSourceConfiguration.isSingleScanMode()) {
             sourceCoordinator.completePartition(indexPartition.getPartitionKey(), false);
             LOG.info("Completed processing of index {} (single_scan mode; index will not be rescheduled)", indexPartition.getPartitionKey());
         } else {
@@ -86,11 +85,6 @@ public class WorkerCommonUtils {
                     false);
             LOG.info("Completed processing of index {}", indexPartition.getPartitionKey());
         }
-    }
-
-    private static boolean isSingleScanMode(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        return java.util.Objects.nonNull(openSearchSourceConfiguration.getSchedulingParameterConfiguration())
-                && DiscoveryMode.SINGLE_SCAN.equals(openSearchSourceConfiguration.getSchedulingParameterConfiguration().getDiscoveryMode());
     }
 
     static long calculateExponentialBackoffAndJitter(final int retryCount) {

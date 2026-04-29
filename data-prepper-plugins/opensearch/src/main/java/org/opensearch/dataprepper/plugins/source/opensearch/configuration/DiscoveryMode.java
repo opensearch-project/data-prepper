@@ -11,29 +11,45 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Controls how the OpenSearch source discovers indices.
  * <p>
- * {@link #PERIODIC} (default) re-runs discovery on the configured scheduling interval, allowing newly
+ * {@code periodic} (default) re-runs discovery on the configured scheduling interval, allowing newly
  * created indices to be picked up and existing indices to be re-ingested.
  * <p>
- * {@link #SINGLE_SCAN} runs discovery exactly once. Once an index has been discovered and processed it is
- * not re-scheduled. This avoids re-ingesting the same indices from the start in long-running pipelines
- * where source coordinator state (e.g. DynamoDB item TTL) could otherwise be lost.
+ * {@code single_scan} runs discovery exactly once. Once an index has been discovered and processed it
+ * is not re-scheduled. This avoids re-ingesting the same indices from the start in long-running
+ * pipelines where source coordinator state (e.g. DynamoDB item TTL) could otherwise be lost.
  */
 public enum DiscoveryMode {
-    PERIODIC,
-    SINGLE_SCAN;
+    PERIODIC("periodic"),
+    SINGLE_SCAN("single_scan");
+
+    private static final Map<String, DiscoveryMode> NAMES_MAP = Arrays.stream(DiscoveryMode.values())
+            .collect(Collectors.toMap(
+                    value -> value.optionName,
+                    value -> value
+            ));
+
+    private final String optionName;
+
+    DiscoveryMode(final String optionName) {
+        this.optionName = optionName;
+    }
+
+    @JsonValue
+    public String getOptionName() {
+        return optionName;
+    }
 
     @JsonCreator
-    public static DiscoveryMode fromString(final String value) {
-        return Arrays.stream(values())
-                .filter(mode -> mode.name().equalsIgnoreCase(value))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format("Invalid discovery_mode '%s'. Supported values are: PERIODIC, SINGLE_SCAN", value)));
+    public static DiscoveryMode fromOptionName(final String optionName) {
+        return NAMES_MAP.get(optionName);
     }
 }

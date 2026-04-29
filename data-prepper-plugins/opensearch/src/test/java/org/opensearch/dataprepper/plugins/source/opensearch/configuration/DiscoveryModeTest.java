@@ -10,30 +10,37 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.hamcrest.Matchers.nullValue;
 
 public class DiscoveryModeTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"PERIODIC", "periodic", "Periodic"})
-    void fromString_resolves_periodic_case_insensitively(final String value) {
-        assertThat(DiscoveryMode.fromString(value), equalTo(DiscoveryMode.PERIODIC));
+    @CsvSource({
+            "periodic,    PERIODIC",
+            "single_scan, SINGLE_SCAN"
+    })
+    void fromOptionName_returns_expected_enum(final String optionName, final DiscoveryMode expected) {
+        assertThat(DiscoveryMode.fromOptionName(optionName), equalTo(expected));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"SINGLE_SCAN", "single_scan", "Single_Scan"})
-    void fromString_resolves_single_scan_case_insensitively(final String value) {
-        assertThat(DiscoveryMode.fromString(value), equalTo(DiscoveryMode.SINGLE_SCAN));
+    @CsvSource({
+            "PERIODIC,    periodic",
+            "SINGLE_SCAN, single_scan"
+    })
+    void getOptionName_returns_expected_string(final DiscoveryMode mode, final String expected) {
+        assertThat(mode.getOptionName(), equalTo(expected));
     }
 
-    @Test
-    void fromString_with_unknown_value_throws_IllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> DiscoveryMode.fromString("ONCE"));
+    @ParameterizedTest
+    @ValueSource(strings = {"PERIODIC", "Single_Scan", "unknown", ""})
+    void fromOptionName_returns_null_for_unknown_value(final String optionName) {
+        assertThat(DiscoveryMode.fromOptionName(optionName), nullValue());
     }
 }

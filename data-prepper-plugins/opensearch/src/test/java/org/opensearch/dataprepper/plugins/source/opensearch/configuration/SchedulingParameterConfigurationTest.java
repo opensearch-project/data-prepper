@@ -32,7 +32,7 @@ public class SchedulingParameterConfigurationTest {
 
     @Test
     void single_scan_discovery_mode_from_yaml() throws JsonProcessingException {
-        final String yaml = "  discovery_mode: SINGLE_SCAN\n";
+        final String yaml = "  discovery_mode: single_scan\n";
 
         final SchedulingParameterConfiguration config = objectMapper.readValue(yaml, SchedulingParameterConfiguration.class);
 
