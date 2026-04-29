@@ -6,6 +6,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 
 | Maintainer             | GitHub ID                                                 | Affiliation |
 | ---------------------- | --------------------------------------------------------- | ----------- |
+| Divyansh Bokadia       | [divbok](https://github.com/divbok)               | Amazon      |
 | Souvik Bose            | [sb2k16](https://github.com/sb2k16)               | Amazon      |
 | Chase Engelbrecht      | [engechas](https://github.com/engechas)                   | Amazon      |
 | Santhosh Gandhe        | [san81](https://github.com/san81)             | Amazon      |
