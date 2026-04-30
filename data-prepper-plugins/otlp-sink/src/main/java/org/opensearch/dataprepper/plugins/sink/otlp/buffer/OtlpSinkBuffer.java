@@ -175,9 +175,12 @@ public class OtlpSinkBuffer {
                             final EventHandle eventHandle = event.getEventHandle();
                             batch.add(Pair.of(encodedData, eventHandle));
                             batchSize += handler.getSerializedSize(encodedData);
+                        } else {
+                            event.getEventHandle().release(false);
                         }
                     } catch (final Exception e) {
                         LOG.error("Failed to encode event, skipping", e);
+                        event.getEventHandle().release(false);
                         sinkMetrics.incrementFailedRecordsCount(1);
                         sinkMetrics.incrementFailedSignalCount(signalType.getMetricsLabel(), 1);
                         sinkMetrics.incrementErrorsCount();

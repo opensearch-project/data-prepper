@@ -309,7 +309,7 @@ class OtlpSinkBufferMultiSignalTest {
 
         buffer = new OtlpSinkBuffer(config, metrics, handler, sender, OtlpSignalType.TRACE);
 
-        org.mockito.Mockito.doThrow(new OutOfMemoryError("test crash"))
+        org.mockito.Mockito.doThrow(new Error("test crash"))
                 .when(sender).send(any(), any(OtlpSignalHandler.class), any(OtlpSignalType.class));
 
         buffer.start();

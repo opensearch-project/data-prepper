@@ -8,11 +8,13 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.apache.commons.codec.DecoderException;
+import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
@@ -150,9 +152,9 @@ public interface OTelProtoCodec {
     public interface OTelProtoEncoder {
         ResourceSpans convertToResourceSpans(final Span span) throws UnsupportedEncodingException, DecoderException;
         
-        io.opentelemetry.proto.metrics.v1.ResourceMetrics convertToResourceMetrics(final Metric metric) throws UnsupportedEncodingException, DecoderException;
+        ResourceMetrics convertToResourceMetrics(final Metric metric) throws UnsupportedEncodingException, DecoderException;
         
-        io.opentelemetry.proto.logs.v1.ResourceLogs convertToResourceLogs(final org.opensearch.dataprepper.model.log.Log log) throws UnsupportedEncodingException, DecoderException;
+        ResourceLogs convertToResourceLogs(final Log log) throws UnsupportedEncodingException, DecoderException;
     }
 
 }

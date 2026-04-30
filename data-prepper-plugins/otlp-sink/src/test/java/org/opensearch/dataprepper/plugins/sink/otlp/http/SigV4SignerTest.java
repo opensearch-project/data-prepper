@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
@@ -59,17 +60,10 @@ class SigV4SignerTest {
     }
 
     @Test
-    void testSignRequest_withDefaultEndpoint() {
+    void testSignRequest_withNullEndpoint_throwsException() {
         when(mockConfig.getEndpoint()).thenReturn(null);
 
-        target = new SigV4Signer(mockSupplier, mockConfig);
-        final SdkHttpFullRequest request = target.signRequest(PAYLOAD);
-
-        assertNotNull(request);
-        assertEquals("POST", request.method().name());
-        assertTrue(request.headers().containsKey("Authorization"));
-        assertEquals("application/x-protobuf", request.firstMatchingHeader("Content-Type").orElse(null));
-        assertEquals("https://xray.us-west-2.amazonaws.com/v1/traces", request.getUri().toString());
+        assertThrows(NullPointerException.class, () -> new SigV4Signer(mockSupplier, mockConfig));
     }
 
     @Test

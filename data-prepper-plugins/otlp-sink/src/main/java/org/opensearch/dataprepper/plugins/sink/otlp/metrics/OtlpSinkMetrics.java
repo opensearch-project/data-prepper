@@ -5,13 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.metrics;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalType;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -27,6 +31,12 @@ public class OtlpSinkMetrics {
     private final Timer httpLatency;
     private final DistributionSummary payloadSize;
     private final DistributionSummary payloadGzipSize;
+    private final Counter rejectedRecordsCounter;
+    private final Counter failedRecordsCounter;
+    private final Counter recordsOutCounter;
+    private final Counter errorsCounter;
+    private final Map<String, Counter> rejectedSignalCounters;
+    private final Map<String, Counter> failedSignalCounters;
 
     /**
      * Constructor for OtlpSinkMetrics
@@ -38,17 +48,28 @@ public class OtlpSinkMetrics {
         this.pluginMetrics = pluginMetrics;
 
         httpLatency = pluginMetrics.timer("httpLatency");
-
         payloadSize = pluginMetrics.summary("payloadSize");
         payloadGzipSize = pluginMetrics.summary("payloadGzipSize");
+
+        rejectedRecordsCounter = pluginMetrics.counter("rejectedRecordsCount");
+        failedRecordsCounter = pluginMetrics.counter("failedRecordsCount");
+        recordsOutCounter = pluginMetrics.counter("recordsOut");
+        errorsCounter = pluginMetrics.counter("errorsCount");
+
+        rejectedSignalCounters = new HashMap<>();
+        failedSignalCounters = new HashMap<>();
+        for (final OtlpSignalType type : OtlpSignalType.values()) {
+            rejectedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("rejected" + type.getMetricsLabel() + "Count"));
+            failedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("failed" + type.getMetricsLabel() + "Count"));
+        }
     }
 
     public void incrementRecordsOut(final long count) {
-        pluginMetrics.counter("recordsOut").increment(count);
+        recordsOutCounter.increment(count);
     }
 
     public void incrementErrorsCount() {
-        pluginMetrics.counter("errorsCount").increment(1);
+        errorsCounter.increment(1);
     }
 
     public void incrementPayloadSize(final long bytes) {
@@ -75,7 +96,7 @@ public class OtlpSinkMetrics {
      * @param count The number of records rejected.
      */
     public void incrementRejectedRecordsCount(final long count) {
-        pluginMetrics.counter("rejectedRecordsCount").increment(count);
+        rejectedRecordsCounter.increment(count);
     }
 
     /**
@@ -85,7 +106,7 @@ public class OtlpSinkMetrics {
      * @param count The number of records rejected.
      */
     public void incrementRejectedSignalCount(final String signalType, final long count) {
-        pluginMetrics.counter("rejected" + signalType + "Count").increment(count);
+        rejectedSignalCounters.get(signalType).increment(count);
     }
 
     /**
@@ -95,7 +116,7 @@ public class OtlpSinkMetrics {
      * @param count The number of records failed.
      */
     public void incrementFailedRecordsCount(final long count) {
-        pluginMetrics.counter("failedRecordsCount").increment(count);
+        failedRecordsCounter.increment(count);
     }
 
     /**
@@ -105,7 +126,7 @@ public class OtlpSinkMetrics {
      * @param count The number of records failed.
      */
     public void incrementFailedSignalCount(final String signalType, final long count) {
-        pluginMetrics.counter("failed" + signalType + "Count").increment(count);
+        failedSignalCounters.get(signalType).increment(count);
     }
 
     /**

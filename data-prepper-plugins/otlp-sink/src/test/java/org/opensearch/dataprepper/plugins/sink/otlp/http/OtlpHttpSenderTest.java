@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -108,10 +110,10 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRecordsOut(1);
-        verify(handle).release(true);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRecordsOut(1);
+            verify(handle).release(true);
+        });
     }
 
     @Test
@@ -126,10 +128,10 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRejectedRecordsCount(1);
-        verify(handle).release(false);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRejectedRecordsCount(1);
+            verify(handle).release(false);
+        });
     }
 
     @Test
@@ -150,10 +152,10 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRejectedRecordsCount(1L);
-        verify(mockMetrics).incrementRecordsOut(1L);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRejectedRecordsCount(1L);
+            verify(mockMetrics).incrementRecordsOut(1L);
+        });
     }
 
     @Test
@@ -171,11 +173,11 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementErrorsCount();
-        verify(mockMetrics).incrementRecordsOut(1);
-        verify(handle).release(true);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementErrorsCount();
+            verify(mockMetrics).incrementRecordsOut(1);
+            verify(handle).release(true);
+        });
     }
 
     @Test
@@ -190,10 +192,10 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRejectedRecordsCount(1);
-        verify(handle).release(false);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRejectedRecordsCount(1);
+            verify(handle).release(false);
+        });
     }
 
     @Test
@@ -208,10 +210,10 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRecordsOut(1);
-        verify(handle).release(true);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRecordsOut(1);
+            verify(handle).release(true);
+        });
     }
 
     @Test
@@ -229,11 +231,11 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        final ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(mockWebClient).execute(requestCaptor.capture());
-        assertEquals("value1", requestCaptor.getValue().headers().get("x-custom"));
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            final ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+            verify(mockWebClient).execute(requestCaptor.capture());
+            assertEquals("value1", requestCaptor.getValue().headers().get("x-custom"));
+        });
     }
 
     @Test
@@ -252,9 +254,9 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRecordsOut(1);
+        await().atMost(2, SECONDS).untilAsserted(() ->
+            verify(mockMetrics).incrementRecordsOut(1)
+        );
     }
 
     @Test
@@ -270,9 +272,9 @@ class OtlpHttpSenderTest {
 
         sender.send(batch, mockHandler, OtlpSignalType.TRACE);
 
-        Thread.sleep(300);
-
-        verify(mockMetrics).incrementRejectedRecordsCount(1);
-        verify(handle).release(false);
+        await().atMost(2, SECONDS).untilAsserted(() -> {
+            verify(mockMetrics).incrementRejectedRecordsCount(1);
+            verify(handle).release(false);
+        });
     }
 }

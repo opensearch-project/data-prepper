@@ -1359,8 +1359,11 @@ public class OTelProtoStandardCodec {
                 
                 // Set severity
                 if (otelLog.getSeverityNumber() != null) {
-                    builder.setSeverityNumber(
-                        io.opentelemetry.proto.logs.v1.SeverityNumber.forNumber(otelLog.getSeverityNumber()));
+                    final io.opentelemetry.proto.logs.v1.SeverityNumber severityNumber =
+                        io.opentelemetry.proto.logs.v1.SeverityNumber.forNumber(otelLog.getSeverityNumber());
+                    if (severityNumber != null) {
+                        builder.setSeverityNumber(severityNumber);
+                    }
                 }
                 if (otelLog.getSeverityText() != null) {
                     builder.setSeverityText(otelLog.getSeverityText());

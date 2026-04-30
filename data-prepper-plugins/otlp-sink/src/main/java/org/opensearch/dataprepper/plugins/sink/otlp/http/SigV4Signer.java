@@ -25,7 +25,6 @@ import java.net.URI;
  */
 class SigV4Signer {
     private static final String DEFAULT_SERVICE_NAME = "xray";
-    private static final String OTLP_PATH = "/v1/traces";
     private final Aws4Signer signer = Aws4Signer.create();
 
     private final AwsCredentialsProvider credentialsProvider;
@@ -49,9 +48,7 @@ class SigV4Signer {
                 .withStsExternalId(config.getStsExternalId())
                 .build());
 
-        this.endpointUri = config.getEndpoint() != null
-                ? URI.create(config.getEndpoint())
-                : URI.create(String.format("https://xray.%s.amazonaws.com%s", region.id(), OTLP_PATH));
+        this.endpointUri = URI.create(config.getEndpoint());
     }
 
     /**
