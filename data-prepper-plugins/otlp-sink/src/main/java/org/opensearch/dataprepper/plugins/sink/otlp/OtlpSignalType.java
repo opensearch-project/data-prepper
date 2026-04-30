@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
  * Enum representing the different OTLP signal types.
  */
 public enum OtlpSignalType {
-    TRACE("Traces"),
+    TRACE("Spans"),
     METRIC("Metrics"),
     LOG("Logs"),
     UNKNOWN("Unknown");

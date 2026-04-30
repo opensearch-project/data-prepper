@@ -81,8 +81,8 @@ class OtlpSinkMetricsTest {
 
     @Test
     void testIncrementRejectedSignalCount() {
-        sinkMetrics.incrementRejectedSignalCount("Traces", 3);
-        verify(pluginMetrics).counter("rejectedTracesCount");
+        sinkMetrics.incrementRejectedSignalCount("Spans", 3);
+        verify(pluginMetrics).counter("rejectedSpansCount");
         verify(counterMock).increment(3.0);
     }
 

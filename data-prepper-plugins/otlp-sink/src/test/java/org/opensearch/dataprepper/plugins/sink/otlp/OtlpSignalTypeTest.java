@@ -77,7 +77,7 @@ class OtlpSignalTypeTest {
 
     @Test
     void testGetMetricsLabel() {
-        assertEquals("Traces", OtlpSignalType.TRACE.getMetricsLabel());
+        assertEquals("Spans", OtlpSignalType.TRACE.getMetricsLabel());
         assertEquals("Metrics", OtlpSignalType.METRIC.getMetricsLabel());
         assertEquals("Logs", OtlpSignalType.LOG.getMetricsLabel());
         assertEquals("Unknown", OtlpSignalType.UNKNOWN.getMetricsLabel());

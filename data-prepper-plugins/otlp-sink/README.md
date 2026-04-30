@@ -269,10 +269,6 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
      * payloadSize, payloadGzipSize
      * JVM stats if configured (e.g., heap usage, GC pauses)
 
-> **Migration note:** The metric counters `rejectedSpansCount` and `failedSpansCount` have been renamed to
-> `rejectedRecordsCount` and `failedRecordsCount` to reflect multi-signal support. Update any dashboards or
-> alerts that reference the old names.
-
 ---
 
 ## Developer Guide
