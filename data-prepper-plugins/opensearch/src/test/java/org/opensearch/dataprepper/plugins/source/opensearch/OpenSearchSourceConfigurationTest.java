@@ -274,4 +274,28 @@ public class OpenSearchSourceConfigurationTest {
         assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAuthConfigConflictWithDeprecatedUsernameAndPassword);
         assertThat(sourceConfiguration.isDistributionVersionValid(), equalTo(false));
     }
+
+    @Test
+    void isSingleScanMode_returns_false_when_discovery_mode_is_default() throws JsonProcessingException {
+        final String sourceConfigurationYaml =
+                "hosts: [\"http://localhost:9200\"]\n" +
+                        "disable_authentication: true\n";
+
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThat(sourceConfiguration.isSingleScanMode(), equalTo(false));
+    }
+
+    @Test
+    void isSingleScanMode_returns_true_when_discovery_mode_is_single_scan() throws JsonProcessingException {
+        final String sourceConfigurationYaml =
+                "hosts: [\"http://localhost:9200\"]\n" +
+                        "disable_authentication: true\n" +
+                        "scheduling:\n" +
+                        "  discovery_mode: single_scan\n";
+
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThat(sourceConfiguration.isSingleScanMode(), equalTo(true));
+    }
 }
