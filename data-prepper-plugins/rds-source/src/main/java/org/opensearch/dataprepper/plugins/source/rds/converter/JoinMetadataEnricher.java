@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.rds.converter;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinRelation;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinType;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -114,7 +115,9 @@ public class JoinMetadataEnricher {
         final Set<String> keys = new HashSet<>();
         keys.addAll(relation.getParentKey());
         keys.addAll(relation.getChildKey());
-        if (!isParent) {
+        // For 1:N children, exclude child PK from fields since the script adds it separately.
+        // For 1:1 children, include child PK in fields since it's flattened at root like other fields.
+        if (!isParent && relation.getJoinType() != JoinType.ONE_TO_ONE) {
             keys.addAll(relation.getChildPrimaryKey());
         }
         return keys;
