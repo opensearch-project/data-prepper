@@ -39,6 +39,9 @@ public class AwsAuthenticationConfiguration {
     @JsonProperty("serverless")
     private boolean serverless = false;
 
+    @JsonProperty("resource_name")
+    private String resourceName;
+
     @JsonProperty("serverless_options")
     private ServerlessOptions serverlessOptions;
 
@@ -63,6 +66,10 @@ public class AwsAuthenticationConfiguration {
 
     public boolean isServerlessCollection() {
         return serverless;
+    }
+
+    public String getResourceName() {
+        return resourceName;
     }
 
     public ServerlessOptions getServerlessOptions() {

@@ -21,7 +21,6 @@ import software.amazon.awssdk.services.opensearch.OpenSearchClient;
 import software.amazon.awssdk.services.opensearchserverless.OpenSearchServerlessClient;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,42 +36,36 @@ public class SemanticEnrichmentIndexCreator {
 
     public SemanticEnrichmentIndexCreator(final AwsCredentialsSupplier awsCredentialsSupplier,
                                           final ConnectionConfiguration connectionConfiguration,
-                                          final SemanticEnrichmentConfig semanticConfig) {
+                                          final String resourceName) {
         final AwsCredentialsOptions awsCredentialsOptions = connectionConfiguration.createAwsCredentialsOptions();
         this.credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
         this.region = awsCredentialsOptions.getRegion();
         this.serverless = connectionConfiguration.isServerless();
         this.collectionIdOrDomainName = resolveCollectionIdOrDomainName(
-                semanticConfig, connectionConfiguration.getHosts());
+                resourceName, connectionConfiguration.getHosts());
     }
 
-    private String resolveCollectionIdOrDomainName(final SemanticEnrichmentConfig semanticConfig,
-                                                   final List<String> hosts) {
+    private String resolveCollectionIdOrDomainName(final String resourceName, final List<String> hosts) {
+        if (resourceName != null && !resourceName.isEmpty()) {
+            LOG.info("Using configured resource_name: {}", resourceName);
+            return resourceName;
+        }
+
         if (serverless) {
-            if (semanticConfig.getCollectionName() != null && !semanticConfig.getCollectionName().isEmpty()) {
-                LOG.info("Using configured collection_name: {}", semanticConfig.getCollectionName());
-                return semanticConfig.getCollectionName();
-            }
-
-            LOG.info("collection_name not configured, extracting from host URL");
-            return extractCollectionId(hosts);
+            LOG.info("resource_name not configured, extracting collection ID from host URL");
+            return OpenSearchEndpointIdentifier.extractCollectionId(hosts);
         }
 
-        if (semanticConfig.getDomainName() != null && !semanticConfig.getDomainName().isEmpty()) {
-            LOG.info("Using configured domain_name: {}", semanticConfig.getDomainName());
-            return semanticConfig.getDomainName();
-        }
-
-        LOG.info("domain_name not configured, extracting from host URL");
-        return extractDomainName(hosts);
+        LOG.info("resource_name not configured, extracting domain name from host URL");
+        return OpenSearchEndpointIdentifier.extractDomainName(hosts);
     }
 
     public void createIndex(final String indexName, final SemanticEnrichmentConfig semanticConfig) throws IOException {
         if (serverless) {
             createServerlessIndex(indexName, semanticConfig);
-        } else {
-            createManagedDomainIndex(indexName, semanticConfig);
+            return;
         }
+        createManagedDomainIndex(indexName, semanticConfig);
     }
 
     private void createServerlessIndex(final String indexName,
@@ -154,44 +147,18 @@ public class SemanticEnrichmentIndexCreator {
 
     Map<String, Object> buildIndexSchema(final SemanticEnrichmentConfig semanticConfig) {
         final Map<String, Object> properties = new LinkedHashMap<>();
-        for (final String field : semanticConfig.getFields()) {
-            final Map<String, Object> fieldMapping = new LinkedHashMap<>();
-            fieldMapping.put("type", "text");
-            final Map<String, String> semanticEnrichment = new LinkedHashMap<>();
-            semanticEnrichment.put("status", "ENABLED");
-            semanticEnrichment.put("language_options", semanticConfig.getLanguage());
-            fieldMapping.put("semantic_enrichment", semanticEnrichment);
-            properties.put(field, fieldMapping);
+        for (final Map<String, SemanticEnrichmentLanguage> fieldEntry : semanticConfig.getFields()) {
+            for (final Map.Entry<String, SemanticEnrichmentLanguage> entry : fieldEntry.entrySet()) {
+                final Map<String, Object> fieldMapping = new LinkedHashMap<>();
+                fieldMapping.put("type", "text");
+                final Map<String, String> semanticEnrichment = new LinkedHashMap<>();
+                semanticEnrichment.put("status", "ENABLED");
+                semanticEnrichment.put("language_options", entry.getValue().getValue());
+                fieldMapping.put("semantic_enrichment", semanticEnrichment);
+                properties.put(entry.getKey(), fieldMapping);
+            }
         }
         return Map.of("mappings", Map.of("properties", properties));
     }
 
-    static String extractCollectionId(final List<String> hosts) {
-        final String hostname = getHostname(hosts);
-        return hostname.split("\\.")[0];
-    }
-
-    static String extractDomainName(final List<String> hosts) {
-        final String hostname = getHostname(hosts);
-        final String prefix = hostname.split("\\.")[0];
-        final String withoutSearchPrefix = prefix.replaceFirst("^(search-|vpc-)", "");
-        final int lastHyphen = withoutSearchPrefix.lastIndexOf('-');
-        if (lastHyphen <= 0) {
-            throw new IllegalArgumentException(
-                    "Unable to extract domain name from host: " + hostname +
-                            ". Please set the 'domain_name' option in semantic_enrichment config.");
-        }
-        return withoutSearchPrefix.substring(0, lastHyphen);
-    }
-
-    private static String getHostname(final List<String> hosts) {
-        if (hosts == null || hosts.isEmpty()) {
-            throw new IllegalArgumentException("Hosts list is empty, cannot extract endpoint identifier");
-        }
-        final String hostname = URI.create(hosts.get(0)).getHost();
-        if (hostname == null) {
-            throw new IllegalArgumentException("Unable to parse hostname from: " + hosts.get(0));
-        }
-        return hostname;
-    }
 }

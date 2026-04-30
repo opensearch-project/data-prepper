@@ -28,6 +28,7 @@ public class SemanticEnrichmentIndexManager {
 
     public void maybeCreateIndex(final ConnectionConfiguration connectionConfiguration,
                                  final SemanticEnrichmentConfig semanticConfig,
+                                 final String resourceName,
                                  final String indexAlias) throws IOException {
         if (semanticConfig == null || semanticConfig.getFields() == null
                 || semanticConfig.getFields().isEmpty()) {
@@ -40,7 +41,7 @@ public class SemanticEnrichmentIndexManager {
         }
 
         final SemanticEnrichmentIndexCreator indexCreator = new SemanticEnrichmentIndexCreator(
-                awsCredentialsSupplier, connectionConfiguration, semanticConfig);
+                awsCredentialsSupplier, connectionConfiguration, resourceName);
         indexCreator.createIndex(indexAlias, semanticConfig);
     }
 }

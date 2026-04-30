@@ -109,6 +109,7 @@ public class IndexConfiguration {
     private final boolean normalizeIndex;
     private final ScriptConfiguration scriptConfiguration;
     private final SemanticEnrichmentConfig semanticEnrichmentConfig;
+    private final String semanticEnrichmentResourceName;
 
     private final String queryWhen;
 
@@ -139,6 +140,7 @@ public class IndexConfiguration {
         this.normalizeIndex = builder.normalizeIndex;
         this.queryOnBulkFailures = builder.queryOnIndexingFailure;
         this.semanticEnrichmentConfig = builder.semanticEnrichmentConfig;
+        this.semanticEnrichmentResourceName = builder.semanticEnrichmentResourceName;
 
         determineTemplateType(builder);
 
@@ -291,6 +293,7 @@ public class IndexConfiguration {
         final AwsAuthenticationConfiguration awsConfig = openSearchSinkConfig.getAwsAuthenticationOptions();
         if (awsConfig != null && awsConfig.getSemanticEnrichmentConfig() != null) {
             builder = builder.withSemanticEnrichmentConfig(awsConfig.getSemanticEnrichmentConfig());
+            builder = builder.withSemanticEnrichmentResourceName(awsConfig.getResourceName());
         }
 
 
@@ -342,6 +345,10 @@ public class IndexConfiguration {
 
     public SemanticEnrichmentConfig getSemanticEnrichmentConfig() {
         return semanticEnrichmentConfig;
+    }
+
+    public String getSemanticEnrichmentResourceName() {
+        return semanticEnrichmentResourceName;
     }
 
     public IndexType getIndexType() {
@@ -557,6 +564,7 @@ public class IndexConfiguration {
 
         private SemanticEnrichmentConfig semanticEnrichmentConfig;
         private Integer queryAsyncLimit;
+        private String semanticEnrichmentResourceName;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -799,6 +807,11 @@ public class IndexConfiguration {
 
         public Builder withSemanticEnrichmentConfig(final SemanticEnrichmentConfig semanticEnrichmentConfig) {
             this.semanticEnrichmentConfig = semanticEnrichmentConfig;
+            return this;
+        }
+
+        public Builder withSemanticEnrichmentResourceName(final String resourceName) {
+            this.semanticEnrichmentResourceName = resourceName;
             return this;
         }
 

@@ -117,7 +117,7 @@ public class ConnectionConfiguration {
   String getApitoken() {
     return apitoken;
   }
-
+  
   String getPassword() {
     return password;
   }

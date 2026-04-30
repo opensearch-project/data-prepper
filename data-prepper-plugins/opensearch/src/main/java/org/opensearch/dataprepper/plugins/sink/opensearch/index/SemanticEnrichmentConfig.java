@@ -12,35 +12,14 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Map;
 
 public class SemanticEnrichmentConfig {
-    static final String DEFAULT_LANGUAGE = "english";
 
     @JsonProperty("fields")
-    private List<String> fields;
+    private List<Map<String, SemanticEnrichmentLanguage>> fields;
 
-    @JsonProperty("language")
-    private String language = DEFAULT_LANGUAGE;
-
-    @JsonProperty("collection_name")
-    private String collectionName;
-
-    @JsonProperty("domain_name")
-    private String domainName;
-
-    public List<String> getFields() {
+    public List<Map<String, SemanticEnrichmentLanguage>> getFields() {
         return fields;
-    }
-
-    public String getLanguage() {
-        return language;
-    }
-
-    public String getCollectionName() {
-        return collectionName;
-    }
-
-    public String getDomainName() {
-        return domainName;
     }
 }

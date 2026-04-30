@@ -302,6 +302,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
             connectionConfiguration,
             openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
+            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentResourceName(),
             configuredIndexAlias);
 
     indexManager.setupIndex();
