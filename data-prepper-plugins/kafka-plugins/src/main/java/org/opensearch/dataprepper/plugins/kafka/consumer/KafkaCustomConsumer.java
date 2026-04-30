@@ -27,8 +27,6 @@ import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.utils.ExponentialBackoff;
 import org.apache.kafka.common.errors.RecordDeserializationException;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -504,12 +502,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
             eventMetadata.setAttribute("kafka_key", key);
         }
-        Headers headers = consumerRecord.headers();
-        if (headers != null) {
-            Map<String, byte[]> headerData = new HashMap<>();
-            for (Header header: headers) {
-                headerData.put(header.key(), header.value());
-            }
+        Map<String, Object> headerData = KafkaHeadersExtractor.extractMessageHeaders(consumerRecord.headers());
+        if (headerData != null) {
             eventMetadata.setAttribute("kafka_headers", headerData);
         }
         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, now.toEpochMilli());
