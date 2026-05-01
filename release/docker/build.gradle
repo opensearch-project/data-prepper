@@ -56,6 +56,7 @@ tasks.register('dockerPrepare') {
     }
 
     doLast {
+        delete "${buildDir}/docker"
         supportedArchitectures.each { arch ->
             def archiveTask = project(':release:archives:linux').tasks.getByName("linux${arch}DistTar")
             def dockerArch = arch == 'x64' ? 'amd64' : arch
