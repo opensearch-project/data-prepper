@@ -11,8 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
-import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
-import software.amazon.awssdk.regions.Region;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -20,7 +18,6 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
-import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.RemoteConnectorExecutor;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
@@ -37,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,9 +62,6 @@ public class BedrockBatchJobCreatorTest {
 
     @Mock
     private PluginSetting pluginSetting;
-
-    @Mock
-    private AwsAuthenticationOptions awsAuthenticationOptions;
 
     private BedrockBatchJobCreator bedrockBatchJobCreator;
     private Counter counter;
@@ -99,47 +92,6 @@ public class BedrockBatchJobCreatorTest {
         when(pluginSetting.getPipelineName()).thenReturn("pipeline_bedrock");
         when(pluginSetting.getName()).thenReturn("pipeline_bedrock");
         bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
-    }
-
-    @Test
-    void testCreateMLBatchJob_Success() {
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-
-        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
-                .put("bucket", "test-bucket")
-                .put("key", "input.jsonl"));
-
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
-
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
-            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
-        }
-    }
-
-    @Test
-    void testCreateMLBatchJob_Failure() {
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-
-        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
-                .put("bucket", "test-bucket")
-                .put("key", "input.jsonl"));
-        when(event.toJsonString()).thenReturn("event");
-
-        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
-
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "errorMessage") , 1));
-
-            MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
-                bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
-            });
-
-            verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
-            assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
-        }
     }
 
     @Test
@@ -188,38 +140,6 @@ public class BedrockBatchJobCreatorTest {
 
             assertTrue(Thread.interrupted()); // Ensure interrupted flag is reset
             assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
-        }
-    }
-
-    @Test
-    void testCreateMLBatchJob_Throttled() {
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-
-        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
-                .put("bucket", "test-bucket")
-                .put("key", "input.jsonl"));
-
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            // First attempt - gets throttled
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
-                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
-
-            List<Record<Event>> resultRecords = new ArrayList<>();
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
-
-            // Verify record was added to throttled queue and not to result records
-            assertTrue(resultRecords.isEmpty());
-            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
-
-            // Process throttled records
-            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
-
-            // Verify throttled record was processed
-            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
-            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
-            assertNotNull(throttledRecord);
-            assertEquals(1, throttledRecord.getRetryCount());
         }
     }
 
@@ -385,10 +305,10 @@ public class BedrockBatchJobCreatorTest {
     // --- direct-connector (built-in model) path ---
 
     @Test
-    void testCreateMLBatchJob_withBuiltInConnector_callsConnectorExecutorOnSuccess() throws Exception {
-        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
-        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
-        stubConfigForDirectConnector();
+    void testCreateMLBatchJob_withDirectPredictor_callsSuccessOnSuccess() throws Exception {
+        final BatchPredictor mockPredictor = mock(BatchPredictor.class);
+        injectBatchPredictor(bedrockBatchJobCreator, mockPredictor);
+        when(mockPredictor.predict(any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
 
         final Event event = mock(Event.class);
         final Record<Event> record = new Record<>(event);
@@ -396,23 +316,19 @@ public class BedrockBatchJobCreatorTest {
                 .put("bucket", "test-bucket")
                 .put("key", "input.jsonl"));
 
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+        final List<Record<Event>> resultRecords = new ArrayList<>();
+        bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
 
-            final List<Record<Event>> resultRecords = new ArrayList<>();
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
-
-            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
-            assertEquals(1, resultRecords.size());
-        }
+        verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
+        assertEquals(1, resultRecords.size());
     }
 
     @Test
-    void testCreateMLBatchJob_withBuiltInConnector_doesNotUseMLCommonsPath() throws Exception {
-        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
-        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
-        stubConfigForDirectConnector();
+    void testCreateMLBatchJob_withDirectPredictor_onThrottle_addsToRetryQueue() throws Exception {
+        final BatchPredictor mockPredictor = mock(BatchPredictor.class);
+        injectBatchPredictor(bedrockBatchJobCreator, mockPredictor);
+        when(mockPredictor.predict(any()))
+                .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
 
         final Event event = mock(Event.class);
         final Record<Event> record = new Record<>(event);
@@ -420,46 +336,19 @@ public class BedrockBatchJobCreatorTest {
                 .put("bucket", "test-bucket")
                 .put("key", "input.jsonl"));
 
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+        final List<Record<Event>> resultRecords = new ArrayList<>();
+        bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
 
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
-
-            // Verify the ml-commons host URL path is never consulted when a built-in connector is used.
-            verify(mlProcessorConfig, never()).getHostUrl();
-        }
+        assertTrue(resultRecords.isEmpty());
+        assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
     }
 
     @Test
-    void testCreateMLBatchJob_withBuiltInConnector_onThrottle_addsToRetryQueue() throws Exception {
-        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
-        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
-        stubConfigForDirectConnector();
-
-        final Event event = mock(Event.class);
-        final Record<Event> record = new Record<>(event);
-        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
-                .put("bucket", "test-bucket")
-                .put("key", "input.jsonl"));
-
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
-
-            final List<Record<Event>> resultRecords = new ArrayList<>();
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
-
-            assertTrue(resultRecords.isEmpty());
-            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
-        }
-    }
-
-    @Test
-    void testCreateMLBatchJob_withBuiltInConnector_onFailure_throwsMLBatchJobException() throws Exception {
-        final RemoteConnectorExecutor mockConnectorExecutor = mock(RemoteConnectorExecutor.class);
-        injectConnectorExecutor(bedrockBatchJobCreator, mockConnectorExecutor);
-        stubConfigForDirectConnector();
+    void testCreateMLBatchJob_withDirectPredictor_onFailure_throwsMLBatchJobException() throws Exception {
+        final BatchPredictor mockPredictor = mock(BatchPredictor.class);
+        injectBatchPredictor(bedrockBatchJobCreator, mockPredictor);
+        when(mockPredictor.predict(any()))
+                .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "server error"), 1));
 
         final Event event = mock(Event.class);
         final Record<Event> record = new Record<>(event);
@@ -469,22 +358,11 @@ public class BedrockBatchJobCreatorTest {
         when(event.toJsonString()).thenReturn("event");
         when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
 
-        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "server error"), 1));
+        final MLBatchJobException ex = assertThrows(MLBatchJobException.class,
+                () -> bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>()));
 
-            final MLBatchJobException ex = assertThrows(MLBatchJobException.class,
-                    () -> bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>()));
-
-            assertTrue(ex.getMessage().contains("Failed to process 1 records out of 1 total records"));
-            verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
-        }
-    }
-
-    private void stubConfigForDirectConnector() {
-        when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
-        when(mlProcessorConfig.getJobRoleArn()).thenReturn("arn:aws:iam::123456789012:role/TestRole");
+        assertTrue(ex.getMessage().contains("Failed to process 1 records out of 1 total records"));
+        verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
     }
 
     // --- helpers ---
@@ -495,10 +373,10 @@ public class BedrockBatchJobCreatorTest {
         return (long) field.get(creator);
     }
 
-    private void injectConnectorExecutor(final BedrockBatchJobCreator creator,
-                                         final RemoteConnectorExecutor executor) throws Exception {
-        final Field field = BedrockBatchJobCreator.class.getDeclaredField("connectorExecutor");
+    private void injectBatchPredictor(final BedrockBatchJobCreator creator,
+                                      final BatchPredictor predictor) throws Exception {
+        final Field field = BedrockBatchJobCreator.class.getDeclaredField("batchPredictor");
         field.setAccessible(true);
-        field.set(creator, executor);
+        field.set(creator, predictor);
     }
 }

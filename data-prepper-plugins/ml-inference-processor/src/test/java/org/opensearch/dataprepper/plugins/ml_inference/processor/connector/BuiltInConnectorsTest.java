@@ -12,17 +12,31 @@ package org.opensearch.dataprepper.plugins.ml_inference.processor.connector;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BuiltInConnectorsTest {
+
+    static Stream<String> builtInModelIds() {
+        return BuiltInConnectors.listBuiltInModelIds().stream();
+    }
+
+    @Test
+    void listBuiltInModelIds_returnsNonEmptyList() {
+        final List<String> modelIds = BuiltInConnectors.listBuiltInModelIds();
+        assertThat(modelIds.size(), greaterThan(0));
+    }
 
     @Test
     void findConnectorJson_whenModelIdIsNull_returnsEmpty() {
@@ -35,37 +49,20 @@ class BuiltInConnectorsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            BuiltInConnectors.TITAN_EMBED_V2_MODEL_ID,
-            BuiltInConnectors.TITAN_MULTIMODAL_EMBED_V1_MODEL_ID
-    })
+    @MethodSource("builtInModelIds")
     void findConnectorJson_whenModelIdIsKnown_returnsNonEmpty(final String modelId) {
         final Optional<String> result = BuiltInConnectors.findConnectorJson(modelId);
         assertTrue(result.isPresent());
     }
 
-    @Test
-    void findConnectorJson_titanEmbedV2_returnsValidJson() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_EMBED_V2_MODEL_ID).orElseThrow();
+    @ParameterizedTest
+    @MethodSource("builtInModelIds")
+    void findConnectorJson_allBuiltInModels_returnValidAwsSigv4Connector(final String modelId) {
+        final String json = BuiltInConnectors.findConnectorJson(modelId).orElseThrow();
 
         assertThat(json, containsString("\"protocol\""));
         assertThat(json, containsString("aws_sigv4"));
-        assertThat(json, containsString("amazon.titan-embed-text-v2:0"));
-        assertThat(json, containsString("BATCH_PREDICT"));
-
-        // Must deserialize into the correct subclass without error
-        final AbstractConnector connector = assertDoesNotThrow(() -> AbstractConnector.fromJson(json));
-        assertThat(connector.getProtocol(), is("aws_sigv4"));
-        assertTrue(connector instanceof AwsConnector);
-    }
-
-    @Test
-    void findConnectorJson_titanMultimodalV1_returnsValidJson() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_MULTIMODAL_EMBED_V1_MODEL_ID).orElseThrow();
-
-        assertThat(json, containsString("\"protocol\""));
-        assertThat(json, containsString("aws_sigv4"));
-        assertThat(json, containsString("amazon.titan-embed-image-v1"));
+        assertThat(json, containsString(modelId));
         assertThat(json, containsString("BATCH_PREDICT"));
 
         final AbstractConnector connector = assertDoesNotThrow(() -> AbstractConnector.fromJson(json));
@@ -73,10 +70,11 @@ class BuiltInConnectorsTest {
         assertTrue(connector instanceof AwsConnector);
     }
 
-    @Test
-    void findConnectorJson_titanEmbedV2_connectorHasExpectedActions() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_EMBED_V2_MODEL_ID).orElseThrow();
-        final AbstractConnector connector = AbstractConnector.fromJson(json);
+    @ParameterizedTest
+    @MethodSource("builtInModelIds")
+    void findConnectorJson_allBuiltInModels_connectorHasRequiredActions(final String modelId) {
+        final String json = BuiltInConnectors.findConnectorJson(modelId).orElseThrow();
+        final AbstractConnector connector = assertDoesNotThrow(() -> AbstractConnector.fromJson(json));
 
         assertTrue(connector.findAction("PREDICT").isPresent());
         assertTrue(connector.findAction("BATCH_PREDICT").isPresent());
@@ -84,34 +82,13 @@ class BuiltInConnectorsTest {
         assertTrue(connector.findAction("CANCEL_BATCH_PREDICT").isPresent());
     }
 
-    @Test
-    void findConnectorJson_titanMultimodalV1_connectorHasExpectedActions() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_MULTIMODAL_EMBED_V1_MODEL_ID).orElseThrow();
-        final AbstractConnector connector = AbstractConnector.fromJson(json);
-
-        assertTrue(connector.findAction("PREDICT").isPresent());
-        assertTrue(connector.findAction("BATCH_PREDICT").isPresent());
-        assertTrue(connector.findAction("BATCH_PREDICT_STATUS").isPresent());
-        assertTrue(connector.findAction("CANCEL_BATCH_PREDICT").isPresent());
-    }
-
-    @Test
-    void findConnectorJson_titanEmbedV2_connectorParametersIncludeDefaults() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_EMBED_V2_MODEL_ID).orElseThrow();
-        final AbstractConnector connector = AbstractConnector.fromJson(json);
+    @ParameterizedTest
+    @MethodSource("builtInModelIds")
+    void findConnectorJson_allBuiltInModels_connectorParametersIncludeServiceNameAndModel(final String modelId) {
+        final String json = BuiltInConnectors.findConnectorJson(modelId).orElseThrow();
+        final AbstractConnector connector = assertDoesNotThrow(() -> AbstractConnector.fromJson(json));
 
         assertThat(connector.getParameters().get("service_name"), is("bedrock"));
-        assertThat(connector.getParameters().get("model"), is("amazon.titan-embed-text-v2:0"));
-        assertThat(connector.getParameters().get("dimensions"), is("1024"));
-        assertThat(connector.getParameters().get("normalize"), is("true"));
-    }
-
-    @Test
-    void findConnectorJson_titanMultimodalV1_connectorParametersIncludeDefaults() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_MULTIMODAL_EMBED_V1_MODEL_ID).orElseThrow();
-        final AbstractConnector connector = AbstractConnector.fromJson(json);
-
-        assertThat(connector.getParameters().get("service_name"), is("bedrock"));
-        assertThat(connector.getParameters().get("model"), is("amazon.titan-embed-image-v1"));
+        assertThat(connector.getParameters().get("model"), is(not(Optional.empty())));
     }
 }

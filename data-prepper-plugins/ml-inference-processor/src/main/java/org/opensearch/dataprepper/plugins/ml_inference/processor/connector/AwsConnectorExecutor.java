@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory.convertToCredentialsOptions;
-import static org.opensearch.dataprepper.plugins.ml_inference.processor.connector.ConnectorProtocols.AWS_SIGV4;
+
 
 /**
  * Executes connector actions against AWS services using SigV4 signing, analogous to
@@ -52,7 +52,7 @@ import static org.opensearch.dataprepper.plugins.ml_inference.processor.connecto
  * The constructor accepts a {@link Connector} (the typed {@link AwsConnector} instance
  * stored in {@link BuiltInConnectors}) and casts it internally.
  */
-@ConnectorExecutor(AWS_SIGV4)
+@ConnectorExecutor(AwsConnector.PROTOCOL)
 public class AwsConnectorExecutor extends AbstractConnectorExecutor {
 
     private static final Logger LOG = LoggerFactory.getLogger(AwsConnectorExecutor.class);
@@ -122,7 +122,7 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
 
         final HttpExecuteRequest executeRequest = HttpExecuteRequest.builder()
                 .request(signedRequest)
-                .contentStreamProvider(request.contentStreamProvider().orElse(null))
+                .contentStreamProvider(signedRequest.contentStreamProvider().orElse(null))
                 .build();
 
         executeHttpRequest(executeRequest, action.getActionType());

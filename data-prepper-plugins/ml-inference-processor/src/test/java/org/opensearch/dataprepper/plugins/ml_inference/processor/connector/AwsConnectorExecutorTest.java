@@ -71,7 +71,7 @@ class AwsConnectorExecutorTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        final String json = BuiltInConnectors.findConnectorJson(BuiltInConnectors.TITAN_EMBED_V2_MODEL_ID).orElseThrow();
+        final String json = BuiltInConnectors.findConnectorJson("amazon.titan-embed-text-v2:0").orElseThrow();
         connector = (AwsConnector) AbstractConnector.fromJson(json);
 
         when(config.getAwsAuthenticationOptions()).thenReturn(awsAuthOptions);

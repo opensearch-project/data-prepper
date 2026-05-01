@@ -39,8 +39,8 @@ import java.util.Optional;
         visible = true,
         defaultImpl = HttpConnector.class)
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = AwsConnector.class, name = ConnectorProtocols.AWS_SIGV4),
-        @JsonSubTypes.Type(value = HttpConnector.class, name = ConnectorProtocols.HTTP)
+        @JsonSubTypes.Type(value = AwsConnector.class, name = AwsConnector.PROTOCOL),
+        @JsonSubTypes.Type(value = HttpConnector.class, name = HttpConnector.PROTOCOL)
 })
 public abstract class AbstractConnector implements Connector {
 

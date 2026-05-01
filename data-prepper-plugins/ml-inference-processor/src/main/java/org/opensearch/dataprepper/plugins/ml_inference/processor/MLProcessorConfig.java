@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ActionType;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.BuiltInConnectors;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -105,12 +107,6 @@ public class MLProcessorConfig {
     @DurationMax(seconds = 300)
     private Duration retryInterval = Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS);
 
-    @JsonPropertyDescription("IAM role ARN that the batch inference service assumes to read input data from S3 "
-            + "and write output data to S3. Only required when action_type is batch_predict and the model_id is supported in the ml_inference processor. This role is passed in the "
-            + "batch job request body and is distinct from the role used to sign the API call (configured via aws.sts_role_arn).")
-    @JsonProperty("job_role_arn")
-    private String jobRoleArn;
-
     @JsonProperty("dlq")
     private PluginModel dlq;
 
@@ -130,13 +126,21 @@ public class MLProcessorConfig {
 
     public List<String> getTagsOnFailure() { return tagsOnFailure; }
 
-    public String getJobRoleArn() { return jobRoleArn; }
-
     public PluginModel getDlq() {
         return dlq;
     }
 
     public Map<String, Object> getDlqPluginSetting() {
         return dlq != null ? dlq.getPluginSettings() : null;
+    }
+
+    @AssertTrue(message = "aws.job_sts_role_arn is required when model_id refers to a built-in model.")
+    boolean isJobStsRoleArnProvidedForDirectModel() {
+        if (!BuiltInConnectors.findConnectorJson(modelId).isPresent()) {
+            return true;
+        }
+        return awsAuthenticationOptions != null
+                && awsAuthenticationOptions.getJobStsRoleArn() != null
+                && !awsAuthenticationOptions.getJobStsRoleArn().isBlank();
     }
 }

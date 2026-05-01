@@ -21,9 +21,11 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.annotation.Conn
  * <p>All behaviour is inherited from {@link AbstractConnector}; this class exists as the
  * concrete counterpart to {@link AwsConnector} for non-AWS endpoints.
  */
-@Connector(ConnectorProtocols.HTTP)
+@Connector(HttpConnector.PROTOCOL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class HttpConnector extends AbstractConnector {
+
+    public static final String PROTOCOL = "http";
 
     public HttpConnector() {
         super();
