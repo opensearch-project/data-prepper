@@ -58,7 +58,7 @@ dependencies {
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
+    implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:3.0.0-beta-1'
     testImplementation testLibs.spring.test
     implementation libs.armeria.core
     implementation libs.armeria.grpc
