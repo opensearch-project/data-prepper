@@ -775,8 +775,8 @@ class ConnectionConfigurationTests {
         final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
-        assertThat(connectionConfiguration.getClientCertPath(), notNullValue());
-        assertThat(connectionConfiguration.getClientKeyPath(), notNullValue());
+        assertThat(connectionConfiguration.getClientCertContent(), notNullValue());
+        assertThat(connectionConfiguration.getClientKeyContent(), notNullValue());
     }
 
     @Test
@@ -785,8 +785,8 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
-        assertThat(connectionConfiguration.getClientCertPath(), equalTo(null));
-        assertThat(connectionConfiguration.getClientKeyPath(), equalTo(null));
+        assertThat(connectionConfiguration.getClientCertContent(), equalTo(null));
+        assertThat(connectionConfiguration.getClientKeyContent(), equalTo(null));
     }
 
     @Test
@@ -854,8 +854,8 @@ class ConnectionConfigurationTests {
         final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
-        assertThat(connectionConfiguration.getClientCertPath(), notNullValue());
-        assertThat(connectionConfiguration.getClientKeyPath(), notNullValue());
+        assertThat(connectionConfiguration.getClientCertContent(), notNullValue());
+        assertThat(connectionConfiguration.getClientKeyContent(), notNullValue());
         assertThat(connectionConfiguration.getCertPath(), notNullValue());
     }
 }

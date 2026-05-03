@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RequestOptions;
@@ -25,6 +26,12 @@ import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 
 import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +43,9 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -197,7 +207,9 @@ class ConnectionConfiguration_ServerTest {
                 getClass().getClassLoader().getResource("test-client-key.pem")).getFile();
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws Exception {
+            final String trustStorePath = createTrustStoreFromPem();
+
             mtlsWireMockServer = new WireMockServer(options()
                     .httpDisabled(true)
                     .dynamicHttpsPort()
@@ -205,7 +217,7 @@ class ConnectionConfiguration_ServerTest {
                     .keystorePassword("password")
                     .keyManagerPassword("password")
                     .needClientAuth(true)
-                    .trustStorePath("src/test/resources/test-client-truststore.jks")
+                    .trustStorePath(trustStorePath)
                     .trustStorePassword("changeit")
             );
             mtlsWireMockServer.start();
@@ -230,6 +242,23 @@ class ConnectionConfiguration_ServerTest {
                     "tagline", "You Know, for Search"
             );
             mtlsWireMockServer.stubFor(get("/").willReturn(jsonResponse(responseBody, 200)));
+        }
+
+        private String createTrustStoreFromPem() throws Exception {
+            final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+            final Certificate caCert;
+            try (InputStream is = getClass().getClassLoader().getResourceAsStream("test-client-ca.pem")) {
+                caCert = factory.generateCertificate(is);
+            }
+            final KeyStore trustStore = KeyStore.getInstance("JKS");
+            trustStore.load(null, "changeit".toCharArray());
+            trustStore.setCertificateEntry("client-ca", caCert);
+            final Path trustStoreFile = Files.createTempFile("test-client-truststore-", ".jks");
+            trustStoreFile.toFile().deleteOnExit();
+            try (var out = Files.newOutputStream(trustStoreFile)) {
+                trustStore.store(out, "changeit".toCharArray());
+            }
+            return trustStoreFile.toString();
         }
 
         @AfterEach
@@ -264,7 +293,11 @@ class ConnectionConfiguration_ServerTest {
             final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
             assertThat(client, notNullValue());
 
-            assertThrows(Exception.class, () -> client.info(RequestOptions.DEFAULT));
+            final Exception exception = assertThrows(Exception.class, () -> client.info(RequestOptions.DEFAULT));
+            assertThat(exception, anyOf(
+                    instanceOf(SSLHandshakeException.class),
+                    instanceOf(javax.net.ssl.SSLException.class),
+                    instanceOf(IOException.class)));
         }
     }
 }
