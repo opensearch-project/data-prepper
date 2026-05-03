@@ -53,15 +53,21 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.Collection;
 import java.time.Duration;
@@ -438,7 +444,7 @@ public class ConnectionConfiguration {
   private SSLContext getSSLContextWithClientCert() {
     LOG.info("Using client certificate authentication.");
     try {
-      SSLContextBuilder sslContextBuilder = SSLContexts.custom();
+      final SSLContextBuilder sslContextBuilder = SSLContexts.custom();
 
       if (certPath != null) {
         sslContextBuilder.loadTrustMaterial(loadTrustStore(certPath), null);
@@ -450,7 +456,7 @@ public class ConnectionConfiguration {
       sslContextBuilder.loadKeyMaterial(keyStore, "".toCharArray());
 
       return sslContextBuilder.build();
-    } catch (Exception ex) {
+    } catch (GeneralSecurityException ex) {
       throw new RuntimeException("Failed to create SSL context with client certificate", ex);
     }
   }
@@ -469,7 +475,7 @@ public class ConnectionConfiguration {
         trustStore.setCertificateEntry("ca-" + idx++, ca);
       }
       return trustStore;
-    } catch (Exception ex) {
+    } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException ex) {
       throw new RuntimeException("Failed to load trust store", ex);
     }
   }
@@ -489,30 +495,26 @@ public class ConnectionConfiguration {
       keyStore.setKeyEntry("client", privateKey, "".toCharArray(), certs.toArray(new Certificate[0]));
 
       return keyStore;
-    } catch (Exception ex) {
+    } catch (GeneralSecurityException | IOException ex) {
       throw new RuntimeException("Failed to load client certificate and key", ex);
     }
   }
 
-  private static PrivateKey loadPrivateKey(final String keyContent) {
-    try {
-      try (PEMParser pemParser = new PEMParser(new StringReader(keyContent))) {
-        final Object object = pemParser.readObject();
-        if (object == null) {
-          throw new RuntimeException("Failed to parse PEM content");
-        }
-        final JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
-
-        if (object instanceof PEMKeyPair) {
-          return converter.getPrivateKey(((PEMKeyPair) object).getPrivateKeyInfo());
-        } else if (object instanceof PrivateKeyInfo) {
-          return converter.getPrivateKey((PrivateKeyInfo) object);
-        } else {
-          throw new RuntimeException("Unsupported PEM object type: " + object.getClass().getName());
-        }
+  private static PrivateKey loadPrivateKey(final String keyContent) throws IOException {
+    try (final PEMParser pemParser = new PEMParser(new StringReader(keyContent))) {
+      final Object object = pemParser.readObject();
+      if (object == null) {
+        throw new RuntimeException("Failed to parse PEM content");
       }
-    } catch (Exception ex) {
-      throw new RuntimeException("Failed to load private key", ex);
+      final JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+
+      if (object instanceof PEMKeyPair) {
+        return converter.getPrivateKey(((PEMKeyPair) object).getPrivateKeyInfo());
+      } else if (object instanceof PrivateKeyInfo) {
+        return converter.getPrivateKey((PrivateKeyInfo) object);
+      } else {
+        throw new RuntimeException("Unsupported PEM object type: " + object.getClass().getName());
+      }
     }
   }
 
@@ -578,7 +580,7 @@ public class ConnectionConfiguration {
   }
 
   private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
-    TrustManager[] trustManagers = createTrustManagers(certPath, insecure);
+    final TrustManager[] trustManagers = createTrustManagers(certPath, insecure);
     if(trustManagers.length > 0) {
       apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
     }
@@ -590,7 +592,7 @@ public class ConnectionConfiguration {
         keyManagerFactory.init(keyStore, "".toCharArray());
         final KeyManager[] keyManagers = keyManagerFactory.getKeyManagers();
         apacheHttpClientBuilder.tlsKeyManagersProvider(() -> keyManagers);
-      } catch (Exception ex) {
+      } catch (GeneralSecurityException ex) {
         throw new RuntimeException("Failed to create key managers for client certificate", ex);
       }
     }
@@ -738,7 +740,7 @@ public class ConnectionConfiguration {
 
     private static byte[] resolvePemContent(final String content) {
       if (content.startsWith("-----BEGIN")) {
-        return content.getBytes();
+        return content.getBytes(StandardCharsets.UTF_8);
       }
       try {
         return Files.readAllBytes(new File(content).toPath());
