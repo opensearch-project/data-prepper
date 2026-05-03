@@ -488,7 +488,7 @@ public class ConnectionConfiguration {
         certs = factory.generateCertificates(is);
       }
 
-      final PrivateKey privateKey = loadPrivateKey(new String(keyContent));
+      final PrivateKey privateKey = loadPrivateKey(new String(keyContent, StandardCharsets.UTF_8));
 
       final KeyStore keyStore = KeyStore.getInstance("pkcs12");
       keyStore.load(null, null);
@@ -744,7 +744,7 @@ public class ConnectionConfiguration {
       }
       try {
         return Files.readAllBytes(new File(content).toPath());
-      } catch (Exception ex) {
+      } catch (IOException ex) {
         throw new RuntimeException("Failed to read PEM content from file: " + content, ex);
       }
     }

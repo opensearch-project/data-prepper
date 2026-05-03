@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 
@@ -49,6 +50,7 @@ public class AuthConfig {
         return clientKey;
     }
 
+    @JsonIgnore
     @AssertTrue(message = "client_certificate and client_key must both be provided when using client certificate authentication.")
     public boolean isClientCertificateValid() {
         if (clientCertificate != null || clientKey != null) {
