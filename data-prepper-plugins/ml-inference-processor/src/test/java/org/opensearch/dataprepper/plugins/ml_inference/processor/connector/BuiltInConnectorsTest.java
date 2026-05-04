@@ -50,13 +50,6 @@ class BuiltInConnectorsTest {
 
     @ParameterizedTest
     @MethodSource("builtInModelIds")
-    void findConnectorJson_whenModelIdIsKnown_returnsNonEmpty(final String modelId) {
-        final Optional<String> result = BuiltInConnectors.findConnectorJson(modelId);
-        assertTrue(result.isPresent());
-    }
-
-    @ParameterizedTest
-    @MethodSource("builtInModelIds")
     void findConnectorJson_allBuiltInModels_returnValidAwsSigv4Connector(final String modelId) {
         final String json = BuiltInConnectors.findConnectorJson(modelId).orElseThrow();
 

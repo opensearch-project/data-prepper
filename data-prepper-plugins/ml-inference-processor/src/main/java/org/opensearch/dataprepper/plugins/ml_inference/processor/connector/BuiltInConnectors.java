@@ -10,24 +10,20 @@
 
 package org.opensearch.dataprepper.plugins.ml_inference.processor.connector;
 
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Registry of built-in connector definitions shipped with the ml_inference processor.
@@ -49,7 +45,8 @@ public final class BuiltInConnectors {
 
     private static final Logger LOG = LoggerFactory.getLogger(BuiltInConnectors.class);
 
-    static final String RESOURCE_BASE = "org/opensearch/dataprepper/plugins/ml_inference/connector/";
+    static final String RESOURCE_BASE = "org/opensearch/dataprepper/plugins/ml_inference/connector";
+    private static final Pattern JSON_PATTERN = Pattern.compile(".*\\.json");
 
     private BuiltInConnectors() {}
 
@@ -61,26 +58,14 @@ public final class BuiltInConnectors {
      * @return an unmodifiable list of known built-in model IDs
      */
     public static List<String> listBuiltInModelIds() {
-        final URL dirUrl = BuiltInConnectors.class.getClassLoader().getResource(RESOURCE_BASE);
-        if (dirUrl == null) {
-            LOG.warn("Built-in connector resource directory not found: {}", RESOURCE_BASE);
-            return Collections.emptyList();
-        }
-        try {
-            final URI uri = dirUrl.toURI();
-            if ("jar".equals(uri.getScheme())) {
-                try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap());
-                     Stream<Path> paths = Files.list(fs.getPath(RESOURCE_BASE))) {
-                    return toModelIds(paths);
-                }
-            } else {
-                try (Stream<Path> paths = Files.list(Path.of(uri))) {
-                    return toModelIds(paths);
-                }
-            }
-        } catch (final URISyntaxException | IOException e) {
-            throw new RuntimeException("Failed to enumerate built-in connector resources under: " + RESOURCE_BASE, e);
-        }
+        final Reflections reflections = new Reflections(new ConfigurationBuilder()
+                .setUrls(ClasspathHelper.forResource(RESOURCE_BASE))
+                .setScanners(Scanners.Resources));
+        return reflections.getResources(JSON_PATTERN).stream()
+                .map(path -> path.substring(path.lastIndexOf('/') + 1))
+                .map(name -> name.substring(0, name.length() - ".json".length()))
+                .sorted()
+                .collect(Collectors.toUnmodifiableList());
     }
 
     /**
@@ -95,7 +80,7 @@ public final class BuiltInConnectors {
         if (modelId == null) {
             return Optional.empty();
         }
-        final String resourcePath = RESOURCE_BASE + modelId + ".json";
+        final String resourcePath = RESOURCE_BASE + "/" + modelId + ".json";
         final InputStream stream = BuiltInConnectors.class.getClassLoader().getResourceAsStream(resourcePath);
         if (stream == null) {
             LOG.debug("No built-in connector found for model: {}", modelId);
@@ -110,12 +95,4 @@ public final class BuiltInConnectors {
         }
     }
 
-    private static List<String> toModelIds(final Stream<Path> paths) {
-        return paths
-                .map(p -> p.getFileName().toString())
-                .filter(name -> name.endsWith(".json"))
-                .map(name -> name.substring(0, name.length() - ".json".length()))
-                .sorted()
-                .collect(Collectors.toUnmodifiableList());
-    }
 }

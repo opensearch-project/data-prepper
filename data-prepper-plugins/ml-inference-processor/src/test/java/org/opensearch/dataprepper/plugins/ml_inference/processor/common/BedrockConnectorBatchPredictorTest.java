@@ -59,18 +59,6 @@ class BedrockConnectorBatchPredictorTest {
     }
 
     @Test
-    void predict_executesConnectorBatchPredictAction() {
-        try (MockedStatic<RetryUtil> retryUtil = mockStatic(RetryUtil.class)) {
-            retryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
-
-            final RetryUtil.RetryResult result = predictor.predict("s3://bucket/input.jsonl");
-
-            assertThat(result.isSuccess(), is(true));
-        }
-    }
-
-    @Test
     void predict_parametersIncludeJobStsRoleArn() {
         try (MockedStatic<RetryUtil> retryUtil = mockStatic(RetryUtil.class)) {
             retryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))

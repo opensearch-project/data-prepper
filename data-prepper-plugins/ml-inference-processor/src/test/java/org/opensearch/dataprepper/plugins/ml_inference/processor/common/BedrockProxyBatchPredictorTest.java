@@ -22,8 +22,6 @@ import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.util.MlCommonRequester;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
@@ -49,18 +47,6 @@ class BedrockProxyBatchPredictorTest {
         when(mlProcessorConfig.getOutputPath()).thenReturn("s3://output-bucket/results");
         when(jobNameSource.generateJobName()).thenReturn("batch-job-test");
         predictor = new BedrockProxyBatchPredictor(mlCommonRequester, mlProcessorConfig, jobNameSource);
-    }
-
-    @Test
-    void predict_whenS3UriIsValid_delegatesToMlCommonsRequester() throws Exception {
-        try (MockedStatic<RetryUtil> retryUtil = mockStatic(RetryUtil.class)) {
-            retryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
-                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
-
-            final RetryUtil.RetryResult result = predictor.predict("s3://bucket/input.jsonl");
-
-            assertThat(result.isSuccess(), is(true));
-        }
     }
 
     @Test

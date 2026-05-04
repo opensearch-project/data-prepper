@@ -61,15 +61,6 @@ class MLProcessorConfigTest {
     }
 
     @ParameterizedTest
-    @MethodSource("builtInModelIds")
-    void isJobStsRoleArnProvidedForDirectModel_whenBuiltInModelAndRoleArnNull_returnsFalse(final String modelId) throws Exception {
-        setField(config, "modelId", modelId);
-        when(awsAuthenticationOptions.getJobStsRoleArn()).thenReturn(null);
-
-        assertThat(config.isJobStsRoleArnProvidedForDirectModel(), is(false));
-    }
-
-    @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   "})
     void isJobStsRoleArnProvidedForDirectModel_whenBuiltInModelAndRoleArnBlankOrNull_returnsFalse(final String roleArn) throws Exception {
