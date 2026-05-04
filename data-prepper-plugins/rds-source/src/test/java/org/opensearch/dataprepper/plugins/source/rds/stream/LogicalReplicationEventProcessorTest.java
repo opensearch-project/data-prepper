@@ -21,6 +21,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -63,6 +66,15 @@ class LogicalReplicationEventProcessorTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
     private ByteBuffer message;
 
     private String s3Prefix;
@@ -77,6 +89,7 @@ class LogicalReplicationEventProcessorTest {
         random = new Random();
         when(pluginMetrics.timer(anyString())).thenReturn(Metrics.timer("test-timer"));
         when(pluginMetrics.counter(anyString())).thenReturn(Metrics.counter("test-counter"));
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
 
         objectUnderTest = spy(createObjectUnderTest());
     }
@@ -176,7 +189,8 @@ class LogicalReplicationEventProcessorTest {
 
     private LogicalReplicationEventProcessor createObjectUnderTest() {
         return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
-                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     private void setMessageType(MessageType messageType) {

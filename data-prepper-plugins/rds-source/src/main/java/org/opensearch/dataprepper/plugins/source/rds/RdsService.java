@@ -10,8 +10,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -68,6 +70,8 @@ public class RdsService {
     private final PluginConfigObservable pluginConfigObservable;
     private final RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
     private final PipelineDescription pipelineDescription;
+    private final PluginSetting pluginSetting;
+    private final HeadlessPipeline failurePipeline;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -82,7 +86,9 @@ public class RdsService {
                       final PluginMetrics pluginMetrics,
                       final AcknowledgementSetManager acknowledgementSetManager,
                       final PluginConfigObservable pluginConfigObservable,
-                      final PipelineDescription pipelineDescription) {
+                      final PipelineDescription pipelineDescription,
+                      final PluginSetting pluginSetting,
+                      final HeadlessPipeline failurePipeline) {
         this.sourceCoordinator = sourceCoordinator;
         this.eventFactory = eventFactory;
         this.pluginMetrics = pluginMetrics;
@@ -91,6 +97,8 @@ public class RdsService {
         this.pluginConfigObservable = pluginConfigObservable;
         this.rdsSourceAggregateMetrics = new RdsSourceAggregateMetrics();
         this.pipelineDescription = pipelineDescription;
+        this.pluginSetting = pluginSetting;
+        this.failurePipeline = failurePipeline;
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -141,7 +149,8 @@ public class RdsService {
             }
 
             streamScheduler = new StreamScheduler(
-                    sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics,
+                    acknowledgementSetManager, pluginConfigObservable, pluginSetting, pipelineDescription, failurePipeline);
             runnableList.add(streamScheduler);
 
             if (sourceConfig.getEngine().isMySql()) {

@@ -20,7 +20,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
@@ -118,6 +121,15 @@ class StreamWorkerTaskRefresherTest {
     @Mock
     private GlobalState globalState;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
     @Nested
@@ -144,7 +156,8 @@ class StreamWorkerTaskRefresherTest {
                         .thenReturn(streamWorker);
                 binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                                 any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
-                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(binlogEventListener);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
             }
@@ -184,7 +197,8 @@ class StreamWorkerTaskRefresherTest {
                         .thenReturn(streamWorker);
                 binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                                 any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
-                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(binlogEventListener);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig2);
@@ -222,7 +236,8 @@ class StreamWorkerTaskRefresherTest {
                         .thenReturn(streamWorker);
                 binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                                 any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
-                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(binlogEventListener);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig);
@@ -245,7 +260,8 @@ class StreamWorkerTaskRefresherTest {
                         .thenReturn(streamWorker);
                 binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                                 any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
-                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(binlogEventListener);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
             }
@@ -261,7 +277,8 @@ class StreamWorkerTaskRefresherTest {
 
             return new StreamWorkerTaskRefresher(
                     sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
-                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics,
+                    pluginSetting, pipelineDescription, failurePipeline);
         }
     }
 
@@ -285,7 +302,8 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
             }
@@ -320,7 +338,8 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig2);
@@ -353,7 +372,8 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig);
@@ -372,7 +392,8 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
             }
@@ -388,7 +409,8 @@ class StreamWorkerTaskRefresherTest {
 
             return new StreamWorkerTaskRefresher(
                     sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
-                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics,
+                    pluginSetting, pipelineDescription, failurePipeline);
         }
     }
 

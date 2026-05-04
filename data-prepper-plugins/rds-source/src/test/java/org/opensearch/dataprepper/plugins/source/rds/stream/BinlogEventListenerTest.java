@@ -24,6 +24,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -89,6 +92,15 @@ class BinlogEventListenerTest {
     private CascadingActionDetector cascadingActionDetector;
 
     @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
+    @Mock
     private ExecutorService eventListnerExecutorService;
 
     @Mock
@@ -120,6 +132,7 @@ class BinlogEventListenerTest {
         when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
         lenient().when(pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT)).thenReturn(eventProcessingErrorCounter);
         lenient().when(pluginMetrics.counter(any())).thenReturn(defaultCounter);
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
             executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
@@ -313,7 +326,8 @@ class BinlogEventListenerTest {
 
     private BinlogEventListener createObjectUnderTest() {
         return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
-                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector);
+                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     private void verifyHandlerCallHelper() {
