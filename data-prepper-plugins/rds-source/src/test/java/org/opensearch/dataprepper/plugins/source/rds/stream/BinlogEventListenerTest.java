@@ -237,6 +237,80 @@ class BinlogEventListenerTest {
         verify(objectUnderTest).handleDeleteEvent(binlogEvent);
     }
 
+    @ParameterizedTest
+    @EnumSource(names = {"UPDATE_ROWS", "EXT_UPDATE_ROWS"})
+    void test_handleUpdateEvent_does_not_throw_when_row_data_has_extra_columns(EventType eventType) throws NoSuchFieldException, IllegalAccessException {
+        // Simulate expression index: row data has 4 values but only 2 visible column names
+        final UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        final Serializable[] oldData = new Serializable[]{1, "a", "hidden1", "hidden2"};
+        final Serializable[] newData = new Serializable[]{1, "b", "hidden1", "hidden2"};
+        final List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(oldData, newData));
+        final long tableId = 1234L;
+        when(binlogEvent.getHeader().getEventType()).thenReturn(eventType);
+        when(binlogEvent.getData()).thenReturn(data);
+        when(data.getTableId()).thenReturn(tableId);
+        when(objectUnderTest.isValidTableId(tableId)).thenReturn(true);
+        when(data.getRows()).thenReturn(rows);
+
+        final TableMetadata tableMetadata = mock(TableMetadata.class);
+        final Map<Long, TableMetadata> tableMetadataMap = Map.of(tableId, tableMetadata);
+        Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        tableMetadataMapField.set(objectUnderTest, tableMetadataMap);
+        when(tableMetadata.getPrimaryKeys()).thenReturn(List.of("col1"));
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+
+        objectUnderTest.onEvent(binlogEvent);
+
+        verifyHandlerCallHelper();
+        verify(objectUnderTest).handleUpdateEvent(binlogEvent);
+
+        ArgumentCaptor<List<Serializable[]>> rowListCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionCaptor = ArgumentCaptor.forClass(List.class);
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListCaptor.capture(), bulkActionCaptor.capture(), eq(StreamEventType.UPDATE));
+
+        // No primary key change, so only the INDEX action for the new row
+        assertThat(rowListCaptor.getValue().size(), is(1));
+        assertThat(bulkActionCaptor.getValue().get(0), is(OpenSearchBulkActions.INDEX));
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = {"UPDATE_ROWS", "EXT_UPDATE_ROWS"})
+    void test_handleUpdateEvent_detects_primary_key_change_with_extra_columns(EventType eventType) throws NoSuchFieldException, IllegalAccessException {
+        // Row data has extra expression index columns, but primary key still changes
+        final UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        final Serializable[] oldData = new Serializable[]{1, "a", "hidden1"};
+        final Serializable[] newData = new Serializable[]{2, "a", "hidden1"};
+        final List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(oldData, newData));
+        final long tableId = 1234L;
+        when(binlogEvent.getHeader().getEventType()).thenReturn(eventType);
+        when(binlogEvent.getData()).thenReturn(data);
+        when(data.getTableId()).thenReturn(tableId);
+        when(objectUnderTest.isValidTableId(tableId)).thenReturn(true);
+        when(data.getRows()).thenReturn(rows);
+
+        final TableMetadata tableMetadata = mock(TableMetadata.class);
+        final Map<Long, TableMetadata> tableMetadataMap = Map.of(tableId, tableMetadata);
+        Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        tableMetadataMapField.set(objectUnderTest, tableMetadataMap);
+        when(tableMetadata.getPrimaryKeys()).thenReturn(List.of("col1"));
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+
+        objectUnderTest.onEvent(binlogEvent);
+
+        verifyHandlerCallHelper();
+
+        ArgumentCaptor<List<Serializable[]>> rowListCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionCaptor = ArgumentCaptor.forClass(List.class);
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListCaptor.capture(), bulkActionCaptor.capture(), eq(StreamEventType.UPDATE));
+
+        // Primary key changed: DELETE old + INDEX new
+        assertThat(rowListCaptor.getValue().size(), is(2));
+        assertThat(bulkActionCaptor.getValue().get(0), is(OpenSearchBulkActions.DELETE));
+        assertThat(bulkActionCaptor.getValue().get(1), is(OpenSearchBulkActions.INDEX));
+    }
+
     private BinlogEventListener createObjectUnderTest() {
         return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                 streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector);
