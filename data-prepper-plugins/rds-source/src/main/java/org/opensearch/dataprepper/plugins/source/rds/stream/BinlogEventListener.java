@@ -324,12 +324,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             childKeyIndices = null;
         }
 
+        final List<String> columnNames = tableMetadata.getColumnNames();
+
         for (int rowNum = 0; rowNum < data.getRows().size(); rowNum++) {
             // `row` contains data before update as key and data after update as value
             Map.Entry<Serializable[], Serializable[]> row = data.getRows().get(rowNum);
 
-            for (int i = 0; i < row.getKey().length; i++) {
-                if (tableMetadata.getPrimaryKeys().contains(tableMetadata.getColumnNames().get(i)) &&
+            final int columnCount = Math.min(columnNames.size(), row.getKey().length);
+            for (int i = 0; i < columnCount; i++) {
+                if (tableMetadata.getPrimaryKeys().contains(columnNames.get(i)) &&
                         !row.getKey()[i].equals(row.getValue()[i])) {
                     LOG.debug("Primary keys were updated");
                     // add delete event for the old row data
@@ -427,7 +430,12 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             final OpenSearchBulkActions bulkAction = bulkActions.get(rowNum);
 
             final Map<String, Object> rowDataMap = new HashMap<>();
-            for (int i = 0; i < rowDataArray.length; i++) {
+            final int columnCount = Math.min(columnNames.size(), rowDataArray.length);
+            if (rowDataArray.length != columnNames.size()) {
+                LOG.warn("Row data length ({}) does not match column names size ({}) for table {}. Extra columns will be skipped.",
+                        rowDataArray.length, columnNames.size(), tableMetadata.getFullTableName());
+            }
+            for (int i = 0; i < columnCount; i++) {
                 final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
                 final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
                 final Object data =  MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
