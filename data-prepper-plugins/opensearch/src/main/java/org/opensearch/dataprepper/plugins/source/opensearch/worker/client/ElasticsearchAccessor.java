@@ -6,8 +6,10 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.ScoreSort;
+import co.elastic.clients.elasticsearch._types.ShardStatistics;
 import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.Time;
@@ -42,6 +44,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchShardStatistics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
@@ -191,6 +194,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                 .withCreationTime(Instant.now().toEpochMilli())
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 
@@ -213,6 +218,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         return SearchScrollResponse.builder()
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 
@@ -271,6 +278,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             return SearchWithSearchAfterResults.builder()
                     .withDocuments(documents)
                     .withNextSearchAfter(nextSearchAfter)
+                    .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                    .withTotalHits(extractTotalHits(searchResponse))
                     .build();
         } catch (final ElasticsearchException e) {
             if (isDueToNoIndexFound(e)) {
@@ -307,6 +316,30 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                                         DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
                         .withEventType(EventType.DOCUMENT.toString()).build())
                 .collect(Collectors.toList());
+    }
+
+    private SearchShardStatistics toShardStatistics(final ShardStatistics shards) {
+        if (shards == null) {
+            return SearchShardStatistics.empty();
+        }
+        final List<String[]> failures = shards.failures() == null ? null :
+                shards.failures().stream()
+                        .map(f -> {
+                            final ErrorCause reason = f == null ? null : f.reason();
+                            return new String[]{
+                                    reason != null ? reason.type() : null,
+                                    reason != null ? reason.reason() : null
+                            };
+                        })
+                        .collect(Collectors.toList());
+        return SearchShardStatistics.fromShardCounts(shards.total(), shards.successful(), shards.failed(), shards.skipped(), failures);
+    }
+
+    private Long extractTotalHits(final SearchResponse<ObjectNode> searchResponse) {
+        if (searchResponse == null || searchResponse.hits() == null || searchResponse.hits().total() == null) {
+            return null;
+        }
+        return searchResponse.hits().total().value();
     }
 
     private List<SortOptions> buildSortOptions(final List<SortingOptions> sortingOptions) {
