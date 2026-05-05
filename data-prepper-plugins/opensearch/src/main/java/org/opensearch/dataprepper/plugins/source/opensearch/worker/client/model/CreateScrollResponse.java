@@ -13,6 +13,8 @@ public class CreateScrollResponse {
     private final String scrollId;
     private final Long scrollCreationTime;
     private final List<Event> documents;
+    private final SearchShardStatistics shardStatistics;
+    private final Long totalHits;
 
     public List<Event> getDocuments() {
         return documents;
@@ -22,12 +24,24 @@ public class CreateScrollResponse {
         return scrollId;
     }
 
-    public Long getScrollCreationTime() { return scrollCreationTime; }
+    public Long getScrollCreationTime() {
+        return scrollCreationTime;
+    }
+
+    public SearchShardStatistics getShardStatistics() {
+        return shardStatistics == null ? SearchShardStatistics.empty() : shardStatistics;
+    }
+
+    public Long getTotalHits() {
+        return totalHits;
+    }
 
     private CreateScrollResponse(final CreateScrollResponse.Builder builder) {
         this.scrollId = builder.scrollId;
         this.scrollCreationTime = builder.scrollCreationTime;
         this.documents = builder.documents;
+        this.shardStatistics = builder.shardStatistics;
+        this.totalHits = builder.totalHits;
     }
 
     public static CreateScrollResponse.Builder builder() {
@@ -39,6 +53,8 @@ public class CreateScrollResponse {
         private List<Event> documents;
         private String scrollId;
         private Long scrollCreationTime;
+        private SearchShardStatistics shardStatistics;
+        private Long totalHits;
 
         public Builder() {
 
@@ -56,6 +72,16 @@ public class CreateScrollResponse {
 
         public CreateScrollResponse.Builder withCreationTime(final Long scrollCreationTime) {
             this.scrollCreationTime = scrollCreationTime;
+            return this;
+        }
+
+        public CreateScrollResponse.Builder withShardStatistics(final SearchShardStatistics shardStatistics) {
+            this.shardStatistics = shardStatistics;
+            return this;
+        }
+
+        public CreateScrollResponse.Builder withTotalHits(final Long totalHits) {
+            this.totalHits = totalHits;
             return this;
         }
 

@@ -167,7 +167,15 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
         final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
-        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        final List<String> firstPageSearchAfter = Collections.singletonList(UUID.randomUUID().toString());
+        // getNextSearchAfter is called ~3 times while processing the first page and once at the
+        // start of the second page. Returning a non-null value for those first 3 calls drives the
+        // second search_after request to use the captured cursor; null afterwards terminates.
+        when(searchWithSearchAfterResults.getNextSearchAfter())
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(null);
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
@@ -231,7 +239,7 @@ public class PitWorkerTest {
         assertThat(searchPointInTimeRequestList.get(1).getPitId(), equalTo(pitId));
         assertThat(searchPointInTimeRequestList.get(1).getKeepAlive(), equalTo(EXTEND_KEEP_ALIVE_TIME));
         assertThat(searchPointInTimeRequestList.get(1).getPaginationSize(), equalTo(2));
-        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
+        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(firstPageSearchAfter));
 
 
         final DeletePointInTimeRequest deletePointInTimeRequest = deleteRequestArgumentCaptor.getValue();
@@ -285,7 +293,15 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
         final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
-        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        final List<String> firstPageSearchAfter = Collections.singletonList(UUID.randomUUID().toString());
+        // getNextSearchAfter is called ~3 times while processing the first page and once at the
+        // start of the second page. Returning a non-null value for those first 3 calls drives the
+        // second search_after request to use the captured cursor; null afterwards terminates.
+        when(searchWithSearchAfterResults.getNextSearchAfter())
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(null);
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
@@ -350,7 +366,7 @@ public class PitWorkerTest {
         assertThat(searchPointInTimeRequestList.get(1).getPitId(), equalTo(pitId));
         assertThat(searchPointInTimeRequestList.get(1).getKeepAlive(), equalTo(EXTEND_KEEP_ALIVE_TIME));
         assertThat(searchPointInTimeRequestList.get(1).getPaginationSize(), equalTo(2));
-        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
+        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(firstPageSearchAfter));
 
 
         final DeletePointInTimeRequest deletePointInTimeRequest = deleteRequestArgumentCaptor.getValue();
@@ -391,7 +407,15 @@ public class PitWorkerTest {
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
         final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
-        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        final List<String> firstPageSearchAfter = Collections.singletonList(UUID.randomUUID().toString());
+        // getNextSearchAfter is called ~3 times while processing the first page and once at the
+        // start of the second page. Returning a non-null value for those first 3 calls drives the
+        // second search_after request to use the captured cursor; null afterwards terminates.
+        when(searchWithSearchAfterResults.getNextSearchAfter())
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(firstPageSearchAfter)
+                .thenReturn(null);
         final Event testEvent1 = mock(Event.class);
         final Event testEvent2 = mock(Event.class);
         final Event testEvent3 = mock(Event.class);
