@@ -43,8 +43,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -292,10 +290,7 @@ class ConnectionConfiguration_ServerTest {
             final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
             assertThat(client, notNullValue());
 
-            final Exception exception = assertThrows(Exception.class, () -> client.info(RequestOptions.DEFAULT));
-            assertThat(exception, anyOf(
-                    instanceOf(SSLHandshakeException.class),
-                    instanceOf(SSLException.class)));
+            assertThrows(SSLException.class, () -> client.info(RequestOptions.DEFAULT));
         }
     }
 }

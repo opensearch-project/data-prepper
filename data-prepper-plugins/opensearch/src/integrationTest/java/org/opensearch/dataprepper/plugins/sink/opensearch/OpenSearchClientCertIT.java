@@ -58,7 +58,6 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 @EnabledIfSystemProperty(named = "tests.mtls.client.key", matches = ".+")
 class OpenSearchClientCertIT {
 
-    private static final String AUTHENTICATION = "authentication";
     private static final String USERNAME = "username";
     private static final String PASSWORD = "password";
     private static final String PLUGIN_NAME = "opensearch";
