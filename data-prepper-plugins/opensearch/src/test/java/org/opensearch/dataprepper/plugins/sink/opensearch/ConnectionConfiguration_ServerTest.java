@@ -24,6 +24,7 @@ import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -296,8 +297,7 @@ class ConnectionConfiguration_ServerTest {
             final Exception exception = assertThrows(Exception.class, () -> client.info(RequestOptions.DEFAULT));
             assertThat(exception, anyOf(
                     instanceOf(SSLHandshakeException.class),
-                    instanceOf(javax.net.ssl.SSLException.class),
-                    instanceOf(IOException.class)));
+                    instanceOf(SSLException.class)));
         }
     }
 }

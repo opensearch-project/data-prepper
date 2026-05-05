@@ -189,11 +189,11 @@ public class ConnectionConfiguration {
   }
 
   byte[] getClientCertContent() {
-    return clientCertContent;
+    return clientCertContent != null ? clientCertContent.clone() : null;
   }
 
   byte[] getClientKeyContent() {
-    return clientKeyContent;
+    return clientKeyContent != null ? clientKeyContent.clone() : null;
   }
 
   boolean hasClientCertificate() {
