@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.file;
@@ -33,6 +38,9 @@ public enum FileFormat {
     }
 
     public static FileFormat getByName(final String name) {
+        if (name == null) {
+            return PLAIN;
+        }
         return NAMES_MAP.get(name.toLowerCase());
     }
 }

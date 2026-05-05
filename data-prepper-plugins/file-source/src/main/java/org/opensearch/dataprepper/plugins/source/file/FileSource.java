@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.file;
@@ -9,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -24,11 +30,12 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.util.Objects;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,13 +44,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 @DataPrepperPlugin(name = "file", pluginType = Source.class, pluginConfigurationType = FileSourceConfig.class)
 public class FileSource implements Source<Record<Object>> {
-    static final String MESSAGE_KEY = "message";
+    private static final String MESSAGE_KEY = "message";
     private static final Logger LOG = LoggerFactory.getLogger(FileSource.class);
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() { };
 
@@ -52,25 +58,37 @@ public class FileSource implements Source<Record<Object>> {
     private final FileSourceConfig fileSourceConfig;
     private final FileStrategy fileStrategy;
     private final EventFactory eventFactory;
+    private final PluginMetrics pluginMetrics;
+    private final PluginFactory pluginFactory;
     private final DecompressionEngine decompressionEngine;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final boolean acknowledgementsEnabled;
 
     private Thread readThread;
+    private TailFileReaderPool readerPool;
+    private CheckpointRegistry checkpointRegistry;
+    private DirectoryWatcher directoryWatcher;
 
-    private boolean isStopRequested;
+    private volatile boolean isStopRequested;
     private final int writeTimeout;
 
     @DataPrepperPluginConstructor
     public FileSource(
             final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-            final EventFactory eventFactory) {
-        this.eventFactory = eventFactory;
+            final EventFactory eventFactory, final AcknowledgementSetManager acknowledgementSetManager) {
+        Objects.requireNonNull(fileSourceConfig, "fileSourceConfig must not be null");
+        this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory must not be null");
+        this.pluginMetrics = Objects.requireNonNull(pluginMetrics, "pluginMetrics must not be null");
+        this.pluginFactory = Objects.requireNonNull(pluginFactory, "pluginFactory must not be null");
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.acknowledgementsEnabled = fileSourceConfig.isAcknowledgments();
         fileSourceConfig.validate();
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;
         this.writeTimeout = FileSourceConfig.DEFAULT_TIMEOUT;
         this.decompressionEngine = fileSourceConfig.getCompression().getDecompressionEngine();
 
-        if(fileSourceConfig.getCodec() != null) {
+        if (!fileSourceConfig.isTail() && fileSourceConfig.getCodec() != null) {
             fileStrategy = new CodecFileStrategy(pluginFactory);
         } else {
             fileStrategy = new ClassicFileStrategy();
@@ -80,7 +98,12 @@ public class FileSource implements Source<Record<Object>> {
 
     @Override
     public void start(final Buffer<Record<Object>> buffer) {
-        checkNotNull(buffer, "Buffer cannot be null for file source to start");
+        Objects.requireNonNull(buffer, "Buffer cannot be null for file source to start");
+
+        if (fileSourceConfig.isTail()) {
+            startTailing(buffer);
+            return;
+        }
 
         LOG.info("Starting file source with {} path.", fileSourceConfig.getFilePathToRead());
 
@@ -92,15 +115,105 @@ public class FileSource implements Source<Record<Object>> {
         readThread.start();
     }
 
+    private void startTailing(final Buffer<Record<Object>> buffer) {
+        LOG.info("Starting file source in tail mode with paths: {}", fileSourceConfig.getAllPaths());
+
+        final int maxActiveFiles = fileSourceConfig.getMaxActiveFiles();
+        final int readerThreads = fileSourceConfig.getReaderThreads();
+        final int maxFilesPerThread = 250;
+        if (readerThreads > 0 && maxActiveFiles / readerThreads > maxFilesPerThread) {
+            LOG.warn("max_active_files ({}) is {} times reader_threads ({}). Files with pending data may experience high latency.",
+                    maxActiveFiles, maxActiveFiles / readerThreads, readerThreads);
+        }
+
+        final FileTailMetrics tailMetrics = new FileTailMetrics(pluginMetrics);
+        final FileSystemOperations fileOps = new DefaultFileSystemOperations();
+
+        final String checkpointPath = fileSourceConfig.getCheckpointFile();
+        final Path cpFile = checkpointPath != null
+                ? Paths.get(checkpointPath)
+                : Paths.get(System.getProperty("java.io.tmpdir"), "data-prepper-file-source-checkpoint.json");
+
+        checkpointRegistry = new CheckpointRegistry(
+                cpFile,
+                fileSourceConfig.getCheckpointInterval(),
+                fileSourceConfig.getCheckpointCleanupAfter());
+
+        final Charset encoding = Charset.forName(fileSourceConfig.getEncoding());
+
+        final RotationDetector rotationDetector = new RotationDetector(fileOps, fileSourceConfig.getFingerprintBytes());
+
+        InputCodec tailCodec = null;
+        if (fileSourceConfig.getCodec() != null) {
+            final PluginModel codecConfiguration = fileSourceConfig.getCodec();
+            final PluginSetting codecPluginSettings = new PluginSetting(
+                    codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+            tailCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+        }
+
+        final TailFileReaderContext readerContext = new TailFileReaderContext(
+                buffer, eventFactory, fileOps, tailMetrics, rotationDetector,
+                acknowledgementSetManager, acknowledgementsEnabled,
+                encoding,
+                fileSourceConfig.getReadBufferSize(),
+                fileSourceConfig.getMaxLineLength(),
+                writeTimeout,
+                fileSourceConfig.getMaxReadTimePerFile(),
+                fileSourceConfig.getRotationDrainTimeout(),
+                fileSourceConfig.getStartPosition(),
+                fileSourceConfig.isIncludeFileMetadata(),
+                fileSourceConfig.getAcknowledgmentTimeout(),
+                fileSourceConfig.getBatchSize(),
+                fileSourceConfig.getBatchTimeout(),
+                fileSourceConfig.getMaxAcknowledgmentRetries(),
+                tailCodec);
+
+        readerPool = new TailFileReaderPool(
+                checkpointRegistry, tailMetrics,
+                maxActiveFiles,
+                readerThreads,
+                fileSourceConfig.getCloseInactive(),
+                readerContext);
+
+        final GlobPathResolver globPathResolver = new GlobPathResolver(
+                fileSourceConfig.getAllPaths(),
+                fileSourceConfig.getExcludePaths());
+
+        directoryWatcher = new DirectoryWatcher(
+                globPathResolver, readerPool, checkpointRegistry,
+                fileSourceConfig, fileOps, tailMetrics,
+                fileSourceConfig.getRotateWait(),
+                fileSourceConfig.isCloseRemoved());
+
+        directoryWatcher.start();
+    }
+
     @Override
     public void stop() {
         isStopRequested = true;
 
-        try {
-            readThread.join(STOP_WAIT_MILLIS);
-        } catch (final InterruptedException e) {
-            readThread.interrupt();
+        if (directoryWatcher != null) {
+            directoryWatcher.stop();
         }
+        if (readerPool != null) {
+            readerPool.shutdown();
+        }
+        if (checkpointRegistry != null) {
+            checkpointRegistry.shutdown();
+        }
+
+        if (readThread != null) {
+            try {
+                readThread.join(STOP_WAIT_MILLIS);
+            } catch (final InterruptedException e) {
+                readThread.interrupt();
+            }
+        }
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return acknowledgementsEnabled;
     }
 
     private interface FileStrategy {
@@ -111,7 +224,7 @@ public class FileSource implements Source<Record<Object>> {
         @Override
         public void start(Buffer<Record<Object>> buffer) {
             Path filePath = Paths.get(fileSourceConfig.getFilePathToRead());
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(decompressionEngine.createInputStream(Files.newInputStream(filePath)), StandardCharsets.UTF_8))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(decompressionEngine.createInputStream(Files.newInputStream(filePath)), Charset.forName(fileSourceConfig.getEncoding())))) {
                 String line;
                 while ((line = reader.readLine()) != null && !isStopRequested) {
                     writeLineAsEventOrString(line, buffer);
@@ -153,8 +266,6 @@ public class FileSource implements Source<Record<Object>> {
             }
         }
 
-        // Temporary function to support both trace and log ingestion pipelines.
-        // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
         private void writeLineAsEventOrString(final String line, final Buffer<Record<Object>> buffer) throws TimeoutException, IllegalArgumentException {
             if (fileSourceConfig.getRecordType().equals(FileSourceConfig.EVENT_TYPE)) {
                 buffer.write(getEventRecordFromLine(line), writeTimeout);
