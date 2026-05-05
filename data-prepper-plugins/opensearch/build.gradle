@@ -14,6 +14,8 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:failures-common')
     implementation project(':data-prepper-plugins:http-common')
+    implementation libs.bouncycastle.bcprov
+    implementation libs.bouncycastle.bcpkix
     implementation libs.opensearch.client
     implementation libs.opensearch.rhlc
     implementation libs.opensearch.java
@@ -78,6 +80,8 @@ task integrationTest(type: Test) {
     systemProperty 'tests.opensearch.user', System.getProperty('tests.opensearch.user')
     systemProperty 'tests.opensearch.password', System.getProperty('tests.opensearch.password')
     systemProperty 'tests.opensearch.version', System.getProperty('tests.opensearch.version')
+    systemProperty 'tests.mtls.client.cert', System.getProperty('tests.mtls.client.cert')
+    systemProperty 'tests.mtls.client.key', System.getProperty('tests.mtls.client.key')
 
     filter {
         includeTestsMatching '*IT'
