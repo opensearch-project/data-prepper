@@ -40,6 +40,7 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.Worker
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.recordShardFailuresIfAny;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -51,6 +52,7 @@ public class ScrollWorker implements SearchWorker {
     private static final Logger LOG = LoggerFactory.getLogger(ScrollWorker.class);
     private static final Duration BACKOFF_ON_SCROLL_LIMIT_REACHED = Duration.ofSeconds(120);
     static final String SCROLL_TIME_PER_BATCH = "10m";
+    static final int MAX_CONSECUTIVE_SCROLL_FAILURES = 3;
 
     private final ObjectMapper objectMapper;
     private final SearchAccessor searchAccessor;
@@ -111,7 +113,7 @@ public class ScrollWorker implements SearchWorker {
                     openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet));
 
                     completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
-                            indexPartition.get(), sourceCoordinator);
+                            indexPartition.get(), sourceCoordinator, openSearchSourcePluginMetrics);
 
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
@@ -155,7 +157,10 @@ public class ScrollWorker implements SearchWorker {
 
         LOG.info("Started processing for index: '{}'", indexName);
 
-        final Integer batchSize = openSearchSourceConfiguration.getSearchConfiguration().getBatchSize();
+        final OpenSearchIndexProgressState openSearchIndexProgressState = openSearchIndexPartition
+                .getPartitionState()
+                .orElseGet(OpenSearchIndexProgressState::new);
+
         final List<SortingOptions> sortingOptions = SortingOptions.fromSortConfigs(openSearchSourceConfiguration.getSearchConfiguration().getSort());
 
         final CreateScrollResponse createScrollResponse = searchAccessor.createScroll(CreateScrollRequest.builder()
@@ -166,35 +171,52 @@ public class ScrollWorker implements SearchWorker {
                 .build());
 
         writeDocumentsToBuffer(createScrollResponse.getDocuments(), acknowledgementSet);
+        recordShardFailuresIfAny(indexName, createScrollResponse.getShardStatistics(), openSearchIndexProgressState, openSearchSourcePluginMetrics);
 
         SearchScrollResponse searchScrollResponse = null;
+        int consecutiveFailures = 0;
 
-        if (createScrollResponse.getDocuments().size() == batchSize) {
-            do {
-                try {
-                    searchScrollResponse = searchAccessor.searchWithScroll(SearchScrollRequest.builder()
-                            .withScrollId(Objects.nonNull(searchScrollResponse) && Objects.nonNull(searchScrollResponse.getScrollId()) ? searchScrollResponse.getScrollId() : createScrollResponse.getScrollId())
-                            .withScrollTime(SCROLL_TIME_PER_BATCH)
-                            .build());
+        while (shouldKeepScrolling(searchScrollResponse, createScrollResponse)) {
+            try {
+                searchScrollResponse = searchAccessor.searchWithScroll(SearchScrollRequest.builder()
+                        .withScrollId(currentScrollId(searchScrollResponse, createScrollResponse))
+                        .withScrollTime(SCROLL_TIME_PER_BATCH)
+                        .build());
 
-                    writeDocumentsToBuffer(searchScrollResponse.getDocuments(), acknowledgementSet);
+                consecutiveFailures = 0;
 
-                    if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                        LOG.debug("Renew ownership of index {}", indexName);
-                        sourceCoordinator.saveProgressStateForPartition(indexName, null);
-                        lastCheckpointTime = System.currentTimeMillis();
-                    }
-                } catch (final Exception e) {
+                writeDocumentsToBuffer(searchScrollResponse.getDocuments(), acknowledgementSet);
+                recordShardFailuresIfAny(indexName, searchScrollResponse.getShardStatistics(), openSearchIndexProgressState, openSearchSourcePluginMetrics);
+
+                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                    LOG.debug("Renew ownership of index {}", indexName);
+                    sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
+                    lastCheckpointTime = System.currentTimeMillis();
+                }
+            } catch (final SearchContextLimitException | IndexNotFoundException e) {
+                deleteScroll(createScrollResponse.getScrollId());
+                throw e;
+            } catch (final RuntimeException e) {
+                consecutiveFailures++;
+                openSearchSourcePluginMetrics.getSearchRequestsFailedCounter().increment();
+                openSearchIndexProgressState.recordRequestFailure(e);
+                LOG.warn("Scroll page failed for index '{}' ({}/{}). Continuing pagination.",
+                        indexName, consecutiveFailures, MAX_CONSECUTIVE_SCROLL_FAILURES, e);
+                if (consecutiveFailures >= MAX_CONSECUTIVE_SCROLL_FAILURES) {
                     deleteScroll(createScrollResponse.getScrollId());
                     throw e;
                 }
-            } while (searchScrollResponse.getDocuments().size() == batchSize);
+            }
+        }
 
-            LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
-                        searchScrollResponse.getDocuments().size(), batchSize);
+        if (searchScrollResponse != null) {
+            LOG.info("Reached end of scroll for index '{}' after last page returned {} documents.",
+                    indexName, searchScrollResponse.getDocuments().size());
         }
 
         deleteScroll(createScrollResponse.getScrollId());
+
+        sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
 
         try {
             bufferAccumulator.flush();
@@ -202,6 +224,22 @@ public class ScrollWorker implements SearchWorker {
             openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
             LOG.error("Failed flushing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
         }
+    }
+
+    private static boolean shouldKeepScrolling(final SearchScrollResponse latest,
+                                               final CreateScrollResponse created) {
+        if (latest == null) {
+            return !created.getDocuments().isEmpty();
+        }
+        return !latest.getDocuments().isEmpty();
+    }
+
+    private static String currentScrollId(final SearchScrollResponse latest,
+                                          final CreateScrollResponse created) {
+        if (latest != null && latest.getScrollId() != null) {
+            return latest.getScrollId();
+        }
+        return created.getScrollId();
     }
 
     private void writeDocumentsToBuffer(final List<Event> documents,

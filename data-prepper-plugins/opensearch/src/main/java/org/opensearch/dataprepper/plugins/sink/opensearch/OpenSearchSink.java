@@ -159,7 +159,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     // Create index with semantic enrichment via AWS control plane (AOSS or managed domain) if configured.
     new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
-            connectionConfiguration,
+            openSearchSinkConfig.getConnectionConfiguration(),
             openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
             openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentResourceName(),
             configuredIndexAlias);

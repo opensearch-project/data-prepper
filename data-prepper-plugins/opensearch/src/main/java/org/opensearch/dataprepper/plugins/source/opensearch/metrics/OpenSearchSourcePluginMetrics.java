@@ -20,6 +20,9 @@ public class OpenSearchSourcePluginMetrics {
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String CREDENTIALS_CHANGED = "credentialsChanged";
     static final String CLIENT_REFRESH_ERRORS = "clientRefreshErrors";
+    static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
+    static final String SEARCH_SHARDS_FAILED = "searchShardsFailed";
+    static final String INDICES_COMPLETED_WITH_FAILURES = "indicesCompletedWithFailures";
 
     private final Counter documentsProcessedCounter;
     private final Counter indicesProcessedCounter;
@@ -30,6 +33,9 @@ public class OpenSearchSourcePluginMetrics {
     private final DistributionSummary bytesProcessedSummary;
     private final Counter credentialsChangeCounter;
     private final Counter clientRefreshErrorsCounter;
+    private final Counter searchRequestsFailedCounter;
+    private final Counter searchShardsFailedCounter;
+    private final Counter indicesCompletedWithFailuresCounter;
 
     public static OpenSearchSourcePluginMetrics create(final PluginMetrics pluginMetrics) {
         return new OpenSearchSourcePluginMetrics(pluginMetrics);
@@ -44,6 +50,9 @@ public class OpenSearchSourcePluginMetrics {
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         clientRefreshErrorsCounter = pluginMetrics.counter(CLIENT_REFRESH_ERRORS);
+        searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
+        searchShardsFailedCounter = pluginMetrics.counter(SEARCH_SHARDS_FAILED);
+        indicesCompletedWithFailuresCounter = pluginMetrics.counter(INDICES_COMPLETED_WITH_FAILURES);
     }
 
     public Counter getDocumentsProcessedCounter() {
@@ -76,5 +85,17 @@ public class OpenSearchSourcePluginMetrics {
 
     public Counter getClientRefreshErrorsCounter() {
         return clientRefreshErrorsCounter;
+    }
+
+    public Counter getSearchRequestsFailedCounter() {
+        return searchRequestsFailedCounter;
+    }
+
+    public Counter getSearchShardsFailedCounter() {
+        return searchShardsFailedCounter;
+    }
+
+    public Counter getIndicesCompletedWithFailuresCounter() {
+        return indicesCompletedWithFailuresCounter;
     }
 }

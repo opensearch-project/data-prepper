@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -186,8 +187,12 @@ public class ScrollWorkerTest {
         when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
         when(objectMapper.writeValueAsBytes(testData4)).thenReturn(new byte[40]);
         when(objectMapper.writeValueAsBytes(testData5)).thenReturn(new byte[50]);
-        when(searchScrollResponse.getDocuments()).thenReturn(List.of(testEvent3, testEvent4))
-                .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5));
+        // The scroll worker calls getDocuments() twice per iteration (once to write to the buffer,
+        // once in shouldKeepScrolling). Duplicate each page's return to match that usage.
+        when(searchScrollResponse.getDocuments())
+                .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent3, testEvent4))
+                .thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5))
+                .thenReturn(Collections.emptyList()).thenReturn(Collections.emptyList());
 
         final ArgumentCaptor<SearchScrollRequest> searchScrollRequestArgumentCaptor = ArgumentCaptor.forClass(SearchScrollRequest.class);
         when(searchAccessor.searchWithScroll(searchScrollRequestArgumentCaptor.capture())).thenReturn(searchScrollResponse);
@@ -223,11 +228,11 @@ public class ScrollWorkerTest {
         assertThat(createScrollRequest.getIndex(), equalTo(partitionKey));
         assertThat(createScrollRequest.getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
-        verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(searchAccessor, times(3)).searchWithScroll(any(SearchScrollRequest.class));
         verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(null));
 
         final List<SearchScrollRequest> searchScrollRequests = searchScrollRequestArgumentCaptor.getAllValues();
-        assertThat(searchScrollRequests.size(), equalTo(2));
+        assertThat(searchScrollRequests.size(), equalTo(3));
         assertThat(searchScrollRequests.get(0), notNullValue());
         assertThat(searchScrollRequests.get(0).getScrollId(), equalTo(scrollId));
         assertThat(searchScrollRequests.get(0).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
@@ -235,6 +240,10 @@ public class ScrollWorkerTest {
         assertThat(searchScrollRequests.get(1), notNullValue());
         assertThat(searchScrollRequests.get(1).getScrollId(), equalTo(scrollId));
         assertThat(searchScrollRequests.get(1).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
+
+        assertThat(searchScrollRequests.get(2), notNullValue());
+        assertThat(searchScrollRequests.get(2).getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollRequests.get(2).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
 
         final DeleteScrollRequest deleteScrollRequest = deleteRequestArgumentCaptor.getValue();
@@ -311,8 +320,12 @@ public class ScrollWorkerTest {
         when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
         when(objectMapper.writeValueAsBytes(testData4)).thenReturn(new byte[40]);
         when(objectMapper.writeValueAsBytes(testData5)).thenReturn(new byte[50]);
-        when(searchScrollResponse.getDocuments()).thenReturn(List.of(testEvent3, testEvent4))
-                .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5));
+        // The scroll worker calls getDocuments() twice per iteration (once to write to the buffer,
+        // once in shouldKeepScrolling). Duplicate each page's return to match that usage.
+        when(searchScrollResponse.getDocuments())
+                .thenReturn(List.of(testEvent3, testEvent4)).thenReturn(List.of(testEvent3, testEvent4))
+                .thenReturn(List.of(testEvent5)).thenReturn(List.of(testEvent5))
+                .thenReturn(Collections.emptyList()).thenReturn(Collections.emptyList());
 
         final ArgumentCaptor<SearchScrollRequest> searchScrollRequestArgumentCaptor = ArgumentCaptor.forClass(SearchScrollRequest.class);
         when(searchAccessor.searchWithScroll(searchScrollRequestArgumentCaptor.capture())).thenReturn(searchScrollResponse);
@@ -348,11 +361,11 @@ public class ScrollWorkerTest {
         assertThat(createScrollRequest.getIndex(), equalTo(partitionKey));
         assertThat(createScrollRequest.getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
-        verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(searchAccessor, times(3)).searchWithScroll(any(SearchScrollRequest.class));
         verify(sourceCoordinator, times(0)).saveProgressStateForPartition(eq(partitionKey), eq(null));
 
         final List<SearchScrollRequest> searchScrollRequests = searchScrollRequestArgumentCaptor.getAllValues();
-        assertThat(searchScrollRequests.size(), equalTo(2));
+        assertThat(searchScrollRequests.size(), equalTo(3));
         assertThat(searchScrollRequests.get(0), notNullValue());
         assertThat(searchScrollRequests.get(0).getScrollId(), equalTo(scrollId));
         assertThat(searchScrollRequests.get(0).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
@@ -360,6 +373,10 @@ public class ScrollWorkerTest {
         assertThat(searchScrollRequests.get(1), notNullValue());
         assertThat(searchScrollRequests.get(1).getScrollId(), equalTo(scrollId));
         assertThat(searchScrollRequests.get(1).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
+
+        assertThat(searchScrollRequests.get(2), notNullValue());
+        assertThat(searchScrollRequests.get(2).getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollRequests.get(2).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
 
 
         final DeleteScrollRequest deleteScrollRequest = deleteRequestArgumentCaptor.getValue();
