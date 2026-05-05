@@ -243,20 +243,18 @@ public class OpenSearchSinkTest {
     @Test
     void test_sink_successful_records_handling_without_forwarding_pipelines_bulk_operations_with_event_handles() throws Exception {
         when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
-        final EventHandle eventHandle = mock(EventHandle.class);
         final OpenSearchSink objectUnderTest = createObjectUnderTest();
         BulkOperationWrapper op1 = mock(BulkOperationWrapper.class);
         BulkOperationWrapper op2 = mock(BulkOperationWrapper.class);
         when(op1.getEvent()).thenReturn(null);
         when(op2.getEvent()).thenReturn(null);
-        when(op1.getEventHandle()).thenReturn(eventHandle);
-        when(op2.getEventHandle()).thenReturn(eventHandle);
         List<BulkOperationWrapper> operationsList = new ArrayList<>();
         operationsList.add(op1);
         operationsList.add(op2);
         objectUnderTest.successfulOperationsHandler(operationsList);
-        verify(eventHandle, times(2)).release(eq(true));
-        
+        verify(op1).releaseEventHandle(eq(true));
+        verify(op2).releaseEventHandle(eq(true));
+
     }
 
     @Test

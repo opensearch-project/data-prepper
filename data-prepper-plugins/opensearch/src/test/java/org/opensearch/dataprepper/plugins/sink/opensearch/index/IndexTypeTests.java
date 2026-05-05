@@ -33,11 +33,12 @@ public class IndexTypeTests {
         assertEquals(Optional.of(IndexType.LOG_ANALYTICS_PLAIN), IndexType.getByValue("log-analytics-plain"));
         assertEquals(Optional.of(IndexType.METRIC_ANALYTICS), IndexType.getByValue("metric-analytics"));
         assertEquals(Optional.of(IndexType.METRIC_ANALYTICS_PLAIN), IndexType.getByValue("metric-analytics-plain"));
+        assertEquals(Optional.of(IndexType.TSDB), IndexType.getByValue("tsdb"));
     }
 
     @Test
     public void getIndexTypeValues() {
-        assertEquals("[trace-analytics-raw, trace-analytics-plain-raw, trace-analytics-service-map, otel-v2-apm-service-map, log-analytics, log-analytics-plain, metric-analytics, metric-analytics-plain, custom, management_disabled]", IndexType.getIndexTypeValues());
+        assertEquals("[trace-analytics-raw, trace-analytics-plain-raw, trace-analytics-service-map, otel-v2-apm-service-map, log-analytics, log-analytics-plain, metric-analytics, metric-analytics-plain, tsdb, custom, management_disabled]", IndexType.getIndexTypeValues());
     }
 
     @ParameterizedTest

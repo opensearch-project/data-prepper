@@ -464,6 +464,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_STANDARD_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.TSDB)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.TSDB_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
                     FileReader s3FileReader = new S3FileReader(s3Client);

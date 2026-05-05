@@ -32,6 +32,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
@@ -72,6 +74,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFact
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilder;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilderFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
@@ -168,6 +172,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private ExistingDocumentQueryManager existingDocumentQueryManager;
 
+  private final CustomDocumentBuilder customDocumentBuilder;
+
   private final ExecutorService queryExecutorService;
 
   private final int processWorkerThreads;
@@ -218,6 +224,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.pluginConfigObservable = pluginConfigObservable;
     this.objectMapper = new ObjectMapper();
     this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager, objectMapper, isUsingDocumentFilters());
+    this.customDocumentBuilder = new CustomDocumentBuilderFactory().create(this.indexType);
     this.queryExecutorService = openSearchSinkConfig.getIndexConfiguration().getQueryTerm() != null ?
             Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("existing-document-query-manager")) : null;
 
@@ -384,6 +391,32 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
       
       dataStreamIndex.ensureTimestamp(event, indexName);
+
+      if (customDocumentBuilder != null) {
+        try {
+          final List<String> tsdbDocs = customDocumentBuilder.buildDocuments(event);
+          final String tsdbAction = resolveEventAction(event);
+          final EventHandle eventHandle = event.getEventHandle();
+          if (tsdbDocs.size() > 1 && eventHandle instanceof InternalEventHandle) {
+            for (int i = 0; i < tsdbDocs.size() - 1; i++) {
+              ((InternalEventHandle) eventHandle).acquireReference();
+            }
+          }
+          for (final String tsdbDoc : tsdbDocs) {
+            final SerializedJson doc = SerializedJson.fromStringAndOptionals(tsdbDoc, null, null, null);
+            final BulkOperation op = bulkOperationFactory.create(tsdbAction, doc, null, indexName, null);
+            final BulkOperationWrapper wrapper = new BulkOperationWrapper(op, eventHandle, null, null);
+            bulkRequest = flushBatch(bulkRequest, wrapper, lastFlushTime);
+            bulkRequest.addOperation(wrapper);
+          }
+        } catch (final Exception e) {
+          LOG.error("Failed to build TSDB documents for event: {}", e.getMessage(), e);
+          dynamicIndexDroppedEvents.increment();
+          logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
+        }
+        continue;
+      }
+
       final SerializedJson document = getDocument(event);
 
       Long version = null;
@@ -416,20 +449,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         }
       }
 
-      String eventAction = action;
-      if (actions != null) {
-        for (final ActionConfiguration actionEntry: actions) {
-            final String condition = actionEntry.getWhen();
-            eventAction = actionEntry.getType();
-            if (condition != null &&
-                expressionEvaluator.evaluateConditional(condition, event)) {
-                    break;
-            }
-        }
-      }
-      if (eventAction.contains("${")) {
-          eventAction = event.formatString(eventAction, expressionEvaluator);
-      }
+      String eventAction = resolveEventAction(event);
       
       if (dataStreamDetector.isDataStream(indexName)) {
         eventAction = dataStreamIndex.determineAction(eventAction, indexName);
@@ -542,7 +562,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         if (bulkOperation.getEvent() != null) {
             bulkOperation.getEvent().getEventHandle().release(true);
         } else {
-            bulkOperation.getEventHandle().release(true);
+            bulkOperation.releaseEventHandle(true);
         }
       }
       return;
@@ -697,6 +717,24 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       builder.withEventHandle(event.getEventHandle());
     }
     return builder.build();
+  }
+
+  private String resolveEventAction(final Event event) {
+    String resolvedAction = action;
+    if (actions != null) {
+      for (final ActionConfiguration actionEntry : actions) {
+        final String condition = actionEntry.getWhen();
+        resolvedAction = actionEntry.getType();
+        if (condition != null &&
+                expressionEvaluator.evaluateConditional(condition, event)) {
+          break;
+        }
+      }
+    }
+    if (resolvedAction.contains("${")) {
+      resolvedAction = event.formatString(resolvedAction, expressionEvaluator);
+    }
+    return resolvedAction;
   }
 
   /**
