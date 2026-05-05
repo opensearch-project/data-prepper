@@ -204,6 +204,7 @@ public class DataFileLoader implements Runnable {
         } catch (Exception e) {
             LOG.error(NOISY, "Failed to write events to buffer", e);
             exportRecordErrorCounter.increment(eventCount.get());
+            throw new RuntimeException(e);
         } finally {
             leaseRenewalScheduler.shutdownNow();
         }
