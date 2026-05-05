@@ -28,6 +28,8 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -62,6 +64,7 @@ class IcebergServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void start_uses_shared_catalog_when_table_catalog_is_null() {
+        setupShuffleConfig();
         final Map<String, String> sharedCatalog = Map.of("type", "rest", "uri", "http://shared:8181");
         final TableConfig tableConfig = createTableConfig("db.my_table", null);
 
@@ -93,6 +96,7 @@ class IcebergServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void start_uses_table_catalog_when_table_catalog_is_set() {
+        setupShuffleConfig();
         final Map<String, String> tableCatalog = Map.of("type", "glue", "warehouse", "s3://other/");
         final TableConfig tableConfig = createTableConfig("db.my_table", tableCatalog);
 
@@ -123,6 +127,7 @@ class IcebergServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void start_uses_correct_catalog_for_each_table_in_mixed_config() {
+        setupShuffleConfig();
         final Map<String, String> sharedCatalog = Map.of("type", "rest", "uri", "http://shared:8181");
         final Map<String, String> tableBCatalog = Map.of("type", "glue", "warehouse", "s3://other/");
         final TableConfig configA = createTableConfig("db.table_a", null);
@@ -162,5 +167,12 @@ class IcebergServiceTest {
         when(config.getIdentifierColumns()).thenReturn(Collections.emptyList());
         lenient().when(config.isDisableExport()).thenReturn(false);
         return config;
+    }
+
+    private void setupShuffleConfig() {
+        final ShuffleConfig shuffleConfig = mock(ShuffleConfig.class);
+        when(shuffleConfig.getServerPort()).thenReturn(4995);
+        lenient().when(shuffleConfig.isSsl()).thenReturn(false);
+        when(sourceConfig.getShuffleConfig()).thenReturn(shuffleConfig);
     }
 }

@@ -76,6 +76,7 @@ dependencyResolutionManagement {
             version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
+            library('lz4', 'org.lz4', 'lz4-java').version('1.8.0')
         }
         testLibs {
             version('junit', '5.8.2')

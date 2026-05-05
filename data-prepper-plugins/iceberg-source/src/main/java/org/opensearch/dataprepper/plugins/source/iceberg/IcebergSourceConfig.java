@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.iceberg;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -37,6 +38,10 @@ public class IcebergSourceConfig {
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = true;
 
+    @JsonProperty("shuffle")
+    @Valid
+    private ShuffleConfig shuffleConfig = new ShuffleConfig();
+
     public List<TableConfig> getTables() {
         return tables;
     }
@@ -47,6 +52,10 @@ public class IcebergSourceConfig {
 
     public boolean isAcknowledgmentsEnabled() {
         return acknowledgments;
+    }
+
+    public ShuffleConfig getShuffleConfig() {
+        return shuffleConfig;
     }
 
     public Map<String, String> getCatalog() {

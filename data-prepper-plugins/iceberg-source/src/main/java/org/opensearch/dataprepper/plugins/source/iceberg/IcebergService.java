@@ -22,10 +22,16 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.LocalDiskShuffleStorage;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpServer;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpService;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.opensearch.dataprepper.plugins.source.iceberg.worker.ChangelogWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +49,8 @@ public class IcebergService {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final EventFactory eventFactory;
+    private final ShuffleStorage shuffleStorage;
+    private ShuffleHttpServer shuffleHttpServer;
     private ExecutorService executor;
 
     public IcebergService(final EnhancedSourceCoordinator sourceCoordinator,
@@ -55,10 +63,18 @@ public class IcebergService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
+        final Path shuffleBaseDir = resolveShuffleBaseDir(sourceConfig.getShuffleConfig());
+        this.shuffleStorage = new LocalDiskShuffleStorage(shuffleBaseDir);
+        this.shuffleStorage.cleanupAll();
     }
 
     public void start(final Buffer<Record<Event>> buffer) {
         LOG.info("Starting Iceberg service");
+
+        // Start shuffle HTTP server
+        final ShuffleHttpService shuffleHttpService = new ShuffleHttpService(shuffleStorage);
+        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService);
+        shuffleHttpServer.start();
 
         // Load all tables upfront. Single point of Table lifecycle management.
         final Map<String, Table> tables = new HashMap<>();
@@ -101,18 +117,39 @@ public class IcebergService {
         // Start schedulers with shared table references
         final List<Runnable> runnableList = new ArrayList<>();
 
-        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs, sourceConfig.getPollingInterval(), tables));
+        final var certificate = shuffleHttpServer.getCertificate();
+
+        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs,
+                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig(), certificate));
         runnableList.add(new ChangelogWorker(
-                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory));
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate));
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
+    }
+
+    private static Path resolveShuffleBaseDir(final ShuffleConfig shuffleConfig) {
+        final Path baseDir;
+        if (shuffleConfig.getStoragePath() != null) {
+            baseDir = Path.of(shuffleConfig.getStoragePath());
+        } else {
+            final String dataPrepperDir = System.getProperty("data-prepper.dir");
+            if (dataPrepperDir != null) {
+                baseDir = Path.of(dataPrepperDir, "data", "shuffle");
+            } else {
+                baseDir = Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+            }
+        }
+        return baseDir.resolve(String.valueOf(shuffleConfig.getServerPort()));
     }
 
     public void shutdown() {
         LOG.info("Shutting down Iceberg service");
         if (executor != null) {
             executor.shutdownNow();
+        }
+        if (shuffleHttpServer != null) {
+            shuffleHttpServer.stop();
         }
     }
 

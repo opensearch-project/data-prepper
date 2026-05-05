@@ -190,6 +190,7 @@ public class IcebergSourceIT {
         when(sourceConfig.getTables()).thenReturn(List.of(configA, configB));
         when(sourceConfig.getPollingInterval()).thenReturn(Duration.ofSeconds(5));
         when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(sourceConfig.getShuffleConfig()).thenReturn(createTestShuffleConfig());
 
         final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
         coordinator.createPartition(new LeaderPartition());
@@ -297,6 +298,85 @@ public class IcebergSourceIT {
     }
 
     /**
+     * When a partition column is updated (e.g. region US -> EU), Iceberg produces
+     * a DELETE in the old partition and an INSERT in the new partition. The shuffle
+     * routes both to the same node by identifier_columns hash, enabling correct
+     * UPDATE merge across partitions.
+     */
+    @Test
+    void cdc_partition_column_update_correctly_handled_by_shuffle() throws Exception {
+        final Schema partitionedSchema = new Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.required(2, "name", Types.StringType.get()),
+                Types.NestedField.required(3, "region", Types.StringType.get())
+        );
+
+        final String partitionedTable = "partitioned_users";
+        helper.dropTable(TEST_NAMESPACE, partitionedTable);
+        final Table table = helper.createPartitionedTable(TEST_NAMESPACE, partitionedTable,
+                partitionedSchema, org.apache.iceberg.PartitionSpec.builderFor(partitionedSchema).identity("region").build());
+
+        // Insert initial data: id=1 in US, id=2 in EU
+        final DataFile usFile = helper.appendRows(table, List.of(
+                helper.newRecord(partitionedSchema, 1, "Alice", "US")
+        ));
+        final DataFile euFile = helper.appendRows(table, List.of(
+                helper.newRecord(partitionedSchema, 2, "Bob", "EU")
+        ));
+
+        final String fullTableName = TEST_NAMESPACE + "." + partitionedTable;
+        final IcebergService service = createServiceForTable(fullTableName, List.of("id"), false, false);
+        final Buffer<org.opensearch.dataprepper.model.record.Record<Event>> buffer = createMockBuffer();
+        service.start(buffer);
+
+        try {
+            // Wait for initial load (2 rows from 2 separate appends)
+            await().atMost(30, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(2))));
+            final int afterInitialLoad = receivedRecords.size();
+
+            // UPDATE: move id=1 from US to EU (partition column change)
+            // Simulate CoW: delete old US file, add new EU file with id=1 in single overwrite
+            table.refresh();
+            final DataFile newEuFile = helper.writeDataFile(table, List.of(
+                    helper.newRecord(partitionedSchema, 1, "Alice", "EU"),
+                    helper.newRecord(partitionedSchema, 2, "Bob", "EU")
+            ));
+            table.newOverwrite()
+                    .deleteFile(usFile)
+                    .deleteFile(euFile)
+                    .addFile(newEuFile)
+                    .commit();
+
+            // Wait for CDC events
+            await().atMost(60, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(receivedRecords, hasSize(greaterThanOrEqualTo(afterInitialLoad + 1))));
+
+            final List<org.opensearch.dataprepper.model.record.Record<Event>> cdcEvents =
+                    receivedRecords.subList(afterInitialLoad, receivedRecords.size());
+
+            // With shuffle: the DELETE(id=1, US) and INSERT(id=1, EU) are routed to the same
+            // node by identifier_columns hash. UPDATE merge detects the pair and drops the DELETE.
+            // Only the INSERT (INDEX action) should remain.
+            boolean foundAliceEU = false;
+            for (final org.opensearch.dataprepper.model.record.Record<Event> record : cdcEvents) {
+                final Event event = record.getData();
+                if ("Alice".equals(event.get("name", String.class))
+                        && "EU".equals(event.get("region", String.class))) {
+                    assertThat(event.getMetadata().getAttribute("bulk_action"), equalTo("index"));
+                    foundAliceEU = true;
+                }
+            }
+            assertThat("Expected INSERT event for Alice in EU after partition column update",
+                    foundAliceEU, equalTo(true));
+
+        } finally {
+            service.shutdown();
+            helper.dropTable(TEST_NAMESPACE, partitionedTable);
+        }
+    }
+
+    /**
      * Common setup for CDC tests: creates a table with 3 rows (Alice, Bob, Carol),
      * starts IcebergService, and waits for initial load to complete.
      */
@@ -353,18 +433,25 @@ public class IcebergSourceIT {
     }
 
     private IcebergService createService(final boolean disableExport) throws Exception {
-        return createService(disableExport, false);
+        return createServiceForTable(TEST_NAMESPACE + "." + TEST_TABLE, List.of("id"), disableExport, false);
     }
 
     private IcebergService createService(final boolean disableExport, final boolean useSharedCatalog) throws Exception {
-        final String fullTableName = TEST_NAMESPACE + "." + TEST_TABLE;
+        return createServiceForTable(TEST_NAMESPACE + "." + TEST_TABLE, List.of("id"), disableExport, useSharedCatalog);
+    }
+
+    private IcebergService createServiceForTable(final String fullTableName,
+                                                  final List<String> identifierColumns,
+                                                  final boolean disableExport,
+                                                  final boolean useSharedCatalog) throws Exception {
 
         // Build config via reflection since fields are private
         final IcebergSourceConfig sourceConfig = mock(IcebergSourceConfig.class);
         final TableConfig tableConfig = mock(TableConfig.class);
 
         when(tableConfig.getTableName()).thenReturn(fullTableName);
-        when(tableConfig.getIdentifierColumns()).thenReturn(List.of("id"));
+        when(tableConfig.getCatalog()).thenReturn(helper.catalogProperties());
+        when(tableConfig.getIdentifierColumns()).thenReturn(identifierColumns);
         when(tableConfig.isDisableExport()).thenReturn(disableExport);
 
         if (useSharedCatalog) {
@@ -378,12 +465,23 @@ public class IcebergSourceIT {
         when(sourceConfig.getTables()).thenReturn(List.of(tableConfig));
         when(sourceConfig.getPollingInterval()).thenReturn(Duration.ofSeconds(5));
         lenient().when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(sourceConfig.getShuffleConfig()).thenReturn(createTestShuffleConfig());
 
         final EnhancedSourceCoordinator coordinator = createInMemoryCoordinator();
         coordinator.createPartition(new LeaderPartition());
 
         return new IcebergService(coordinator, sourceConfig, pluginMetrics, acknowledgementSetManager,
                 TestEventFactory.getTestEventFactory());
+    }
+
+    private org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig createTestShuffleConfig() {
+        try {
+            final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue("{\"ssl\": false, \"port\": 4995}", 
+                    org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig.class);
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private EnhancedSourceCoordinator createInMemoryCoordinator() {

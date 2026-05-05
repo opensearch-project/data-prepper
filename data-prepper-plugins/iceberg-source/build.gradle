@@ -28,6 +28,10 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:armeria-common')
+    implementation project(':data-prepper-plugins:http-common')
+    implementation project(':data-prepper-plugins:http-source-common')
 
     implementation 'org.apache.iceberg:iceberg-core:1.10.1'
     implementation 'org.apache.iceberg:iceberg-data:1.10.1'
@@ -39,6 +43,10 @@ dependencies {
     implementation libs.avro.core
     implementation libs.hadoop.common
     implementation 'org.apache.orc:orc-core:1.9.5'
+
+    implementation libs.armeria.core
+
+    implementation libs.lz4
 
     implementation 'software.amazon.awssdk:glue'
     implementation 'software.amazon.awssdk:s3'
