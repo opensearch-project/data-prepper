@@ -27,6 +27,9 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 *.iml
 .kiro
 .vscode
+.project
+.classpath
+.settings/
 
 # Manual testing files (should not be committed)
 MANUAL_TEST.md

@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.DiscoveryMode;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
@@ -101,6 +102,12 @@ public class OpenSearchSourceConfiguration {
 
     public SchedulingParameterConfiguration getSchedulingParameterConfiguration() {
         return schedulingParameterConfiguration;
+    }
+
+    @JsonIgnore
+    public boolean isSingleScanMode() {
+        return Objects.nonNull(schedulingParameterConfiguration)
+                && schedulingParameterConfiguration.getDiscoveryMode() == DiscoveryMode.SINGLE_SCAN;
     }
 
     public SearchConfiguration getSearchConfiguration() {

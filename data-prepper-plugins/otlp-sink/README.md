@@ -1,28 +1,72 @@
 # OTLP Sink Plugin
 
-The OTLP sink plugin sends span data using the OpenTelemetry Protocol (OTLP) format.
-The initial release supports exporting spans to AWS X-Ray. Future releases will support sending spans, metrics, and logs
-to any OTLP Protobuf-compatible endpoint.
+The OTLP sink plugin sends telemetry data (traces, metrics, and logs) using the OpenTelemetry Protocol (OTLP) format.
+The plugin supports exporting to AWS X-Ray and any OTLP Protobuf-compatible endpoint.
 
 ---
 
 ## Known Limitations
 
-- Currently, supports only trace data (spans). Support for metrics and logs will be added in future releases.
 - No support for DQL-based loss-less delivery in this release.
-- Only AWS X-Ray-compatible OTLP endpoints are currently supported (`https://xray.<region>.amazonaws.com/v1/traces`).
+- Only AWS X-Ray-compatible OTLP endpoints are currently supported for traces (`https://xray.<region>.amazonaws.com/v1/traces`).
+- For metrics and logs, use standard OTLP endpoints (e.g., `https://otlp-endpoint.example.com/v1/metrics` or `/v1/logs`).
 - Only OTLP over HTTP is supported; gRPC is not yet supported.
+
+---
+
+## Batching Behavior with Mixed Signal Types
+
+The OTLP sink uses a per-signal buffer architecture: each signal type (traces, metrics, logs) gets its own independent buffer. When a single sink receives mixed signal types, events are automatically routed to the correct buffer based on their runtime type. Each buffer batches and flushes independently according to the configured thresholds (`max_events`, `max_batch_size`, `flush_timeout`).
+
+This means mixed signal types in a single pipeline work efficiently without any forced flushes or batching penalties.
+
+### Optional: Conditional Routing
+
+For advanced use cases (e.g., different endpoints or thresholds per signal type), you can use Data Prepper's conditional routing to separate signals into dedicated sink instances:
+
+```yaml
+mixed_signal_pipeline:
+  source:
+    http:
+      path: "/v1/data"
+
+  routes:
+    - logs: 'getEventType() == "LOG"'
+    - traces: 'getEventType() == "TRACE"'
+    - metrics: 'getEventType() == "METRIC"'
+
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/logs"
+        routes:
+          - logs
+        aws: { }
+
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/traces"
+        routes:
+          - traces
+        aws: { }
+
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/metrics"
+        routes:
+          - metrics
+        aws: { }
+```
+
+For more information on conditional routing, see the [Data Prepper Expression Syntax](https://github.com/opensearch-project/data-prepper/blob/main/docs/expression_syntax.md) documentation.
 
 ---
 
 ## Sample Pipeline Configuration
 
-### Minimal Configuration (No STS)
+### Traces to AWS X-Ray (Minimal Configuration)
 
 Use this when Data Prepper has permission to write to AWS X-Ray directly.
 
 ```yaml
-otlp_pipeline:
+trace_pipeline:
   source:
     otel_trace_source:
 
@@ -32,12 +76,38 @@ otlp_pipeline:
         aws: { }
 ```
 
-### Full Configuration with STS
+### Metrics to OTLP Endpoint
+
+```yaml
+metrics_pipeline:
+  source:
+    otel_metrics_source:
+
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/metrics"
+        aws: { }
+```
+
+### Logs to OTLP Endpoint
+
+```yaml
+logs_pipeline:
+  source:
+    otel_logs_source:
+
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/logs"
+        aws: { }
+```
+
+### Full Configuration with STS (Traces)
 
 Use this when assuming a cross-account role is required.
 
 ```yaml
-otlp_pipeline:
+trace_pipeline:
   workers: 2
 
   source:
@@ -63,35 +133,69 @@ otlp_pipeline:
           sts_external_id: external-id-value
 ```
 
+### Multi-Signal Pipeline
+
+You can use the same sink configuration for different signal types by adjusting the endpoint:
+
+```yaml
+trace_pipeline:
+  source:
+    otel_trace_source:
+  sink:
+    - otlp:
+        endpoint: "https://xray.us-west-2.amazonaws.com/v1/traces"
+        aws: { }
+
+metrics_pipeline:
+  source:
+    otel_metrics_source:
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/metrics"
+        aws: { }
+
+logs_pipeline:
+  source:
+    otel_logs_source:
+  sink:
+    - otlp:
+        endpoint: "https://otlp-collector.example.com/v1/logs"
+        aws: { }
+```
+
 ---
 
 ## Configuration Options
 
-| Property                   | Type     | Required | Default               | Description                                                                                              |
-|----------------------------|----------|----------|-----------------------|----------------------------------------------------------------------------------------------------------|
-| `endpoint`                 | `String` | Yes      | —                     | AWS X-Ray OTLP endpoint where spans will be sent.                                                        |
-| `max_retries`              | `int`    | No       | `5`                   | Maximum number of retry attempts on HTTP send failures.                                                  |
-| **threshold**              | `Object` | No       | —                     | Controls batching behavior. See below for sub-properties.                                                |
-| `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of spans per batch. Use `0` to disable count-based flushing. Must be ≥ 0.                 |
-| `threshold.max_batch_size` | `String` | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                    |   
-| `threshold.flush_timeout`  | `String` | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)               |
-| **aws**                    | `Object` | Yes      | —                     | AWS authentication settings. Use `{}` if no STS role is needed. See below.                               |
-| `aws.sts_role_arn`         | `String` | No       | —                     | IAM Role ARN that Data Prepper (or OSI) assumes to send spans to X-Ray on behalf of a customer account.  |
-| `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId. |
+| Property                   | Type     | Required | Default               | Description                                                                                                    |
+|----------------------------|----------|----------|-----------------------|----------------------------------------------------------------------------------------------------------------|
+| `endpoint`                 | `String` | Yes      | —                     | OTLP endpoint where telemetry data will be sent. Must include signal type path (e.g., `/v1/traces`, `/v1/metrics`, `/v1/logs`). |
+| `max_retries`              | `int`    | No       | `5`                   | Maximum number of retry attempts on HTTP send failures.                                                        |
+| **threshold**              | `Object` | No       | —                     | Controls batching behavior. See below for sub-properties.                                                      |
+| `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of events (spans/metrics/logs) per batch. Use `0` to disable count-based flushing. Must be ≥ 0. |
+| `threshold.max_batch_size` | `String` | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                          |   
+| `threshold.flush_timeout`  | `String` | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)                     |
+| **aws**                    | `Object` | Yes      | —                     | AWS authentication settings. Use `{}` if no STS role is needed. See below.                                     |
+| `aws.sts_role_arn`         | `String` | No       | —                     | IAM Role ARN that Data Prepper (or OSI) assumes to send data on behalf of a customer account.                  |
+| `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId.       |
+| `additional_headers`       | `Map`    | No       | `{}`                  | Custom HTTP headers added to every outgoing request. **Note:** These headers are added after SigV4 signing and are not included in the signature. |
+| `service_name`             | `String` | No       | `xray`                | AWS service name used for SigV4 signing. Override when sending to non-X-Ray endpoints (e.g., `logs`, `osis`). |
 
 **Additional Notes:**
 
-- `aws.region` is automatically derived from the endpoint.
+- `aws.region` is automatically derived from the endpoint, or can be set explicitly via `aws.region`.
 
 ---
 
 ## Performance Benchmark
 
-### Summary
+### Summary (Traces)
 
 * Sustains ~3.5K TPS with ≤150ms p99 latency on t4g.large.
 * Uses only ~8% CPU, ~100MB heap.
 * 0 errors, retries, or drops during a 3-hour soak test.
+
+**Note:** Performance characteristics for metrics and logs may vary based on payload size and structure. The tuning recommendations below apply to all signal types.
 
 ### Tuning Recommendations
 
@@ -101,6 +205,8 @@ otlp_pipeline:
 | `max_events`     | `512`       | Supports up to 3.5K TPS with 2 workers. Keeps p99 latency around 130ms.                         |
 | `max_batch_size` | `1mb`       | Aligns with OTEL + AWS X-Ray guidance. Larger batches get split, increasing latency/load.       |
 | `flush_timeout`  | `200ms`     | Short enough to avoid delay, long enough to fill batches and keep CPU/GCs low.                  |
+
+**Note:** These recommendations are based on trace data. Adjust based on your specific signal type and payload characteristics.
 
 ### Additional Tuning tips
 
@@ -156,9 +262,9 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
 
 * Exceptions are logged with full stack traces. No customer data is logged.
 * Metrics are emitted via Micrometer and include:
-     * recordsIn, recordsOut
+     * recordsIn, recordsOut (applies to all signal types: traces, metrics, logs)
      * httpLatency, HTTP codes
-  * errorCount, rejectedSpansCount, failedSpansCount, retriesCount
+     * errorCount, rejectedRecordsCount, failedRecordsCount, retriesCount (applies to all signal types)
      * queueSize, queueCapacity
      * payloadSize, payloadGzipSize
      * JVM stats if configured (e.g., heap usage, GC pauses)

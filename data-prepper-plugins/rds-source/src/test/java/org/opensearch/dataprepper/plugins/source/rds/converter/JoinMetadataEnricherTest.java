@@ -22,8 +22,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher.JOIN_CHILD_PK_NAME_METADATA;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.JoinMetadataEnricher.JOIN_CHILD_PK_VALUE_METADATA;
@@ -142,6 +144,42 @@ class JoinMetadataEnricherTest {
         enricher.enrich(event, "shipping", List.of("shipping_id", "order_id", "carrier"), false);
 
         assertThat(event.getMetadata().getAttribute(JOIN_TYPE_METADATA), is("one_to_one"));
+    }
+
+    @Test
+    void enrich_one_to_one_child_includes_child_primary_key_in_fields() {
+        JoinRelation relation = createRelation("orders", "shipping",
+                "order_id", "order_id", "shipping_id", "one_to_one");
+        JoinMetadataEnricher enricher = new JoinMetadataEnricher(List.of(relation));
+
+        Event event = createEvent(Map.of("shipping_id", 1, "order_id", 5, "carrier", "UPS", "tracking_number", "TRK-5"));
+
+        enricher.enrich(event, "shipping", List.of("shipping_id", "order_id", "carrier", "tracking_number"), false);
+
+        // For 1:1 joins, child PK (shipping_id) should be included in fields since it's flattened at root
+        final String fields = (String) event.getMetadata().getAttribute(JOIN_FIELDS_METADATA);
+        assertThat(fields, containsString("shipping_id"));
+        assertThat(fields, containsString("carrier"));
+        assertThat(fields, containsString("tracking_number"));
+        // order_id (join key) should still be excluded
+        assertThat(fields, not(containsString("order_id")));
+    }
+
+    @Test
+    void enrich_one_to_many_child_excludes_child_primary_key_from_fields() {
+        JoinRelation relation = createRelation("orders", "order_items",
+                "order_id", "order_id", "item_id", "one_to_many");
+        JoinMetadataEnricher enricher = new JoinMetadataEnricher(List.of(relation));
+
+        Event event = createEvent(Map.of("item_id", 10, "order_id", 1, "product_name", "Widget", "price", 9.99));
+
+        enricher.enrich(event, "order_items", List.of("item_id", "order_id", "product_name", "price"), false);
+
+        // For 1:N joins, child PK (item_id) should be excluded from fields (script adds it separately)
+        final String fields = (String) event.getMetadata().getAttribute(JOIN_FIELDS_METADATA);
+        assertThat(fields, not(containsString("item_id")));
+        assertThat(fields, containsString("product_name"));
+        assertThat(fields, containsString("price"));
     }
 
     @Test

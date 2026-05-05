@@ -302,6 +302,13 @@ public class IndexConfiguration {
             builder = builder.withScriptConfiguration(scriptConfiguration);
         }
 
+        if (scriptConfiguration != null && openSearchSinkConfig.getVersionType() != null
+                && VersionType.External.jsonValue().equals(openSearchSinkConfig.getVersionType())) {
+            throw new InvalidPluginConfigurationException(
+                    "document_version_type 'external' is incompatible with script configuration. " +
+                    "OpenSearch does not support external versioning with scripted upserts.");
+        }
+
         AwsAuthenticationConfiguration awsAuthenticationConfiguration = openSearchSinkConfig.getAwsAuthenticationOptions();
         if (awsAuthenticationConfiguration != null) {
             builder = builder.withServerless(awsAuthenticationConfiguration.isServerlessCollection());
