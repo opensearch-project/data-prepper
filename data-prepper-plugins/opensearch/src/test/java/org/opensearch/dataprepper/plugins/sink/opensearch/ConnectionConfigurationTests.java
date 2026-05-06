@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -66,10 +67,20 @@ class ConnectionConfigurationTests {
     private final Integer TEST_SOCKET_TIMEOUT = 10;
     private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
     private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
-    private static final String TEST_CLIENT_CERT_PATH = Objects.requireNonNull(
-            ConnectionConfigurationTests.class.getClassLoader().getResource("test-client-cert.pem")).getFile();
-    private static final String TEST_CLIENT_KEY_PATH = Objects.requireNonNull(
-            ConnectionConfigurationTests.class.getClassLoader().getResource("test-client-key.pem")).getFile();
+    private static String TEST_CLIENT_CERT_PATH;
+    private static String TEST_CLIENT_KEY_PATH;
+
+    @BeforeAll
+    static void generateClientCertificates() throws Exception {
+        final TestCertificateGenerator.GeneratedCertificateAuthority ca =
+                TestCertificateGenerator.generateClientCertificateAuthority();
+        final TestCertificateGenerator.GeneratedCertificate clientCert =
+                TestCertificateGenerator.generateClientCertificate(ca.getCertificate(), ca.getPrivateKey());
+        TEST_CLIENT_CERT_PATH = TestCertificateGenerator.writePemToTempFile(
+                TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-").toString();
+        TEST_CLIENT_KEY_PATH = TestCertificateGenerator.writePemToTempFile(
+                TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-").toString();
+    }
 
     @Mock
     private ApacheHttpClient.Builder apacheHttpClientBuilder;

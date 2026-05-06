@@ -26,15 +26,12 @@ import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -197,15 +194,22 @@ class ConnectionConfiguration_ServerTest {
     class ClientCertificateConfiguration {
         private WireMockServer mtlsWireMockServer;
         private String mtlsHost;
-
-        private final String clientCertPath = Objects.requireNonNull(
-                getClass().getClassLoader().getResource("test-client-cert.pem")).getFile();
-        private final String clientKeyPath = Objects.requireNonNull(
-                getClass().getClassLoader().getResource("test-client-key.pem")).getFile();
+        private String clientCertPath;
+        private String clientKeyPath;
 
         @BeforeEach
         void setUp() throws Exception {
-            final String trustStorePath = createTrustStoreFromPem();
+            final TestCertificateGenerator.GeneratedCertificateAuthority ca =
+                    TestCertificateGenerator.generateClientCertificateAuthority();
+            final TestCertificateGenerator.GeneratedCertificate clientCert =
+                    TestCertificateGenerator.generateClientCertificate(ca.getCertificate(), ca.getPrivateKey());
+
+            clientCertPath = TestCertificateGenerator.writePemToTempFile(
+                    TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-").toString();
+            clientKeyPath = TestCertificateGenerator.writePemToTempFile(
+                    TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-").toString();
+
+            final String trustStorePath = createTrustStoreFromCert(ca.getCertificate());
 
             mtlsWireMockServer = new WireMockServer(options()
                     .httpDisabled(true)
@@ -241,12 +245,7 @@ class ConnectionConfiguration_ServerTest {
             mtlsWireMockServer.stubFor(get("/").willReturn(jsonResponse(responseBody, 200)));
         }
 
-        private String createTrustStoreFromPem() throws Exception {
-            final CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            final Certificate caCert;
-            try (InputStream is = getClass().getClassLoader().getResourceAsStream("test-client-ca.pem")) {
-                caCert = factory.generateCertificate(is);
-            }
+        private String createTrustStoreFromCert(X509Certificate caCert) throws Exception {
             final KeyStore trustStore = KeyStore.getInstance("JKS");
             trustStore.load(null, "changeit".toCharArray());
             trustStore.setCertificateEntry("client-ca", caCert);
@@ -291,6 +290,49 @@ class ConnectionConfiguration_ServerTest {
             assertThat(client, notNullValue());
 
             assertThrows(SSLException.class, () -> client.info(RequestOptions.DEFAULT));
+        }
+
+        @Test
+        void createClient_with_wrong_ca_client_cert_fails_on_mtls_server() throws Exception {
+            final TestCertificateGenerator.GeneratedCertificateAuthority wrongCa =
+                    TestCertificateGenerator.generateClientCertificateAuthority();
+            final TestCertificateGenerator.GeneratedCertificate wrongClientCert =
+                    TestCertificateGenerator.generateClientCertificate(wrongCa.getCertificate(), wrongCa.getPrivateKey());
+
+            final String wrongCertPath = TestCertificateGenerator.writePemToTempFile(
+                    TestCertificateGenerator.toPem(wrongClientCert.getCertificate()), "wrong-client-cert-").toString();
+            final String wrongKeyPath = TestCertificateGenerator.writePemToTempFile(
+                    TestCertificateGenerator.toPem(wrongClientCert.getPrivateKey()), "wrong-client-key-").toString();
+
+            final ConnectionConfiguration objectUnderTest = new ConnectionConfiguration.Builder(Collections.singletonList(mtlsHost))
+                    .withInsecure(true)
+                    .withClientCert(wrongCertPath)
+                    .withClientKey(wrongKeyPath)
+                    .build();
+
+            final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
+            assertThat(client, notNullValue());
+
+            assertThrows(SSLException.class, () -> client.info(RequestOptions.DEFAULT));
+        }
+
+        @Test
+        void createClient_with_inline_pem_content_succeeds_on_mtls_server() throws Exception {
+            final String certContent = Files.readString(Path.of(clientCertPath));
+            final String keyContent = Files.readString(Path.of(clientKeyPath));
+
+            final ConnectionConfiguration objectUnderTest = new ConnectionConfiguration.Builder(Collections.singletonList(mtlsHost))
+                    .withInsecure(true)
+                    .withClientCert(certContent)
+                    .withClientKey(keyContent)
+                    .build();
+
+            final RestHighLevelClient client = objectUnderTest.createClient(awsCredentialsSupplier);
+            assertThat(client, notNullValue());
+
+            final MainResponse infoResponse = client.info(RequestOptions.DEFAULT);
+            assertThat(infoResponse, notNullValue());
+            assertThat(infoResponse.getClusterName(), equalTo("opensearch"));
         }
     }
 }
