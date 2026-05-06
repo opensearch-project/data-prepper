@@ -44,6 +44,9 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
     @CommandLine.Option(names = {"--output_folder"})
     private String folderPath;
 
+    @CommandLine.Option(names = {"--use_definitions"}, defaultValue = "false")
+    private boolean useDefinitions;
+
     public static void main(String[] args) {
         final int exitCode = new CommandLine(new DataPrepperPluginSchemaExecute()).execute(args);
         System.exit(exitCode);
@@ -59,8 +62,9 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException("primary fields override filepath does not exist. ", e);
         }
+        final JsonSchemaConverterConfig converterConfig = new JsonSchemaConverterConfig(useDefinitions);
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
-                pluginProvider, new JsonSchemaConverter(DataPrepperModules.dataPrepperModules(), pluginProvider),
+                pluginProvider, new JsonSchemaConverter(DataPrepperModules.dataPrepperModules(), pluginProvider, converterConfig),
                 primaryFieldsOverride, siteUrl, siteBaseUrl);
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
