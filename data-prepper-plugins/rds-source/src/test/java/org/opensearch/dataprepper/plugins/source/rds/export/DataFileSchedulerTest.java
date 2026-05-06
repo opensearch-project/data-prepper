@@ -17,6 +17,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -93,6 +96,15 @@ class DataFileSchedulerTest {
     @Mock
     private AtomicInteger activeExportS3ObjectConsumersGauge;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
     private Random random;
     private String s3Prefix;
 
@@ -144,7 +156,8 @@ class DataFileSchedulerTest {
                         dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                         any(Buffer.class), any(S3ObjectReader.class),
                                         any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class)))
+                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class),
+                                        any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                                 .thenReturn(dataFileLoader);
                         doNothing().when(dataFileLoader).run();
                         objectUnderTest.run();
@@ -174,7 +187,8 @@ class DataFileSchedulerTest {
                 dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                 any(Buffer.class), any(S3ObjectReader.class),
                                 any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class)))
+                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
                         .thenReturn(dataFileLoader);
                 doThrow(new RuntimeException()).when(dataFileLoader).run();
                 objectUnderTest.run();
@@ -267,7 +281,7 @@ class DataFileSchedulerTest {
     }
 
     private DataFileScheduler createObjectUnderTest() {
-        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Prefix, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
+        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Prefix, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginSetting, pipelineDescription, failurePipeline);
     }
 
     private void mockDbTableMetadata() {

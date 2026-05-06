@@ -12,8 +12,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
@@ -71,6 +74,9 @@ public class DataFileLoader implements Runnable {
     private final Counter exportRecordErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
+    private final PluginSetting pluginSetting;
+    private final String pipelineName;
+    private final HeadlessPipeline failurePipeline;
 
     private DataFileLoader(final DataFilePartition dataFilePartition,
                            final InputCodec codec,
@@ -81,7 +87,10 @@ public class DataFileLoader implements Runnable {
                            final EnhancedSourceCoordinator sourceCoordinator,
                            final AcknowledgementSet acknowledgementSet,
                            final Duration acknowledgmentTimeout,
-                           final DbTableMetadata dbTableMetadata) {
+                           final DbTableMetadata dbTableMetadata,
+                           final PluginSetting pluginSetting,
+                           final PipelineDescription pipelineDescription,
+                           final HeadlessPipeline failurePipeline) {
         this.dataFilePartition = dataFilePartition;
         bucket = dataFilePartition.getBucket();
         objectKey = dataFilePartition.getKey();
@@ -93,6 +102,9 @@ public class DataFileLoader implements Runnable {
         this.acknowledgementSet = acknowledgementSet;
         this.acknowledgmentTimeout = acknowledgmentTimeout;
         this.dbTableMetadata = dbTableMetadata;
+        this.pluginSetting = pluginSetting;
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.failurePipeline = failurePipeline;
 
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
         exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
@@ -110,9 +122,13 @@ public class DataFileLoader implements Runnable {
                                         final EnhancedSourceCoordinator sourceCoordinator,
                                         final AcknowledgementSet acknowledgementSet,
                                         final Duration acknowledgmentTimeout,
-                                        final DbTableMetadata dbTableMetadata) {
+                                        final DbTableMetadata dbTableMetadata,
+                                        final PluginSetting pluginSetting,
+                                        final PipelineDescription pipelineDescription,
+                                        final HeadlessPipeline failurePipeline) {
         return new DataFileLoader(dataFilePartition, codec, buffer, objectReader, recordConverter,
-                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     @Override
@@ -177,7 +193,8 @@ public class DataFileLoader implements Runnable {
                             .addArgument(objectKey)
                             .setCause(e)
                             .log();
-                    throw new RuntimeException(e);
+                    exportRecordErrorCounter.increment();
+                    sendToFailurePipeline(record.getData(), e);
                 }
             });
 
@@ -226,6 +243,22 @@ public class DataFileLoader implements Runnable {
                         entry.getValue());
                 event.put(entry.getKey(), data);
             }
+        }
+    }
+
+    private void sendToFailurePipeline(final Event event, final Exception e) {
+        if (failurePipeline == null) {
+            return;
+        }
+        try {
+            event.updateFailureMetadata()
+                    .withPluginId(pluginSetting.getName())
+                    .withPluginName(pluginSetting.getName())
+                    .withPipelineName(pipelineName)
+                    .withErrorMessage(e.getMessage());
+            failurePipeline.sendEvents(List.of(new Record<>(event)));
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Failed to send event to failure pipeline", ex);
         }
     }
 }
