@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,30 +21,34 @@ class SemanticEnrichmentConfigTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
-    void testDeserialize_withFieldsAndMixedLanguages_success() throws Exception {
+    void testDeserialize_withMultipleFields_success() throws Exception {
         final String field1 = UUID.randomUUID().toString();
         final String field2 = UUID.randomUUID().toString();
         final String json = String.format(
-                "{\"fields\":[{\"%s\":\"english\"},{\"%s\":\"multilingual\"}]}", field1, field2);
+                "{\"fields\":[{\"name\":\"%s\",\"language\":\"english\"},{\"name\":\"%s\",\"language\":\"multilingual\"}]}",
+                field1, field2);
 
         final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
 
         assertThat(config.getFields(), notNullValue());
         assertThat(config.getFields().size(), equalTo(2));
-        assertThat(config.getFields().get(0).get(field1), equalTo(SemanticEnrichmentLanguage.ENGLISH));
-        assertThat(config.getFields().get(1).get(field2), equalTo(SemanticEnrichmentLanguage.MULTILINGUAL));
+        assertThat(config.getFields().get(0).getName(), equalTo(field1));
+        assertThat(config.getFields().get(0).getLanguage(), equalTo(SemanticEnrichmentLanguage.ENGLISH));
+        assertThat(config.getFields().get(1).getName(), equalTo(field2));
+        assertThat(config.getFields().get(1).getLanguage(), equalTo(SemanticEnrichmentLanguage.MULTILINGUAL));
     }
 
     @Test
     void testDeserialize_withSingleField_success() throws Exception {
         final String field = UUID.randomUUID().toString();
-        final String json = String.format("{\"fields\":[{\"%s\":\"english\"}]}", field);
+        final String json = String.format("{\"fields\":[{\"name\":\"%s\",\"language\":\"english\"}]}", field);
 
         final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
 
         assertThat(config.getFields(), notNullValue());
         assertThat(config.getFields().size(), equalTo(1));
-        assertThat(config.getFields().get(0).get(field), equalTo(SemanticEnrichmentLanguage.ENGLISH));
+        assertThat(config.getFields().get(0).getName(), equalTo(field));
+        assertThat(config.getFields().get(0).getLanguage(), equalTo(SemanticEnrichmentLanguage.ENGLISH));
     }
 
     @Test
@@ -68,31 +71,36 @@ class SemanticEnrichmentConfigTest {
     }
 
     @Test
-    void testDeserialize_multipleFieldsInSingleMap_success() throws Exception {
-        final String field1 = UUID.randomUUID().toString();
-        final String field2 = UUID.randomUUID().toString();
-        final String json = String.format(
-                "{\"fields\":[{\"%s\":\"english\",\"%s\":\"multilingual\"}]}", field1, field2);
+    void testDeserialize_withMixedLanguages_success() throws Exception {
+        final String json = "{\"fields\":["
+                + "{\"name\":\"title\",\"language\":\"english\"},"
+                + "{\"name\":\"body\",\"language\":\"multilingual\"},"
+                + "{\"name\":\"summary\",\"language\":\"english\"}"
+                + "]}";
+
+        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
+
+        final List<SemanticFieldMapping> fields = config.getFields();
+        assertThat(fields, notNullValue());
+        assertThat(fields.size(), equalTo(3));
+        assertThat(fields.get(0).getName(), equalTo("title"));
+        assertThat(fields.get(0).getLanguage(), equalTo(SemanticEnrichmentLanguage.ENGLISH));
+        assertThat(fields.get(1).getName(), equalTo("body"));
+        assertThat(fields.get(1).getLanguage(), equalTo(SemanticEnrichmentLanguage.MULTILINGUAL));
+        assertThat(fields.get(2).getName(), equalTo("summary"));
+        assertThat(fields.get(2).getLanguage(), equalTo(SemanticEnrichmentLanguage.ENGLISH));
+    }
+
+    @Test
+    void testDeserialize_fieldWithoutLanguage_languageIsNull() throws Exception {
+        final String name = UUID.randomUUID().toString();
+        final String json = String.format("{\"fields\":[{\"name\":\"%s\"}]}", name);
 
         final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
 
         assertThat(config.getFields(), notNullValue());
         assertThat(config.getFields().size(), equalTo(1));
-        final Map<String, SemanticEnrichmentLanguage> entry = config.getFields().get(0);
-        assertThat(entry.get(field1), equalTo(SemanticEnrichmentLanguage.ENGLISH));
-        assertThat(entry.get(field2), equalTo(SemanticEnrichmentLanguage.MULTILINGUAL));
-    }
-
-    @Test
-    void testGetFields_returnsCorrectType() throws Exception {
-        final String json = "{\"fields\":[{\"title\":\"english\"},{\"body\":\"multilingual\"}]}";
-
-        final SemanticEnrichmentConfig config = OBJECT_MAPPER.readValue(json, SemanticEnrichmentConfig.class);
-
-        final List<Map<String, SemanticEnrichmentLanguage>> fields = config.getFields();
-        assertThat(fields, notNullValue());
-        assertThat(fields.size(), equalTo(2));
-        assertThat(fields.get(0).get("title"), equalTo(SemanticEnrichmentLanguage.ENGLISH));
-        assertThat(fields.get(1).get("body"), equalTo(SemanticEnrichmentLanguage.MULTILINGUAL));
+        assertThat(config.getFields().get(0).getName(), equalTo(name));
+        assertThat(config.getFields().get(0).getLanguage(), nullValue());
     }
 }

@@ -147,16 +147,14 @@ public class SemanticEnrichmentIndexCreator {
 
     Map<String, Object> buildIndexSchema(final SemanticEnrichmentConfig semanticConfig) {
         final Map<String, Object> properties = new LinkedHashMap<>();
-        for (final Map<String, SemanticEnrichmentLanguage> fieldEntry : semanticConfig.getFields()) {
-            for (final Map.Entry<String, SemanticEnrichmentLanguage> entry : fieldEntry.entrySet()) {
-                final Map<String, Object> fieldMapping = new LinkedHashMap<>();
-                fieldMapping.put("type", "text");
-                final Map<String, String> semanticEnrichment = new LinkedHashMap<>();
-                semanticEnrichment.put("status", "ENABLED");
-                semanticEnrichment.put("language_options", entry.getValue().getValue());
-                fieldMapping.put("semantic_enrichment", semanticEnrichment);
-                properties.put(entry.getKey(), fieldMapping);
-            }
+        for (final SemanticFieldMapping fieldMapping : semanticConfig.getFields()) {
+            final Map<String, Object> fieldProps = new LinkedHashMap<>();
+            fieldProps.put("type", "text");
+            final Map<String, String> semanticEnrichment = new LinkedHashMap<>();
+            semanticEnrichment.put("status", "ENABLED");
+            semanticEnrichment.put("language_options", fieldMapping.getLanguage().getValue());
+            fieldProps.put("semantic_enrichment", semanticEnrichment);
+            properties.put(fieldMapping.getName(), fieldProps);
         }
         return Map.of("mappings", Map.of("properties", properties));
     }

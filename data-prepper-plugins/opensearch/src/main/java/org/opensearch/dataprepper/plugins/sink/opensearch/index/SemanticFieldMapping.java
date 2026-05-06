@@ -11,14 +11,19 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.List;
+public class SemanticFieldMapping {
 
-public class SemanticEnrichmentConfig {
+    @JsonProperty("name")
+    private String name;
 
-    @JsonProperty("fields")
-    private List<SemanticFieldMapping> fields;
+    @JsonProperty("language")
+    private SemanticEnrichmentLanguage language;
 
-    public List<SemanticFieldMapping> getFields() {
-        return fields;
+    public String getName() {
+        return name;
+    }
+
+    public SemanticEnrichmentLanguage getLanguage() {
+        return language;
     }
 }

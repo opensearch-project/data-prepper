@@ -132,8 +132,9 @@ class SemanticEnrichmentIndexCreatorTest {
         @Test
         void test_buildIndexSchema_singleField_english_createsCorrectMapping() {
             final String fieldName = UUID.randomUUID().toString();
+            final SemanticFieldMapping fieldMapping = createMockFieldMapping(fieldName, SemanticEnrichmentLanguage.ENGLISH);
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
-            when(config.getFields()).thenReturn(List.of(Map.of(fieldName, SemanticEnrichmentLanguage.ENGLISH)));
+            when(config.getFields()).thenReturn(List.of(fieldMapping));
 
             final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
@@ -145,11 +146,11 @@ class SemanticEnrichmentIndexCreatorTest {
             final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
             assertThat(properties, hasKey(fieldName));
             @SuppressWarnings("unchecked")
-            final Map<String, Object> fieldMapping = (Map<String, Object>) properties.get(fieldName);
-            assertThat(fieldMapping.get("type"), equalTo("text"));
-            assertThat(fieldMapping, hasKey("semantic_enrichment"));
+            final Map<String, Object> fieldProps = (Map<String, Object>) properties.get(fieldName);
+            assertThat(fieldProps.get("type"), equalTo("text"));
+            assertThat(fieldProps, hasKey("semantic_enrichment"));
             @SuppressWarnings("unchecked")
-            final Map<String, String> semanticEnrichment = (Map<String, String>) fieldMapping.get("semantic_enrichment");
+            final Map<String, String> semanticEnrichment = (Map<String, String>) fieldProps.get("semantic_enrichment");
             assertThat(semanticEnrichment.get("status"), equalTo("ENABLED"));
             assertThat(semanticEnrichment.get("language_options"), equalTo("english"));
         }
@@ -157,8 +158,9 @@ class SemanticEnrichmentIndexCreatorTest {
         @Test
         void test_buildIndexSchema_singleField_multilingual_createsCorrectMapping() {
             final String fieldName = UUID.randomUUID().toString();
+            final SemanticFieldMapping fieldMapping = createMockFieldMapping(fieldName, SemanticEnrichmentLanguage.MULTILINGUAL);
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
-            when(config.getFields()).thenReturn(List.of(Map.of(fieldName, SemanticEnrichmentLanguage.MULTILINGUAL)));
+            when(config.getFields()).thenReturn(List.of(fieldMapping));
 
             final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
@@ -167,9 +169,9 @@ class SemanticEnrichmentIndexCreatorTest {
             @SuppressWarnings("unchecked")
             final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
             @SuppressWarnings("unchecked")
-            final Map<String, Object> fieldMapping = (Map<String, Object>) properties.get(fieldName);
+            final Map<String, Object> fieldProps = (Map<String, Object>) properties.get(fieldName);
             @SuppressWarnings("unchecked")
-            final Map<String, String> semanticEnrichment = (Map<String, String>) fieldMapping.get("semantic_enrichment");
+            final Map<String, String> semanticEnrichment = (Map<String, String>) fieldProps.get("semantic_enrichment");
             assertThat(semanticEnrichment.get("language_options"), equalTo("multilingual"));
         }
 
@@ -177,10 +179,10 @@ class SemanticEnrichmentIndexCreatorTest {
         void test_buildIndexSchema_multipleFields_differentLanguages_createsAllMappings() {
             final String field1 = UUID.randomUUID().toString();
             final String field2 = UUID.randomUUID().toString();
+            final SemanticFieldMapping mapping1 = createMockFieldMapping(field1, SemanticEnrichmentLanguage.ENGLISH);
+            final SemanticFieldMapping mapping2 = createMockFieldMapping(field2, SemanticEnrichmentLanguage.MULTILINGUAL);
             final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
-            when(config.getFields()).thenReturn(List.of(
-                    Map.of(field1, SemanticEnrichmentLanguage.ENGLISH),
-                    Map.of(field2, SemanticEnrichmentLanguage.MULTILINGUAL)));
+            when(config.getFields()).thenReturn(List.of(mapping1, mapping2));
 
             final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
 
@@ -192,17 +194,85 @@ class SemanticEnrichmentIndexCreatorTest {
             assertThat(properties, hasKey(field2));
 
             @SuppressWarnings("unchecked")
-            final Map<String, Object> field1Mapping = (Map<String, Object>) properties.get(field1);
+            final Map<String, Object> field1Props = (Map<String, Object>) properties.get(field1);
             @SuppressWarnings("unchecked")
-            final Map<String, String> field1Enrichment = (Map<String, String>) field1Mapping.get("semantic_enrichment");
+            final Map<String, String> field1Enrichment = (Map<String, String>) field1Props.get("semantic_enrichment");
             assertThat(field1Enrichment.get("language_options"), equalTo("english"));
 
             @SuppressWarnings("unchecked")
-            final Map<String, Object> field2Mapping = (Map<String, Object>) properties.get(field2);
+            final Map<String, Object> field2Props = (Map<String, Object>) properties.get(field2);
             @SuppressWarnings("unchecked")
-            final Map<String, String> field2Enrichment = (Map<String, String>) field2Mapping.get("semantic_enrichment");
+            final Map<String, String> field2Enrichment = (Map<String, String>) field2Props.get("semantic_enrichment");
             assertThat(field2Enrichment.get("language_options"), equalTo("multilingual"));
         }
+
+        @Test
+        void test_buildIndexSchema_allFieldsSameLanguage_createsCorrectMappings() {
+            final String field1 = UUID.randomUUID().toString();
+            final String field2 = UUID.randomUUID().toString();
+            final String field3 = UUID.randomUUID().toString();
+            final SemanticFieldMapping mapping1 = createMockFieldMapping(field1, SemanticEnrichmentLanguage.ENGLISH);
+            final SemanticFieldMapping mapping2 = createMockFieldMapping(field2, SemanticEnrichmentLanguage.ENGLISH);
+            final SemanticFieldMapping mapping3 = createMockFieldMapping(field3, SemanticEnrichmentLanguage.ENGLISH);
+            final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
+            when(config.getFields()).thenReturn(List.of(mapping1, mapping2, mapping3));
+
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
+
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> mappings = (Map<String, Object>) result.get("mappings");
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
+            assertThat(properties.size(), equalTo(3));
+            assertThat(properties, hasKey(field1));
+            assertThat(properties, hasKey(field2));
+            assertThat(properties, hasKey(field3));
+        }
+
+        @Test
+        void test_buildIndexSchema_fieldMapping_hasTypeText() {
+            final String fieldName = UUID.randomUUID().toString();
+            final SemanticFieldMapping fieldMapping = createMockFieldMapping(fieldName, SemanticEnrichmentLanguage.ENGLISH);
+            final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
+            when(config.getFields()).thenReturn(List.of(fieldMapping));
+
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
+
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> mappings = (Map<String, Object>) result.get("mappings");
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> fieldProps = (Map<String, Object>) properties.get(fieldName);
+            assertThat(fieldProps.get("type"), equalTo("text"));
+        }
+
+        @Test
+        void test_buildIndexSchema_semanticEnrichment_hasStatusEnabled() {
+            final String fieldName = UUID.randomUUID().toString();
+            final SemanticFieldMapping fieldMapping = createMockFieldMapping(fieldName, SemanticEnrichmentLanguage.MULTILINGUAL);
+            final SemanticEnrichmentConfig config = mock(SemanticEnrichmentConfig.class);
+            when(config.getFields()).thenReturn(List.of(fieldMapping));
+
+            final Map<String, Object> result = createDefaultCreator().buildIndexSchema(config);
+
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> mappings = (Map<String, Object>) result.get("mappings");
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> fieldProps = (Map<String, Object>) properties.get(fieldName);
+            @SuppressWarnings("unchecked")
+            final Map<String, String> semanticEnrichment = (Map<String, String>) fieldProps.get("semantic_enrichment");
+            assertThat(semanticEnrichment.get("status"), equalTo("ENABLED"));
+        }
+    }
+
+    private SemanticFieldMapping createMockFieldMapping(final String name, final SemanticEnrichmentLanguage language) {
+        final SemanticFieldMapping fieldMapping = mock(SemanticFieldMapping.class);
+        when(fieldMapping.getName()).thenReturn(name);
+        when(fieldMapping.getLanguage()).thenReturn(language);
+        return fieldMapping;
     }
 
     private SemanticEnrichmentIndexCreator createDefaultCreator() {
