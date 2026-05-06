@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugin;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.hibernate.validator.internal.engine.constraintvalidation.ConstraintValidatorFactoryImpl;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class ValidatorConfigurationTest {
         final ExperimentalFeatureValidator experimentalFeatureValidator =
                 new ExperimentalFeatureValidator(experimentalConfigurationContainer);
         final BeanAwareConstraintValidatorFactory constraintValidatorFactory =
-                new BeanAwareConstraintValidatorFactory(List.of(experimentalFeatureValidator));
+                new BeanAwareConstraintValidatorFactory(new ConstraintValidatorFactoryImpl(), List.of(experimentalFeatureValidator));
         final ExperimentalConstraintMappingContributor experimentalContributor =
                 new ExperimentalConstraintMappingContributor();
         return new ValidatorConfiguration().validator(

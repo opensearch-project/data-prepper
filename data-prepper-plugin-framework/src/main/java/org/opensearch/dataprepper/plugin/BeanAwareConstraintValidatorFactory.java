@@ -12,9 +12,7 @@ package org.opensearch.dataprepper.plugin;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorFactory;
 import jakarta.validation.Validator;
-import org.hibernate.validator.internal.engine.constraintvalidation.ConstraintValidatorFactoryImpl;
 
-import javax.inject.Named;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,12 +25,13 @@ import java.util.stream.Collectors;
  * This allows us to create {@link ConstraintValidator} implementations that rely on Spring
  * dependency injection.
  */
-@Named
 class BeanAwareConstraintValidatorFactory implements ConstraintValidatorFactory {
-    private final ConstraintValidatorFactory delegate = new ConstraintValidatorFactoryImpl();
+    private final ConstraintValidatorFactory delegate;
     private final Map<Class<?>, ConstraintValidator<?, ?>> validatorsByClass;
 
-    BeanAwareConstraintValidatorFactory(final Collection<ConstraintValidator<?, ?>> constraintValidators) {
+    BeanAwareConstraintValidatorFactory(final ConstraintValidatorFactory delegate,
+                                        final Collection<ConstraintValidator<?, ?>> constraintValidators) {
+        this.delegate = delegate;
         this.validatorsByClass = constraintValidators.stream()
                 .collect(Collectors.toMap(Object::getClass, Function.identity()));
     }

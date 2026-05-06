@@ -15,6 +15,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.hibernate.validator.HibernateValidator;
 import org.hibernate.validator.HibernateValidatorConfiguration;
+import org.hibernate.validator.internal.engine.constraintvalidation.ConstraintValidatorFactoryImpl;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,7 +56,7 @@ class ExperimentalConstraintMappingContributorTest {
         final ExperimentalFeatureValidator experimentalFeatureValidator =
                 new ExperimentalFeatureValidator(experimentalConfigurationContainer);
         final BeanAwareConstraintValidatorFactory constraintValidatorFactory =
-                new BeanAwareConstraintValidatorFactory(List.of(experimentalFeatureValidator));
+                new BeanAwareConstraintValidatorFactory(new ConstraintValidatorFactoryImpl(), List.of(experimentalFeatureValidator));
 
         final HibernateValidatorConfiguration configuration = Validation.byProvider(HibernateValidator.class)
                 .configure()
