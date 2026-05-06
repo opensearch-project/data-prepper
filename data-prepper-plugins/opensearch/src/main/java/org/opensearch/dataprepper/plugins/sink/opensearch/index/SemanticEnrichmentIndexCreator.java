@@ -90,7 +90,7 @@ public class SemanticEnrichmentIndexCreator {
             LOG.info("Index [{}] already exists, skipping creation", indexName);
         } catch (final software.amazon.awssdk.core.exception.SdkException e) {
             throw new IOException(String.format(
-                    "Failed to create index [%s] via serverless control plane: %s", indexName, e.getMessage()), e);
+                    "Failed to create index [%s] via Amazon OpenSearch Serverless APIs: %s", indexName, e.getMessage()), e);
         }
     }
 
@@ -118,7 +118,7 @@ public class SemanticEnrichmentIndexCreator {
             LOG.info("Index [{}] already exists, skipping creation", indexName);
         } catch (final software.amazon.awssdk.core.exception.SdkException e) {
             throw new IOException(String.format(
-                    "Failed to create index [%s] via managed domain control plane: %s", indexName, e.getMessage()), e);
+                    "Failed to create index [%s] via Amazon OpenSearch Service APIs: %s", indexName, e.getMessage()), e);
         }
     }
 

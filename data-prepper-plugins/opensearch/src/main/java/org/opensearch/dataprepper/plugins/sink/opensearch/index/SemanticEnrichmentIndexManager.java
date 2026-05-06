@@ -36,7 +36,7 @@ public class SemanticEnrichmentIndexManager {
         }
 
         if (!connectionConfiguration.isAwsSigv4()) {
-            LOG.warn("Semantic enrichment is only supported with AWS OpenSearch. Skipping index creation.");
+            LOG.warn("Semantic enrichment is only supported with Amazon OpenSearchService. Skipping index creation.");
             return;
         }
 
