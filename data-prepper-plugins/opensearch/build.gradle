@@ -35,6 +35,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:opensearchserverless'
+    implementation 'software.amazon.awssdk:opensearch'
     implementation libs.commons.lang3
     implementation libs.caffeine
     implementation 'software.amazon.awssdk:apache-client'

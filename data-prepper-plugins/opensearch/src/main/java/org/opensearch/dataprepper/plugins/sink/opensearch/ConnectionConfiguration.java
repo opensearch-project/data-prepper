@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
@@ -120,7 +124,7 @@ public class ConnectionConfiguration {
   private final byte[] clientCertContent;
   private final byte[] clientKeyContent;
 
-  List<String> getHosts() {
+  public List<String> getHosts() {
     return hosts;
   }
 
@@ -131,12 +135,12 @@ public class ConnectionConfiguration {
   String getApitoken() {
     return apitoken;
   }
-
+  
   String getPassword() {
     return password;
   }
 
-  boolean isAwsSigv4() {
+  public boolean isAwsSigv4() {
     return awsSigv4;
   }
 

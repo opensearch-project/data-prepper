@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
@@ -155,6 +156,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             openSearchSinkConfig, templateStrategy, configuredIndexAlias);
 
     maybeUpdateServerlessNetworkPolicy();
+
+    // Create index with semantic enrichment via AWS control plane (AOSS or managed domain) if configured.
+    new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
+            connectionConfiguration,
+            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
+            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentResourceName(),
+            configuredIndexAlias);
 
     indexManager.setupIndex();
 
