@@ -193,8 +193,12 @@ public class DataFileLoader implements Runnable {
                             .addArgument(objectKey)
                             .setCause(e)
                             .log();
-                    exportRecordErrorCounter.increment();
-                    sendToFailurePipeline(record.getData(), e);
+                    if (failurePipeline != null) {
+                        exportRecordErrorCounter.increment();
+                        sendToFailurePipeline(record.getData(), e);
+                    } else {
+                        throw new RuntimeException(e);
+                    }
                 }
             });
 

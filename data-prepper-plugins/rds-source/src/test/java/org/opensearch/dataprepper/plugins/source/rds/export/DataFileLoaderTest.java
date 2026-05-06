@@ -352,7 +352,7 @@ class DataFileLoaderTest {
 
     @ParameterizedTest
     @EnumSource(EngineType.class)
-    void test_record_processing_failure_with_null_failure_pipeline_does_not_throw(EngineType engineType) throws Exception {
+    void test_record_processing_failure_with_null_failure_pipeline_throws(EngineType engineType) throws Exception {
         final String bucket = UUID.randomUUID().toString();
         final String key = UUID.randomUUID().toString();
         when(dataFilePartition.getBucket()).thenReturn(bucket);
@@ -392,11 +392,7 @@ class DataFileLoaderTest {
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
 
-            dataFileLoader.run();
+            assertThrows(RuntimeException.class, dataFileLoader::run);
         }
-
-        // No exception thrown, processing continued
-        verify(exportRecordErrorCounter).increment();
-        verify(bufferAccumulator).flush();
     }
 }
