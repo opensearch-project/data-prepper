@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
@@ -248,6 +249,56 @@ class BinlogEventListenerTest {
 
         verifyHandlerCallHelper();
         verify(objectUnderTest).handleDeleteEvent(binlogEvent);
+    }
+
+    @Test
+    void test_sendToFailurePipeline_sends_event_with_failure_metadata() throws Exception {
+        final String pluginName = "rds";
+        final String pipelineName = "test-pipeline";
+        final String errorMessage = "test error";
+        final Event event = mock(Event.class);
+        final EventFailureMetadata failureMetadata = mock(EventFailureMetadata.class);
+
+        when(pluginSetting.getName()).thenReturn(pluginName);
+        when(event.updateFailureMetadata()).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginId(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginName(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPipelineName(pipelineName)).thenReturn(failureMetadata);
+        when(failureMetadata.withErrorMessage(errorMessage)).thenReturn(failureMetadata);
+
+        // Use reflection to invoke sendToFailurePipeline
+        java.lang.reflect.Method method = BinlogEventListener.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(objectUnderTest, event, new RuntimeException(errorMessage));
+
+        verify(event).updateFailureMetadata();
+        verify(failureMetadata).withPluginId(pluginName);
+        verify(failureMetadata).withPluginName(pluginName);
+        verify(failureMetadata).withPipelineName(pipelineName);
+        verify(failureMetadata).withErrorMessage(errorMessage);
+        verify(failurePipeline).sendEvents(any());
+    }
+
+    @Test
+    void test_sendToFailurePipeline_does_nothing_when_failurePipeline_is_null() throws Exception {
+        // Create a listener with null failurePipeline
+        BinlogEventListener listenerWithNullDlq;
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
+            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
+            listenerWithNullDlq = BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                    streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,
+                    pluginSetting, pipelineDescription, null);
+        }
+
+        final Event event = mock(Event.class);
+
+        java.lang.reflect.Method method = BinlogEventListener.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(listenerWithNullDlq, event, new RuntimeException("error"));
+
+        verify(event, org.mockito.Mockito.never()).updateFailureMetadata();
     }
 
     @ParameterizedTest
