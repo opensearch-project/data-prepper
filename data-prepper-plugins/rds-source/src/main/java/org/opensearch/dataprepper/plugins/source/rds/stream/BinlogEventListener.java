@@ -23,9 +23,12 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
@@ -98,6 +101,9 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final DbTableMetadata dbTableMetadata;
     private final ExecutorService binlogEventExecutorService;
     private final CascadingActionDetector cascadeActionDetector;
+    private final PluginSetting pluginSetting;
+    private final String pipelineName;
+    private final HeadlessPipeline failurePipeline;
 
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
@@ -120,7 +126,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                                final StreamCheckpointer streamCheckpointer,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final DbTableMetadata dbTableMetadata,
-                               final CascadingActionDetector cascadeActionDetector) {
+                               final CascadingActionDetector cascadeActionDetector,
+                               final PluginSetting pluginSetting,
+                               final PipelineDescription pipelineDescription,
+                               final HeadlessPipeline failurePipeline) {
         this.streamPartition = streamPartition;
         this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
@@ -148,6 +157,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.cascadeActionDetector = cascadeActionDetector;
         parentTableMap = cascadeActionDetector.getParentTableMap(streamPartition);
 
+        this.pluginSetting = pluginSetting;
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.failurePipeline = failurePipeline;
+
         changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
         changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
@@ -165,9 +178,13 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                                              final StreamCheckpointer streamCheckpointer,
                                              final AcknowledgementSetManager acknowledgementSetManager,
                                              final DbTableMetadata dbTableMetadata,
-                                             final CascadingActionDetector cascadeActionDetector) {
+                                             final CascadingActionDetector cascadeActionDetector,
+                                             final PluginSetting pluginSetting,
+                                             final PipelineDescription pipelineDescription,
+                                             final HeadlessPipeline failurePipeline) {
         return new BinlogEventListener(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, 
-                                       streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector);
+                                       streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector,
+                                       pluginSetting, pipelineDescription, failurePipeline);
     }
 
     @Override
@@ -429,37 +446,46 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             final Object[] rowDataArray = rows.get(rowNum);
             final OpenSearchBulkActions bulkAction = bulkActions.get(rowNum);
 
-            final Map<String, Object> rowDataMap = new HashMap<>();
-            final int columnCount = Math.min(columnNames.size(), rowDataArray.length);
-            if (rowDataArray.length != columnNames.size()) {
-                LOG.warn("Row data length ({}) does not match column names size ({}) for table {}. Extra columns will be skipped.",
-                        rowDataArray.length, columnNames.size(), tableMetadata.getFullTableName());
-            }
-            for (int i = 0; i < columnCount; i++) {
-                final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
-                final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
-                final Object data =  MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
-                        rowDataArray[i], tableMetadata);
-                rowDataMap.put(columnNames.get(i), data);
-            }
+            try {
+                final Map<String, Object> rowDataMap = new HashMap<>();
+                final int columnCount = Math.min(columnNames.size(), rowDataArray.length);
+                if (rowDataArray.length != columnNames.size()) {
+                    LOG.warn("Row data length ({}) does not match column names size ({}) for table {}. Extra columns will be skipped.",
+                            rowDataArray.length, columnNames.size(), tableMetadata.getFullTableName());
+                }
+                for (int i = 0; i < columnCount; i++) {
+                    final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
+                    final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
+                    final Object data =  MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                            rowDataArray[i], tableMetadata);
+                    rowDataMap.put(columnNames.get(i), data);
+                }
 
-            final Event dataPrepperEvent = JacksonEvent.builder()
-                    .withEventType(DATA_PREPPER_EVENT_TYPE)
-                    .withData(rowDataMap)
-                    .build();
+                final Event dataPrepperEvent = JacksonEvent.builder()
+                        .withEventType(DATA_PREPPER_EVENT_TYPE)
+                        .withData(rowDataMap)
+                        .build();
 
-            final Event pipelineEvent = recordConverter.convert(
-                    dataPrepperEvent,
-                    tableMetadata.getDatabaseName(),
-                    tableMetadata.getDatabaseName(),
-                    tableMetadata.getTableName(),
-                    bulkAction,
-                    primaryKeys,
-                    eventTimestampMillis,
-                    recordConverter.getVersionNumber(eventTimestampMillis),
-                    streamEventType,
-                    tableMetadata.getColumnNames());
-            pipelineEvents.add(pipelineEvent);
+                final Event pipelineEvent = recordConverter.convert(
+                        dataPrepperEvent,
+                        tableMetadata.getDatabaseName(),
+                        tableMetadata.getDatabaseName(),
+                        tableMetadata.getTableName(),
+                        bulkAction,
+                        primaryKeys,
+                        eventTimestampMillis,
+                        recordConverter.getVersionNumber(eventTimestampMillis),
+                        streamEventType,
+                        tableMetadata.getColumnNames());
+                pipelineEvents.add(pipelineEvent);
+            } catch (Exception e) {
+                LOG.error(NOISY, "Failed to process row change event", e);
+                changeEventErrorCounter.increment();
+                final Event failedEvent = JacksonEvent.builder()
+                        .withEventType(DATA_PREPPER_EVENT_TYPE)
+                        .build();
+                sendToFailurePipeline(failedEvent, e);
+            }
         }
 
         writeToBuffer(bufferAccumulator, acknowledgementSet);
@@ -493,6 +519,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             bufferAccumulator.add(record);
         } catch (Exception e) {
             LOG.error(NOISY, "Failed to add event to buffer", e);
+            sendToFailurePipeline(record.getData(), e);
         }
     }
 
@@ -505,6 +532,25 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             // otherwise bufferAccumulator will keep retrying with backoff
             LOG.error(NOISY, "Failed to flush buffer", e);
             changeEventErrorCounter.increment(eventCount);
+            for (Event event : pipelineEvents) {
+                sendToFailurePipeline(event, e);
+            }
+        }
+    }
+
+    private void sendToFailurePipeline(final Event event, final Exception e) {
+        if (failurePipeline == null) {
+            return;
+        }
+        try {
+            event.updateFailureMetadata()
+                    .withPluginId(pluginSetting.getName())
+                    .withPluginName(pluginSetting.getName())
+                    .withPipelineName(pipelineName)
+                    .withErrorMessage(e.getMessage());
+            failurePipeline.sendEvents(List.of(new Record<>(event)));
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Failed to send event to failure pipeline", ex);
         }
     }
 

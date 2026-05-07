@@ -11,8 +11,11 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -66,6 +69,9 @@ public class DataFileScheduler implements Runnable {
     private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final PluginSetting pluginSetting;
+    private final PipelineDescription pipelineDescription;
+    private final HeadlessPipeline failurePipeline;
 
     private final Counter exportFileSuccessCounter;
     private final Counter exportFileErrorCounter;
@@ -80,7 +86,10 @@ public class DataFileScheduler implements Runnable {
                              final EventFactory eventFactory,
                              final Buffer<Record<Event>> buffer,
                              final PluginMetrics pluginMetrics,
-                             final AcknowledgementSetManager acknowledgementSetManager) {
+                             final AcknowledgementSetManager acknowledgementSetManager,
+                             final PluginSetting pluginSetting,
+                             final PipelineDescription pipelineDescription,
+                             final HeadlessPipeline failurePipeline) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         codec = new ParquetInputCodec(eventFactory);
@@ -94,6 +103,9 @@ public class DataFileScheduler implements Runnable {
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.pluginSetting = pluginSetting;
+        this.pipelineDescription = pipelineDescription;
+        this.failurePipeline = failurePipeline;
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
         this.exportFileErrorCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_ERROR_COUNT);
@@ -162,7 +174,7 @@ public class DataFileScheduler implements Runnable {
         Runnable loader = DataFileLoader.create(
                 dataFilePartition, codec, buffer, objectReader, recordConverter, pluginMetrics,
                 sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout(),
-                getDBTableMetadata());
+                getDBTableMetadata(), pluginSetting, pipelineDescription, failurePipeline);
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         if (isAcknowledgmentsEnabled) {

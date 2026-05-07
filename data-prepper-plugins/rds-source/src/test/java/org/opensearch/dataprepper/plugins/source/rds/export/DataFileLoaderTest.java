@@ -23,11 +23,15 @@ import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -40,6 +44,7 @@ import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -95,6 +100,15 @@ class DataFileLoaderTest {
     private DbTableMetadata dbTableMetadata;
 
     @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
+    @Mock
     private Duration acknowledgmentTimeout;
 
     @Mock
@@ -119,6 +133,7 @@ class DataFileLoaderTest {
         when(pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT)).thenReturn(exportRecordErrorCounter);
         when(pluginMetrics.summary(BYTES_RECEIVED)).thenReturn(bytesReceivedSummary);
         when(pluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
     }
 
     @ParameterizedTest
@@ -276,6 +291,108 @@ class DataFileLoaderTest {
     private DataFileLoader createObjectUnderTest() {
         final InputCodec codec = new ParquetInputCodec(eventFactory);
         return DataFileLoader.create(dataFilePartition, codec, buffer, s3ObjectReader, recordConverter,
-                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata,
+                pluginSetting, pipelineDescription, failurePipeline);
+    }
+
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_record_processing_failure_sends_to_dlq_and_continues(EngineType engineType) throws Exception {
+        final String bucket = UUID.randomUUID().toString();
+        final String key = UUID.randomUUID().toString();
+        when(dataFilePartition.getBucket()).thenReturn(bucket);
+        when(dataFilePartition.getKey()).thenReturn(key);
+        final DataFileProgressState progressState = mock(DataFileProgressState.class, RETURNS_DEEP_STUBS);
+        when(dataFilePartition.getProgressState()).thenReturn(Optional.of(progressState));
+        when(progressState.getEngineType()).thenReturn(engineType.toString());
+        when(pluginSetting.getName()).thenReturn("rds");
+
+        InputStream inputStream = mock(InputStream.class);
+        when(s3ObjectReader.readFile(bucket, key)).thenReturn(inputStream);
+
+        final Event event = mock(Event.class);
+        when(event.toJsonString()).thenReturn("test");
+        when(event.toMap()).thenReturn(Map.of());
+        final EventFailureMetadata eventFailureMetadata = mock(EventFailureMetadata.class);
+        when(event.updateFailureMetadata()).thenReturn(eventFailureMetadata);
+        when(eventFailureMetadata.withPluginId(any())).thenReturn(eventFailureMetadata);
+        when(eventFailureMetadata.withPluginName(any())).thenReturn(eventFailureMetadata);
+        when(eventFailureMetadata.withPipelineName(any())).thenReturn(eventFailureMetadata);
+        when(eventFailureMetadata.withErrorMessage(any())).thenReturn(eventFailureMetadata);
+
+        when(recordConverter.convert(any(), any(), any(), any(), any(), any(), anyLong(), anyLong(), any(), any()))
+                .thenThrow(new RuntimeException("conversion error"));
+
+        AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
+        BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
+        when(builder.build()).thenReturn(parquetReader);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), (GenericRecord) null);
+
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
+
+        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
+             MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+
+            readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
+
+            DataFileLoader dataFileLoader = createObjectUnderTest();
+            dataFileLoader.run();
+        }
+
+        // Event was sent to DLQ
+        verify(failurePipeline).sendEvents(any());
+        verify(exportRecordErrorCounter).increment();
+        // Processing continued (flush still called)
+        verify(bufferAccumulator).flush();
+    }
+
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_record_processing_failure_with_null_failure_pipeline_throws(EngineType engineType) throws Exception {
+        final String bucket = UUID.randomUUID().toString();
+        final String key = UUID.randomUUID().toString();
+        when(dataFilePartition.getBucket()).thenReturn(bucket);
+        when(dataFilePartition.getKey()).thenReturn(key);
+        final DataFileProgressState progressState = mock(DataFileProgressState.class, RETURNS_DEEP_STUBS);
+        when(dataFilePartition.getProgressState()).thenReturn(Optional.of(progressState));
+        when(progressState.getEngineType()).thenReturn(engineType.toString());
+
+        InputStream inputStream = mock(InputStream.class);
+        when(s3ObjectReader.readFile(bucket, key)).thenReturn(inputStream);
+
+        final Event event = mock(Event.class);
+        when(event.toJsonString()).thenReturn("test");
+        when(event.toMap()).thenReturn(Map.of());
+
+        when(recordConverter.convert(any(), any(), any(), any(), any(), any(), anyLong(), anyLong(), any(), any()))
+                .thenThrow(new RuntimeException("conversion error"));
+
+        AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
+        BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
+        when(builder.build()).thenReturn(parquetReader);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), (GenericRecord) null);
+
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
+
+        final InputCodec codec = new ParquetInputCodec(eventFactory);
+        DataFileLoader dataFileLoader = DataFileLoader.create(dataFilePartition, codec, buffer, s3ObjectReader, recordConverter,
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata,
+                pluginSetting, pipelineDescription, null);
+
+        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
+             MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+
+            readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
+
+            assertThrows(RuntimeException.class, dataFileLoader::run);
+        }
     }
 }
