@@ -16,12 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestClient;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.inject.Inject;
 import javax.inject.Named;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -63,7 +65,18 @@ public class ConfluenceRestClient extends AtlassianRestClient {
 
     public ConfluenceRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
                                 PluginMetrics pluginMetrics) {
-        super(restTemplate, authConfig, pluginMetrics);
+        this(restTemplate, authConfig, pluginMetrics, false);
+    }
+
+    @Inject
+    public ConfluenceRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                                PluginMetrics pluginMetrics, ConfluenceSourceConfig sourceConfig) {
+        this(restTemplate, authConfig, pluginMetrics, sourceConfig.isAllowLocalAddress());
+    }
+
+    private ConfluenceRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                                 PluginMetrics pluginMetrics, boolean allowLocalAddress) {
+        super(restTemplate, authConfig, pluginMetrics, allowLocalAddress);
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
