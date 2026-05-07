@@ -88,4 +88,20 @@ class GeoInetAddressTest {
         assertThat(withFlag.isPresent(), equalTo(false));
         assertThat(withoutFlag.isPresent(), equalTo(false));
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"224.0.0.1", "239.255.255.250"})
+    void multicastAcceptedWhenLookupEnabled(String multicastAddress) {
+        final Optional<InetAddress> actual = GeoInetAddress.usableInetFromString(multicastAddress, true);
+        assertThat(actual, notNullValue());
+        assertThat(actual.isPresent(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"169.254.1.1", "fe80::1"})
+    void linkLocalAcceptedWhenLookupEnabled(String linkLocalAddress) {
+        final Optional<InetAddress> actual = GeoInetAddress.usableInetFromString(linkLocalAddress, true);
+        assertThat(actual, notNullValue());
+        assertThat(actual.isPresent(), equalTo(true));
+    }
 }
