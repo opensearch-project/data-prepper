@@ -37,7 +37,7 @@ public class AuthenticationConfig {
     private boolean isValidAuthenticationConfig() {
         boolean hasBasic = basicConfig != null;
         boolean hasOauth = oauth2Config != null;
-        boolean hasBearer = bearerToken != null && !bearerToken.isBlank();
+        boolean hasBearer = bearerToken != null && !bearerToken.isEmpty();
         int count = (hasBasic ? 1 : 0) + (hasOauth ? 1 : 0) + (hasBearer ? 1 : 0);
         return count == 1;
     }
@@ -45,7 +45,7 @@ public class AuthenticationConfig {
     public String getAuthType() {
         if (basicConfig != null) {
             return BASIC;
-        } else if (bearerToken != null && !bearerToken.isBlank()) {
+        } else if (bearerToken != null && !bearerToken.isEmpty()) {
             return BEARER_TOKEN;
         } else {
             return OAUTH2;

@@ -20,6 +20,8 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
@@ -70,10 +72,11 @@ public class AtlassianAuthFactoryTest {
 
     @Test
     void testGetObjectBearerToken() {
+        final String token = UUID.randomUUID().toString();
         when(sourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn("test-token");
-        when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.internal.com");
+        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         assertInstanceOf(AtlassianBearerTokenAuthConfig.class, confluenceAuthFactory.getObject());
     }
 

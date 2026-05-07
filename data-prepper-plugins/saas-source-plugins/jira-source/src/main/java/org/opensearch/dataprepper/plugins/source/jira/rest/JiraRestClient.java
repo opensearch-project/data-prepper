@@ -16,10 +16,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestClient;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.inject.Inject;
 import javax.inject.Named;
 import java.net.URI;
 
@@ -53,7 +55,18 @@ public class JiraRestClient extends AtlassianRestClient {
     private final Counter searchRequestsFailedCounter;
 
     public JiraRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig, PluginMetrics pluginMetrics) {
-        super(restTemplate, authConfig, pluginMetrics);
+        this(restTemplate, authConfig, pluginMetrics, false);
+    }
+
+    @Inject
+    public JiraRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                          PluginMetrics pluginMetrics, JiraSourceConfig sourceConfig) {
+        this(restTemplate, authConfig, pluginMetrics, sourceConfig.isAllowLocalAddress());
+    }
+
+    private JiraRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                           PluginMetrics pluginMetrics, boolean allowLocalAddress) {
+        super(restTemplate, authConfig, pluginMetrics, allowLocalAddress);
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 

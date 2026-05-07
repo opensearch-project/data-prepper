@@ -133,4 +133,10 @@ public class AddressValidationTest {
         assertThrows(BadRequestException.class, () -> AddressValidation.validateInetAddress(wildcardAddress, true));
     }
 
+    @Test
+    void testAllowLocalAddressAcceptsPublicIp() throws UnknownHostException {
+        InetAddress publicAddress = InetAddress.getByName("8.8.8.8");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(publicAddress, true));
+    }
+
 }

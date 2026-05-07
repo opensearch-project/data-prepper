@@ -41,7 +41,7 @@ public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
 
-    @JsonProperty("allow_local_address")
+    @JsonProperty("allow_internal_address")
     private boolean allowLocalAddress = false;
 
     public String getAccountUrl() {

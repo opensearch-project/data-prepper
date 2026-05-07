@@ -21,6 +21,7 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -44,7 +45,8 @@ class BearerTokenInterceptorTest {
 
     @Test
     void testInterceptSetsBearerAuthHeader() throws IOException {
-        when(authConfig.getBearerToken()).thenReturn("my-token");
+        final String token = UUID.randomUUID().toString();
+        when(authConfig.getBearerToken()).thenReturn(token);
         HttpHeaders headers = new HttpHeaders();
         when(request.getHeaders()).thenReturn(headers);
         when(execution.execute(request, new byte[0])).thenReturn(response);
@@ -53,6 +55,6 @@ class BearerTokenInterceptorTest {
         interceptor.intercept(request, new byte[0], execution);
 
         verify(execution).execute(request, new byte[0]);
-        assertThat(headers.getFirst(HttpHeaders.AUTHORIZATION), equalTo("Bearer my-token"));
+        assertThat(headers.getFirst(HttpHeaders.AUTHORIZATION), equalTo("Bearer " + token));
     }
 }

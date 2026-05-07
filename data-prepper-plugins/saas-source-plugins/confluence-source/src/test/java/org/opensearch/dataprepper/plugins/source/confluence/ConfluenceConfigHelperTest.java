@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.configuration.SpaceC
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -119,7 +120,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigBasic() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
@@ -138,7 +139,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigOauth2() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
@@ -156,17 +157,29 @@ public class ConfluenceConfigHelperTest {
     }
 
     @Test
-    void testValidateConfigBearerToken() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+    void testValidateConfigBearerToken_nullToken_throwsException() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBearerToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
 
+    @Test
+    void testValidateConfigBearerToken_emptyToken_throwsException() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBearerToken()).thenReturn("");
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
 
-        when(authenticationConfig.getBearerToken()).thenReturn("valid-token");
+    @Test
+    void testValidateConfigBearerToken_validToken_succeeds() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerToken()).thenReturn(UUID.randomUUID().toString());
         assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 }
