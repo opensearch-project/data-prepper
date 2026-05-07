@@ -147,22 +147,20 @@ jobs:
           docker cp ca-cert.pem opensearch-mtls:/usr/share/opensearch/config/
           docker exec opensearch-mtls bash -c "
             CONFIG=/usr/share/opensearch/config/opensearch.yml
-            if grep -q 'clientauth_mode' \$CONFIG; then
-              sed -i 's/clientauth_mode:.*/clientauth_mode: REQUIRE/' \$CONFIG
-            elif grep -q 'plugins.security' \$CONFIG; then
-              echo 'plugins.security.ssl.http.clientauth_mode: REQUIRE' >> \$CONFIG
+            if grep -q 'plugins.security' \$CONFIG; then
+              PREFIX=plugins.security
             else
-              echo 'opendistro_security.ssl.http.clientauth_mode: REQUIRE' >> \$CONFIG
+              PREFIX=opendistro_security
             fi
-          "
-          docker exec opensearch-mtls bash -c "
-            CONFIG=/usr/share/opensearch/config/opensearch.yml
-            if grep -q 'pemtrustedcas_filepath' \$CONFIG; then
-              sed -i '/http.*pemtrustedcas_filepath/s|:.*|: /usr/share/opensearch/config/ca-cert.pem|' \$CONFIG
-            elif grep -q 'plugins.security' \$CONFIG; then
-              echo 'plugins.security.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem' >> \$CONFIG
+            if grep -q 'ssl.http.clientauth_mode' \$CONFIG; then
+              sed -i 's/ssl.http.clientauth_mode:.*/ssl.http.clientauth_mode: REQUIRE/' \$CONFIG
             else
-              echo 'opendistro_security.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem' >> \$CONFIG
+              echo \"\${PREFIX}.ssl.http.clientauth_mode: REQUIRE\" >> \$CONFIG
+            fi
+            if grep -q 'ssl.http.pemtrustedcas_filepath' \$CONFIG; then
+              sed -i \"s|ssl.http.pemtrustedcas_filepath:.*|ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem|\" \$CONFIG
+            else
+              echo \"\${PREFIX}.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem\" >> \$CONFIG
             fi
           "
           docker restart opensearch-mtls
