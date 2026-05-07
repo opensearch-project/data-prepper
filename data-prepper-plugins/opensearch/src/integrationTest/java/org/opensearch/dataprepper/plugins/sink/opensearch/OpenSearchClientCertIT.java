@@ -12,6 +12,12 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +26,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
+import org.opensearch.client.RestClientBuilder;
 import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -35,8 +42,20 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
+import javax.net.ssl.SSLContext;
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +70,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
 
 @EnabledIfSystemProperty(named = "tests.mtls.client.cert", matches = ".+")
@@ -73,7 +91,7 @@ class OpenSearchClientCertIT {
     private OpenSearchSink sink;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() throws Exception {
         MetricsTestUtil.initMetrics();
 
         objectMapper = new ObjectMapper();
@@ -88,7 +106,7 @@ class OpenSearchClientCertIT {
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
 
-        client = createOpenSearchClient();
+        client = createClientWithClientCert();
     }
 
     @AfterEach
@@ -177,5 +195,52 @@ class OpenSearchClientCertIT {
     private void deleteIndex(final String index) throws IOException {
         final Request request = new Request(HttpMethod.DELETE, index);
         client.performRequest(request);
+    }
+
+    private RestClient createClientWithClientCert() throws Exception {
+        final String certPath = System.getProperty("tests.mtls.client.cert");
+        final String keyPath = System.getProperty("tests.mtls.client.key");
+        final String userName = System.getProperty("tests.opensearch.user", "admin");
+        final String password = System.getProperty("tests.opensearch.password", "admin");
+
+        final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        final Collection<? extends Certificate> certs;
+        try (InputStream is = Files.newInputStream(Paths.get(certPath))) {
+            certs = factory.generateCertificates(is);
+        }
+
+        final String keyPem = new String(Files.readAllBytes(Paths.get(keyPath)));
+        final String keyBase64 = keyPem
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+        final byte[] keyBytes = Base64.getDecoder().decode(keyBase64);
+        final PrivateKey privateKey = KeyFactory.getInstance("RSA")
+                .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
+
+        final KeyStore keyStore = KeyStore.getInstance("PKCS12");
+        keyStore.load(null, null);
+        keyStore.setKeyEntry("client", privateKey, "".toCharArray(), certs.toArray(new Certificate[0]));
+
+        final SSLContext sslContext = SSLContextBuilder.create()
+                .loadTrustMaterial(null, (chains, authType) -> true)
+                .loadKeyMaterial(keyStore, "".toCharArray())
+                .build();
+
+        final BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials(userName, password));
+
+        final List<String> hosts = getHosts();
+        final HttpHost[] httpHosts = hosts.stream()
+                .map(HttpHost::create)
+                .toArray(HttpHost[]::new);
+
+        final RestClientBuilder builder = RestClient.builder(httpHosts);
+        builder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                .setDefaultCredentialsProvider(credentialsProvider)
+                .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                .setSSLContext(sslContext));
+        return builder.build();
     }
 }

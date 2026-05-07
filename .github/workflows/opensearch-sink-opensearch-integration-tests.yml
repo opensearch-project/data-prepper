@@ -146,14 +146,22 @@ jobs:
         run: |
           docker cp ca-cert.pem opensearch-mtls:/usr/share/opensearch/config/
           docker exec opensearch-mtls bash -c "
-            if grep -q 'clientauth_mode' /usr/share/opensearch/config/opensearch.yml; then
-              sed -i 's/clientauth_mode:.*/clientauth_mode: REQUIRE/' /usr/share/opensearch/config/opensearch.yml
+            CONFIG=/usr/share/opensearch/config/opensearch.yml
+            if grep -q 'plugins.security' \$CONFIG; then
+              PREFIX=plugins.security
             else
-              echo 'plugins.security.ssl.http.clientauth_mode: REQUIRE' >> /usr/share/opensearch/config/opensearch.yml
+              PREFIX=opendistro_security
             fi
-          "
-          docker exec opensearch-mtls bash -c "
-            sed -i '/http.*pemtrustedcas_filepath/s|:.*|: ca-cert.pem|' /usr/share/opensearch/config/opensearch.yml
+            if grep -q 'ssl.http.clientauth_mode' \$CONFIG; then
+              sed -i 's/ssl.http.clientauth_mode:.*/ssl.http.clientauth_mode: REQUIRE/' \$CONFIG
+            else
+              echo \"\${PREFIX}.ssl.http.clientauth_mode: REQUIRE\" >> \$CONFIG
+            fi
+            if grep -q 'ssl.http.pemtrustedcas_filepath' \$CONFIG; then
+              sed -i \"s|ssl.http.pemtrustedcas_filepath:.*|ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem|\" \$CONFIG
+            else
+              echo \"\${PREFIX}.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/ca-cert.pem\" >> \$CONFIG
+            fi
           "
           docker restart opensearch-mtls
 
