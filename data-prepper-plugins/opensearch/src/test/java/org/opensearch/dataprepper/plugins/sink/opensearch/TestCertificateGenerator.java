@@ -103,9 +103,8 @@ final class TestCertificateGenerator {
         return stringWriter.toString();
     }
 
-    static Path writePemToTempFile(String pem, String prefix) throws Exception {
-        Path tempFile = Files.createTempFile(prefix, ".pem");
-        tempFile.toFile().deleteOnExit();
+    static Path writePemToTempFile(String pem, String prefix, Path directory) throws Exception {
+        Path tempFile = Files.createTempFile(directory, prefix, ".pem");
         Files.writeString(tempFile, pem);
         return tempFile;
     }

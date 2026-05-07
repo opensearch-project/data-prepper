@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RequestOptions;
@@ -197,6 +198,9 @@ class ConnectionConfiguration_ServerTest {
         private String clientCertPath;
         private String clientKeyPath;
 
+        @TempDir
+        private Path tempDir;
+
         @BeforeEach
         void setUp() throws Exception {
             final TestCertificateGenerator.GeneratedCertificateAuthority ca =
@@ -205,9 +209,9 @@ class ConnectionConfiguration_ServerTest {
                     TestCertificateGenerator.generateClientCertificate(ca.getCertificate(), ca.getPrivateKey());
 
             clientCertPath = TestCertificateGenerator.writePemToTempFile(
-                    TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-").toString();
+                    TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-", tempDir).toString();
             clientKeyPath = TestCertificateGenerator.writePemToTempFile(
-                    TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-").toString();
+                    TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-", tempDir).toString();
 
             final String trustStorePath = createTrustStoreFromCert(ca.getCertificate());
 
@@ -300,9 +304,9 @@ class ConnectionConfiguration_ServerTest {
                     TestCertificateGenerator.generateClientCertificate(wrongCa.getCertificate(), wrongCa.getPrivateKey());
 
             final String wrongCertPath = TestCertificateGenerator.writePemToTempFile(
-                    TestCertificateGenerator.toPem(wrongClientCert.getCertificate()), "wrong-client-cert-").toString();
+                    TestCertificateGenerator.toPem(wrongClientCert.getCertificate()), "wrong-client-cert-", tempDir).toString();
             final String wrongKeyPath = TestCertificateGenerator.writePemToTempFile(
-                    TestCertificateGenerator.toPem(wrongClientCert.getPrivateKey()), "wrong-client-key-").toString();
+                    TestCertificateGenerator.toPem(wrongClientCert.getPrivateKey()), "wrong-client-key-", tempDir).toString();
 
             final ConnectionConfiguration objectUnderTest = new ConnectionConfiguration.Builder(Collections.singletonList(mtlsHost))
                     .withInsecure(true)

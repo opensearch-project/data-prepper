@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -70,6 +71,9 @@ class ConnectionConfigurationTests {
     private static String TEST_CLIENT_CERT_PATH;
     private static String TEST_CLIENT_KEY_PATH;
 
+    @TempDir
+    private static Path tempDir;
+
     @BeforeAll
     static void generateClientCertificates() throws Exception {
         final TestCertificateGenerator.GeneratedCertificateAuthority ca =
@@ -77,9 +81,9 @@ class ConnectionConfigurationTests {
         final TestCertificateGenerator.GeneratedCertificate clientCert =
                 TestCertificateGenerator.generateClientCertificate(ca.getCertificate(), ca.getPrivateKey());
         TEST_CLIENT_CERT_PATH = TestCertificateGenerator.writePemToTempFile(
-                TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-").toString();
+                TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-", tempDir).toString();
         TEST_CLIENT_KEY_PATH = TestCertificateGenerator.writePemToTempFile(
-                TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-").toString();
+                TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-", tempDir).toString();
     }
 
     @Mock
