@@ -75,9 +75,6 @@ public class RemoteWriteProtobufParser {
     private static final String SUM_SUFFIX = "_sum";
     private static final String TOTAL_SUFFIX = "_total";
     private static final String CREATED_SUFFIX = "_created";
-    private static final String SERVICE_NAME_LABEL = "service.name";
-    private static final String SERVICE_NAME_UNDERSCORE_LABEL = "service_name";
-    private static final String JOB_LABEL = "job";
 
     private final PrometheusRemoteWriteSourceConfig config;
 
@@ -343,7 +340,7 @@ public class RemoteWriteProtobufParser {
                     .withExplicitBoundsList(explicitBounds)
                     .withBucketCount(perBucketCounts.size())
                     .withExplicitBoundsCount(explicitBounds.size())
-                    .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
+                    .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                     .withAttributes(new HashMap<>(commonAttributes))
                     .withServiceName(serviceName)
                     .withTimeReceived(timeReceived)
@@ -442,7 +439,7 @@ public class RemoteWriteProtobufParser {
                         .withValue(sample.getValue())
                         .withAttributes(new HashMap<>(standalone.labels.attributes))
                         .withIsMonotonic(true)
-                        .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
+                        .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                         .withServiceName(serviceName)
                         .withTimeReceived(timeReceived)
                         .build(config.isFlattenLabels())));
@@ -461,34 +458,12 @@ public class RemoteWriteProtobufParser {
         return records;
     }
 
-    /**
-     * Extracts the service name from attributes using priority order:
-     * service.name > service_name > job > empty string.
-     */
     static String extractServiceName(final Map<String, Object> attributes) {
-        if (attributes.containsKey(SERVICE_NAME_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_LABEL);
-        }
-        if (attributes.containsKey(SERVICE_NAME_UNDERSCORE_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_UNDERSCORE_LABEL);
-        }
-        if (attributes.containsKey(JOB_LABEL)) {
-            return (String) attributes.get(JOB_LABEL);
-        }
-        return "";
+        return PrometheusMetricUtils.extractServiceName(attributes);
     }
 
-    /**
-     * Strips the {@code _total} or {@code _created} suffix from counter metric names.
-     */
     static String stripCounterSuffix(final String metricName) {
-        if (metricName.endsWith(TOTAL_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - TOTAL_SUFFIX.length());
-        }
-        if (metricName.endsWith(CREATED_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - CREATED_SUFFIX.length());
-        }
-        return metricName;
+        return PrometheusMetricUtils.stripCounterSuffix(metricName);
     }
 
     /**
@@ -511,37 +486,12 @@ public class RemoteWriteProtobufParser {
         return Instant.ofEpochMilli(timestampMs).toString();
     }
 
-    /**
-     * Parses an {@code le} label value to a Double. Returns null if unparseable.
-     */
     static Double parseLeValue(final String leValue) {
-        if (leValue == null) {
-            return null;
-        }
-        if ("+Inf".equals(leValue)) {
-            return Double.POSITIVE_INFINITY;
-        }
-        try {
-            return Double.parseDouble(leValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping histogram bucket with unparseable le value: '{}'", leValue);
-            return null;
-        }
+        return PrometheusMetricUtils.parseLeValue(leValue);
     }
 
-    /**
-     * Parses a {@code quantile} label value to a Double. Returns null if unparseable.
-     */
     static Double parseQuantileValue(final String quantileValue) {
-        if (quantileValue == null) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(quantileValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping summary quantile with unparseable value: '{}'", quantileValue);
-            return null;
-        }
+        return PrometheusMetricUtils.parseQuantileValue(quantileValue);
     }
 
     /**

@@ -822,4 +822,12 @@ class TextExpositionParserTest {
         final Metric metric = (Metric) results.get(0).getData();
         assertThat(metric.getServiceName(), equalTo(""));
     }
+
+    @Test
+    void testParseSampleLineWithDecimalTimestamp() {
+        final TextExpositionParser.ParsedSample sample = parser.parseSampleLine("metric_name 42.0 1625000000.123");
+        assertThat(sample, notNullValue());
+        assertThat(sample.value, closeTo(42.0, 0.001));
+        assertThat(sample.timestampMs, equalTo(1625000000123L));
+    }
 }

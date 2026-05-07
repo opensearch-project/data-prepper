@@ -40,9 +40,6 @@ public class TextExpositionParser {
     private static final String SUM_SUFFIX = "_sum";
     private static final String LE_LABEL = "le";
     private static final String QUANTILE_LABEL = "quantile";
-    private static final String SERVICE_NAME_LABEL = "service.name";
-    private static final String SERVICE_NAME_UNDERSCORE_LABEL = "service_name";
-    private static final String JOB_LABEL = "job";
 
     private static final String TYPE_COUNTER = "counter";
     private static final String TYPE_GAUGE = "gauge";
@@ -50,7 +47,7 @@ public class TextExpositionParser {
     private static final String TYPE_SUMMARY = "summary";
     private static final String TYPE_UNTYPED = "untyped";
 
-    private static final String AGGREGATION_TEMPORALITY_CUMULATIVE = "AGGREGATION_TEMPORALITY_CUMULATIVE";
+    private static final String AGGREGATION_TEMPORALITY_CUMULATIVE = PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE;
 
     private static final String[] TYPE_LOOKUP_SUFFIXES = {BUCKET_SUFFIX, COUNT_SUFFIX, SUM_SUFFIX, TOTAL_SUFFIX, CREATED_SUFFIX};
 
@@ -444,26 +441,11 @@ public class TextExpositionParser {
     }
 
     static String extractServiceName(final Map<String, Object> attributes) {
-        if (attributes.containsKey(SERVICE_NAME_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_LABEL);
-        }
-        if (attributes.containsKey(SERVICE_NAME_UNDERSCORE_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_UNDERSCORE_LABEL);
-        }
-        if (attributes.containsKey(JOB_LABEL)) {
-            return (String) attributes.get(JOB_LABEL);
-        }
-        return "";
+        return PrometheusMetricUtils.extractServiceName(attributes);
     }
 
     static String stripCounterSuffix(final String metricName) {
-        if (metricName.endsWith(TOTAL_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - TOTAL_SUFFIX.length());
-        }
-        if (metricName.endsWith(CREATED_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - CREATED_SUFFIX.length());
-        }
-        return metricName;
+        return PrometheusMetricUtils.stripCounterSuffix(metricName);
     }
 
     static String resolveTimestamp(final Long timestampMs, final Instant timeReceived) {
@@ -474,33 +456,11 @@ public class TextExpositionParser {
     }
 
     static Double parseLeValue(final String leValue) {
-        if (leValue == null) {
-            return null;
-        }
-        if ("+Inf".equals(leValue)) {
-            return Double.POSITIVE_INFINITY;
-        }
-        if ("-Inf".equals(leValue)) {
-            return Double.NEGATIVE_INFINITY;
-        }
-        try {
-            return Double.parseDouble(leValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping histogram bucket with unparseable le value: '{}'", leValue);
-            return null;
-        }
+        return PrometheusMetricUtils.parseLeValue(leValue);
     }
 
     static Double parseQuantileValue(final String quantileValue) {
-        if (quantileValue == null) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(quantileValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping summary quantile with unparseable value: '{}'", quantileValue);
-            return null;
-        }
+        return PrometheusMetricUtils.parseQuantileValue(quantileValue);
     }
 
     static double parseValue(final String valueStr) {
