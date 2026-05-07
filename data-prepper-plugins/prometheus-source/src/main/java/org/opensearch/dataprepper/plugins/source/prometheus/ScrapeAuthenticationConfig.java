@@ -7,45 +7,15 @@
  * compatible open source license.
  *
  */
+
 package org.opensearch.dataprepper.plugins.source.prometheus;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+import org.opensearch.dataprepper.plugins.http.client.auth.HttpClientAuthenticationConfig;
 
-public class ScrapeAuthenticationConfig {
-
-    @Valid
-    @JsonProperty("http_basic")
-    private HttpBasicConfig httpBasic;
-
-    @JsonProperty("bearer_token")
-    private String bearerToken;
-
-    public HttpBasicConfig getHttpBasic() {
-        return httpBasic;
-    }
-
-    public String getBearerToken() {
-        return bearerToken;
-    }
-
-    public static class HttpBasicConfig {
-
-        @JsonProperty("username")
-        @NotBlank
-        private String username;
-
-        @JsonProperty("password")
-        @NotBlank
-        private String password;
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-    }
+/**
+ * Authentication configuration for the Prometheus scrape source.
+ * Extends the shared {@link HttpClientAuthenticationConfig} to inherit
+ * HTTP Basic and Bearer Token authentication support.
+ */
+public class ScrapeAuthenticationConfig extends HttpClientAuthenticationConfig {
 }
