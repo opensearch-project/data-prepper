@@ -11,6 +11,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -41,10 +42,15 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -203,7 +209,7 @@ class DataFileLoaderTest {
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
 
-            dataFileLoader.run();
+            assertThrows(RuntimeException.class, () -> dataFileLoader.run());
         }
 
         verify(bufferAccumulator).add(any(Record.class));
@@ -216,6 +222,55 @@ class DataFileLoaderTest {
         verify(bytesProcessedSummary).record(sizeBytes);
         verify(exportRecordSuccessCounter, never()).increment(1);
         verify(exportRecordErrorCounter).increment(1);
+    }
+
+    @Test
+    void test_run_schedules_lease_renewal() throws Exception {
+        final String bucket = UUID.randomUUID().toString();
+        final String key = UUID.randomUUID().toString();
+        when(dataFilePartition.getBucket()).thenReturn(bucket);
+        when(dataFilePartition.getKey()).thenReturn(key);
+        final DataFileProgressState progressState = mock(DataFileProgressState.class, RETURNS_DEEP_STUBS);
+        when(dataFilePartition.getProgressState()).thenReturn(Optional.of(progressState));
+        when(progressState.getEngineType()).thenReturn(EngineType.MYSQL.toString());
+
+        InputStream inputStream = mock(InputStream.class);
+        when(s3ObjectReader.readFile(bucket, key)).thenReturn(inputStream);
+
+        final String randomString = UUID.randomUUID().toString();
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        final Event event = mock(Event.class);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        when(eventBuilder.withEventType(any()).withData(any()).build()).thenReturn(event);
+        when(event.toJsonString()).thenReturn(randomString);
+        when(recordConverter.convert(any(), any(), any(), any(), any(), any(), anyLong(), anyLong(), any(), any())).thenReturn(event);
+
+        AvroParquetReader.Builder<GenericRecord> builder = mock(AvroParquetReader.Builder.class);
+        ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
+        BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
+        when(builder.build()).thenReturn(parquetReader);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), (GenericRecord) null);
+
+        try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
+             MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
+             MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+
+            ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
+            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+
+            readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);
+
+            DataFileLoader dataFileLoader = createObjectUnderTest();
+            dataFileLoader.run();
+
+            verify(mockScheduler).scheduleAtFixedRate(
+                    any(Runnable.class),
+                    eq(DataFileLoader.LEASE_RENEWAL_INTERVAL.toMillis()),
+                    eq(DataFileLoader.LEASE_RENEWAL_INTERVAL.toMillis()),
+                    eq(TimeUnit.MILLISECONDS));
+            verify(mockScheduler).shutdownNow();
+        }
     }
 
     private DataFileLoader createObjectUnderTest() {

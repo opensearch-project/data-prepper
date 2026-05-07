@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ActionType;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.connector.BuiltInConnectors;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -130,5 +132,15 @@ public class MLProcessorConfig {
 
     public Map<String, Object> getDlqPluginSetting() {
         return dlq != null ? dlq.getPluginSettings() : null;
+    }
+
+    @AssertTrue(message = "aws.job_sts_role_arn is required when model_id refers to a built-in model.")
+    boolean isJobStsRoleArnProvidedForDirectModel() {
+        if (!BuiltInConnectors.findConnectorJson(modelId).isPresent()) {
+            return true;
+        }
+        return awsAuthenticationOptions != null
+                && awsAuthenticationOptions.getJobStsRoleArn() != null
+                && !awsAuthenticationOptions.getJobStsRoleArn().isBlank();
     }
 }

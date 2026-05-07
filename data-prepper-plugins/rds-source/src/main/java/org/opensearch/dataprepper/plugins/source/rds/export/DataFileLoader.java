@@ -32,6 +32,9 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -44,6 +47,8 @@ public class DataFileLoader implements Runnable {
     static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final Duration LEASE_RENEWAL_INTERVAL = Duration.ofMinutes(5);
+    static final Duration LEASE_RENEWAL_DURATION = Duration.ofMinutes(15);
     static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
     static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
     static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordsProcessingErrors";
@@ -113,6 +118,16 @@ public class DataFileLoader implements Runnable {
     @Override
     public void run() {
         LOG.info(SENSITIVE, "Start loading s3://{}/{}", bucket, objectKey);
+
+        final ScheduledExecutorService leaseRenewalScheduler = Executors.newSingleThreadScheduledExecutor();
+        leaseRenewalScheduler.scheduleAtFixedRate(() -> {
+            try {
+                sourceCoordinator.saveProgressStateForPartition(dataFilePartition, LEASE_RENEWAL_DURATION);
+                LOG.debug(SENSITIVE, "Successfully renewed lease for partition {}", objectKey);
+            } catch (Exception e) {
+                LOG.warn(SENSITIVE, "Failed to renew lease for partition {}", objectKey, e);
+            }
+        }, LEASE_RENEWAL_INTERVAL.toMillis(), LEASE_RENEWAL_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
 
@@ -189,6 +204,9 @@ public class DataFileLoader implements Runnable {
         } catch (Exception e) {
             LOG.error(NOISY, "Failed to write events to buffer", e);
             exportRecordErrorCounter.increment(eventCount.get());
+            throw new RuntimeException(e);
+        } finally {
+            leaseRenewalScheduler.shutdownNow();
         }
     }
 

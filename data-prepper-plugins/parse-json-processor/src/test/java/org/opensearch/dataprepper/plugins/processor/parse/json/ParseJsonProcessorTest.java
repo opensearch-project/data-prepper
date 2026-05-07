@@ -367,6 +367,24 @@ public class ParseJsonProcessorTest {
     }
 
     @Test
+    void test_when_deleteSourceFlagEnabled_and_parsedJsonContainsSourceFieldName() {
+        when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
+        parseJsonProcessor = createObjectUnderTest();
+
+        // JSON where parsed key "message" matches source field name "message"
+        final String jsonWithMatchingKey = "{\"message\":\"hi\",\"level\":1}";
+        final Event parsedEvent = createAndParseMessageEvent(jsonWithMatchingKey);
+
+        // Source field deleted, but parsed "message" value preserved
+        assertThat(parsedEvent.get("message", String.class), equalTo("hi"));
+        assertThat(parsedEvent.get("level", Integer.class), equalTo(1));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
     void test_when_nestedJSONArrayOfJSON_then_parsedIntoArrayAndIndicesAccessible() {
         parseJsonProcessor = createObjectUnderTest();
 

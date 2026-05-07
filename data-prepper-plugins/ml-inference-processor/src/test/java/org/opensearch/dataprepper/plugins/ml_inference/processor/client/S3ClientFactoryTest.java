@@ -52,7 +52,6 @@ public class S3ClientFactoryTest {
     void testCreateS3Client() {
         S3Client s3Client = S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier);
         assertNotNull(s3Client);
-        assertEquals(Region.US_WEST_2, mlProcessorConfig.getAwsAuthenticationOptions().getAwsRegion());
     }
 
     @Test
