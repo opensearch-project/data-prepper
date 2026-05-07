@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTargetException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 
@@ -130,6 +131,23 @@ class ResponseHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
+
+        verify(badRequestsCounter).increment();
+    }
+
+    @Test
+    void test_NoPeerForwarderTargetException() throws ExecutionException, InterruptedException {
+        final ResponseHandler objectUnderTest = createObjectUnderTest();
+        final String exceptionMessage = "Unable to find a peer-forwarder target with destinationPluginId='myPlugin' and destinationPipelineName='myPipeline'";
+        final NoPeerForwarderTargetException noPeerForwarderTargetException = new NoPeerForwarderTargetException(exceptionMessage);
+
+        final String testMessage = "test exception message";
+
+        final HttpResponse httpResponse = objectUnderTest.handleException(noPeerForwarderTargetException, testMessage);
+        final AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
+
+        assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
+        assertEquals(exceptionMessage, aggregatedHttpResponse.contentUtf8());
 
         verify(badRequestsCounter).increment();
     }
