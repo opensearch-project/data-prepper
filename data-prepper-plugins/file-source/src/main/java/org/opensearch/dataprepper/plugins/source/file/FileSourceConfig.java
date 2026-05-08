@@ -27,7 +27,6 @@ public class FileSourceConfig {
     static final String ATTRIBUTE_FORMAT = "format";
     static final int DEFAULT_TIMEOUT = 5_000;
     static final String DEFAULT_TYPE = "string";
-    static final String DEFAULT_FORMAT = "plain";
     static final String EVENT_TYPE = "event";
 
     @JsonProperty(ATTRIBUTE_PATH)
