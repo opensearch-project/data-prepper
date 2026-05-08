@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
@@ -166,16 +167,17 @@ class CheckpointRegistryTest {
     }
 
     @Test
-    void cleanupRemovesStaleCompletedEntries() throws InterruptedException {
+    void cleanupRemovesStaleCompletedEntries() {
         final Duration zeroCleanup = Duration.ZERO;
         registry = new CheckpointRegistry(checkpointFile, FLUSH_INTERVAL, zeroCleanup);
 
         final CheckpointEntry entry = registry.getOrCreate("stale-file");
         entry.setStatus(CheckpointStatus.COMPLETED);
 
-        Thread.sleep(50);
-
-        registry.flush();
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() -> {
+            registry.flush();
+            assertThat(registry.get("stale-file"), nullValue());
+        });
 
         assertThat(registry.get("stale-file"), nullValue());
     }

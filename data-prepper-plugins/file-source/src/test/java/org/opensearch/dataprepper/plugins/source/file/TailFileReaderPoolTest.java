@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
@@ -305,7 +306,7 @@ class TailFileReaderPoolTest {
 
         pool.addFile(identity, testFile);
 
-        Thread.sleep(2000);
+        await().atMost(5, TimeUnit.SECONDS).until(() -> pool.getActiveReaderCount() == 0);
 
         pool.shutdown();
     }
@@ -357,7 +358,7 @@ class TailFileReaderPoolTest {
         FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
         pool.addFile(identity, testFile);
 
-        Thread.sleep(1000);
+        await().atMost(5, TimeUnit.SECONDS).until(() -> pool.getActiveReaderCount() == 0);
 
         pool.closeInactiveReaders();
 
@@ -443,7 +444,7 @@ class TailFileReaderPoolTest {
         FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
         pool.addFile(identity, testFile);
 
-        Thread.sleep(100);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> pool.getActiveReaderCount() > 0);
 
         pool.closeInactiveReaders();
 
@@ -496,7 +497,7 @@ class TailFileReaderPoolTest {
         FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
         pool.addFile(identity, testFile);
 
-        Thread.sleep(100);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> pool.getActiveReaderCount() > 0);
 
         assertThat(pool.getActiveReaderCount(), equalTo(1));
 
@@ -570,7 +571,7 @@ class TailFileReaderPoolTest {
 
         assertThat(limitedPool.getPendingCount(), equalTo(1));
 
-        Thread.sleep(2000);
+        await().atMost(5, TimeUnit.SECONDS).until(() -> limitedPool.getActiveReaderCount() == 0);
 
         limitedPool.shutdown();
     }
