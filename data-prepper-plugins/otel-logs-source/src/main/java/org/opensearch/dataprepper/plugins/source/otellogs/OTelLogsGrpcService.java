@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.Context;
+import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -131,5 +132,9 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
         successRequestsCounter.increment();
         responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
         responseObserver.onCompleted();
+    }
+
+    public MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> getExportMethodDescriptor() {
+        return LogsServiceGrpc.getExportMethod();
     }
 }

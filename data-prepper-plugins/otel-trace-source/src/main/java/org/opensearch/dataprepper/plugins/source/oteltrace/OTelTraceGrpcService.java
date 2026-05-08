@@ -11,6 +11,7 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+import io.grpc.MethodDescriptor;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
@@ -35,11 +36,7 @@ import java.util.stream.Collectors;
 public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGrpcService.class);
 
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
-    public static final String BAD_REQUESTS = "badRequests";
-    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
-    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
@@ -132,5 +129,9 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         successRequestsCounter.increment();
         responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
         responseObserver.onCompleted();
+    }
+
+    public MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> getExportMethodDescriptor() {
+        return TraceServiceGrpc.getExportMethod();
     }
 }
