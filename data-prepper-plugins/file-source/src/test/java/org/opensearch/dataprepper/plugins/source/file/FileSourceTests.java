@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -57,7 +58,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -180,23 +183,21 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws InterruptedException {
+        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws TimeoutException {
             buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "");
             fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(500);
-            verifyNoInteractions(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
         }
 
         @Test
-        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws InterruptedException {
+        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws TimeoutException {
             buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
             fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(500);
-            verifyNoInteractions(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
         }
 
         @Test
@@ -354,7 +355,7 @@ public class FileSourceTests {
         }
 
         @Test
-        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException, InterruptedException {
+        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException {
 
             final IOException mockedException = mock(IOException.class);
             doThrow(mockedException)
@@ -364,9 +365,7 @@ public class FileSourceTests {
 
             objectUnderTest.start(buffer);
 
-            Thread.sleep(2_000);
-
-            verifyNoInteractions(buffer);
+            verify(buffer, after(1500).never()).write(any(Record.class), anyInt());
         }
 
         @Test
@@ -405,7 +404,6 @@ public class FileSourceTests {
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
@@ -425,7 +423,6 @@ public class FileSourceTests {
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
@@ -439,7 +436,6 @@ public class FileSourceTests {
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
@@ -452,7 +448,6 @@ public class FileSourceTests {
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
@@ -466,21 +461,22 @@ public class FileSourceTests {
         void stop_after_classic_start_joins_thread() throws Exception {
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
         @Test
         void stop_with_interrupt_during_join() throws Exception {
             buffer = mock(Buffer.class);
+            final CountDownLatch writeStarted = new CountDownLatch(1);
             doAnswer(inv -> {
+                writeStarted.countDown();
                 Thread.sleep(5000);
                 return null;
             }).when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
+            writeStarted.await(2, TimeUnit.SECONDS);
 
             Thread stopThread = new Thread(() -> {
                 Thread.currentThread().interrupt();
@@ -516,7 +512,6 @@ public class FileSourceTests {
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(200);
             fileSource.stop();
         }
 
@@ -526,16 +521,17 @@ public class FileSourceTests {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
 
             buffer = mock(Buffer.class);
+            final CountDownLatch writeStarted = new CountDownLatch(1);
             doAnswer(inv -> {
+                writeStarted.countDown();
                 Thread.sleep(2000);
                 return null;
             }).when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
 
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(100);
+            writeStarted.await(2, TimeUnit.SECONDS);
             fileSource.stop();
-            Thread.sleep(500);
         }
 
         @Test
@@ -544,7 +540,6 @@ public class FileSourceTests {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
             FileSource fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(500);
             fileSource.stop();
         }
     }
