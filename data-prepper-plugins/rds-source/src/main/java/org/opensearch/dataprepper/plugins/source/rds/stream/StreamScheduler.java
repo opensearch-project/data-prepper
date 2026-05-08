@@ -9,7 +9,10 @@ import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -39,6 +42,9 @@ public class StreamScheduler implements Runnable {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final PluginSetting pluginSetting;
+    private final PipelineDescription pipelineDescription;
+    private final HeadlessPipeline failurePipeline;
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
     private volatile boolean shutdownRequested = false;
@@ -50,7 +56,10 @@ public class StreamScheduler implements Runnable {
                            final Buffer<Record<Event>> buffer,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager,
-                           final PluginConfigObservable pluginConfigObservable) {
+                           final PluginConfigObservable pluginConfigObservable,
+                           final PluginSetting pluginSetting,
+                           final PipelineDescription pipelineDescription,
+                           final HeadlessPipeline failurePipeline) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
@@ -59,6 +68,9 @@ public class StreamScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.pluginSetting = pluginSetting;
+        this.pipelineDescription = pipelineDescription;
+        this.failurePipeline = failurePipeline;
     }
 
     @Override
@@ -86,7 +98,7 @@ public class StreamScheduler implements Runnable {
                     streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
                             sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
                             () -> Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-worker")),
-                            acknowledgementSetManager, pluginMetrics);
+                            acknowledgementSetManager, pluginMetrics, pluginSetting, pipelineDescription, failurePipeline);
 
                     streamWorkerTaskRefresher.initialize(sourceConfig);
 

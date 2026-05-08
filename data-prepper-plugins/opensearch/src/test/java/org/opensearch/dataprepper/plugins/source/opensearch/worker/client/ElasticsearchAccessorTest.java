@@ -46,6 +46,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -604,5 +605,83 @@ public class ElasticsearchAccessorTest {
         assertThat(searchScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
         assertThat(searchScrollResponse.getDocuments().get(1), notNullValue());
         assertThat(searchScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+    }
+
+    @Test
+    void search_with_pit_with_custom_sort_options_uses_configured_sort() throws IOException {
+        final String pitId = UUID.randomUUID().toString();
+        final Integer paginationSize = new Random().nextInt();
+
+        final SortingOptions timestampSort = mock(SortingOptions.class);
+        when(timestampSort.getFieldName()).thenReturn("@timestamp");
+        when(timestampSort.getOrder()).thenReturn("desc");
+
+        final SearchPointInTimeRequest searchPointInTimeRequest = mock(SearchPointInTimeRequest.class);
+        when(searchPointInTimeRequest.getPitId()).thenReturn(pitId);
+        when(searchPointInTimeRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(searchPointInTimeRequest.getSearchAfter()).thenReturn(null);
+        when(searchPointInTimeRequest.getKeepAlive()).thenReturn("5m");
+        when(searchPointInTimeRequest.getSortOptions()).thenReturn(List.of(timestampSort));
+
+        final SearchResponse<ObjectNode> searchResponse = mock(SearchResponse.class);
+        final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
+        final Hit<ObjectNode> hit = mock(Hit.class);
+        when(hit.id()).thenReturn(UUID.randomUUID().toString());
+        when(hit.index()).thenReturn(UUID.randomUUID().toString());
+        when(hit.source()).thenReturn(mock(ObjectNode.class));
+        when(hit.version()).thenReturn(1L);
+        when(hit.sort()).thenReturn(Collections.singletonList("2024-01-01T00:00:00Z"));
+        when(hitsMetadata.hits()).thenReturn(List.of(hit));
+        when(searchResponse.hits()).thenReturn(hitsMetadata);
+
+        final ArgumentCaptor<SearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        when(elasticSearchClient.search(searchRequestArgumentCaptor.capture(), eq(ObjectNode.class))).thenReturn(searchResponse);
+
+        final SearchWithSearchAfterResults results = createObjectUnderTest().searchWithPit(searchPointInTimeRequest);
+
+        assertThat(results, notNullValue());
+        assertThat(results.getDocuments().size(), equalTo(1));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest.sort().size(), equalTo(1));
+        assertThat(searchRequest.sort().get(0).field().field(), equalTo("@timestamp"));
+    }
+
+    @Test
+    void search_without_search_context_with_custom_sort_options_uses_configured_sort() throws IOException {
+        final Integer paginationSize = new Random().nextInt();
+        final String index = UUID.randomUUID().toString();
+
+        final SortingOptions timestampSort = mock(SortingOptions.class);
+        when(timestampSort.getFieldName()).thenReturn("@timestamp");
+        when(timestampSort.getOrder()).thenReturn("asc");
+
+        final NoSearchContextSearchRequest noSearchContextSearchRequest = mock(NoSearchContextSearchRequest.class);
+        when(noSearchContextSearchRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(noSearchContextSearchRequest.getIndex()).thenReturn(index);
+        when(noSearchContextSearchRequest.getSearchAfter()).thenReturn(null);
+        when(noSearchContextSearchRequest.getSortOptions()).thenReturn(List.of(timestampSort));
+
+        final SearchResponse<ObjectNode> searchResponse = mock(SearchResponse.class);
+        final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
+        final Hit<ObjectNode> hit = mock(Hit.class);
+        when(hit.id()).thenReturn(UUID.randomUUID().toString());
+        when(hit.index()).thenReturn(UUID.randomUUID().toString());
+        when(hit.source()).thenReturn(mock(ObjectNode.class));
+        when(hit.version()).thenReturn(1L);
+        when(hit.sort()).thenReturn(Collections.singletonList("2024-01-01T00:00:00Z"));
+        when(hitsMetadata.hits()).thenReturn(List.of(hit));
+        when(searchResponse.hits()).thenReturn(hitsMetadata);
+
+        final ArgumentCaptor<SearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        when(elasticSearchClient.search(searchRequestArgumentCaptor.capture(), eq(ObjectNode.class))).thenReturn(searchResponse);
+
+        final SearchWithSearchAfterResults results = createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest);
+
+        assertThat(results, notNullValue());
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest.sort().size(), equalTo(1));
+        assertThat(searchRequest.sort().get(0).field().field(), equalTo("@timestamp"));
     }
 }

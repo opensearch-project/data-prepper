@@ -35,6 +35,9 @@ public class StringTypeHandler implements MySQLDataTypeHandler {
     }
 
     private String getEnumValue(final int numericValue, final String[] enumStrValues) {
+        if (numericValue == 0) {
+            return "";
+        }
         return enumStrValues[numericValue - 1];
     }
 }

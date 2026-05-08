@@ -4,8 +4,8 @@
  */
 
 dependencies {
-    compileOnly 'org.projectlombok:lombok:1.18.42'
-    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    compileOnly 'org.projectlombok:lombok:1.18.46'
+    annotationProcessor 'org.projectlombok:lombok:1.18.46'
     implementation project(':data-prepper-api')
     implementation libs.armeria.core
     testImplementation project(':data-prepper-api').sourceSets.test.output
@@ -14,6 +14,8 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:failures-common')
     implementation project(':data-prepper-plugins:http-common')
+    implementation libs.bouncycastle.bcprov
+    implementation libs.bouncycastle.bcpkix
     implementation libs.opensearch.client
     implementation libs.opensearch.rhlc
     implementation libs.opensearch.java
@@ -33,12 +35,13 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:opensearchserverless'
+    implementation 'software.amazon.awssdk:opensearch'
     implementation libs.commons.lang3
     implementation libs.caffeine
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'co.elastic.clients:elasticsearch-java:7.17.0'
-    implementation('org.apache.maven:maven-artifact:3.9.12') {
+    implementation('org.apache.maven:maven-artifact:3.9.15') {
         exclude group: 'org.codehaus.plexus'
     }
     testImplementation testLibs.junit.vintage
@@ -78,6 +81,8 @@ task integrationTest(type: Test) {
     systemProperty 'tests.opensearch.user', System.getProperty('tests.opensearch.user')
     systemProperty 'tests.opensearch.password', System.getProperty('tests.opensearch.password')
     systemProperty 'tests.opensearch.version', System.getProperty('tests.opensearch.version')
+    systemProperty 'tests.mtls.client.cert', System.getProperty('tests.mtls.client.cert')
+    systemProperty 'tests.mtls.client.key', System.getProperty('tests.mtls.client.key')
 
     filter {
         includeTestsMatching '*IT'

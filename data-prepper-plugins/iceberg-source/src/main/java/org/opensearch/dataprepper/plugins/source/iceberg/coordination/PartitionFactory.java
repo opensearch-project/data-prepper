@@ -16,6 +16,8 @@ import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.InitialLoadTaskPartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.ShuffleReadPartition;
+import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.ShuffleWritePartition;
 
 import java.util.function.Function;
 
@@ -26,14 +28,19 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
         final String sourceIdentifier = partitionStoreItem.getSourceIdentifier();
         final String partitionType = sourceIdentifier.substring(sourceIdentifier.lastIndexOf('|') + 1);
 
-        if (LeaderPartition.PARTITION_TYPE.equals(partitionType)) {
-            return new LeaderPartition(partitionStoreItem);
-        } else if (ChangelogTaskPartition.PARTITION_TYPE.equals(partitionType)) {
-            return new ChangelogTaskPartition(partitionStoreItem);
-        } else if (InitialLoadTaskPartition.PARTITION_TYPE.equals(partitionType)) {
-            return new InitialLoadTaskPartition(partitionStoreItem);
-        } else {
-            return new GlobalState(partitionStoreItem);
+        switch (partitionType) {
+            case LeaderPartition.PARTITION_TYPE:
+                return new LeaderPartition(partitionStoreItem);
+            case ChangelogTaskPartition.PARTITION_TYPE:
+                return new ChangelogTaskPartition(partitionStoreItem);
+            case InitialLoadTaskPartition.PARTITION_TYPE:
+                return new InitialLoadTaskPartition(partitionStoreItem);
+            case ShuffleWritePartition.PARTITION_TYPE:
+                return new ShuffleWritePartition(partitionStoreItem);
+            case ShuffleReadPartition.PARTITION_TYPE:
+                return new ShuffleReadPartition(partitionStoreItem);
+            default:
+                return new GlobalState(partitionStoreItem);
         }
     }
 }

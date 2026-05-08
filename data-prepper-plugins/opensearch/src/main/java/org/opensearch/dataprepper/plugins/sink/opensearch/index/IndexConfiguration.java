@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
@@ -103,8 +107,9 @@ public class IndexConfiguration {
     private final String versionExpression;
     private final VersionType versionType;
     private final boolean normalizeIndex;
-
     private final ScriptConfiguration scriptConfiguration;
+    private final SemanticEnrichmentConfig semanticEnrichmentConfig;
+    private final String semanticEnrichmentResourceName;
 
     private final String queryWhen;
 
@@ -134,6 +139,8 @@ public class IndexConfiguration {
         this.versionType = builder.versionType;
         this.normalizeIndex = builder.normalizeIndex;
         this.queryOnBulkFailures = builder.queryOnIndexingFailure;
+        this.semanticEnrichmentConfig = builder.semanticEnrichmentConfig;
+        this.semanticEnrichmentResourceName = builder.semanticEnrichmentResourceName;
 
         determineTemplateType(builder);
 
@@ -179,6 +186,7 @@ public class IndexConfiguration {
         this.actions = builder.actions;
         this.scriptConfiguration = builder.scriptConfiguration;
         this.documentRootKey = builder.documentRootKey;
+
         this.queryWhen = builder.queryWhen;
         this.queryTerm = builder.queryTerm;
         this.queryActionOnFound = builder.actionOnFound;
@@ -282,6 +290,12 @@ public class IndexConfiguration {
                 .withDocumentRootKey(openSearchSinkConfig.getDocumentRootKey())
                 .withDistributionVersion(openSearchSinkConfig.getDistributionVersion());
 
+        final AwsAuthenticationConfiguration awsConfig = openSearchSinkConfig.getAwsAuthenticationOptions();
+        if (awsConfig != null && awsConfig.getSemanticEnrichmentConfig() != null) {
+            builder = builder.withSemanticEnrichmentConfig(awsConfig.getSemanticEnrichmentConfig());
+            builder = builder.withSemanticEnrichmentResourceName(awsConfig.getResourceName());
+        }
+
 
         final String versionExpression = openSearchSinkConfig.getVersionExpression();
         builder = builder.withVersionExpression(versionExpression);
@@ -300,6 +314,13 @@ public class IndexConfiguration {
         final ScriptConfiguration scriptConfiguration = openSearchSinkConfig.getScriptConfiguration();
         if (scriptConfiguration != null) {
             builder = builder.withScriptConfiguration(scriptConfiguration);
+        }
+
+        if (scriptConfiguration != null && openSearchSinkConfig.getVersionType() != null
+                && VersionType.External.jsonValue().equals(openSearchSinkConfig.getVersionType())) {
+            throw new InvalidPluginConfigurationException(
+                    "document_version_type 'external' is incompatible with script configuration. " +
+                    "OpenSearch does not support external versioning with scripted upserts.");
         }
 
         AwsAuthenticationConfiguration awsAuthenticationConfiguration = openSearchSinkConfig.getAwsAuthenticationOptions();
@@ -322,6 +343,13 @@ public class IndexConfiguration {
         return builder.build();
     }
 
+    public SemanticEnrichmentConfig getSemanticEnrichmentConfig() {
+        return semanticEnrichmentConfig;
+    }
+
+    public String getSemanticEnrichmentResourceName() {
+        return semanticEnrichmentResourceName;
+    }
 
     public IndexType getIndexType() {
         return indexType;
@@ -457,6 +485,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_STANDARD_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.TSDB)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.TSDB_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
                     FileReader s3FileReader = new S3FileReader(s3Client);
@@ -532,7 +562,9 @@ public class IndexConfiguration {
         private Duration queryDuration;
         private boolean queryOnIndexingFailure;
 
+        private SemanticEnrichmentConfig semanticEnrichmentConfig;
         private Integer queryAsyncLimit;
+        private String semanticEnrichmentResourceName;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -770,6 +802,16 @@ public class IndexConfiguration {
 
         public Builder withQueryAsyncLimit(final Integer queryAsyncLimit) {
             this.queryAsyncLimit = queryAsyncLimit;
+            return this;
+        }
+
+        public Builder withSemanticEnrichmentConfig(final SemanticEnrichmentConfig semanticEnrichmentConfig) {
+            this.semanticEnrichmentConfig = semanticEnrichmentConfig;
+            return this;
+        }
+
+        public Builder withSemanticEnrichmentResourceName(final String resourceName) {
+            this.semanticEnrichmentResourceName = resourceName;
             return this;
         }
 

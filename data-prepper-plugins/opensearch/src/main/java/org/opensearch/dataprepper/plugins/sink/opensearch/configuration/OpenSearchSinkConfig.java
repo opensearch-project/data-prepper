@@ -38,6 +38,7 @@ public class OpenSearchSinkConfig {
     private String apitoken = null;
 
     @Getter
+    @Valid
     @JsonProperty("authentication")
     private AuthConfig authConfig;
 

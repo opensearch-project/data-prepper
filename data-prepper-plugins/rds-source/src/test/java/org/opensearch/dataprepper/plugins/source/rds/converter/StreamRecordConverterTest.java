@@ -86,6 +86,43 @@ class StreamRecordConverterTest {
         assertThat(event, sameInstance(testEvent));
     }
 
+    @Test
+    void test_getVersionNumber_monotonically_increasing_same_millis() {
+        long millis = 1776300000000L;
+        long v1 = streamRecordConverter.getVersionNumber(millis);
+        long v2 = streamRecordConverter.getVersionNumber(millis);
+        long v3 = streamRecordConverter.getVersionNumber(millis);
+
+        assertThat(v1, equalTo(millis * 1000));
+        assertThat(v2, equalTo(v1 + 1));
+        assertThat(v3, equalTo(v2 + 1));
+    }
+
+    @Test
+    void test_getVersionNumber_resets_on_new_millis() {
+        long millis1 = 1776300000000L;
+        long millis2 = 1776300000001L;
+
+        long v1 = streamRecordConverter.getVersionNumber(millis1);
+        long v2 = streamRecordConverter.getVersionNumber(millis1);
+        long v3 = streamRecordConverter.getVersionNumber(millis2);
+
+        assertThat(v1, equalTo(millis1 * 1000));
+        assertThat(v2, equalTo(v1 + 1));
+        assertThat(v3, equalTo(millis2 * 1000));
+        assertThat(v3 > v2, is(true));
+    }
+
+    @Test
+    void test_getVersionNumber_always_greater_than_export_version() {
+        // Export versions use raw snapshotTimeMillis, stream versions use millis * 1000
+        long exportVersion = 1776300000000L;
+        long streamVersion = streamRecordConverter.getVersionNumber(exportVersion);
+
+        assertThat(streamVersion, equalTo(exportVersion * 1000));
+        assertThat(streamVersion > exportVersion, is(true));
+    }
+
     private StreamRecordConverter createObjectUnderTest() {
         return new StreamRecordConverter(s3Prefix, random.nextInt(1000) + 1);
     }

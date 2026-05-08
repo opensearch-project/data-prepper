@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import software.amazon.awssdk.regions.Region;
@@ -103,6 +104,10 @@ public class RdsSourceConfig {
     @JsonProperty("disable_s3_read_for_leader")
     private boolean disableS3ReadForLeader = false;
 
+    @JsonProperty("joins")
+    @Valid
+    private JoinConfig joinConfig;
+
     public String getDbIdentifier() {
         return dbIdentifier;
     }
@@ -181,6 +186,10 @@ public class RdsSourceConfig {
 
     public boolean isDisableS3ReadForLeader() {
         return disableS3ReadForLeader;
+    }
+
+    public JoinConfig getJoinConfig() {
+        return joinConfig;
     }
 
     public AuthenticationConfig getAuthenticationConfig() {
