@@ -36,8 +36,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -69,7 +67,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class FileSourceTests {
-    private static final Logger LOG = LoggerFactory.getLogger(FileSourceTests.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
@@ -209,7 +206,7 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileWithPlainTextAddsEventsToBufferCorrectly() {
+        public void testFileWithPlainTextAddsEventsToBufferCorrectly() throws JsonProcessingException {
             fileSource = createObjectUnderTest();
             fileSource.start(buffer);
 
@@ -220,7 +217,7 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileWithJSONAddsEventsToBufferCorrectly() {
+        public void testFileWithJSONAddsEventsToBufferCorrectly() throws JsonProcessingException {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_JSON);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
 
@@ -234,7 +231,7 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileWithInvalidJSONAddsEventsToBufferAsPlainText() {
+        public void testFileWithInvalidJSONAddsEventsToBufferAsPlainText() throws JsonProcessingException {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_INVALID_JSON);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
             fileSource = createObjectUnderTest();
@@ -272,7 +269,7 @@ public class FileSourceTests {
             assertThrows(IllegalArgumentException.class, FileSourceTests.this::createObjectUnderTest);
         }
 
-        void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) {
+        void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) throws JsonProcessingException {
             for (int i = 0; i < expectedEvents.size(); i++) {
                 assertThat(actualEvents.get(i), notNullValue());
                 assertThat(actualEvents.get(i).getData(), notNullValue());
@@ -280,16 +277,12 @@ public class FileSourceTests {
             }
         }
 
-        void assertEventRecordsAreEqual(final Record<Object> first, final Record<Object> second) {
-            try {
-                final Event firstEvent = (Event) first.getData();
-                final Event secondEvent = (Event) second.getData();
-                final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(firstEvent.toJsonString(), MAP_TYPE_REFERENCE);
-                final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(secondEvent.toJsonString(), MAP_TYPE_REFERENCE);
-                assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
-            } catch (JsonProcessingException e) {
-                LOG.error("Unable to parse Event as JSON");
-            }
+        void assertEventRecordsAreEqual(final Record<Object> first, final Record<Object> second) throws JsonProcessingException {
+            final Event firstEvent = (Event) first.getData();
+            final Event secondEvent = (Event) second.getData();
+            final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(firstEvent.toJsonString(), MAP_TYPE_REFERENCE);
+            final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(secondEvent.toJsonString(), MAP_TYPE_REFERENCE);
+            assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
         }
 
         private Record<Object> createRecordEventWithKeyValuePair(final String key, final String value) {

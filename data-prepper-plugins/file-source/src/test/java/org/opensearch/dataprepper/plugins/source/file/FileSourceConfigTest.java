@@ -34,7 +34,7 @@ class FileSourceConfigTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @ParameterizedTest
-    @ValueSource(strings = {FileSourceConfig.EVENT_TYPE, FileSourceConfig.DEFAULT_FORMAT})
+    @ValueSource(strings = {FileSourceConfig.EVENT_TYPE, FileSourceConfig.DEFAULT_TYPE})
     void codeRequiresRecordTypeEvent_returns_true_if_no_codec(final String recordType) {
         final Map<String, String> fileConfigMap = Map.of(FileSourceConfig.ATTRIBUTE_TYPE, recordType);
         final FileSourceConfig objectUnderTest = OBJECT_MAPPER.convertValue(fileConfigMap, FileSourceConfig.class);
@@ -45,7 +45,7 @@ class FileSourceConfigTest {
     @ParameterizedTest
     @CsvSource({
             FileSourceConfig.EVENT_TYPE + ",true",
-            FileSourceConfig.DEFAULT_FORMAT + ",false"
+            FileSourceConfig.DEFAULT_TYPE + ",false"
     })
     void codeRequiresRecordTypeEvent_returns_expected_value_when_there_is_a_codec(final String recordType, final boolean expected) {
         final Map<String, Object> fileConfigMap = Map.of(
@@ -168,13 +168,13 @@ class FileSourceConfigTest {
         assertThat(config.getRotationDrainTimeout(), equalTo(Duration.ofSeconds(30)));
         assertThat(config.getCheckpointFile(), nullValue());
         assertThat(config.getCheckpointInterval(), equalTo(Duration.ofSeconds(15)));
-        assertThat(config.getCheckpointCleanupAfter(), equalTo(Duration.ofHours(24)));
+        assertThat(config.getCheckpointCleanupAfter(), equalTo(Duration.ofDays(7)));
         assertThat(config.getFingerprintBytes(), equalTo(1024));
-        assertThat(config.getCloseInactive(), equalTo(Duration.ofMinutes(5)));
+        assertThat(config.getCloseInactive(), equalTo(Duration.ofMinutes(30)));
         assertThat(config.isCloseRemoved(), equalTo(true));
-        assertThat(config.getBatchSize(), equalTo(1000));
+        assertThat(config.getBatchSize(), equalTo(100));
         assertThat(config.getBatchTimeout(), equalTo(Duration.ofSeconds(5)));
-        assertThat(config.getAcknowledgmentTimeout(), equalTo(Duration.ofSeconds(30)));
+        assertThat(config.getAcknowledgmentTimeout(), equalTo(Duration.ofSeconds(60)));
         assertThat(config.getMaxAcknowledgmentRetries(), equalTo(3));
         assertThat(config.isIncludeFileMetadata(), equalTo(false));
         assertThat(config.getMaxLineLength(), equalTo(1048576));
@@ -219,7 +219,7 @@ class FileSourceConfigTest {
     }
 
     @Test
-    void getFormat_returns_plain_when_format_is_null() {
-        assertThat(FileFormat.getByName(null), equalTo(FileFormat.PLAIN));
+    void getFormat_throws_when_format_is_null() {
+        assertThrows(IllegalArgumentException.class, () -> FileFormat.fromString(null));
     }
 }

@@ -134,9 +134,13 @@ public class FileSource implements Source<Record<Object>> {
         final FileSystemOperations fileOps = new DefaultFileSystemOperations();
 
         final String checkpointPath = fileSourceConfig.getCheckpointFile();
-        final Path cpFile = checkpointPath != null
-                ? Paths.get(checkpointPath)
-                : Paths.get(System.getProperty("java.io.tmpdir"), "data-prepper-file-source-checkpoint.json");
+        final Path cpFile;
+        if (checkpointPath != null) {
+            cpFile = Paths.get(checkpointPath);
+        } else {
+            LOG.warn("No checkpoint_file configured. Checkpoint state will not be persisted across restarts.");
+            cpFile = null;
+        }
 
         checkpointRegistry = new CheckpointRegistry(
                 cpFile,
@@ -262,7 +266,7 @@ public class FileSource implements Source<Record<Object>> {
 
             return new Record<>(
             eventFactory.eventBuilder(EventBuilder.class)
-                    .withEventType(fileSourceConfig.getRecordType())
+                    .withEventType(fileSourceConfig.getRecordType().toString())
                     .withData(structuredLine)
                     .build());
         }
@@ -279,9 +283,9 @@ public class FileSource implements Source<Record<Object>> {
         }
 
         private void writeLineAsEventOrString(final String line, final Buffer<Record<Object>> buffer) throws TimeoutException, IllegalArgumentException {
-            if (fileSourceConfig.getRecordType().equals(FileSourceConfig.EVENT_TYPE)) {
+            if (fileSourceConfig.getRecordType() == RecordType.EVENT) {
                 buffer.write(getEventRecordFromLine(line), writeTimeout);
-            } else if (fileSourceConfig.getRecordType().equals(FileSourceConfig.DEFAULT_TYPE)) {
+            } else if (fileSourceConfig.getRecordType() == RecordType.STRING) {
                 buffer.write(new Record<>(line), writeTimeout);
             }
         }

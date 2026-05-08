@@ -41,7 +41,8 @@ public final class FileIdentity {
             final BasicFileAttributes attrs = fileOps.readAttributes(path);
             final Object fileKey = attrs.fileKey();
             if (fileKey != null) {
-                return new FileIdentity("inode:" + fileKey, path);
+                final String creationTime = attrs.creationTime().toString();
+                return new FileIdentity("inode:" + fileKey + ":created:" + creationTime, path);
             }
             return buildFallbackIdentity(path, fileOps, attrs, fingerprintBytes);
         } catch (final IOException e) {

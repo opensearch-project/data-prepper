@@ -128,7 +128,18 @@ public final class CheckpointRegistry {
         } catch (final FileNotFoundException | NoSuchFileException e) {
             LOG.debug("No existing checkpoint file at {}. Starting with empty state.", checkpointFile);
         } catch (final IOException e) {
-            LOG.warn("Corrupt or unreadable checkpoint file at {}. Starting with empty state.", checkpointFile, e);
+            LOG.warn("Corrupt or unreadable checkpoint file at {}. Renaming to .corrupt and starting fresh.", checkpointFile, e);
+            renameCorruptFile();
+        }
+    }
+
+    private void renameCorruptFile() {
+        try {
+            final Path corruptPath = checkpointFile.resolveSibling(checkpointFile.getFileName() + ".corrupt");
+            Files.move(checkpointFile, corruptPath, StandardCopyOption.REPLACE_EXISTING);
+            LOG.info("Renamed corrupt checkpoint file to {}", corruptPath);
+        } catch (final IOException renameEx) {
+            LOG.warn("Failed to rename corrupt checkpoint file at {}", checkpointFile, renameEx);
         }
     }
 

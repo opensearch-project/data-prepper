@@ -48,8 +48,10 @@ public final class TailFileReader implements Runnable {
     private static final long BACK_PRESSURE_SLEEP_MILLIS = 100;
     private static final String MESSAGE_KEY = "message";
     private static final String EVENT_TYPE = "event";
-    private static final String FILE_PATH_KEY = "file_path";
-    private static final String FILE_IDENTITY_KEY = "file_identity";
+    private static final String FILE_KEY = "file";
+    private static final String FILE_PATH_KEY = "path";
+    private static final String FILE_NAME_KEY = "name";
+    private static final String OFFSET_KEY = "offset";
 
     private final FileIdentity fileIdentity;
     private final Path path;
@@ -79,7 +81,6 @@ public final class TailFileReader implements Runnable {
     private final AtomicLong readOffset;
     private final StringBuilder partialLine;
     private final String cachedAbsolutePath;
-    private final String cachedFileIdentityString;
     private volatile long lastActivityMillis;
     private boolean skippingToNewline;
     private volatile long currentBatchEndOffset;
@@ -135,7 +136,6 @@ public final class TailFileReader implements Runnable {
         }
         this.partialLine = new StringBuilder();
         this.cachedAbsolutePath = path.toAbsolutePath().toString();
-        this.cachedFileIdentityString = fileIdentity.toString();
         this.currentBatchCount = 0;
         this.batchStartOffset = readOffset.get();
         this.batchOpenedAtMillis = System.currentTimeMillis();
@@ -376,8 +376,11 @@ public final class TailFileReader implements Runnable {
         final Map<String, Object> data = new HashMap<>();
         data.put(MESSAGE_KEY, line);
         if (includeFileMetadata) {
-            data.put(FILE_PATH_KEY, cachedAbsolutePath);
-            data.put(FILE_IDENTITY_KEY, cachedFileIdentityString);
+            final Map<String, Object> fileMetadata = new HashMap<>();
+            fileMetadata.put(FILE_PATH_KEY, cachedAbsolutePath);
+            fileMetadata.put(FILE_NAME_KEY, path.getFileName().toString());
+            data.put(FILE_KEY, fileMetadata);
+            data.put(OFFSET_KEY, readOffset.get());
         }
 
         final Event event = eventFactory.eventBuilder(EventBuilder.class)

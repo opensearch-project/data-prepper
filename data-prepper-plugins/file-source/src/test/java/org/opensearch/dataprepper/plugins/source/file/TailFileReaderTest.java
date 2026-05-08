@@ -429,8 +429,12 @@ class TailFileReaderTest {
         reader.run();
 
         Map<String, Object> capturedData = dataCaptor.getValue();
-        assertThat(capturedData.containsKey("file_path"), equalTo(true));
-        assertThat(capturedData.containsKey("file_identity"), equalTo(true));
+        assertThat(capturedData.containsKey("file"), equalTo(true));
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> fileMetadata = (Map<String, Object>) capturedData.get("file");
+        assertThat(fileMetadata.containsKey("path"), equalTo(true));
+        assertThat(fileMetadata.containsKey("name"), equalTo(true));
+        assertThat(capturedData.containsKey("offset"), equalTo(true));
     }
 
     @Test

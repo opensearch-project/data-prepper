@@ -17,34 +17,33 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public enum FileFormat {
+public enum RecordType {
+    STRING("string"),
+    EVENT("event");
 
-    PLAIN("plain"),
-    JSON("json");
-
-    private static final Map<String, FileFormat> NAMES_MAP = Stream.of(values())
-            .collect(Collectors.toMap(FileFormat::toString, v -> v));
+    private static final Map<String, RecordType> NAMES_MAP = Stream.of(values())
+            .collect(Collectors.toMap(RecordType::toString, v -> v));
 
     private final String name;
 
-    FileFormat(final String name) {
+    RecordType(final String name) {
         this.name = name;
     }
 
     @JsonValue
     @Override
     public String toString() {
-        return this.name;
+        return name;
     }
 
     @JsonCreator
-    public static FileFormat fromString(final String name) {
+    public static RecordType fromString(final String name) {
         if (name == null) {
-            throw new IllegalArgumentException("Invalid format: null. Valid values are: " + NAMES_MAP.keySet());
+            throw new IllegalArgumentException("Invalid record_type: null. Valid values are: " + NAMES_MAP.keySet());
         }
-        final FileFormat value = NAMES_MAP.get(name.toLowerCase());
+        final RecordType value = NAMES_MAP.get(name.toLowerCase());
         if (value == null) {
-            throw new IllegalArgumentException("Invalid format: " + name + ". Valid values are: " + NAMES_MAP.keySet());
+            throw new IllegalArgumentException("Invalid record_type: " + name + ". Valid values are: " + NAMES_MAP.keySet());
         }
         return value;
     }

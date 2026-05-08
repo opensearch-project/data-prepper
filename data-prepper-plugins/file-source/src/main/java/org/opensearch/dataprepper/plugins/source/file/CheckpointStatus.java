@@ -13,9 +13,16 @@ package org.opensearch.dataprepper.plugins.source.file;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public enum CheckpointStatus {
     ACTIVE("ACTIVE"),
     COMPLETED("COMPLETED");
+
+    private static final Map<String, CheckpointStatus> NAMES_MAP = Stream.of(values())
+            .collect(Collectors.toMap(CheckpointStatus::getValue, v -> v));
 
     private final String value;
 
@@ -30,11 +37,13 @@ public enum CheckpointStatus {
 
     @JsonCreator
     public static CheckpointStatus fromString(final String value) {
-        for (final CheckpointStatus status : values()) {
-            if (status.value.equalsIgnoreCase(value)) {
-                return status;
-            }
+        if (value == null) {
+            throw new IllegalArgumentException("Invalid checkpoint status: null. Valid values are: " + NAMES_MAP.keySet());
         }
-        throw new IllegalArgumentException("Invalid checkpoint status: " + value);
+        final CheckpointStatus status = NAMES_MAP.get(value.toUpperCase());
+        if (status == null) {
+            throw new IllegalArgumentException("Invalid checkpoint status: " + value + ". Valid values are: " + NAMES_MAP.keySet());
+        }
+        return status;
     }
 }

@@ -278,8 +278,11 @@ class FileSourceTailIT {
         await().atMost(WAIT_TIMEOUT).untilAsserted(() -> {
             assertThat(capturedRecords, hasSize(1));
             final Event event = (Event) capturedRecords.get(0).getData();
-            assertThat(event.get("file_path", String.class),
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> fileMetadata = (Map<String, Object>) event.get("file", Object.class);
+            assertThat(fileMetadata.get("path"),
                     equalTo(logFile.toAbsolutePath().toString()));
+            assertThat(fileMetadata.get("name"), equalTo("meta.log"));
         });
     }
 
@@ -792,6 +795,8 @@ class FileSourceTailIT {
         configMap.put("start_position", startPosition != null ? startPosition : "beginning");
         configMap.put("reader_threads", 2);
         configMap.put("include_file_metadata", true);
+        configMap.put("poll_interval", "PT0.5S");
+        configMap.put("rotate_wait", "PT0.5S");
         if (path != null) {
             configMap.put("path", path);
         }

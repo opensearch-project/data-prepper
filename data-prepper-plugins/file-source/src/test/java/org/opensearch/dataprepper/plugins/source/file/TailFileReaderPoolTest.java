@@ -31,7 +31,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -278,6 +280,7 @@ class TailFileReaderPoolTest {
 
         BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-1");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         when(fileOps.size(testFile)).thenReturn(6L);
         FileChannel realChannel = FileChannel.open(testFile, StandardOpenOption.READ);
@@ -329,6 +332,7 @@ class TailFileReaderPoolTest {
 
         BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-inactive");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         when(fileOps.size(testFile)).thenReturn((long) "data\n".length());
         FileChannel realChannel = FileChannel.open(testFile, StandardOpenOption.READ);
@@ -414,6 +418,7 @@ class TailFileReaderPoolTest {
 
         BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-close-inactive");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         lenient().when(fileOps.size(testFile)).thenReturn((long) "data\n".length());
 
@@ -466,6 +471,7 @@ class TailFileReaderPoolTest {
 
         BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-keep-active");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         lenient().when(fileOps.size(testFile)).thenReturn((long) "data\n".length());
 
@@ -523,6 +529,7 @@ class TailFileReaderPoolTest {
 
         BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-del");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         when(fileOps.size(testFile)).thenReturn(6L);
         FileChannel realChannel = FileChannel.open(testFile, StandardOpenOption.READ);
@@ -547,6 +554,7 @@ class TailFileReaderPoolTest {
         Files.writeString(pendingFile, "pending\n");
         BasicFileAttributes pendingAttrs = mock(BasicFileAttributes.class);
         when(pendingAttrs.fileKey()).thenReturn("inode-pending");
+        when(pendingAttrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         lenient().when(fileOps.readAttributes(pendingFile)).thenReturn(pendingAttrs);
         lenient().when(fileOps.size(pendingFile)).thenReturn(8L);
         lenient().when(fileOps.openReadChannel(pendingFile)).thenReturn(

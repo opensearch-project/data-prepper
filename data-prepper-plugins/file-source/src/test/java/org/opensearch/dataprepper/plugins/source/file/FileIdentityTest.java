@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -31,6 +32,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +49,11 @@ class FileIdentityTest {
     @Mock
     private BasicFileAttributes attrs;
 
+    @BeforeEach
+    void setUp() {
+        lenient().when(attrs.creationTime()).thenReturn(FileTime.from(Instant.parse("2025-01-01T00:00:00Z")));
+    }
+
     @Test
     void fromReturnsInodeBasedIdentityWhenFileKeyPresent() throws IOException {
         final Path testFile = tempDir.resolve("test.log");
@@ -59,7 +66,7 @@ class FileIdentityTest {
         final FileIdentity identity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);
 
         assertThat(identity, notNullValue());
-        assertThat(identity.toString(), containsString("inode:12345"));
+        assertThat(identity.toString(), containsString("inode:12345:created:"));
         assertThat(identity.getPath(), equalTo(testFile));
     }
 
@@ -159,6 +166,7 @@ class FileIdentityTest {
 
         when(fileOps.readAttributes(fileB)).thenReturn(attrsB);
         when(attrsB.fileKey()).thenReturn("inode-2");
+        when(attrsB.creationTime()).thenReturn(FileTime.from(Instant.parse("2025-02-01T00:00:00Z")));
 
         final FileIdentity identityA = FileIdentity.from(fileA, fileOps, FINGERPRINT_BYTES);
         final FileIdentity identityB = FileIdentity.from(fileB, fileOps, FINGERPRINT_BYTES);

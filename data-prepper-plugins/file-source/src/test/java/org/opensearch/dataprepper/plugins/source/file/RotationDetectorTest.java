@@ -22,6 +22,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -64,6 +66,7 @@ class RotationDetectorTest {
 
         final BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-42");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
         when(fileOps.size(testFile)).thenReturn(100L);
 
@@ -82,11 +85,13 @@ class RotationDetectorTest {
 
         final BasicFileAttributes oldAttrs = mock(BasicFileAttributes.class);
         when(oldAttrs.fileKey()).thenReturn("inode-1");
+        when(oldAttrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(oldAttrs);
         final FileIdentity knownIdentity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);
 
         final BasicFileAttributes newAttrs = mock(BasicFileAttributes.class);
         when(newAttrs.fileKey()).thenReturn("inode-2");
+        when(newAttrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(newAttrs);
 
         final RotationResult result = rotationDetector.checkRotation(testFile, knownIdentity, 100L);
@@ -102,6 +107,7 @@ class RotationDetectorTest {
 
         final BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-5");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
 
         final FileIdentity knownIdentity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);
@@ -133,6 +139,7 @@ class RotationDetectorTest {
 
         final BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-10");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
 
         final FileIdentity knownIdentity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);
@@ -151,6 +158,7 @@ class RotationDetectorTest {
 
         final BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-20");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
 
         final FileIdentity knownIdentity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);
@@ -194,6 +202,7 @@ class RotationDetectorTest {
 
         final BasicFileAttributes attrs = mock(BasicFileAttributes.class);
         when(attrs.fileKey()).thenReturn("inode-30");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
         when(fileOps.readAttributes(testFile)).thenReturn(attrs);
 
         final FileIdentity knownIdentity = FileIdentity.from(testFile, fileOps, FINGERPRINT_BYTES);

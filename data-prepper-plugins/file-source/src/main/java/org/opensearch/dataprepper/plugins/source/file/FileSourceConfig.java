@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import jakarta.validation.constraints.AssertTrue;
@@ -41,10 +40,10 @@ public class FileSourceConfig {
     private boolean tail = false;
 
     @JsonProperty(ATTRIBUTE_FORMAT)
-    private String format = DEFAULT_FORMAT;
+    private FileFormat format = FileFormat.PLAIN;
 
     @JsonProperty(ATTRIBUTE_TYPE)
-    private String recordType = DEFAULT_TYPE;
+    private RecordType recordType = RecordType.STRING;
 
     @JsonProperty("codec")
     private PluginModel codec;
@@ -86,25 +85,25 @@ public class FileSourceConfig {
     private Duration checkpointInterval = Duration.ofSeconds(15);
 
     @JsonProperty("checkpoint_cleanup_after")
-    private Duration checkpointCleanupAfter = Duration.ofHours(24);
+    private Duration checkpointCleanupAfter = Duration.ofDays(7);
 
     @JsonProperty("fingerprint_bytes")
     private int fingerprintBytes = 1024;
 
     @JsonProperty("close_inactive")
-    private Duration closeInactive = Duration.ofMinutes(5);
+    private Duration closeInactive = Duration.ofMinutes(30);
 
     @JsonProperty("close_removed")
     private boolean closeRemoved = true;
 
     @JsonProperty("batch_size")
-    private int batchSize = 1000;
+    private int batchSize = 100;
 
     @JsonProperty("batch_timeout")
     private Duration batchTimeout = Duration.ofSeconds(5);
 
     @JsonProperty("acknowledgment_timeout")
-    private Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+    private Duration acknowledgmentTimeout = Duration.ofSeconds(60);
 
     @JsonProperty("max_acknowledgment_retries")
     private int maxAcknowledgmentRetries = 3;
@@ -141,12 +140,11 @@ public class FileSourceConfig {
         return allPaths;
     }
 
-    @JsonIgnore
     public FileFormat getFormat() {
-        return FileFormat.getByName(format);
+        return format;
     }
 
-    public String getRecordType() {
+    public RecordType getRecordType() {
         return recordType;
     }
 
@@ -259,12 +257,10 @@ public class FileSourceConfig {
             Preconditions.checkArgument(filePathToRead != null,
                     "path is required when tail is disabled. Use paths with tail: true for glob patterns.");
         }
-        Preconditions.checkArgument(EVENT_TYPE.equals(recordType) || DEFAULT_TYPE.equals(recordType), "Invalid type: must be either [event] or [string]");
-        Preconditions.checkArgument(DEFAULT_FORMAT.equals(format) || "json".equals(format), "Invalid file format. Options are [json] and [plain]");
     }
 
     @AssertTrue(message = "The file source requires recordType to be event when using a codec.")
     boolean codeRequiresRecordTypeEvent() {
-        return codec == null || EVENT_TYPE.equals(recordType);
+        return codec == null || recordType == RecordType.EVENT;
     }
 }
