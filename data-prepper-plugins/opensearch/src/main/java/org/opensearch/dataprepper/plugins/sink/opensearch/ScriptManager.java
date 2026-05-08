@@ -28,10 +28,12 @@ public class ScriptManager {
 
     private final ScriptConfiguration scriptConfiguration;
     private final ExpressionEvaluator expressionEvaluator;
+    private final String minifiedSource;
 
     public ScriptManager(final ScriptConfiguration scriptConfiguration, final ExpressionEvaluator expressionEvaluator) {
         this.scriptConfiguration = scriptConfiguration;
         this.expressionEvaluator = expressionEvaluator;
+        this.minifiedSource = scriptConfiguration != null ? minifyScript(scriptConfiguration.getSource()) : null;
     }
 
     public boolean isScriptEnabled() {
@@ -61,10 +63,27 @@ public class ScriptManager {
             resolvedParams.forEach((k, v) -> scriptParams.put(k, JsonData.of(v)));
         }
         final InlineScript inlineScript = new InlineScript.Builder()
-                .source(scriptConfiguration.getSource())
+                .source(minifiedSource)
                 .lang(PAINLESS)
                 .params(scriptParams)
                 .build();
         return Script.of(s -> s.inline(inlineScript));
+    }
+
+    static String minifyScript(final String source) {
+        if (source == null) {
+            return null;
+        }
+        final StringBuilder sb = new StringBuilder();
+        for (final String line : source.split("\n")) {
+            final String trimmed = line.trim();
+            if (!trimmed.isEmpty() && !trimmed.startsWith("//")) {
+                if (sb.length() > 0) {
+                    sb.append('\n');
+                }
+                sb.append(trimmed);
+            }
+        }
+        return sb.toString();
     }
 }

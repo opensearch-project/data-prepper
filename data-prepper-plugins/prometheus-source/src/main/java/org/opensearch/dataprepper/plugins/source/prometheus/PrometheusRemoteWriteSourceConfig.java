@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.prometheus;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 
 /**
@@ -24,6 +25,10 @@ public class PrometheusRemoteWriteSourceConfig extends BaseHttpServerConfig {
 
     @JsonProperty("flatten_labels")
     private boolean flattenLabels = false;
+
+    @Valid
+    @JsonProperty("scrape")
+    private PrometheusScrapeConfig scrapeConfig;
 
     @Override
     public int getDefaultPort() {
@@ -42,5 +47,9 @@ public class PrometheusRemoteWriteSourceConfig extends BaseHttpServerConfig {
      */
     public boolean isFlattenLabels() {
         return flattenLabels;
+    }
+
+    public PrometheusScrapeConfig getScrapeConfig() {
+        return scrapeConfig;
     }
 }

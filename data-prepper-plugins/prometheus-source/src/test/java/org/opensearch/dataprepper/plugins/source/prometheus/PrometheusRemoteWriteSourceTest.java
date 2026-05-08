@@ -53,7 +53,9 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.xerial.snappy.Snappy;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -74,6 +76,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -566,5 +570,77 @@ class PrometheusRemoteWriteSourceTest {
         final ExecutionException exception = assertThrows(ExecutionException.class,
                 () -> future.get(2, TimeUnit.SECONDS));
         assertInstanceOf(ClosedSessionException.class, exception.getCause());
+    }
+
+    @Test
+    public void testStartWithScrapeConfigCreatesScrapeService() throws Exception {
+        sourceUnderTest.stop();
+
+        final PrometheusScrapeConfig scrapeConfig = mock(PrometheusScrapeConfig.class);
+        lenient().when(scrapeConfig.getScrapeInterval()).thenReturn(Duration.ofDays(1));
+        lenient().when(scrapeConfig.getScrapeTimeout()).thenReturn(Duration.ofSeconds(10));
+        lenient().when(scrapeConfig.isFlattenLabels()).thenReturn(false);
+        lenient().when(scrapeConfig.isInsecure()).thenReturn(false);
+        lenient().when(scrapeConfig.getAuthentication()).thenReturn(null);
+        lenient().when(scrapeConfig.getTargets()).thenReturn(Collections.emptyList());
+        when(sourceConfig.getScrapeConfig()).thenReturn(scrapeConfig);
+
+        sourceUnderTest = new PrometheusRemoteWriteSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        sourceUnderTest.start(testBuffer);
+
+        final Field scrapeServiceField =
+                PrometheusRemoteWriteSource.class.getDeclaredField("scrapeService");
+        scrapeServiceField.setAccessible(true);
+        assertThat(scrapeServiceField.get(sourceUnderTest), notNullValue());
+    }
+
+    @Test
+    public void testStopWithScrapeServiceStopsScrapeService() throws Exception {
+        sourceUnderTest.stop();
+
+        final PrometheusScrapeConfig scrapeConfig = mock(PrometheusScrapeConfig.class);
+        lenient().when(scrapeConfig.getScrapeInterval()).thenReturn(Duration.ofDays(1));
+        lenient().when(scrapeConfig.getScrapeTimeout()).thenReturn(Duration.ofSeconds(10));
+        lenient().when(scrapeConfig.isFlattenLabels()).thenReturn(false);
+        lenient().when(scrapeConfig.isInsecure()).thenReturn(false);
+        lenient().when(scrapeConfig.getAuthentication()).thenReturn(null);
+        lenient().when(scrapeConfig.getTargets()).thenReturn(Collections.emptyList());
+        when(sourceConfig.getScrapeConfig()).thenReturn(scrapeConfig);
+
+        sourceUnderTest = new PrometheusRemoteWriteSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        sourceUnderTest.start(testBuffer);
+        sourceUnderTest.stop();
+
+        final Field scrapeServiceField =
+                PrometheusRemoteWriteSource.class.getDeclaredField("scrapeService");
+        scrapeServiceField.setAccessible(true);
+        assertThat(scrapeServiceField.get(sourceUnderTest), notNullValue());
+        sourceUnderTest = null;
+    }
+
+    @Test
+    public void testStartWithoutScrapeConfigDoesNotCreateScrapeService() throws Exception {
+        sourceUnderTest.stop();
+
+        when(sourceConfig.getScrapeConfig()).thenReturn(null);
+
+        sourceUnderTest = new PrometheusRemoteWriteSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        sourceUnderTest.start(testBuffer);
+
+        final Field scrapeServiceField =
+                PrometheusRemoteWriteSource.class.getDeclaredField("scrapeService");
+        scrapeServiceField.setAccessible(true);
+        assertThat(scrapeServiceField.get(sourceUnderTest), nullValue());
+    }
+
+    @Test
+    public void testStopWithoutScrapeServiceDoesNotThrow() {
+        sourceUnderTest.stop();
+
+        when(sourceConfig.getScrapeConfig()).thenReturn(null);
+        sourceUnderTest = new PrometheusRemoteWriteSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        sourceUnderTest.start(testBuffer);
+        sourceUnderTest.stop();
+        sourceUnderTest = null;
     }
 }

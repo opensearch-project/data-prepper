@@ -221,6 +221,35 @@ class DefaultPluginFactoryIT {
         assertThat(actualException.getMessage(), equalTo("Unable to create experimental plugin test_experimental_plugin. You must enable experimental plugins in data-prepper-config.yaml in order to use them."));
     }
 
+    @Test
+    void loadPlugin_should_throw_when_a_non_experimental_plugin_has_an_experimental_feature_configured() {
+        pluginName = "test_plugin_with_experimental_feature";
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("experimental_option", "some_value");
+        final PluginSetting pluginSetting = createPluginSettings(pluginSettingMap);
+
+        final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+
+        final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class,
+                () -> objectUnderTest.loadPlugin(TestPluggableInterface.class, pluginSetting));
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), equalTo(
+                "Plugin test_plugin_with_experimental_feature in pipeline " + pipelineName +
+                        " is configured incorrectly: experimentalOption " +
+                        "This feature is experimental. You must enable experimental features in data-prepper-config.yaml in order to use them."));
+    }
+
+    @Test
+    void loadPlugin_should_succeed_when_a_non_experimental_plugin_has_an_experimental_feature_not_configured() {
+        pluginName = "test_plugin_with_experimental_feature";
+        final PluginSetting pluginSetting = createPluginSettings(Collections.emptyMap());
+
+        final TestPluggableInterface plugin = createObjectUnderTest().loadPlugin(TestPluggableInterface.class, pluginSetting);
+
+        assertThat(plugin, notNullValue());
+    }
+
     private PluginSetting createPluginSettings(final Map<String, Object> pluginSettingMap) {
         final PluginSetting pluginSetting = new PluginSetting(pluginName, pluginSettingMap);
         pluginSetting.setPipelineName(pipelineName);

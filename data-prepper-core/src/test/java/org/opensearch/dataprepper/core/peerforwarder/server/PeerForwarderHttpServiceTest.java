@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
+import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTargetException;
 import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -165,6 +166,35 @@ class PeerForwarderHttpServiceTest {
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
 
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.REQUEST_ENTITY_TOO_LARGE));
+    }
+
+    @Test
+    void test_doPost_with_unknown_pipeline_should_return_BAD_REQUEST() throws Exception {
+        lenient().when(peerForwardingEvents.getDestinationPipelineName()).thenReturn("unknown_pipeline");
+        when(responseHandler.handleException(any(NoPeerForwarderTargetException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
+        final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
+
+        final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
+
+        final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
+
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void test_doPost_with_unknown_plugin_should_return_BAD_REQUEST() throws Exception {
+        lenient().when(peerForwardingEvents.getDestinationPluginId()).thenReturn("unknown_plugin");
+        when(responseHandler.handleException(any(NoPeerForwarderTargetException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
+        final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
+        pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, new HashMap<>());
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
+
+        final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
+
+        final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
+
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
     }
 
     private List<Event> generateEvents(final int numEvents) {

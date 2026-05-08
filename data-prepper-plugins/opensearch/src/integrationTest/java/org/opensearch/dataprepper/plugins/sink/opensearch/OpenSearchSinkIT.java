@@ -341,7 +341,7 @@ class OpenSearchSinkIT {
     }
 
     @Test
-    @DisabledIf(value = "isES6", disabledReason = LOG_INGESTION_TEST_DISABLED_REASON)
+    @DisabledIf(value = "isComposableIndexTemplateNotSupported", disabledReason = "Composable index templates are not supported on this version")
     @Timeout(value = 50, unit = TimeUnit.SECONDS)
     void testInstantiateSinkLogsPlainWithTemplateTypeUsesIndexType() throws IOException {
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
@@ -2219,6 +2219,10 @@ class OpenSearchSinkIT {
 
     private static boolean isES6() {
         return DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(OpenSearchIntegrationHelper.getVersion()) >= 0;
+    }
+
+    private static boolean isComposableIndexTemplateNotSupported() {
+        return OpenSearchIntegrationHelper.getVersion().compareTo(DeclaredOpenSearchVersion.OPENDISTRO_1_9) < 0;
     }
 
     private static boolean isDataStreamNotSupported() {

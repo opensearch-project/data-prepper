@@ -86,7 +86,7 @@ public class S3ScanPartitionCreationSupplierTest {
 
 
     private Function<Map<String, Object>, List<PartitionIdentifier>> createObjectUnderTest() {
-        return new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsList, schedulingOptions, folderPartitioningOptions, isDeleteS3ObjectsOnRead, sourceCoordinator);
+        return new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsList, schedulingOptions, folderPartitioningOptions, isDeleteS3ObjectsOnRead, sourceCoordinator, new S3ObjectKeyFilter(Collections.emptyMap()));
     }
 
     @Test

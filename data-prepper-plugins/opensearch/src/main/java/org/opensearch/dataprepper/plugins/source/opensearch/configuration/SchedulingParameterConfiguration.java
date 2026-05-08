@@ -25,6 +25,9 @@ public class SchedulingParameterConfiguration {
     @JsonProperty("start_time")
     private String startTime = Instant.now().toString();
 
+    @JsonProperty("discovery_mode")
+    private DiscoveryMode discoveryMode = DiscoveryMode.PERIODIC;
+
     @JsonIgnore
     private Instant startTimeInstant;
 
@@ -38,6 +41,10 @@ public class SchedulingParameterConfiguration {
 
     public Instant getStartTime() {
         return startTimeInstant;
+    }
+
+    public DiscoveryMode getDiscoveryMode() {
+        return discoveryMode;
     }
 
     @AssertTrue(message = "start_time must be a valid Java Instant format such as \"2007-12-03T10:15:30.00Z\"")

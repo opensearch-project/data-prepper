@@ -32,6 +32,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchIndexPartitionCreationSupplier.class);
 
+    public static final String SINGLE_SCAN_COMPLETE = "SINGLE_SCAN_COMPLETE";
+
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final IndexParametersConfiguration indexParametersConfiguration;
     private PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> openSearchClientRefresher;
@@ -62,13 +64,32 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     @Override
     public List<PartitionIdentifier> apply(final Map<String, Object> globalStateMap) {
 
-        if (Objects.nonNull(openSearchClientRefresher)) {
-            return applyForOpenSearchClient(globalStateMap);
-        } else if (Objects.nonNull(elasticsearchClientRefresher)) {
-            return applyForElasticSearchClient(globalStateMap);
+        if (isSingleScanCompleted(globalStateMap)) {
+            LOG.debug("Discovery mode is SINGLE_SCAN and indices have already been discovered. Skipping rediscovery.");
+            return Collections.emptyList();
         }
 
-        return Collections.emptyList();
+        final List<PartitionIdentifier> partitions;
+        if (Objects.nonNull(openSearchClientRefresher)) {
+            partitions = applyForOpenSearchClient(globalStateMap);
+        } else if (Objects.nonNull(elasticsearchClientRefresher)) {
+            partitions = applyForElasticSearchClient(globalStateMap);
+        } else {
+            partitions = Collections.emptyList();
+        }
+
+        if (openSearchSourceConfiguration.isSingleScanMode() && Objects.nonNull(globalStateMap)) {
+            globalStateMap.put(SINGLE_SCAN_COMPLETE, Boolean.TRUE);
+            LOG.info("Discovery mode is SINGLE_SCAN. Completed one-time index discovery with {} partitions.", partitions.size());
+        }
+
+        return partitions;
+    }
+
+    private boolean isSingleScanCompleted(final Map<String, Object> globalStateMap) {
+        return openSearchSourceConfiguration.isSingleScanMode()
+                && Objects.nonNull(globalStateMap)
+                && Boolean.TRUE.equals(globalStateMap.get(SINGLE_SCAN_COMPLETE));
     }
 
     private List<PartitionIdentifier> applyForOpenSearchClient(final Map<String, Object> globalStateMap) {
