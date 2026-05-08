@@ -10,7 +10,10 @@ import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -45,6 +48,9 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Counter credentialsChangeCounter;
     private final Counter taskRefreshErrorsCounter;
+    private final PluginSetting pluginSetting;
+    private final PipelineDescription pipelineDescription;
+    private final HeadlessPipeline failurePipeline;
 
     private ExecutorService executorService;
     private RdsSourceConfig currentSourceConfig;
@@ -58,7 +64,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                      final Buffer<Record<Event>> buffer,
                                      final Supplier<ExecutorService> executorServiceSupplier,
                                      final AcknowledgementSetManager acknowledgementSetManager,
-                                     final PluginMetrics pluginMetrics) {
+                                     final PluginMetrics pluginMetrics,
+                                     final PluginSetting pluginSetting,
+                                     final PipelineDescription pipelineDescription,
+                                     final HeadlessPipeline failurePipeline) {
         this.sourceCoordinator = sourceCoordinator;
         this.streamPartition = streamPartition;
         this.streamCheckpointer = streamCheckpointer;
@@ -71,6 +80,9 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         this.replicationLogClientFactory = replicationLogClientFactory;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         this.taskRefreshErrorsCounter = pluginMetrics.counter(TASK_REFRESH_ERRORS);
+        this.pluginSetting = pluginSetting;
+        this.pipelineDescription = pipelineDescription;
+        this.failurePipeline = failurePipeline;
     }
 
     public static StreamWorkerTaskRefresher create(final EnhancedSourceCoordinator sourceCoordinator,
@@ -81,9 +93,13 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                                    final Buffer<Record<Event>> buffer,
                                                    final Supplier<ExecutorService> executorServiceSupplier,
                                                    final AcknowledgementSetManager acknowledgementSetManager,
-                                                   final PluginMetrics pluginMetrics) {
+                                                   final PluginMetrics pluginMetrics,
+                                                   final PluginSetting pluginSetting,
+                                                   final PipelineDescription pipelineDescription,
+                                                   final HeadlessPipeline failurePipeline) {
         return new StreamWorkerTaskRefresher(sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix,
-                binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+                binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     public void initialize(RdsSourceConfig sourceConfig) {
@@ -130,13 +146,15 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             final BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.registerEventListener(BinlogEventListener.create(
                     streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
-                    streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
+                    streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector,
+                    pluginSetting, pipelineDescription, failurePipeline));
             binaryLogClient.registerLifecycleListener(new BinlogClientLifecycleListener());
         } else {
             final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
             logicalReplicationClient.setEventProcessor(LogicalReplicationEventProcessor.create(
                     streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics, logicalReplicationClient,
-                    streamCheckpointer, acknowledgementSetManager));
+                    streamCheckpointer, acknowledgementSetManager,
+                    pluginSetting, pipelineDescription, failurePipeline));
         }
         streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));

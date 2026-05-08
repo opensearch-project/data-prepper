@@ -70,6 +70,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final RestHighLevelClient restHighLevelClient;
   private final OpenSearchClient openSearchClient;
   private final OpenSearchClientRefresher openSearchClientRefresher;
+  private final ConnectionConfiguration connectionConfiguration;
   private IndexManager indexManager;
   private volatile boolean initialized;
 
@@ -93,7 +94,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.initialized = false;
 
-    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
+    connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
     restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
     openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
     final Function<ConnectionConfiguration, OpenSearchClient> clientFunction =
