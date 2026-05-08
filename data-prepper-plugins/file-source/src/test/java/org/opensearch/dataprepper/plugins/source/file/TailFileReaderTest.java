@@ -42,7 +42,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.function.Consumer;
+
+import static org.awaitility.Awaitility.await;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -1073,7 +1076,7 @@ class TailFileReaderTest {
             reader.run();
         });
         readerThread.start();
-        Thread.sleep(300);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> readerThread.getState() == Thread.State.TIMED_WAITING || readerThread.getState() == Thread.State.WAITING || !readerThread.isAlive());
         readerThread.interrupt();
         readerThread.join(5000);
 
@@ -1114,7 +1117,7 @@ class TailFileReaderTest {
             reader.run();
         });
         readerThread.start();
-        Thread.sleep(200);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> readerThread.getState() == Thread.State.TIMED_WAITING || readerThread.getState() == Thread.State.WAITING || !readerThread.isAlive());
         readerThread.interrupt();
         readerThread.join(5000);
 
@@ -1324,7 +1327,7 @@ class TailFileReaderTest {
             reader.run();
         });
         readerThread.start();
-        Thread.sleep(300);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> readerThread.getState() == Thread.State.TIMED_WAITING || readerThread.getState() == Thread.State.WAITING || !readerThread.isAlive());
         readerThread.interrupt();
         readerThread.join(5000);
 
@@ -1368,7 +1371,7 @@ class TailFileReaderTest {
             reader.run();
         });
         readerThread.start();
-        Thread.sleep(300);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> readerThread.getState() == Thread.State.TIMED_WAITING || readerThread.getState() == Thread.State.WAITING || !readerThread.isAlive());
         readerThread.interrupt();
         readerThread.join(5000);
 
