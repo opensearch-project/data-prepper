@@ -65,7 +65,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -455,6 +454,17 @@ public class FileSourceTests {
         void stop_before_start_does_not_throw() {
             FileSource fileSource = createObjectUnderTest();
             assertDoesNotThrow(fileSource::stop);
+        }
+
+        @Test
+        void start_in_tail_mode_rethrows_runtime_exception_from_startTailing() {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-err-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-err-single.log");
+            pluginSettings.put("fingerprint_bytes", 0);
+
+            FileSource fileSource = createObjectUnderTest();
+            assertThrows(IllegalArgumentException.class, () -> fileSource.start(buffer));
         }
 
         @Test

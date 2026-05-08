@@ -47,4 +47,9 @@ class CheckpointStatusTest {
         assertThat(CheckpointStatus.ACTIVE.getValue(), equalTo("ACTIVE"));
         assertThat(CheckpointStatus.COMPLETED.getValue(), equalTo("COMPLETED"));
     }
+
+    @Test
+    void fromString_with_null_throws_IllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> CheckpointStatus.fromString(null));
+    }
 }

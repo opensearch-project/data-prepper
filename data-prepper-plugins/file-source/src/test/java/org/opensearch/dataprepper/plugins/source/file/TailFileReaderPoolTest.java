@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -245,6 +246,30 @@ class TailFileReaderPoolTest {
     }
 
     @Test
+    void closeReaderForPath_promotes_pending_files() {
+        Counter filesClosed = mock(Counter.class);
+        lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        TailFileReaderPool pool = createPool(1, 2);
+        when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
+
+        FileIdentity identity1 = mock(FileIdentity.class);
+        when(identity1.toString()).thenReturn("id-close-promote-1");
+        FileIdentity identity2 = mock(FileIdentity.class);
+        when(identity2.toString()).thenReturn("id-close-promote-2");
+
+        pool.addFile(identity1, Paths.get("/tmp/file1.log"));
+        pool.addFile(identity2, Paths.get("/tmp/file2.log"));
+
+        assertThat(pool.getActiveReaderCount(), equalTo(1));
+        assertThat(pool.getPendingCount(), equalTo(1));
+
+        pool.closeReaderForPath(Paths.get("/tmp/file1.log"));
+
+        assertThat(pool.getActiveReaderCount(), equalTo(1));
+        assertThat(pool.getPendingCount(), equalTo(0));
+    }
+
+    @Test
     void shutdown_handles_interrupted_exception() throws Exception {
         TailFileReaderPool pool = createPoolWithoutMetrics(10, 1);
 
@@ -393,6 +418,26 @@ class TailFileReaderPoolTest {
 
         assertThat(Thread.currentThread().isInterrupted(), equalTo(true));
         Thread.interrupted();
+    }
+
+    @Test
+    void addFile_handles_rejected_execution_exception() {
+        ExecutorService mockExecutor = mock(ExecutorService.class);
+        when(mockExecutor.submit(any(Runnable.class)))
+                .thenThrow(new RejectedExecutionException("pool shut down"));
+        when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
+        when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
+
+        TailFileReaderPool pool = new TailFileReaderPool(
+                checkpointRegistry, metrics, 10,
+                Duration.ofMinutes(30), createReaderContext(),
+                () -> mockExecutor);
+
+        FileIdentity identity = mock(FileIdentity.class);
+        when(identity.toString()).thenReturn("rejected-id");
+        pool.addFile(identity, Paths.get("/tmp/rejected.log"));
+
+        assertThat(pool.getActiveReaderCount(), equalTo(0));
     }
 
     @Test

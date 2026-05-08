@@ -149,31 +149,27 @@ public final class TailFileReader implements Runnable {
             final RotationResult rotation = rotationDetector.checkRotation(path, fileIdentity, readOffset.get());
             lastRotationType = rotation.getRotationType();
 
-            switch (rotation.getRotationType()) {
-                case COPYTRUNCATE:
-                    LOG.info("Copytruncate detected for {}. Resetting offset to 0.", path);
-                    metrics.getFilesRotated().increment();
-                    metrics.getTruncationEvents().increment();
-                    completePendingAckSet();
-                    readOffset.set(0);
-                    checkpointEntry.setReadOffset(0);
-                    batchStartOffset = 0;
-                    readFile();
-                    break;
-                case DELETED:
-                    LOG.info("File deleted: {}. Closing reader.", path);
-                    completePendingAckSet();
-                    break;
-                case CREATE_RENAME:
-                    LOG.info("Create/rename rotation detected for {}. Draining current file.", path);
-                    metrics.getFilesRotated().increment();
-                    drainCurrentFile();
-                    completePendingAckSet();
-                    break;
-                case NO_ROTATION:
-                default:
-                    readFile();
-                    break;
+            final RotationType rotationType = rotation.getRotationType();
+
+            if (rotationType == RotationType.COPYTRUNCATE) {
+                LOG.info("Copytruncate detected for {}. Resetting offset to 0.", path);
+                metrics.getFilesRotated().increment();
+                metrics.getTruncationEvents().increment();
+                completePendingAckSet();
+                readOffset.set(0);
+                checkpointEntry.setReadOffset(0);
+                batchStartOffset = 0;
+                readFile();
+            } else if (rotationType == RotationType.DELETED) {
+                LOG.info("File deleted: {}. Closing reader.", path);
+                completePendingAckSet();
+            } else if (rotationType == RotationType.CREATE_RENAME) {
+                LOG.info("Create/rename rotation detected for {}. Draining current file.", path);
+                metrics.getFilesRotated().increment();
+                drainCurrentFile();
+                completePendingAckSet();
+            } else {
+                readFile();
             }
         } catch (final RuntimeException e) {
             LOG.error("Error reading file {}", path, e);
@@ -253,9 +249,6 @@ public final class TailFileReader implements Runnable {
                 decoderCarryover.clear();
             }
             final int bytesRead = channel.read(byteBuffer);
-            if (bytesRead == -1) {
-                break;
-            }
             if (bytesRead <= 0 && byteBuffer.position() == 0) {
                 break;
             }
@@ -297,7 +290,7 @@ public final class TailFileReader implements Runnable {
                 checkpointEntry.setReadOffset(readOffset.get());
             }
         } else if (codec == null) {
-            final int carryoverBytes = decoderCarryover != null ? decoderCarryover.position() : 0;
+            final int carryoverBytes = decoderCarryover.position();
             checkpointEntry.setReadOffset(readOffset.get() - carryoverBytes);
         }
     }
