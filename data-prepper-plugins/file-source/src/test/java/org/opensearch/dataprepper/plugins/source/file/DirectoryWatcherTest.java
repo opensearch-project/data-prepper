@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
@@ -169,8 +170,8 @@ class DirectoryWatcherTest {
             Files.delete(tempDir.resolve("vanish.log"));
             watcher.pollScan();
 
-            Thread.sleep(500);
-            verify(readerPool, atLeastOnce()).closeReaderForPath(any(Path.class));
+            await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                    verify(readerPool, atLeastOnce()).closeReaderForPath(any(Path.class)));
         } finally {
             watcher.stop();
         }
@@ -274,9 +275,6 @@ class DirectoryWatcherTest {
 
         final DirectoryWatcher watcher = createWatcher();
         watcher.start();
-
-        Thread.sleep(500);
-
         watcher.stop();
     }
 
@@ -289,12 +287,7 @@ class DirectoryWatcherTest {
         final DirectoryWatcher watcher = createWatcher();
         try {
             watcher.start();
-
-            Thread.sleep(500);
-
             Files.writeString(tempDir.resolve("new-detected.log"), "new content");
-
-            Thread.sleep(2000);
         } finally {
             watcher.stop();
         }
@@ -313,12 +306,7 @@ class DirectoryWatcherTest {
                 Duration.ofMillis(100), true);
         try {
             watcher.start();
-
-            Thread.sleep(500);
-
             Files.delete(tempDir.resolve("delete-me.log"));
-
-            Thread.sleep(2000);
         } finally {
             watcher.stop();
         }
@@ -337,12 +325,7 @@ class DirectoryWatcherTest {
                 Duration.ofMillis(100), false);
         try {
             watcher.start();
-
-            Thread.sleep(500);
-
             Files.delete(tempDir.resolve("keep-me.log"));
-
-            Thread.sleep(2000);
         } finally {
             watcher.stop();
         }
@@ -361,14 +344,8 @@ class DirectoryWatcherTest {
                 Duration.ofMillis(500), true);
         try {
             watcher.start();
-
-            Thread.sleep(500);
-
             Files.delete(tempDir.resolve("rotate-reappear.log"));
-            Thread.sleep(100);
             Files.writeString(tempDir.resolve("rotate-reappear.log"), "new content");
-
-            Thread.sleep(2000);
         } finally {
             watcher.stop();
         }
@@ -388,7 +365,6 @@ class DirectoryWatcherTest {
                 () -> { throw new RuntimeException("cannot create WatchService"); });
         try {
             watcher.start();
-            Thread.sleep(200);
         } finally {
             watcher.stop();
         }
@@ -408,7 +384,6 @@ class DirectoryWatcherTest {
                 () -> { throw new IOException("cannot create WatchService"); });
         try {
             watcher.start();
-            Thread.sleep(200);
         } finally {
             watcher.stop();
         }
@@ -459,10 +434,8 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true,
                 () -> realWatchService);
         watcher.start();
-        Thread.sleep(200);
 
         realWatchService.close();
-        Thread.sleep(200);
 
         watcher.stop();
     }
@@ -484,7 +457,6 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true);
         try {
             watcher.start();
-            Thread.sleep(200);
         } finally {
             watchDir.toFile().setReadable(true);
             watchDir.toFile().setExecutable(true);
@@ -507,7 +479,6 @@ class DirectoryWatcherTest {
                 false);
         try {
             watcher.start();
-            Thread.sleep(200);
         } finally {
             watcher.stop();
         }
@@ -535,7 +506,8 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true,
                 () -> mockWatchService);
         watcher.start();
-        Thread.sleep(500);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -564,7 +536,8 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true,
                 () -> mockWatchService);
         watcher.start();
-        Thread.sleep(500);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -595,7 +568,8 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true,
                 () -> mockWatchService);
         watcher.start();
-        Thread.sleep(500);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -637,8 +611,8 @@ class DirectoryWatcherTest {
                 Duration.ofMillis(500), true,
                 () -> mockWatchService);
         watcher.start();
-
-        Thread.sleep(2000);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -676,7 +650,8 @@ class DirectoryWatcherTest {
                 Duration.ofSeconds(5), true,
                 () -> mockWatchService);
         watcher.start();
-        Thread.sleep(200);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -803,7 +778,6 @@ class DirectoryWatcherTest {
                 () -> mockScheduler);
         watcher.start();
         firstIterDone.await();
-        Thread.sleep(50);
         watcher.stop();
     }
 
@@ -842,10 +816,9 @@ class DirectoryWatcherTest {
                 false,
                 () -> mockScheduler);
         watcher.start();
-        Thread.sleep(500);
+        await().pollDelay(500, TimeUnit.MILLISECONDS).atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(readerPool, never()).addFile(any(), any()));
         watcher.stop();
-
-        verify(readerPool, never()).addFile(any(), any());
     }
 
     @Test
@@ -882,11 +855,11 @@ class DirectoryWatcherTest {
                 false,
                 () -> mockScheduler);
         watcher.start();
-        Thread.sleep(500);
+        await().pollDelay(500, TimeUnit.MILLISECONDS).atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
+            verify(readerPool, never()).addFile(any(), any());
+            verify(readerPool, never()).closeReaderForPath(any());
+        });
         watcher.stop();
-
-        verify(readerPool, never()).addFile(any(), any());
-        verify(readerPool, never()).closeReaderForPath(any());
     }
 
     @Test
@@ -922,10 +895,9 @@ class DirectoryWatcherTest {
                 false,
                 () -> mockScheduler);
         watcher.start();
-        Thread.sleep(500);
+        await().pollDelay(500, TimeUnit.MILLISECONDS).atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(readerPool, never()).closeReaderForPath(any()));
         watcher.stop();
-
-        verify(readerPool, never()).closeReaderForPath(any());
     }
 
     @Test
@@ -944,7 +916,6 @@ class DirectoryWatcherTest {
                 DirectoryWatcher::createDefaultPollScheduler,
                 path -> true);
         watcher.start();
-        Thread.sleep(200);
         watcher.stop();
     }
 
@@ -992,7 +963,8 @@ class DirectoryWatcherTest {
                 false,
                 () -> mockScheduler);
         watcher.start();
-        Thread.sleep(500);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -1028,7 +1000,8 @@ class DirectoryWatcherTest {
                 false,
                 () -> mockScheduler);
         watcher.start();
-        Thread.sleep(500);
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(mockWatchService, atLeastOnce()).take());
         watcher.stop();
     }
 
@@ -1081,7 +1054,6 @@ class DirectoryWatcherTest {
                 () -> Executors.newSingleThreadScheduledExecutor(),
                 path -> false);
         watcher.start();
-        Thread.sleep(200);
         watcher.stop();
     }
 }
