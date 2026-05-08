@@ -281,13 +281,13 @@ public class RemoteWriteProtobufParser {
 
         final List<Record<Event>> records = new ArrayList<>();
         final Map<String, Object> commonAttributes = new HashMap<>(group.buckets.get(0).labels.commonLabels);
-        final String serviceName = extractServiceName(commonAttributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(commonAttributes);
         final Instant timeReceived = Instant.now();
 
         for (final long ts : timestampOrder.keySet()) {
             final TreeMap<Double, Long> cumulativeBuckets = new TreeMap<>();
             for (final BucketEntry bucket : group.buckets) {
-                final Double leBound = parseLeValue((String) bucket.labels.attributes.get(LE_LABEL));
+                final Double leBound = PrometheusMetricUtils.parseLeValue((String) bucket.labels.attributes.get(LE_LABEL));
                 if (leBound == null) {
                     continue;
                 }
@@ -370,14 +370,14 @@ public class RemoteWriteProtobufParser {
 
         final List<Record<Event>> records = new ArrayList<>();
         final Map<String, Object> commonAttributes = new HashMap<>(group.quantiles.get(0).labels.commonLabels);
-        final String serviceName = extractServiceName(commonAttributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(commonAttributes);
         final Instant timeReceived = Instant.now();
 
         for (final long ts : timestampOrder.keySet()) {
             final List<Quantile> quantiles = new ArrayList<>();
 
             for (final QuantileEntry qe : group.quantiles) {
-                final Double quantileValue = parseQuantileValue(
+                final Double quantileValue = PrometheusMetricUtils.parseQuantileValue(
                         (String) qe.labels.attributes.get(QUANTILE_LABEL));
                 if (quantileValue == null) {
                     continue;
@@ -425,14 +425,14 @@ public class RemoteWriteProtobufParser {
 
     private List<Record<Event>> convertStandalone(final StandaloneTimeSeries standalone) {
         final List<Record<Event>> records = new ArrayList<>();
-        final String serviceName = extractServiceName(standalone.labels.attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(standalone.labels.attributes);
         final Instant timeReceived = Instant.now();
 
         for (final Types.Sample sample : standalone.timeSeries.getSamplesList()) {
             final String timestamp = resolveTimestamp(sample.getTimestamp());
 
             if (standalone.isCounter) {
-                final String counterName = stripCounterSuffix(standalone.labels.metricName);
+                final String counterName = PrometheusMetricUtils.stripCounterSuffix(standalone.labels.metricName);
                 records.add(new Record<>(JacksonSum.builder()
                         .withName(counterName)
                         .withTime(timestamp)
@@ -458,40 +458,16 @@ public class RemoteWriteProtobufParser {
         return records;
     }
 
-    static String extractServiceName(final Map<String, Object> attributes) {
-        return PrometheusMetricUtils.extractServiceName(attributes);
-    }
 
-    static String stripCounterSuffix(final String metricName) {
-        return PrometheusMetricUtils.stripCounterSuffix(metricName);
-    }
-
-    /**
-     * Infers whether a metric is a counter (Sum) based on its name suffix.
-     *
-     * @param metricName the metric name
-     * @return true if the metric is a counter
-     */
     static boolean isCounter(final String metricName) {
         return metricName.endsWith(TOTAL_SUFFIX) || metricName.endsWith(CREATED_SUFFIX);
     }
 
-    /**
-     * Resolves a timestamp, using current time if the value is 0.
-     */
     private static String resolveTimestamp(final long timestampMs) {
         if (timestampMs == 0) {
             return Instant.now().toString();
         }
         return Instant.ofEpochMilli(timestampMs).toString();
-    }
-
-    static Double parseLeValue(final String leValue) {
-        return PrometheusMetricUtils.parseLeValue(leValue);
-    }
-
-    static Double parseQuantileValue(final String quantileValue) {
-        return PrometheusMetricUtils.parseQuantileValue(quantileValue);
     }
 
     /**
