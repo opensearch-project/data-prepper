@@ -330,6 +330,8 @@ class TailFileReaderTest {
         when(fileOps.openReadChannel(testFile)).thenReturn(realChannel);
         Counter filesRotated = mock(Counter.class);
         when(metrics.getFilesRotated()).thenReturn(filesRotated);
+        Counter truncationEvents = mock(Counter.class);
+        when(metrics.getTruncationEvents()).thenReturn(truncationEvents);
         stubReadMetrics();
         stubEventFactory();
 

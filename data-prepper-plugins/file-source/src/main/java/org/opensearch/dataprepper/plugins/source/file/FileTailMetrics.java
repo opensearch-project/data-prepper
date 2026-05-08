@@ -31,6 +31,7 @@ public final class FileTailMetrics {
     private final Counter eventsEmitted;
     private final Counter dataLossEvents;
     private final Counter acknowledgmentFailures;
+    private final Counter truncationEvents;
     private final Timer backpressureTimer;
     private final AtomicLong activeFileCount;
     private final AtomicLong fileLagBytes;
@@ -49,6 +50,7 @@ public final class FileTailMetrics {
         this.eventsEmitted = pluginMetrics.counter("tailEventsEmitted");
         this.dataLossEvents = pluginMetrics.counter("tailDataLossEvents");
         this.acknowledgmentFailures = pluginMetrics.counter("tailAcknowledgmentFailures");
+        this.truncationEvents = pluginMetrics.counter("tailTruncationEvents");
         this.backpressureTimer = pluginMetrics.timer("tailBackpressureTime");
         this.activeFileCount = new AtomicLong(0);
         pluginMetrics.gauge("tailActiveFiles", activeFileCount);
@@ -118,5 +120,9 @@ public final class FileTailMetrics {
 
     public Counter getAcknowledgmentFailures() {
         return acknowledgmentFailures;
+    }
+
+    public Counter getTruncationEvents() {
+        return truncationEvents;
     }
 }

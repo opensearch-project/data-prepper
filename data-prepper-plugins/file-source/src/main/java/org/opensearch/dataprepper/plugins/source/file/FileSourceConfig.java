@@ -64,10 +64,10 @@ public class FileSourceConfig {
     private int readBufferSize = 65536;
 
     @JsonProperty("max_active_files")
-    private int maxActiveFiles = 100;
+    private int maxActiveFiles = 1000;
 
     @JsonProperty("reader_threads")
-    private int readerThreads = 2;
+    private int readerThreads = 4;
 
     @JsonProperty("max_read_time_per_file")
     private Duration maxReadTimePerFile = Duration.ofSeconds(5);
@@ -82,7 +82,7 @@ public class FileSourceConfig {
     private String checkpointFile;
 
     @JsonProperty("checkpoint_interval")
-    private Duration checkpointInterval = Duration.ofSeconds(15);
+    private Duration checkpointInterval = Duration.ofSeconds(5);
 
     @JsonProperty("checkpoint_cleanup_after")
     private Duration checkpointCleanupAfter = Duration.ofDays(7);
@@ -112,7 +112,7 @@ public class FileSourceConfig {
     private boolean acknowledgments = false;
 
     @JsonProperty("include_file_metadata")
-    private boolean includeFileMetadata = false;
+    private boolean includeFileMetadata = true;
 
     @JsonProperty("max_line_length")
     private int maxLineLength = 1048576;

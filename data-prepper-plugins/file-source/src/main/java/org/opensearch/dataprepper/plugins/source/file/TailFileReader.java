@@ -153,6 +153,7 @@ public final class TailFileReader implements Runnable {
                 case COPYTRUNCATE:
                     LOG.info("Copytruncate detected for {}. Resetting offset to 0.", path);
                     metrics.getFilesRotated().increment();
+                    metrics.getTruncationEvents().increment();
                     completePendingAckSet();
                     readOffset.set(0);
                     checkpointEntry.setReadOffset(0);

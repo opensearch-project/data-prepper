@@ -73,6 +73,9 @@ class FileTailMetricsTest {
     private Counter acknowledgmentFailuresCounter;
 
     @Mock
+    private Counter truncationEventsCounter;
+
+    @Mock
     private Timer backpressureTimer;
 
     private FileTailMetrics fileTailMetrics;
@@ -92,6 +95,7 @@ class FileTailMetricsTest {
         when(pluginMetrics.counter("tailEventsEmitted")).thenReturn(eventsEmittedCounter);
         when(pluginMetrics.counter("tailDataLossEvents")).thenReturn(dataLossEventsCounter);
         when(pluginMetrics.counter("tailAcknowledgmentFailures")).thenReturn(acknowledgmentFailuresCounter);
+        when(pluginMetrics.counter("tailTruncationEvents")).thenReturn(truncationEventsCounter);
         when(pluginMetrics.timer("tailBackpressureTime")).thenReturn(backpressureTimer);
 
         fileTailMetrics = new FileTailMetrics(pluginMetrics);
@@ -217,5 +221,10 @@ class FileTailMetricsTest {
     @Test
     void getAcknowledgmentFailuresReturnsRegisteredCounter() {
         assertThat(fileTailMetrics.getAcknowledgmentFailures(), equalTo(acknowledgmentFailuresCounter));
+    }
+
+    @Test
+    void getTruncationEventsReturnsRegisteredCounter() {
+        assertThat(fileTailMetrics.getTruncationEvents(), equalTo(truncationEventsCounter));
     }
 }

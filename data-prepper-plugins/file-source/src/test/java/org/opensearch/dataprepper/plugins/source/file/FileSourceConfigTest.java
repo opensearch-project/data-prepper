@@ -161,13 +161,13 @@ class FileSourceConfigTest {
         assertThat(config.getPollInterval(), equalTo(Duration.ofSeconds(1)));
         assertThat(config.getEncoding(), equalTo("UTF-8"));
         assertThat(config.getReadBufferSize(), equalTo(65536));
-        assertThat(config.getMaxActiveFiles(), equalTo(100));
-        assertThat(config.getReaderThreads(), equalTo(2));
+        assertThat(config.getMaxActiveFiles(), equalTo(1000));
+        assertThat(config.getReaderThreads(), equalTo(4));
         assertThat(config.getMaxReadTimePerFile(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getRotateWait(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getRotationDrainTimeout(), equalTo(Duration.ofSeconds(30)));
         assertThat(config.getCheckpointFile(), nullValue());
-        assertThat(config.getCheckpointInterval(), equalTo(Duration.ofSeconds(15)));
+        assertThat(config.getCheckpointInterval(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getCheckpointCleanupAfter(), equalTo(Duration.ofDays(7)));
         assertThat(config.getFingerprintBytes(), equalTo(1024));
         assertThat(config.getCloseInactive(), equalTo(Duration.ofMinutes(30)));
@@ -176,7 +176,7 @@ class FileSourceConfigTest {
         assertThat(config.getBatchTimeout(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getAcknowledgmentTimeout(), equalTo(Duration.ofSeconds(60)));
         assertThat(config.getMaxAcknowledgmentRetries(), equalTo(3));
-        assertThat(config.isIncludeFileMetadata(), equalTo(false));
+        assertThat(config.isIncludeFileMetadata(), equalTo(true));
         assertThat(config.getMaxLineLength(), equalTo(1048576));
     }
 
