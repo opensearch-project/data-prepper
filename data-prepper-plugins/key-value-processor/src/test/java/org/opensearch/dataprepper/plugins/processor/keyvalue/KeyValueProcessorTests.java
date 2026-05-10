@@ -32,7 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.PatternSyntaxException;
+import com.google.re2j.PatternSyntaxException;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -414,7 +414,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getValueSplitCharacters()).thenReturn(null);
 
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, this::createObjectUnderTest);
-        assertThat(e.getMessage(), CoreMatchers.startsWith("key_value_delimiter"));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("error parsing regexp: key_value_delimiter"));
     }
 
     @Test
@@ -423,21 +423,21 @@ public class KeyValueProcessorTests {
         when(mockConfig.getFieldSplitCharacters()).thenReturn(null);
 
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, this::createObjectUnderTest);
-        assertThat(e.getMessage(), CoreMatchers.startsWith("field_delimiter"));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("error parsing regexp: field_delimiter"));
     }
 
     @Test
     void testBadDeleteKeyRegexKeyValueProcessor() {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("[");
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, this::createObjectUnderTest);
-        assertThat(e.getMessage(), CoreMatchers.startsWith("delete_key_regex"));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("error parsing regexp: delete_key_regex"));
     }
 
     @Test
     void testBadDeleteValueRegexKeyValueProcessor() {
         when(mockConfig.getDeleteValueRegex()).thenReturn("[");
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, this::createObjectUnderTest);
-        assertThat(e.getMessage(), CoreMatchers.startsWith("delete_value_regex"));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("error parsing regexp: delete_value_regex"));
     }
 
     @Test

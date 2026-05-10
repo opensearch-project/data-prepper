@@ -14,6 +14,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'io.micrometer:micrometer-core'
+    implementation 'com.google.re2j:re2j:1.8'
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:mutate-event-processors')
     testImplementation project(':data-prepper-plugins:log-generator-source')
