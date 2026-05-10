@@ -382,21 +382,35 @@ class Office365RestClientTest {
     void testStartSubscriptionsOtherError() {
         when(authConfig.getTenantId()).thenReturn("test-tenant");
         when(authConfig.getAccessToken()).thenReturn("test-token");
-        
-        HttpClientErrorException otherException = new HttpClientErrorException(
-                HttpStatus.BAD_REQUEST,
-                "Bad Request",
-                "{\"error\":\"other_error\"}".getBytes(),
+
+        // Stub GET (listSubscriptions) so startSubscriptions proceeds to POST (start) calls
+        List<Map<String, Object>> mockSubscriptions = new ArrayList<>();
+        for (String contentType : CONTENT_TYPES) {
+            Map<String, Object> subscription = new HashMap<>();
+            subscription.put("contentType", contentType);
+            subscription.put("status", "disabled");
+            mockSubscriptions.add(subscription);
+        }
+        ResponseEntity<List<Map<String, Object>>> listResponse = new ResponseEntity<>(mockSubscriptions, HttpStatus.OK);
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                any(),
+                any(ParameterizedTypeReference.class)
+        )).thenReturn(listResponse);
+
+        HttpClientErrorException serverException = new HttpClientErrorException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Server Error",
+                "{\"error\":\"server_error\"}".getBytes(),
                 null
         );
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
-                .thenThrow(otherException)
-                .thenThrow(otherException)  // Retry will call this again
-                .thenThrow(otherException); // Final retry
+                .thenThrow(serverException);
 
         SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.startSubscriptions());
-        assertTrue(exception.getMessage().contains("Failed to initialize subscriptions"));
+        assertTrue(exception.getMessage().contains("500 Server Error"));
         assertTrue(exception.isRetryable());
     }
 
@@ -519,7 +533,7 @@ class Office365RestClientTest {
                         endTime,
                         null
                 ));
-        assertEquals("Failed to fetch audit logs", crawlerException.getMessage());
+        assertTrue(crawlerException.getMessage().contains(HttpStatus.INTERNAL_SERVER_ERROR.toString()));
         assertTrue(crawlerException.isRetryable());
     }
 
@@ -571,7 +585,7 @@ class Office365RestClientTest {
         // Verify that the exception is propagated
         SaaSCrawlerException crawlerException = assertThrows(SaaSCrawlerException.class,
                 () -> office365RestClient.getAuditLog(contentUri));
-        assertEquals("Failed to fetch audit log", crawlerException.getMessage());
+        assertTrue(crawlerException.getMessage().contains(HttpStatus.INTERNAL_SERVER_ERROR.toString()));
         assertTrue(crawlerException.isRetryable());
     }
 
@@ -800,7 +814,7 @@ class Office365RestClientTest {
                 ));
 
         // Verify the exception details
-        assertEquals("Failed to fetch audit logs", crawlerException.getMessage());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.toString(), crawlerException.getMessage());
         assertTrue(crawlerException.isRetryable());
 
         // CRITICAL TEST: Verify that recordSearchFailure is called exactly once
@@ -836,7 +850,7 @@ class Office365RestClientTest {
                 () -> office365RestClient.getAuditLog(contentUri));
 
         // Verify the exception details
-        assertEquals("Failed to fetch audit log", crawlerException.getMessage());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.toString(), crawlerException.getMessage());
         assertTrue(crawlerException.isRetryable());
 
         // CRITICAL TEST: Verify that recordGetFailure is called exactly once
