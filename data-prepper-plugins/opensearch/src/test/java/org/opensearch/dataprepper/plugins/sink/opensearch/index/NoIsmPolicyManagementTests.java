@@ -55,7 +55,7 @@ public class NoIsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy() throws IOException {
-        assertEquals(Optional.empty(), ismPolicyManagementStrategy.checkAndCreatePolicy());
+        assertEquals(Optional.empty(), ismPolicyManagementStrategy.checkAndCreatePolicy(INDEX_ALIAS));
     }
 
     @ParameterizedTest
