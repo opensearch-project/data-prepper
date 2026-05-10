@@ -49,6 +49,8 @@ public class DlqPushHandler {
 
     private static final String KEY_PATH_PREFIX = "key_path_prefix";
 
+    private static final String FORCE_PATH_STYLE = "force_path_style";
+
     private String dlqFile;
 
     private String keyPathPrefix;
@@ -62,12 +64,13 @@ public class DlqPushHandler {
                           final String bucket,
                           final String stsRoleArn,
                           final String awsRegion,
+                          final Boolean forcePathStyle,
                           final String dlqPathPrefix) {
         if(dlqFile != null) {
             this.dlqFile = dlqFile;
             this.objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
         }else{
-            this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,dlqPathPrefix);
+            this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,forcePathStyle,dlqPathPrefix);
         }
     }
 
@@ -117,11 +120,13 @@ public class DlqPushHandler {
                                         final String bucket,
                                         final String stsRoleArn,
                                         final String awsRegion,
+                                        final Boolean forcePathStyle,
                                         final String dlqPathPrefix) {
         final Map<String, Object> props = new HashMap<>();
         props.put(BUCKET, bucket);
         props.put(ROLE_ARN, stsRoleArn);
         props.put(REGION, awsRegion);
+        props.put(FORCE_PATH_STYLE, forcePathStyle);
         this.keyPathPrefix = StringUtils.isEmpty(dlqPathPrefix) ? dlqPathPrefix : enforceDefaultDelimiterOnKeyPathPrefix(dlqPathPrefix);
         props.put(KEY_PATH_PREFIX, dlqPathPrefix);
         final PluginSetting dlqPluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
