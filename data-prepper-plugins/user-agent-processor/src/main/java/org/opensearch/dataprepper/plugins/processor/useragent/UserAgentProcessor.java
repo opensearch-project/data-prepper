@@ -52,10 +52,14 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event event = record.getData();
 
-            try {
-                final String userAgentStr = event.get(sourceKey, String.class);
-                Objects.requireNonNull(userAgentStr);
+            final String userAgentStr = event.get(sourceKey, String.class);
+            if (userAgentStr == null) {
+                LOG.error(EVENT, "User agent source field [{}] is missing or null", sourceKey);
+                addTagsOnParseFailure(event);
+                continue;
+            }
 
+            try {
                 final Client clientInfo = this.userAgentParser.parse(userAgentStr);
 
                 final Map<String, Object> parsedUserAgent = getParsedUserAgent(clientInfo);
@@ -64,17 +68,15 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
                 }
                 event.put(targetKey, parsedUserAgent);
             } catch (Exception e) {
-                LOG.error(EVENT, "An exception occurred when parsing user agent data from event [{}] with source key [{}]",
+                LOG.error(EVENT,
+                        "An exception occurred when parsing user agent data from event [{}] with source key [{}]",
                         event, sourceKey, e);
-
-                final List<String> tagsOnParseFailure = config.getTagsOnParseFailure();
-                if (Objects.nonNull(tagsOnParseFailure) && tagsOnParseFailure.size() > 0) {
-                    event.getMetadata().addTags(tagsOnParseFailure);
-                }
+                addTagsOnParseFailure(event);
             }
         }
         return records;
     }
+
 
     @Override
     public void prepareForShutdown() {
@@ -119,6 +121,13 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
                 "version", version,
                 "full", version.isEmpty() ? clientInfo.os.family : (clientInfo.os.family + " " + version)
         );
+    }
+
+    private void addTagsOnParseFailure(final Event event) {
+        final List<String> tagsOnParseFailure = config.getTagsOnParseFailure();
+        if (Objects.nonNull(tagsOnParseFailure) && !tagsOnParseFailure.isEmpty()) {
+            event.getMetadata().addTags(tagsOnParseFailure);
+        }
     }
 
     private Map<String, String> getParsedDevice(Client clientInfo) {
