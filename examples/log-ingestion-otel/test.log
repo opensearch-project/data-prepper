@@ -1,0 +1,3 @@
+{"time": "2025-04-16T10:02:13.024Z", "severity": "INFO", "body": "first message", "test": {"key1":"value1", "key2": 23 }}
+{"time": "2025-04-16T10:02:13.024Z", "severity": "ERROR", "body": "This creates a field conflict on \"test\" with the first message when using the plain OTel mapping in Data Prepper.", "test": "value"}
+

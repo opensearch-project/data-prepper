@@ -1,0 +1,15 @@
+log-pipeline:
+  source:
+    otel_logs_source:
+      ssl: false
+      output_format: otel
+  processor:
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: otel_logs
+        index_type: log-analytics-plain
+        dlq_file: /var/log/dlq.log
