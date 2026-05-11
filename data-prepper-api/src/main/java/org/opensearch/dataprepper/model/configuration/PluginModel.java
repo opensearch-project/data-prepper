@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
@@ -41,6 +43,10 @@ import java.util.function.Supplier;
 public class PluginModel {
 
     private static final ObjectMapper SERIALIZER_OBJECT_MAPPER = new ObjectMapper();
+    static {
+        SERIALIZER_OBJECT_MAPPER.coercionConfigDefaults()
+                .setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull);
+    }
 
     private final String pluginName;
     private final InternalJsonModel innerModel;

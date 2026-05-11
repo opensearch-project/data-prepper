@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -106,6 +107,19 @@ class SamplePipelineConfigurationTest {
         assertThat(processorSettings == null || processorSettings.isEmpty(), equalTo(true));
         final Map<String, Object> sinkSettings = pipeline.getSinks().get(0).getPluginSettings();
         assertThat(sinkSettings == null || sinkSettings.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void deserialize_pipeline_withBareKeyPlugins_succeeds() throws IOException {
+        final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_plugin_bare_keys.yaml");
+
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+
+        assertThat(result, notNullValue());
+        assertThat(result.getPipelines().containsKey("test-pipeline"), equalTo(true));
+        final PipelineModel pipeline = result.getPipelines().get("test-pipeline");
+        assertThat(pipeline.getSource().getPluginName(), equalTo("http"));
+        assertThat(pipeline.getSource().getPluginSettings(), nullValue());
     }
 
     @Test
