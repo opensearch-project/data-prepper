@@ -65,12 +65,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final IndexManagerFactory indexManagerFactory;
   private final IndexType indexType;
   private final PluginConfigObservable pluginConfigObservable;
-  private final Ingester ingester;
+  private final ExpressionEvaluator expressionEvaluator;
+  private final SinkContext sinkContext;
+  private final String pipeline;
+  private Ingester ingester;
 
-  private final RestHighLevelClient restHighLevelClient;
-  private final OpenSearchClient openSearchClient;
-  private final OpenSearchClientRefresher openSearchClientRefresher;
-  private final ConnectionConfiguration connectionConfiguration;
+  private RestHighLevelClient restHighLevelClient;
+  private OpenSearchClient openSearchClient;
+  private OpenSearchClientRefresher openSearchClientRefresher;
   private IndexManager indexManager;
   private volatile boolean initialized;
 
@@ -85,40 +87,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.pluginConfigObservable = pluginConfigObservable;
+    this.expressionEvaluator = expressionEvaluator;
 
-    final SinkContext resolvedSinkContext = sinkContext != null ? sinkContext :
+    this.sinkContext = sinkContext != null ? sinkContext :
             new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfiguration, expressionEvaluator);
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
+    this.pipeline = pipelineDescription.getPipelineName();
     this.initialized = false;
-
-    connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
-    restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
-    openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
-    final Function<ConnectionConfiguration, OpenSearchClient> clientFunction =
-            (connConfig) -> {
-      final RestHighLevelClient client = connConfig.createClient(awsCredentialsSupplier);
-      return connConfig.createOpenSearchClient(client, awsCredentialsSupplier).withTransportOptions(
-              TransportOptions.builder()
-                      .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
-                      .build());
-    };
-    openSearchClientRefresher = new OpenSearchClientRefresher(
-            pluginMetrics, connectionConfiguration, clientFunction);
-
-    final String pipeline = pipelineDescription.getPipelineName();
-    final EventActionResolver eventActionResolver = new EventActionResolver(
-            openSearchSinkConfig.getIndexConfiguration().getAction(),
-            openSearchSinkConfig.getIndexConfiguration().getActions(),
-            expressionEvaluator);
-
-    this.ingester = new BulkIngester(openSearchSinkConfig, expressionEvaluator, resolvedSinkContext,
-            pluginMetrics, pipeline, eventActionResolver,
-            openSearchClient, () -> openSearchClientRefresher.get(),
-            this::getIndexManager, this::getFailurePipeline,
-            new CustomDocumentBuilderFactory().create(this.indexType));
   }
 
   @Override
@@ -145,6 +123,20 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
 
+    final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
+    restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
+    openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
+    final Function<ConnectionConfiguration, OpenSearchClient> clientFunction =
+            (connConfig) -> {
+      final RestHighLevelClient client = connConfig.createClient(awsCredentialsSupplier);
+      return connConfig.createOpenSearchClient(client, awsCredentialsSupplier).withTransportOptions(
+              TransportOptions.builder()
+                      .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
+                      .build());
+    };
+    openSearchClientRefresher = new OpenSearchClientRefresher(
+            pluginMetrics, connectionConfiguration, clientFunction);
+
     pluginConfigObservable.addPluginConfigObserver(
             newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
 
@@ -166,6 +158,17 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             configuredIndexAlias);
 
     indexManager.setupIndex();
+
+    final EventActionResolver eventActionResolver = new EventActionResolver(
+            openSearchSinkConfig.getIndexConfiguration().getAction(),
+            openSearchSinkConfig.getIndexConfiguration().getActions(),
+            expressionEvaluator);
+
+    ingester = new BulkIngester(openSearchSinkConfig, expressionEvaluator, sinkContext,
+            pluginMetrics, pipeline, eventActionResolver,
+            openSearchClient, () -> openSearchClientRefresher.get(),
+            this::getIndexManager, this::getFailurePipeline,
+            new CustomDocumentBuilderFactory().create(this.indexType));
 
     ingester.initialize();
 
@@ -190,7 +193,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @Override
   public void shutdown() {
     super.shutdown();
-    ingester.shutdown();
+    if (ingester != null) {
+      ingester.shutdown();
+    }
     if (restHighLevelClient != null) {
       try {
         restHighLevelClient.close();
