@@ -522,23 +522,23 @@ class RemoteWriteProtobufParserTest {
         attrs.put("service.name", "svc1");
         attrs.put("service_name", "svc2");
         attrs.put("job", "svc3");
-        assertThat(RemoteWriteProtobufParser.extractServiceName(attrs), equalTo("svc1"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrs), equalTo("svc1"));
 
         attrs.remove("service.name");
-        assertThat(RemoteWriteProtobufParser.extractServiceName(attrs), equalTo("svc2"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrs), equalTo("svc2"));
 
         attrs.remove("service_name");
-        assertThat(RemoteWriteProtobufParser.extractServiceName(attrs), equalTo("svc3"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrs), equalTo("svc3"));
 
         attrs.remove("job");
-        assertThat(RemoteWriteProtobufParser.extractServiceName(attrs), equalTo(""));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrs), equalTo(""));
     }
 
     @Test
     void testStripCounterSuffix() {
-        assertThat(RemoteWriteProtobufParser.stripCounterSuffix("http_requests_total"), equalTo("http_requests"));
-        assertThat(RemoteWriteProtobufParser.stripCounterSuffix("cpu_temperature"), equalTo("cpu_temperature"));
-        assertThat(RemoteWriteProtobufParser.stripCounterSuffix("http_requests_created"), equalTo("http_requests"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("http_requests_total"), equalTo("http_requests"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("cpu_temperature"), equalTo("cpu_temperature"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("http_requests_created"), equalTo("http_requests"));
     }
 
     @Test
@@ -758,17 +758,17 @@ class RemoteWriteProtobufParserTest {
 
     @Test
     void testParseLeValueValidAndInvalid() {
-        assertThat(RemoteWriteProtobufParser.parseLeValue("0.5"), closeTo(0.5, 0.001));
-        assertThat(RemoteWriteProtobufParser.parseLeValue("+Inf"), equalTo(Double.POSITIVE_INFINITY));
-        assertThat(RemoteWriteProtobufParser.parseLeValue(null), nullValue());
-        assertThat(RemoteWriteProtobufParser.parseLeValue("not_a_number"), nullValue());
+        assertThat(PrometheusMetricUtils.parseLeValue("0.5"), closeTo(0.5, 0.001));
+        assertThat(PrometheusMetricUtils.parseLeValue("+Inf"), equalTo(Double.POSITIVE_INFINITY));
+        assertThat(PrometheusMetricUtils.parseLeValue(null), nullValue());
+        assertThat(PrometheusMetricUtils.parseLeValue("not_a_number"), nullValue());
     }
 
     @Test
     void testParseQuantileValueValidAndInvalid() {
-        assertThat(RemoteWriteProtobufParser.parseQuantileValue("0.99"), closeTo(0.99, 0.001));
-        assertThat(RemoteWriteProtobufParser.parseQuantileValue(null), nullValue());
-        assertThat(RemoteWriteProtobufParser.parseQuantileValue("not_a_number"), nullValue());
+        assertThat(PrometheusMetricUtils.parseQuantileValue("0.99"), closeTo(0.99, 0.001));
+        assertThat(PrometheusMetricUtils.parseQuantileValue(null), nullValue());
+        assertThat(PrometheusMetricUtils.parseQuantileValue("not_a_number"), nullValue());
     }
 
     @Test
