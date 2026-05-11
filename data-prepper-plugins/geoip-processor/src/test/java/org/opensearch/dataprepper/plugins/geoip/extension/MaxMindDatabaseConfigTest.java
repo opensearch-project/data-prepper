@@ -5,13 +5,25 @@
 
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.DEFAULT_ASN_ENDPOINT;
 import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig.DEFAULT_CITY_ENDPOINT;
@@ -23,9 +35,16 @@ import static org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabase
 
 class MaxMindDatabaseConfigTest {
     private MaxMindDatabaseConfig maxMindDatabaseConfig;
+    private Validator validator;
+
     @BeforeEach
     void setup() {
         maxMindDatabaseConfig = new MaxMindDatabaseConfig();
+        validator = Validation.byDefaultProvider()
+                .configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory()
+                .getValidator();
     }
 
     @Test
@@ -92,6 +111,57 @@ class MaxMindDatabaseConfigTest {
         ReflectivelySetField.setField(MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "asnDatabase", path);
 
         assertThat(maxMindDatabaseConfig.isPathsValid(), equalTo(result));
+    }
+
+    @Test
+    void validate_should_include_path_specific_message_when_path_does_not_exist(@TempDir final Path tempDirectory)
+            throws NoSuchFieldException, IllegalAccessException {
+        final Path missingDatabase = tempDirectory.resolve("geoip.mmdb");
+        ReflectivelySetField.setField(
+                MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "asnDatabase", missingDatabase.toString());
+
+        assertThat(getValidationMessages(), containsInAnyOrder("Path does not exist: " + missingDatabase));
+    }
+
+    @Test
+    void validate_should_include_path_specific_message_when_directory_is_configured(@TempDir final Path tempDirectory)
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(
+                MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "asnDatabase", tempDirectory.toString());
+
+        assertThat(getValidationMessages(),
+                containsInAnyOrder("Directory provided, but a file is required: " + tempDirectory));
+    }
+
+    @Test
+    void validate_should_include_path_specific_message_when_http_endpoint_is_not_supported()
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(
+                MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "asnDatabase", "https://example.com/");
+
+        assertThat(getValidationMessages(), containsInAnyOrder(
+                "HTTP endpoint must be a MaxMind download URL or manifest endpoint: https://example.com/"));
+    }
+
+    @Test
+    void validate_should_include_path_specific_messages_when_source_types_are_mixed(@TempDir final Path tempDirectory)
+            throws NoSuchFieldException, IllegalAccessException, IOException {
+        final Path cityDatabase = Files.createFile(tempDirectory.resolve("GeoLite2-City.mmdb"));
+        final String s3DatabasePath = "s3://geoip/GeoLite2-ASN.mmdb";
+        ReflectivelySetField.setField(
+                MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "cityDatabase", cityDatabase.toString());
+        ReflectivelySetField.setField(
+                MaxMindDatabaseConfig.class, maxMindDatabaseConfig, "asnDatabase", s3DatabasePath);
+
+        assertThat(getValidationMessages(), containsInAnyOrder(
+                "Mixed database path source types are not supported. Found local file path: " + cityDatabase,
+                "Mixed database path source types are not supported. Found S3 URI: " + s3DatabasePath));
+    }
+
+    private Set<String> getValidationMessages() {
+        return validator.validate(maxMindDatabaseConfig).stream()
+                .map(ConstraintViolation::getMessage)
+                .collect(Collectors.toSet());
     }
 
 }
