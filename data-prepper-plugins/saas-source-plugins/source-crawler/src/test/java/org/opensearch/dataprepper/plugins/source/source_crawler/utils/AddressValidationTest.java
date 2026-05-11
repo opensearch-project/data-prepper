@@ -97,4 +97,46 @@ public class AddressValidationTest {
         assertThrows(NullPointerException.class, () -> AddressValidation.validateInetAddress(nullAddress));
     }
 
+    @Test
+    void testAllowLocalAddressSiteLocal() throws UnknownHostException {
+        InetAddress siteLocalAddress = InetAddress.getByName("10.0.0.1");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(siteLocalAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressLoopback() throws UnknownHostException {
+        InetAddress loopbackAddress = InetAddress.getByName("127.0.0.1");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(loopbackAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressLinkLocal() throws UnknownHostException {
+        InetAddress linkLocalAddress = InetAddress.getByName("169.254.1.1");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(linkLocalAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressPrivate192() throws UnknownHostException {
+        InetAddress privateAddress = InetAddress.getByName("192.168.1.1");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(privateAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressStillRejectsMulticast() throws UnknownHostException {
+        InetAddress multicastAddress = InetAddress.getByName("224.0.0.1");
+        assertThrows(BadRequestException.class, () -> AddressValidation.validateInetAddress(multicastAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressStillRejectsAnyLocal() throws UnknownHostException {
+        InetAddress wildcardAddress = InetAddress.getByName("0.0.0.0");
+        assertThrows(BadRequestException.class, () -> AddressValidation.validateInetAddress(wildcardAddress, true));
+    }
+
+    @Test
+    void testAllowLocalAddressAcceptsPublicIp() throws UnknownHostException {
+        InetAddress publicAddress = InetAddress.getByName("8.8.8.8");
+        assertDoesNotThrow(() -> AddressValidation.validateInetAddress(publicAddress, true));
+    }
+
 }

@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.utils.AddressVal
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
@@ -87,7 +88,7 @@ public class ConfluenceConfigHelper {
             throw new RuntimeException("Authentication Type is missing.");
         }
         String authType = config.getAuthType();
-        if (!OAUTH2.equals(authType) && !BASIC.equals(authType)) {
+        if (!OAUTH2.equals(authType) && !BASIC.equals(authType) && !BEARER_TOKEN.equals(authType)) {
             throw new RuntimeException("Invalid AuthType is given");
         }
 
@@ -103,8 +104,15 @@ public class ConfluenceConfigHelper {
             }
         }
 
+        if (BEARER_TOKEN.equals(authType)) {
+            String bearerToken = config.getAuthenticationConfig().getBearerToken();
+            if (bearerToken == null || bearerToken.isEmpty()) {
+                throw new RuntimeException("Bearer token is required for BearerToken AuthType");
+            }
+        }
+
         AddressValidation.validateInetAddress(AddressValidation
-                .getInetAddress(config.getAccountUrl()));
+                .getInetAddress(config.getAccountUrl()), config.isAllowLocalAddress());
         return true;
     }
 }
