@@ -270,7 +270,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
       dlqPushHandler.perform(dlqObjects);
       releaseEventHandles(failedRecords, true);
     } catch (Exception ex) {
-      LOG.error("Exception occured during error handling");
+      LOG.error("Exception occurred during error handling");
       releaseEventHandles(failedRecords, false);
     }
   }
