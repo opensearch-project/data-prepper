@@ -18,9 +18,12 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
@@ -100,6 +103,9 @@ public class LogicalReplicationEventProcessor {
     private final LogicalReplicationClient logicalReplicationClient;
     private final StreamCheckpointer streamCheckpointer;
     private final StreamCheckpointManager streamCheckpointManager;
+    private final PluginSetting pluginSetting;
+    private final String pipelineName;
+    private final HeadlessPipeline failurePipeline;
 
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
@@ -121,7 +127,10 @@ public class LogicalReplicationEventProcessor {
                                             final PluginMetrics pluginMetrics,
                                             final LogicalReplicationClient logicalReplicationClient,
                                             final StreamCheckpointer streamCheckpointer,
-                                            final AcknowledgementSetManager acknowledgementSetManager) {
+                                            final AcknowledgementSetManager acknowledgementSetManager,
+                                            final PluginSetting pluginSetting,
+                                            final PipelineDescription pipelineDescription,
+                                            final HeadlessPipeline failurePipeline) {
         this.streamPartition = streamPartition;
         this.sourceConfig = sourceConfig;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
@@ -141,6 +150,10 @@ public class LogicalReplicationEventProcessor {
                 sourceConfig.getEngine(), pluginMetrics);
         streamCheckpointManager.start();
 
+        this.pluginSetting = pluginSetting;
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.failurePipeline = failurePipeline;
+
         tableMetadataMap = new HashMap<>();
         pipelineEvents = new ArrayList<>();
 
@@ -159,9 +172,13 @@ public class LogicalReplicationEventProcessor {
                                                           final PluginMetrics pluginMetrics,
                                                           final LogicalReplicationClient logicalReplicationClient,
                                                           final StreamCheckpointer streamCheckpointer,
-                                                          final AcknowledgementSetManager acknowledgementSetManager) {
+                                                          final AcknowledgementSetManager acknowledgementSetManager,
+                                                          final PluginSetting pluginSetting,
+                                                          final PipelineDescription pipelineDescription,
+                                                          final HeadlessPipeline failurePipeline) {
         return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
-                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     public void process(ByteBuffer msg) {
@@ -419,23 +436,33 @@ public class LogicalReplicationEventProcessor {
 
     private void createPipelineEvent(Map<String, Object> rowDataMap, TableMetadata tableMetadata, List<String> primaryKeys,
                                      long eventTimestampMillis, OpenSearchBulkActions bulkAction, StreamEventType streamEventType) {
-        final Event dataPrepperEvent = JacksonEvent.builder()
-                .withEventType("event")
-                .withData(rowDataMap)
-                .build();
+        try {
+            final Event dataPrepperEvent = JacksonEvent.builder()
+                    .withEventType("event")
+                    .withData(rowDataMap)
+                    .build();
 
-        final Event pipelineEvent = recordConverter.convert(
-                dataPrepperEvent,
-                tableMetadata.getDatabaseName(),
-                tableMetadata.getSchemaName(),
-                tableMetadata.getTableName(),
-                bulkAction,
-                primaryKeys,
-                eventTimestampMillis,
-                recordConverter.getVersionNumber(eventTimestampMillis),
-                streamEventType,
-                tableMetadata.getColumnNames());
-        pipelineEvents.add(pipelineEvent);
+            final Event pipelineEvent = recordConverter.convert(
+                    dataPrepperEvent,
+                    tableMetadata.getDatabaseName(),
+                    tableMetadata.getSchemaName(),
+                    tableMetadata.getTableName(),
+                    bulkAction,
+                    primaryKeys,
+                    eventTimestampMillis,
+                    recordConverter.getVersionNumber(eventTimestampMillis),
+                    streamEventType,
+                    tableMetadata.getColumnNames());
+            pipelineEvents.add(pipelineEvent);
+        } catch (Exception e) {
+            LOG.error(NOISY, "Failed to process replication event", e);
+            eventProcessingErrorCounter.increment();
+            final Event failedEvent = JacksonEvent.builder()
+                    .withEventType("event")
+                    .withData(rowDataMap)
+                    .build();
+            sendToFailurePipeline(failedEvent, e);
+        }
     }
 
     private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator, AcknowledgementSet acknowledgementSet) {
@@ -455,6 +482,7 @@ public class LogicalReplicationEventProcessor {
             bufferAccumulator.add(record);
         } catch (Exception e) {
             LOG.error(NOISY, "Failed to add event to buffer", e);
+            sendToFailurePipeline(record.getData(), e);
         }
     }
 
@@ -467,6 +495,25 @@ public class LogicalReplicationEventProcessor {
             // otherwise bufferAccumulator will keep retrying with backoff
             LOG.error(NOISY, "Failed to flush buffer", e);
             changeEventErrorCounter.increment(eventCount);
+            for (Event event : pipelineEvents) {
+                sendToFailurePipeline(event, e);
+            }
+        }
+    }
+
+    private void sendToFailurePipeline(final Event event, final Exception e) {
+        if (failurePipeline == null) {
+            return;
+        }
+        try {
+            event.updateFailureMetadata()
+                    .withPluginId(pluginSetting.getName())
+                    .withPluginName(pluginSetting.getName())
+                    .withPipelineName(pipelineName)
+                    .withErrorMessage(e.getMessage());
+            failurePipeline.sendEvents(List.of(new Record<>(event)));
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Failed to send event to failure pipeline", ex);
         }
     }
 
