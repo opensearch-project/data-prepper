@@ -32,6 +32,7 @@ class GeoIPProcessorConfigTest {
         assertThat(geoIPProcessorConfig.getTagsOnEngineFailure(), equalTo(null));
         assertThat(geoIPProcessorConfig.getTagsOnIPNotFound(), equalTo(null));
         assertThat(geoIPProcessorConfig.getWhenCondition(), equalTo(null));
+        assertThat(geoIPProcessorConfig.getLookupPrivateAddresses(), equalTo(false));
     }
 
     @Test
@@ -50,5 +51,11 @@ class GeoIPProcessorConfigTest {
         assertThat(geoIPProcessorConfig.getTagsOnEngineFailure(), equalTo(tagsOnEngineFailure));
         assertThat(geoIPProcessorConfig.getTagsOnIPNotFound(), equalTo(tagsOnIPNotFound));
         assertThat(geoIPProcessorConfig.getWhenCondition(), equalTo(whenCondition));
+    }
+
+    @Test
+    void testLookupPrivateAddressesWhenSet() throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(GeoIPProcessorConfig.class, geoIPProcessorConfig, "lookupPrivateAddresses", true);
+        assertThat(geoIPProcessorConfig.getLookupPrivateAddresses(), equalTo(true));
     }
 }

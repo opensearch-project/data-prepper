@@ -124,4 +124,38 @@ class PrometheusScrapeConfigTest {
         assertThat(config.getTargets().get(0).getUrl(), equalTo("http://host1:9090/metrics"));
         assertThat(config.getTargets().get(1).getUrl(), equalTo("http://host2:9090/metrics"));
     }
+
+    @Test
+    void isTargetUrlSchemeValid_returns_true_when_insecure() throws Exception {
+        final String json = "{\"targets\": [{\"url\": \"http://host:9090/metrics\"}], \"insecure\": true}";
+        final PrometheusScrapeConfig config = OBJECT_MAPPER.readValue(json, PrometheusScrapeConfig.class);
+        assertThat(config.isTargetUrlSchemeValid(), is(true));
+    }
+
+    @Test
+    void isTargetUrlSchemeValid_returns_true_when_targets_null() {
+        final PrometheusScrapeConfig config = new PrometheusScrapeConfig();
+        assertThat(config.isTargetUrlSchemeValid(), is(true));
+    }
+
+    @Test
+    void isTargetUrlSchemeValid_returns_false_when_http_and_not_insecure() throws Exception {
+        final String json = "{\"targets\": [{\"url\": \"http://host:9090/metrics\"}], \"insecure\": false}";
+        final PrometheusScrapeConfig config = OBJECT_MAPPER.readValue(json, PrometheusScrapeConfig.class);
+        assertThat(config.isTargetUrlSchemeValid(), is(false));
+    }
+
+    @Test
+    void isTargetUrlSchemeValid_returns_true_when_https_and_not_insecure() throws Exception {
+        final String json = "{\"targets\": [{\"url\": \"https://host:9090/metrics\"}], \"insecure\": false}";
+        final PrometheusScrapeConfig config = OBJECT_MAPPER.readValue(json, PrometheusScrapeConfig.class);
+        assertThat(config.isTargetUrlSchemeValid(), is(true));
+    }
+
+    @Test
+    void isTargetUrlSchemeValid_returns_true_when_target_url_null() throws Exception {
+        final String json = "{\"targets\": [{}], \"insecure\": false}";
+        final PrometheusScrapeConfig config = OBJECT_MAPPER.readValue(json, PrometheusScrapeConfig.class);
+        assertThat(config.isTargetUrlSchemeValid(), is(true));
+    }
 }
