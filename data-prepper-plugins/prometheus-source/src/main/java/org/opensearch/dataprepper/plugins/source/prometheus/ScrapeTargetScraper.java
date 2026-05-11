@@ -22,6 +22,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.HttpStatusClass;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
+import org.opensearch.dataprepper.plugins.http.client.auth.HttpRequestAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,12 +44,12 @@ public class ScrapeTargetScraper {
     private final HttpHeaders commonHeaders;
     private final ClientFactory clientFactory;
     private final boolean isCustomFactory;
-    private final ScrapeRequestAuthenticator authenticator;
+    private final HttpRequestAuthenticator authenticator;
     private final Map<String, WebClient> clientCache = new ConcurrentHashMap<>();
 
     public ScrapeTargetScraper(final PrometheusScrapeConfig config) {
         this.config = config;
-        this.authenticator = ScrapeRequestAuthenticator.create(config.getAuthentication());
+        this.authenticator = HttpRequestAuthenticator.create(config.getAuthentication());
         this.commonHeaders = buildCommonHeaders();
         this.clientFactory = buildClientFactory();
         this.isCustomFactory = (clientFactory != ClientFactory.ofDefault());
