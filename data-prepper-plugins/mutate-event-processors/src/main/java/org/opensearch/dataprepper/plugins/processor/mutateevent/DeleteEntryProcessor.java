@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +38,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     private final List<EventKey> withKeys;
     private final List<String> withKeysRegex;
     private final List<Pattern> withKeysRegexPattern;
+    private final List<EventKey> deleteAllExcept;
     private final Set<EventKey> excludeFromDelete;
     private final String deleteWhen;
     private final List<DeleteEntryProcessorConfig.Entry> entries;
@@ -50,6 +52,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         this.withKeys = config.getWithKeys();
         this.withKeysRegex = config.getWithKeysRegex();
         this.withKeysRegexPattern = config.getWithKeysRegexPattern();
+        this.deleteAllExcept = config.getDeleteAllExcept();
         this.excludeFromDelete = config.getExcludeFromDelete();
         this.deleteEntryProcessorConfig = config;
         this.deleteWhen = config.getDeleteWhen();
@@ -62,7 +65,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                             ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
 
-        if (!this.withKeys.isEmpty() || !this.withKeysRegex.isEmpty()) {
+        if (!this.withKeys.isEmpty() || !this.withKeysRegex.isEmpty() || !this.deleteAllExcept.isEmpty()) {
             DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
                     this.withKeys,
                     this.withKeysRegex,
@@ -142,6 +145,11 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     }
 
     private void deleteKeysFromEvent(final Event event, final DeleteEntryProcessorConfig.Entry entry) {
+        if (!deleteAllExcept.isEmpty()) {
+            deleteAllExceptFromEvent(event);
+            return;
+        }
+
         if (!entry.getWithKeys().isEmpty()) {
             for (final EventKey entryKey : entry.getWithKeys()) {
                 event.delete(entryKey);
@@ -166,6 +174,19 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                 }
             }
         }
+    }
+
+    private void deleteAllExceptFromEvent(final Event event) {
+        final Map<String, Object> retainedValues = new LinkedHashMap<>();
+
+        for (final EventKey keyToKeep : deleteAllExcept) {
+            if (event.containsKey(keyToKeep)) {
+                retainedValues.put(keyToKeep.getKey(), event.get(keyToKeep, Object.class));
+            }
+        }
+
+        event.clear();
+        retainedValues.forEach(event::put);
     }
 
     private void handleForIterateOn(final Event recordEvent,
