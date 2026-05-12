@@ -213,7 +213,6 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
                 .withShardStatistics(toShardStatistics(searchResponse.shards()))
-                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 

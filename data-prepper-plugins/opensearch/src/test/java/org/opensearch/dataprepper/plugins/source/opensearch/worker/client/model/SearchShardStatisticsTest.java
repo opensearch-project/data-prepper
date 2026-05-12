@@ -89,6 +89,17 @@ class SearchShardStatisticsTest {
     }
 
     @Test
+    void normalizeReason_strips_ip_addresses_and_ports() {
+        final String raw = "connection refused to 10.0.1.5:9300 from node 192.168.1.100";
+
+        final String normalized = SearchShardStatistics.normalizeReason(raw);
+
+        assertThat(normalized, equalTo("connection refused to <ip> from node <ip>"));
+        assertThat(normalized, not(containsString("10.0.1.5")));
+        assertThat(normalized, not(containsString("192.168.1.100")));
+    }
+
+    @Test
     void normalizeReason_two_arg_joins_type_and_message() {
         final String normalized = SearchShardStatistics.normalizeReason("shard_failure", "timed out");
 

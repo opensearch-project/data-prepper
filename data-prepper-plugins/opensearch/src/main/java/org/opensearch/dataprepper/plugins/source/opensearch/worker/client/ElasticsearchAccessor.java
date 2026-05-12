@@ -219,7 +219,6 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
                 .withShardStatistics(toShardStatistics(searchResponse.shards()))
-                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 
