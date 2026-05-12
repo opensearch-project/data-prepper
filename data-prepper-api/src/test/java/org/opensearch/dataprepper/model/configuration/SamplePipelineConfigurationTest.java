@@ -129,4 +129,17 @@ class SamplePipelineConfigurationTest {
         final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
         assertThat(result, notNullValue());
     }
+
+    @Test
+    void deserialize_pipeline_withNestedBareKeys_treatsEmptyStringsAsNull() throws IOException {
+        final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_nested_bare_keys.yaml");
+
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(result, notNullValue());
+
+        final Map<String, Object> sinkSettings = result.getPipelines().get("test-pipeline").getSinks().get(0).getPluginSettings();
+        // codec.newline: (bare key) should be deserialized as null, not ""
+        final Map<String, Object> codec = (Map<String, Object>) sinkSettings.get("codec");
+        assertThat(codec.get("newline"), nullValue());
+    }
 }

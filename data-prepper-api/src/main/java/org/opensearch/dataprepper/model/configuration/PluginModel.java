@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
@@ -209,6 +210,7 @@ public class PluginModel {
             Map<String, Object> data = null;
             if (jsonParser.currentToken() == JsonToken.START_OBJECT) {
                 data = mapper.readValue(jsonParser, Map.class);
+                replaceEmptyStringsWithNull(data);
                 // readValue consumed up to the inner END_OBJECT; advance to the outer END_OBJECT
                 jsonParser.nextToken();
             } else if (jsonParser.currentToken() == JsonToken.VALUE_NULL) {
@@ -236,6 +238,26 @@ public class PluginModel {
                     ? nullSettingsModelSupplier.get()
                     : SERIALIZER_OBJECT_MAPPER.convertValue(data, innerModelClass);
             return constructorFunction.apply(pluginName, innerModel);
+        }
+
+        @SuppressWarnings("unchecked")
+        private static void replaceEmptyStringsWithNull(final Map<String, Object> map) {
+            map.replaceAll((k, v) -> {
+                if ("".equals(v)) return null;
+                if (v instanceof Map) replaceEmptyStringsWithNull((Map<String, Object>) v);
+                if (v instanceof List) replaceEmptyStringsInList((List<Object>) v);
+                return v;
+            });
+        }
+
+        @SuppressWarnings("unchecked")
+        private static void replaceEmptyStringsInList(final List<Object> list) {
+            list.replaceAll(v -> {
+                if ("".equals(v)) return null;
+                if (v instanceof Map) replaceEmptyStringsWithNull((Map<String, Object>) v);
+                if (v instanceof List) replaceEmptyStringsInList((List<Object>) v);
+                return v;
+            });
         }
     }
 
