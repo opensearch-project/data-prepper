@@ -219,8 +219,9 @@ public class PluginModel {
             } else if (jsonParser.currentToken() == JsonToken.VALUE_STRING) {
                 final String value = jsonParser.getValueAsString();
                 if (value.isEmpty()) {
-                    throw context.weirdStringException(value, Map.class,
-                            "Empty string is not allowed for plugin '" + pluginName + "'. Use null, empty (no value), or {} instead.");
+                    // Treat empty string same as null (YAML bare keys like "stdout:" may parse as "")
+                    isNull = true;
+                    jsonParser.nextToken();
                 } else {
                     throw context.weirdStringException(value, Map.class,
                             "String values not allowed for plugin '" + pluginName + "'");
