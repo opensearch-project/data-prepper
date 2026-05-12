@@ -40,9 +40,6 @@ public class TextExpositionParser {
     private static final String SUM_SUFFIX = "_sum";
     private static final String LE_LABEL = "le";
     private static final String QUANTILE_LABEL = "quantile";
-    private static final String SERVICE_NAME_LABEL = "service.name";
-    private static final String SERVICE_NAME_UNDERSCORE_LABEL = "service_name";
-    private static final String JOB_LABEL = "job";
 
     private static final String TYPE_COUNTER = "counter";
     private static final String TYPE_GAUGE = "gauge";
@@ -50,7 +47,6 @@ public class TextExpositionParser {
     private static final String TYPE_SUMMARY = "summary";
     private static final String TYPE_UNTYPED = "untyped";
 
-    private static final String AGGREGATION_TEMPORALITY_CUMULATIVE = "AGGREGATION_TEMPORALITY_CUMULATIVE";
 
     private static final String[] TYPE_LOOKUP_SUFFIXES = {BUCKET_SUFFIX, COUNT_SUFFIX, SUM_SUFFIX, TOTAL_SUFFIX, CREATED_SUFFIX};
 
@@ -291,7 +287,7 @@ public class TextExpositionParser {
 
     private Record<Event> buildGaugeRecord(final ParsedSample sample, final Instant timeReceived) {
         final Map<String, Object> attributes = new HashMap<>(sample.labels);
-        final String serviceName = extractServiceName(attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(attributes);
         final String timestamp = resolveTimestamp(sample.timestampMs, timeReceived);
 
         final Event event = JacksonGauge.builder()
@@ -308,16 +304,16 @@ public class TextExpositionParser {
 
     private Record<Event> buildSumRecord(final ParsedSample sample, final Instant timeReceived) {
         final Map<String, Object> attributes = new HashMap<>(sample.labels);
-        final String serviceName = extractServiceName(attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(attributes);
         final String timestamp = resolveTimestamp(sample.timestampMs, timeReceived);
 
         final Event event = JacksonSum.builder()
-                .withName(stripCounterSuffix(sample.name))
+                .withName(PrometheusMetricUtils.stripCounterSuffix(sample.name))
                 .withTime(timestamp)
                 .withValue(sample.value)
                 .withAttributes(attributes)
                 .withIsMonotonic(true)
-                .withAggregationTemporality(AGGREGATION_TEMPORALITY_CUMULATIVE)
+                .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                 .withServiceName(serviceName)
                 .withTimeReceived(timeReceived)
                 .build(flattenLabels);
@@ -337,7 +333,7 @@ public class TextExpositionParser {
 
         if (sample.name.endsWith(BUCKET_SUFFIX)) {
             final String leStr = sample.labels.get(LE_LABEL);
-            final Double leBound = parseLeValue(leStr);
+            final Double leBound = PrometheusMetricUtils.parseLeValue(leStr);
             if (leBound != null && !Double.isNaN(sample.value)) {
                 acc.cumulativeBuckets.put(leBound, (long) sample.value);
             }
@@ -361,7 +357,7 @@ public class TextExpositionParser {
                 k -> new SummaryAccumulator(baseName, commonLabels, sample.timestampMs));
 
         if (sample.labels.containsKey(QUANTILE_LABEL)) {
-            final Double quantile = parseQuantileValue(sample.labels.get(QUANTILE_LABEL));
+            final Double quantile = PrometheusMetricUtils.parseQuantileValue(sample.labels.get(QUANTILE_LABEL));
             if (quantile != null) {
                 acc.quantiles.add(new DefaultQuantile(quantile, sample.value));
             }
@@ -398,7 +394,7 @@ public class TextExpositionParser {
         }
 
         final Map<String, Object> attributes = new HashMap<>(acc.commonLabels);
-        final String serviceName = extractServiceName(attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(attributes);
         final String timestamp = resolveTimestamp(acc.timestampMs, timeReceived);
 
         final Event event = JacksonHistogram.builder()
@@ -410,7 +406,7 @@ public class TextExpositionParser {
                 .withExplicitBoundsList(explicitBounds)
                 .withBucketCount(perBucketCounts.size())
                 .withExplicitBoundsCount(explicitBounds.size())
-                .withAggregationTemporality(AGGREGATION_TEMPORALITY_CUMULATIVE)
+                .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                 .withAttributes(attributes)
                 .withServiceName(serviceName)
                 .withTimeReceived(timeReceived)
@@ -425,7 +421,7 @@ public class TextExpositionParser {
         }
 
         final Map<String, Object> attributes = new HashMap<>(acc.commonLabels);
-        final String serviceName = extractServiceName(attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(attributes);
         final String timestamp = resolveTimestamp(acc.timestampMs, timeReceived);
 
         final Event event = JacksonSummary.builder()
@@ -443,64 +439,11 @@ public class TextExpositionParser {
         return new Record<>(event);
     }
 
-    static String extractServiceName(final Map<String, Object> attributes) {
-        if (attributes.containsKey(SERVICE_NAME_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_LABEL);
-        }
-        if (attributes.containsKey(SERVICE_NAME_UNDERSCORE_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_UNDERSCORE_LABEL);
-        }
-        if (attributes.containsKey(JOB_LABEL)) {
-            return (String) attributes.get(JOB_LABEL);
-        }
-        return "";
-    }
-
-    static String stripCounterSuffix(final String metricName) {
-        if (metricName.endsWith(TOTAL_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - TOTAL_SUFFIX.length());
-        }
-        if (metricName.endsWith(CREATED_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - CREATED_SUFFIX.length());
-        }
-        return metricName;
-    }
-
     static String resolveTimestamp(final Long timestampMs, final Instant timeReceived) {
         if (timestampMs == null) {
             return timeReceived.toString();
         }
         return Instant.ofEpochMilli(timestampMs).toString();
-    }
-
-    static Double parseLeValue(final String leValue) {
-        if (leValue == null) {
-            return null;
-        }
-        if ("+Inf".equals(leValue)) {
-            return Double.POSITIVE_INFINITY;
-        }
-        if ("-Inf".equals(leValue)) {
-            return Double.NEGATIVE_INFINITY;
-        }
-        try {
-            return Double.parseDouble(leValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping histogram bucket with unparseable le value: '{}'", leValue);
-            return null;
-        }
-    }
-
-    static Double parseQuantileValue(final String quantileValue) {
-        if (quantileValue == null) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(quantileValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping summary quantile with unparseable value: '{}'", quantileValue);
-            return null;
-        }
     }
 
     static double parseValue(final String valueStr) {
