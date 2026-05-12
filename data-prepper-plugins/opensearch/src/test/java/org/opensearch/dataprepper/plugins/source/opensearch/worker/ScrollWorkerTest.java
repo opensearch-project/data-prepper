@@ -401,6 +401,231 @@ public class ScrollWorkerTest {
     }
 
     @Test
+    void run_continues_scrolling_past_short_page_and_terminates_on_empty_page() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String scrollId = UUID.randomUUID().toString();
+        final CreateScrollResponse createScrollResponse = mock(CreateScrollResponse.class);
+        when(createScrollResponse.getScrollId()).thenReturn(scrollId);
+
+        final Event testEvent1 = mock(Event.class);
+        final Event testEvent2 = mock(Event.class);
+        final Event testEvent3 = mock(Event.class);
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        final JsonNode testData3 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(testEvent3.getJsonNode()).thenReturn(testData3);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
+        when(objectMapper.writeValueAsBytes(testData3)).thenReturn(new byte[30]);
+
+        // Initial scroll returns a full page (2 docs, batch_size=2)
+        when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent1, testEvent2));
+        when(searchAccessor.createScroll(any(CreateScrollRequest.class))).thenReturn(createScrollResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        // Subsequent scroll pages: first returns a SHORT page (1 doc < batch_size),
+        // which must NOT terminate scrolling. The next page returns empty to terminate.
+        final SearchScrollResponse shortPageResponse = mock(SearchScrollResponse.class);
+        when(shortPageResponse.getScrollId()).thenReturn(scrollId);
+        when(shortPageResponse.getDocuments()).thenReturn(List.of(testEvent3));
+
+        final SearchScrollResponse emptyPageResponse = mock(SearchScrollResponse.class);
+        when(emptyPageResponse.getDocuments()).thenReturn(Collections.emptyList());
+
+        when(searchAccessor.searchWithScroll(any(SearchScrollRequest.class)))
+                .thenReturn(shortPageResponse)
+                .thenReturn(emptyPageResponse);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+        doNothing().when(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Key assertion: 2 scroll requests were made (past the short page), not just 1.
+        // The old logic (size == batchSize) would have stopped after the short page.
+        verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(documentsProcessedCounter, times(3)).increment();
+        verify(indicesProcessedCounter).increment();
+    }
+
+    @Test
+    void run_retries_scroll_failures_and_succeeds_when_fewer_than_max_consecutive() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String scrollId = UUID.randomUUID().toString();
+        final CreateScrollResponse createScrollResponse = mock(CreateScrollResponse.class);
+        when(createScrollResponse.getScrollId()).thenReturn(scrollId);
+        final Event testEvent = mock(Event.class);
+        final JsonNode testData = mock(JsonNode.class);
+        when(testEvent.getJsonNode()).thenReturn(testData);
+        when(objectMapper.writeValueAsBytes(testData)).thenReturn(new byte[10]);
+        when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent));
+        when(searchAccessor.createScroll(any(CreateScrollRequest.class))).thenReturn(createScrollResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final Counter searchRequestsFailedCounter = mock(Counter.class);
+        when(openSearchSourcePluginMetrics.getSearchRequestsFailedCounter()).thenReturn(searchRequestsFailedCounter);
+
+        // First scroll call fails, second succeeds with empty page (terminates)
+        final SearchScrollResponse emptyResponse = mock(SearchScrollResponse.class);
+        when(emptyResponse.getDocuments()).thenReturn(Collections.emptyList());
+        when(searchAccessor.searchWithScroll(any(SearchScrollRequest.class)))
+                .thenThrow(new RuntimeException("transient failure"))
+                .thenReturn(emptyResponse);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+        doNothing().when(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+        doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verify(searchRequestsFailedCounter).increment();
+        verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(indicesProcessedCounter).increment();
+    }
+
+    @Test
+    void run_gives_up_after_max_consecutive_scroll_failures() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String scrollId = UUID.randomUUID().toString();
+        final CreateScrollResponse createScrollResponse = mock(CreateScrollResponse.class);
+        when(createScrollResponse.getScrollId()).thenReturn(scrollId);
+        final Event testEvent = mock(Event.class);
+        final JsonNode testData = mock(JsonNode.class);
+        when(testEvent.getJsonNode()).thenReturn(testData);
+        when(objectMapper.writeValueAsBytes(testData)).thenReturn(new byte[10]);
+        when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent));
+        when(searchAccessor.createScroll(any(CreateScrollRequest.class))).thenReturn(createScrollResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final Counter searchRequestsFailedCounter = mock(Counter.class);
+        when(openSearchSourcePluginMetrics.getSearchRequestsFailedCounter()).thenReturn(searchRequestsFailedCounter);
+
+        // All scroll calls fail — exceeds MAX_CONSECUTIVE_SCROLL_FAILURES
+        when(searchAccessor.searchWithScroll(any(SearchScrollRequest.class)))
+                .thenThrow(new RuntimeException("persistent failure"));
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verify(searchRequestsFailedCounter, times(3)).increment();
+        verify(searchAccessor, times(3)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+        verify(sourceCoordinator).giveUpPartition(partitionKey);
+        verify(processingErrorsCounter).increment();
+    }
+
+    @Test
+    void run_immediately_aborts_scroll_on_SearchContextLimitException_without_retry() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String scrollId = UUID.randomUUID().toString();
+        final CreateScrollResponse createScrollResponse = mock(CreateScrollResponse.class);
+        when(createScrollResponse.getScrollId()).thenReturn(scrollId);
+        final Event testEvent = mock(Event.class);
+        final JsonNode testData = mock(JsonNode.class);
+        when(testEvent.getJsonNode()).thenReturn(testData);
+        when(objectMapper.writeValueAsBytes(testData)).thenReturn(new byte[10]);
+        when(createScrollResponse.getDocuments()).thenReturn(List.of(testEvent));
+        when(searchAccessor.createScroll(any(CreateScrollRequest.class))).thenReturn(createScrollResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(searchAccessor.searchWithScroll(any(SearchScrollRequest.class)))
+                .thenThrow(new SearchContextLimitException("limit exceeded"));
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition));
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Only 1 scroll attempt — no retries for SearchContextLimitException
+        verify(searchAccessor, times(1)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(searchAccessor).deleteScroll(any(DeleteScrollRequest.class));
+        verify(sourceCoordinator).giveUpPartition(partitionKey);
+    }
+
+    @Test
     void run_gives_up_partitions_and_waits_when_createScroll_throws_SearchContextLimitException() throws Exception {
         mockTimerCallable();
 

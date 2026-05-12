@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
@@ -374,6 +375,73 @@ public class NoSearchContextWorkerTest {
     }
 
     @Test
+    void run_continues_past_short_page_and_terminates_when_nextSearchAfter_is_null() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final List<String> firstPageSearchAfter = Collections.singletonList(UUID.randomUUID().toString());
+
+        final Event testEvent1 = mock(Event.class);
+        final Event testEvent2 = mock(Event.class);
+        final JsonNode testData1 = mock(JsonNode.class);
+        final JsonNode testData2 = mock(JsonNode.class);
+        when(testEvent1.getJsonNode()).thenReturn(testData1);
+        when(testEvent2.getJsonNode()).thenReturn(testData2);
+        when(objectMapper.writeValueAsBytes(testData1)).thenReturn(new byte[10]);
+        when(objectMapper.writeValueAsBytes(testData2)).thenReturn(new byte[20]);
+
+        // First page returns a SHORT page (1 doc < batch_size=2) with a cursor — pagination must continue.
+        // Second page returns null nextSearchAfter to terminate.
+        when(searchAccessor.searchWithoutSearchContext(any(NoSearchContextSearchRequest.class))).thenAnswer(invocation -> {
+            final NoSearchContextSearchRequest request = invocation.getArgument(0);
+            final SearchWithSearchAfterResults results = mock(SearchWithSearchAfterResults.class);
+            if (request.getSearchAfter() == null) {
+                when(results.getNextSearchAfter()).thenReturn(firstPageSearchAfter);
+                when(results.getDocuments()).thenReturn(List.of(testEvent1));
+                return results;
+            } else {
+                when(results.getNextSearchAfter()).thenReturn(null);
+                when(results.getDocuments()).thenReturn(List.of(testEvent2));
+                return results;
+            }
+        });
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Key assertion: 2 search requests were made (past the short page).
+        // The old logic (size == batchSize) would have stopped after the short page.
+        verify(searchAccessor, times(2)).searchWithoutSearchContext(any(NoSearchContextSearchRequest.class));
+        verify(documentsProcessedCounter, times(2)).increment();
+        verify(indicesProcessedCounter).increment();
+    }
+
+    @Test
     void run_when_page_has_shard_failures_records_them_to_metrics_and_continues_paginating() throws Exception {
         mockTimerCallable();
 
@@ -441,18 +509,19 @@ public class NoSearchContextWorkerTest {
         doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
-        Thread.sleep(100);
+        // Wait for the worker thread to finish processing the partition before asserting.
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> verify(indicesProcessedCounter).increment());
+
         executorService.shutdown();
         future.cancel(true);
-        assertThat(future.isCancelled(), equalTo(true));
-        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+        assertThat(executorService.awaitTermination(1, TimeUnit.SECONDS), equalTo(true));
 
         // Shard failures from the first page are recorded once and pagination still continues
         // through the second page (two searchWithoutSearchContext calls total).
         verify(searchShardsFailedCounter).increment(3.0);
         verify(searchAccessor, times(2)).searchWithoutSearchContext(any(NoSearchContextSearchRequest.class));
         verify(documentsProcessedCounter, times(3)).increment();
-        verify(indicesProcessedCounter).increment();
     }
 
     private void mockTimerCallable() {

@@ -149,4 +149,57 @@ class OpenSearchIndexProgressStateTest {
         assertThat(state.isHadSearchFailures(), is(true));
         assertThat(state.getFailureReasonCounts().get("RuntimeException"), equalTo(1L));
     }
+
+    @Test
+    void setHadSearchFailures_invalidates_aggregator_cache() {
+        final OpenSearchIndexProgressState state = new OpenSearchIndexProgressState();
+        state.recordRequestFailure(new RuntimeException("boom"));
+        assertThat(state.isHadSearchFailures(), is(true));
+
+        state.setHadSearchFailures(false);
+
+        assertThat(state.isHadSearchFailures(), is(false));
+    }
+
+    @Test
+    void setFailureReasonCounts_invalidates_aggregator_and_uses_new_counts() {
+        final OpenSearchIndexProgressState state = new OpenSearchIndexProgressState();
+        state.recordRequestFailure(new RuntimeException("initial"));
+
+        final Map<String, Long> replacement = new LinkedHashMap<>();
+        replacement.put("replaced", 99L);
+        state.setFailureReasonCounts(replacement);
+
+        assertThat(state.getFailureReasonCounts().get("replaced"), equalTo(99L));
+        assertThat(state.getFailureReasonCounts().get("RuntimeException: initial"), nullValue());
+    }
+
+    @Test
+    void recording_after_setter_accumulates_on_top_of_new_state() {
+        final OpenSearchIndexProgressState state = new OpenSearchIndexProgressState();
+
+        final Map<String, Long> seed = new LinkedHashMap<>();
+        seed.put("existing", 5L);
+        state.setFailureReasonCounts(seed);
+        state.setHadSearchFailures(true);
+
+        state.recordRequestFailure(new RuntimeException("new error"));
+
+        assertThat(state.getFailureReasonCounts().get("existing"), equalTo(5L));
+        assertThat(state.getFailureReasonCounts().get("RuntimeException: new error"), equalTo(1L));
+    }
+
+    @Test
+    void jackson_constructor_with_pre_populated_data_allows_further_recording() {
+        final Map<String, Long> existing = new LinkedHashMap<>();
+        existing.put("prior_error", 10L);
+        final OpenSearchIndexProgressState state = new OpenSearchIndexProgressState(
+                null, null, null, null, true, existing);
+
+        state.recordRequestFailure(new RuntimeException("new"));
+
+        assertThat(state.isHadSearchFailures(), is(true));
+        assertThat(state.getFailureReasonCounts().get("prior_error"), equalTo(10L));
+        assertThat(state.getFailureReasonCounts().get("RuntimeException: new"), equalTo(1L));
+    }
 }
