@@ -79,7 +79,7 @@ class TailFileReaderTest {
     private FileSystemOperations fileOps;
 
     @Mock
-    private FileTailMetrics metrics;
+    private FileMetrics metrics;
 
     @Mock
     private RotationDetector rotationDetector;

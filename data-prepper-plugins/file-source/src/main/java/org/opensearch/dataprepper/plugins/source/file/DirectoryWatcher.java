@@ -53,7 +53,7 @@ public final class DirectoryWatcher {
     private final CheckpointRegistry checkpointRegistry;
     private final FileSourceConfig config;
     private final FileSystemOperations fileOps;
-    private final FileTailMetrics metrics;
+    private final FileMetrics metrics;
     private final Duration rotateWait;
     private final boolean closeRemoved;
     private final Set<Path> knownFiles;
@@ -72,7 +72,7 @@ public final class DirectoryWatcher {
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
-                            final FileTailMetrics metrics,
+                            final FileMetrics metrics,
                             final Duration rotateWait,
                             final boolean closeRemoved) {
         this(globPathResolver, readerPool, checkpointRegistry, config, fileOps, metrics, rotateWait, closeRemoved,
@@ -84,7 +84,7 @@ public final class DirectoryWatcher {
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
-                            final FileTailMetrics metrics,
+                            final FileMetrics metrics,
                             final Duration rotateWait,
                             final boolean closeRemoved,
                             final WatchServiceFactory watchServiceFactory) {
@@ -97,7 +97,7 @@ public final class DirectoryWatcher {
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
-                            final FileTailMetrics metrics,
+                            final FileMetrics metrics,
                             final Duration rotateWait,
                             final boolean closeRemoved,
                             final WatchServiceFactory watchServiceFactory,
@@ -112,7 +112,7 @@ public final class DirectoryWatcher {
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
-                            final FileTailMetrics metrics,
+                            final FileMetrics metrics,
                             final Duration rotateWait,
                             final boolean closeRemoved,
                             final WatchServiceFactory watchServiceFactory,
@@ -128,7 +128,7 @@ public final class DirectoryWatcher {
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
-                            final FileTailMetrics metrics,
+                            final FileMetrics metrics,
                             final Duration rotateWait,
                             final boolean closeRemoved,
                             final WatchServiceFactory watchServiceFactory,
@@ -262,7 +262,7 @@ public final class DirectoryWatcher {
 
     static ScheduledExecutorService createDefaultPollScheduler() {
         return Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "file-tail-poll");
+            final Thread thread = new Thread(r, "file-poll");
             thread.setDaemon(true);
             return thread;
         });

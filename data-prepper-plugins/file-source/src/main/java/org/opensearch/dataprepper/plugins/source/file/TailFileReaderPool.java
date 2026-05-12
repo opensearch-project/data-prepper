@@ -38,27 +38,27 @@ public final class TailFileReaderPool {
     private final ExecutorService executorService;
     private final ScheduledExecutorService scheduler;
     private final CheckpointRegistry checkpointRegistry;
-    private final FileTailMetrics metrics;
+    private final FileMetrics metrics;
     private final int maxActiveFiles;
     private final Duration closeInactive;
     private final TailFileReaderContext readerContext;
 
     public TailFileReaderPool(final CheckpointRegistry checkpointRegistry,
-                              final FileTailMetrics metrics,
+                              final FileMetrics metrics,
                               final int maxActiveFiles,
                               final int readerThreads,
                               final Duration closeInactive,
                               final TailFileReaderContext readerContext) {
         this(checkpointRegistry, metrics, maxActiveFiles, closeInactive, readerContext,
                 () -> Executors.newFixedThreadPool(readerThreads, r -> {
-                    final Thread thread = new Thread(r, "tail-reader");
+                    final Thread thread = new Thread(r, "file-reader");
                     thread.setDaemon(true);
                     return thread;
                 }));
     }
 
     TailFileReaderPool(final CheckpointRegistry checkpointRegistry,
-                       final FileTailMetrics metrics,
+                       final FileMetrics metrics,
                        final int maxActiveFiles,
                        final Duration closeInactive,
                        final TailFileReaderContext readerContext,
@@ -73,7 +73,7 @@ public final class TailFileReaderPool {
         this.pendingQueue = new ConcurrentLinkedQueue<>();
         this.executorService = executorServiceSupplier.get();
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "tail-reader-scheduler");
+            final Thread thread = new Thread(r, "file-reader-scheduler");
             thread.setDaemon(true);
             return thread;
         });

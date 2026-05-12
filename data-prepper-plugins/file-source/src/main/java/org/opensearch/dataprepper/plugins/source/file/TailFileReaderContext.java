@@ -25,7 +25,7 @@ public final class TailFileReaderContext {
     private final Buffer<Record<Object>> buffer;
     private final EventFactory eventFactory;
     private final FileSystemOperations fileOps;
-    private final FileTailMetrics metrics;
+    private final FileMetrics metrics;
     private final RotationDetector rotationDetector;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final boolean acknowledgementsEnabled;
@@ -46,7 +46,7 @@ public final class TailFileReaderContext {
     public TailFileReaderContext(final Buffer<Record<Object>> buffer,
                                 final EventFactory eventFactory,
                                 final FileSystemOperations fileOps,
-                                final FileTailMetrics metrics,
+                                final FileMetrics metrics,
                                 final RotationDetector rotationDetector,
                                 final AcknowledgementSetManager acknowledgementSetManager,
                                 final boolean acknowledgementsEnabled,
@@ -97,7 +97,7 @@ public final class TailFileReaderContext {
         return fileOps;
     }
 
-    public FileTailMetrics getMetrics() {
+    public FileMetrics getMetrics() {
         return metrics;
     }
 

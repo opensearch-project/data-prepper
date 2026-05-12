@@ -129,71 +129,64 @@ public class FileSource implements Source<Record<Object>> {
         }
 
         try {
+            final FileMetrics tailMetrics = new FileMetrics(pluginMetrics);
+            final FileSystemOperations fileOps = new DefaultFileSystemOperations();
 
-        final FileTailMetrics tailMetrics = new FileTailMetrics(pluginMetrics);
-        final FileSystemOperations fileOps = new DefaultFileSystemOperations();
+            final String checkpointPath = fileSourceConfig.getCheckpointFile();
+            final Path cpFile;
+            if (checkpointPath != null) {
+                cpFile = Paths.get(checkpointPath);
+            } else {
+                LOG.warn("No checkpoint_file configured. Checkpoint state will not be persisted across restarts.");
+                cpFile = null;
+            }
 
-        final String checkpointPath = fileSourceConfig.getCheckpointFile();
-        final Path cpFile;
-        if (checkpointPath != null) {
-            cpFile = Paths.get(checkpointPath);
-        } else {
-            LOG.warn("No checkpoint_file configured. Checkpoint state will not be persisted across restarts.");
-            cpFile = null;
-        }
+            checkpointRegistry = new CheckpointRegistry(
+                    cpFile,
+                    fileSourceConfig.getCheckpointInterval(),
+                    fileSourceConfig.getCheckpointCleanupAfter());
 
-        checkpointRegistry = new CheckpointRegistry(
-                cpFile,
-                fileSourceConfig.getCheckpointInterval(),
-                fileSourceConfig.getCheckpointCleanupAfter());
+            final Charset encoding = Charset.forName(fileSourceConfig.getEncoding());
 
-        final Charset encoding = Charset.forName(fileSourceConfig.getEncoding());
+            final RotationDetector rotationDetector = new RotationDetector(fileOps, fileSourceConfig.getFingerprintBytes());
 
-        final RotationDetector rotationDetector = new RotationDetector(fileOps, fileSourceConfig.getFingerprintBytes());
+            final InputCodec tailCodec = createCodec();
 
-        InputCodec tailCodec = null;
-        if (fileSourceConfig.getCodec() != null) {
-            final PluginModel codecConfiguration = fileSourceConfig.getCodec();
-            final PluginSetting codecPluginSettings = new PluginSetting(
-                    codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-            tailCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-        }
+            final TailFileReaderContext readerContext = new TailFileReaderContext(
+                    buffer, eventFactory, fileOps, tailMetrics, rotationDetector,
+                    acknowledgementSetManager, acknowledgementsEnabled,
+                    encoding,
+                    fileSourceConfig.getReadBufferSize(),
+                    fileSourceConfig.getMaxLineLength(),
+                    writeTimeout,
+                    fileSourceConfig.getMaxReadTimePerFile(),
+                    fileSourceConfig.getRotationDrainTimeout(),
+                    fileSourceConfig.getStartPosition(),
+                    fileSourceConfig.isIncludeFileMetadata(),
+                    fileSourceConfig.getAcknowledgmentTimeout(),
+                    fileSourceConfig.getBatchSize(),
+                    fileSourceConfig.getBatchTimeout(),
+                    fileSourceConfig.getMaxAcknowledgmentRetries(),
+                    tailCodec);
 
-        final TailFileReaderContext readerContext = new TailFileReaderContext(
-                buffer, eventFactory, fileOps, tailMetrics, rotationDetector,
-                acknowledgementSetManager, acknowledgementsEnabled,
-                encoding,
-                fileSourceConfig.getReadBufferSize(),
-                fileSourceConfig.getMaxLineLength(),
-                writeTimeout,
-                fileSourceConfig.getMaxReadTimePerFile(),
-                fileSourceConfig.getRotationDrainTimeout(),
-                fileSourceConfig.getStartPosition(),
-                fileSourceConfig.isIncludeFileMetadata(),
-                fileSourceConfig.getAcknowledgmentTimeout(),
-                fileSourceConfig.getBatchSize(),
-                fileSourceConfig.getBatchTimeout(),
-                fileSourceConfig.getMaxAcknowledgmentRetries(),
-                tailCodec);
+            readerPool = new TailFileReaderPool(
+                    checkpointRegistry, tailMetrics,
+                    maxActiveFiles,
+                    readerThreads,
+                    fileSourceConfig.getCloseInactive(),
+                    readerContext);
 
-        readerPool = new TailFileReaderPool(
-                checkpointRegistry, tailMetrics,
-                maxActiveFiles,
-                readerThreads,
-                fileSourceConfig.getCloseInactive(),
-                readerContext);
+            final GlobPathResolver globPathResolver = new GlobPathResolver(
+                    fileSourceConfig.getAllPaths(),
+                    fileSourceConfig.getExcludePaths());
 
-        final GlobPathResolver globPathResolver = new GlobPathResolver(
-                fileSourceConfig.getAllPaths(),
-                fileSourceConfig.getExcludePaths());
+            directoryWatcher = new DirectoryWatcher(
+                    globPathResolver, readerPool, checkpointRegistry,
+                    fileSourceConfig, fileOps, tailMetrics,
+                    fileSourceConfig.getRotateWait(),
+                    fileSourceConfig.isCloseRemoved());
 
-        directoryWatcher = new DirectoryWatcher(
-                globPathResolver, readerPool, checkpointRegistry,
-                fileSourceConfig, fileOps, tailMetrics,
-                fileSourceConfig.getRotateWait(),
-                fileSourceConfig.isCloseRemoved());
-
-        directoryWatcher.start();
+            directoryWatcher.start();
         } catch (final RuntimeException e) {
             shutdownTailingResources();
             throw e;
@@ -210,6 +203,16 @@ public class FileSource implements Source<Record<Object>> {
         if (checkpointRegistry != null) {
             checkpointRegistry.shutdown();
         }
+    }
+
+    private InputCodec createCodec() {
+        if (fileSourceConfig.getCodec() == null) {
+            return null;
+        }
+        final PluginModel codecConfiguration = fileSourceConfig.getCodec();
+        final PluginSetting codecPluginSettings = new PluginSetting(
+                codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+        return pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
     }
 
     @Override
@@ -297,9 +300,7 @@ public class FileSource implements Source<Record<Object>> {
         private final InputCodec codec;
 
         CodecFileStrategy(final PluginFactory pluginFactory) {
-            final PluginModel codecConfiguration = fileSourceConfig.getCodec();
-            final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-            codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+            codec = createCodec();
         }
 
         @Override

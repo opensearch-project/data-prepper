@@ -44,7 +44,7 @@ public final class CheckpointRegistry {
 
     public CheckpointRegistry(final Path checkpointFile, final Duration flushInterval, final Duration cleanupAfter) {
         this(checkpointFile, flushInterval, cleanupAfter, () -> Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "checkpoint-flush");
+            final Thread thread = new Thread(r, "file-checkpoint-flush");
             thread.setDaemon(true);
             return thread;
         }));

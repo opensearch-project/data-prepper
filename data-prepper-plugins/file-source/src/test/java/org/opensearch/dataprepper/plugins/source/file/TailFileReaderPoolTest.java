@@ -70,7 +70,7 @@ class TailFileReaderPoolTest {
     private CheckpointRegistry checkpointRegistry;
 
     @Mock
-    private FileTailMetrics metrics;
+    private FileMetrics metrics;
 
     @Mock
     private RotationDetector rotationDetector;

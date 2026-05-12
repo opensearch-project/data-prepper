@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class FileTailMetrics {
+public final class FileMetrics {
 
     private final Counter linesRead;
     private final Counter bytesRead;
@@ -36,26 +36,26 @@ public final class FileTailMetrics {
     private final AtomicLong activeFileCount;
     private final AtomicLong fileLagBytes;
 
-    public FileTailMetrics(final PluginMetrics pluginMetrics) {
-        this.linesRead = pluginMetrics.counter("tailLinesRead");
-        this.bytesRead = pluginMetrics.counter("tailBytesRead");
-        this.linesTruncated = pluginMetrics.counter("tailLinesTruncated");
-        this.filesOpened = pluginMetrics.counter("tailFilesOpened");
-        this.filesClosed = pluginMetrics.counter("tailFilesClosed");
-        this.filesRotated = pluginMetrics.counter("tailFilesRotated");
-        this.readErrors = pluginMetrics.counter("tailReadErrors");
-        this.writeTimeouts = pluginMetrics.counter("tailWriteTimeouts");
-        this.checkpointFlushes = pluginMetrics.counter("tailCheckpointFlushes");
-        this.checkpointErrors = pluginMetrics.counter("tailCheckpointErrors");
-        this.eventsEmitted = pluginMetrics.counter("tailEventsEmitted");
-        this.dataLossEvents = pluginMetrics.counter("tailDataLossEvents");
-        this.acknowledgmentFailures = pluginMetrics.counter("tailAcknowledgmentFailures");
-        this.truncationEvents = pluginMetrics.counter("tailTruncationEvents");
-        this.backpressureTimer = pluginMetrics.timer("tailBackpressureTime");
+    public FileMetrics(final PluginMetrics pluginMetrics) {
+        this.linesRead = pluginMetrics.counter("linesRead");
+        this.bytesRead = pluginMetrics.counter("bytesRead");
+        this.linesTruncated = pluginMetrics.counter("linesTruncated");
+        this.filesOpened = pluginMetrics.counter("filesOpened");
+        this.filesClosed = pluginMetrics.counter("filesClosed");
+        this.filesRotated = pluginMetrics.counter("filesRotated");
+        this.readErrors = pluginMetrics.counter("readErrors");
+        this.writeTimeouts = pluginMetrics.counter("writeTimeouts");
+        this.checkpointFlushes = pluginMetrics.counter("checkpointFlushes");
+        this.checkpointErrors = pluginMetrics.counter("checkpointErrors");
+        this.eventsEmitted = pluginMetrics.counter("eventsEmitted");
+        this.dataLossEvents = pluginMetrics.counter("dataLossEvents");
+        this.acknowledgmentFailures = pluginMetrics.counter("acknowledgmentFailures");
+        this.truncationEvents = pluginMetrics.counter("truncationEvents");
+        this.backpressureTimer = pluginMetrics.timer("backpressureTime");
         this.activeFileCount = new AtomicLong(0);
-        pluginMetrics.gauge("tailActiveFiles", activeFileCount);
+        pluginMetrics.gauge("activeFiles", activeFileCount);
         this.fileLagBytes = new AtomicLong(0);
-        pluginMetrics.gauge("tailFileLagBytes", fileLagBytes);
+        pluginMetrics.gauge("fileLagBytes", fileLagBytes);
     }
 
     public Counter getLinesRead() {

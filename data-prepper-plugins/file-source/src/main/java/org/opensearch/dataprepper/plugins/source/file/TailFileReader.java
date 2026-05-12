@@ -59,7 +59,7 @@ public final class TailFileReader implements Runnable {
     private final EventFactory eventFactory;
     private final FileSystemOperations fileOps;
     private final CheckpointEntry checkpointEntry;
-    private final FileTailMetrics metrics;
+    private final FileMetrics metrics;
     private final Charset encoding;
     private final int readBufferSize;
     private final int maxLineLength;

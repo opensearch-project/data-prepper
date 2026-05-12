@@ -28,7 +28,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class FileTailMetricsTest {
+class FileMetricsTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -78,27 +78,27 @@ class FileTailMetricsTest {
     @Mock
     private Timer backpressureTimer;
 
-    private FileTailMetrics fileTailMetrics;
+    private FileMetrics fileTailMetrics;
 
     @BeforeEach
     void setUp() {
-        when(pluginMetrics.counter("tailLinesRead")).thenReturn(linesReadCounter);
-        when(pluginMetrics.counter("tailBytesRead")).thenReturn(bytesReadCounter);
-        when(pluginMetrics.counter("tailLinesTruncated")).thenReturn(linesTruncatedCounter);
-        when(pluginMetrics.counter("tailFilesOpened")).thenReturn(filesOpenedCounter);
-        when(pluginMetrics.counter("tailFilesClosed")).thenReturn(filesClosedCounter);
-        when(pluginMetrics.counter("tailFilesRotated")).thenReturn(filesRotatedCounter);
-        when(pluginMetrics.counter("tailReadErrors")).thenReturn(readErrorsCounter);
-        when(pluginMetrics.counter("tailWriteTimeouts")).thenReturn(writeTimeoutsCounter);
-        when(pluginMetrics.counter("tailCheckpointFlushes")).thenReturn(checkpointFlushesCounter);
-        when(pluginMetrics.counter("tailCheckpointErrors")).thenReturn(checkpointErrorsCounter);
-        when(pluginMetrics.counter("tailEventsEmitted")).thenReturn(eventsEmittedCounter);
-        when(pluginMetrics.counter("tailDataLossEvents")).thenReturn(dataLossEventsCounter);
-        when(pluginMetrics.counter("tailAcknowledgmentFailures")).thenReturn(acknowledgmentFailuresCounter);
-        when(pluginMetrics.counter("tailTruncationEvents")).thenReturn(truncationEventsCounter);
-        when(pluginMetrics.timer("tailBackpressureTime")).thenReturn(backpressureTimer);
+        when(pluginMetrics.counter("linesRead")).thenReturn(linesReadCounter);
+        when(pluginMetrics.counter("bytesRead")).thenReturn(bytesReadCounter);
+        when(pluginMetrics.counter("linesTruncated")).thenReturn(linesTruncatedCounter);
+        when(pluginMetrics.counter("filesOpened")).thenReturn(filesOpenedCounter);
+        when(pluginMetrics.counter("filesClosed")).thenReturn(filesClosedCounter);
+        when(pluginMetrics.counter("filesRotated")).thenReturn(filesRotatedCounter);
+        when(pluginMetrics.counter("readErrors")).thenReturn(readErrorsCounter);
+        when(pluginMetrics.counter("writeTimeouts")).thenReturn(writeTimeoutsCounter);
+        when(pluginMetrics.counter("checkpointFlushes")).thenReturn(checkpointFlushesCounter);
+        when(pluginMetrics.counter("checkpointErrors")).thenReturn(checkpointErrorsCounter);
+        when(pluginMetrics.counter("eventsEmitted")).thenReturn(eventsEmittedCounter);
+        when(pluginMetrics.counter("dataLossEvents")).thenReturn(dataLossEventsCounter);
+        when(pluginMetrics.counter("acknowledgmentFailures")).thenReturn(acknowledgmentFailuresCounter);
+        when(pluginMetrics.counter("truncationEvents")).thenReturn(truncationEventsCounter);
+        when(pluginMetrics.timer("backpressureTime")).thenReturn(backpressureTimer);
 
-        fileTailMetrics = new FileTailMetrics(pluginMetrics);
+        fileTailMetrics = new FileMetrics(pluginMetrics);
     }
 
     @Test

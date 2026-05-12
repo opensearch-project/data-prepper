@@ -67,7 +67,7 @@ class DirectoryWatcherTest {
     private FileSourceConfig config;
 
     @Mock
-    private FileTailMetrics metrics;
+    private FileMetrics metrics;
 
     private FileSystemOperations realFileOps;
     private GlobPathResolver globPathResolver;
