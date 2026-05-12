@@ -1329,6 +1329,69 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         spanEndProcessor.shutdown();
     }
 
+    @Test
+    void doExecute_emitsServiceMapEventWithEnvironmentFromResource_whenScopeHasNullAttributes() {
+        // Regression for issue #6786 (Bug 1): when the instrumentation scope has no
+        // "attributes" key, OTelApmServiceMapProcessor.extractSpanAttributes used to
+        // throw on putAll(null) and the catch returned an empty map, dropping the
+        // resource and its deployment.environment.name.
+        when(clock.instant())
+                .thenReturn(testTime)
+                .thenReturn(testTime)
+                .thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130));
+
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        doAnswer((a) -> { eventMetadata = a.getArgument(0); return eventBuilder; })
+                .when(eventBuilder).withEventMetadata(any());
+        doAnswer((a) -> { eventData = a.getArgument(0); return eventBuilder; })
+                .when(eventBuilder).withData(any());
+        doAnswer((a) -> JacksonEvent.builder()
+                .withEventMetadata(eventMetadata).withData(eventData).build())
+                .when(eventBuilder).build();
+
+        final File isolatedDir = new File(tempDir, "scope-null-attrs-" + System.nanoTime());
+        isolatedDir.mkdirs();
+        final OTelApmServiceMapProcessor isolatedProcessor = new OTelApmServiceMapProcessor(
+                Duration.ofSeconds(60), isolatedDir, clock, 1, eventFactory, pluginMetrics);
+
+        final Span leafServerSpan = createMockSpanWithIds("leaf-service", "GET /api/test",
+                "SPAN_KIND_SERVER", "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("deployment.environment.name", "production");
+        final Map<String, Object> resource = new HashMap<>();
+        resource.put("attributes", resourceAttrs);
+        when(leafServerSpan.getResource()).thenReturn(resource);
+        // Scope present with NO "attributes" key — the trigger for Bug 1.
+        final Map<String, Object> scope = new HashMap<>();
+        scope.put("name", "my-tracer");
+        when(leafServerSpan.getScope()).thenReturn(scope);
+
+        try {
+            isolatedProcessor.doExecute(Collections.singletonList(new Record<>(leafServerSpan)));
+            isolatedProcessor.doExecute(Collections.emptyList());
+            final Collection<Record<Event>> result = isolatedProcessor.doExecute(Collections.emptyList());
+
+            assertNotNull(result);
+            final Record<Event> serviceMapEvent = result.stream()
+                    .filter(r -> r.getData().getMetadata() != null
+                            && "SERVICE_MAP".equals(r.getData().getMetadata().getEventType()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected at least one SERVICE_MAP event"));
+            assertThat(serviceMapEvent.getData().get("sourceNode/keyAttributes/environment", String.class),
+                    equalTo("production"));
+        } finally {
+            isolatedProcessor.shutdown();
+        }
+    }
+
     // Helper method to create mock spans
     private Span createMockSpan(String serviceName, String operationName, String spanKind) {
         Span mockSpan = mock(Span.class);
