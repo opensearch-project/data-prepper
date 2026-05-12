@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,8 +38,11 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     private final List<String> withKeysRegex;
     private final List<Pattern> withKeysRegexPattern;
     private final List<EventKey> deleteAllExcept;
+    private final Set<String> deleteAllExceptKeys;
     private final Set<EventKey> excludeFromDelete;
     private final String deleteWhen;
+    private final String iterateOn;
+    private final String deleteFromElementWhen;
     private final List<DeleteEntryProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
@@ -53,9 +55,14 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         this.withKeysRegex = config.getWithKeysRegex();
         this.withKeysRegexPattern = config.getWithKeysRegexPattern();
         this.deleteAllExcept = config.getDeleteAllExcept();
+        this.deleteAllExceptKeys = this.deleteAllExcept.stream()
+                .map(EventKey::getKey)
+                .collect(Collectors.toSet());
         this.excludeFromDelete = config.getExcludeFromDelete();
         this.deleteEntryProcessorConfig = config;
         this.deleteWhen = config.getDeleteWhen();
+        this.iterateOn = config.getIterateOn();
+        this.deleteFromElementWhen = config.getDeleteFromElementWhen();
         this.expressionEvaluator = expressionEvaluator;
 
         if (deleteWhen != null
@@ -65,17 +72,31 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                             ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
 
-        if (!this.withKeys.isEmpty() || !this.withKeysRegex.isEmpty() || !this.deleteAllExcept.isEmpty()) {
+        if (!this.deleteAllExcept.isEmpty()) {
+            this.entries = Collections.emptyList();
+        } else if (!this.withKeys.isEmpty() || !this.withKeysRegex.isEmpty()) {
             DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
                     this.withKeys,
                     this.withKeysRegex,
                     this.excludeFromDelete,
                     this.deleteWhen,
-                    config.getIterateOn(),
-                    config.getDeleteFromElementWhen());
+                    this.iterateOn,
+                    this.deleteFromElementWhen);
             this.entries = List.of(entry);
         } else {
             this.entries = config.getEntries();
+        }
+
+        if (!this.deleteAllExcept.isEmpty() && this.iterateOn == null && this.deleteFromElementWhen != null) {
+            throw new InvalidPluginConfigurationException("delete_from_element_when only applies when iterate_on is configured.");
+        }
+
+        if (!this.deleteAllExcept.isEmpty() && this.deleteFromElementWhen != null
+                && !expressionEvaluator.isValidExpressionStatement(this.deleteFromElementWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("delete_from_element_when %s is not a valid expression statement. See https://opensearch" +
+                                    ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            this.deleteFromElementWhen));
         }
 
         this.entries.forEach(entry -> {
@@ -106,6 +127,11 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
             try {
+                if (!deleteAllExcept.isEmpty()) {
+                    processDeleteAllExcept(recordEvent);
+                    continue;
+                }
+
                 for (final DeleteEntryProcessorConfig.Entry entry : entries) {
                     if (Objects.nonNull(entry.getDeleteWhen()) && !expressionEvaluator.evaluateConditional(entry.getDeleteWhen(), recordEvent)) {
                         continue;
@@ -145,11 +171,6 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     }
 
     private void deleteKeysFromEvent(final Event event, final DeleteEntryProcessorConfig.Entry entry) {
-        if (!deleteAllExcept.isEmpty()) {
-            deleteAllExceptFromEvent(event);
-            return;
-        }
-
         if (!entry.getWithKeys().isEmpty()) {
             for (final EventKey entryKey : entry.getWithKeys()) {
                 event.delete(entryKey);
@@ -176,17 +197,71 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         }
     }
 
-    private void deleteAllExceptFromEvent(final Event event) {
-        final Map<String, Object> retainedValues = new LinkedHashMap<>();
-
-        for (final EventKey keyToKeep : deleteAllExcept) {
-            if (event.containsKey(keyToKeep)) {
-                retainedValues.put(keyToKeep.getKey(), event.get(keyToKeep, Object.class));
-            }
+    private void processDeleteAllExcept(final Event recordEvent) {
+        if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+            return;
         }
 
-        event.clear();
-        retainedValues.forEach(event::put);
+        if (Objects.isNull(iterateOn)) {
+            deleteAllExceptFromEvent(recordEvent);
+        } else {
+            handleDeleteAllExceptForIterateOn(recordEvent);
+        }
+    }
+
+    private void deleteAllExceptFromEvent(final Event event) {
+        deleteAllExceptFromMap(event, "", event.toMap());
+    }
+
+    private void deleteAllExceptFromMap(final Event event, final String parentPath, final Map<String, Object> values) {
+        for (final Map.Entry<String, Object> entry : values.entrySet()) {
+            final String path = parentPath.isEmpty() ? entry.getKey() : parentPath + "/" + entry.getKey();
+
+            if (deleteAllExceptKeys.contains(path)) {
+                continue;
+            }
+
+            if (entry.getValue() instanceof Map && hasAllowlistedDescendant(path)) {
+                deleteAllExceptFromMap(event, path, (Map<String, Object>) entry.getValue());
+                if (!hasExistingAllowlistedDescendant(event, path)) {
+                    event.delete(path);
+                }
+            } else {
+                event.delete(path);
+            }
+        }
+    }
+
+    private boolean hasAllowlistedDescendant(final String path) {
+        return deleteAllExceptKeys.stream()
+                .anyMatch(keyToKeep -> keyToKeep.startsWith(path + "/"));
+    }
+
+    private boolean hasExistingAllowlistedDescendant(final Event event, final String path) {
+        return deleteAllExcept.stream()
+                .filter(keyToKeep -> keyToKeep.getKey().startsWith(path + "/"))
+                .anyMatch(event::containsKey);
+    }
+
+    private void handleDeleteAllExceptForIterateOn(final Event recordEvent) {
+        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+        if (iterateOnList != null) {
+            for (int i = 0; i < iterateOnList.size(); i++) {
+                final Map<String, Object> item = iterateOnList.get(i);
+                final Event context = JacksonEvent.builder()
+                        .withEventMetadata(recordEvent.getMetadata())
+                        .withData(item)
+                        .build();
+                if (deleteFromElementWhen != null &&
+                        !expressionEvaluator.evaluateConditional(deleteFromElementWhen, context)) {
+                    continue;
+                }
+
+                deleteAllExceptFromEvent(context);
+                iterateOnList.set(i, context.toMap());
+            }
+            recordEvent.put(iterateOn, iterateOnList);
+        }
     }
 
     private void handleForIterateOn(final Event recordEvent,
