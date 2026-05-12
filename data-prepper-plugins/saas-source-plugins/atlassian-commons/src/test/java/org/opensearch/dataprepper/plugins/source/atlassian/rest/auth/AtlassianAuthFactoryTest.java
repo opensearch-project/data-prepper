@@ -46,6 +46,9 @@ public class AtlassianAuthFactoryTest {
     @Mock
     private PluginConfigVariable refreshTokenPluginConfigVariable;
 
+    @Mock
+    private PluginConfigVariable bearerTokenVariable;
+
     private AtlassianAuthFactory confluenceAuthFactory;
 
     @BeforeEach
@@ -72,10 +75,9 @@ public class AtlassianAuthFactoryTest {
 
     @Test
     void testGetObjectBearerToken() {
-        final String token = UUID.randomUUID().toString();
         when(sourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         assertInstanceOf(AtlassianBearerTokenAuthConfig.class, confluenceAuthFactory.getObject());
     }

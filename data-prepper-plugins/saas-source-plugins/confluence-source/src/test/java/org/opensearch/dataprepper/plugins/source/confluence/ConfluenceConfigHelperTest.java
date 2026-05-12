@@ -70,6 +70,9 @@ public class ConfluenceConfigHelperTest {
     @Mock
     PluginConfigVariable refreshTokenPluginConfigVariable;
 
+    @Mock
+    PluginConfigVariable bearerTokenVariable;
+
     @Test
     void testInitialization() {
         ConfluenceConfigHelper confluenceConfigHelper = new ConfluenceConfigHelper();
@@ -170,7 +173,8 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn("");
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(bearerTokenVariable.getValue()).thenReturn("");
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 
@@ -179,7 +183,9 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(UUID.randomUUID().toString());
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(bearerTokenVariable.getValue()).thenReturn(UUID.randomUUID().toString());
+        when(confluenceSourceConfig.isAllowLocalAddress()).thenReturn(false);
         assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 }

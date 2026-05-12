@@ -10,19 +10,25 @@
 
 package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
+
+import java.util.Objects;
 
 public class AtlassianBearerTokenAuthConfig implements AtlassianAuthConfig {
 
-    private String accountUrl;
-    private final String bearerToken;
+    private final String accountUrl;
+    private final PluginConfigVariable bearerTokenVariable;
 
     public AtlassianBearerTokenAuthConfig(AtlassianSourceConfig sourceConfig) {
-        this.bearerToken = sourceConfig.getAuthenticationConfig().getBearerToken();
-        accountUrl = sourceConfig.getAccountUrl();
-        if (!accountUrl.endsWith("/")) {
-            accountUrl += "/";
+        Objects.requireNonNull(sourceConfig, "sourceConfig must not be null");
+        this.bearerTokenVariable = sourceConfig.getAuthenticationConfig().getBearerToken();
+        Objects.requireNonNull(bearerTokenVariable, "bearer_token must not be null");
+        String url = sourceConfig.getAccountUrl();
+        if (!url.endsWith("/")) {
+            url += "/";
         }
+        this.accountUrl = url;
     }
 
     @Override
@@ -31,11 +37,11 @@ public class AtlassianBearerTokenAuthConfig implements AtlassianAuthConfig {
     }
 
     public String getBearerToken() {
-        return bearerToken;
+        return (String) bearerTokenVariable.getValue();
     }
 
     @Override
     public void renewCredentials() {
-        // static token, no renewal needed
+        bearerTokenVariable.refresh();
     }
 }

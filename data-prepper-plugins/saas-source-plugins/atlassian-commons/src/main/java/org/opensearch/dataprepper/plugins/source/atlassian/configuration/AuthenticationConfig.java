@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
@@ -31,13 +32,14 @@ public class AuthenticationConfig {
     private Oauth2Config oauth2Config;
 
     @JsonProperty("bearer_token")
-    private String bearerToken;
+    private PluginConfigVariable bearerToken;
 
     @AssertTrue(message = "Authentication config should have exactly one of basic, oauth2, or bearer_token")
     private boolean isValidAuthenticationConfig() {
         boolean hasBasic = basicConfig != null;
         boolean hasOauth = oauth2Config != null;
-        boolean hasBearer = bearerToken != null && !bearerToken.isEmpty();
+        boolean hasBearer = bearerToken != null && bearerToken.getValue() != null
+                && !((String) bearerToken.getValue()).isEmpty();
         int count = (hasBasic ? 1 : 0) + (hasOauth ? 1 : 0) + (hasBearer ? 1 : 0);
         return count == 1;
     }
@@ -45,7 +47,8 @@ public class AuthenticationConfig {
     public String getAuthType() {
         if (basicConfig != null) {
             return BASIC;
-        } else if (bearerToken != null && !bearerToken.isEmpty()) {
+        } else if (bearerToken != null && bearerToken.getValue() != null
+                && !((String) bearerToken.getValue()).isEmpty()) {
             return BEARER_TOKEN;
         } else {
             return OAUTH2;
