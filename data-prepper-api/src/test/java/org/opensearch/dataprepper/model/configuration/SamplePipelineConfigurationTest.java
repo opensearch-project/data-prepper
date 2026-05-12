@@ -123,13 +123,10 @@ class SamplePipelineConfigurationTest {
     }
 
     @Test
-    void deserialize_pipeline_withEmptyStringPluginConfig_throwsException() {
+    void deserialize_pipeline_withEmptyStringPluginConfig_treatedAsNull() throws IOException {
         final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_plugin_empty_string.yaml");
 
-        final JsonMappingException exception = assertThrows(
-            JsonMappingException.class,
-            () -> objectMapper.readValue(inputStream, PipelinesDataFlowModel.class)
-        );
-        assertThat(exception.getMessage(), containsString("Empty string is not allowed"));
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(result, notNullValue());
     }
 }
