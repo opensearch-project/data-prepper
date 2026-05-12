@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchShardStatistics;
@@ -30,9 +31,11 @@ public class OpenSearchIndexProgressState {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> searchAfter;
 
+    @JsonProperty("had_search_failures")
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private boolean hadSearchFailures;
 
+    @JsonProperty("failure_reason_counts")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, Long> failureReasonCounts = new LinkedHashMap<>();
 
@@ -87,57 +90,47 @@ public class OpenSearchIndexProgressState {
         this.keepAlive = keepAlive;
     }
 
+    @JsonIgnore
+    private transient ShardFailureAggregator failureAggregator;
+
+    private ShardFailureAggregator getOrCreateAggregator() {
+        if (failureAggregator == null) {
+            failureAggregator = new ShardFailureAggregator(hadSearchFailures, failureReasonCounts);
+        }
+        return failureAggregator;
+    }
+
+    private void syncFromAggregator() {
+        hadSearchFailures = failureAggregator.hadFailures();
+        failureReasonCounts = new LinkedHashMap<>(failureAggregator.getFailureReasonCounts());
+    }
+
     public boolean isHadSearchFailures() {
-        return hadSearchFailures;
+        return getOrCreateAggregator().hadFailures();
     }
 
     public void setHadSearchFailures(final boolean hadSearchFailures) {
         this.hadSearchFailures = hadSearchFailures;
+        this.failureAggregator = null;
     }
 
     public Map<String, Long> getFailureReasonCounts() {
-        return failureReasonCounts;
+        return getOrCreateAggregator().getFailureReasonCounts();
     }
 
     public void setFailureReasonCounts(final Map<String, Long> failureReasonCounts) {
         this.failureReasonCounts = failureReasonCounts == null ? new LinkedHashMap<>() : new LinkedHashMap<>(failureReasonCounts);
+        this.failureAggregator = null;
     }
 
-    /**
-     * Record shard-level failures observed on a page. Sets the had-failures flag
-     * and merges the per-response aggregated reason counts into the persisted
-     * progress state, respecting the {@link SearchShardStatistics#MAX_DISTINCT_REASONS}
-     * cap with an {@link SearchShardStatistics#OVERFLOW_REASON_KEY} overflow bucket.
-     */
     public void recordShardFailures(final SearchShardStatistics shardStatistics) {
-        if (shardStatistics == null || !shardStatistics.hasFailures()) {
-            return;
-        }
-        this.hadSearchFailures = true;
-        if (this.failureReasonCounts == null) {
-            this.failureReasonCounts = new LinkedHashMap<>();
-        }
-        SearchShardStatistics.mergeFailureReasonCounts(this.failureReasonCounts, shardStatistics.getFailureReasonCounts());
+        getOrCreateAggregator().recordShardFailures(shardStatistics);
+        syncFromAggregator();
     }
 
-    /**
-     * Record a per-request failure (e.g. a scroll page that threw). Normalizes
-     * the exception into {@code type: message} and merges it into the aggregated
-     * counts map, respecting the cap.
-     */
     public void recordRequestFailure(final Throwable throwable) {
-        this.hadSearchFailures = true;
-        if (this.failureReasonCounts == null) {
-            this.failureReasonCounts = new LinkedHashMap<>();
-        }
-        final String key;
-        if (throwable == null) {
-            key = "unknown";
-        } else {
-            final String message = throwable.getMessage() == null ? "" : ": " + throwable.getMessage();
-            key = SearchShardStatistics.normalizeReason(throwable.getClass().getSimpleName() + message);
-        }
-        SearchShardStatistics.incrementFailureReasonCount(this.failureReasonCounts, key, 1L);
+        getOrCreateAggregator().recordRequestFailure(throwable);
+        syncFromAggregator();
     }
 
     public boolean hasValidPointInTime() {

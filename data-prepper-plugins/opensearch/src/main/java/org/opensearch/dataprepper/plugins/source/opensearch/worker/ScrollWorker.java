@@ -200,7 +200,8 @@ public class ScrollWorker implements SearchWorker {
                 consecutiveFailures++;
                 openSearchSourcePluginMetrics.getSearchRequestsFailedCounter().increment();
                 openSearchIndexProgressState.recordRequestFailure(e);
-                LOG.warn("Scroll page failed for index '{}' ({}/{}). Continuing pagination.",
+                LOG.warn("Scroll page failed for index '{}' ({}/{}). Some documents may have been skipped. " +
+                        "Continuing pagination with the next scroll page.",
                         indexName, consecutiveFailures, MAX_CONSECUTIVE_SCROLL_FAILURES, e);
                 if (consecutiveFailures >= MAX_CONSECUTIVE_SCROLL_FAILURES) {
                     deleteScroll(createScrollResponse.getScrollId());

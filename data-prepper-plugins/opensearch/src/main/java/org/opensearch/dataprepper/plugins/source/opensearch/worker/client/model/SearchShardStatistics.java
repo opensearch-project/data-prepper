@@ -34,6 +34,8 @@ public class SearchShardStatistics {
             "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");
     private static final Pattern SHARD_ID_PATTERN = Pattern.compile("\\[[^\\]]*\\]\\[\\d+\\]");
     private static final Pattern NODE_ID_PATTERN = Pattern.compile("node\\[[^\\]]+\\]");
+    private static final Pattern IP_PORT_PATTERN = Pattern.compile(
+            "\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d{1,5})?\\b");
     private static final int MAX_REASON_KEY_LENGTH = 512;
     private static final String UNKNOWN_REASON = "unknown";
 
@@ -100,6 +102,7 @@ public class SearchShardStatistics {
         normalized = SHARD_ID_PATTERN.matcher(normalized).replaceAll("[shard]");
         normalized = NODE_ID_PATTERN.matcher(normalized).replaceAll("node[?]");
         normalized = UUID_PATTERN.matcher(normalized).replaceAll("<uuid>");
+        normalized = IP_PORT_PATTERN.matcher(normalized).replaceAll("<ip>");
         normalized = normalized.trim();
         if (normalized.isEmpty()) {
             return UNKNOWN_REASON;
