@@ -248,14 +248,9 @@ public class FileSourceConfig {
     }
 
     void validate() {
-        if (tail) {
-            Preconditions.checkArgument(
-                    (filePathToRead != null && !filePathToRead.isEmpty()) || !paths.isEmpty(),
-                    "At least one of path or paths is required when tail is enabled");
-        } else {
-            Preconditions.checkArgument(filePathToRead != null,
-                    "path is required when tail is disabled. Use paths with tail: true for glob patterns.");
-        }
+        Preconditions.checkArgument(
+                (filePathToRead != null && !filePathToRead.isEmpty()) || !paths.isEmpty(),
+                "At least one of path or paths is required");
     }
 
     @AssertTrue(message = "The file source requires recordType to be event when using a codec.")

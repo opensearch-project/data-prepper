@@ -41,6 +41,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 import static java.lang.String.format;
@@ -108,7 +109,7 @@ public class FileSource implements Source<Record<Object>> {
             return;
         }
 
-        LOG.info("Starting file source with {} path.", fileSourceConfig.getFilePathToRead());
+        LOG.info("Starting file source with paths: {}", fileSourceConfig.getAllPaths());
 
         readThread = new Thread(() -> {
             fileStrategy.start(buffer);
@@ -242,16 +243,29 @@ public class FileSource implements Source<Record<Object>> {
     private class ClassicFileStrategy implements FileStrategy {
         @Override
         public void start(Buffer<Record<Object>> buffer) {
-            Path filePath = Paths.get(fileSourceConfig.getFilePathToRead());
+            final GlobPathResolver resolver = new GlobPathResolver(
+                    fileSourceConfig.getAllPaths(), fileSourceConfig.getExcludePaths());
+            final Set<Path> resolvedPaths = resolver.resolve();
+            if (resolvedPaths.isEmpty() && fileSourceConfig.getFilePathToRead() != null) {
+                resolvedPaths.add(Paths.get(fileSourceConfig.getFilePathToRead()).toAbsolutePath().normalize());
+            }
+            for (final Path filePath : resolvedPaths) {
+                if (isStopRequested) {
+                    break;
+                }
+                readFile(filePath, buffer);
+            }
+        }
+
+        private void readFile(final Path filePath, final Buffer<Record<Object>> buffer) {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(decompressionEngine.createInputStream(Files.newInputStream(filePath)), Charset.forName(fileSourceConfig.getEncoding())))) {
                 String line;
                 while ((line = reader.readLine()) != null && !isStopRequested) {
                     writeLineAsEventOrString(line, buffer);
                 }
             } catch (IOException | TimeoutException | IllegalArgumentException ex) {
-                LOG.error("Error processing the input file path [{}]", fileSourceConfig.getFilePathToRead(), ex);
-                throw new RuntimeException(format("Error processing the input file %s",
-                        fileSourceConfig.getFilePathToRead()), ex);
+                LOG.error("Error processing the input file path [{}]", filePath, ex);
+                throw new RuntimeException(format("Error processing the input file %s", filePath), ex);
             }
         }
 
@@ -305,19 +319,29 @@ public class FileSource implements Source<Record<Object>> {
 
         @Override
         public void start(final Buffer<Record<Object>> buffer) {
-            Path filePath = Paths.get(fileSourceConfig.getFilePathToRead());
-            try(InputStream is = decompressionEngine.createInputStream(Files.newInputStream(filePath))) {
-                codec.parse(is, eventRecord -> {
-                    try {
-                        buffer.write((Record) eventRecord, writeTimeout);
-                    } catch (TimeoutException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            } catch (final IOException e) {
-                throw new RuntimeException(e);
+            final GlobPathResolver resolver = new GlobPathResolver(
+                    fileSourceConfig.getAllPaths(), fileSourceConfig.getExcludePaths());
+            final Set<Path> resolvedPaths = resolver.resolve();
+            if (resolvedPaths.isEmpty() && fileSourceConfig.getFilePathToRead() != null) {
+                resolvedPaths.add(Paths.get(fileSourceConfig.getFilePathToRead()).toAbsolutePath().normalize());
             }
-
+            for (final Path filePath : resolvedPaths) {
+                if (isStopRequested) {
+                    break;
+                }
+                try (InputStream is = decompressionEngine.createInputStream(Files.newInputStream(filePath))) {
+                    codec.parse(is, eventRecord -> {
+                        try {
+                            buffer.write((Record) eventRecord, writeTimeout);
+                        } catch (TimeoutException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } catch (final IOException e) {
+                    LOG.error("Error processing file with codec [{}]", filePath, e);
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 

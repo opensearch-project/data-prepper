@@ -182,12 +182,9 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws TimeoutException {
-            buffer = mock(Buffer.class);
+        public void testFileSourceWithEmptyFilePathThrowsValidationError() {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "");
-            fileSource = createObjectUnderTest();
-            fileSource.start(buffer);
-            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
+            assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
         }
 
         @Test
@@ -203,6 +200,15 @@ public class FileSourceTests {
         public void testFileSourceWithNullFilePathThrowsNullPointerException() {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, null);
             assertThrows(IllegalArgumentException.class, FileSourceTests.this::createObjectUnderTest);
+        }
+
+        @Test
+        public void testStopBeforeStartPreventsProcessing() throws TimeoutException {
+            buffer = mock(Buffer.class);
+            fileSource = createObjectUnderTest();
+            fileSource.stop();
+            fileSource.start(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
         }
 
         @Test
@@ -385,6 +391,15 @@ public class FileSourceTests {
             final Record<Event> record = mock(Record.class);
 
             assertThrows(RuntimeException.class, () -> actualConsumer.accept(record));
+        }
+
+        @Test
+        void stop_before_start_prevents_codec_processing() throws IOException {
+            final FileSource objectUnderTest = createObjectUnderTest();
+            objectUnderTest.stop();
+            objectUnderTest.start(buffer);
+
+            verify(inputCodec, after(500).never()).parse(any(InputStream.class), any(Consumer.class));
         }
     }
 

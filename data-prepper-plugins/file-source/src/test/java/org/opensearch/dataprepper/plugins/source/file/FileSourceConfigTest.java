@@ -121,11 +121,19 @@ class FileSourceConfigTest {
     }
 
     @Test
-    void validate_fails_without_path_when_tail_false() {
+    void validate_fails_without_any_path() {
         final Map<String, Object> configMap = Map.of("format", "plain", "record_type", "string");
         final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
 
         assertThrows(IllegalArgumentException.class, config::validate);
+    }
+
+    @Test
+    void validate_succeeds_with_paths_when_tail_false() {
+        final Map<String, Object> configMap = Map.of("paths", List.of("/var/log/*.log"));
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        config.validate();
     }
 
     @Test
