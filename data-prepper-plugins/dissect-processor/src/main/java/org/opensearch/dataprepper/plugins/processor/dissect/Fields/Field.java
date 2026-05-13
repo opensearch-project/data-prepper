@@ -12,12 +12,7 @@ package org.opensearch.dataprepper.plugins.processor.dissect.Fields;
 public abstract class Field {
     boolean stripTrailing = false;
     private String key;
-    private String value;
     private Field next;
-
-    public String getValue() {
-        return value;
-    }
 
     public String getKey() {
         return key;
@@ -35,8 +30,8 @@ public abstract class Field {
         this.next = next;
     }
 
-    public void setValue(String value) {
-        this.value = stripTrailing ? value.stripTrailing() : value;
+    public boolean isStripTrailing() {
+        return stripTrailing;
     }
 
 }

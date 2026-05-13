@@ -15,13 +15,11 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.processor.dissect.Fields.Field;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
@@ -29,12 +27,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-
-@SingleThread
 @DataPrepperPlugin(name = "dissect", pluginType = Processor.class, pluginConfigurationType = DissectProcessorConfig.class)
 public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DissectProcessor.class);
@@ -96,16 +91,15 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
         Dissector dissector = dissectorMap.get(field);
         boolean isDeleteSourceOnSuccessfulDissect = dissectConfig.isDeleteSourceRequested();
         String text = event.get(field, String.class);
-        if (dissector.dissectText(text)) {
-            List<Field> dissectedFields = dissector.getDissectedFields();
-            for(Field disectedField: dissectedFields) {
-                String dissectFieldName = disectedField.getKey();
-                Object dissectFieldValue = convertTargetType(dissectFieldName,disectedField.getValue());
-                event.put(disectedField.getKey(), dissectFieldValue);
-            }
-            if (isDeleteSourceOnSuccessfulDissect) {
-                event.delete(field);
-            }
+        Map<String, String> dissectedFields = dissector.dissectText(text);
+        if (dissectedFields == null) {
+            return;
+        }
+        for(Map.Entry<String, String> entry: dissectedFields.entrySet()) {
+            event.put(entry.getKey(), convertTargetType(entry.getKey(), entry.getValue()));
+        }
+        if (isDeleteSourceOnSuccessfulDissect) {
+            event.delete(field);
         }
     }
 
@@ -125,8 +119,6 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
             return fieldValue;
         }
     }
-
-
 
     @Override
     public void prepareForShutdown() {
