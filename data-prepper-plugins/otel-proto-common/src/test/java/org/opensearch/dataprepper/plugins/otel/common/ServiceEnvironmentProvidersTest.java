@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.otel.common;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -28,9 +29,13 @@ class ServiceEnvironmentProvidersTest {
         return spanAttributes;
     }
 
-    // -----------------------------------------------------------------------
-    // Bug-3 fix coverage (#6786): resource-attribute fallback for AWS lookups.
-    // -----------------------------------------------------------------------
+    /**
+     * Verifies that the AWS environment lookup falls back to {@code resource.attributes} when the
+     * relevant keys are not present at the span-attribute top level. This is the path that was
+     * broken before issue #6786.
+     */
+    @Nested
+    class ResourceAttributeFallback {
 
     @Test
     void getAwsServiceEnvironment_returnsEc2_whenCloudPlatformInResourceAttributes() {
@@ -141,10 +146,14 @@ class ServiceEnvironmentProvidersTest {
 
         assertEquals("staging", env);
     }
+    }
 
-    // -----------------------------------------------------------------------
-    // #6787 — additional AWS platform support.
-    // -----------------------------------------------------------------------
+    /**
+     * Verifies environment derivation for AWS platforms added by issue #6787 (ECS with launch
+     * type, EKS, Elastic Beanstalk, and Lambda detected via {@code cloud.platform}).
+     */
+    @Nested
+    class AdditionalAwsPlatforms {
 
     @Test
     void getAwsServiceEnvironment_returnsEcsFargate_whenCloudPlatformAwsEcsAndLaunchTypeFargate() {
@@ -238,5 +247,6 @@ class ServiceEnvironmentProvidersTest {
         final String env = ServiceEnvironmentProviders.getAwsServiceEnvironment(spanAttributes);
 
         assertEquals("ecs-fargate:default", env);
+    }
     }
 }

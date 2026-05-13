@@ -1349,10 +1349,14 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
 
         final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
         when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
-        doAnswer((a) -> { eventMetadata = a.getArgument(0); return eventBuilder; })
-                .when(eventBuilder).withEventMetadata(any());
-        doAnswer((a) -> { eventData = a.getArgument(0); return eventBuilder; })
-                .when(eventBuilder).withData(any());
+        doAnswer((a) -> {
+            eventMetadata = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withEventMetadata(any());
+        doAnswer((a) -> {
+            eventData = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withData(any());
         doAnswer((a) -> JacksonEvent.builder()
                 .withEventMetadata(eventMetadata).withData(eventData).build())
                 .when(eventBuilder).build();

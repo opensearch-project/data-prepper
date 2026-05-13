@@ -10,12 +10,12 @@
 
 package org.opensearch.dataprepper.plugins.otel.common;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.trace.Span;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,12 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.when;
 
 class OTelSpanDerivationUtilTest {
 
@@ -553,12 +551,13 @@ class OTelSpanDerivationUtilTest {
         assertEquals("10.0.0.1:8080", result.getService());
     }
 
-    // ---------------------------------------------------------------------------------
-    // deriveAttributesForSpan(Span) coverage — guards #6786 Bug 2 (resource is now
-    // included when computing environment) and the Bug 3 + #6787 paths through
-    // ServiceEnvironmentProviders.
-    // ---------------------------------------------------------------------------------
-
+    /**
+     * Builds a {@link Span} mock with {@code SPAN_KIND_SERVER} suitable for exercising
+     * {@link OTelSpanDerivationUtil#deriveAttributesForSpan(Span)}. The supplied {@code attributes}
+     * map is wired so that calls to {@code span.put("attributes", ...)} update it in place — the
+     * test can then read derived attributes such as {@code derived.environment} directly from the
+     * map.
+     */
     private static Span newServerMockSpan(final Map<String, Object> attributes,
                                           final Map<String, Object> resource) {
         return newMockSpan("SPAN_KIND_SERVER", attributes, resource);
@@ -591,6 +590,15 @@ class OTelSpanDerivationUtilTest {
         resource.put("attributes", attrs);
         return resource;
     }
+
+    /**
+     * Verifies that {@link OTelSpanDerivationUtil#deriveAttributesForSpan} (and
+     * {@link OTelSpanDerivationUtil#deriveServerSpanAttributes}) populate {@code derived.environment}
+     * by reading the span's {@code resource} attributes — guarding the Bug 2 fix from issue #6786 and
+     * the platform-detection paths added by issue #6787.
+     */
+    @Nested
+    class DeriveAttributesForSpan {
 
     @Test
     void deriveAttributesForSpan_setsDerivedEnvironmentToDeploymentEnvironmentName_fromResource() {
@@ -745,5 +753,6 @@ class OTelSpanDerivationUtilTest {
 
         assertEquals("production", serverAttributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
         verify(clientSpan, never()).put(anyString(), any());
+    }
     }
 }
