@@ -37,8 +37,12 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 class DynamicConfigTransformerTest {
@@ -456,4 +460,23 @@ class DynamicConfigTransformerTest {
         assertThat(resultOs.get("script").get("source").asText()).isEqualTo("ctx._source.merge(params.doc)");
         assertThat(resultOs.get("script").has("custom_field")).isFalse();
     }
+
+    @Test
+    void test_calculateDepthForRdsSource_without_source_coordination_identifier() {
+        String mockPrefix = "my-bucket/path";
+        DynamicConfigTransformer transformer = spy(new DynamicConfigTransformer(mock(RuleEvaluator.class)));
+        doReturn(null).when(transformer).getSourceCoordinationIdentifier();
+        String result = transformer.calculateDepthForRdsSource(mockPrefix);
+        assertThat(result, equalTo("4"));
+    }
+
+    @Test
+    void test_calculateDepthForRdsSource_with_source_coordination_identifier() {
+        String mockPrefix = "my-bucket/path";
+        DynamicConfigTransformer transformer = spy(new DynamicConfigTransformer(mock(RuleEvaluator.class)));
+        doReturn("testValue").when(transformer).getSourceCoordinationIdentifier();
+        String result = transformer.calculateDepthForRdsSource(mockPrefix);
+        assertThat(result, equalTo("5"));
+    }
+
 }
