@@ -67,6 +67,9 @@ class CloudWatchLogsSinkTest {
     private static final String TEST_PLUGIN_NAME = "testPluginName";
     private static final String TEST_PIPELINE_NAME = "testPipelineName";
     private static final String TEST_BUFFER_TYPE = "in_memory";
+    // Number of args Lombok @Builder passes to the all-args constructor of CloudWatchLogsDispatcher.
+    // Bumping this is the signal that positional context.arguments().get(N) calls below need to be re-audited.
+    private static final int EXPECTED_DISPATCHER_ARITY = 9;
     private int numRetries;
     @BeforeEach
     void setUp() {
@@ -234,9 +237,11 @@ class CloudWatchLogsSinkTest {
     void WHEN_sink_has_no_dlq_config_THEN_retries_set_to_maxint() {
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
 
+        final int[] capturedArity = new int[1];
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
                 mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                capturedArity[0] = context.arguments().size();
                 numRetries = (int)context.arguments().get(7);
             });
 
@@ -249,6 +254,8 @@ class CloudWatchLogsSinkTest {
             dispatcherMock.close();
 
         }
+        // Arity guard: positional reads above silently rot when fields are added/reordered.
+        assertThat(capturedArity[0], equalTo(EXPECTED_DISPATCHER_ARITY));
         assertThat(numRetries, equalTo(Integer.MAX_VALUE));
     }
 
@@ -260,9 +267,11 @@ class CloudWatchLogsSinkTest {
         when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
         when(mockAwsConfig.getAwsStsRoleArn()).thenReturn("role");
 
+        final int[] capturedArity = new int[1];
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
                 mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                capturedArity[0] = context.arguments().size();
                 numRetries = (int)context.arguments().get(7);
             });
             final MockedConstruction<DlqPushHandler> dlqMock =
@@ -277,7 +286,61 @@ class CloudWatchLogsSinkTest {
             testCloudWatchSink.doInitialize();
             dispatcherMock.close();
         }
+        // Arity guard: positional reads above silently rot when fields are added/reordered.
+        assertThat(capturedArity[0], equalTo(EXPECTED_DISPATCHER_ARITY));
         assertThat(numRetries, equalTo(TEST_MAX_RETRIES));
+    }
+
+    @Test
+    void WHEN_create_log_group_and_stream_is_true_THEN_flag_passed_to_dispatcher() {
+        when(mockCloudWatchLogsSinkConfig.getCreateLogGroupAndStream()).thenReturn(true);
+
+        final boolean[] capturedFlag = new boolean[1];
+        final int[] capturedArity = new int[1];
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                    capturedArity[0] = context.arguments().size();
+                    capturedFlag[0] = (boolean) context.arguments().get(8);
+                });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+            dispatcherMock.close();
+        }
+        // Arity guard: positional reads above silently rot when fields are added/reordered.
+        assertThat(capturedArity[0], equalTo(EXPECTED_DISPATCHER_ARITY));
+        assertThat(capturedFlag[0], equalTo(true));
+    }
+
+    @Test
+    void WHEN_create_log_group_and_stream_is_false_THEN_flag_passed_as_false_to_dispatcher() {
+        when(mockCloudWatchLogsSinkConfig.getCreateLogGroupAndStream()).thenReturn(false);
+
+        final boolean[] capturedFlag = new boolean[]{true};
+        final int[] capturedArity = new int[1];
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                    capturedArity[0] = context.arguments().size();
+                    capturedFlag[0] = (boolean) context.arguments().get(8);
+                });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+            dispatcherMock.close();
+        }
+        // Arity guard: positional reads above silently rot when fields are added/reordered.
+        assertThat(capturedArity[0], equalTo(EXPECTED_DISPATCHER_ARITY));
+        assertThat(capturedFlag[0], equalTo(false));
     }
 
 }

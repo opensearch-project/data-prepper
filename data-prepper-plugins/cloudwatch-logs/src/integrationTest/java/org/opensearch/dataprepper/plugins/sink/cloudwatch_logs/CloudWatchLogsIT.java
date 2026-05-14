@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.OutputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DeleteLogStreamRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import software.amazon.awssdk.services.s3.S3Client;
@@ -271,7 +272,12 @@ public class CloudWatchLogsIT {
                                         .logGroupName(logGroupName)
                                         .logStreamName(logStreamName)
                                         .build();
-        cloudWatchLogsClient.deleteLogStream(deleteRequest);
+        try {
+            cloudWatchLogsClient.deleteLogStream(deleteRequest);
+        } catch (ResourceNotFoundException e) {
+            // Sink-side stream-creation may have failed in the test under verification; don't
+            // mask the real test failure with a teardown error for an absent stream.
+        }
         deleteObjectsWithPrefix(bucket, DLQ_PREFIX);
     }
 
@@ -572,6 +578,44 @@ public class CloudWatchLogsIT {
                     assertThat(events.size(), equalTo(NUM_RECORDS));
         }));
         assertThat(eventsSuccessCount.get(), equalTo(0));
+    }
+
+    @Test
+    void TestSinkOperationWithCreateLogStream() throws Exception {
+        // Delete the stream setUp() created so we don't leak it. We're about to mutate
+        // logStreamName so tearDown() won't see this one again.
+        cloudWatchLogsClient.deleteLogStream(DeleteLogStreamRequest.builder()
+                .logGroupName(logGroupName)
+                .logStreamName(logStreamName)
+                .build());
+
+        // Use a brand-new stream name to avoid the delete-then-recreate-same-name window
+        // where CloudWatch Logs may transiently throw OperationAbortedException.
+        logStreamName = "CloudWatchLogsIT_create_" + RandomStringUtils.randomAlphabetic(8);
+        when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(logStreamName);
+        when(cloudWatchLogsSinkConfig.getCreateLogGroupAndStream()).thenReturn(true);
+        when(thresholdConfig.getBatchSize()).thenReturn(10);
+        when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
+        when(thresholdConfig.getFlushInterval()).thenReturn(10L);
+
+        final long startTime = Instant.now().toEpochMilli();
+        sink = createObjectUnderTest();
+        sink.doOutput(getRecordList(NUM_RECORDS));
+
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            sink.doOutput(Collections.emptyList());
+            GetLogEventsResponse resp = cloudWatchLogsClient.getLogEvents(
+                    GetLogEventsRequest.builder()
+                            .logGroupName(logGroupName)
+                            .logStreamName(logStreamName)
+                            .startTime(startTime)
+                            .endTime(Instant.now().toEpochMilli())
+                            .build());
+            assertThat(resp.events().size(), equalTo(NUM_RECORDS));
+        });
+        assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
+        assertThat(dlqSuccessCount.get(), equalTo(0));
     }
 
     private Collection<Record<Event>> getRecordList(int numberOfRecords) {

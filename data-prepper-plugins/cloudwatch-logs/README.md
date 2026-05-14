@@ -35,6 +35,7 @@ pipeline:
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
         endpoint: "https://logs.us-west-2.amazonaws.com"
+        create_log_group_and_stream: false
 ```
 
 ## AWS Configuration
@@ -64,6 +65,12 @@ pipeline:
 - `header_overrides` (Optional) : A string map representing custom HTTP headers to include in CloudWatch Logs requests.
 
 - `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
+
+- `create_log_group_and_stream` (Optional): A boolean that controls whether
+  the sink will create the configured `log_group` and `log_stream` if they do
+  not already exist. Defaults to `false`. When set to `true`, the IAM principal
+  used by the sink must have `logs:CreateLogGroup` and `logs:CreateLogStream`
+  permissions in addition to `logs:PutLogEvents`.
 
 ## Buffer Type Configuration
 

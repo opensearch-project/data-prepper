@@ -13,10 +13,14 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import com.linecorp.armeria.client.retry.Backoff;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInfo;
+import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceAlreadyExistsException;
+import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceNotFoundException;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsSinkUtils;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.model.failures.DlqObject;
@@ -40,24 +44,7 @@ public class CloudWatchLogsDispatcher {
     private String logGroup;
     private String logStream;
     private int retryCount;
-    public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
-                                    final CloudWatchLogsMetrics cloudWatchLogsMetrics,
-                                    final DlqPushHandler dlqPushHandler,
-                                    final boolean dropIfDlqNotConfigured,
-                                    final Executor executor,
-                                    final String logGroup,
-                                    final String logStream,
-                                    final int retryCount) {
-        this.cloudWatchLogsClient = cloudWatchLogsClient;
-        this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
-        this.logGroup = logGroup;
-        this.logStream = logStream;
-        this.retryCount = retryCount;
-        this.dlqPushHandler = dlqPushHandler;
-        this.dropIfDlqNotConfigured = dropIfDlqNotConfigured;
-
-        this.executor = executor;
-    }
+    private boolean createLogGroupAndStream;
 
     /**
      * Will read in a collection of log messages in byte form and transform them into a collection of InputLogEvents.
@@ -101,6 +88,7 @@ public class CloudWatchLogsDispatcher {
                 .dropIfDlqNotConfigured(dropIfDlqNotConfigured)
                 .totalEventCount(inputLogEvents.size())
                 .retryCount(retryCount)
+                .createLogGroupAndStream(createLogGroupAndStream)
                 .build());
     }
 
@@ -117,6 +105,7 @@ public class CloudWatchLogsDispatcher {
         private final int totalEventCount;
         private final int retryCount;
         private boolean dropIfDlqNotConfigured;
+        private final boolean createLogGroupAndStream;
 
         @Override
         public void run() {
@@ -125,6 +114,7 @@ public class CloudWatchLogsDispatcher {
 
         public void upload() {
             boolean failedToTransmit = true;
+            boolean resourceCreationAttempted = false;
             int failCount = 0;
             String failureMessage = "";
             PutLogEventsResponse putLogEventsResponse = null;
@@ -138,17 +128,21 @@ public class CloudWatchLogsDispatcher {
                         cloudWatchLogsMetrics.increaseRequestSuccessCounter(1);
                         failedToTransmit = false;
 
+                    } catch (ResourceNotFoundException e) {
+                        // Must be caught before CloudWatchLogsException since RNF extends CWLException.
+                        if (createLogGroupAndStream && !resourceCreationAttempted) {
+                            resourceCreationAttempted = true;
+                            createLogGroupAndStream();
+                            // Loop continues; next iteration retries PLE without incrementing failCount.
+                            // If PLE still throws RNF, the guard sends us to the else branch and
+                            // normal retry/DLQ logic takes over.
+                        } else {
+                            failureMessage = e.getMessage();
+                            failCount = handlePutLogEventsFailure(e, failCount, backoff);
+                        }
                     } catch (CloudWatchLogsException | SdkClientException e) {
                         failureMessage = e.getMessage();
-                        LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
-                        cloudWatchLogsMetrics.increaseRequestFailCounter(1);
-                        if (++failCount % MULTIPLE_FAILURES_METRIC_COUNT == 0) {
-                            cloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
-                        }
-                        final long delayMillis = backoff.nextDelayMillis(failCount);
-                        if (delayMillis > 0) {
-                            Thread.sleep(delayMillis);
-                        }
+                        failCount = handlePutLogEventsFailure(e, failCount, backoff);
                     }
                 }
             } catch (Exception e) {
@@ -175,6 +169,61 @@ public class CloudWatchLogsDispatcher {
                 releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
+        }
+
+        /**
+         * Logs the failure, increments fail metrics, and sleeps using the backoff schedule.
+         * Returns the new fail count so the caller can update its local. Extracted so the
+         * RNF-fallback branch and the generic CWL/SDK catch don't drift apart.
+         */
+        private int handlePutLogEventsFailure(final Exception e, final int currentFailCount, final Backoff backoff)
+                throws InterruptedException {
+            LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
+            cloudWatchLogsMetrics.increaseRequestFailCounter(1);
+            final int newFailCount = currentFailCount + 1;
+            if (newFailCount % MULTIPLE_FAILURES_METRIC_COUNT == 0) {
+                cloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
+            }
+            final long delayMillis = backoff.nextDelayMillis(newFailCount);
+            if (delayMillis > 0) {
+                Thread.sleep(delayMillis);
+            }
+            return newFailCount;
+        }
+
+        /**
+         * Attempts to create the configured log group and log stream. The helper never throws —
+         * all SDK exceptions are caught inside so that a recovery failure does not interrupt the
+         * Uploader. ResourceAlreadyExistsException is intentionally swallowed to make creation
+         * idempotent. If creation fails, the next PutLogEvents call will hit ResourceNotFoundException
+         * again and the guard in upload() will route it to the normal retry/DLQ path.
+         */
+        private void createLogGroupAndStream() {
+            final String logGroupName = putLogEventsRequest.logGroupName();
+            final String logStreamName = putLogEventsRequest.logStreamName();
+
+            try {
+                cloudWatchLogsClient.createLogGroup(
+                        CreateLogGroupRequest.builder().logGroupName(logGroupName).build());
+                LOG.info("Created log group: {}", logGroupName);
+            } catch (ResourceAlreadyExistsException e) {
+                LOG.debug("Log group already exists: {}", logGroupName);
+            } catch (CloudWatchLogsException | SdkClientException e) {
+                LOG.warn("Unable to create log group '{}': {}", logGroupName, e.getMessage());
+            }
+
+            try {
+                cloudWatchLogsClient.createLogStream(
+                        CreateLogStreamRequest.builder()
+                                .logGroupName(logGroupName)
+                                .logStreamName(logStreamName)
+                                .build());
+                LOG.info("Created log stream: {}/{}", logGroupName, logStreamName);
+            } catch (ResourceAlreadyExistsException e) {
+                LOG.debug("Log stream already exists: {}/{}", logGroupName, logStreamName);
+            } catch (CloudWatchLogsException | SdkClientException e) {
+                LOG.warn("Unable to create log stream '{}/{}': {}", logGroupName, logStreamName, e.getMessage());
+            }
         }
 
         List<DlqObject> getDlqObjectsFromResponse(PutLogEventsResponse putLogEventsResponse) {

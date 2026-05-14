@@ -322,4 +322,17 @@ class CloudWatchLogsSinkConfigTest {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "endpoint", testEndpoint);
         assertThat(cloudWatchLogsSinkConfig.getEndpoint(), equalTo(testEndpoint));
     }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_create_log_group_and_stream_called_SHOULD_return_false() {
+        assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroupAndStream(), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_create_log_group_and_stream_set_true_WHEN_get_called_SHOULD_return_true()
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
+                "createLogGroupAndStream", true);
+        assertThat(cloudWatchLogsSinkConfig.getCreateLogGroupAndStream(), equalTo(true));
+    }
 }
