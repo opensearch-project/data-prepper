@@ -1,0 +1,15 @@
+test-pipeline-1:
+  source:
+    file:
+      path: "/tmp/file-source.tmp"
+
+  sink:
+    - file:
+        path: "/tmp/file-sink.tmp"
+        forward_to:
+          pipelines: [ "test-pipeline-2"]
+        
+test-pipeline-2:
+  sink:
+    - file:
+        path: "/tmp/file-sink-fwd.tmp"

@@ -40,6 +40,7 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationValidator;
+import org.opensearch.dataprepper.pipeline.parser.InvalidPipelineConfigurationException;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
 import org.opensearch.dataprepper.validation.PluginError;
@@ -127,10 +128,17 @@ public class PipelineTransformer {
             }
         }
         Map<String, HeadlessPipeline> headlessPipelines = new LinkedHashMap<>();
+        boolean validSourcePresent = false;
         for (Map.Entry<String, Pipeline> pipeline: pipelineMap.entrySet()){
             if (pipeline.getValue().getSource() instanceof HeadlessPipelineSource) {
                 headlessPipelines.put(pipeline.getKey(), pipeline.getValue());
+            } else if (!(pipeline.getValue().getSource() instanceof PipelineConnector)) {
+                validSourcePresent = true;
             }
+        }
+        if (pipelineMap.size() > 0 && !validSourcePresent) {
+            throw new InvalidPipelineConfigurationException(
+                    String.format("No valid source present in the configuration\n"));
         }
 
         for (Map.Entry<String, Pipeline> pipelineEntry: pipelineMap.entrySet()) {
