@@ -61,6 +61,10 @@ public class CloudWatchLogsSinkConfig {
     @JsonProperty("endpoint")
     private String endpoint;
 
+    @JsonProperty("entity")
+    @Valid
+    private EntityConfig entityConfig;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -95,6 +99,10 @@ public class CloudWatchLogsSinkConfig {
 
     public String getEndpoint() {
         return endpoint;
+    }
+
+    public EntityConfig getEntityConfig() {
+        return entityConfig;
     }
 
 }

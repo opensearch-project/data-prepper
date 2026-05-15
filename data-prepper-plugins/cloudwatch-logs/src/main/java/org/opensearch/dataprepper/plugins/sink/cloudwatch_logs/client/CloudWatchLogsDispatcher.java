@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import com.linecorp.armeria.client.retry.Backoff;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
@@ -40,6 +41,7 @@ public class CloudWatchLogsDispatcher {
     private String logGroup;
     private String logStream;
     private int retryCount;
+    private Entity entity;
     public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                     final DlqPushHandler dlqPushHandler,
@@ -47,7 +49,8 @@ public class CloudWatchLogsDispatcher {
                                     final Executor executor,
                                     final String logGroup,
                                     final String logStream,
-                                    final int retryCount) {
+                                    final int retryCount,
+                                    final Entity entity) {
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
         this.logGroup = logGroup;
@@ -57,6 +60,7 @@ public class CloudWatchLogsDispatcher {
         this.dropIfDlqNotConfigured = dropIfDlqNotConfigured;
 
         this.executor = executor;
+        this.entity = entity;
     }
 
     /**
@@ -86,11 +90,16 @@ public class CloudWatchLogsDispatcher {
     }
 
     public void dispatchLogs(List<InputLogEvent> inputLogEvents, List<EventHandle> eventHandles) {
-        PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
+        final PutLogEventsRequest.Builder requestBuilder = PutLogEventsRequest.builder()
                 .logEvents(inputLogEvents)
                 .logGroupName(logGroup)
-                .logStreamName(logStream)
-                .build();
+                .logStreamName(logStream);
+
+        if (entity != null) {
+            requestBuilder.entity(entity);
+        }
+
+        final PutLogEventsRequest putLogEventsRequest = requestBuilder.build();
 
         executor.execute(Uploader.builder()
                 .cloudWatchLogsClient(cloudWatchLogsClient)
@@ -172,6 +181,11 @@ public class CloudWatchLogsDispatcher {
                     dlqObjects = getDlqObjectsFromResponse(putLogEventsResponse);
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
+                if (putLogEventsResponse != null && putLogEventsResponse.rejectedEntityInfo() != null) {
+                    cloudWatchLogsMetrics.increaseEntityRejectedCounter(1);
+                    LOG.warn("Entity was rejected by CloudWatch: {}",
+                            putLogEventsResponse.rejectedEntityInfo().errorTypeAsString());
+                }
                 releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
