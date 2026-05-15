@@ -24,8 +24,11 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import software.amazon.awssdk.regions.Region;
 
 
@@ -36,6 +39,7 @@ import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +73,7 @@ class CloudWatchLogsSinkTest {
     private static final String TEST_BUFFER_TYPE = "in_memory";
     // Number of args Lombok @Builder passes to the all-args constructor of CloudWatchLogsDispatcher.
     // Bumping this is the signal that positional context.arguments().get(N) calls below need to be re-audited.
-    private static final int EXPECTED_DISPATCHER_ARITY = 10;
+    private static final int EXPECTED_DISPATCHER_ARITY = 11;
     private int numRetries;
     @BeforeEach
     void setUp() {
@@ -292,6 +296,7 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
+    @Test
     void WHEN_create_log_group_and_stream_flags_are_set_THEN_flags_passed_to_dispatcher() {
         when(mockCloudWatchLogsSinkConfig.getCreateLogGroup()).thenReturn(true);
         when(mockCloudWatchLogsSinkConfig.getCreateLogStream()).thenReturn(true);
@@ -347,6 +352,58 @@ class CloudWatchLogsSinkTest {
         assertThat(capturedArity[0], equalTo(EXPECTED_DISPATCHER_ARITY));
         assertThat(capturedCreateLogGroup[0], equalTo(false));
         assertThat(capturedCreateLogStream[0], equalTo(false));
+    }
+
+    @Test
+    void WHEN_entity_config_is_null_THEN_dispatcher_built_without_entity() {
+        final Entity[] capturedEntity = new Entity[1];
+
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                    capturedEntity[0] = (Entity) context.arguments().get(10);
+                });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            getTestCloudWatchSink();
+            dispatcherMock.close();
+        }
+        assertThat(capturedEntity[0], equalTo(null));
+    }
+
+    @Test
+    void WHEN_entity_config_is_provided_THEN_dispatcher_built_with_entity() throws Exception {
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "RemoteService");
+        keyAttributes.put("Name", "okta_auth0");
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("AWS.ServiceNameSource", "UserConfiguration");
+
+        final EntityConfig entityConfig = new EntityConfig();
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, "keyAttributes", keyAttributes);
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, "attributes", attributes);
+        when(mockCloudWatchLogsSinkConfig.getEntityConfig()).thenReturn(entityConfig);
+
+        final Entity[] capturedEntity = new Entity[1];
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<CloudWatchLogsDispatcher> dispatcherMock =
+                mockConstruction(CloudWatchLogsDispatcher.class, (mock, context) -> {
+                    capturedEntity[0] = (Entity) context.arguments().get(10);
+                });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            getTestCloudWatchSink();
+            dispatcherMock.close();
+        }
+        assertThat(capturedEntity[0], notNullValue());
+        assertThat(capturedEntity[0].keyAttributes(), equalTo(keyAttributes));
+        assertThat(capturedEntity[0].attributes(), equalTo(attributes));
     }
 
 }

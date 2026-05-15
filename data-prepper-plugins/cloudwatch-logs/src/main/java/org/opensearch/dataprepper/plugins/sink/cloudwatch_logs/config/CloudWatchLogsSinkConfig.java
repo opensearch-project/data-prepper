@@ -67,6 +67,10 @@ public class CloudWatchLogsSinkConfig {
     @JsonProperty(value = "create_log_stream", defaultValue = "false")
     private boolean createLogStream = false;
 
+    @JsonProperty("entity")
+    @Valid
+    private EntityConfig entityConfig;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -109,6 +113,10 @@ public class CloudWatchLogsSinkConfig {
 
     public boolean getCreateLogStream() {
         return createLogStream;
+    }
+
+    public EntityConfig getEntityConfig() {
+        return entityConfig;
     }
 
 }
