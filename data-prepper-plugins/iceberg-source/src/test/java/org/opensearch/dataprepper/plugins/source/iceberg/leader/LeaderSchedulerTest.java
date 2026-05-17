@@ -28,6 +28,9 @@ import org.opensearch.dataprepper.plugins.source.iceberg.TableConfig;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.InitialLoadTaskPartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.time.Duration;
 import java.util.List;
@@ -53,6 +56,12 @@ class LeaderSchedulerTest {
     private Table table;
     @Mock
     private TableConfig tableConfig;
+    @Mock
+    private ShuffleStorage shuffleStorage;
+    @Mock
+    private ShuffleConfig shuffleConfig;
+    @Mock
+    private Certificate certificate;
 
     private LeaderScheduler leaderScheduler;
 
@@ -65,7 +74,8 @@ class LeaderSchedulerTest {
                 sourceCoordinator,
                 Map.of(TABLE_NAME, tableConfig),
                 Duration.ofSeconds(1),
-                Map.of(TABLE_NAME, table));
+                Map.of(TABLE_NAME, table),
+                shuffleStorage, shuffleConfig, certificate);
     }
 
     @Test
