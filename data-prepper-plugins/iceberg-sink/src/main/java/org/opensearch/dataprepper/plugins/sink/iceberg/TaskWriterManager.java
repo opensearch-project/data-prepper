@@ -123,11 +123,11 @@ public class TaskWriterManager {
 
     /**
      * Selects the appropriate TaskWriter based on table configuration:
-     * 1. CDC enabled (operation configured + identifier columns present) -> DeltaTaskWriter
+     * 1. CDC enabled (operation configured + identifier columns present): DeltaTaskWriter
      *    Handles INSERT/UPDATE/DELETE with equality deletes. Manages partitions internally.
-     * 2. Append-only + unpartitioned -> UnpartitionedWriter
+     * 2. Append-only + unpartitioned: UnpartitionedWriter
      *    Simplest writer. Single data file, rotates on targetFileSize.
-     * 3. Append-only + partitioned -> PartitionedFanoutWriter
+     * 3. Append-only + partitioned: PartitionedFanoutWriter
      *    Opens one data file per partition simultaneously (fanout).
      */
     private TaskWriter<Record> createWriter() {

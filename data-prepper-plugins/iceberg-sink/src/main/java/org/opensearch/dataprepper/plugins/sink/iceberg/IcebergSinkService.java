@@ -144,8 +144,8 @@ public class IcebergSinkService {
      * 1. Resolve table: evaluate table_identifier expression (static or dynamic routing)
      * 2. Get or create TableContext: load table from catalog, or auto-create if configured
      * 3. Schema evolution: if enabled, add new columns for fields not in the current schema
-     * 4. Convert: Event Map -> Iceberg GenericRecord using the table's schema
-     * 5. Resolve operation: evaluate operation expression -> CdcOperation (INSERT/UPDATE/DELETE)
+     * 4. Convert: Event Map to Iceberg GenericRecord using the table's schema
+     * 5. Resolve operation: evaluate operation expression to CdcOperation (INSERT/UPDATE/DELETE)
      * 6. Write: pass record and operation to TaskWriterManager
      * On error, the event is sent to DLQ (if configured) and the EventHandle is released as failed.
      */
