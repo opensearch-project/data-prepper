@@ -521,26 +521,26 @@ class TextExpositionParserTest {
         attrs.put("service.name", "svc-dot");
         attrs.put("service_name", "svc-underscore");
         attrs.put("job", "svc-job");
-        assertThat(TextExpositionParser.extractServiceName(attrs), equalTo("svc-dot"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrs), equalTo("svc-dot"));
 
         final Map<String, Object> attrsNoServiceName = new HashMap<>();
         attrsNoServiceName.put("service_name", "svc-underscore");
         attrsNoServiceName.put("job", "svc-job");
-        assertThat(TextExpositionParser.extractServiceName(attrsNoServiceName), equalTo("svc-underscore"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrsNoServiceName), equalTo("svc-underscore"));
 
         final Map<String, Object> attrsJobOnly = new HashMap<>();
         attrsJobOnly.put("job", "svc-job");
-        assertThat(TextExpositionParser.extractServiceName(attrsJobOnly), equalTo("svc-job"));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrsJobOnly), equalTo("svc-job"));
 
         final Map<String, Object> attrsEmpty = new HashMap<>();
-        assertThat(TextExpositionParser.extractServiceName(attrsEmpty), equalTo(""));
+        assertThat(PrometheusMetricUtils.extractServiceName(attrsEmpty), equalTo(""));
     }
 
     @Test
     void testStripCounterSuffix() {
-        assertThat(TextExpositionParser.stripCounterSuffix("http_requests_total"), equalTo("http_requests"));
-        assertThat(TextExpositionParser.stripCounterSuffix("http_requests_created"), equalTo("http_requests"));
-        assertThat(TextExpositionParser.stripCounterSuffix("http_requests"), equalTo("http_requests"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("http_requests_total"), equalTo("http_requests"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("http_requests_created"), equalTo("http_requests"));
+        assertThat(PrometheusMetricUtils.stripCounterSuffix("http_requests"), equalTo("http_requests"));
     }
 
     @Test
@@ -567,18 +567,18 @@ class TextExpositionParserTest {
 
     @Test
     void testParseLeValue() {
-        assertThat(TextExpositionParser.parseLeValue(null), equalTo(null));
-        assertThat(TextExpositionParser.parseLeValue("+Inf"), equalTo(Double.POSITIVE_INFINITY));
-        assertThat(TextExpositionParser.parseLeValue("-Inf"), equalTo(Double.NEGATIVE_INFINITY));
-        assertThat(TextExpositionParser.parseLeValue("0.5"), closeTo(0.5, 0.001));
-        assertThat(TextExpositionParser.parseLeValue("not_a_number"), equalTo(null));
+        assertThat(PrometheusMetricUtils.parseLeValue(null), equalTo(null));
+        assertThat(PrometheusMetricUtils.parseLeValue("+Inf"), equalTo(Double.POSITIVE_INFINITY));
+        assertThat(PrometheusMetricUtils.parseLeValue("-Inf"), equalTo(Double.NEGATIVE_INFINITY));
+        assertThat(PrometheusMetricUtils.parseLeValue("0.5"), closeTo(0.5, 0.001));
+        assertThat(PrometheusMetricUtils.parseLeValue("not_a_number"), equalTo(null));
     }
 
     @Test
     void testParseQuantileValue() {
-        assertThat(TextExpositionParser.parseQuantileValue(null), equalTo(null));
-        assertThat(TextExpositionParser.parseQuantileValue("0.99"), closeTo(0.99, 0.001));
-        assertThat(TextExpositionParser.parseQuantileValue("bad_value"), equalTo(null));
+        assertThat(PrometheusMetricUtils.parseQuantileValue(null), equalTo(null));
+        assertThat(PrometheusMetricUtils.parseQuantileValue("0.99"), closeTo(0.99, 0.001));
+        assertThat(PrometheusMetricUtils.parseQuantileValue("bad_value"), equalTo(null));
     }
 
     @Test
@@ -821,5 +821,13 @@ class TextExpositionParserTest {
         assertThat(results, hasSize(1));
         final Metric metric = (Metric) results.get(0).getData();
         assertThat(metric.getServiceName(), equalTo(""));
+    }
+
+    @Test
+    void testParseSampleLineWithDecimalTimestamp() {
+        final TextExpositionParser.ParsedSample sample = parser.parseSampleLine("metric_name 42.0 1625000000.123");
+        assertThat(sample, notNullValue());
+        assertThat(sample.value, closeTo(42.0, 0.001));
+        assertThat(sample.timestampMs, equalTo(1625000000123L));
     }
 }
