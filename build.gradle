@@ -76,7 +76,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.17.2')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.21.0')
         implementation platform('org.eclipse.jetty:jetty-bom:9.4.53.v20231009')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
@@ -285,7 +285,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('software.amazon.awssdk:bom:2.30.23')
+        implementation platform('software.amazon.awssdk:bom:2.39.0')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
     }
 }

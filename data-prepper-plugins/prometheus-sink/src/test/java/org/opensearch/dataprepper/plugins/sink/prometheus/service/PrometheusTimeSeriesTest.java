@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -185,6 +186,38 @@ public class PrometheusTimeSeriesTest {
         String expectedKey1 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
         String expectedKey2 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR2+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
         assertTrue(timeSeries.getMetricKey().equals(expectedKey1) || timeSeries.getMetricKey().equals(expectedKey2));
+    }
+
+    @Test
+    public void testSumMetricWithNullAggregationTemporality() {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, "s", true, null);
+        String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+        assertThat(sanitizedName, equalTo(name + "_seconds"));
+    }
+
+    @Test
+    public void testGaugeMetricWithNullUnit() {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Gauge gauge = createGaugeMetric(name, null);
+        String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(gauge);
+        assertThat(sanitizedName, equalTo(name));
+    }
+
+    @Test
+    public void testSumMetricCounterWithNullUnit() {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, null, true, "AGGREGATION_TEMPORALITY_CUMULATIVE");
+        String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+        assertThat(sanitizedName, equalTo(name + "_total"));
+    }
+
+    @Test
+    public void testSumMetricWithNullUnitAndNullAggregationTemporality() {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        Sum sum = createSumMetric(name, null, true, null);
+        String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
+        assertThat(sanitizedName, equalTo(name));
     }
 
     private Summary createSummaryMetric(final String name, final String unit) {

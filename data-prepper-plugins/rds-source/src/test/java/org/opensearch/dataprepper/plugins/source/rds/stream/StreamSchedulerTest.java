@@ -16,6 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
@@ -69,6 +72,15 @@ class StreamSchedulerTest {
     @Mock
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
     private String s3Prefix;
     private StreamScheduler objectUnderTest;
 
@@ -101,7 +113,8 @@ class StreamSchedulerTest {
         executorService.submit(() -> {
             try (MockedStatic<StreamWorkerTaskRefresher> streamWorkerTaskRefresherMockedStatic = mockStatic(StreamWorkerTaskRefresher.class)) {
                 streamWorkerTaskRefresherMockedStatic.when(() -> StreamWorkerTaskRefresher.create(eq(sourceCoordinator), eq(streamPartition), any(StreamCheckpointer.class),
-                                eq(s3Prefix), eq(replicationLogClientFactory), eq(buffer), any(Supplier.class), eq(acknowledgementSetManager), eq(pluginMetrics)))
+                                eq(s3Prefix), eq(replicationLogClientFactory), eq(buffer), any(Supplier.class), eq(acknowledgementSetManager), eq(pluginMetrics),
+                                eq(pluginSetting), eq(pipelineDescription), eq(failurePipeline)))
                         .thenReturn(streamWorkerTaskRefresher);
                 objectUnderTest.run();
             }
@@ -131,6 +144,7 @@ class StreamSchedulerTest {
 
     private StreamScheduler createObjectUnderTest() {
         return new StreamScheduler(
-                sourceCoordinator, sourceConfig, s3Prefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+                sourceCoordinator, sourceConfig, s3Prefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 }

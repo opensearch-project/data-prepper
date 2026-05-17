@@ -82,6 +82,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
     private static final String S3_BUFFER_PREFIX = "/buffer";
 
+    /**
+     * Pattern to match overlay directives like "<<overlay sink[*].opensearch>>"
+     * The captured group is the target path (e.g., "sink[*].opensearch")
+     */
+    private static final Pattern OVERLAY_PATTERN = Pattern.compile("^<<overlay\\s+(.+?)>>$");
+
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
             .mappingProvider(new JacksonMappingProvider())
@@ -165,6 +171,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                     }
                 }
             });
+
+            // Process <<overlay>> directives — merge overlay fields into resolved config
+            processOverlayDirectives(templateRootNode, pipelineJson);
 
             PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation,
                     preTransformedPipelinesDataFlowModel,
@@ -286,6 +295,10 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             Iterator<Map.Entry<String, JsonNode>> fields = currentNode.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
+                // Skip overlay directive keys — they are processed separately
+                if (OVERLAY_PATTERN.matcher(entry.getKey()).matches()) {
+                    continue;
+                }
                 String path = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
                 populateMapWithPlaceholderPaths(entry.getValue(), path, placeholdersWithPaths);
             }
@@ -488,6 +501,156 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         return method.invoke(this, arg);
     }
 
+
+    /**
+     * Processes <<overlay path>> directives in the template.
+     * For each overlay directive found as a key in any object node, merges the overlay
+     * value into the target path. Supports [*] wildcard to apply to all array elements
+     * matching a specific key.
+     *
+     * Example: <<overlay sink[*].opensearch>> with value {action: "upsert", script: {...}}
+     * will merge those fields into every opensearch sink entry.
+     */
+    private void processOverlayDirectives(JsonNode rootNode, String pipelineJson) {
+        processOverlayDirectivesRecursive(rootNode, pipelineJson);
+    }
+
+    private void processOverlayDirectivesRecursive(JsonNode node, String pipelineJson) {
+        if (node.isObject()) {
+            ObjectNode objectNode = (ObjectNode) node;
+            List<String> overlayKeys = new ArrayList<>();
+
+            // First pass: collect overlay keys
+            Iterator<String> fieldNames = objectNode.fieldNames();
+            while (fieldNames.hasNext()) {
+                String fieldName = fieldNames.next();
+                Matcher matcher = OVERLAY_PATTERN.matcher(fieldName);
+                if (matcher.matches()) {
+                    overlayKeys.add(fieldName);
+                }
+            }
+
+            // Second pass: apply overlays
+            for (String overlayKey : overlayKeys) {
+                Matcher matcher = OVERLAY_PATTERN.matcher(overlayKey);
+                if (matcher.matches()) {
+                    String targetPath = matcher.group(1);
+                    JsonNode overlayValue = objectNode.get(overlayKey);
+                    // Resolve any <<...>> placeholders inside overlay values
+                    resolveOverlayPlaceholders(overlayValue, pipelineJson);
+                    applyOverlay(objectNode, targetPath, overlayValue);
+                    objectNode.remove(overlayKey);
+                }
+            }
+
+            // Recurse into remaining children
+            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+            while (fields.hasNext()) {
+                processOverlayDirectivesRecursive(fields.next().getValue(), pipelineJson);
+            }
+        } else if (node.isArray()) {
+            for (JsonNode element : node) {
+                processOverlayDirectivesRecursive(element, pipelineJson);
+            }
+        }
+    }
+
+    /**
+     * Resolves <<...>> placeholders in overlay value nodes using the pipeline config.
+     */
+    private void resolveOverlayPlaceholders(JsonNode node, String pipelineJson) {
+        if (node.isObject()) {
+            ObjectNode objectNode = (ObjectNode) node;
+            List<Map.Entry<String, JsonNode>> entries = new ArrayList<>();
+            objectNode.fields().forEachRemaining(entries::add);
+            for (Map.Entry<String, JsonNode> entry : entries) {
+                if (entry.getValue().isValueNode()) {
+                    String text = entry.getValue().asText();
+                    Matcher matcher = PLACEHOLDER_PATTERN.matcher(text);
+                    if (matcher.find()) {
+                        String placeholder = getValueFromPlaceHolder(text);
+                        String resolved = executeFunctionPlaceholder(placeholder, pipelineJson);
+                        if (isJsonPath(resolved)) {
+                            JsonNode resolvedNode = JsonPath.using(parseConfigWithJsonNode)
+                                    .parse(pipelineJson).read(resolved);
+                            if (resolvedNode != null && resolvedNode.isArray() && resolvedNode.size() == 1
+                                    && resolved.contains(JSON_PATH_ARRAY_DISAMBIGUATOR_PATTERN)) {
+                                resolvedNode = resolvedNode.get(0);
+                            }
+                            objectNode.set(entry.getKey(), resolvedNode);
+                        } else if (resolved != null) {
+                            objectNode.set(entry.getKey(), objectMapper.valueToTree(resolved));
+                        }
+                    }
+                } else {
+                    resolveOverlayPlaceholders(entry.getValue(), pipelineJson);
+                }
+            }
+        } else if (node.isArray()) {
+            for (JsonNode element : node) {
+                resolveOverlayPlaceholders(element, pipelineJson);
+            }
+        }
+    }
+
+    /**
+     * Applies overlay to the target path within the parent node.
+     * Supports paths like "sink[*].opensearch" where [*] means all array elements.
+     */
+    private void applyOverlay(ObjectNode parentNode, String targetPath, JsonNode overlayValue) {
+        // Split path into segments: e.g., "sink[*].opensearch" -> ["sink[*]", "opensearch"]
+        String[] segments = targetPath.split("\\.");
+        applyOverlayAtPath(parentNode, segments, 0, overlayValue);
+    }
+
+    private void applyOverlayAtPath(JsonNode currentNode, String[] segments, int index, JsonNode overlayValue) {
+        if (index >= segments.length) {
+            // Reached the target — deep merge overlay into current node
+            if (currentNode.isObject() && overlayValue.isObject()) {
+                deepMerge((ObjectNode) currentNode, (ObjectNode) overlayValue);
+            }
+            return;
+        }
+
+        String segment = segments[index];
+
+        if (segment.endsWith("[*]")) {
+            // Wildcard array segment: apply to all matching elements
+            String fieldName = segment.substring(0, segment.length() - 3);
+            JsonNode arrayNode = currentNode.get(fieldName);
+            if (arrayNode != null && arrayNode.isArray()) {
+                String nextSegment = (index + 1 < segments.length) ? segments[index + 1] : null;
+                for (JsonNode element : arrayNode) {
+                    if (nextSegment != null && element.isObject() && element.has(nextSegment)) {
+                        // Apply to the nested object (e.g., the "opensearch" object within each sink entry)
+                        applyOverlayAtPath(element.get(nextSegment), segments, index + 2, overlayValue);
+                    } else if (nextSegment == null) {
+                        applyOverlayAtPath(element, segments, index + 1, overlayValue);
+                    }
+                }
+            }
+        } else {
+            // Regular field traversal
+            JsonNode childNode = currentNode.get(segment);
+            if (childNode != null) {
+                applyOverlayAtPath(childNode, segments, index + 1, overlayValue);
+            }
+        }
+    }
+
+    /**
+     * Deep merges source into target. Source values override target values.
+     */
+    private void deepMerge(ObjectNode target, ObjectNode source) {
+        Iterator<Map.Entry<String, JsonNode>> fields = source.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String fieldName = entry.getKey();
+            JsonNode sourceValue = entry.getValue();
+
+            target.set(fieldName, sourceValue);
+        }
+    }
 
     /**
      * Replaces template node in the jsonPath with the node from

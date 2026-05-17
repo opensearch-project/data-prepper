@@ -88,7 +88,7 @@ public class TemporalTypeHandler implements MySQLDataTypeHandler {
     private Long handleDate(final String dateStr) {
         try {
             // Handle MySQL zero date special case
-            if ("0000-00-00".equals(dateStr)) {
+            if (dateStr.matches("^0000-.*|.*-00-.*|.*-00$")) {
                 return null;
             }
 
@@ -107,6 +107,9 @@ public class TemporalTypeHandler implements MySQLDataTypeHandler {
 
     private Long handleDateTime(final String dateTimeStr) {
         try {
+            if (dateTimeStr.startsWith("0000-00-00")) {
+                return null;
+            }
             final Long dateTimeEpoch = parseDateTimeStrAsEpochMillis(dateTimeStr);
             if (dateTimeEpoch != null) return dateTimeEpoch;
 

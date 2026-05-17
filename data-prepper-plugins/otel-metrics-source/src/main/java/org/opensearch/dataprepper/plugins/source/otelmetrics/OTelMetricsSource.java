@@ -37,9 +37,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
-@DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
+@DataPrepperPlugin(name = "otlp_metrics",
+        deprecatedName = "otel_metrics_source",
+        pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<? extends Metric>> {
-    private static final String PLUGIN_NAME = "otel_metrics_source";
+    private static final String PLUGIN_NAME = "otlp_metrics";
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     static final String SERVER_CONNECTIONS = "serverConnections";
 

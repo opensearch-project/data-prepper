@@ -39,9 +39,10 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 
-@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
+@DataPrepperPlugin(name = "otlp_traces",
+        deprecatedName = "otel_trace_source",
+        pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
-    private static final String PLUGIN_NAME = "otel_trace_source";
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
 
 

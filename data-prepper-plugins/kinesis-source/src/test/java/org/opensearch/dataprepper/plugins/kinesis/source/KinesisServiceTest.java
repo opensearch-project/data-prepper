@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -155,6 +156,8 @@ public class KinesisServiceTest {
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
         workerIdentifierGenerator = mock(WorkerIdentifierGenerator.class);
         kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
+        pluginMetrics = mock(PluginMetrics.class);
+        when(pluginMetrics.counter(any(String.class))).thenReturn(mock(Counter.class));
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
         when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("kinesis-lease-table");
         when(kinesisLeaseCoordinationTableConfig.getRegion()).thenReturn("us-east-1");

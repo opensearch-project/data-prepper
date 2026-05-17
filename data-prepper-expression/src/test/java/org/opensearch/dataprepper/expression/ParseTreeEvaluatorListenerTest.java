@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,10 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -121,6 +126,10 @@ class ParseTreeEvaluatorListenerTest {
         final Event testEvent = createTestEvent(data);
         final String testSingleJsonPointerStatement = String.format("/%s", testKey);
         final String testSingleEscapeJsonPointerStatement = String.format("\"/%s\"", testKey);
+        final String testNowFunction = "now()";
+        when(expressionFunctionProvider.provideFunction(eq("now"), any(List.class), any(Event.class), any(Function.class))).thenReturn(
+                Instant.now().toEpochMilli()
+        );
 
         assertThat(evaluateStatementOnEvent(testSingleStringStatement, testEvent), equalTo(testStringValue));
         assertThat(evaluateStatementOnEvent(testSingleIntegerStatement, testEvent), equalTo(testInteger));
@@ -129,6 +138,9 @@ class ParseTreeEvaluatorListenerTest {
         assertThat(evaluateStatementOnEvent(testSingleNullStatement, testEvent), equalTo(null));
         assertThat(evaluateStatementOnEvent(testSingleJsonPointerStatement, testEvent), equalTo(testValue));
         assertThat(evaluateStatementOnEvent(testSingleEscapeJsonPointerStatement, testEvent), equalTo(testValue));
+        assertThat(evaluateStatementOnEvent(testNowFunction, testEvent), is(instanceOf(Long.class)));
+        assertThat((Long)(evaluateStatementOnEvent(testNowFunction, testEvent)), lessThan(Instant.now().toEpochMilli() + 5000L));
+        assertThat((Long)(evaluateStatementOnEvent(testNowFunction, testEvent)), greaterThanOrEqualTo(Instant.now().toEpochMilli() - 5000L));
     }
 
     @Test
@@ -375,6 +387,29 @@ class ParseTreeEvaluatorListenerTest {
     }
 
     @Test
+    void testSimpleAddRelationalEqualityOperatorsExpressionWithFunction() {
+        final String nowFunction = "now()";
+        final String arithmeticDurationExpression = "3 * 24 * 3600 * 1000";
+        when(expressionFunctionProvider.provideFunction(eq("now"), any(List.class), any(Event.class), any(Function.class))).thenReturn(
+                Instant.now().toEpochMilli()
+        );
+        final String addStatement = String.format("%s + %s", nowFunction, arithmeticDurationExpression);
+        Event testEvent = createTestEvent(new HashMap<>());
+        final long expected = Instant.now().toEpochMilli() + 3 * 24 * 3600 * 1000;
+        assertThat((long)(evaluateStatementOnEvent(addStatement, testEvent)), greaterThanOrEqualTo(expected - 5000L));
+        assertThat((long)(evaluateStatementOnEvent(addStatement, testEvent)), lessThanOrEqualTo(expected + 5000L));
+        final String timestampKey = "my_timestamp";
+        final Map<String, Long> data = Map.of(timestampKey, Instant.now().toEpochMilli() - 4 * 24 * 3600 * 1000);
+        testEvent = createTestEvent(data);
+        final String relationalStatement = String.format("/%s < %s - %s", timestampKey, nowFunction, arithmeticDurationExpression);
+        assertThat(evaluateStatementOnEvent(relationalStatement, testEvent), is(true));
+        final String relationalStatement2 = String.format("/%s < %s + %s", timestampKey, nowFunction, arithmeticDurationExpression);
+        assertThat(evaluateStatementOnEvent(relationalStatement2, testEvent), is(true));
+        final String equalityStatement = String.format("/%s == %s - %s", timestampKey, nowFunction, arithmeticDurationExpression);
+        assertThat(evaluateStatementOnEvent(equalityStatement, testEvent), is(false));
+    }
+
+    @Test
     void testMultipleOperatorsExpressionNotPriorToRelational() {
         final Event testEvent = createTestEvent(new HashMap<>());
         final String notPriorToGreaterThanStatement = "not 1 > 2";
@@ -528,5 +563,58 @@ class ParseTreeEvaluatorListenerTest {
         ), any(Event.class), any(Function.class))).thenReturn(5);
         final String statement = "length(/field) + 3";
         assertThat(evaluateStatementOnEvent(statement, testEvent), equalTo(8));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAsRightOperandOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" and contains(/message, \"hello\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAsRightOperandOfOr() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-b", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" or contains(/message, \"hello\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAsLeftOperandOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "message", "hello world"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && args.get(1) instanceof String
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "contains(/message, \"hello\") and /value == \"value-a\"";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionWithMultipleArgsAndStringContainingSlashes() {
+        final Event testEvent = createTestEvent(Map.of("value", "value-a", "path", "prefix/x/y/postfix"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "x/y/".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "/value == \"value-a\" and contains(/path, \"x/y/\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
+    }
+
+    @Test
+    void testFunctionOnBothSidesOfAnd() {
+        final Event testEvent = createTestEvent(Map.of("msg", "hello", "path", "/a/b"));
+        when(expressionFunctionProvider.provideFunction(eq("contains"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "hello".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        when(expressionFunctionProvider.provideFunction(eq("startsWith"), argThat(args ->
+                args.size() == 2 && args.get(0) instanceof EventKey && "/a".equals(args.get(1))
+        ), any(Event.class), any(Function.class))).thenReturn(true);
+        final String statement = "contains(/msg, \"hello\") and startsWith(/path, \"/a\")";
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(true));
     }
 }

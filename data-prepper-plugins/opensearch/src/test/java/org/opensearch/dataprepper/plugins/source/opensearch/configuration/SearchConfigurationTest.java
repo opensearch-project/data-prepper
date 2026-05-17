@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -28,6 +30,7 @@ public class SearchConfigurationTest {
 
         assertThat(searchConfiguration.getBatchSize(), equalTo(1000));
         assertThat(searchConfiguration.getSearchContextType(), nullValue());
+        assertThat(searchConfiguration.getSort(), nullValue());
     }
 
     @Test
@@ -55,5 +58,38 @@ public class SearchConfigurationTest {
 
         assertThat(searchConfiguration.isSearchContextTypeValid(), equalTo(false));
         assertThat(searchConfiguration.getSearchContextType(), nullValue());
+    }
+
+    @Test
+    void search_configuration_with_sort_fields() {
+        final Map<String, Object> pluginSettings = new HashMap<>();
+        pluginSettings.put("sort", List.of(
+                Map.of("name", "@timestamp", "order", "descending"),
+                Map.of("name", "_id", "order", "ascending")
+        ));
+
+        final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
+
+        assertThat(searchConfiguration.getSort(), notNullValue());
+        assertThat(searchConfiguration.getSort().size(), equalTo(2));
+        assertThat(searchConfiguration.getSort().get(0).getName(), equalTo("@timestamp"));
+        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo(SortOrder.DESCENDING));
+        assertThat(searchConfiguration.getSort().get(1).getName(), equalTo("_id"));
+        assertThat(searchConfiguration.getSort().get(1).getOrder(), equalTo(SortOrder.ASCENDING));
+    }
+
+    @Test
+    void search_configuration_with_single_sort_field_defaults_to_ascending() {
+        final Map<String, Object> pluginSettings = new HashMap<>();
+        pluginSettings.put("sort", List.of(
+                Map.of("name", "created_at")
+        ));
+
+        final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
+
+        assertThat(searchConfiguration.getSort(), notNullValue());
+        assertThat(searchConfiguration.getSort().size(), equalTo(1));
+        assertThat(searchConfiguration.getSort().get(0).getName(), equalTo("created_at"));
+        assertThat(searchConfiguration.getSort().get(0).getOrder(), equalTo(SortOrder.ASCENDING));
     }
 }

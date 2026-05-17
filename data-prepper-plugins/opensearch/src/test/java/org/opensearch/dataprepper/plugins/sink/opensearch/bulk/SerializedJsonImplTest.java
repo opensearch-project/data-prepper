@@ -34,7 +34,7 @@ class SerializedJsonImplTest {
     }
 
     private SerializedJsonImpl createObjectUnderTest() {
-        return new SerializedJsonImpl(documentBytes, documentId, routingField, pipelineField);
+        return new SerializedJsonImpl(documentBytes, documentId, routingField, pipelineField, null);
     }
 
     @Test

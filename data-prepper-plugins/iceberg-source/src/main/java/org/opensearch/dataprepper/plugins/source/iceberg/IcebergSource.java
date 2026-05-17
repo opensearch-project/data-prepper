@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -40,16 +41,19 @@ public class IcebergSource implements Source<Record<Event>>, UsesEnhancedSourceC
     private final IcebergSourceConfig sourceConfig;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EventFactory eventFactory;
     private EnhancedSourceCoordinator sourceCoordinator;
     private IcebergService icebergService;
 
     @DataPrepperPluginConstructor
     public IcebergSource(final IcebergSourceConfig sourceConfig,
                          final PluginMetrics pluginMetrics,
-                         final AcknowledgementSetManager acknowledgementSetManager) {
+                         final AcknowledgementSetManager acknowledgementSetManager,
+                         final EventFactory eventFactory) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
         LOG.info("Creating Iceberg Source for {} table(s)", sourceConfig.getTables().size());
     }
 
@@ -60,7 +64,7 @@ public class IcebergSource implements Source<Record<Event>>, UsesEnhancedSourceC
 
         sourceCoordinator.createPartition(new LeaderPartition());
 
-        icebergService = new IcebergService(sourceCoordinator, sourceConfig, pluginMetrics, acknowledgementSetManager);
+        icebergService = new IcebergService(sourceCoordinator, sourceConfig, pluginMetrics, acknowledgementSetManager, eventFactory);
         icebergService.start(buffer);
     }
 

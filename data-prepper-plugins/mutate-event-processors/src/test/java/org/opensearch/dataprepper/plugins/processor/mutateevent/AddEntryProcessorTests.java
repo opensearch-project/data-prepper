@@ -1088,6 +1088,312 @@ public class AddEntryProcessorTests {
                 equalTo(List.of(Map.of("key", 5, "nested/newMessage", 3)))); // [{"key": 5, "nested/newMessage": 3}}]
     }
 
+    @Test
+    public void test_iterate_on_disable_root_keys_false_with_value_expression() {
+        String valueExpression = "/alert_title";
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(valueExpression), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("alert_title", String.class);
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("title", null, null, null, valueExpression, false, false, null, "vulns", true, false, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("alert_title", "SQLi");
+        data.put("vulns", List.of(Map.of("cve", "CVE-1")));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("vulns", List.class),
+                equalTo(List.of(Map.of("cve", "CVE-1", "title", "SQLi"))));
+    }
+
+    @Test
+    public void test_iterate_on_disable_root_keys_false_with_format() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("summary", null, null, "${alert_title}-${scan_id}", null, false, false, null, "vulns", true, false, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("alert_title", "SQLi");
+        data.put("scan_id", "S123");
+        data.put("vulns", List.of(Map.of("cve", "CVE-1")));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("vulns", List.class),
+                equalTo(List.of(Map.of("cve", "CVE-1", "summary", "SQLi-S123"))));
+    }
+
+    @Test
+    public void test_iterate_on_disable_root_keys_false_with_multiple_elements() {
+        String valueExpression = "/alert_title";
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(valueExpression), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("alert_title", String.class);
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("title", null, null, null, valueExpression, false, false, null, "vulns", true, false, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("alert_title", "SQLi");
+        data.put("vulns", Arrays.asList(
+                new HashMap<>(Map.of("cve", "CVE-1")),
+                new HashMap<>(Map.of("cve", "CVE-2")),
+                new HashMap<>(Map.of("cve", "CVE-3"))));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("vulns", List.class);
+        assertThat(result.size(), equalTo(3));
+        for (Map<String, Object> item : result) {
+            assertThat(item.get("title"), equalTo("SQLi"));
+        }
+    }
+
+    @Test
+    public void test_iterate_on_disable_root_keys_true_resolves_from_element() {
+        String valueExpression = "/cve";
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(valueExpression), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("cve", String.class);
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("cve_copy", null, null, null, valueExpression, false, false, null, "vulns", true, true, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("vulns", List.of(Map.of("cve", "CVE-1")));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("vulns", List.class),
+                equalTo(List.of(Map.of("cve", "CVE-1", "cve_copy", "CVE-1"))));
+    }
+
+    @Test
+    public void test_disable_root_keys_false_without_iterate_on_throws() {
+        assertThrows(InvalidPluginConfigurationException.class, () ->
+                createEntry("title", null, 3, null, null, false, false, null, null, true, false, false, null));
+    }
+
+    @Test
+    public void test_evaluate_when_on_element_filters_per_element() {
+        final String addToElementWhen = "/severity == \"critical\"";
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return "critical".equals(eventArg.get("severity", String.class));
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("flagged", null, true, null, null, false, false, null, "vulns", true, true, true, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("vulns", Arrays.asList(
+                new HashMap<>(Map.of("cve", "CVE-1", "severity", "critical")),
+                new HashMap<>(Map.of("cve", "CVE-2", "severity", "low")),
+                new HashMap<>(Map.of("cve", "CVE-3", "severity", "critical"))));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("vulns", List.class);
+        assertThat(result.size(), equalTo(3));
+        assertThat(result.get(0).get("flagged"), equalTo(true));
+        assertThat(result.get(1).containsKey("flagged"), is(false));
+        assertThat(result.get(2).get("flagged"), equalTo(true));
+    }
+
+    @Test
+    public void test_evaluate_when_on_element_false_evaluates_against_root() {
+        final String addToElementWhen = "/root_flag == true";
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return Boolean.TRUE.equals(eventArg.get("root_flag", Boolean.class));
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("tagged", null, true, null, null, false, false, null, "vulns", true, true, false, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("root_flag", true);
+        data.put("vulns", Arrays.asList(
+                new HashMap<>(Map.of("cve", "CVE-1")),
+                new HashMap<>(Map.of("cve", "CVE-2"))));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("vulns", List.class);
+        assertThat(result.size(), equalTo(2));
+        assertThat(result.get(0).get("tagged"), equalTo(true));
+        assertThat(result.get(1).get("tagged"), equalTo(true));
+    }
+
+    @Test
+    public void test_evaluate_when_on_element_all_false_adds_nothing() {
+        final String addToElementWhen = "/severity == \"critical\"";
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenReturn(false);
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("flagged", null, true, null, null, false, false, null, "vulns", true, true, true, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("vulns", Arrays.asList(
+                new HashMap<>(Map.of("cve", "CVE-1", "severity", "low")),
+                new HashMap<>(Map.of("cve", "CVE-2", "severity", "medium"))));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("vulns", List.class);
+        assertThat(result.size(), equalTo(2));
+        assertThat(result.get(0).containsKey("flagged"), is(false));
+        assertThat(result.get(1).containsKey("flagged"), is(false));
+    }
+
+    @Test
+    public void test_evaluate_when_on_element_without_iterate_on_throws() {
+        final String addToElementWhen = "/severity == \"critical\"";
+        assertThrows(InvalidPluginConfigurationException.class, () ->
+                createEntry("flagged", null, true, null, null, false, false, null, null, true, true, true, addToElementWhen));
+    }
+
+    @Test
+    public void test_evaluate_when_on_element_without_add_to_element_when_throws() {
+        assertThrows(InvalidPluginConfigurationException.class, () ->
+                createEntry("flagged", null, true, null, null, false, false, null, "vulns", true, true, true, null));
+    }
+
+    @Test
+    public void test_both_flags_combined() {
+        final String addToElementWhen = "/severity == \"critical\"";
+        String valueExpression = "/alert_title";
+        when(expressionEvaluator.isValidExpressionStatement(valueExpression)).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement(addToElementWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(valueExpression), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("alert_title", String.class);
+        });
+        when(expressionEvaluator.evaluateConditional(eq(addToElementWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return "critical".equals(eventArg.get("severity", String.class));
+        });
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("title", null, null, null, valueExpression, false, false, null, "vulns", true, false, true, addToElementWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("alert_title", "SQLi");
+        data.put("vulns", Arrays.asList(
+                new HashMap<>(Map.of("cve", "CVE-1", "severity", "critical")),
+                new HashMap<>(Map.of("cve", "CVE-2", "severity", "low")),
+                new HashMap<>(Map.of("cve", "CVE-3", "severity", "critical"))));
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("vulns", List.class);
+        assertThat(result.size(), equalTo(3));
+        assertThat(result.get(0).get("title"), equalTo("SQLi"));
+        assertThat(result.get(1).containsKey("title"), is(false));
+        assertThat(result.get(2).get("title"), equalTo("SQLi"));
+    }
+
+    @Test
+    void test_generateUuid_expression_adds_uuid_string_to_event() {
+        final String uuidExpr = "generateUuid()";
+        final String generatedUuid = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("recordId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any())).thenReturn(generatedUuid);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test-message");
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        final Event event = result.get(0).getData();
+        assertThat(event.containsKey("recordId"), is(true));
+        assertThat(event.get("recordId", String.class), equalTo(generatedUuid));
+    }
+
+    @Test
+    void test_generateUuid_expression_produces_unique_values_per_event() {
+        final String uuidExpr = "generateUuid()";
+        final String uuid1 = UUID.randomUUID().toString();
+        final String uuid2 = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("recordId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any()))
+                .thenReturn(uuid1)
+                .thenReturn(uuid2);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(
+                Arrays.asList(getEvent("message-one"), getEvent("message-two")));
+
+        assertThat(result.get(0).getData().get("recordId", String.class), equalTo(uuid1));
+        assertThat(result.get(1).getData().get("recordId", String.class), equalTo(uuid2));
+        assertThat(uuid1.equals(uuid2), is(false));
+    }
+
+    @Test
+    void test_generateUuid_expression_does_not_overwrite_existing_key_by_default() {
+        final String uuidExpr = "generateUuid()";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("existingId", null, null, null, uuidExpr, false, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("existingId", "original-value");
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(result.get(0).getData().get("existingId", String.class), equalTo("original-value"));
+    }
+
+    @Test
+    void test_generateUuid_expression_overwrites_existing_key_when_overwrite_is_true() {
+        final String uuidExpr = "generateUuid()";
+        final String newUuid = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("existingId", null, null, null, uuidExpr, true, false, null, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(uuidExpr), any())).thenReturn(newUuid);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("existingId", "original-value");
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(result.get(0).getData().get("existingId", String.class), equalTo(newUuid));
+    }
+
+    @Test
+    void test_generateUuid_expression_respects_add_when_condition() {
+        final String uuidExpr = "generateUuid()";
+        final String addWhen = "/skip == true";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("recordId", null, null, null, uuidExpr, false, false, addWhen, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(uuidExpr)).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(addWhen), any())).thenReturn(false);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        final List<Record<Event>> result = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(result.get(0).getData().containsKey("recordId"), is(false));
+    }
+
     private AddEntryProcessor createObjectUnderTest() {
         return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator, eventKeyFactory);
     }
@@ -1108,6 +1414,25 @@ public class AddEntryProcessorTests {
                 key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
                 iterateOn, flattenKey, addToElementWhen);
     }
+
+    private AddEntryProcessorConfig.Entry createEntry(
+            final String key,
+            final String metadataKey,
+            final Object value,
+            final String format,
+            final String valueExpression,
+            final boolean overwriteIfKeyExists,
+            final boolean appendIfKeyExists,
+            final String addWhen,
+            final String iterateOn,
+            final boolean flattenKey,
+            final boolean disableRootKeys,
+            final boolean evaluateWhenOnElement,
+            final String addToElementWhen) {
+        return new AddEntryProcessorConfig.Entry(
+                key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                iterateOn, flattenKey, disableRootKeys, evaluateWhenOnElement, addToElementWhen);
+    }
     private AddEntryProcessorConfig.Entry createEntry(
             final String key,
             final String metadataKey,
@@ -1123,6 +1448,7 @@ public class AddEntryProcessorTests {
                 key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
                 iterateOn, addToElementWhen);
     }
+
 
     private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {
         return new LinkedList<>(Arrays.asList(entries));

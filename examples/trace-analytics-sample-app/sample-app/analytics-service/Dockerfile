@@ -20,7 +20,7 @@ COPY . /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle bootJar --daemon
 
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.30.0/opentelemetry-javaagent.jar
+RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.26.1/opentelemetry-javaagent.jar
 
 FROM eclipse-temurin:21-jre-jammy
 EXPOSE 8087

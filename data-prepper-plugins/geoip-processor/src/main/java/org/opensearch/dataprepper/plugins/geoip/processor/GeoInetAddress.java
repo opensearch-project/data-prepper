@@ -19,13 +19,17 @@ import java.util.Optional;
 class GeoInetAddress {
 
     static Optional<InetAddress> usableInetFromString(final String ipAddress) {
+        return usableInetFromString(ipAddress, false);
+    }
+
+    static Optional<InetAddress> usableInetFromString(final String ipAddress, final boolean lookupPrivateAddresses) {
         final InetAddress address;
         try {
             address = InetAddresses.forString(ipAddress);
         } catch (final IllegalArgumentException e) {
             return Optional.empty();
         }
-        if (isPublicIpAddress(address))
+        if (isPublicIpAddress(address) || lookupPrivateAddresses)
             return Optional.of(address);
         return Optional.empty();
     }

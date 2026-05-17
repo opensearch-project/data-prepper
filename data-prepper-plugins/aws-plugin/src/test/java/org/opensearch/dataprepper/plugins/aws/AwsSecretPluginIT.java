@@ -99,6 +99,7 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
         when(awsSecretManagerConfiguration.getRefreshInterval()).thenReturn(testInterval);
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default behavior
         when(awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier)).thenReturn(secretsManagerClient);
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
@@ -133,6 +134,7 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
         when(awsSecretManagerConfiguration.isDisableRefresh()).thenReturn(true);
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default behavior
         when(awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier)).thenReturn(secretsManagerClient);
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);

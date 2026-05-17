@@ -37,9 +37,12 @@ public class PrometheusSinkConfiguration {
     private static final Duration DEFAULT_OUT_OF_ORDER_TIME_WINDOW = Duration.ofSeconds(10);
 
     @JsonProperty("aws")
-    @NotNull
     @Valid
     private AwsConfig awsConfig;
+
+    @JsonProperty("authentication")
+    @Valid
+    private AuthenticationOptions authentication;
 
     @NotNull
     @JsonProperty("url")
@@ -78,8 +81,15 @@ public class PrometheusSinkConfiguration {
     @DurationMax(seconds = 600)
     private Duration idleTimeout = DEFAULT_IDLE_TIMEOUT;
 
+    @JsonProperty("insecure")
+    private boolean insecure = false;
+
     @JsonProperty("sanitize_names")
     private boolean sanitizeNames = true;
+
+    public boolean isInsecure() {
+        return insecure;
+    }
 
     public boolean getSanitizeNames() {
         return sanitizeNames;
@@ -98,6 +108,10 @@ public class PrometheusSinkConfiguration {
 
     public AwsConfig getAwsConfig() {
         return awsConfig;
+    }
+
+    public AuthenticationOptions getAuthentication() {
+        return authentication;
     }
 
     public int getMaxRetries() {
@@ -132,11 +146,44 @@ public class PrometheusSinkConfiguration {
         return idleTimeout;
     }
 
-    @AssertTrue(message = "encoding or content_type or remote_write_version is incorrect.")
+    @AssertTrue(message = "url must be https when insecure is not set to true.")
+    boolean isHttpsOrInsecure() {
+        if (url == null) {
+            return true;
+        }
+        if (insecure) {
+            return true;
+        }
+        return url.startsWith("https://");
+    }
+
+    @AssertTrue(message = "Cannot use both AWS SigV4 and authentication options. Choose one.")
+    boolean isValidAuthConfig() {
+        return !(awsConfig != null && authentication != null);
+    }
+
+    @AssertTrue(message = "encoding or content_type or remote_write_version or url is incorrect.")
     boolean isValidConfig() {
-        return  url.startsWith("https://") &&
+        final boolean validUrl = url.startsWith("https://") || url.startsWith("http://");
+        return  validUrl &&
                 encoding == CompressionOption.SNAPPY &&
                 contentType.equals(X_PROTOBUF) &&
                 remoteWriteVersion.equals(DEFAULT_REMOTE_WRITE_VERSION);
+    }
+
+    @AssertTrue(message = "AWS configuration requires an https:// URL.")
+    boolean isValidAwsConfig() {
+        if (awsConfig != null) {
+            return url != null && url.startsWith("https://");
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "Bearer token authentication is not yet supported.")
+    boolean isValidBearerTokenConfig() {
+        if (authentication != null && authentication.getBearerTokenOptions() != null) {
+            return false;
+        }
+        return true;
     }
 }

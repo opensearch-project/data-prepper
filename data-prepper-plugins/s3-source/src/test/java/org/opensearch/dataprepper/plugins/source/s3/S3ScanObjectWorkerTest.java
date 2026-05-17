@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitio
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanProcessingCondition;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
@@ -59,10 +60,12 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -120,6 +123,9 @@ class S3ScanObjectWorkerTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
+    private S3ScanProcessingConditionEvaluator processingConditionEvaluator;
+
+    @Mock
     private Counter counter;
 
     @Mock
@@ -157,8 +163,10 @@ class S3ScanObjectWorkerTest {
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION)).thenReturn(noObjectsFoundForFolderPartitionCounter);
         when(pluginMetrics.counter(PARTITION_OWNERSHIP_UPDATE_ERRORS)).thenReturn(partitionOwnershipUpdateErrorCounter);
+        lenient().when(processingConditionEvaluator.firstUnmetCondition(any(), any(), any())).thenReturn(Optional.empty());
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
-                sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
+                sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics,
+                processingConditionEvaluator, Collections.emptyMap());
         verify(sourceCoordinator).initialize();
         return objectUnderTest;
     }
@@ -751,6 +759,66 @@ class S3ScanObjectWorkerTest {
 
     }
 
+
+    @Test
+    void processing_conditions_not_met_closes_partition_for_retry() {
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + objectKey;
+
+        final S3ScanProcessingCondition condition = new S3ScanProcessingCondition();
+        condition.setObjectName("manifest.json");
+        condition.setWhen("/done == true");
+        condition.setRetryDelay(Duration.ofMinutes(3));
+        condition.setMaxRetry(5);
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey)
+                .build();
+
+        final ScanObjectWorker objectUnderTest = createObjectUnderTest();
+
+        given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
+        when(processingConditionEvaluator.firstUnmetCondition(eq(bucket), eq(objectKey), any())).thenReturn(Optional.of(condition));
+
+        objectUnderTest.runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).closePartition(eq(partitionKey), eq(Duration.ofMinutes(3)), eq(5), eq(false));
+        verify(sourceCoordinator, never()).saveProgressStateForPartition(any(), any());
+        verify(sourceCoordinator, never()).giveUpPartition(eq(partitionKey), any(Instant.class));
+        verify(sourceCoordinator, never()).completePartition(any(), anyBoolean());
+    }
+
+    @Test
+    void processing_conditions_not_met_with_max_retries_exhausted_processes_object_as_is() throws IOException {
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + objectKey;
+
+        final S3ScanProcessingCondition condition = new S3ScanProcessingCondition();
+        condition.setObjectName("manifest.json");
+        condition.setWhen("/done == true");
+        condition.setRetryDelay(Duration.ofMinutes(3));
+        condition.setMaxRetry(5);
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey)
+                .withPartitionClosedCount(4L)
+                .build();
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
+        when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(false);
+
+        final ScanObjectWorker objectUnderTest = createObjectUnderTest();
+
+        given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
+        when(processingConditionEvaluator.firstUnmetCondition(eq(bucket), eq(objectKey), any())).thenReturn(Optional.of(condition));
+        doNothing().when(s3ObjectHandler).processS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
+
+        objectUnderTest.runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator, never()).closePartition(any(), any(), anyInt(), anyBoolean());
+        verify(sourceCoordinator).completePartition(partitionKey, false);
+    }
 
     static Stream<Class> exceptionProvider() {
         return Stream.of(PartitionUpdateException.class, PartitionNotFoundException.class, PartitionNotOwnedException.class);

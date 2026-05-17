@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.annotations.Experimental;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
@@ -34,10 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Collection;
 
-@Experimental
 @DataPrepperPlugin(name = "sqs", pluginType = Sink.class, pluginConfigurationType = SqsSinkConfig.class)
 public class SqsSink extends AbstractSink<Record<Event>> {
 
@@ -54,22 +52,19 @@ public class SqsSink extends AbstractSink<Record<Event>> {
                    final SqsSinkConfig sqsSinkConfig,
                    final SinkContext sinkContext,
                    final ExpressionEvaluator expressionEvaluator,
-                   final AwsCredentialsSupplier awsCredentialsSupplier) {
+                   final AwsCredentialsSupplier awsCredentialsSupplier,
+                   final PipelineDescription pipelineDescription) {
         super(pluginSetting);
         this.sqsSinkConfig = sqsSinkConfig;
         sinkInitialized = false;
         final PluginModel codecConfiguration = sqsSinkConfig.getCodec();
         final PluginSetting codecPluginSettings;
-        if (codecConfiguration != null) {
-            String codecPluginName = codecConfiguration.getPluginName();
-            if (!codecPluginName.equals("json") && !codecPluginName.equals("ndjson")) {
-                throw new RuntimeException(String.format("Codec {} not supported.", codecPluginName));
-            }
-            codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
-                codecConfiguration.getPluginSettings());
-        } else {
-            codecPluginSettings = new PluginSetting("ndjson", Map.of());
+        String codecPluginName = codecConfiguration.getPluginName();
+        if (!codecPluginName.equals("json") && !codecPluginName.equals("ndjson")) {
+            throw new RuntimeException(String.format("Codec {} not supported.", codecPluginName));
         }
+        codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
+            codecConfiguration.getPluginSettings());
         
         AwsConfig awsConfig = sqsSinkConfig.getAwsConfig();
         final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
@@ -86,7 +81,7 @@ public class SqsSink extends AbstractSink<Record<Event>> {
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, sqsSinkConfig.getDlq(), region.toString(), role, "sqsSink");
         }
         final OutputCodec outputCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
-        sqsSinkService = new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics);
+        sqsSinkService = new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics, pluginSetting, pipelineDescription);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
@@ -106,6 +101,7 @@ public class SqsSink extends AbstractSink<Record<Event>> {
     @Override
     public void doInitialize() {
         sinkInitialized = true;
+        sqsSinkService.setDlqPipeline(getFailurePipeline());
     }
 
     /**

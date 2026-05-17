@@ -19,6 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.time.Duration;
 import java.util.Map;
@@ -34,6 +37,12 @@ class LeaderSchedulerTest {
 
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
+    @Mock
+    private ShuffleStorage shuffleStorage;
+    @Mock
+    private ShuffleConfig shuffleConfig;
+    @Mock
+    private Certificate certificate;
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
@@ -52,7 +61,8 @@ class LeaderSchedulerTest {
 
     @Test
     void constructor_registersAllMetrics() {
-        new LeaderScheduler(sourceCoordinator, Map.of(), Duration.ofSeconds(5), Map.of(), pluginMetrics);
+        new LeaderScheduler(sourceCoordinator, Map.of(), Duration.ofSeconds(5), Map.of(),
+                shuffleStorage, shuffleConfig, certificate, pluginMetrics);
 
         verify(pluginMetrics).counter(SNAPSHOTS_PROCESSED_COUNT);
         verify(pluginMetrics).summary(DATA_FILE_BYTES);

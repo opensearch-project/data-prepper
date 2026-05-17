@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
@@ -75,7 +79,7 @@ public class S3GroupManagerTest {
         when(s3SinkConfig.getDefaultBucket()).thenReturn(defaultBucket);
 
         final Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider), any()))
                 .thenAnswer(invocation -> {
                     Supplier<String> bucketSupplier = invocation.getArgument(1);
                     Supplier<String> objectKeySupplier = invocation.getArgument(2);
@@ -117,7 +121,7 @@ public class S3GroupManagerTest {
 
         final Buffer buffer = mock(Buffer.class);
         final OutputCodec outputCodec = mock(OutputCodec.class);
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider), any()))
                 .thenReturn(buffer);
         when(codecFactory.provideCodec()).thenReturn(outputCodec);
 
@@ -138,7 +142,7 @@ public class S3GroupManagerTest {
         assertThat(secondResult.getS3GroupIdentifier(), equalTo(s3GroupIdentifier));
         assertThat(secondResult.getBuffer(), equalTo(buffer));
 
-        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider));
+        verify(bufferFactory, times(1)).getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider), any());
 
         final Collection<S3Group> groups = objectUnderTest.getS3GroupEntries();
         assertThat(groups, notNullValue());
@@ -178,7 +182,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider), any()))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec outputCodec = mock(OutputCodec.class);
@@ -224,7 +228,7 @@ public class S3GroupManagerTest {
         final Buffer thirdBuffer = mock(Buffer.class);
         when(thirdBuffer.getSize()).thenReturn(bufferSizeBase * 3);
 
-        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider)))
+        when(bufferFactory.getBuffer(eq(s3Client), any(Supplier.class), any(Supplier.class), eq(defaultBucket), any(Function.class), eq(bucketOwnerProvider), any()))
                 .thenReturn(buffer).thenReturn(secondBuffer).thenReturn(thirdBuffer);
 
         final OutputCodec firstOutputCodec = mock(OutputCodec.class);

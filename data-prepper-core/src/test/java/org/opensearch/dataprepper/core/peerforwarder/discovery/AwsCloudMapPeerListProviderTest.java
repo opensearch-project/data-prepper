@@ -347,7 +347,9 @@ class AwsCloudMapPeerListProviderTest {
 
             waitUntilPeerListPopulated(objectUnderTest);
 
-            assertThat(listenerEndpoints.size(), equalTo(knownIpPeers.size()));
+            await().atMost(5, TimeUnit.SECONDS)
+                    .pollDelay(100, TimeUnit.MILLISECONDS)
+                    .untilAsserted(() -> assertThat(listenerEndpoints.size(), equalTo(knownIpPeers.size())));
 
             final Set<String> observedIps = listenerEndpoints.stream()
                     .map(Endpoint::ipAddr)

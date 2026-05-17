@@ -121,7 +121,7 @@ class SinkModelTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"plugin_model_empty.yaml", "plugin_model_not_present.yaml", "plugin_model_null.yaml"})
+    @ValueSource(strings = {"plugin_model_with_empty_object.yaml"})
     final void deserialize_with_empty_inner(final String resourceName) throws IOException {
         final InputStream inputStream = PluginModelTests.class.getResourceAsStream(resourceName);
 
@@ -131,6 +131,17 @@ class SinkModelTest {
         assertThat(sinkModel.getPluginName(), equalTo("customPlugin"));
         assertThat(sinkModel.getPluginSettings(), notNullValue());
         assertThat(sinkModel.getPluginSettings().size(), equalTo(0));
+    }
+
+    @Test
+    final void deserialize_with_no_value_returns_null_settings() throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_not_present.yaml");
+
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        final SinkModel sinkModel = mapper.readValue(inputStream, SinkModel.class);
+        assertThat(sinkModel.getPluginName(), equalTo("customPlugin"));
+        assertThat(sinkModel.getPluginSettings(), equalTo(null));
     }
 
     @Test

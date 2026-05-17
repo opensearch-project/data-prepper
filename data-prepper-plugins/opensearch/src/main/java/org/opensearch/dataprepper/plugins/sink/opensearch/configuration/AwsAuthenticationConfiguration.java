@@ -1,12 +1,17 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
@@ -34,8 +39,14 @@ public class AwsAuthenticationConfiguration {
     @JsonProperty("serverless")
     private boolean serverless = false;
 
+    @JsonProperty("resource_name")
+    private String resourceName;
+
     @JsonProperty("serverless_options")
     private ServerlessOptions serverlessOptions;
+
+    @JsonProperty("semantic_enrichment")
+    private SemanticEnrichmentConfig semanticEnrichmentConfig;
 
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
@@ -57,8 +68,16 @@ public class AwsAuthenticationConfiguration {
         return serverless;
     }
 
+    public String getResourceName() {
+        return resourceName;
+    }
+
     public ServerlessOptions getServerlessOptions() {
         return serverlessOptions;
+    }
+
+    public SemanticEnrichmentConfig getSemanticEnrichmentConfig() {
+        return semanticEnrichmentConfig;
     }
 }
 

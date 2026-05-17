@@ -18,6 +18,8 @@ or by using user credential assigned with a role that has the below required per
 - `cluster_all`
 - `indices:admin/template/get`
 - `indices:admin/template/put`
+- `indices:admin/index_template/get`
+- `indices:admin/index_template/put`
 - `indices:data/write/bulk`
 - `indices:data/write/bulks`
 

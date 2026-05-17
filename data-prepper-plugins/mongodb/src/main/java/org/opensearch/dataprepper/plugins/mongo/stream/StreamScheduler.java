@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
+import com.mongodb.MongoSecurityException;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -13,6 +14,7 @@ import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.mongo.documentdb.MongoTasksRefresher;
 import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,13 +48,15 @@ public class StreamScheduler implements Runnable {
     private final String s3PathPrefix;
     private final PluginMetrics pluginMetrics;
     private final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics;
+    private final MongoTasksRefresher mongoTasksRefresher;
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final Buffer<Record<Event>> buffer,
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final MongoDBSourceConfig sourceConfig,
                            final String s3PathPrefix,
                            final PluginMetrics pluginMetrics,
-                           final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
+                           final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics,
+                           final MongoTasksRefresher mongoTasksRefresher) {
         this.sourceCoordinator = sourceCoordinator;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordBufferWriter = RecordBufferWriter.create(bufferAccumulator, pluginMetrics);
@@ -62,6 +66,7 @@ public class StreamScheduler implements Runnable {
         this.s3PathPrefix = s3PathPrefix;
         this.pluginMetrics = pluginMetrics;
         this.documentDBAggregateMetrics = documentDBAggregateMetrics;
+        this.mongoTasksRefresher = mongoTasksRefresher;
     }
 
     @Override
@@ -89,6 +94,9 @@ public class StreamScheduler implements Runnable {
                 }
             } catch (final Exception e) {
                 LOG.error("Received an exception during stream processing from DocumentDB, backing off and retrying", e);
+                if (isCausedByMongoSecurityException(e) && mongoTasksRefresher != null) {
+                    mongoTasksRefresher.forceRefresh();
+                }
                 if (streamPartition != null) {
                     if (sourceConfig.isDisableS3ReadForLeader()) {
                         System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
@@ -130,5 +138,16 @@ public class StreamScheduler implements Runnable {
         final String s3Prefix = s3PathPrefix + streamPartition.getCollection();
         return new PartitionKeyRecordConverter(streamPartition.getCollection(),
                 StreamPartition.PARTITION_TYPE, s3Prefix);
+    }
+
+    private boolean isCausedByMongoSecurityException(final Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause != null) {
+            if (cause instanceof MongoSecurityException) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }

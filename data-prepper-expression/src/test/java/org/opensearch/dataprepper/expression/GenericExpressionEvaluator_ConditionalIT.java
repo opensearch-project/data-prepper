@@ -246,11 +246,29 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-212\"}"), true),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), false),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), true),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-0\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
                 arguments("getEventType() == \"LOG\"",  longEvent, false),
-                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
+                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true),
+                arguments("substringAfter(\"file.txt\", \".\") == \"txt\"", event("{}"), true),
+                arguments("substringAfter(/path, \"/\") == \"app/src/main.py\"", event("{\"path\": \"/app/src/main.py\"}"), true),
+                arguments("substringBefore(\"key=a=b\", \"=\") == \"key\"", event("{}"), true),
+                arguments("substringAfterLast(\"/app/src/main.py\", \"/\") == \"main.py\"", event("{}"), true),
+                arguments("substringBeforeLast(\"app.src.main\", \".\") == \"app.src\"", event("{}"), true),
+                arguments("/value == \"value-a\" and contains(/string, \"x/y/\")", event("{\"value\": \"value-a\", \"string\": \"prefix/x/y/postfix\"}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": 200}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": \"200\"}"), false),
+                arguments("/name typeof string", event("{\"name\": \"test\"}"), true),
+                arguments("/flag typeof boolean", event("{\"flag\": true}"), true),
+                arguments("/value typeof long", event("{\"value\": 2147483648}"), true),
+                arguments("/items typeof array", event("{\"items\": [1, 2]}"), true),
+                arguments("/data typeof map", event("{\"data\": {\"k\": \"v\"}}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": \"200\"}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": 200}"), false),
+                arguments("not (/name typeof string)", event("{\"name\": 123}"), true)
         );
     }
 
@@ -297,7 +315,11 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("getMetadata(10)", tagEvent),
-                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
+                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                arguments("substringAfter()", event("{}")),
+                arguments("substringBefore()", event("{}")),
+                arguments("substringAfterLast()", event("{}")),
+                arguments("substringBeforeLast()", event("{}"))
         );
     }
 

@@ -40,6 +40,13 @@ import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.partition.InitialLoadTaskPartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.ChangelogTaskProgressState;
 import org.opensearch.dataprepper.plugins.source.iceberg.coordination.state.InitialLoadTaskProgressState;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClient;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.time.Duration;
 import java.util.List;
@@ -82,6 +89,14 @@ class ChangelogWorkerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
+    private EventFactory eventFactory;
+    @Mock
+    private ShuffleStorage shuffleStorage;
+    @Mock
+    private Certificate certificate;
+    @Mock
+    private ShuffleConfig shuffleConfig;
+    @Mock
     private PluginMetrics pluginMetrics;
     @Mock
     private IcebergDataFileReader dataFileReader;
@@ -100,8 +115,26 @@ class ChangelogWorkerTest {
 
     private static final String TABLE_NAME = "test_db.users";
 
+    private Event createMockEvent() {
+        final Event event = mock(Event.class);
+        final EventMetadata metadata = mock(EventMetadata.class);
+        when(event.getMetadata()).thenReturn(metadata);
+        return event;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setupEventFactory() {
+        final EventBuilder eventBuilder = mock(EventBuilder.class);
+        org.mockito.Mockito.lenient().when(eventFactory.eventBuilder(EventBuilder.class)).thenReturn(eventBuilder);
+        org.mockito.Mockito.lenient().when(eventBuilder.withEventType(any())).thenReturn(eventBuilder);
+        org.mockito.Mockito.lenient().when(eventBuilder.withData(any())).thenReturn(eventBuilder);
+        org.mockito.Mockito.lenient().when(eventBuilder.build()).thenAnswer(invocation -> createMockEvent());
+    }
+
     @BeforeEach
     void setUp() {
+        when(sourceConfig.getShuffleConfig()).thenReturn(shuffleConfig);
+        setupEventFactory();
         when(pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT)).thenReturn(changeEventsProcessedCounter);
         when(pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT)).thenReturn(changeEventsProcessingErrorCounter);
         when(pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT)).thenReturn(exportRecordsProcessedCounter);
@@ -288,12 +321,17 @@ class ChangelogWorkerTest {
         if (partitionType.equals(InitialLoadTaskPartition.PARTITION_TYPE)) {
             when(sourceCoordinator.acquireAvailablePartition(ChangelogTaskPartition.PARTITION_TYPE))
                     .thenReturn(Optional.empty());
+            when(sourceCoordinator.acquireAvailablePartition("SHUFFLE_WRITE"))
+                    .thenReturn(Optional.empty());
+            when(sourceCoordinator.acquireAvailablePartition("SHUFFLE_READ"))
+                    .thenReturn(Optional.empty());
         }
 
         final ChangelogWorker worker = new ChangelogWorker(
                 sourceCoordinator, sourceConfig,
                 Map.of(TABLE_NAME, table), Map.of(TABLE_NAME, tableConfig),
-                buffer, acknowledgementSetManager, pluginMetrics, dataFileReader);
+                buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate,
+                pluginMetrics, dataFileReader);
 
         final Thread thread = new Thread(worker);
         thread.start();

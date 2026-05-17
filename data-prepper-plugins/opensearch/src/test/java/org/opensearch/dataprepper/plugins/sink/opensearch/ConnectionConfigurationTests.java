@@ -7,8 +7,10 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -26,6 +28,8 @@ import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +68,23 @@ class ConnectionConfigurationTests {
     private final Integer TEST_SOCKET_TIMEOUT = 10;
     private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
     private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
+    private static String TEST_CLIENT_CERT_PATH;
+    private static String TEST_CLIENT_KEY_PATH;
+
+    @TempDir
+    private static Path tempDir;
+
+    @BeforeAll
+    static void generateClientCertificates() throws Exception {
+        final TestCertificateGenerator.GeneratedCertificateAuthority ca =
+                TestCertificateGenerator.generateClientCertificateAuthority();
+        final TestCertificateGenerator.GeneratedCertificate clientCert =
+                TestCertificateGenerator.generateClientCertificate(ca.getCertificate(), ca.getPrivateKey());
+        TEST_CLIENT_CERT_PATH = TestCertificateGenerator.writePemToTempFile(
+                TestCertificateGenerator.toPem(clientCert.getCertificate()), "test-client-cert-", tempDir).toString();
+        TEST_CLIENT_KEY_PATH = TestCertificateGenerator.writePemToTempFile(
+                TestCertificateGenerator.toPem(clientCert.getPrivateKey()), "test-client-key-", tempDir).toString();
+    }
 
     @Mock
     private ApacheHttpClient.Builder apacheHttpClientBuilder;
@@ -283,7 +304,6 @@ class ConnectionConfigurationTests {
 
   @Test
   void testCreateClientWithInsecureAndCertPath() throws IOException {
-    // Insecure should take precedence over cert path when both are set
       final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
         TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, true);
     final ConnectionConfiguration connectionConfiguration =
@@ -757,5 +777,99 @@ class ConnectionConfigurationTests {
         OpenSearchSinkConfig openSearchSinkConfig = objectMapper.readValue(json, OpenSearchSinkConfig.class);
 
         return openSearchSinkConfig;
+    }
+
+    @Test
+    void testReadConnectionConfigurationWithClientCertInAuth() throws JsonProcessingException {
+        final Map<String, Object> metadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        metadata.put("authentication", Map.of(
+                "client_certificate", TEST_CLIENT_CERT_PATH,
+                "client_key", TEST_CLIENT_KEY_PATH));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertThat(connectionConfiguration.getClientCertContent(), notNullValue());
+        assertThat(connectionConfiguration.getClientKeyContent(), notNullValue());
+    }
+
+    @Test
+    void testReadConnectionConfigurationDefaultClientCertIsNull() throws JsonProcessingException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertThat(connectionConfiguration.getClientCertContent(), equalTo(null));
+        assertThat(connectionConfiguration.getClientKeyContent(), equalTo(null));
+    }
+
+    @Test
+    void testCreateClientWithClientCert() throws IOException {
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
+        builder.withClientCert(TEST_CLIENT_CERT_PATH);
+        builder.withClientKey(TEST_CLIENT_KEY_PATH);
+        builder.withInsecure(true);
+        final ConnectionConfiguration connectionConfiguration = builder.build();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        assertThat(client, notNullValue());
+        client.close();
+    }
+
+    @Test
+    void testCreateClientWithClientCertAndCACert() throws IOException {
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
+        builder.withCert(TEST_CERT_PATH);
+        builder.withClientCert(TEST_CLIENT_CERT_PATH);
+        builder.withClientKey(TEST_CLIENT_KEY_PATH);
+        final ConnectionConfiguration connectionConfiguration = builder.build();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        assertThat(client, notNullValue());
+        client.close();
+    }
+
+    @Test
+    void testCreateClientWithClientCertAndBasicAuth() throws IOException {
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
+        builder.withUsername(TEST_USERNAME);
+        builder.withPassword(TEST_PASSWORD);
+        builder.withClientCert(TEST_CLIENT_CERT_PATH);
+        builder.withClientKey(TEST_CLIENT_KEY_PATH);
+        builder.withInsecure(true);
+        final ConnectionConfiguration connectionConfiguration = builder.build();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        assertThat(client, notNullValue());
+        client.close();
+    }
+
+    @Test
+    void testCreateClientWithInlinePemClientCert() throws IOException {
+        final String certContent = Files.readString(Path.of(TEST_CLIENT_CERT_PATH));
+        final String keyContent = Files.readString(Path.of(TEST_CLIENT_KEY_PATH));
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
+        builder.withClientCert(certContent);
+        builder.withClientKey(keyContent);
+        builder.withInsecure(true);
+        final ConnectionConfiguration connectionConfiguration = builder.build();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        assertThat(client, notNullValue());
+        client.close();
+    }
+
+    @Test
+    void testReadConnectionConfigurationWithClientCertAndUsernameInAuth() throws JsonProcessingException {
+        final Map<String, Object> metadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT,
+                false, null, null, TEST_CERT_PATH, false);
+        metadata.put("authentication", Map.of(
+                "username", TEST_USERNAME,
+                "password", TEST_PASSWORD,
+                "client_certificate", TEST_CLIENT_CERT_PATH,
+                "client_key", TEST_CLIENT_KEY_PATH));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertThat(connectionConfiguration.getClientCertContent(), notNullValue());
+        assertThat(connectionConfiguration.getClientKeyContent(), notNullValue());
+        assertThat(connectionConfiguration.getCertPath(), notNullValue());
     }
 }

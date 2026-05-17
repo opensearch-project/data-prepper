@@ -43,6 +43,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,13 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
+
+    private static final List<SortOptions> DEFAULT_SORT_OPTIONS = List.of(
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))));
+
+    private static final List<SortOptions> DEFAULT_SCROLL_SORT_OPTIONS = List.of(
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))));
 
     private final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher;
     private final SearchContextType searchContextType;
@@ -117,10 +125,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
             builder
                     .pit(Pit.of(pitBuilder -> pitBuilder.id(searchPointInTimeRequest.getPitId()).keepAlive(searchPointInTimeRequest.getKeepAlive())))
                     .size(searchPointInTimeRequest.getPaginationSize())
-                    .sort(List.of(
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
-                    )
+                    .sort(buildSortOptions(searchPointInTimeRequest.getSortOptions()))
                     .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
@@ -157,7 +162,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
             searchResponse = clientRefresher.get()
                     .search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
-                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                    .sort(buildSortOptionsForScroll(createScrollRequest.getSortOptions()))
                     .size(createScrollRequest.getSize())
                     .version(true)
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
@@ -226,10 +231,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
             builder
                     .index(noSearchContextSearchRequest.getIndex())
                     .size(noSearchContextSearchRequest.getPaginationSize())
-                    .sort(List.of(
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))))
-                    )
+                    .sort(buildSortOptions(noSearchContextSearchRequest.getSortOptions()))
                     .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
@@ -304,5 +306,23 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                                         DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
                         .withEventType(EventType.DOCUMENT.toString()).build())
                 .collect(Collectors.toList());
+    }
+
+    private List<SortOptions> buildSortOptions(final List<SortingOptions> sortingOptions) {
+        if (sortingOptions == null || sortingOptions.isEmpty()) {
+            return DEFAULT_SORT_OPTIONS;
+        }
+        return sortingOptions.stream()
+                .map(opt -> SortOptions.of(b -> b.field(
+                        FieldSort.of(f -> f.field(opt.getFieldName())
+                                .order("desc".equalsIgnoreCase(opt.getOrder()) ? SortOrder.Desc : SortOrder.Asc)))))
+                .collect(Collectors.toList());
+    }
+
+    private List<SortOptions> buildSortOptionsForScroll(final List<SortingOptions> sortingOptions) {
+        if (sortingOptions == null || sortingOptions.isEmpty()) {
+            return DEFAULT_SCROLL_SORT_OPTIONS;
+        }
+        return buildSortOptions(sortingOptions);
     }
 }

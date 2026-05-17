@@ -34,7 +34,7 @@ dependencyResolutionManagement {
         libs {
             version('slf4j', '2.0.6')
             library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
-            version('armeria', '1.32.5')
+            version('armeria', '1.32.6')
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
@@ -76,6 +76,7 @@ dependencyResolutionManagement {
             version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
+            library('lz4', 'org.lz4', 'lz4-java').version('1.8.0')
         }
         testLibs {
             version('junit', '5.8.2')
@@ -181,9 +182,10 @@ include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:sqs-common'
 include 'data-prepper-plugins:cloudwatch-logs'
 include 'data-prepper-plugins:sqs-sink'
-//include 'data-prepper-plugins:http-sink'
+include 'data-prepper-plugins:http-sink'
 //include 'data-prepper-plugins:sns-sink'
 include 'data-prepper-plugins:prometheus-sink'
+include 'data-prepper-plugins:prometheus-source'
 include 'data-prepper-plugins:personalize-sink'
 include 'data-prepper-plugins:dissect-processor'
 include 'data-prepper-plugins:dynamodb-source'
@@ -195,9 +197,11 @@ include 'data-prepper-plugins:rds-source'
 include 'data-prepper-plugins:iceberg-source'
 include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
+include 'data-prepper-plugins:http-client-common'
 include 'data-prepper-plugins:aws-lambda'
 include 'data-prepper-plugins:ml-inference-processor'
 include 'data-prepper-plugins:s3-common'
+include 'data-prepper-plugins:s3-enrich-processor'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'

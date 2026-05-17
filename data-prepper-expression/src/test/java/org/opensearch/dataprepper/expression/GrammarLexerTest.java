@@ -14,14 +14,17 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.Token;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class GrammarLexerTest {
 
@@ -32,10 +35,11 @@ class GrammarLexerTest {
         return tokenStream.getTokens();
     }
 
-    private void assertTokenFalse(final String statement, final int type) {
+    private void assertIsNotToken(final String statement, final int type) {
         final List<? extends Token> tokens = getTokens(statement);
 
-        assertFalse(tokens.size() == 2 && tokens.get(0).getText() == statement);
+        assertThat(tokens.size(), is(greaterThanOrEqualTo(2)));
+        assertThat(tokens.get(0).getType(), is(not(type)));
     }
 
     private void assertToken(final String statement, final int type) {
@@ -73,25 +77,29 @@ class GrammarLexerTest {
         assertToken("12345678.0002e6", DataPrepperExpressionLexer.Float);
         assertToken("12345678.000252E16", DataPrepperExpressionLexer.Float);
         // only one zero before the decimal point
-        assertTokenFalse("0000.678e12", DataPrepperExpressionLexer.Float);
+        assertIsNotToken("0000.678e12", DataPrepperExpressionLexer.Float);
         // Must have one digit before the decimal point
-        assertTokenFalse(".678e12", DataPrepperExpressionLexer.Float);
-        assertTokenFalse(".678e-12", DataPrepperExpressionLexer.Float);
-        assertTokenFalse(".6782", DataPrepperExpressionLexer.Float);
+        assertIsNotToken(".678e12", DataPrepperExpressionLexer.Float);
+        assertIsNotToken(".678e-12", DataPrepperExpressionLexer.Float);
+        assertIsNotToken(".6782", DataPrepperExpressionLexer.Float);
         // Can't end with decimal point
-        assertTokenFalse("6782.", DataPrepperExpressionLexer.Float);
-        // only one zero after decimal point
-        assertTokenFalse("12345678.00", DataPrepperExpressionLexer.Float);
+        assertIsNotToken("6782.", DataPrepperExpressionLexer.Float);
     }
 
-    @Test
-    void testTokenBoolean() {
-        assertToken("true", DataPrepperExpressionLexer.Boolean);
+    @ParameterizedTest
+    @ValueSource(strings = {"true", "false"})
+    void testTokenBoolean(final String booleanStatement) {
+        assertToken(booleanStatement, DataPrepperExpressionLexer.Boolean);
     }
 
     @Test
     void testTokenJsonPointer() {
         assertToken("/status_code", DataPrepperExpressionLexer.JsonPointer);
+    }
+
+    @Test
+    void testTokenEscapedJsonPointer() {
+        assertToken("\"/status_code\"", DataPrepperExpressionLexer.EscapedJsonPointer);
     }
 
     @Test
@@ -202,6 +210,126 @@ class GrammarLexerTest {
     @Test
     void testTokenSUBTRACT() {
         assertToken("-", DataPrepperExpressionLexer.SUBTRACT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"integer", "boolean", "big_decimal", "long", "double", "string", "map", "array"})
+    void testTokenDataTypes(final String dataType) {
+        assertToken(dataType, DataPrepperExpressionLexer.DataTypes);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenIdentifier(final String functionName) {
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenFunction(final String functionName) {
+        final String statement = functionName + "()";
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is(functionName)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"length", "contains", "cidrContains", "hasTags", "getMetadata", "getEventType"})
+    void testTokenFunctionWithSpace(final String functionName) {
+        final String statement = functionName + " ()";
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is(functionName)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+        assertToken(functionName, DataPrepperExpressionLexer.Identifier);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"integer", "boolean", "big_decimal", "long", "double", "string", "map", "array"})
+    void testTypeOfExpressionTokenization(final String dataType) {
+        final String statement = "/status typeof " + dataType;
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.JsonPointer)),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.TYPEOF)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.DataTypes)),
+                () -> assertThat(tokens.get(2).getText(), is(dataType)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+    }
+
+    @Test
+    void testFunctionWithNoArgsTokenization() {
+        final List<? extends Token> tokens = getTokens("functionWithoutArguments()");
+
+        assertThat(tokens.size(), is(4));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is("functionWithoutArguments")),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+    }
+
+    @Test
+    void testFunctionWithArgsTokenization() {
+        final List<? extends Token> tokens = getTokens("functionWithTwoArguments(/sourceIp,\"192.0.2.0/24\")");
+
+        assertThat(tokens.size(), is(7));
+        assertAll(
+                () -> assertThat(tokens.get(0).getType(), is(DataPrepperExpressionLexer.Identifier)),
+                () -> assertThat(tokens.get(0).getText(), is("functionWithTwoArguments")),
+                () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.LPAREN)),
+                () -> assertThat(tokens.get(2).getType(), is(DataPrepperExpressionLexer.JsonPointer)),
+                () -> assertThat(tokens.get(2).getText(), is("/sourceIp")),
+                () -> assertThat(tokens.get(3).getType(), is(DataPrepperExpressionLexer.COMMA)),
+                () -> assertThat(tokens.get(4).getType(), is(DataPrepperExpressionLexer.String)),
+                () -> assertThat(tokens.get(4).getText(), is("\"192.0.2.0/24\"")),
+                () -> assertThat(tokens.get(5).getType(), is(DataPrepperExpressionLexer.RPAREN)),
+                () -> assertThat(tokens.get(6).getType(), is(DataPrepperExpressionLexer.EOF))
+        );
+    }
+
+    @Test
+    void testTokenNull() {
+        assertToken("null", DataPrepperExpressionLexer.Null);
+    }
+
+    @Test
+    void testTokenCOMMA() {
+        assertToken(",", DataPrepperExpressionLexer.COMMA);
+    }
+
+    @Test
+    void testTokenPLUS() {
+        assertToken("+", DataPrepperExpressionLexer.PLUS);
+    }
+
+    @Test
+    void testTokenMULTIPLY() {
+        assertToken("*", DataPrepperExpressionLexer.MULTIPLY);
+    }
+
+    @Test
+    void testTokenMOD() {
+        assertToken("%", DataPrepperExpressionLexer.MOD);
     }
 
     @Test

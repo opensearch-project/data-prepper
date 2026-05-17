@@ -6,8 +6,8 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 
 | Maintainer             | GitHub ID                                                 | Affiliation |
 | ---------------------- | --------------------------------------------------------- | ----------- |
+| Divyansh Bokadia       | [divbok](https://github.com/divbok)               | Amazon      |
 | Souvik Bose            | [sb2k16](https://github.com/sb2k16)               | Amazon      |
-| Chase Engelbrecht      | [engechas](https://github.com/engechas)                   | Amazon      |
 | Santhosh Gandhe        | [san81](https://github.com/san81)             | Amazon      |
 | Srikanth Govindarajan  | [srikanthjg](https://github.com/srikanthjg)             | Amazon      |
 | Taylor Gray            | [graytaylor0](https://github.com/graytaylor0)             | Amazon      |
@@ -16,6 +16,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Karsten Schnitter      | [KarstenSchnitter](https://github.com/KarstenSchnitter)   | SAP         |
 | David Venable          | [dlvenable](https://github.com/dlvenable)                 | Amazon      |
 | Hai Yan                | [oeyh](https://github.com/oeyh)                           | Amazon      |
+| Xun Zhang              | [Zhangxunmt](https://github.com/Zhangxunmt)               | Amazon      |
 
 
 ## Emeritus
@@ -24,6 +25,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | ---------------------- | ----------------------------------------------------- | ----------- |
 | Steven Bayer           | [sbayer55](https://github.com/sbayer55)               | Amazon      |
 | Christopher Manning    | [cmanning09](https://github.com/cmanning09)           | Amazon      |
+| Chase Engelbrecht      | [engechas](https://github.com/engechas)               | Amazon      |
 | Asif Sohail Mohammed   | [asifsmohammed](https://github.com/asifsmohammed)         | Amazon      |
 | David Powers           | [dapowers87](https://github.com/dapowers87)           | Amazon      |
 | Shivani Shukla         | [sshivanii](https://github.com/sshivanii)             | Amazon      |

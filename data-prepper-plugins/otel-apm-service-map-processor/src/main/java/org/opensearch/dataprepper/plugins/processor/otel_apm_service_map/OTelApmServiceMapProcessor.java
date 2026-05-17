@@ -45,9 +45,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import org.opensearch.dataprepper.model.host.HostContext;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -92,7 +97,10 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static Clock clock;
 
     private final int thisProcessorId;
+    private final String hostId;
     private final List<String> groupByAttributes;
+    private final MetricTimestampSource metricTimestampSource;
+    private final MetricTimestampGranularity metricTimestampGranularity;
     private final EventFactory eventFactory;
 
     @DataPrepperPluginConstructor
@@ -107,7 +115,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 pipelineDescription.getNumberOfProcessWorkers(),
                 eventFactory,
                 pluginMetrics,
-                config.getGroupByAttributes());
+                config.getGroupByAttributes(),
+                config.getMetricTimestampSource(),
+                config.getMetricTimestampGranularity());
     }
 
     OTelApmServiceMapProcessor(final Duration windowDuration,
@@ -116,7 +126,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                final int processWorkers,
                                final EventFactory eventFactory,
                                final PluginMetrics pluginMetrics) {
-        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics, Collections.emptyList());
+        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics,
+                Collections.emptyList(), MetricTimestampSource.SPAN_END_TIME, MetricTimestampGranularity.SECONDS);
     }
 
     OTelApmServiceMapProcessor(final Duration windowDuration,
@@ -126,9 +137,37 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                final EventFactory eventFactory,
                                final PluginMetrics pluginMetrics,
                                final List<String> groupByAttributes) {
+        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics,
+                groupByAttributes, MetricTimestampSource.SPAN_END_TIME, MetricTimestampGranularity.SECONDS);
+    }
+
+    OTelApmServiceMapProcessor(final Duration windowDuration,
+                               final File databasePath,
+                               final Clock clock,
+                               final int processWorkers,
+                               final EventFactory eventFactory,
+                               final PluginMetrics pluginMetrics,
+                               final List<String> groupByAttributes,
+                               final MetricTimestampSource metricTimestampSource) {
+        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics,
+                groupByAttributes, metricTimestampSource, MetricTimestampGranularity.SECONDS);
+    }
+
+    OTelApmServiceMapProcessor(final Duration windowDuration,
+                               final File databasePath,
+                               final Clock clock,
+                               final int processWorkers,
+                               final EventFactory eventFactory,
+                               final PluginMetrics pluginMetrics,
+                               final List<String> groupByAttributes,
+                               final MetricTimestampSource metricTimestampSource,
+                               final MetricTimestampGranularity metricTimestampGranularity) {
         super(pluginMetrics);
 
+        this.hostId = resolveHostId();
         this.groupByAttributes = groupByAttributes != null ? Collections.unmodifiableList(groupByAttributes) : Collections.emptyList();
+        this.metricTimestampSource = metricTimestampSource != null ? metricTimestampSource : MetricTimestampSource.ARRIVAL_TIME;
+        this.metricTimestampGranularity = metricTimestampGranularity != null ? metricTimestampGranularity : MetricTimestampGranularity.SECONDS;
 
         this.eventFactory = eventFactory;
         OTelApmServiceMapProcessor.clock = clock;
@@ -375,7 +414,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
         final EphemeralSpanDecorations ephemeralDecorations = new EphemeralSpanDecorations();
 
-        final Map<MetricKey, MetricAggregationState> metricsStateByKey = new HashMap<>();
+        final Map<MetricKey, MetricAggregationState> sumStateByKey = new HashMap<>();
+        final Map<MetricKey, MetricAggregationState> histogramStateByKey = new HashMap<>();
+        final Set<NodeOperationDetail> dedupedNodeDetails = new HashSet<>();
 
         final Map<String, Collection<SpanStateData>> previousSpansByTraceId = buildSpansByTraceIdMap(previousWindow);
         final Map<String, Collection<SpanStateData>> currentSpansByTraceId = buildSpansByTraceIdMap(currentWindow);
@@ -388,11 +429,24 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             if (!traceData.getProcessingSpans().isEmpty()) {
                 decorateSpansInTraceWithEphemeralStorage(traceData);
 
-                apmEvents.addAll(generateNodeOperationDetailEvents(traceData, currentTime, metricsStateByKey));
+                generateNodeOperationDetailEvents(traceData, currentTime, sumStateByKey, histogramStateByKey, dedupedNodeDetails);
             }
         }
 
-        final List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
+        // Convert deduped NodeOperationDetails to events
+        for (NodeOperationDetail detail : dedupedNodeDetails) {
+            final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
+                    .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
+
+            final Event event = eventFactory.eventBuilder(EventBuilder.class)
+                    .withEventMetadata(eventMetadata)
+                    .withData(detail)
+                    .build();
+
+            apmEvents.add(new Record<>(event));
+        }
+
+        final List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(sumStateByKey, histogramStateByKey);
         metrics.sort(Comparator.comparing(JacksonMetric::getTime));
 
         final List<Record<Event>> apmEventsSorted = new ArrayList<>();
@@ -444,15 +498,23 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * Get anchor timestamp from span's endTime, truncated to minute boundary
+     * Get anchor timestamp for metrics, truncated to the specified unit.
+     * When metric_timestamp_source is ARRIVAL_TIME, uses fallbackTime (clock.instant()).
+     * When metric_timestamp_source is SPAN_END_TIME, uses the span's endTime field.
      *
      * @param spanStateData The span to extract timestamp from
-     * @param fallbackTime Current system time to use if span endTime is null
-     * @return Instant truncated to the lower 1-minute boundary
+     * @param fallbackTime Current system time to use as arrival time or if span endTime is null
+     * @param truncationUnit The ChronoUnit to truncate the timestamp to
+     * @return Instant truncated to the specified boundary
      */
-    private Instant getAnchorTimestampFromSpan(final SpanStateData spanStateData, final Instant fallbackTime) {
-        Instant timestamp = fallbackTime; // Default to current system time
+    private Instant getAnchorTimestampFromSpan(final SpanStateData spanStateData, final Instant fallbackTime,
+                                               final ChronoUnit truncationUnit) {
+        if (metricTimestampSource == MetricTimestampSource.ARRIVAL_TIME) {
+            return fallbackTime.truncatedTo(truncationUnit);
+        }
 
+        // SPAN_END_TIME mode: parse span's endTime, fall back to system time
+        Instant timestamp = fallbackTime;
         final String endTime = spanStateData.getEndTime();
         try {
             if (endTime != null && !endTime.isEmpty()) {
@@ -463,7 +525,23 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                      endTime, e.getMessage());
         }
 
-        return timestamp.truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+        return timestamp.truncatedTo(truncationUnit);
+    }
+
+    /**
+     * Resolve a stable host identifier for this Data Prepper instance.
+     * Uses a truncated SHA-256 hash of the hostname (from {@link HostContext})
+     * to ensure uniqueness without revealing the actual hostname in emitted metrics.
+     */
+    private String resolveHostId() {
+        try {
+            final String hostname = HostContext.getHostname();
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            final byte[] hash = digest.digest(hostname.getBytes(StandardCharsets.UTF_8));
+            return Hex.encodeHexString(hash).substring(0, 16);
+        } catch (final java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
     }
 
     /**
@@ -718,11 +796,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      * @param metricsStateByKey Shared map for metric aggregation across all traces
      * @return Collection of NodeOperationDetail events
      */
-    private Collection<Record<Event>> generateNodeOperationDetailEvents(final ThreeWindowTraceDataWithDecorations traceData,
-                                                                        final Instant currentTime,
-                                                                        final Map<MetricKey, MetricAggregationState> metricsStateByKey) {
-        final Collection<Record<Event>> events = new HashSet<>();
-
+    private void generateNodeOperationDetailEvents(final ThreeWindowTraceDataWithDecorations traceData,
+                                                    final Instant currentTime,
+                                                    final Map<MetricKey, MetricAggregationState> sumStateByKey,
+                                                    final Map<MetricKey, MetricAggregationState> histogramStateByKey,
+                                                    final Set<NodeOperationDetail> dedupedNodeDetails) {
         // Step 1: CLIENT spans — primary emission path
         for (SpanStateData clientSpan : traceData.getProcessingSpans()) {
             if (SPAN_KIND_CLIENT.equals(clientSpan.getSpanKind())) {
@@ -746,24 +824,18 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                             : null;
                     final Operation targetOp = new Operation(decoration.getRemoteOperation());
 
-                    final Instant anchorTimestamp = getAnchorTimestampFromSpan(clientSpan, currentTime);
+                    final Instant anchor = getAnchorTimestampFromSpan(clientSpan, currentTime,
+                            metricTimestampGranularity.getChronoUnit());
 
                     final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
-                            sourceNode, targetNode, sourceOp, targetOp, anchorTimestamp);
+                            sourceNode, targetNode, sourceOp, targetOp, anchor);
 
-                    final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                            .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
-
-                    final Event event = eventFactory.eventBuilder(EventBuilder.class)
-                            .withEventMetadata(eventMetadata)
-                            .withData(nodeOperationDetail)
-                            .build();
-
-                    events.add(new Record<>(event));
+                    dedupedNodeDetails.add(nodeOperationDetail);
 
                     if (decoration.getParentServerOperationName() != null) {
                         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                                clientSpan, decoration, currentTime, metricsStateByKey, anchorTimestamp);
+                                clientSpan, decoration, currentTime, sumStateByKey, histogramStateByKey,
+                                anchor, hostId);
                     }
                 }
             }
@@ -772,9 +844,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         // Step 2: SERVER spans — metrics for all, leaf NodeOperationDetail for those with no CLIENT descendants
         for (SpanStateData serverSpan : traceData.getProcessingSpans()) {
             if (SPAN_KIND_SERVER.equals(serverSpan.getSpanKind())) {
-                final Instant anchorTimestamp = getAnchorTimestampFromSpan(serverSpan, currentTime);
+                final Instant anchor = getAnchorTimestampFromSpan(serverSpan, currentTime,
+                        metricTimestampGranularity.getChronoUnit());
                 ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                        serverSpan, currentTime, metricsStateByKey, anchorTimestamp);
+                        serverSpan, currentTime, sumStateByKey, histogramStateByKey,
+                        anchor, hostId);
 
                 final ServerSpanDecoration decoration = traceData.getDecorations().getServerDecoration(serverSpan.getSpanId());
 
@@ -788,22 +862,12 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     final Operation sourceOp = new Operation(serverSpan.getOperationName());
 
                     final NodeOperationDetail nodeOperationDetail = new NodeOperationDetail(
-                            sourceNode, null, sourceOp, null, anchorTimestamp);
+                            sourceNode, null, sourceOp, null, anchor);
 
-                    final EventMetadata eventMetadata = new DefaultEventMetadata.Builder()
-                            .withEventType(EVENT_TYPE_OTEL_APM_SERVICE_MAP).build();
-
-                    final Event event = eventFactory.eventBuilder(EventBuilder.class)
-                            .withEventMetadata(eventMetadata)
-                            .withData(nodeOperationDetail)
-                            .build();
-
-                    events.add(new Record<>(event));
+                    dedupedNodeDetails.add(nodeOperationDetail);
                 }
             }
         }
-
-        return events;
     }
 
     /**

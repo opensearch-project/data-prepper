@@ -52,8 +52,15 @@ public class AddressValidation {
      * @throws BadRequestException if the address is invalid.
      */
     public static void validateInetAddress(@NonNull final InetAddress address) {
-        if (address.isMulticastAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
-                || address.isSiteLocalAddress() || address.isLoopbackAddress()) {
+        validateInetAddress(address, false);
+    }
+
+    public static void validateInetAddress(@NonNull final InetAddress address, final boolean allowLocalAddress) {
+        if (address.isMulticastAddress() || address.isAnyLocalAddress()) {
+            throw new BadRequestException(INVALID_URL);
+        }
+        if (!allowLocalAddress && (address.isLinkLocalAddress()
+                || address.isSiteLocalAddress() || address.isLoopbackAddress())) {
             throw new BadRequestException(INVALID_URL);
         }
     }

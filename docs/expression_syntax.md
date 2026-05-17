@@ -200,6 +200,22 @@ Currently, the following functions are supported
    - If the IP address is in the range of any given CIDR blocks, the function evaluates to true; otherwise, the function evaluates to false.
    - The function supports both IPv4 and IPv6 addresses.
    For example, `cidrContains(/sourceIp,"192.0.2.0/24","10.0.1.0/16")` evaluates to true if the event has `sourceIp` field with value "192.0.2.5".
+ * `substringAfter()`
+   - takes two String arguments: a source and a delimiter. Both should be either string literals or Json Pointers with String values.
+   - returns the substring of the source that follows the first occurrence of the delimiter. If the delimiter is not found, the original source string is returned. If the source resolves to null, null is returned.
+   For example, `substringAfter("key=a=b", "=")` returns "a=b", and `substringAfter("hello-world", "xyz")` returns "hello-world".
+ * `substringBefore()`
+   - takes two String arguments: a source and a delimiter. Both should be either string literals or Json Pointers with String values.
+   - returns the substring of the source that precedes the first occurrence of the delimiter. If the delimiter is not found, the original source string is returned. If the source resolves to null, null is returned.
+   For example, `substringBefore("key=a=b", "=")` returns "key", and `substringBefore("hello-world", "xyz")` returns "hello-world".
+ * `substringAfterLast()`
+   - takes two String arguments: a source and a delimiter. Both should be either string literals or Json Pointers with String values.
+   - returns the substring of the source that follows the last occurrence of the delimiter. If the delimiter is not found, the original source string is returned. If the source resolves to null, null is returned.
+   For example, `substringAfterLast("/app/src/main.py", "/")` returns "main.py", and `substringAfterLast("hello-world", "xyz")` returns "hello-world".
+ * `substringBeforeLast()`
+   - takes two String arguments: a source and a delimiter. Both should be either string literals or Json Pointers with String values.
+   - returns the substring of the source that precedes the last occurrence of the delimiter. If the delimiter is not found, the original source string is returned. If the source resolves to null, null is returned.
+   For example, `substringBeforeLast("/app/src/main.py", "/")` returns "/app/src", and `substringBeforeLast("hello-world", "xyz")` returns "hello-world".
 
 
 ## White Space

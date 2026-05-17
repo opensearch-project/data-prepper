@@ -221,6 +221,10 @@ public class KafkaTopicConsumerMetrics {
                     continue;
                 }
                 double newValue = (Double)value.metricValue();
+                if (Double.isNaN(newValue) || Double.isInfinite(newValue)) {
+                    LOG.debug("Skipping non-finite metric value {} for {}", newValue, metricName);
+                    continue;
+                }
                 if (metricName.equals("records-consumed-total")) {
                     synchronized(consumerMetrics) {
                         double prevValue = consumerMetrics.get(metricName);
