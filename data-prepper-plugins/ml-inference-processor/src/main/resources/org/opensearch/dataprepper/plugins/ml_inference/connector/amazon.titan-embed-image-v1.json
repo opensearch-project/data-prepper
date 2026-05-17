@@ -1,0 +1,43 @@
+{
+  "name": "Amazon Bedrock Connector: multi-modal embedding",
+  "description": "The connector to bedrock Titan multi-modal embedding model",
+  "version": "1",
+  "protocol": "aws_sigv4",
+  "parameters": {
+    "service_name": "bedrock",
+    "model": "amazon.titan-embed-image-v1"
+  },
+  "actions": [
+    {
+      "action_type": "PREDICT",
+      "method": "POST",
+      "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/invoke",
+      "headers": {
+        "content-type": "application/json",
+        "x-amz-content-sha256": "required"
+      },
+      "request_body": "{\"inputText\": \"${parameters.inputText:-null}\", \"inputImage\": \"${parameters.inputImage:-null}\"}",
+      "pre_process_function": "connector.pre_process.bedrock.multimodal_embedding",
+      "post_process_function": "connector.post_process.bedrock.embedding"
+    },
+    {
+      "action_type": "BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"inputDataConfig\": ${parameters.inputDataConfig}, \"jobName\": \"${parameters.jobName}\", \"modelId\": \"${parameters.model}\", \"outputDataConfig\": ${parameters.outputDataConfig}, \"roleArn\": \"${parameters.roleArn}\" }"
+    },
+    {
+      "action_type": "BATCH_PREDICT_STATUS",
+      "method": "GET",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}"
+    },
+    {
+      "action_type": "CANCEL_BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}/stop"
+    }
+  ]
+}

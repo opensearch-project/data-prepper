@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -45,25 +47,29 @@ import static org.mockito.Mockito.mock;
 @ExtendWith(MockitoExtension.class)
 class ApmServiceMapMetricsUtilTest {
 
+    private String testHostId;
+
     private SpanStateData testClientSpan;
     private SpanStateData testServerSpan;
     private ClientSpanDecoration mockDecoration;
-    private Map<MetricKey, MetricAggregationState> metricsStateByKey;
+    private Map<MetricKey, MetricAggregationState> sumStateByKey;
+    private Map<MetricKey, MetricAggregationState> histogramStateByKey;
     private Instant currentTime;
     private Instant anchorTimestamp;
 
     @BeforeEach
     void setUp() {
+        testHostId = java.util.UUID.randomUUID().toString();
         testClientSpan = createMockSpanStateData("client-service", "client-operation", "test-env");
         testServerSpan = createMockSpanStateData("server-service", "server-operation", "test-env");
         mockDecoration = createMockClientSpanDecoration();
-        metricsStateByKey = new HashMap<>();
+        sumStateByKey = new HashMap<>();
+        histogramStateByKey = new HashMap<>();
         currentTime = Instant.now();
-        anchorTimestamp = Instant.now().minusSeconds(60);
+        anchorTimestamp = Instant.now().minusSeconds(60).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
     }
 
     private SpanStateData createMockSpanStateData(String serviceName, String operationName, String environment) {
-        // Create a real SpanStateData instance for proper field access
         Map<String, Object> spanAttributes = new HashMap<>();
         spanAttributes.put("resource", Map.of("attributes", Map.of("deployment.environment.name", environment)));
 
@@ -122,16 +128,21 @@ class ApmServiceMapMetricsUtilTest {
     void testGenerateMetricsForClientSpan_Success() {
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                testClientSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                testClientSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        assertEquals(1, metricsStateByKey.size());
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getErrorCount());
-        assertEquals(0, state.getFaultCount());
-        assertEquals(1, state.getLatencyDurations().size());
-        assertEquals(1.0, state.getLatencyDurations().get(0), 0.001);
+        assertEquals(1, sumStateByKey.size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(0, sumState.getErrorCount());
+        assertEquals(0, sumState.getFaultCount());
+
+        assertEquals(1, histogramStateByKey.size());
+        MetricAggregationState histState = histogramStateByKey.values().iterator().next();
+        assertEquals(1, histState.getLatencyDurations().size());
+        assertEquals(1.0, histState.getLatencyDurations().get(0), 0.001);
     }
 
     @Test
@@ -141,15 +152,17 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                errorSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                errorSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(1, state.getErrorCount());
-        assertEquals(0, state.getFaultCount());
-        assertEquals(1, state.getErrorExemplars().size());
-        assertEquals(0, state.getFaultExemplars().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(1, sumState.getErrorCount());
+        assertEquals(0, sumState.getFaultCount());
+        assertEquals(1, sumState.getErrorExemplars().size());
+        assertEquals(0, sumState.getFaultExemplars().size());
     }
 
     @Test
@@ -159,15 +172,17 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                faultSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                faultSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getErrorCount());
-        assertEquals(1, state.getFaultCount());
-        assertEquals(0, state.getErrorExemplars().size());
-        assertEquals(1, state.getFaultExemplars().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(0, sumState.getErrorCount());
+        assertEquals(1, sumState.getFaultCount());
+        assertEquals(0, sumState.getErrorExemplars().size());
+        assertEquals(1, sumState.getFaultExemplars().size());
     }
 
     @Test
@@ -177,12 +192,14 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                testClientSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                testClientSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getLatencyDurations().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertTrue(histogramStateByKey.isEmpty()); // No histogram entry for null duration
     }
 
     @Test
@@ -192,12 +209,14 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                testClientSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                testClientSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getLatencyDurations().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertTrue(histogramStateByKey.isEmpty()); // No histogram entry for zero duration
     }
 
     @Test
@@ -218,14 +237,17 @@ class ApmServiceMapMetricsUtilTest {
         labels.put("remoteEnvironment", mockDecoration.getRemoteEnvironment());
         labels.put("remoteService", mockDecoration.getRemoteService());
         labels.put("remoteOperation", mockDecoration.getRemoteOperation());
+        labels.put("service_map_processor_host_id", testHostId);
         labels.putAll(errorSpan.getGroupByAttributes());
 
         MetricKey key = new MetricKey(labels, anchorTimestamp);
-        metricsStateByKey.put(key, existingState);
+        sumStateByKey.put(key, existingState);
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                errorSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                errorSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
         assertEquals(10, existingState.getErrorExemplars().size()); // Should not exceed limit
@@ -235,15 +257,20 @@ class ApmServiceMapMetricsUtilTest {
     void testGenerateMetricsForServerSpan_Success() {
         // When
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                testServerSpan, currentTime, metricsStateByKey, anchorTimestamp);
+                testServerSpan, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        assertEquals(1, metricsStateByKey.size());
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getErrorCount());
-        assertEquals(0, state.getFaultCount());
-        assertEquals(1, state.getLatencyDurations().size());
+        assertEquals(1, sumStateByKey.size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(0, sumState.getErrorCount());
+        assertEquals(0, sumState.getFaultCount());
+
+        assertEquals(1, histogramStateByKey.size());
+        MetricAggregationState histState = histogramStateByKey.values().iterator().next();
+        assertEquals(1, histState.getLatencyDurations().size());
     }
 
     @Test
@@ -253,52 +280,86 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                errorSpan, currentTime, metricsStateByKey, anchorTimestamp);
+                errorSpan, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(1, state.getErrorCount());
-        assertEquals(0, state.getFaultCount());
-        assertEquals(1, state.getErrorExemplars().size());
-        assertEquals(0, state.getFaultExemplars().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(1, sumState.getErrorCount());
+        assertEquals(0, sumState.getFaultCount());
+        assertEquals(1, sumState.getErrorExemplars().size());
+        assertEquals(0, sumState.getFaultExemplars().size());
     }
 
     @Test
     void testGenerateMetricsForServerSpan_WithFault() {
-        // Given - Create span with fault status 
+        // Given - Create span with fault status
         SpanStateData faultSpan = createSpanWithHttpStatus(500); // HTTP 500 = fault
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                faultSpan, currentTime, metricsStateByKey, anchorTimestamp);
+                faultSpan, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(1, state.getRequestCount());
-        assertEquals(0, state.getErrorCount());
-        assertEquals(1, state.getFaultCount());
-        assertEquals(0, state.getErrorExemplars().size());
-        assertEquals(1, state.getFaultExemplars().size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(1, sumState.getRequestCount());
+        assertEquals(0, sumState.getErrorCount());
+        assertEquals(1, sumState.getFaultCount());
+        assertEquals(0, sumState.getErrorExemplars().size());
+        assertEquals(1, sumState.getFaultExemplars().size());
     }
 
     @Test
     void testCreateMetricsFromAggregatedState_EmptyLatencyDurations() {
         // Given
-        MetricAggregationState state = new MetricAggregationState(1, 0, 0);
-        // latencyDurations is empty by default
+        MetricAggregationState sumState = new MetricAggregationState(1, 0, 0);
 
         Map<String, Object> labels = new HashMap<>();
         labels.put("service", "test-service");
 
         MetricKey key = new MetricKey(labels, anchorTimestamp);
-        metricsStateByKey.put(key, state);
+        sumStateByKey.put(key, sumState);
+        // histogramStateByKey is empty
 
         // When
-        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
+        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(
+                sumStateByKey, histogramStateByKey);
 
         // Then
         assertEquals(3, metrics.size()); // Only request, error, fault (no latency)
+    }
+
+    @Test
+    void testCreateMetricsFromAggregatedState_WithBothSumAndHistogram() {
+        // Given
+        MetricAggregationState sumState = new MetricAggregationState(5, 2, 1);
+        Map<String, Object> labels = new HashMap<>();
+        labels.put("service", "test-service");
+        sumStateByKey.put(new MetricKey(labels, anchorTimestamp), sumState);
+
+        MetricAggregationState histState = new MetricAggregationState();
+        histState.addLatencyDuration(0.1);
+        histState.addLatencyDuration(0.5);
+        histogramStateByKey.put(new MetricKey(labels, anchorTimestamp), histState);
+
+        // When
+        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(
+                sumStateByKey, histogramStateByKey);
+
+        // Then
+        assertEquals(4, metrics.size()); // request, error, fault, latency
+
+        List<String> metricNames = metrics.stream()
+                .map(JacksonMetric::getName)
+                .collect(Collectors.toList());
+        assertTrue(metricNames.contains("request"));
+        assertTrue(metricNames.contains("error"));
+        assertTrue(metricNames.contains("fault"));
+        assertTrue(metricNames.contains("latency"));
     }
 
     @Test
@@ -318,25 +379,17 @@ class ApmServiceMapMetricsUtilTest {
     void testCreateExemplarFromSpan_WithException() {
         // Given - Create a corrupted span that will cause issues
         SpanStateData corruptedSpan = new SpanStateData(
-                null, // serviceName is null
-                null, // spanId is null 
-                null, // parentSpanId is null
-                null, // traceId is null
-                "SERVER",
-                "test-op",
-                "test-op",
-                1000000000L,
-                "OK",
-                "2023-01-01T00:00:00.000Z",
-                Collections.emptyMap(),
-                Collections.emptyMap()
+                null, null, null, null,
+                "SERVER", "test-op", "test-op",
+                1000000000L, "OK", "2023-01-01T00:00:00.000Z",
+                Collections.emptyMap(), Collections.emptyMap()
         );
 
         // When
         Exemplar exemplar = ApmServiceMapMetricsUtil.createExemplarFromSpan(corruptedSpan, 1.0);
 
         // Then
-        assertNotNull(exemplar); // Should still return a minimal exemplar
+        assertNotNull(exemplar);
         assertEquals(1.0, exemplar.getValue());
     }
 
@@ -374,7 +427,7 @@ class ApmServiceMapMetricsUtilTest {
         assertEquals(metricName, metric.getName());
         assertEquals(description, metric.getDescription());
         assertNotNull(metric.getAttributes());
-        assertTrue(metric.getAttributes().containsKey("randomKey")); // Verify random key is added
+        assertFalse(metric.getAttributes().containsKey("randomKey"));
     }
 
     @Test
@@ -394,10 +447,8 @@ class ApmServiceMapMetricsUtilTest {
         assertNotNull(metric);
         assertEquals(metricName, metric.getName());
         assertEquals(description, metric.getDescription());
-        // Verify attributes exist (specific content may vary based on implementation)
         assertNotNull(metric.getAttributes());
 
-        // Verify it's a histogram by checking the type returned by the method
         if (metric instanceof JacksonHistogram) {
             JacksonHistogram histogram = (JacksonHistogram) metric;
             assertEquals(4L, histogram.getCount());
@@ -423,18 +474,17 @@ class ApmServiceMapMetricsUtilTest {
         assertNotNull(buckets);
         assertNotNull(buckets.getBucketCounts());
         assertNotNull(buckets.getExplicitBounds());
-        assertEquals(16, buckets.getBucketCounts().size()); // 15 bounds + 1 overflow bucket
+        assertEquals(16, buckets.getBucketCounts().size());
         assertEquals(15, buckets.getExplicitBounds().size());
 
-        // Verify total count equals input size
         long totalCount = buckets.getBucketCounts().stream().mapToLong(Long::longValue).sum();
         assertEquals(durations.size(), totalCount);
     }
 
     @Test
     void testCreateHistogramBucketsFromDurations_BoundaryValues() {
-        // Given - test exact boundary values
-        List<Double> durations = Arrays.asList(0.0, 0.005, 0.01, 0.025); // Exact boundary values
+        // Given
+        List<Double> durations = Arrays.asList(0.0, 0.005, 0.01, 0.025);
 
         // When
         HistogramBuckets buckets = ApmServiceMapMetricsUtil.createHistogramBucketsFromDurations(durations);
@@ -444,7 +494,6 @@ class ApmServiceMapMetricsUtilTest {
         long totalCount = buckets.getBucketCounts().stream().mapToLong(Long::longValue).sum();
         assertEquals(4, totalCount);
 
-        // Verify at least some buckets have data (bucket distribution may vary based on implementation)
         boolean hasBucketData = buckets.getBucketCounts().stream().anyMatch(count -> count > 0);
         assertTrue(hasBucketData, "At least some buckets should contain data");
     }
@@ -454,7 +503,7 @@ class ApmServiceMapMetricsUtilTest {
         // Given
         List<Double> durations = new ArrayList<>();
         durations.add(0.1);
-        durations.add(null); // Should be ignored
+        durations.add(null);
         durations.add(1.0);
 
         // When
@@ -462,9 +511,8 @@ class ApmServiceMapMetricsUtilTest {
 
         // Then
         assertNotNull(buckets);
-        // Verify only non-null values are counted
         long totalCount = buckets.getBucketCounts().stream().mapToLong(Long::longValue).sum();
-        assertEquals(2, totalCount); // Only 2 non-null values
+        assertEquals(2, totalCount);
     }
 
     @Test
@@ -479,8 +527,6 @@ class ApmServiceMapMetricsUtilTest {
         assertNotNull(buckets);
         assertEquals(16, buckets.getBucketCounts().size());
         assertEquals(15, buckets.getExplicitBounds().size());
-
-        // All bucket counts should be 0
         for (Long count : buckets.getBucketCounts()) {
             assertEquals(0L, count);
         }
@@ -489,48 +535,17 @@ class ApmServiceMapMetricsUtilTest {
     @Test
     void testCreateHistogramBucketsFromDurations_OverflowBucket() {
         // Given
-        List<Double> durations = Arrays.asList(20.0, 100.0); // Values beyond largest bound (10.0)
+        List<Double> durations = Arrays.asList(20.0, 100.0);
 
         // When
         HistogramBuckets buckets = ApmServiceMapMetricsUtil.createHistogramBucketsFromDurations(durations);
 
         // Then
         assertNotNull(buckets);
-        // Overflow bucket (last bucket) should have count 2
         assertEquals(2L, buckets.getBucketCounts().get(buckets.getBucketCounts().size() - 1));
-
-        // All other buckets should be 0
         for (int i = 0; i < buckets.getBucketCounts().size() - 1; i++) {
             assertEquals(0L, buckets.getBucketCounts().get(i));
         }
-    }
-
-    @Test
-    void testCreateMetricsFromAggregatedState_Success() {
-        // Given
-        MetricAggregationState state = new MetricAggregationState(5,2,1);
-        state.getLatencyDurations().addAll(Arrays.asList(0.1, 0.2, 0.5, 1.0, 2.0));
-
-        Map<String, Object> labels = new HashMap<>();
-        labels.put("service", "test-service");
-
-        MetricKey key = new MetricKey(labels, anchorTimestamp);
-        metricsStateByKey.put(key, state);
-
-        // When
-        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
-
-        // Then
-        assertEquals(4, metrics.size()); // request, error, fault, latency
-
-        // Verify metric names
-        List<String> metricNames = metrics.stream()
-                .map(JacksonMetric::getName)
-                .collect(Collectors.toList());
-        assertTrue(metricNames.contains("request"));
-        assertTrue(metricNames.contains("error"));
-        assertTrue(metricNames.contains("fault"));
-        assertTrue(metricNames.contains("latency"));
     }
 
     @Test
@@ -543,29 +558,37 @@ class ApmServiceMapMetricsUtilTest {
 
         // When
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                span1, currentTime, metricsStateByKey, anchorTimestamp);
+                span1, currentTime, sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                span2, currentTime, metricsStateByKey, anchorTimestamp);
+                span2, currentTime, sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
-        // Then
-        assertEquals(1, metricsStateByKey.size()); // Same labels, should aggregate
-        MetricAggregationState state = metricsStateByKey.values().iterator().next();
-        assertEquals(2, state.getRequestCount());
-        assertEquals(1, state.getErrorCount());
-        assertEquals(1, state.getFaultCount());
-        assertEquals(2, state.getLatencyDurations().size());
-        assertEquals(1.0, state.getLatencyDurations().get(0), 0.001);
-        assertEquals(2.0, state.getLatencyDurations().get(1), 0.001);
+        // Then - sum metrics aggregate by seconds
+        assertEquals(1, sumStateByKey.size());
+        MetricAggregationState sumState = sumStateByKey.values().iterator().next();
+        assertEquals(2, sumState.getRequestCount());
+        assertEquals(1, sumState.getErrorCount());
+        assertEquals(1, sumState.getFaultCount());
+
+        // Histogram metrics aggregate by minutes
+        assertEquals(1, histogramStateByKey.size());
+        MetricAggregationState histState = histogramStateByKey.values().iterator().next();
+        assertEquals(2, histState.getLatencyDurations().size());
+        assertEquals(1.0, histState.getLatencyDurations().get(0), 0.001);
+        assertEquals(2.0, histState.getLatencyDurations().get(1), 0.001);
     }
 
     @Test
     void testMetricsLabelsCorrectness_ClientSpan() {
         // When
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                testClientSpan, mockDecoration, currentTime, metricsStateByKey, anchorTimestamp);
+                testClientSpan, mockDecoration, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricKey key = metricsStateByKey.keySet().iterator().next();
+        MetricKey key = sumStateByKey.keySet().iterator().next();
         Map<String, Object> labels = key.getLabels();
 
         assertEquals("span_derived", labels.get("namespace"));
@@ -575,39 +598,61 @@ class ApmServiceMapMetricsUtilTest {
         assertEquals(mockDecoration.getRemoteEnvironment(), labels.get("remoteEnvironment"));
         assertEquals(mockDecoration.getRemoteService(), labels.get("remoteService"));
         assertEquals(mockDecoration.getRemoteOperation(), labels.get("remoteOperation"));
-        assertEquals("value", labels.get("custom")); // from groupByAttributes
+        assertEquals(testHostId, labels.get("service_map_processor_host_id"));
+        assertEquals("value", labels.get("custom"));
     }
 
     @Test
     void testMetricsLabelsCorrectness_ServerSpan() {
         // When
         ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
-                testServerSpan, currentTime, metricsStateByKey, anchorTimestamp);
+                testServerSpan, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchorTimestamp, testHostId);
 
         // Then
-        MetricKey key = metricsStateByKey.keySet().iterator().next();
+        MetricKey key = sumStateByKey.keySet().iterator().next();
         Map<String, Object> labels = key.getLabels();
 
         assertEquals("span_derived", labels.get("namespace"));
         assertEquals(testServerSpan.getEnvironment(), labels.get("environment"));
         assertEquals(testServerSpan.getServiceName(), labels.get("service"));
         assertEquals(testServerSpan.getOperationName(), labels.get("operation"));
-        assertEquals("value", labels.get("custom")); // from groupByAttributes
+        assertEquals(testHostId, labels.get("service_map_processor_host_id"));
+        assertEquals("value", labels.get("custom"));
 
-        // Should NOT have remote* labels for server spans
         assertFalse(labels.containsKey("remoteEnvironment"));
         assertFalse(labels.containsKey("remoteService"));
         assertFalse(labels.containsKey("remoteOperation"));
     }
 
-    @Test 
+    @Test
+    void testSumAndHistogramUseSameTimestamp() {
+        // Given
+        Instant anchor = Instant.parse("2023-01-01T00:01:30Z");
+
+        // When
+        ApmServiceMapMetricsUtil.generateMetricsForServerSpan(
+                testServerSpan, currentTime,
+                sumStateByKey, histogramStateByKey,
+                anchor, testHostId);
+
+        // Then
+        MetricKey sumKey = sumStateByKey.keySet().iterator().next();
+        MetricKey histKey = histogramStateByKey.keySet().iterator().next();
+
+        assertEquals(anchor, sumKey.getTimestamp());
+        assertEquals(anchor, histKey.getTimestamp());
+    }
+
+    @Test
     void testMetricsSortedByTimestamp() {
         // Given
         MetricAggregationState state1 = new MetricAggregationState(1, 0, 0);
-        state1.getLatencyDurations().add(1.0);
-
         MetricAggregationState state2 = new MetricAggregationState(2, 0, 0);
-        state2.getLatencyDurations().add(2.0);
+
+        MetricAggregationState histState = new MetricAggregationState();
+        histState.addLatencyDuration(1.0);
 
         Instant earlierTime = anchorTimestamp.minusSeconds(60);
         Instant laterTime = anchorTimestamp.plusSeconds(60);
@@ -618,20 +663,21 @@ class ApmServiceMapMetricsUtilTest {
         Map<String, Object> labels2 = new HashMap<>();
         labels2.put("service", "service2");
 
-        metricsStateByKey.put(new MetricKey(labels2, laterTime), state2);  // Add later time first
-        metricsStateByKey.put(new MetricKey(labels1, earlierTime), state1);
+        sumStateByKey.put(new MetricKey(labels2, laterTime), state2);
+        sumStateByKey.put(new MetricKey(labels1, earlierTime), state1);
+        histogramStateByKey.put(new MetricKey(labels1, earlierTime), histState);
 
         // When
-        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(metricsStateByKey);
+        List<JacksonMetric> metrics = ApmServiceMapMetricsUtil.createMetricsFromAggregatedState(
+                sumStateByKey, histogramStateByKey);
 
         // Then
         assertFalse(metrics.isEmpty());
-        // Verify metrics are sorted by timestamp - compare the first few metrics
         if (metrics.size() >= 2) {
             String firstTimestamp = metrics.get(0).getTime();
             String secondTimestamp = metrics.get(1).getTime();
-            assertTrue(firstTimestamp.compareTo(secondTimestamp) <= 0, 
-                "Metrics should be sorted by timestamp");
+            assertThat("Metrics should be sorted by timestamp",
+                    firstTimestamp, lessThanOrEqualTo(secondTimestamp));
         }
     }
 }

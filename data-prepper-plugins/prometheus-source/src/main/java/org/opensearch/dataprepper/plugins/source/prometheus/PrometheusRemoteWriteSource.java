@@ -46,6 +46,8 @@ public class PrometheusRemoteWriteSource extends BaseHttpSource<Record<Event>> {
     private static final String SOURCE_NAME = "Prometheus Remote Write";
 
     private final PrometheusRemoteWriteSourceConfig sourceConfig;
+    private final PluginMetrics pluginMetrics;
+    private PrometheusScrapeService scrapeService;
 
     @DataPrepperPluginConstructor
     public PrometheusRemoteWriteSource(final PrometheusRemoteWriteSourceConfig sourceConfig,
@@ -55,6 +57,29 @@ public class PrometheusRemoteWriteSource extends BaseHttpSource<Record<Event>> {
         super(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription, SOURCE_NAME,
                 LoggerFactory.getLogger(PrometheusRemoteWriteSource.class));
         this.sourceConfig = sourceConfig;
+        this.pluginMetrics = pluginMetrics;
+    }
+
+    @Override
+    public void start(final Buffer<Record<Event>> buffer) {
+        super.start(buffer);
+        if (sourceConfig.getScrapeConfig() != null && scrapeService == null) {
+            scrapeService = new PrometheusScrapeService(
+                    sourceConfig.getScrapeConfig(), buffer,
+                    sourceConfig.getBufferTimeoutInMillis(), pluginMetrics);
+            scrapeService.start();
+        }
+    }
+
+    @Override
+    public void stop() {
+        try {
+            if (scrapeService != null) {
+                scrapeService.stop();
+            }
+        } finally {
+            super.stop();
+        }
     }
 
     @Override

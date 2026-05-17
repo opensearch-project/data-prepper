@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.Search
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,13 +148,14 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
         SearchWithSearchAfterResults searchWithSearchAfterResults = null;
+        final List<SortingOptions> sortingOptions = SortingOptions.fromSortConfigs(searchConfiguration.getSort());
 
-        // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
             searchWithSearchAfterResults = searchAccessor.searchWithoutSearchContext(NoSearchContextSearchRequest.builder()
                             .withIndex(indexName)
                             .withPaginationSize(searchConfiguration.getBatchSize())
                             .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
+                            .withSortOptions(sortingOptions)
                             .build());
 
             searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {

@@ -336,8 +336,6 @@ class PrometheusRemoteWriteSourceIT {
         assertThat(response.status(), equalTo(HttpStatus.NO_CONTENT));
     }
 
-    // Helper methods
-
     private AggregatedHttpResponse sendWriteRequest(final Remote.WriteRequest request) throws IOException {
         final byte[] compressed = Snappy.compress(request.toByteArray());
         final HttpRequest httpRequest = HttpRequest.of(

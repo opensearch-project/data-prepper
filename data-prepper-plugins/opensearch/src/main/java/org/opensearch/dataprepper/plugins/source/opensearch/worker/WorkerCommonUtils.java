@@ -47,11 +47,15 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
                 if (result == true) {
-                    sourceCoordinator.closePartition(
-                            indexPartition.getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
-                            true);
+                    if (openSearchSourceConfiguration.isSingleScanMode()) {
+                        sourceCoordinator.completePartition(indexPartition.getPartitionKey(), true);
+                    } else {
+                        sourceCoordinator.closePartition(
+                                indexPartition.getPartitionKey(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
+                                true);
+                    }
 
                     LOG.info("Received acknowledgment of completion from sink for index {}", indexPartition.getPartitionKey());
                 } else {
@@ -70,6 +74,9 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), OWNERSHIP_TIMEOUT);
             acknowledgementSet.complete();
+        } else if (openSearchSourceConfiguration.isSingleScanMode()) {
+            sourceCoordinator.completePartition(indexPartition.getPartitionKey(), false);
+            LOG.info("Completed processing of index {} (single_scan mode; index will not be rescheduled)", indexPartition.getPartitionKey());
         } else {
             sourceCoordinator.closePartition(
                     indexPartition.getPartitionKey(),

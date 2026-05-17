@@ -32,8 +32,8 @@ public class LastReleasedVersionProvider {
         final String groupPath = group.replace('.', '/');
         final String metadataUrl = String.format("https://repo1.maven.org/maven2/%s/%s/maven-metadata.xml", groupPath, artifactId);
         
-        try {
-            return getLastReleasedMajorVersion(new URL(metadataUrl).openStream(), currentVersion);
+        try (InputStream stream = new URL(metadataUrl).openStream()) {
+            return getLastReleasedMajorVersion(stream, currentVersion);
         } catch (final Exception e) {
             return null;
         }
@@ -41,7 +41,11 @@ public class LastReleasedVersionProvider {
 
     static String getLastReleasedMajorVersion(final InputStream metadataStream, final String currentVersion) throws Exception {
         final String majorVersion = currentVersion.split("\\.")[0];
-        final Document doc = DocumentBuilderFactory.newInstance()
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
+        final Document doc = dbf
             .newDocumentBuilder()
             .parse(metadataStream);
         

@@ -34,6 +34,8 @@ processor:
 | `window_duration` | Duration | `60s` | Fixed time window in seconds for evaluating APM service map relationships |
 | `db_path` | String | `"data/otel-apm-service-map/"` | Directory path for database files storing transient processing data |
 | `group_by_attributes` | List\<String\> | `[]` | OpenTelemetry resource attributes to include in service grouping |
+| `metric_timestamp_source` | String | `"arrival_time"` | Timestamp source for emitted metrics. `"arrival_time"` uses processing time at window evaluation (avoids late-span data loss in Prometheus/AMP). `"span_end_time"` uses the span's `endTime` field. |
+| `metric_timestamp_granularity` | String | `"seconds"` | Truncation granularity for metric and service map timestamps. `"seconds"` truncates to second boundaries (1s collision window). `"minutes"` truncates to minute boundaries (60s collision window). |
 
 ### Advanced Configuration
 
@@ -42,12 +44,36 @@ processor:
   - otel_apm_service_map:
       window_duration: 120s  # 2-minute windows for high-latency services
       db_path: "/tmp/apm-service-map/"
+      metric_timestamp_source: arrival_time
+      metric_timestamp_granularity: seconds
       group_by_attributes:
         - "service.version"
         - "deployment.environment"
         - "service.namespace"
         - "k8s.cluster.name"
 ```
+
+### Metric Timestamp Source
+
+The `metric_timestamp_source` option controls what timestamp is used for emitted metrics.
+
+| Value | Timestamp used | Late-span safe | Description |
+|---|---|---|---|
+| `arrival_time` (default) | `clock.instant()` at window evaluation | Yes | All spans in a window share the same processing timestamp. Matches the [OTel Collector spanmetrics connector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/spanmetricsconnector) approach. |
+| `span_end_time` | Span's `endTime` field | No | Each span's end time is used. Late-arriving spans may produce metrics with timestamps that collide with previously written data points, causing silent data loss in Prometheus/AMP. |
+
+**Recommendation:** Use the default `arrival_time` unless you have a specific requirement for span-aligned timestamps and accept the risk of late-span data loss.
+
+### Metric Timestamp Granularity
+
+The `metric_timestamp_granularity` option controls the truncation granularity for all emitted timestamps (metrics and service map events).
+
+| Value | Collision window (`span_end_time` mode) | Data points per window | Description |
+|---|---|---|---|
+| `seconds` (default) | 1 second | More (one per unique second) | Truncates to second boundaries. Minimizes collision risk in `span_end_time` mode. |
+| `minutes` | 60 seconds | Fewer (one per unique minute) | Truncates to minute boundaries. Higher collision risk but fewer data points. |
+
+In `arrival_time` mode, granularity has minimal impact since all spans in a window share the same `clock.instant()` — each window always produces one data point per label combination regardless of truncation.
 
 ## Pipeline Examples
 

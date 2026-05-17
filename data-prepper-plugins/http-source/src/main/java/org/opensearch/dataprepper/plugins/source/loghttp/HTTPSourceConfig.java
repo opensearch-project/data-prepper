@@ -9,6 +9,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
+import java.util.Collections;
+import java.util.List;
+
 public class HTTPSourceConfig extends BaseHttpServerConfig {
 
     static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
@@ -27,7 +30,15 @@ public class HTTPSourceConfig extends BaseHttpServerConfig {
     @JsonProperty("codec")
     private PluginModel codec;
 
+    @JsonProperty("metadata_headers")
+    private List<String> metadataHeaders = Collections.emptyList();
+
     public PluginModel getCodec() {
         return codec;
     }
+
+    public List<String> getMetadataHeaders() {
+        return metadataHeaders;
+    }
+
 }

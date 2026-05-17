@@ -11,8 +11,10 @@
 package org.opensearch.dataprepper.plugins.kinesis.source.converter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.event.TestEventFactory;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -39,6 +41,7 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -50,7 +53,9 @@ public class KinesisRecordConverterTest {
     @Test
     void testRecordConverter() throws IOException {
         InputCodec codec = mock(InputCodec.class);
-        KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(codec);
+        PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        when(pluginMetrics.counter(KinesisRecordConverter.RECORD_PARSE_ERRORS)).thenReturn(mock(Counter.class));
+        KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(codec, pluginMetrics);
         DecompressionEngine decompressionEngine = CompressionOption.NONE.getDecompressionEngine();
         doNothing().when(codec).parse(any(InputStream.class), any(Consumer.class));
 
@@ -81,7 +86,8 @@ public class KinesisRecordConverterTest {
         }
 
         KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(
-                new NdjsonInputCodec(new NdjsonInputConfig(), TestEventFactory.getTestEventFactory()));
+                new NdjsonInputCodec(new NdjsonInputConfig(), TestEventFactory.getTestEventFactory()),
+                PluginMetrics.fromNames("test", "pipeline"));
 
         final String partitionKey = UUID.randomUUID().toString();
         final String sequenceNumber = UUID.randomUUID().toString();
@@ -106,6 +112,30 @@ public class KinesisRecordConverterTest {
             assertEquals(KinesisInputOutputRecord.getDataPrepperRecord().getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), sequenceNumber);
             assertEquals(KinesisInputOutputRecord.getDataPrepperRecord().getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), subsequenceNumber);
         });
+    }
+
+    @Test
+    void convert_doesNotThrowWhenCodecParseThrowsException() throws IOException {
+        InputCodec codec = mock(InputCodec.class);
+        PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        Counter recordParseErrors = mock(Counter.class);
+        when(pluginMetrics.counter(KinesisRecordConverter.RECORD_PARSE_ERRORS)).thenReturn(recordParseErrors);
+        KinesisRecordConverter kinesisRecordConverter = new KinesisRecordConverter(codec, pluginMetrics);
+        DecompressionEngine decompressionEngine = CompressionOption.NONE.getDecompressionEngine();
+        doThrow(new IOException("Invalid UTF-8")).when(codec).parse(any(InputStream.class), any(Consumer.class));
+
+        KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
+                .data(ByteBuffer.wrap("bad data".getBytes()))
+                .sequenceNumber("seq-1")
+                .partitionKey("key-1")
+                .build();
+
+        List<KinesisInputOutputRecord> results = kinesisRecordConverter.convert(
+                decompressionEngine, List.of(kinesisClientRecord), streamId);
+
+        assertEquals(0, results.size());
+        verify(codec, times(1)).parse(any(InputStream.class), any(Consumer.class));
+        verify(recordParseErrors, times(1)).increment();
     }
 
     private static Map<String, Object> generateJson() {

@@ -4,7 +4,10 @@
  */
 package org.opensearch.dataprepper.pipeline.parser.transformer;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -25,6 +28,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -383,5 +387,73 @@ class DynamicConfigTransformerTest {
                 Arguments.of("arn:aws:iam:::role/test-role"),
                 Arguments.of("invalid-format-arn")
         );
+    }
+
+    @Test
+    void test_overlay_directive_merges_into_opensearch_sinks() throws Exception {
+        ObjectMapper jsonMapper = new ObjectMapper();
+        ObjectNode root = jsonMapper.createObjectNode();
+        ObjectNode templatePipelines = root.putObject("templatePipelines");
+        ObjectNode pipeline = templatePipelines.putObject("test-s3");
+
+        ArrayNode sinkArray = pipeline.putArray("sink");
+        ObjectNode osEntry = sinkArray.addObject();
+        ObjectNode osConfig = osEntry.putObject("opensearch");
+        osConfig.put("hosts", "https://localhost:9200");
+        osConfig.put("index", "my-index");
+        ObjectNode s3Entry = sinkArray.addObject();
+        s3Entry.putObject("s3").put("bucket", "my-bucket");
+
+        ObjectNode overlay = pipeline.putObject("<<overlay sink[*].opensearch>>");
+        overlay.put("action", "upsert");
+        overlay.put("document_id", "test-id");
+
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(mock(RuleEvaluator.class));
+        Method method = DynamicConfigTransformer.class.getDeclaredMethod(
+                "processOverlayDirectives", JsonNode.class, String.class);
+        method.setAccessible(true);
+        method.invoke(transformer, root, "{}");
+
+        JsonNode resultOs = sinkArray.get(0).get("opensearch");
+        assertThat(resultOs.get("hosts").asText()).isEqualTo("https://localhost:9200");
+        assertThat(resultOs.get("index").asText()).isEqualTo("my-index");
+        assertThat(resultOs.get("action").asText()).isEqualTo("upsert");
+        assertThat(resultOs.get("document_id").asText()).isEqualTo("test-id");
+
+        assertThat(sinkArray.get(1).get("s3").has("action")).isFalse();
+        assertThat(pipeline.has("<<overlay sink[*].opensearch>>")).isFalse();
+    }
+
+    @Test
+    void test_overlay_directive_overrides_existing_fields() throws Exception {
+        ObjectMapper jsonMapper = new ObjectMapper();
+        ObjectNode root = jsonMapper.createObjectNode();
+        ObjectNode templatePipelines = root.putObject("templatePipelines");
+        ObjectNode pipeline = templatePipelines.putObject("test-s3");
+
+        ArrayNode sinkArray = pipeline.putArray("sink");
+        ObjectNode osEntry = sinkArray.addObject();
+        ObjectNode osConfig = osEntry.putObject("opensearch");
+        osConfig.put("hosts", "https://localhost:9200");
+        osConfig.put("action", "index");
+        ObjectNode existingScript = osConfig.putObject("script");
+        existingScript.put("custom_field", "should-be-replaced");
+
+        ObjectNode overlay = pipeline.putObject("<<overlay sink[*].opensearch>>");
+        overlay.put("action", "upsert");
+        ObjectNode overlayScript = overlay.putObject("script");
+        overlayScript.put("source", "ctx._source.merge(params.doc)");
+
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(mock(RuleEvaluator.class));
+        Method method = DynamicConfigTransformer.class.getDeclaredMethod(
+                "processOverlayDirectives", JsonNode.class, String.class);
+        method.setAccessible(true);
+        method.invoke(transformer, root, "{}");
+
+        JsonNode resultOs = sinkArray.get(0).get("opensearch");
+        assertThat(resultOs.get("hosts").asText()).isEqualTo("https://localhost:9200");
+        assertThat(resultOs.get("action").asText()).isEqualTo("upsert");
+        assertThat(resultOs.get("script").get("source").asText()).isEqualTo("ctx._source.merge(params.doc)");
+        assertThat(resultOs.get("script").has("custom_field")).isFalse();
     }
 }

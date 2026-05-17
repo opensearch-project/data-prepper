@@ -30,9 +30,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @FixMethodOrder()
 class PipelinesWithAcksIT {
@@ -81,7 +79,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
 
     }
 
@@ -97,7 +98,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -112,7 +116,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -127,7 +134,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -139,11 +149,10 @@ class PipelinesWithAcksIT {
         await().atMost(40000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
                     assertNotNull(inMemorySourceAccessor);
-                    assertNotNull(inMemorySourceAccessor.getAckReceived());
+                    assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
         });
         List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
         assertThat(outputRecords.size(), equalTo(0));
-        assertTrue(inMemorySourceAccessor.getAckReceived());
     }
 
     @Test
@@ -158,7 +167,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), lessThanOrEqualTo(numRecords));
         });
-        assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -174,7 +186,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(2*numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -189,7 +204,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(2*numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -204,7 +222,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(3*numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -219,7 +240,10 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(3*numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
+        });
     }
 
     @Test
@@ -250,6 +274,9 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(3*numRecords));
         });
-        assertFalse(inMemorySourceAccessor.getAckReceived());
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(false));
+        });
     }
 }

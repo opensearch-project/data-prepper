@@ -110,9 +110,9 @@ class DefaultAcknowledgementSetManagerTests {
     void testExpirations() throws InterruptedException {
         eventHandle2.release(true);
         Thread.sleep(TEST_TIMEOUT.multipliedBy(2).toMillis());
-        assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         await().atMost(TEST_TIMEOUT.multipliedBy(3))
                 .untilAsserted(() -> {
+                    assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
                     assertThat(result, equalTo(null));
                 });
     }

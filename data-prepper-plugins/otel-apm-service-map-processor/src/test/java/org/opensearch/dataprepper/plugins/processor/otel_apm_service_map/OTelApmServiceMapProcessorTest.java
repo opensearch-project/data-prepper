@@ -93,6 +93,11 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     private OTelApmServiceMapProcessor createObjectUnderTest(Duration duration, int workers) {
         return new OTelApmServiceMapProcessor(duration, tempDir, clock, workers, eventFactory, pluginMetrics);
     }
+
+    private OTelApmServiceMapProcessor createObjectUnderTest(MetricTimestampSource metricTimestampSource) {
+        return new OTelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, 1, eventFactory, pluginMetrics,
+                Collections.emptyList(), metricTimestampSource);
+    }
     
     @BeforeEach
     void setUp() {
@@ -1191,6 +1196,137 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         
         // Cleanup
         isolatedProcessor.shutdown();
+    }
+
+    @Test
+    void testArrivalTimeMode_usesClockInstant_notSpanEndTime() {
+        // Given - arrival_time mode should use clock.instant() regardless of span endTime
+        final Instant arrivalTime = Instant.parse("2021-01-01T00:05:00Z");
+        final Instant arrivalTimePlusWindow = arrivalTime.plusSeconds(65);
+
+        when(clock.instant())
+            .thenReturn(arrivalTime)                            // 1. constructor: previousTimestamp
+            .thenReturn(arrivalTime)                            // 2. doExecute call 1: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow)                  // 3. doExecute call 2: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow)                  // 4. processCurrentWindowSpans: currentTime
+            .thenReturn(arrivalTimePlusWindow)                  // 5. rotateWindows: LOG.debug
+            .thenReturn(arrivalTimePlusWindow)                  // 6. rotateWindows: previousTimestamp
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 7. doExecute call 3: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 8. processCurrentWindowSpans: currentTime
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 9. rotateWindows: LOG.debug
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65)); // 10. rotateWindows: previousTimestamp
+
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        doAnswer((a) -> {
+            eventMetadata = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withEventMetadata(any());
+        doAnswer((a) -> {
+            eventData = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withData(any());
+        doAnswer((a) -> {
+            return JacksonEvent.builder()
+                    .withEventMetadata(eventMetadata)
+                    .withData(eventData)
+                    .build();
+        }).when(eventBuilder).build();
+
+        File isolatedDir = new File(tempDir, "arrival-test-" + System.nanoTime());
+        isolatedDir.mkdirs();
+        OTelApmServiceMapProcessor arrivalProcessor = new OTelApmServiceMapProcessor(
+            Duration.ofSeconds(60), isolatedDir, clock, 1, eventFactory, pluginMetrics,
+            Collections.emptyList(), MetricTimestampSource.ARRIVAL_TIME);
+
+        // Span with endTime at 12:30 — should be IGNORED in arrival_time mode
+        Span span = createMockSpanWithIds("svc", "op", "SPAN_KIND_SERVER",
+                "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+        when(span.getEndTime()).thenReturn("2021-01-01T12:30:45.123Z");
+
+        arrivalProcessor.doExecute(Collections.singletonList(new Record<>(span)));
+        arrivalProcessor.doExecute(Collections.emptyList());
+        Collection<Record<Event>> result = arrivalProcessor.doExecute(Collections.emptyList());
+
+        // Verify metrics exist and their timestamps use arrival time (NOT span endTime 12:30)
+        assertThat(result.isEmpty(), equalTo(false));
+        for (Record<Event> record : result) {
+            Event event = record.getData();
+            String time = event.get("time", String.class);
+            if (time != null) {
+                // arrival_time mode: timestamp should be from clock.instant(), NOT span's endTime (12:30)
+                // Sum metrics truncate to seconds, Histogram to minutes — both should start with 00:07
+                assertTrue(time.startsWith("2021-01-01T00:07:"),
+                        "Expected arrival time (00:07:xx) but got: " + time);
+            }
+        }
+
+        arrivalProcessor.shutdown();
+    }
+
+    @Test
+    void testSpanEndTimeMode_usesSpanEndTime() {
+        // Given - span_end_time mode should use span's endTime
+        final Instant arrivalTime = Instant.parse("2021-01-01T00:05:00Z");
+        final Instant arrivalTimePlusWindow = arrivalTime.plusSeconds(65);
+
+        when(clock.instant())
+            .thenReturn(arrivalTime)                            // 1. constructor: previousTimestamp
+            .thenReturn(arrivalTime)                            // 2. doExecute call 1: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow)                  // 3. doExecute call 2: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow)                  // 4. processCurrentWindowSpans: currentTime
+            .thenReturn(arrivalTimePlusWindow)                  // 5. rotateWindows: LOG.debug
+            .thenReturn(arrivalTimePlusWindow)                  // 6. rotateWindows: previousTimestamp
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 7. doExecute call 3: windowDurationHasPassed
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 8. processCurrentWindowSpans: currentTime
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65))  // 9. rotateWindows: LOG.debug
+            .thenReturn(arrivalTimePlusWindow.plusSeconds(65)); // 10. rotateWindows: previousTimestamp
+
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        doAnswer((a) -> {
+            eventMetadata = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withEventMetadata(any());
+        doAnswer((a) -> {
+            eventData = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withData(any());
+        doAnswer((a) -> {
+            return JacksonEvent.builder()
+                    .withEventMetadata(eventMetadata)
+                    .withData(eventData)
+                    .build();
+        }).when(eventBuilder).build();
+
+        File isolatedDir = new File(tempDir, "spanend-test-" + System.nanoTime());
+        isolatedDir.mkdirs();
+        OTelApmServiceMapProcessor spanEndProcessor = new OTelApmServiceMapProcessor(
+            Duration.ofSeconds(60), isolatedDir, clock, 1, eventFactory, pluginMetrics,
+            Collections.emptyList(), MetricTimestampSource.SPAN_END_TIME);
+
+        // Span with endTime at 12:30:45 — should be used and truncated to 12:30:00
+        Span span = createMockSpanWithIds("svc", "op", "SPAN_KIND_SERVER",
+                "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+        when(span.getEndTime()).thenReturn("2021-01-01T12:30:45.123Z");
+
+        spanEndProcessor.doExecute(Collections.singletonList(new Record<>(span)));
+        spanEndProcessor.doExecute(Collections.emptyList());
+        Collection<Record<Event>> result = spanEndProcessor.doExecute(Collections.emptyList());
+
+        assertThat(result.isEmpty(), equalTo(false));
+        for (Record<Event> record : result) {
+            Event event = record.getData();
+            String time = event.get("time", String.class);
+            if (time != null) {
+                // span_end_time mode: timestamp from span endTime (12:30:45), NOT arrival time (00:07)
+                // Sum metrics truncate to seconds (12:30:45Z), Histogram to minutes (12:30:00Z)
+                assertTrue(time.startsWith("2021-01-01T12:30:"),
+                        "Expected span endTime (12:30:xx) but got: " + time);
+            }
+        }
+
+        spanEndProcessor.shutdown();
     }
 
     // Helper method to create mock spans

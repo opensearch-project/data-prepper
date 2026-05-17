@@ -1,0 +1,54 @@
+{
+  "name": "Amazon Bedrock Titan Text Embeddings V2",
+  "version": "1",
+  "description": "Built-in connector for Amazon Bedrock Titan Text Embeddings V2 (amazon.titan-embed-text-v2:0)",
+  "protocol": "aws_sigv4",
+  "parameters": {
+    "model": "amazon.titan-embed-text-v2:0",
+    "service_name": "bedrock",
+    "dimensions": "1024",
+    "normalize": "true",
+    "embeddingTypes": "[\"float\"]"
+  },
+  "actions": [
+    {
+      "action_type": "PREDICT",
+      "method": "POST",
+      "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/invoke",
+      "headers": {
+        "x-amz-content-sha256": "required",
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"inputText\": \"${parameters.inputText}\", \"dimensions\": ${parameters.dimensions}, \"normalize\": ${parameters.normalize}, \"embeddingTypes\": ${parameters.embeddingTypes} }",
+      "pre_process_function": "connector.pre_process.bedrock.embedding",
+      "post_process_function": "connector.post_process.bedrock.embedding"
+    },
+    {
+      "action_type": "BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"inputDataConfig\": ${parameters.inputDataConfig}, \"jobName\": \"${parameters.jobName}\", \"modelId\": \"${parameters.model}\", \"outputDataConfig\": ${parameters.outputDataConfig}, \"roleArn\": \"${parameters.roleArn}\" }"
+    },
+    {
+      "action_type": "BATCH_PREDICT_STATUS",
+      "method": "GET",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{}"
+    },
+    {
+      "action_type": "CANCEL_BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}/stop",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{}"
+    }
+  ]
+}
