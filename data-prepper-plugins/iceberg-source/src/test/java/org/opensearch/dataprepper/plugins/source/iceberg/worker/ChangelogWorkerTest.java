@@ -45,7 +45,6 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
 import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
-import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleNodeClient;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.time.Duration;
