@@ -131,7 +131,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 .configure(sb, grpcService);
 
         if (oTelLogsSourceConfig.getHttpPath() != null) {
-            new HttpServiceConfigurator(oTelLogsSourceConfig, pluginMetrics, pipelineName)
+            new HttpServiceConfigurator(oTelLogsSourceConfig, pluginMetrics, pipelineName, pluginFactory)
                     .configure(sb, buffer, executor.getQueue());
         }
 

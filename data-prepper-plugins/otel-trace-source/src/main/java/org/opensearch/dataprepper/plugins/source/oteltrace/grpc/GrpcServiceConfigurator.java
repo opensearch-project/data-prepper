@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.oteltrace.grpc;
@@ -12,6 +17,8 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -63,7 +70,7 @@ public class GrpcServiceConfigurator {
             LOG.info("Configuring gRPC service at custom path: {}", path);
             grpcSB.addService(path,
                     ServerInterceptors.intercept(grpcService, interceptors),
-                    grpcService.getExportMethodDescriptor());
+                    TraceServiceGrpc.getExportMethod());
         } else {
             grpcSB.addService(ServerInterceptors.intercept(grpcService, interceptors));
         }

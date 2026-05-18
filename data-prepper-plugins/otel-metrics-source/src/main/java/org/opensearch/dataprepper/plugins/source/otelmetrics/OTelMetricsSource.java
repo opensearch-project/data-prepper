@@ -115,8 +115,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 createOtelProtoDecoder(),
                 buffer,
                 oTelMetricsSourceConfig.getBufferPartitionKeys(),
-                pluginMetrics,
-                null);
+                pluginMetrics);
 
         new GrpcServiceConfigurator(oTelMetricsSourceConfig, pluginMetrics, pipelineName, authenticationProvider)
                 .configure(sb, grpcService);

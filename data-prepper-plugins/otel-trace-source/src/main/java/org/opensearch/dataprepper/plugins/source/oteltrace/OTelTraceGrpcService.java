@@ -130,8 +130,4 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
         responseObserver.onCompleted();
     }
-
-    public MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> getExportMethodDescriptor() {
-        return TraceServiceGrpc.getExportMethod();
-    }
 }

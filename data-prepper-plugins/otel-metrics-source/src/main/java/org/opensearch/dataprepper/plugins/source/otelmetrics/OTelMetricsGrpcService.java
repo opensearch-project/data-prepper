@@ -58,6 +58,19 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
                                   final Set<String> bufferPartitionKeys,
+                                  final PluginMetrics pluginMetrics) {
+        this(bufferWriteTimeoutInMillis,
+                oTelProtoDecoder,
+                buffer,
+                bufferPartitionKeys,
+                pluginMetrics,
+                null);
+    }
+
+    public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
+                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
+                                  Buffer<Record<? extends Metric>> buffer,
+                                  final Set<String> bufferPartitionKeys,
                                   final PluginMetrics pluginMetrics,
                                   final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;

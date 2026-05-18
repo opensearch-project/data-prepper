@@ -90,8 +90,6 @@ public class GrpcServiceConfigurator {
         } else {
             sb.service(builtGrpcService, DecodingService.newDecorator());
         }
-
-        authenticationProvider.getHttpAuthenticationService().ifPresent(sb::decorator);
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptors() {
