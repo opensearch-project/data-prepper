@@ -86,7 +86,7 @@ class CloudWatchLogsDispatcherTest {
                 .build();
     }
 
-    CloudWatchLogsDispatcher getCloudWatchLogsDispatcherWithCreateFlag(final int retryCount, final boolean createLogGroupAndStream) {
+    CloudWatchLogsDispatcher getCloudWatchLogsDispatcherWithCreateFlag(final int retryCount, final boolean createLogGroup, final boolean createLogStream) {
         return CloudWatchLogsDispatcher.builder()
                 .cloudWatchLogsClient(mockCloudWatchLogsClient)
                 .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
@@ -95,7 +95,8 @@ class CloudWatchLogsDispatcherTest {
                 .logStream(LOG_STREAM)
                 .retryCount(retryCount)
                 .dropIfDlqNotConfigured(true)
-                .createLogGroupAndStream(createLogGroupAndStream)
+                .createLogGroup(createLogGroup)
+                .createLogStream(createLogStream)
                 .build();
     }
 
@@ -290,7 +291,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_resource_not_found_and_create_flag_true_WHEN_upload_SHOULD_create_group_and_stream_then_retry() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -311,13 +312,13 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
         // Recovery action does not count as a failure — fail counter is not incremented.
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
-        // PLE retry succeeded, so success counter is incremented.
+        // PutLogEvents retry succeeded, so success counter is incremented.
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
     }
 
     @Test
     void GIVEN_resource_not_found_and_create_flag_false_WHEN_upload_SHOULD_follow_normal_retry_logic() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false);
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, false);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -331,14 +332,58 @@ class CloudWatchLogsDispatcherTest {
         // No creation attempted when the flag is false.
         verify(mockCloudWatchLogsClient, never()).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, never()).createLogStream(any(CreateLogStreamRequest.class));
-        // RNF flows to the normal retry/DLQ path: fail counter incremented for every retry.
+        // ResourceNotFoundException flows to the normal retry/DLQ path: fail counter incremented for every retry.
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
     }
 
     @Test
-    void GIVEN_resource_not_found_and_create_succeeds_WHEN_retry_ple_SHOULD_succeed() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+    void GIVEN_resource_not_found_and_only_create_log_stream_true_WHEN_upload_SHOULD_only_create_stream() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsClient, never()).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_resource_not_found_and_only_create_log_group_true_WHEN_upload_SHOULD_only_create_group() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, false);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(mockCloudWatchLogsClient, never()).createLogStream(any(CreateLogStreamRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_resource_not_found_and_create_succeeds_WHEN_retry_put_log_events_SHOULD_succeed() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -354,14 +399,14 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        // PLE retried after successful creation and succeeded — events released.
+        // PutLogEvents retried after successful creation and succeeded — events released.
         verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
     @Test
     void GIVEN_resource_not_found_and_group_already_exists_WHEN_create_SHOULD_ignore_and_create_stream() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -377,7 +422,7 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        // RAEE is swallowed silently; createLogStream is still attempted; PLE retry succeeds.
+        // ResourceAlreadyExistsException is swallowed silently; createLogStream is still attempted; PutLogEvents retry succeeds.
         verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
@@ -385,8 +430,8 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_resource_not_found_and_stream_already_exists_WHEN_create_SHOULD_ignore_and_retry_ple() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+    void GIVEN_resource_not_found_and_stream_already_exists_WHEN_create_SHOULD_ignore_and_retry_put_log_events() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -402,7 +447,7 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        // Stream RAEE is swallowed; PLE retry runs and succeeds.
+        // Stream ResourceAlreadyExistsException is swallowed; PutLogEvents retry runs and succeeds.
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
@@ -410,7 +455,7 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_resource_not_found_and_create_group_throws_access_denied_SHOULD_still_attempt_create_stream() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -434,11 +479,11 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_resource_not_found_and_create_stream_throws_cwl_exception_SHOULD_not_kill_uploader() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+    void GIVEN_resource_not_found_and_create_stream_throws_cloudwatch_logs_exception_SHOULD_not_kill_uploader() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
-        // First PLE call throws RNF; second PLE call (after failed creation) succeeds.
+        // First PutLogEvents call throws ResourceNotFoundException; second PutLogEvents call (after failed creation) succeeds.
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
                 .thenThrow(ResourceNotFoundException.builder().message("missing").build())
                 .thenReturn(mock(PutLogEventsResponse.class));
@@ -452,7 +497,7 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        // Helper swallowed the exception; PLE retry ran and succeeded; uploader not interrupted.
+        // Helper swallowed the exception; PutLogEvents retry ran and succeeded; uploader not interrupted.
         verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
@@ -460,10 +505,10 @@ class CloudWatchLogsDispatcherTest {
 
     @Test
     void GIVEN_resource_not_found_and_create_flag_true_SHOULD_only_attempt_creation_once_per_upload() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
-        // Every PLE call throws RNF — creation should still only be attempted once.
+        // Every PutLogEvents call throws ResourceNotFoundException — creation should still only be attempted once.
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
                 .thenThrow(ResourceNotFoundException.builder().message("missing").build());
         when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
@@ -476,14 +521,14 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        // Creation invoked exactly once per Uploader invocation, no matter how many RNFs follow.
+        // Creation invoked exactly once per Uploader invocation, no matter how many ResourceNotFoundExceptions follow.
         verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
     }
 
     @Test
-    void GIVEN_create_flag_true_AND_creation_succeeds_BUT_PLE_still_throws_RNF_SHOULD_only_create_once_and_FAIL_RETRIES() {
-        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true);
+    void GIVEN_create_flag_true_AND_creation_succeeds_BUT_put_log_events_still_throws_resource_not_found_SHOULD_only_create_once_and_FAIL_RETRIES() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
@@ -501,7 +546,7 @@ class CloudWatchLogsDispatcherTest {
         // Creation attempted exactly once.
         verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
-        // Subsequent RNFs flow to the normal retry/DLQ path: fail counter incremented for every retry.
+        // Subsequent ResourceNotFoundExceptions flow to the normal retry/DLQ path: fail counter incremented for every retry.
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
     }

@@ -96,7 +96,8 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .logStream(cloudWatchLogsSinkConfig.getLogStream())
                 .retryCount(dlqPushHandler == null ? Integer.MAX_VALUE : cloudWatchLogsSinkConfig.getMaxRetries())
                 .executor(executor)
-                .createLogGroupAndStream(cloudWatchLogsSinkConfig.getCreateLogGroupAndStream())
+                .createLogGroup(cloudWatchLogsSinkConfig.getCreateLogGroup())
+                .createLogStream(cloudWatchLogsSinkConfig.getCreateLogStream())
                 .build();
 
         Buffer buffer;

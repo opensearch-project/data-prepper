@@ -593,7 +593,8 @@ public class CloudWatchLogsIT {
         // where CloudWatch Logs may transiently throw OperationAbortedException.
         logStreamName = "CloudWatchLogsIT_create_" + RandomStringUtils.randomAlphabetic(8);
         when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(logStreamName);
-        when(cloudWatchLogsSinkConfig.getCreateLogGroupAndStream()).thenReturn(true);
+        when(cloudWatchLogsSinkConfig.getCreateLogGroup()).thenReturn(true);
+        when(cloudWatchLogsSinkConfig.getCreateLogStream()).thenReturn(true);
         when(thresholdConfig.getBatchSize()).thenReturn(10);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);

@@ -35,7 +35,8 @@ pipeline:
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
         endpoint: "https://logs.us-west-2.amazonaws.com"
-        create_log_group_and_stream: false
+        create_log_group: false
+        create_log_stream: true
 ```
 
 ## AWS Configuration
@@ -66,11 +67,15 @@ pipeline:
 
 - `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
-- `create_log_group_and_stream` (Optional): A boolean that controls whether
-  the sink will create the configured `log_group` and `log_stream` if they do
-  not already exist. Defaults to `false`. When set to `true`, the IAM principal
-  used by the sink must have `logs:CreateLogGroup` and `logs:CreateLogStream`
-  permissions in addition to `logs:PutLogEvents`.
+- `create_log_group` (Optional): A boolean that controls whether the sink will
+  create the configured `log_group` if it does not already exist. Defaults to
+  `false`. When set to `true`, the IAM principal must have `logs:CreateLogGroup`
+  permission.
+
+- `create_log_stream` (Optional): A boolean that controls whether the sink will
+  create the configured `log_stream` if it does not already exist. Defaults to
+  `true`. When set to `true`, the IAM principal must have `logs:CreateLogStream`
+  permission.
 
 ## Buffer Type Configuration
 

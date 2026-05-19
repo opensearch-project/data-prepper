@@ -324,15 +324,28 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void GIVEN_new_sink_config_WHEN_get_create_log_group_and_stream_called_SHOULD_return_false() {
-        assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroupAndStream(), equalTo(false));
+    void GIVEN_new_sink_config_WHEN_get_create_log_group_called_SHOULD_return_false() {
+        assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroup(), equalTo(false));
     }
 
     @Test
-    void GIVEN_create_log_group_and_stream_set_true_WHEN_get_called_SHOULD_return_true()
+    void GIVEN_create_log_group_set_true_WHEN_get_called_SHOULD_return_true()
             throws NoSuchFieldException, IllegalAccessException {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
-                "createLogGroupAndStream", true);
-        assertThat(cloudWatchLogsSinkConfig.getCreateLogGroupAndStream(), equalTo(true));
+                "createLogGroup", true);
+        assertThat(cloudWatchLogsSinkConfig.getCreateLogGroup(), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_create_log_stream_called_SHOULD_return_true() {
+        assertThat(new CloudWatchLogsSinkConfig().getCreateLogStream(), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_create_log_stream_set_false_WHEN_get_called_SHOULD_return_false()
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
+                "createLogStream", false);
+        assertThat(cloudWatchLogsSinkConfig.getCreateLogStream(), equalTo(false));
     }
 }
