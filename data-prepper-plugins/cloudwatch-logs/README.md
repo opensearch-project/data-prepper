@@ -35,6 +35,12 @@ pipeline:
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
         endpoint: "https://logs.us-west-2.amazonaws.com"
+        entity:
+          key_attributes:
+            Type: "RemoteService"
+            Name: "okta_auth0"
+          attributes:
+            AWS.ServiceNameSource: "UserConfiguration"
 ```
 
 ## AWS Configuration
@@ -65,6 +71,15 @@ pipeline:
 
 - `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
+## Entity Configuration
+
+- `entity` (Optional) : An object that attaches CloudWatch [Entity](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_Entity.html) metadata to every `PutLogEvents` request. When omitted, no entity is attached and behavior is unchanged.
+
+  - `key_attributes` (Required when `entity` is configured) : A `Map<String, String>` of key attributes that uniquely identify the entity (for example `Type`, `Name`).
+  - `attributes` (Optional) : A `Map<String, String>` of additional attributes describing the entity. Defaults to an empty map.
+
+  AWS-owned limits — maximum number of entries, allowed key names (such as `Type`, `ResourceType`, `Identifier`, `Name`, `Environment`), and key/value length caps — are enforced by CloudWatch at request time and are intentionally not mirrored here. Violations are surfaced via the `cloudWatchLogsEntityRejected` metric and a log warning. See the [AWS Entity API docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_Entity.html) for the current contract.
+
 ## Buffer Type Configuration
 
 - `buffer_type` (Optional) : A string representing the type of buffer to use to hold onto events. Currently only supports `in_memory`.
@@ -83,6 +98,7 @@ threshold parameters.
 * `cloudWatchLogsEventsFailed` - The number of log events failed while publishing to CloudWatch Logs.
 * `cloudWatchLogsRequestsSucceeded` - The number of log requests successfully made to CloudWatch Logs.
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.
+* `cloudWatchLogsEntityRejected` - The number of `PutLogEvents` responses where CloudWatch rejected the configured entity. The request itself still succeeds and events are released; this counter is the primary signal for misconfigured `entity` attributes.
 
 ## Developer Guide
 
