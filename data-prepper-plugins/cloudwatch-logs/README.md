@@ -36,7 +36,7 @@ pipeline:
           X-Source: "dataprepper"
         endpoint: "https://logs.us-west-2.amazonaws.com"
         create_log_group: false
-        create_log_stream: true
+        create_log_stream: false
 ```
 
 ## AWS Configuration
@@ -74,7 +74,7 @@ pipeline:
 
 - `create_log_stream` (Optional): A boolean that controls whether the sink will
   create the configured `log_stream` if it does not already exist. Defaults to
-  `true`. When set to `true`, the IAM principal must have `logs:CreateLogStream`
+  `false`. When set to `true`, the IAM principal must have `logs:CreateLogStream`
   permission.
 
 ## Buffer Type Configuration

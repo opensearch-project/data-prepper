@@ -64,8 +64,8 @@ public class CloudWatchLogsSinkConfig {
     @JsonProperty(value = "create_log_group", defaultValue = "false")
     private boolean createLogGroup = false;
 
-    @JsonProperty(value = "create_log_stream", defaultValue = "true")
-    private boolean createLogStream = true;
+    @JsonProperty(value = "create_log_stream", defaultValue = "false")
+    private boolean createLogStream = false;
 
     public AwsConfig getAwsConfig() {
         return awsConfig;
