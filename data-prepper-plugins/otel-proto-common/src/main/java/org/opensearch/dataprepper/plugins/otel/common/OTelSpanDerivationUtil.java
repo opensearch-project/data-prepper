@@ -109,7 +109,13 @@ public class OTelSpanDerivationUtil {
                 putAttribute(span, DERIVED_REMOTE_SERVICE_ATTRIBUTE, remoteOperationAndService.getService());
             }
 
-            final String environment = computeEnvironment(spanAttributes);
+            // Build combined attributes including resource for environment derivation
+            final Map<String, Object> combinedAttributes = spanAttributes != null ? new HashMap<>(spanAttributes) : new HashMap<>();
+            final Map<String, Object> resource = span.getResource();
+            if (resource != null) {
+                combinedAttributes.put("resource", resource);
+            }
+            final String environment = computeEnvironment(combinedAttributes);
 
             // Add derived attributes using our safe attribute setting method
             putAttribute(span, DERIVED_FAULT_ATTRIBUTE, String.valueOf(errorFault.fault));

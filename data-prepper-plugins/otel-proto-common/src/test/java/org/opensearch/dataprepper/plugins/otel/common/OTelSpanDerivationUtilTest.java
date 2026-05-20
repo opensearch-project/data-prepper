@@ -10,13 +10,24 @@
 
 package org.opensearch.dataprepper.plugins.otel.common;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.trace.Span;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 class OTelSpanDerivationUtilTest {
 
@@ -538,5 +549,210 @@ class OTelSpanDerivationUtilTest {
 
         assertEquals("UnknownRemoteOperation", result.getOperation());
         assertEquals("10.0.0.1:8080", result.getService());
+    }
+
+    /**
+     * Builds a {@link Span} mock with {@code SPAN_KIND_SERVER} suitable for exercising
+     * {@link OTelSpanDerivationUtil#deriveAttributesForSpan(Span)}. The supplied {@code attributes}
+     * map is wired so that calls to {@code span.put("attributes", ...)} update it in place — the
+     * test can then read derived attributes such as {@code derived.environment} directly from the
+     * map.
+     */
+    private static Span newServerMockSpan(final Map<String, Object> attributes,
+                                          final Map<String, Object> resource) {
+        return newMockSpan("SPAN_KIND_SERVER", attributes, resource);
+    }
+
+    private static Span newMockSpan(final String kind,
+                                    final Map<String, Object> attributes,
+                                    final Map<String, Object> resource) {
+        final Span span = mock(Span.class);
+        lenient().when(span.getKind()).thenReturn(kind);
+        lenient().when(span.getName()).thenReturn("GET /api");
+        lenient().when(span.getStatus()).thenReturn(Map.of("code", "OK"));
+        lenient().when(span.getSpanId()).thenReturn("1122334455667788");
+        lenient().when(span.getAttributes()).thenReturn(attributes);
+        lenient().when(span.getResource()).thenReturn(resource);
+        if (attributes != null) {
+            lenient().doAnswer(invocation -> {
+                @SuppressWarnings("unchecked")
+                final Map<String, Object> updated = (Map<String, Object>) invocation.getArgument(1);
+                attributes.clear();
+                attributes.putAll(updated);
+                return null;
+            }).when(span).put(eq("attributes"), any(Map.class));
+        }
+        return span;
+    }
+
+    private static Map<String, Object> resourceWithAttributes(final Map<String, Object> attrs) {
+        final Map<String, Object> resource = new HashMap<>();
+        resource.put("attributes", attrs);
+        return resource;
+    }
+
+    /**
+     * Verifies that {@link OTelSpanDerivationUtil#deriveAttributesForSpan} (and
+     * {@link OTelSpanDerivationUtil#deriveServerSpanAttributes}) populate {@code derived.environment}
+     * by reading the span's {@code resource} attributes — guarding the Bug 2 fix from issue #6786 and
+     * the platform-detection paths added by issue #6787.
+     */
+    @Nested
+    class DeriveAttributesForSpan {
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentToDeploymentEnvironmentName_fromResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("http.method", "GET");
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("deployment.environment.name", "production");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("production", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentEc2Default_whenCloudPlatformAwsEc2InResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("cloud.platform", "aws_ec2");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("ec2:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentApiGatewayWithStage_whenBothInResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("cloud.platform", "aws_api_gateway");
+        resourceAttrs.put("aws.api_gateway.stage", "prod");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("api-gateway:prod", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentLambdaDefault_whenInvokedArnInResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("aws.lambda.invoked_arn", "arn:aws:lambda:us-east-1:123:function:f");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("lambda:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentEcsFargate_whenCloudPlatformAndLaunchTypeInResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("cloud.platform", "aws_ecs");
+        resourceAttrs.put("aws.ecs.launchtype", "fargate");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("ecs-fargate:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentEks_whenCloudPlatformAwsEksInResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("cloud.platform", "aws_eks");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("eks:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentElasticBeanstalk_whenCloudPlatformInResource() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("cloud.platform", "aws_elastic_beanstalk");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("elastic-beanstalk:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_setsDerivedEnvironmentGenericDefault_whenResourceIsNull() {
+        final Map<String, Object> attributes = new HashMap<>();
+        final Span span = newServerMockSpan(attributes, null);
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("generic:default", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveAttributesForSpan_doesNotThrow_whenSpanAttributesIsNull() {
+        // Span#getAttributes() returns null, but the resource still has the env signal.
+        // The resulting attribute map starts from a fresh HashMap rather than copying
+        // a null map, so the only expectation is that no exception escapes.
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("deployment.environment.name", "production");
+
+        final Span span = newServerMockSpan(null, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        // No assertion on attributes content (the mock has no backing map);
+        // success is reaching this line without throwing.
+        assertTrue(true);
+    }
+
+    @Test
+    void deriveAttributesForSpan_preservesExistingSpanAttributesAfterDerivation() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("http.method", "GET");
+        attributes.put("http.target", "/api/test");
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("deployment.environment.name", "production");
+
+        final Span span = newServerMockSpan(attributes, resourceWithAttributes(resourceAttrs));
+
+        OTelSpanDerivationUtil.deriveAttributesForSpan(span);
+
+        assertEquals("GET", attributes.get("http.method"));
+        assertEquals("/api/test", attributes.get("http.target"));
+        assertEquals("production", attributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+    }
+
+    @Test
+    void deriveServerSpanAttributes_skipsClientSpansAndProcessesServerSpans_withResourceEnv() {
+        final Map<String, Object> serverAttributes = new HashMap<>();
+        final Map<String, Object> clientAttributes = new HashMap<>();
+        final Map<String, Object> resourceAttrs = new HashMap<>();
+        resourceAttrs.put("deployment.environment.name", "production");
+        final Map<String, Object> resource = resourceWithAttributes(resourceAttrs);
+
+        final Span serverSpan = newServerMockSpan(serverAttributes, resource);
+        final Span clientSpan = newMockSpan("SPAN_KIND_CLIENT", clientAttributes, resource);
+
+        OTelSpanDerivationUtil.deriveServerSpanAttributes(Arrays.asList(serverSpan, clientSpan));
+
+        assertEquals("production", serverAttributes.get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE));
+        verify(clientSpan, never()).put(anyString(), any());
+    }
     }
 }
