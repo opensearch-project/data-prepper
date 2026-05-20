@@ -115,6 +115,7 @@ public class ConnectionConfiguration {
   private final String awsStsExternalId;
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
+  private final String pathPrefix;
   private final boolean serverless;
   private final String serverlessNetworkPolicyName;
   private final String serverlessCollectionName;
@@ -158,6 +159,10 @@ public class ConnectionConfiguration {
 
   Optional<String> getProxy() {
     return proxy;
+  }
+
+  String getPathPrefix() {
+    return pathPrefix;
   }
 
   Integer getSocketTimeout() {
@@ -219,6 +224,7 @@ public class ConnectionConfiguration {
     this.awsStsExternalId = builder.awsStsExternalId;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
+    this.pathPrefix = builder.pathPrefix;
     this.serverless = builder.serverless;
     this.serverlessNetworkPolicyName = builder.serverlessNetworkPolicyName;
     this.serverlessCollectionName = builder.serverlessCollectionName;
@@ -312,6 +318,11 @@ public class ConnectionConfiguration {
       builder = builder.withProxy(proxy);
     }
 
+    final String pathPrefix = openSearchSinkConfig.getPathPrefix();
+    if (pathPrefix != null) {
+      builder = builder.withPathPrefix(pathPrefix);
+    }
+
     final boolean requestCompressionEnabled = openSearchSinkConfig.getEnableRequestCompression();
     builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
@@ -327,6 +338,9 @@ public class ConnectionConfiguration {
       i++;
     }
     final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+    if (pathPrefix != null) {
+      restClientBuilder.setPathPrefix(pathPrefix);
+    }
     /*
      * Given that this is a patch release, we will support only the IAM based access policy AES domains.
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
@@ -654,6 +668,7 @@ public class ConnectionConfiguration {
     private String awsStsExternalId;
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
+    private String pathPrefix;
     private String pipelineName;
     private boolean serverless;
     private String serverlessNetworkPolicyName;
@@ -788,6 +803,11 @@ public class ConnectionConfiguration {
 
     public Builder withProxy(final String proxy) {
       this.proxy = Optional.ofNullable(proxy);
+      return this;
+    }
+
+    public Builder withPathPrefix(final String pathPrefix) {
+      this.pathPrefix = pathPrefix;
       return this;
     }
 
