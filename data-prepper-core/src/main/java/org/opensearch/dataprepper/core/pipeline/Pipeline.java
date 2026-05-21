@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordinatio
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
+import org.opensearch.dataprepper.model.sink.coordinator.UsesEnhancedSinkCoordination;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -285,6 +286,15 @@ public class Pipeline implements HeadlessPipeline {
                 final Function<SourcePartitionStoreItem, EnhancedSourcePartition> partitionFactory = ((UsesEnhancedSourceCoordination) source).getPartitionFactory();
                 final EnhancedSourceCoordinator enhancedSourceCoordinator = sourceCoordinatorFactory.provideEnhancedSourceCoordinator(partitionFactory, name);
                 ((UsesEnhancedSourceCoordination) source).setEnhancedSourceCoordinator(enhancedSourceCoordinator);
+            }
+
+            for (final DataFlowComponent<Sink> sinkComponent : sinks) {
+                final Sink sink = sinkComponent.getComponent();
+                if (sink instanceof UsesEnhancedSinkCoordination) {
+                    final Function<SourcePartitionStoreItem, EnhancedSourcePartition> sinkPartitionFactory = ((UsesEnhancedSinkCoordination) sink).getPartitionFactory();
+                    final EnhancedSourceCoordinator sinkCoordinator = sourceCoordinatorFactory.provideEnhancedSourceCoordinator(sinkPartitionFactory, name + "-sink");
+                    ((UsesEnhancedSinkCoordination) sink).setEnhancedSourceCoordinator(sinkCoordinator);
+                }
             }
 
             sinkExecutorService.submit(() -> {
