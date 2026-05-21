@@ -105,8 +105,8 @@ public class ConfluenceConfigHelper {
         }
 
         if (BEARER_TOKEN.equals(authType)) {
-            String bearerToken = config.getAuthenticationConfig().getBearerToken();
-            if (bearerToken == null || bearerToken.isEmpty()) {
+            final String tokenValue = config.getAuthenticationConfig().getBearerTokenValue();
+            if (tokenValue == null || tokenValue.isEmpty()) {
                 throw new RuntimeException("Bearer token is required for BearerToken AuthType");
             }
         }
