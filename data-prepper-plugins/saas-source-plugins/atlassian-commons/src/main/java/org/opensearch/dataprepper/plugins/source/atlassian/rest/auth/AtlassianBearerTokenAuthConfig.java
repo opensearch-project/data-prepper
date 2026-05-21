@@ -37,11 +37,17 @@ public class AtlassianBearerTokenAuthConfig implements AtlassianAuthConfig {
     }
 
     public String getBearerToken() {
-        return (String) bearerTokenVariable.getValue();
+        final Object value = bearerTokenVariable.getValue();
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value != null ? value.toString() : null;
     }
 
     @Override
     public void renewCredentials() {
-        bearerTokenVariable.refresh();
+        if (bearerTokenVariable.isUpdatable()) {
+            bearerTokenVariable.refresh();
+        }
     }
 }

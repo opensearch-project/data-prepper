@@ -164,7 +164,7 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(null);
+        when(authenticationConfig.getBearerTokenValue()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 
@@ -173,8 +173,7 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
-        when(bearerTokenVariable.getValue()).thenReturn("");
+        when(authenticationConfig.getBearerTokenValue()).thenReturn("");
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 
@@ -183,8 +182,7 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
-        when(bearerTokenVariable.getValue()).thenReturn(UUID.randomUUID().toString());
+        when(authenticationConfig.getBearerTokenValue()).thenReturn(UUID.randomUUID().toString());
         when(confluenceSourceConfig.isAllowLocalAddress()).thenReturn(false);
         assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }

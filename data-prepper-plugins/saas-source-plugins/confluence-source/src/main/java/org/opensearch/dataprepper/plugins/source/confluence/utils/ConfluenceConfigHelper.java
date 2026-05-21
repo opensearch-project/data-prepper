@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.source.confluence.utils;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.AddressValidation;
 
@@ -106,9 +105,8 @@ public class ConfluenceConfigHelper {
         }
 
         if (BEARER_TOKEN.equals(authType)) {
-            PluginConfigVariable bearerToken = config.getAuthenticationConfig().getBearerToken();
-            if (bearerToken == null || bearerToken.getValue() == null
-                    || ((String) bearerToken.getValue()).isEmpty()) {
+            final String tokenValue = config.getAuthenticationConfig().getBearerTokenValue();
+            if (tokenValue == null || tokenValue.isEmpty()) {
                 throw new RuntimeException("Bearer token is required for BearerToken AuthType");
             }
         }

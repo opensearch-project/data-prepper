@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,14 +78,28 @@ class AtlassianBearerTokenAuthConfigTest {
     }
 
     @Test
-    void testRenewCredentials_calls_refresh() {
+    void testRenewCredentials_calls_refresh_when_updatable() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(bearerTokenVariable.isUpdatable()).thenReturn(true);
 
         AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
         config.renewCredentials();
 
         verify(bearerTokenVariable).refresh();
+    }
+
+    @Test
+    void testRenewCredentials_does_not_call_refresh_when_not_updatable() {
+        when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(bearerTokenVariable.isUpdatable()).thenReturn(false);
+
+        AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
+        config.renewCredentials();
+
+        verify(bearerTokenVariable, never()).refresh();
     }
 }
