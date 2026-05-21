@@ -175,12 +175,12 @@ public class CloudWatchLogsDispatcher {
                 if (putLogEventsResponse != null) {
                     dlqObjects = getDlqObjectsFromResponse(putLogEventsResponse);
                 }
-                cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
                 if (putLogEventsResponse != null && putLogEventsResponse.rejectedEntityInfo() != null) {
                     cloudWatchLogsMetrics.increaseEntityRejectedCounter(1);
                     LOG.warn("Entity was rejected by CloudWatch: {}",
                             putLogEventsResponse.rejectedEntityInfo().errorTypeAsString());
                 }
+                cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
                 releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);

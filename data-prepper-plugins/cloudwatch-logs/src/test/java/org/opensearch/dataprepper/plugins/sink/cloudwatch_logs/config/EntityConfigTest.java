@@ -29,7 +29,7 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EntityConfigTest {
     private static final String KEY_ATTRIBUTES_FIELD = "keyAttributes";
@@ -49,10 +49,11 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_new_entity_config_WHEN_get_key_attributes_called_SHOULD_return_null() {
+    void GIVEN_new_entity_config_WHEN_get_key_attributes_called_SHOULD_return_empty_map() {
         final EntityConfig entityConfig = new EntityConfig();
 
-        assertThat(entityConfig.getKeyAttributes(), nullValue());
+        assertThat(entityConfig.getKeyAttributes(), notNullValue());
+        assertThat(entityConfig.getKeyAttributes(), aMapWithSize(0));
     }
 
     @Test
@@ -134,7 +135,7 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_entity_config_with_null_key_attributes_WHEN_validated_SHOULD_fail_NotEmpty_constraint() {
+    void GIVEN_entity_config_with_default_key_attributes_WHEN_validated_SHOULD_fail_NotEmpty_constraint() {
         final EntityConfig entityConfig = new EntityConfig();
 
         final Set<ConstraintViolation<EntityConfig>> violations = validator.validate(entityConfig);
@@ -142,5 +143,29 @@ class EntityConfigTest {
         assertThat(violations, hasSize(1));
         final ConstraintViolation<EntityConfig> violation = violations.iterator().next();
         assertThat(violation.getPropertyPath().toString(), equalTo(KEY_ATTRIBUTES_FIELD));
+    }
+
+    @Test
+    void GIVEN_key_attributes_set_WHEN_put_on_returned_map_SHOULD_throw_unsupported_operation()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "RemoteService");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> entityConfig.getKeyAttributes().put("new", "value"));
+    }
+
+    @Test
+    void GIVEN_attributes_set_WHEN_put_on_returned_map_SHOULD_throw_unsupported_operation()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("key", "value");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, ATTRIBUTES_FIELD, attributes);
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> entityConfig.getAttributes().put("new", "value"));
     }
 }

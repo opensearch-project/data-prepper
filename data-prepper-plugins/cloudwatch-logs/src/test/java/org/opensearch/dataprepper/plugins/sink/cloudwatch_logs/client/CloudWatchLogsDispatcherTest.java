@@ -560,6 +560,31 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
+    void GIVEN_resource_not_found_and_both_create_group_and_stream_throw_non_already_exists_SHOULD_not_kill_uploader() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenThrow(CloudWatchLogsException.builder().message("access denied").build());
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenThrow(CloudWatchLogsException.builder().message("access denied").build());
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // Both creation calls failed but the helper swallowed both exceptions; PutLogEvents retry succeeded.
+        verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+    }
+
+    @Test
     void GIVEN_entity_configured_WHEN_dispatch_logs_called_SHOULD_set_entity_on_put_log_events_request() {
         final Map<String, String> keyAttributes = new HashMap<>();
         keyAttributes.put("Type", "RemoteService");
