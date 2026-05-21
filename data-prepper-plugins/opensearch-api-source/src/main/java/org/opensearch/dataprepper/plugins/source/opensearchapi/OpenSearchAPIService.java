@@ -5,10 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Blocking;
@@ -55,6 +59,7 @@ public class OpenSearchAPIService implements BaseHttpService {
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAPIService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final MultiLineJsonCodec jsonCodec = new MultiLineJsonCodec();
@@ -132,7 +137,56 @@ public class OpenSearchAPIService implements BaseHttpService {
             throw e;
         }
         successRequestsCounter.increment();
-        return HttpResponse.of(HttpStatus.OK);
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON_UTF_8, buildBulkResponse(bulkRequestPayloadList));
+    }
+
+    private String buildBulkResponse(final List<Map<String, Object>> bulkRequestPayloadList) {
+        final ObjectNode root = OBJECT_MAPPER.createObjectNode();
+        root.put("took", 0);
+        root.put("errors", false);
+
+        final ArrayNode items = root.putArray("items");
+        final Iterator<Map<String, Object>> it = bulkRequestPayloadList.iterator();
+        int seq = 0;
+        while (it.hasNext()) {
+            final Map<String, Object> actionLine = it.next();
+            final String action = Arrays.stream(OpenSearchBulkActions.values())
+                    .map(OpenSearchBulkActions::toString)
+                    .filter(actionLine::containsKey)
+                    .findFirst().orElse(null);
+
+            if (action == null) {
+                continue;
+            }
+
+            final boolean isDelete = OpenSearchBulkActions.DELETE.toString().equals(action);
+            if (!isDelete && it.hasNext()) {
+                it.next();
+            }
+
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> meta = (Map<String, Object>) actionLine.get(action);
+            final String index = meta != null && meta.get("_index") != null ? meta.get("_index").toString() : "unknown";
+            final String id = meta != null && meta.get("_id") != null ? meta.get("_id").toString() : String.valueOf(seq);
+
+            final ObjectNode item = OBJECT_MAPPER.createObjectNode();
+            final ObjectNode actionResult = item.putObject(action);
+            actionResult.put("_index", index);
+            actionResult.put("_id", id);
+            actionResult.put("_version", 1);
+            actionResult.put("result", isDelete ? "deleted" : "created");
+            actionResult.put("status", isDelete ? 200 : 201);
+            actionResult.put("_seq_no", seq);
+            actionResult.put("_primary_term", 1);
+            final ObjectNode shards = actionResult.putObject("_shards");
+            shards.put("total", 1);
+            shards.put("successful", 1);
+            shards.put("failed", 0);
+
+            items.add(item);
+            seq++;
+        }
+        return root.toString();
     }
 
     private boolean isValidBulkAction(Map<String, Object> actionMap) {
