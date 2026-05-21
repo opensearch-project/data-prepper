@@ -157,6 +157,10 @@ public class LeaderScheduler implements Runnable {
             final long snapshotId = table.currentSnapshot().snapshotId();
             LOG.info("Starting initial load for table {} at snapshot {}", tableName, snapshotId);
 
+            final String completionKey = SNAPSHOT_COMPLETION_PREFIX + "initial-" + snapshotId;
+            sourceCoordinator.createPartition(new GlobalState(completionKey,
+                    Map.of("total", 0, "completed", 0)));
+
             final TableScan scan = table.newScan().useSnapshot(snapshotId);
             int taskCount = 0;
 
@@ -180,9 +184,6 @@ public class LeaderScheduler implements Runnable {
                     taskCount, tableName, snapshotId);
 
             // Wait for all initial load partitions to complete
-            final String completionKey = SNAPSHOT_COMPLETION_PREFIX + "initial-" + snapshotId;
-            sourceCoordinator.createPartition(new GlobalState(completionKey,
-                    Map.of("total", taskCount, "completed", 0)));
             waitForSnapshotComplete(completionKey, taskCount);
 
             // Set lastProcessedSnapshotId so CDC starts from this snapshot
