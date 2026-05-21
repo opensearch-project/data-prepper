@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2C
 
 import java.util.UUID;
 
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
