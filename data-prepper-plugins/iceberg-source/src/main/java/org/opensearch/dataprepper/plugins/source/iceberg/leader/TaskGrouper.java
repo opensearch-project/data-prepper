@@ -50,7 +50,7 @@ public class TaskGrouper {
             result.add(state);
         }
 
-        LOG.info("Planned {} CHANGELOG task(s) for table {} (snapshot {})",
+        LOG.debug("Planned {} CHANGELOG task(s) for table {} (snapshot {})",
                 result.size(), tableName, snapshotId);
         return result;
     }
@@ -74,7 +74,7 @@ public class TaskGrouper {
             tasks.add(state);
         }
 
-        LOG.info("Planned {} SHUFFLE_WRITE task(s) for table {} (snapshot {})",
+        LOG.debug("Planned {} SHUFFLE_WRITE task(s) for table {} (snapshot {})",
                 tasks.size(), tableName, snapshotId);
         return tasks;
     }

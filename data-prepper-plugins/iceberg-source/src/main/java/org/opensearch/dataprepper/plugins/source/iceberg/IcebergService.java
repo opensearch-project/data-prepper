@@ -120,9 +120,11 @@ public class IcebergService {
         final var certificate = shuffleHttpServer.getCertificate();
 
         runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs,
-                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig(), certificate));
+                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig(), certificate, pluginMetrics));
         runnableList.add(new ChangelogWorker(
-                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate));
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager,
+                eventFactory, shuffleStorage, certificate, pluginMetrics,
+                new org.opensearch.dataprepper.plugins.source.iceberg.worker.IcebergDataFileReader()));
 
         executor = Executors.newFixedThreadPool(runnableList.size());
         runnableList.forEach(executor::submit);
