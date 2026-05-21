@@ -39,6 +39,7 @@ dependencies {
     implementation project(':data-prepper-plugin-framework')
     testImplementation project(':data-prepper-plugin-framework').sourceSets.test.output
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
+    testImplementation project(':data-prepper-plugins:file-source')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.reflections.core

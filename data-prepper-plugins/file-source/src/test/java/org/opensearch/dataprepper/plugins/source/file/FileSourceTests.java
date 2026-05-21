@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.file;
@@ -18,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -30,8 +36,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -41,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -50,22 +55,25 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class FileSourceTests {
-    private static final Logger LOG = LoggerFactory.getLogger(FileSourceTests.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
     private static final String TEST_FILE_PATH_PLAIN = "src/test/resources/test-file-source-plain.tst";
+    private static final String MESSAGE_KEY = "message";
 
     private FileSourceConfig fileSourceConfig;
 
@@ -90,16 +98,9 @@ public class FileSourceTests {
 
     private FileSource createObjectUnderTest() {
         fileSourceConfig = OBJECT_MAPPER.convertValue(pluginSettings, FileSourceConfig.class);
-        return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory());
+        return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory(), null);
     }
 
-    /**
-     * Variant of creatgeObjectUnderTest that uses mocks for the configuration instead of object mapper, so we can
-     * pass concrete mocks to the FileSource through the FileSourceConfig.
-     * @param codec the codec to use in the configuration
-     * @param engine the {@link DecompressionEngine} to use in the configuration
-     * @return
-     */
     private FileSource createObjectUnderTest(PluginModel codec, DecompressionEngine engine) {
         FileSourceConfig fileSourceConfig = mock(FileSourceConfig.class);
 
@@ -115,7 +116,7 @@ public class FileSourceTests {
             when(fileSourceConfig.getCompression()).thenReturn(compressionOption);
         }
 
-        return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory());
+        return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory(), null);
     }
 
     @Nested
@@ -140,30 +141,27 @@ public class FileSourceTests {
             expectedEventsJson = new ArrayList<>();
             expectedEventsInvalidJson = new ArrayList<>();
 
-            // plain
             final String expectedPlainFirstLine = "THIS IS A PLAINTEXT LINE";
             final String expectedPlainSecondLine = "THIS IS ANOTHER PLAINTEXT LINE";
 
-            final Record<Object> firstEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainFirstLine);
-            final Record<Object> secondEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainSecondLine);
+            final Record<Object> firstEventPlain = createRecordEventWithKeyValuePair(MESSAGE_KEY, expectedPlainFirstLine);
+            final Record<Object> secondEventPlain = createRecordEventWithKeyValuePair(MESSAGE_KEY, expectedPlainSecondLine);
 
             expectedEventsPlain.add(firstEventPlain);
             expectedEventsPlain.add(secondEventPlain);
 
-            //json
             final Record<Object> firstEventJson = createRecordEventWithKeyValuePair("test_key", "test_value");
             final Record<Object> secondEventJson = createRecordEventWithKeyValuePair("second_test_key", "second_test_value");
 
             expectedEventsJson.add(firstEventJson);
             expectedEventsJson.add(secondEventJson);
 
-            // invalid json
             final String expectedInvalidJsonFirstLine = "{\"test_key: test_value\"}";
             final String expectedInvalidJsonSecondLine = "{\"second_test_key\": \"second_test_value\"";
 
 
-            final Record<Object> firstEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonFirstLine);
-            final Record<Object> secondEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonSecondLine);
+            final Record<Object> firstEventInvalidJson = createRecordEventWithKeyValuePair(MESSAGE_KEY, expectedInvalidJsonFirstLine);
+            final Record<Object> secondEventInvalidJson = createRecordEventWithKeyValuePair(MESSAGE_KEY, expectedInvalidJsonSecondLine);
 
             expectedEventsInvalidJson.add(firstEventInvalidJson);
             expectedEventsInvalidJson.add(secondEventInvalidJson);
@@ -184,33 +182,37 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileSourceWithEmptyFilePathDoesNotWriteToBuffer() throws InterruptedException {
-            buffer = mock(Buffer.class);
+        public void testFileSourceWithEmptyFilePathThrowsValidationError() {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "");
-            fileSource = createObjectUnderTest();
-            fileSource.start(buffer);
-            Thread.sleep(500);
-            verifyNoInteractions(buffer);
+            assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
         }
 
         @Test
-        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws InterruptedException {
+        public void testFileSourceWithNonexistentFilePathDoesNotWriteToBuffer() throws TimeoutException {
             buffer = mock(Buffer.class);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
             fileSource = createObjectUnderTest();
             fileSource.start(buffer);
-            Thread.sleep(500);
-            verifyNoInteractions(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
         }
 
         @Test
         public void testFileSourceWithNullFilePathThrowsNullPointerException() {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, null);
-            assertThrows(NullPointerException.class, FileSourceTests.this::createObjectUnderTest);
+            assertThrows(IllegalArgumentException.class, FileSourceTests.this::createObjectUnderTest);
         }
 
         @Test
-        public void testFileWithPlainTextAddsEventsToBufferCorrectly() {
+        public void testStopBeforeStartPreventsProcessing() throws TimeoutException {
+            buffer = mock(Buffer.class);
+            fileSource = createObjectUnderTest();
+            fileSource.stop();
+            fileSource.start(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
+        }
+
+        @Test
+        public void testFileWithPlainTextAddsEventsToBufferCorrectly() throws JsonProcessingException {
             fileSource = createObjectUnderTest();
             fileSource.start(buffer);
 
@@ -221,7 +223,7 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileWithJSONAddsEventsToBufferCorrectly() {
+        public void testFileWithJSONAddsEventsToBufferCorrectly() throws JsonProcessingException {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_JSON);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
 
@@ -235,7 +237,7 @@ public class FileSourceTests {
         }
 
         @Test
-        public void testFileWithInvalidJSONAddsEventsToBufferAsPlainText() {
+        public void testFileWithInvalidJSONAddsEventsToBufferAsPlainText() throws JsonProcessingException {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_INVALID_JSON);
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
             fileSource = createObjectUnderTest();
@@ -273,7 +275,7 @@ public class FileSourceTests {
             assertThrows(IllegalArgumentException.class, FileSourceTests.this::createObjectUnderTest);
         }
 
-        void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) {
+        void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) throws JsonProcessingException {
             for (int i = 0; i < expectedEvents.size(); i++) {
                 assertThat(actualEvents.get(i), notNullValue());
                 assertThat(actualEvents.get(i).getData(), notNullValue());
@@ -281,16 +283,12 @@ public class FileSourceTests {
             }
         }
 
-        void assertEventRecordsAreEqual(final Record<Object> first, final Record<Object> second) {
-            try {
-                final Event firstEvent = (Event) first.getData();
-                final Event secondEvent = (Event) second.getData();
-                final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(firstEvent.toJsonString(), MAP_TYPE_REFERENCE);
-                final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(secondEvent.toJsonString(), MAP_TYPE_REFERENCE);
-                assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
-            } catch (JsonProcessingException e) {
-                LOG.error("Unable to parse Event as JSON");
-            }
+        void assertEventRecordsAreEqual(final Record<Object> first, final Record<Object> second) throws JsonProcessingException {
+            final Event firstEvent = (Event) first.getData();
+            final Event secondEvent = (Event) second.getData();
+            final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(firstEvent.toJsonString(), MAP_TYPE_REFERENCE);
+            final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(secondEvent.toJsonString(), MAP_TYPE_REFERENCE);
+            assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
         }
 
         private Record<Object> createRecordEventWithKeyValuePair(final String key, final String value) {
@@ -362,7 +360,7 @@ public class FileSourceTests {
         }
 
         @Test
-        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException, InterruptedException {
+        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException {
 
             final IOException mockedException = mock(IOException.class);
             doThrow(mockedException)
@@ -372,10 +370,202 @@ public class FileSourceTests {
 
             objectUnderTest.start(buffer);
 
-            Thread.sleep(2_000);
-
-            verifyNoInteractions(buffer);
+            verify(buffer, after(1500).never()).write(any(Record.class), anyInt());
         }
 
+        @Test
+        void start_codec_consumer_wraps_timeout_exception() throws IOException, TimeoutException {
+            doThrow(new TimeoutException("buffer full"))
+                    .when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
+
+            createObjectUnderTest().start(buffer);
+
+            final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+            await().atMost(2, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
+
+            verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
+
+            final Consumer<Record<Event>> actualConsumer = consumerArgumentCaptor.getValue();
+            final Record<Event> record = mock(Record.class);
+
+            assertThrows(RuntimeException.class, () -> actualConsumer.accept(record));
+        }
+
+        @Test
+        void stop_before_start_prevents_codec_processing() throws IOException {
+            final FileSource objectUnderTest = createObjectUnderTest();
+            objectUnderTest.stop();
+            objectUnderTest.start(buffer);
+
+            verify(inputCodec, after(500).never()).parse(any(InputStream.class), any(Consumer.class));
+        }
+    }
+
+    @Nested
+    class TailMode {
+
+        @Mock
+        private Buffer<Record<Object>> buffer;
+
+        @Test
+        void start_in_tail_mode_invokes_startTailing() throws Exception {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-test-glob-*.log"));
+            pluginSettings.remove(FileSourceConfig.ATTRIBUTE_PATH);
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-test-glob-single.log");
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void start_in_tail_mode_with_codec_invokes_startTailing() throws Exception {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-codec-glob-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-codec-glob-single.log");
+
+            Map<String, String> codecConfiguration = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+            Map<String, Map<String, String>> codecSettings = Map.of("fake_codec", codecConfiguration);
+            pluginSettings.put("codec", codecSettings);
+
+            InputCodec mockCodec = mock(InputCodec.class);
+            when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class)))
+                    .thenReturn(mockCodec);
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void start_in_tail_mode_with_high_ratio_logs_warning() throws Exception {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-ratio-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-ratio-single.log");
+            pluginSettings.put("max_active_files", 1000);
+            pluginSettings.put("reader_threads", 1);
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void start_in_tail_mode_with_checkpoint_path() throws Exception {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-cp-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-cp-single.log");
+            pluginSettings.put("checkpoint_file", "/tmp/test-checkpoint-" + UUID.randomUUID() + ".json");
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void stop_before_start_does_not_throw() {
+            FileSource fileSource = createObjectUnderTest();
+            assertDoesNotThrow(fileSource::stop);
+        }
+
+        @Test
+        void start_in_tail_mode_rethrows_runtime_exception_from_startTailing() {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-err-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-err-single.log");
+            pluginSettings.put("fingerprint_bytes", 0);
+
+            FileSource fileSource = createObjectUnderTest();
+            assertThrows(IllegalArgumentException.class, () -> fileSource.start(buffer));
+        }
+
+        @Test
+        void stop_after_classic_start_joins_thread() throws Exception {
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void stop_with_interrupt_during_join() throws Exception {
+            buffer = mock(Buffer.class);
+            final CountDownLatch writeStarted = new CountDownLatch(1);
+            doAnswer(inv -> {
+                writeStarted.countDown();
+                Thread.sleep(5000);
+                return null;
+            }).when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            writeStarted.await(2, TimeUnit.SECONDS);
+
+            Thread stopThread = new Thread(() -> {
+                Thread.currentThread().interrupt();
+                fileSource.stop();
+            });
+            stopThread.start();
+            stopThread.join(5000);
+        }
+
+        @Test
+        void areAcknowledgementsEnabled_returns_false_by_default() {
+            FileSource fileSource = createObjectUnderTest();
+            assertThat(fileSource.areAcknowledgementsEnabled(), equalTo(false));
+        }
+
+        @Test
+        void areAcknowledgementsEnabled_returns_true_when_configured() {
+            pluginSettings.put("acknowledgments", true);
+            fileSourceConfig = OBJECT_MAPPER.convertValue(pluginSettings, FileSourceConfig.class);
+            AcknowledgementSetManager mockAckManager = mock(AcknowledgementSetManager.class);
+            FileSource fileSource = new FileSource(fileSourceConfig, pluginMetrics, pluginFactory,
+                    TestEventFactory.getTestEventFactory(), mockAckManager);
+            assertThat(fileSource.areAcknowledgementsEnabled(), equalTo(true));
+        }
+
+        @Test
+        void start_in_tail_mode_with_safe_ratio_does_not_warn() throws Exception {
+            pluginSettings.put("tail", true);
+            pluginSettings.put("paths", List.of("/tmp/nonexistent-ratio-safe-*.log"));
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "/tmp/nonexistent-ratio-safe-single.log");
+            pluginSettings.put("max_active_files", 100);
+            pluginSettings.put("reader_threads", 2);
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
+
+        @Test
+        void stop_mid_read_stops_processing_lines() throws Exception {
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.EVENT_TYPE);
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
+
+            buffer = mock(Buffer.class);
+            final CountDownLatch writeStarted = new CountDownLatch(1);
+            doAnswer(inv -> {
+                writeStarted.countDown();
+                Thread.sleep(2000);
+                return null;
+            }).when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
+
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            writeStarted.await(2, TimeUnit.SECONDS);
+            fileSource.stop();
+        }
+
+        @Test
+        void writeLineAsEventOrString_with_non_matching_type_does_not_write() throws Exception {
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.EVENT_TYPE);
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
+            FileSource fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            fileSource.stop();
+        }
     }
 }
