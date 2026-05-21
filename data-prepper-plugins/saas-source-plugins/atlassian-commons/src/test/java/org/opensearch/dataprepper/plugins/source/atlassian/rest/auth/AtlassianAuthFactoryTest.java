@@ -20,7 +20,6 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
