@@ -439,4 +439,40 @@ class OpenSearchAPIServiceTest {
         HttpData httpData = HttpData.ofUtf8(String.join("\n", jsonList));
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
     }
+
+    @Test
+    public void testBulkRequestAPIResponseContainsValidBulkJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequest(3);
+        AggregatedHttpResponse postResponse = openSearchAPIService.doPostBulk(
+                serviceRequestContext, testRequest, null, null).aggregate().get();
+
+        assertEquals(HttpStatus.OK, postResponse.status());
+        String body = postResponse.contentUtf8();
+        Map<String, Object> bulkResponse = new ObjectMapper().readValue(body, Map.class);
+        assertEquals(false, bulkResponse.get("errors"));
+        assertEquals(0, bulkResponse.get("took"));
+        List<?> items = (List<?>) bulkResponse.get("items");
+        assertNotNull(items);
+        // generateRandomValidBulkRequest(3) creates 3 index actions
+        assertEquals(3, items.size());
+    }
+
+    @Test
+    public void testBulkRequestAPIResponseWithIndexInPathContainsValidBulkJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequestWithNoIndexInBody(2);
+        AggregatedHttpResponse postResponse = openSearchAPIService.doPostBulkIndex(
+                serviceRequestContext, testRequest, "my-index", null, null).aggregate().get();
+
+        assertEquals(HttpStatus.OK, postResponse.status());
+        String body = postResponse.contentUtf8();
+        Map<String, Object> bulkResponse = new ObjectMapper().readValue(body, Map.class);
+        assertEquals(false, bulkResponse.get("errors"));
+        List<?> items = (List<?>) bulkResponse.get("items");
+        assertNotNull(items);
+        assertEquals(2, items.size());
+    }
+
+    private static void assertNotNull(Object obj) {
+        if (obj == null) throw new AssertionError("Expected non-null");
+    }
 }
