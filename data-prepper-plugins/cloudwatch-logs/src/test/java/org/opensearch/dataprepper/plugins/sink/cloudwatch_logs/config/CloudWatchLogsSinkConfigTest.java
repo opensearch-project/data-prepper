@@ -329,7 +329,6 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    @Test
     void GIVEN_new_sink_config_WHEN_get_create_log_group_called_SHOULD_return_false() {
         assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroup(), equalTo(false));
     }

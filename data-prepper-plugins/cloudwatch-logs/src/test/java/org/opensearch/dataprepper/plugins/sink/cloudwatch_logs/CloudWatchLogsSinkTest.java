@@ -296,7 +296,6 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
-    @Test
     void WHEN_create_log_group_and_stream_flags_are_set_THEN_flags_passed_to_dispatcher() {
         when(mockCloudWatchLogsSinkConfig.getCreateLogGroup()).thenReturn(true);
         when(mockCloudWatchLogsSinkConfig.getCreateLogStream()).thenReturn(true);
