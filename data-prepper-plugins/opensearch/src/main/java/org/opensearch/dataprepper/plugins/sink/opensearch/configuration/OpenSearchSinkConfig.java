@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
@@ -10,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
@@ -322,5 +327,46 @@ public class OpenSearchSinkConfig {
     @Getter
     @JsonProperty("routing_field")
     private String routingField = null;
+
+    @Getter
+    @Valid
+    @Experimental
+    @JsonProperty("pull_indexing")
+    private PullIndexingConfig pullIndexing = null;
+
+    @AssertTrue(message = "pull_indexing does not support update or upsert actions. Only index, create, and delete are supported.")
+    public boolean isPullIndexingActionValid() {
+        if (pullIndexing == null) {
+            return true;
+        }
+        if (action != null && !action.contains("${")) {
+            final String lowerAction = action.toLowerCase();
+            if (lowerAction.equals(OpenSearchBulkActions.UPDATE.toString()) ||
+                    lowerAction.equals(OpenSearchBulkActions.UPSERT.toString())) {
+                return false;
+            }
+        }
+        if (actions != null) {
+            for (final ActionConfiguration actionConfig : actions) {
+                final String type = actionConfig.getType();
+                if (type != null && !type.contains("${")) {
+                    final String lowerType = type.toLowerCase();
+                    if (lowerType.equals(OpenSearchBulkActions.UPDATE.toString()) ||
+                            lowerType.equals(OpenSearchBulkActions.UPSERT.toString())) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "pull_indexing does not support dynamic index expressions. The index must be a static name.")
+    public boolean isPullIndexingIndexValid() {
+        if (pullIndexing == null) {
+            return true;
+        }
+        return indexAlias == null || !indexAlias.contains("${");
+    }
 }
 

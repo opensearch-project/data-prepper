@@ -50,6 +50,7 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
@@ -160,6 +161,9 @@ class OpenSearchSinkIT {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private PluginFactory pluginFactory;
+
     private OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
         sinkContext = mock(SinkContext.class);
         when(sinkContext.getTagsTargetKey()).thenReturn(null);
@@ -168,7 +172,7 @@ class OpenSearchSinkIT {
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -184,7 +188,7 @@ class OpenSearchSinkIT {
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         sink.setFailurePipeline(dlqPipeline);
         if (doInitialize) {
             sink.doInitialize();
@@ -202,7 +206,7 @@ class OpenSearchSinkIT {
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }
