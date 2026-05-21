@@ -13,6 +13,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Taylor Gray            | [graytaylor0](https://github.com/graytaylor0)             | Amazon      |
 | Dinu John              | [dinujoh](https://github.com/dinujoh)                     | Amazon      |
 | Krishna Kondaka        | [kkondaka](https://github.com/kkondaka)                   | Amazon      |
+| Srikanth Padakanti     | [srikanthpadakanti](https://github.com/srikanthpadakanti) | Apple      |
 | Karsten Schnitter      | [KarstenSchnitter](https://github.com/KarstenSchnitter)   | SAP         |
 | David Venable          | [dlvenable](https://github.com/dlvenable)                 | Amazon      |
 | Hai Yan                | [oeyh](https://github.com/oeyh)                           | Amazon      |
