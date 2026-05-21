@@ -9,6 +9,7 @@
 
 plugins {
     id 'java'
+    id 'data-prepper.jmh'
 }
 
 
@@ -21,8 +22,17 @@ dependencies {
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test:test-common')
     implementation libs.commons.lang3
+    jmh project(':data-prepper-api')
 }
 
 test {
     useJUnitPlatform()
+}
+
+tasks.withType(Zip).configureEach {
+    zip64 = true
+}
+
+jmh {
+    profilers = ['gc']
 }
