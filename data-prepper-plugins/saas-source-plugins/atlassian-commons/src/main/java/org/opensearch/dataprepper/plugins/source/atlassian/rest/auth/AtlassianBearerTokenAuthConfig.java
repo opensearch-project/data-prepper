@@ -46,8 +46,6 @@ public class AtlassianBearerTokenAuthConfig implements AtlassianAuthConfig {
 
     @Override
     public void renewCredentials() {
-        if (bearerTokenVariable.isUpdatable()) {
-            bearerTokenVariable.refresh();
-        }
+        bearerTokenVariable.refresh();
     }
 }
