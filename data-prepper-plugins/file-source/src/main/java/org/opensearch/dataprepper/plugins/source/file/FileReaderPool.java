@@ -119,12 +119,12 @@ public final class FileReaderPool {
         }
         metrics.getActiveFileCount().decrementAndGet();
 
-        if (completedReader != null && completedReader.getLastRotationType() == RotationType.CREATE_RENAME) {
+        if (completedReader.getLastRotationType() == RotationType.CREATE_RENAME) {
             LOG.info("Re-adding path {} after create/rename rotation", path);
             final FileIdentity newIdentity = FileIdentity.from(path, readerContext.getFileOps(),
                     readerContext.getRotationDetector().getFingerprintBytes());
             submitReader(newIdentity, path);
-        } else if (completedReader != null && completedReader.getLastRotationType() != RotationType.DELETED) {
+        } else if (completedReader.getLastRotationType() != RotationType.DELETED) {
             final PendingFile next = pendingQueue.poll();
             if (next != null) {
                 pendingIdentities.remove(next.getFileIdentity());

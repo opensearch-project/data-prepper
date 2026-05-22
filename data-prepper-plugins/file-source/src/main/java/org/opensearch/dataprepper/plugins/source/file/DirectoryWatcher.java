@@ -238,7 +238,7 @@ public final class DirectoryWatcher {
                 }
             }
 
-            watchThread = new Thread(this::watchLoop, "file-tail-watcher");
+            watchThread = new Thread(this::watchLoop, "file-watcher");
             watchThread.setDaemon(true);
             watchThread.start();
             LOG.info("WatchService started for {} directories", watchDirs.size());

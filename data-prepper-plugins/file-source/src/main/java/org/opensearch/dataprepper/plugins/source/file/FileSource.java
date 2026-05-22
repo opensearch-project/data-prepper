@@ -98,7 +98,6 @@ public class FileSource implements Source<Record<Object>> {
         }
     }
 
-
     @Override
     public void start(final Buffer<Record<Object>> buffer) {
         Objects.requireNonNull(buffer, "Buffer cannot be null for file source to start");
