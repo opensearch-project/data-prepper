@@ -22,6 +22,9 @@ public class RuleTransformerModel {
     @JsonProperty("plugin_name")
     private String pluginName;
 
+    @JsonProperty("function_providers")
+    private List<String> functionProviders;
+
     public RuleTransformerModel() {
     }
 
@@ -29,6 +32,7 @@ public class RuleTransformerModel {
     public String toString() {
         return "RuleConfiguration{" +
                 "applyWhen=" + applyWhen +
-                "\npluginName="+ pluginName +'}';
+                "\nfunctionProviders=" + functionProviders +
+                "\npluginName=" + pluginName + '}';
     }
 }

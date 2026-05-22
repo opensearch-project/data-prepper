@@ -17,7 +17,6 @@ import com.jayway.jsonpath.PathNotFoundException;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import static java.lang.String.format;
-import static org.opensearch.dataprepper.plugins.source.rds.RdsService.MAX_SOURCE_IDENTIFIER_LENGTH;
 
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -26,9 +25,9 @@ import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluatorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
-import software.amazon.awssdk.arns.Arn;
 
+import org.opensearch.dataprepper.model.annotations.TransformationFunction;
+import org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider;
 import javax.xml.transform.TransformerException;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -43,6 +42,10 @@ import java.util.regex.Pattern;
 public class DynamicConfigTransformer implements PipelineConfigurationTransformer {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamicConfigTransformer.class);
+    private static final Pattern FULLY_QUALIFIED_METHOD_PATTERN = Pattern.compile(
+        "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*(\\.|::)[a-zA-Z_][a-zA-Z0-9_]*$"
+    );
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RuleEvaluator ruleEvaluator;
 
@@ -76,11 +79,8 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     private static final String RECURSIVE_JSON_PATH_PATH = "$..";
     private static final String JSON_PATH_IDENTIFIER = "$.";
     private static final String ARRAY_NODE_PATTERN = "([^\\[]+)\\[(\\d+)\\]$";
-    private static final String SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE = "SOURCE_COORDINATION_PIPELINE_IDENTIFIER";
     private static final String SINK_SUBPIPELINE_PLUGIN_NAME = "pipeline";
     private static final String SUBPIPELINE_PATH = "$.source.pipeline";
-
-    private static final String S3_BUFFER_PREFIX = "/buffer";
 
     /**
      * Pattern to match overlay directives like "<<overlay sink[*].opensearch>>"
@@ -126,6 +126,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         //To differentiate between sub-pipelines that dont need transformation.
         String pipelineNameThatNeedsTransformation = ruleEvaluatorResult.getPipelineName();
         PipelineTemplateModel templateModel = ruleEvaluatorResult.getPipelineTemplateModel();
+        List<String> functionProviders = ruleEvaluatorResult.getFunctionProviders();
         LOG.info("Transforming pipeline config for pipeline {}",pipelineNameThatNeedsTransformation);
         try {
 
@@ -149,7 +150,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             JsonNode templateRootNode = objectMapper.readTree(templateJsonString);
 
             // get exact path in pipelineJson
-            Map<String, String> pipelineExactPathMap = findExactPath(placeholdersMap, pipelineJson);
+            Map<String, String> pipelineExactPathMap = findExactPath(placeholdersMap, pipelineJson, functionProviders);
 
             //replace placeholder with actual value in the template context
             placeholdersMap.forEach((placeholder, templateJsonPathList) -> {
@@ -173,7 +174,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             });
 
             // Process <<overlay>> directives — merge overlay fields into resolved config
-            processOverlayDirectives(templateRootNode, pipelineJson);
+            processOverlayDirectives(templateRootNode, pipelineJson, functionProviders);
 
             PipelinesDataFlowModel transformedPipelinesDataFlowModel = getTransformedPipelinesDataFlowModel(pipelineNameThatNeedsTransformation,
                     preTransformedPipelinesDataFlowModel,
@@ -333,12 +334,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @return Map<String, String> K:jsonPath, V:exactPath
      * @throws IOException
      */
-    private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineJson) throws IOException, TransformerException {
+    private Map<String, String> findExactPath(Map<String, List<String>> placeholdersMap, String pipelineJson, final List<String> functionProviders) throws IOException, TransformerException {
         Map<String, String> mapWithPaths = new HashMap<>();
         for (String genericPathPlaceholder : placeholdersMap.keySet()) {
             String placeHolderValue = getValueFromPlaceHolder(genericPathPlaceholder);
 
-            String value = executeFunctionPlaceholder(placeHolderValue, pipelineJson);
+            String value = executeFunctionPlaceholder(placeHolderValue, pipelineJson, functionProviders);
 
         // Recursive pattern in json path is NOT allowed
             if (value!=null && value.contains(RECURSIVE_JSON_PATH_PATH)) {
@@ -366,14 +367,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @param functionPlaceholderValue
      * @return String - value of the function executed
      */
-    private String executeFunctionPlaceholder(String functionPlaceholderValue, String pipelineJson){
+    private String executeFunctionPlaceholder(String functionPlaceholderValue, String pipelineJson, final List<String> functionProviders){
         Matcher functionMatcher = FUNCTION_CALL_PLACEHOLDER_PATTERN.matcher(functionPlaceholderValue);
         if (functionMatcher.find()) {
             String functionName = functionMatcher.group(1);
             String parameter = functionMatcher.group(2);
             try {
                 String parameterValue = (String)parseParameter(parameter, pipelineJson);
-                String value = (String) invokeMethod(functionName, String.class, parameterValue);
+                String value = (String) invokeMethod(functionProviders, functionName, String.class, parameterValue);
                 return value;
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException(e);
@@ -418,73 +419,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
     }
 
-    /**
-     * Calculate s3 folder scan depth for DocDB source pipeline
-     * @param s3Prefix: s3 prefix defined in the source configuration
-     * @return s3 folder scan depth
-     */
-    public String calculateDepth(String s3Prefix) {
-        return Integer.toString(getDepth(s3Prefix, 4));
-    }
-
-    protected String getSourceCoordinationIdentifier() {
-        return System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
-    }
-
-    /**
-     * Calculate s3 folder scan depth for RDS source pipeline
-     * @param s3Prefix: s3 prefix defined in the source configuration
-     * @return s3 folder scan depth
-     */
-    public String calculateDepthForRdsSource(String s3Prefix) {
-        String envSourceCoordinationIdentifier = getSourceCoordinationIdentifier();
-        int baseDepth = envSourceCoordinationIdentifier != null ? 3 : 2;
-        return Integer.toString(getDepth(s3Prefix, baseDepth));
-    }
-
-    private int getDepth(String s3Prefix, int baseDepth) {
-        if(s3Prefix == null){
-            return baseDepth;
+    public static boolean isFullyQualifiedMethod(String input) {
+        if (input == null || input.isEmpty()) {
+            return false;
         }
-        return s3Prefix.split("/").length + baseDepth;
-    }
-
-    public String getSourceCoordinationIdentifierEnvVariable(String s3Prefix){
-        String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
-        if(s3Prefix == null){
-            return envSourceCoordinationIdentifier;
-        }
-        return s3Prefix+"/"+envSourceCoordinationIdentifier;
-    }
-
-    /**
-     * Get the include_prefix in s3 scan source. This is a function specific to RDS source.
-     * @param s3Prefix: s3 prefix defined in the source configuration
-     * @return the actual include_prefix
-     */
-    public String getIncludePrefixForRdsSource(String s3Prefix) {
-        final String envSourceCoordinationIdentifier = System.getenv(SOURCE_COORDINATION_IDENTIFIER_ENVIRONMENT_VARIABLE);
-        final String shortenedSourceIdentifier = envSourceCoordinationIdentifier != null ?
-                IdentifierShortener.shortenIdentifier(envSourceCoordinationIdentifier, MAX_SOURCE_IDENTIFIER_LENGTH) : null;
-        if (s3Prefix == null && envSourceCoordinationIdentifier == null) {
-            return S3_BUFFER_PREFIX;
-        } else if (s3Prefix == null) {
-            return shortenedSourceIdentifier + S3_BUFFER_PREFIX;
-        } else if (envSourceCoordinationIdentifier == null) {
-            return s3Prefix + S3_BUFFER_PREFIX;
-        }
-        return s3Prefix + "/" + shortenedSourceIdentifier + S3_BUFFER_PREFIX;
-    }
-
-    public String getAccountIdFromRole(final String roleArn) {
-        if (roleArn == null)
-            return null;
-        try {
-            return Arn.fromString(roleArn).accountId().orElse(null);
-        } catch (Exception e) {
-            LOG.warn("Malformatted role ARN for dynamic transformation: {}", roleArn);
-            return null;
-        }
+        return FULLY_QUALIFIED_METHOD_PATTERN.matcher(input).matches();
     }
 
     /**
@@ -496,15 +435,44 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * @return the result of the method invocation
      * @throws ReflectiveOperationException if the method cannot be invoked
      */
-    public Object invokeMethod(String methodName, Class<?> parameterType, Object arg) throws ReflectiveOperationException {
-        // Get the Class object
-        Class<?> clazz = this.getClass();
+    public Object invokeMethod(final List<String> functionProviders, String methodName, Class<?> parameterType, Object arg) throws ReflectiveOperationException {
+        if (functionProviders == null || functionProviders.isEmpty()) {
+            throw new RuntimeException("function_providers cannot be empty");
+        }
 
-        // Get the Method object for the specified method and parameter type
+        Class<?> clazz = resolveClassForMethod(functionProviders, methodName, parameterType);
+
+        if (!PipelineTransformFunctionProvider.class.isAssignableFrom(clazz)) {
+            throw new RuntimeException("Class '" + clazz.getName() +
+                    "' does not implement PipelineTransformFunctionProvider");
+        }
+
         Method method = clazz.getMethod(methodName, parameterType);
 
-        // Invoke the method on the object with the given argument
-        return method.invoke(this, arg);
+        if (!method.isAnnotationPresent(TransformationFunction.class)) {
+            throw new RuntimeException("Method '" + methodName + "' in class '" + clazz.getName() +
+                    "' is not annotated with @TransformationFunction");
+        }
+
+        return method.invoke(null, arg);
+    }
+
+    private Class<?> resolveClassForMethod(final List<String> functionProviders, String methodName, Class<?> parameterType) throws ReflectiveOperationException {
+        if (functionProviders.size() == 1) {
+            return Class.forName(functionProviders.get(0));
+        }
+
+        for (final String functionProvider : functionProviders) {
+            try {
+                Class<?> candidate = Class.forName(functionProvider);
+                candidate.getMethod(methodName, parameterType);
+                return candidate;
+            } catch (NoSuchMethodException e) {
+                continue;
+            }
+        }
+
+        throw new RuntimeException("Could not find a class with method '" + methodName + "' in function_providers: " + functionProviders);
     }
 
 
@@ -517,11 +485,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Example: <<overlay sink[*].opensearch>> with value {action: "upsert", script: {...}}
      * will merge those fields into every opensearch sink entry.
      */
-    private void processOverlayDirectives(JsonNode rootNode, String pipelineJson) {
-        processOverlayDirectivesRecursive(rootNode, pipelineJson);
+    private void processOverlayDirectives(JsonNode rootNode, String pipelineJson, List<String> functionProviders) {
+        processOverlayDirectivesRecursive(rootNode, pipelineJson, functionProviders);
     }
 
-    private void processOverlayDirectivesRecursive(JsonNode node, String pipelineJson) {
+    private void processOverlayDirectivesRecursive(JsonNode node, String pipelineJson, List<String> functionProviders) {
         if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
             List<String> overlayKeys = new ArrayList<>();
@@ -543,7 +511,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                     String targetPath = matcher.group(1);
                     JsonNode overlayValue = objectNode.get(overlayKey);
                     // Resolve any <<...>> placeholders inside overlay values
-                    resolveOverlayPlaceholders(overlayValue, pipelineJson);
+                    resolveOverlayPlaceholders(overlayValue, pipelineJson, functionProviders);
                     applyOverlay(objectNode, targetPath, overlayValue);
                     objectNode.remove(overlayKey);
                 }
@@ -552,11 +520,11 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
             // Recurse into remaining children
             Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
             while (fields.hasNext()) {
-                processOverlayDirectivesRecursive(fields.next().getValue(), pipelineJson);
+                processOverlayDirectivesRecursive(fields.next().getValue(), pipelineJson, functionProviders);
             }
         } else if (node.isArray()) {
             for (JsonNode element : node) {
-                processOverlayDirectivesRecursive(element, pipelineJson);
+                processOverlayDirectivesRecursive(element, pipelineJson, functionProviders);
             }
         }
     }
@@ -564,7 +532,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     /**
      * Resolves <<...>> placeholders in overlay value nodes using the pipeline config.
      */
-    private void resolveOverlayPlaceholders(JsonNode node, String pipelineJson) {
+    private void resolveOverlayPlaceholders(JsonNode node, String pipelineJson, List<String> functionProviders) {
         if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
             List<Map.Entry<String, JsonNode>> entries = new ArrayList<>();
@@ -575,7 +543,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                     Matcher matcher = PLACEHOLDER_PATTERN.matcher(text);
                     if (matcher.find()) {
                         String placeholder = getValueFromPlaceHolder(text);
-                        String resolved = executeFunctionPlaceholder(placeholder, pipelineJson);
+                        String resolved = executeFunctionPlaceholder(placeholder, pipelineJson, functionProviders);
                         if (isJsonPath(resolved)) {
                             JsonNode resolvedNode = JsonPath.using(parseConfigWithJsonNode)
                                     .parse(pipelineJson).read(resolved);
@@ -589,12 +557,12 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
                         }
                     }
                 } else {
-                    resolveOverlayPlaceholders(entry.getValue(), pipelineJson);
+                    resolveOverlayPlaceholders(entry.getValue(), pipelineJson, functionProviders);
                 }
             }
         } else if (node.isArray()) {
             for (JsonNode element : node) {
-                resolveOverlayPlaceholders(element, pipelineJson);
+                resolveOverlayPlaceholders(element, pipelineJson, functionProviders);
             }
         }
     }

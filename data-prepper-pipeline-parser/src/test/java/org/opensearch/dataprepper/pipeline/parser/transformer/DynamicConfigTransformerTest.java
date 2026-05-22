@@ -10,12 +10,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
@@ -34,15 +30,12 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 class DynamicConfigTransformerTest {
@@ -54,21 +47,50 @@ class DynamicConfigTransformerTest {
     RuleEvaluator ruleEvaluator;
 
     @Test
-    void test_getAccountIdFromRole_returns_account_id_from_valid_role_arn() {
-        final String testAccountId = RandomStringUtils.randomNumeric(12);
-        final String testRoleArn = String.format("arn:aws:iam::%s:role/example-role", testAccountId);
+    void test_invokeMethod_throws_when_functionProviders_is_null() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
-        assertThat(transformer.getAccountIdFromRole(testRoleArn)).isEqualTo(testAccountId);
+        assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(null, "someMethod", String.class, "arg"));
     }
 
-    @ParameterizedTest
-    @MethodSource("providesInvalidRoleArn")
-    void test_getAccountIdFromRole_returns_null_from_invalid_role_arn(final String testRoleArn) {
+    @Test
+    void test_invokeMethod_throws_when_functionProviders_is_empty() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
-        assertThat(transformer.getAccountIdFromRole(testRoleArn)).isNull();
+        assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(Collections.emptyList(), "someMethod", String.class, "arg"));
     }
+
+    @Test
+    void test_invokeMethod_throws_when_class_does_not_implement_interface() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList("java.lang.String");
+        assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(providers, "valueOf", String.class, "test"));
+    }
+
+    @Test
+    void test_invokeMethod_throws_when_method_not_annotated() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList(
+                "org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformerTest$ValidProviderNoAnnotation");
+        assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(providers, "unannotatedMethod", String.class, "arg"));
+    }
+
+    @Test
+    void test_invokeMethod_throws_when_method_not_found_in_any_provider() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList(
+                "org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformerTest$ValidProviderNoAnnotation");
+        assertThrows(Exception.class, () ->
+                transformer.invokeMethod(providers, "nonExistentMethod", String.class, "arg"));
+    }
+
 
     @Test
     void test_successful_transformation_with_only_source_and_sink() throws IOException {
@@ -385,13 +407,6 @@ class DynamicConfigTransformerTest {
         assertThrows(RuntimeException.class, () -> transformer.transformConfiguration(pipelinesDataFlowModel));
     }
 
-    private static Stream<Arguments> providesInvalidRoleArn() {
-        return Stream.of(
-                null,
-                Arguments.of("arn:aws:iam:::role/test-role"),
-                Arguments.of("invalid-format-arn")
-        );
-    }
 
     @Test
     void test_overlay_directive_merges_into_opensearch_sinks() throws Exception {
@@ -414,9 +429,9 @@ class DynamicConfigTransformerTest {
 
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(mock(RuleEvaluator.class));
         Method method = DynamicConfigTransformer.class.getDeclaredMethod(
-                "processOverlayDirectives", JsonNode.class, String.class);
+                "processOverlayDirectives", JsonNode.class, String.class, List.class);
         method.setAccessible(true);
-        method.invoke(transformer, root, "{}");
+        method.invoke(transformer, root, "{}", Collections.emptyList());
 
         JsonNode resultOs = sinkArray.get(0).get("opensearch");
         assertThat(resultOs.get("hosts").asText()).isEqualTo("https://localhost:9200");
@@ -450,9 +465,9 @@ class DynamicConfigTransformerTest {
 
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(mock(RuleEvaluator.class));
         Method method = DynamicConfigTransformer.class.getDeclaredMethod(
-                "processOverlayDirectives", JsonNode.class, String.class);
+                "processOverlayDirectives", JsonNode.class, String.class, List.class);
         method.setAccessible(true);
-        method.invoke(transformer, root, "{}");
+        method.invoke(transformer, root, "{}", Collections.emptyList());
 
         JsonNode resultOs = sinkArray.get(0).get("opensearch");
         assertThat(resultOs.get("hosts").asText()).isEqualTo("https://localhost:9200");
@@ -461,22 +476,10 @@ class DynamicConfigTransformerTest {
         assertThat(resultOs.get("script").has("custom_field")).isFalse();
     }
 
-    @Test
-    void test_calculateDepthForRdsSource_without_source_coordination_identifier() {
-        String mockPrefix = "my-bucket/path";
-        DynamicConfigTransformer transformer = spy(new DynamicConfigTransformer(mock(RuleEvaluator.class)));
-        doReturn(null).when(transformer).getSourceCoordinationIdentifier();
-        String result = transformer.calculateDepthForRdsSource(mockPrefix);
-        assertThat(result, equalTo("4"));
+    // Inner test helper classes for invokeMethod validation tests
+    public static class ValidProviderNoAnnotation implements org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider {
+        public static String unannotatedMethod(String input) {
+            return input;
+        }
     }
-
-    @Test
-    void test_calculateDepthForRdsSource_with_source_coordination_identifier() {
-        String mockPrefix = "my-bucket/path";
-        DynamicConfigTransformer transformer = spy(new DynamicConfigTransformer(mock(RuleEvaluator.class)));
-        doReturn("testValue").when(transformer).getSourceCoordinationIdentifier();
-        String result = transformer.calculateDepthForRdsSource(mockPrefix);
-        assertThat(result, equalTo("5"));
-    }
-
 }

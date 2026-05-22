@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Getter;
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineTemplateModel;
 
+import java.util.List;
+
 @Builder(setterPrefix = "with")
 @Getter
 @AllArgsConstructor
@@ -19,6 +21,8 @@ public class RuleEvaluatorResult {
     private String pipelineName;
 
     private PipelineTemplateModel pipelineTemplateModel;
+
+    private List<String> functionProviders;
 
     public RuleEvaluatorResult() {
 

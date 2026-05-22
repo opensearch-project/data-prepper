@@ -62,6 +62,7 @@ public class RuleEvaluator {
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
                             .withPipelineTemplateModel(templateModel)
+                            .withFunctionProviders(ruleFileEvaluation.getFunctionProviders())
                             .withPipelineName(entry.getKey())
                             .build();
                 }
@@ -76,6 +77,7 @@ public class RuleEvaluator {
         return RuleEvaluatorResult.builder()
                 .withEvaluatedResult(false)
                 .withPipelineName(null)
+                .withFunctionProviders(null)
                 .withPipelineTemplateModel(null)
                 .build();
     }
@@ -131,6 +133,7 @@ public class RuleEvaluator {
                         return RuleFileEvaluation.builder()
                                 .withPluginName(pluginName)
                                 .withRuleFileName(parsedRule.fileName)
+                                .withFunctionProviders(rulesModel.getFunctionProviders())
                                 .withResult(true)
                                 .build();
                     }
