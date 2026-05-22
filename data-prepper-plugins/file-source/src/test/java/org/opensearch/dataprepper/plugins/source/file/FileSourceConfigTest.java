@@ -165,7 +165,7 @@ class FileSourceConfigTest {
         final Map<String, Object> configMap = Map.of("path", "/tmp/test.log");
         final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
 
-        assertThat(config.getStartPosition(), equalTo(StartPosition.END));
+        assertThat(config.getStartPosition(), equalTo(StartPosition.BEGINNING));
         assertThat(config.getPollInterval(), equalTo(Duration.ofSeconds(1)));
         assertThat(config.getEncoding(), equalTo("UTF-8"));
         assertThat(config.getReadBufferSize(), equalTo(65536));
@@ -221,6 +221,17 @@ class FileSourceConfigTest {
     @Test
     void validate_fails_when_tail_true_and_filePathToRead_is_empty_and_paths_is_null() {
         final Map<String, Object> configMap = Map.of("tail", true, "path", "");
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        assertThrows(IllegalArgumentException.class, config::validate);
+    }
+
+    @Test
+    void validate_fails_when_start_position_end_and_tail_false() {
+        final Map<String, Object> configMap = Map.of(
+                "path", "/tmp/test.log",
+                "start_position", "end"
+        );
         final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
 
         assertThrows(IllegalArgumentException.class, config::validate);
