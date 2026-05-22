@@ -51,7 +51,7 @@ public class FileSourceConfig {
     private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("start_position")
-    private StartPosition startPosition = StartPosition.END;
+    private StartPosition startPosition = StartPosition.BEGINNING;
 
     @JsonProperty("poll_interval")
     private Duration pollInterval = Duration.ofSeconds(1);
@@ -251,6 +251,18 @@ public class FileSourceConfig {
         Preconditions.checkArgument(
                 (filePathToRead != null && !filePathToRead.isEmpty()) || !paths.isEmpty(),
                 "At least one of path or paths is required");
+        if (!tail) {
+            Preconditions.checkArgument(startPosition != StartPosition.END,
+                    "start_position: end is only valid when tail is true");
+        }
+    }
+
+    public boolean isLegacyConfig() {
+        return codec == null && !tail && paths.isEmpty() && excludePaths.isEmpty();
+    }
+
+    public int getEffectiveReaderThreads() {
+        return tail ? readerThreads : 1;
     }
 
     @AssertTrue(message = "The file source requires recordType to be event when using a codec.")

@@ -52,7 +52,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TailFileReaderPoolTest {
+class FileReaderPoolTest {
 
     @TempDir
     Path tempDir;
@@ -78,32 +78,32 @@ class TailFileReaderPoolTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
-    private TailFileReaderContext createReaderContext() {
-        return new TailFileReaderContext(
+    private FileReaderContext createReaderContext() {
+        return new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(5),
                 Duration.ofSeconds(30), StartPosition.END, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
     }
 
-    private TailFileReaderPool createPool(final int maxActiveFiles, final int readerThreads) {
+    private FileReaderPool createPool(final int maxActiveFiles, final int readerThreads) {
         when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
-        return new TailFileReaderPool(
+        return new FileReaderPool(
                 checkpointRegistry, metrics, maxActiveFiles, readerThreads,
                 Duration.ofMinutes(30), createReaderContext());
     }
 
-    private TailFileReaderPool createPoolWithoutMetrics(final int maxActiveFiles, final int readerThreads) {
-        return new TailFileReaderPool(
+    private FileReaderPool createPoolWithoutMetrics(final int maxActiveFiles, final int readerThreads) {
+        return new FileReaderPool(
                 checkpointRegistry, metrics, maxActiveFiles, readerThreads,
                 Duration.ofMinutes(30), createReaderContext());
     }
 
     @Test
     void addFile_submits_reader_when_under_max_active_files() {
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -118,7 +118,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void addFile_is_idempotent_for_same_identity() {
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -133,7 +133,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void addFile_queues_pending_when_at_max_active_files() {
-        TailFileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPool(1, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -149,7 +149,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void addFile_does_not_add_pending_duplicate_to_queue() {
-        TailFileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPool(1, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -165,7 +165,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void addFile_queues_multiple_pending_files() {
-        TailFileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPool(1, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -183,19 +183,19 @@ class TailFileReaderPoolTest {
 
     @Test
     void shutdown_does_not_throw() {
-        TailFileReaderPool pool = createPoolWithoutMetrics(10, 1);
+        FileReaderPool pool = createPoolWithoutMetrics(10, 1);
         pool.shutdown();
     }
 
     @Test
     void getActiveReaderCount_returns_zero_initially() {
-        TailFileReaderPool pool = createPoolWithoutMetrics(10, 2);
+        FileReaderPool pool = createPoolWithoutMetrics(10, 2);
         assertThat(pool.getActiveReaderCount(), equalTo(0));
     }
 
     @Test
     void getPendingCount_returns_zero_initially() {
-        TailFileReaderPool pool = createPoolWithoutMetrics(10, 2);
+        FileReaderPool pool = createPoolWithoutMetrics(10, 2);
         assertThat(pool.getPendingCount(), equalTo(0));
     }
 
@@ -205,7 +205,7 @@ class TailFileReaderPoolTest {
         lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
         lenient().when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10, 2,
                 Duration.ofMillis(1), createReaderContext());
 
@@ -218,7 +218,7 @@ class TailFileReaderPoolTest {
     void closeReaderForPath_removes_matching_reader() {
         Counter filesClosed = mock(Counter.class);
         lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -234,7 +234,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void closeReaderForPath_does_nothing_when_no_match() {
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -249,7 +249,7 @@ class TailFileReaderPoolTest {
     void closeReaderForPath_promotes_pending_files() {
         Counter filesClosed = mock(Counter.class);
         lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
-        TailFileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPool(1, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -271,7 +271,7 @@ class TailFileReaderPoolTest {
 
     @Test
     void shutdown_handles_interrupted_exception() throws Exception {
-        TailFileReaderPool pool = createPoolWithoutMetrics(10, 1);
+        FileReaderPool pool = createPoolWithoutMetrics(10, 1);
 
         Thread shutdownThread = new Thread(() -> {
             Thread.currentThread().interrupt();
@@ -324,7 +324,7 @@ class TailFileReaderPoolTest {
         lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
         lenient().when(mockBuilder.build()).thenReturn(mockEvent);
 
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
@@ -374,7 +374,7 @@ class TailFileReaderPoolTest {
         lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
         lenient().when(mockBuilder.build()).thenReturn(mockEvent);
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10, 2,
                 Duration.ofMillis(1), createReaderContext());
 
@@ -395,7 +395,7 @@ class TailFileReaderPoolTest {
         ExecutorService mockExecutor = mock(ExecutorService.class);
         when(mockExecutor.awaitTermination(anyLong(), any(TimeUnit.class))).thenReturn(false);
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10,
                 Duration.ofMinutes(30), createReaderContext(),
                 () -> mockExecutor);
@@ -409,7 +409,7 @@ class TailFileReaderPoolTest {
         when(mockExecutor.awaitTermination(anyLong(), any(TimeUnit.class)))
                 .thenThrow(new InterruptedException("test"));
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10,
                 Duration.ofMinutes(30), createReaderContext(),
                 () -> mockExecutor);
@@ -428,7 +428,7 @@ class TailFileReaderPoolTest {
         when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10,
                 Duration.ofMinutes(30), createReaderContext(),
                 () -> mockExecutor);
@@ -482,7 +482,7 @@ class TailFileReaderPoolTest {
         lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
         lenient().when(mockBuilder.build()).thenReturn(mockEvent);
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10, 2,
                 Duration.ofMillis(1), createReaderContext());
 
@@ -535,7 +535,7 @@ class TailFileReaderPoolTest {
         lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
         lenient().when(mockBuilder.build()).thenReturn(mockEvent);
 
-        TailFileReaderPool pool = new TailFileReaderPool(
+        FileReaderPool pool = new FileReaderPool(
                 checkpointRegistry, metrics, 10, 2,
                 Duration.ofHours(1), createReaderContext());
 
@@ -591,7 +591,7 @@ class TailFileReaderPoolTest {
         lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
         lenient().when(mockBuilder.build()).thenReturn(mockEvent);
 
-        TailFileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPool(10, 2);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
@@ -607,7 +607,7 @@ class TailFileReaderPoolTest {
                 FileChannel.open(pendingFile, StandardOpenOption.READ));
         FileIdentity pendingIdentity = FileIdentity.from(pendingFile, fileOps, 1024);
 
-        TailFileReaderPool limitedPool = new TailFileReaderPool(
+        FileReaderPool limitedPool = new FileReaderPool(
                 checkpointRegistry, metrics, 1, 2,
                 Duration.ofMinutes(30), createReaderContext());
 

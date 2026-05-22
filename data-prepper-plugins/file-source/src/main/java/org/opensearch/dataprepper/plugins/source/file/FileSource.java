@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.Objects;
@@ -66,7 +65,7 @@ public class FileSource implements Source<Record<Object>> {
     private final boolean acknowledgementsEnabled;
 
     private Thread readThread;
-    private TailFileReaderPool readerPool;
+    private FileReaderPool readerPool;
     private CheckpointRegistry checkpointRegistry;
     private DirectoryWatcher directoryWatcher;
 
@@ -92,10 +91,10 @@ public class FileSource implements Source<Record<Object>> {
         this.writeTimeout = FileSourceConfig.DEFAULT_TIMEOUT;
         this.decompressionEngine = fileSourceConfig.getCompression().getDecompressionEngine();
 
-        if (!fileSourceConfig.isTail() && fileSourceConfig.getCodec() != null) {
-            fileStrategy = new CodecFileStrategy(pluginFactory);
-        } else {
+        if (fileSourceConfig.isLegacyConfig()) {
             fileStrategy = new ClassicFileStrategy();
+        } else {
+            fileStrategy = null;
         }
     }
 
@@ -104,33 +103,32 @@ public class FileSource implements Source<Record<Object>> {
     public void start(final Buffer<Record<Object>> buffer) {
         Objects.requireNonNull(buffer, "Buffer cannot be null for file source to start");
 
-        if (fileSourceConfig.isTail()) {
-            startTailing(buffer);
+        if (fileSourceConfig.isLegacyConfig()) {
+            LOG.info("Starting file source in legacy mode with path: {}", fileSourceConfig.getFilePathToRead());
+            readThread = new Thread(() -> {
+                fileStrategy.start(buffer);
+                LOG.info("Completed reading file.");
+            }, "file-source");
+            readThread.setDaemon(false);
+            readThread.start();
             return;
         }
 
-        LOG.info("Starting file source with paths: {}", fileSourceConfig.getAllPaths());
-
-        readThread = new Thread(() -> {
-            fileStrategy.start(buffer);
-            LOG.info("Completed reading file.");
-        }, "file-source");
-        readThread.setDaemon(false);
-        readThread.start();
+        startModernPath(buffer);
     }
 
-    private void startTailing(final Buffer<Record<Object>> buffer) {
-        LOG.info("Starting file source in tail mode with paths: {}", fileSourceConfig.getAllPaths());
+    private void startModernPath(final Buffer<Record<Object>> buffer) {
+        LOG.info("Starting file source with paths: {}", fileSourceConfig.getAllPaths());
 
         final int maxActiveFiles = fileSourceConfig.getMaxActiveFiles();
-        final int readerThreads = fileSourceConfig.getReaderThreads();
+        final int readerThreads = fileSourceConfig.getEffectiveReaderThreads();
         if (readerThreads > 0 && maxActiveFiles / readerThreads > MAX_FILES_PER_THREAD_WARNING_THRESHOLD) {
             LOG.warn("max_active_files ({}) is {} times reader_threads ({}). Files with pending data may experience high latency.",
                     maxActiveFiles, maxActiveFiles / readerThreads, readerThreads);
         }
 
         try {
-            final FileMetrics tailMetrics = new FileMetrics(pluginMetrics);
+            final FileMetrics fileMetrics = new FileMetrics(pluginMetrics);
             final FileSystemOperations fileOps = new DefaultFileSystemOperations();
 
             final String checkpointPath = fileSourceConfig.getCheckpointFile();
@@ -151,10 +149,10 @@ public class FileSource implements Source<Record<Object>> {
 
             final RotationDetector rotationDetector = new RotationDetector(fileOps, fileSourceConfig.getFingerprintBytes());
 
-            final InputCodec tailCodec = createCodec();
+            final InputCodec fileCodec = createCodec();
 
-            final TailFileReaderContext readerContext = new TailFileReaderContext(
-                    buffer, eventFactory, fileOps, tailMetrics, rotationDetector,
+            final FileReaderContext readerContext = new FileReaderContext(
+                    buffer, eventFactory, fileOps, fileMetrics, rotationDetector,
                     acknowledgementSetManager, acknowledgementsEnabled,
                     encoding,
                     fileSourceConfig.getReadBufferSize(),
@@ -168,10 +166,12 @@ public class FileSource implements Source<Record<Object>> {
                     fileSourceConfig.getBatchSize(),
                     fileSourceConfig.getBatchTimeout(),
                     fileSourceConfig.getMaxAcknowledgmentRetries(),
-                    tailCodec);
+                    fileCodec,
+                    fileSourceConfig.isTail(),
+                    decompressionEngine);
 
-            readerPool = new TailFileReaderPool(
-                    checkpointRegistry, tailMetrics,
+            readerPool = new FileReaderPool(
+                    checkpointRegistry, fileMetrics,
                     maxActiveFiles,
                     readerThreads,
                     fileSourceConfig.getCloseInactive(),
@@ -181,13 +181,20 @@ public class FileSource implements Source<Record<Object>> {
                     fileSourceConfig.getAllPaths(),
                     fileSourceConfig.getExcludePaths());
 
-            directoryWatcher = new DirectoryWatcher(
-                    globPathResolver, readerPool, checkpointRegistry,
-                    fileSourceConfig, fileOps, tailMetrics,
-                    fileSourceConfig.getRotateWait(),
-                    fileSourceConfig.isCloseRemoved());
-
-            directoryWatcher.start();
+            if (fileSourceConfig.isTail()) {
+                directoryWatcher = new DirectoryWatcher(
+                        globPathResolver, readerPool, checkpointRegistry,
+                        fileSourceConfig, fileOps, fileMetrics,
+                        fileSourceConfig.getRotateWait(),
+                        fileSourceConfig.isCloseRemoved());
+                directoryWatcher.start();
+            } else {
+                final Set<Path> resolvedPaths = globPathResolver.resolve();
+                for (final Path path : resolvedPaths) {
+                    final FileIdentity fileIdentity = FileIdentity.from(path, fileOps, fileSourceConfig.getFingerprintBytes());
+                    readerPool.addFile(fileIdentity, path);
+                }
+            }
         } catch (final RuntimeException e) {
             shutdownTailingResources();
             throw e;
@@ -304,43 +311,6 @@ public class FileSource implements Source<Record<Object>> {
                 buffer.write(getEventRecordFromLine(line), writeTimeout);
             } else if (fileSourceConfig.getRecordType() == RecordType.STRING) {
                 buffer.write(new Record<>(line), writeTimeout);
-            }
-        }
-    }
-
-
-    private class CodecFileStrategy implements FileStrategy {
-
-        private final InputCodec codec;
-
-        CodecFileStrategy(final PluginFactory pluginFactory) {
-            codec = createCodec();
-        }
-
-        @Override
-        public void start(final Buffer<Record<Object>> buffer) {
-            final GlobPathResolver resolver = new GlobPathResolver(
-                    fileSourceConfig.getAllPaths(), fileSourceConfig.getExcludePaths());
-            final Set<Path> resolvedPaths = resolver.resolve();
-            if (resolvedPaths.isEmpty() && fileSourceConfig.getFilePathToRead() != null) {
-                resolvedPaths.add(Paths.get(fileSourceConfig.getFilePathToRead()).toAbsolutePath().normalize());
-            }
-            for (final Path filePath : resolvedPaths) {
-                if (isStopRequested) {
-                    break;
-                }
-                try (InputStream is = decompressionEngine.createInputStream(Files.newInputStream(filePath))) {
-                    codec.parse(is, eventRecord -> {
-                        try {
-                            buffer.write((Record) eventRecord, writeTimeout);
-                        } catch (TimeoutException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                } catch (final IOException e) {
-                    LOG.error("Error processing file with codec [{}]", filePath, e);
-                    throw new RuntimeException(e);
-                }
             }
         }
     }

@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.file;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -20,7 +21,7 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Objects;
 
-public final class TailFileReaderContext {
+public final class FileReaderContext {
 
     private final Buffer<Record<Object>> buffer;
     private final EventFactory eventFactory;
@@ -42,8 +43,10 @@ public final class TailFileReaderContext {
     private final Duration batchTimeout;
     private final int maxAcknowledgmentRetries;
     private final InputCodec codec;
+    private final boolean tailMode;
+    private final DecompressionEngine decompressionEngine;
 
-    public TailFileReaderContext(final Buffer<Record<Object>> buffer,
+    public FileReaderContext(final Buffer<Record<Object>> buffer,
                                 final EventFactory eventFactory,
                                 final FileSystemOperations fileOps,
                                 final FileMetrics metrics,
@@ -62,7 +65,9 @@ public final class TailFileReaderContext {
                                 final int batchSize,
                                 final Duration batchTimeout,
                                 final int maxAcknowledgmentRetries,
-                                final InputCodec codec) {
+                                final InputCodec codec,
+                                final boolean tailMode,
+                                final DecompressionEngine decompressionEngine) {
         this.buffer = Objects.requireNonNull(buffer, "buffer must not be null");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory must not be null");
         this.fileOps = Objects.requireNonNull(fileOps, "fileOps must not be null");
@@ -83,6 +88,8 @@ public final class TailFileReaderContext {
         this.batchTimeout = Objects.requireNonNull(batchTimeout, "batchTimeout must not be null");
         this.maxAcknowledgmentRetries = maxAcknowledgmentRetries;
         this.codec = codec;
+        this.tailMode = tailMode;
+        this.decompressionEngine = decompressionEngine;
     }
 
     public Buffer<Record<Object>> getBuffer() {
@@ -163,5 +170,13 @@ public final class TailFileReaderContext {
 
     public InputCodec getCodec() {
         return codec;
+    }
+
+    public boolean isTailMode() {
+        return tailMode;
+    }
+
+    public DecompressionEngine getDecompressionEngine() {
+        return decompressionEngine;
     }
 }

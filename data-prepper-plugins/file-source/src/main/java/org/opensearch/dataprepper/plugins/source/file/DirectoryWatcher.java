@@ -49,7 +49,7 @@ public final class DirectoryWatcher {
     );
 
     private final GlobPathResolver globPathResolver;
-    private final TailFileReaderPool readerPool;
+    private final FileReaderPool readerPool;
     private final CheckpointRegistry checkpointRegistry;
     private final FileSourceConfig config;
     private final FileSystemOperations fileOps;
@@ -68,7 +68,7 @@ public final class DirectoryWatcher {
     private volatile boolean running;
 
     public DirectoryWatcher(final GlobPathResolver globPathResolver,
-                            final TailFileReaderPool readerPool,
+                            final FileReaderPool readerPool,
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
@@ -80,7 +80,7 @@ public final class DirectoryWatcher {
     }
 
     DirectoryWatcher(final GlobPathResolver globPathResolver,
-                            final TailFileReaderPool readerPool,
+                            final FileReaderPool readerPool,
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
@@ -93,7 +93,7 @@ public final class DirectoryWatcher {
     }
 
     DirectoryWatcher(final GlobPathResolver globPathResolver,
-                            final TailFileReaderPool readerPool,
+                            final FileReaderPool readerPool,
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
@@ -108,7 +108,7 @@ public final class DirectoryWatcher {
     }
 
     DirectoryWatcher(final GlobPathResolver globPathResolver,
-                            final TailFileReaderPool readerPool,
+                            final FileReaderPool readerPool,
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,
@@ -124,7 +124,7 @@ public final class DirectoryWatcher {
     }
 
     DirectoryWatcher(final GlobPathResolver globPathResolver,
-                            final TailFileReaderPool readerPool,
+                            final FileReaderPool readerPool,
                             final CheckpointRegistry checkpointRegistry,
                             final FileSourceConfig config,
                             final FileSystemOperations fileOps,

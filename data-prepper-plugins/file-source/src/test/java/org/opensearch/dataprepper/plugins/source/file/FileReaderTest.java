@@ -64,7 +64,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TailFileReaderTest {
+class FileReaderTest {
 
     @TempDir
     Path tempDir;
@@ -97,42 +97,42 @@ class TailFileReaderTest {
         onCompleteCalled = new AtomicBoolean(false);
     }
 
-    private TailFileReaderContext createContext(final StartPosition startPosition) {
-        return new TailFileReaderContext(
+    private FileReaderContext createContext(final StartPosition startPosition) {
+        return new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofSeconds(30), startPosition, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
     }
 
-    private TailFileReaderContext createContext(final int readBufferSize, final int maxLineLength,
+    private FileReaderContext createContext(final int readBufferSize, final int maxLineLength,
                                                 final boolean includeMetadata, final StartPosition startPosition) {
-        return new TailFileReaderContext(
+        return new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 readBufferSize, maxLineLength, 5000, Duration.ofSeconds(30),
                 Duration.ofSeconds(30), startPosition, includeMetadata,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
     }
 
-    private TailFileReader createReader(final Path path) {
+    private FileReader createReader(final Path path) {
         return createReader(path, 4096, 1048576, false, StartPosition.BEGINNING);
     }
 
-    private TailFileReader createReader(final Path path, final int readBufferSize,
+    private FileReader createReader(final Path path, final int readBufferSize,
                                          final int maxLineLength, final boolean includeMetadata) {
         return createReader(path, readBufferSize, maxLineLength, includeMetadata, StartPosition.BEGINNING);
     }
 
-    private TailFileReader createReader(final Path path, final int readBufferSize,
+    private FileReader createReader(final Path path, final int readBufferSize,
                                          final int maxLineLength, final boolean includeMetadata,
                                          final StartPosition startPosition) {
         fileIdentity = mock(FileIdentity.class);
-        final TailFileReaderContext context = createContext(readBufferSize, maxLineLength, includeMetadata, startPosition);
-        return new TailFileReader(path, fileIdentity, checkpointEntry, context,
+        final FileReaderContext context = createContext(readBufferSize, maxLineLength, includeMetadata, startPosition);
+        return new FileReader(path, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
     }
 
@@ -185,7 +185,7 @@ class TailFileReaderTest {
         stubReadMetrics();
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(buffer, times(3)).write(any(Record.class), eq(5000));
@@ -205,7 +205,7 @@ class TailFileReaderTest {
         stubReadMetrics();
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         assertThat(reader.getReadOffset(), equalTo((long) content.getBytes(StandardCharsets.UTF_8).length));
@@ -223,7 +223,7 @@ class TailFileReaderTest {
         stubReadMetrics();
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(buffer, times(2)).write(any(Record.class), eq(5000));
@@ -243,7 +243,7 @@ class TailFileReaderTest {
         when(metrics.getLinesTruncated()).thenReturn(linesTruncated);
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile, 4096, 50, false);
+        final FileReader reader = createReader(testFile, 4096, 50, false);
         reader.run();
 
         verify(linesTruncated).increment();
@@ -262,7 +262,7 @@ class TailFileReaderTest {
         when(metrics.getLinesTruncated()).thenReturn(linesTruncated);
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile, 4096, 50, false);
+        final FileReader reader = createReader(testFile, 4096, 50, false);
         reader.run();
 
         verify(linesTruncated).increment();
@@ -285,7 +285,7 @@ class TailFileReaderTest {
                 .doNothing()
                 .when(buffer).write(any(Record.class), anyInt());
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(writeTimeouts).increment();
@@ -300,7 +300,7 @@ class TailFileReaderTest {
         when(rotationDetector.checkRotation(any(), any(), any(long.class)))
                 .thenReturn(RotationResult.DELETED);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         assertThat(reader.getLastRotationType(), equalTo(RotationType.DELETED));
@@ -319,7 +319,7 @@ class TailFileReaderTest {
         Counter filesClosed = mock(Counter.class);
         when(metrics.getFilesClosed()).thenReturn(filesClosed);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         assertThat(onCompleteCalled.get(), equalTo(true));
@@ -343,7 +343,7 @@ class TailFileReaderTest {
                 .thenReturn(new RotationResult(RotationType.COPYTRUNCATE, fileIdentity));
 
         checkpointEntry.setReadOffset(500);
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(filesRotated).increment();
@@ -365,7 +365,7 @@ class TailFileReaderTest {
         when(rotationDetector.checkRotation(any(), any(), any(long.class)))
                 .thenReturn(new RotationResult(RotationType.CREATE_RENAME, newIdentity));
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(filesRotated).increment();
@@ -386,7 +386,7 @@ class TailFileReaderTest {
         stubReadMetrics();
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(buffer, times(2)).write(any(Record.class), eq(5000));
@@ -405,7 +405,7 @@ class TailFileReaderTest {
         when(metrics.getReadErrors()).thenReturn(readErrors);
         when(metrics.getFilesClosed()).thenReturn(filesClosed);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(readErrors).increment();
@@ -430,7 +430,7 @@ class TailFileReaderTest {
         when(mockBuilder.withData(dataCaptor.capture())).thenReturn(mockBuilder);
         when(mockBuilder.build()).thenReturn(mockEvent);
 
-        final TailFileReader reader = createReader(testFile, 4096, 1048576, true);
+        final FileReader reader = createReader(testFile, 4096, 1048576, true);
         reader.run();
 
         Map<String, Object> capturedData = dataCaptor.getValue();
@@ -447,7 +447,7 @@ class TailFileReaderTest {
         Path testFile = tempDir.resolve("identity.log");
         Files.writeString(testFile, "");
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         assertThat(reader.getFileIdentity(), equalTo(fileIdentity));
     }
 
@@ -456,7 +456,7 @@ class TailFileReaderTest {
         Path testFile = tempDir.resolve("default.log");
         Files.writeString(testFile, "");
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         assertThat(reader.getLastRotationType(), equalTo(RotationType.NO_ROTATION));
     }
 
@@ -467,7 +467,7 @@ class TailFileReaderTest {
         long fileSize = Files.size(testFile);
         when(fileOps.size(testFile)).thenReturn(fileSize);
 
-        final TailFileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
+        final FileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
 
         assertThat(reader.getReadOffset(), equalTo(fileSize));
     }
@@ -477,7 +477,7 @@ class TailFileReaderTest {
         Path testFile = tempDir.resolve("startbegin.log");
         Files.writeString(testFile, "existing-line1\nexisting-line2\n");
 
-        final TailFileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.BEGINNING);
+        final FileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.BEGINNING);
 
         assertThat(reader.getReadOffset(), equalTo(0L));
     }
@@ -488,7 +488,7 @@ class TailFileReaderTest {
         Files.writeString(testFile, "existing-line1\nexisting-line2\n");
         checkpointEntry.setReadOffset(10);
 
-        final TailFileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
+        final FileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
 
         assertThat(reader.getReadOffset(), equalTo(10L));
     }
@@ -508,35 +508,35 @@ class TailFileReaderTest {
         Counter eventsEmitted = mock(Counter.class);
         when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(eventsEmitted, times(2)).increment();
     }
 
-    private TailFileReaderContext createContextWithCodec(final InputCodec codec) {
-        return new TailFileReaderContext(
+    private FileReaderContext createContextWithCodec(final InputCodec codec) {
+        return new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, codec);
+                Duration.ofSeconds(5), 3, codec, true, null);
     }
 
-    private TailFileReaderContext createContextWithAcknowledgements(final int batchSize, final Duration batchTimeout, final int maxRetries) {
-        return new TailFileReaderContext(
+    private FileReaderContext createContextWithAcknowledgements(final int batchSize, final Duration batchTimeout, final int maxRetries) {
+        return new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, true, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), batchSize,
-                batchTimeout, maxRetries, null);
+                batchTimeout, maxRetries, null, true, null);
     }
 
-    private TailFileReader createReaderWithContext(final Path path, final TailFileReaderContext context) {
+    private FileReader createReaderWithContext(final Path path, final FileReaderContext context) {
         fileIdentity = mock(FileIdentity.class);
-        return new TailFileReader(path, fileIdentity, checkpointEntry, context,
+        return new FileReader(path, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
     }
 
@@ -546,7 +546,7 @@ class TailFileReaderTest {
         Files.writeString(testFile, "existing data\n");
         when(fileOps.size(testFile)).thenThrow(new IOException("disk error"));
 
-        final TailFileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
+        final FileReader reader = createReader(testFile, 4096, 1048576, false, StartPosition.END);
 
         assertThat(reader.getReadOffset(), equalTo(0L));
     }
@@ -561,7 +561,7 @@ class TailFileReaderTest {
         Counter readErrors = mock(Counter.class);
         when(metrics.getReadErrors()).thenReturn(readErrors);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(readErrors).increment();
@@ -582,7 +582,7 @@ class TailFileReaderTest {
         when(metrics.getFilesRotated()).thenReturn(filesRotated);
         when(metrics.getFilesClosed()).thenReturn(filesClosed);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(filesRotated).increment();
@@ -605,7 +605,7 @@ class TailFileReaderTest {
         when(metrics.getFilesClosed()).thenReturn(filesClosed);
         when(metrics.getReadErrors()).thenReturn(readErrors);
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(readErrors).increment();
@@ -642,13 +642,13 @@ class TailFileReaderTest {
         lenient().when(metrics.getBytesRead()).thenReturn(bytesRead);
         when(metrics.getDataLossEvents()).thenReturn(dataLossEvents);
 
-        TailFileReaderContext context = new TailFileReaderContext(
+        FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofMillis(1), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
 
         lenientStubEventFactory();
         Counter linesRead = mock(Counter.class);
@@ -657,7 +657,7 @@ class TailFileReaderTest {
         lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
 
         fileIdentity = mock(FileIdentity.class);
-        final TailFileReader reader = new TailFileReader(testFile, fileIdentity, checkpointEntry, context,
+        final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
         reader.run();
 
@@ -696,16 +696,16 @@ class TailFileReaderTest {
         lenient().when(metrics.getLinesRead()).thenReturn(linesRead);
         lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
 
-        TailFileReaderContext context = new TailFileReaderContext(
+        FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofMillis(1),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
 
         fileIdentity = mock(FileIdentity.class);
-        final TailFileReader reader = new TailFileReader(testFile, fileIdentity, checkpointEntry, context,
+        final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
         reader.run();
 
@@ -743,8 +743,8 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithCodec(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(buffer, atLeastOnce()).write(any(Record.class), eq(5000));
@@ -773,8 +773,8 @@ class TailFileReaderTest {
         InputCodec mockCodec = mock(InputCodec.class);
         doThrow(new IOException("parse error")).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithCodec(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(readErrors).increment();
@@ -817,8 +817,8 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithCodec(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(writeTimeouts).increment();
@@ -840,8 +840,8 @@ class TailFileReaderTest {
         AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(ackSet);
 
-        TailFileReaderContext context = createContextWithAcknowledgements(1, Duration.ofSeconds(5), 3);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(1, Duration.ofSeconds(5), 3);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(acknowledgementSetManager, atLeastOnce()).create(any(), any(Duration.class));
@@ -864,8 +864,8 @@ class TailFileReaderTest {
         AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(ackSet);
 
-        TailFileReaderContext context = createContextWithAcknowledgements(10000, Duration.ofMillis(0), 3);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(10000, Duration.ofMillis(0), 3);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(ackSet, atLeastOnce()).complete();
@@ -888,8 +888,8 @@ class TailFileReaderTest {
         ArgumentCaptor<Consumer> handlerCaptor = ArgumentCaptor.forClass(Consumer.class);
         when(acknowledgementSetManager.create(handlerCaptor.capture(), any(Duration.class))).thenReturn(ackSet);
 
-        TailFileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofSeconds(5), 3);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofSeconds(5), 3);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         Consumer<Boolean> handler = handlerCaptor.getValue();
@@ -918,8 +918,8 @@ class TailFileReaderTest {
         ArgumentCaptor<Consumer> handlerCaptor = ArgumentCaptor.forClass(Consumer.class);
         when(acknowledgementSetManager.create(handlerCaptor.capture(), any(Duration.class))).thenReturn(ackSet);
 
-        TailFileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofSeconds(5), 2);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofSeconds(5), 2);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         Consumer<Boolean> handler = handlerCaptor.getValue();
@@ -968,14 +968,14 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = new TailFileReaderContext(
+        FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, true, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
-                Duration.ofSeconds(30), 1, Duration.ofSeconds(5), 3, mockCodec);
+                Duration.ofSeconds(30), 1, Duration.ofSeconds(5), 3, mockCodec, true, null);
 
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(ackSet, atLeastOnce()).add(any(Event.class));
@@ -994,7 +994,7 @@ class TailFileReaderTest {
         stubEventFactory();
         when(fileOps.size(testFile)).thenThrow(new IOException("disk error"));
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         assertThat(onCompleteCalled.get(), equalTo(true));
@@ -1005,7 +1005,7 @@ class TailFileReaderTest {
         Path testFile = tempDir.resolve("activity.log");
         Files.writeString(testFile, "");
         long before = System.currentTimeMillis();
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         long after = System.currentTimeMillis();
 
         assertThat(reader.getLastActivityMillis() >= before, equalTo(true));
@@ -1033,7 +1033,7 @@ class TailFileReaderTest {
                 .doNothing()
                 .when(buffer).write(any(Record.class), anyInt());
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(backpressureTimer).record(anyLong(), any(TimeUnit.class));
@@ -1069,10 +1069,10 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
+        FileReaderContext context = createContextWithCodec(mockCodec);
 
         Thread readerThread = new Thread(() -> {
-            final TailFileReader reader = createReaderWithContext(testFile, context);
+            final FileReader reader = createReaderWithContext(testFile, context);
             reader.run();
         });
         readerThread.start();
@@ -1113,7 +1113,7 @@ class TailFileReaderTest {
                 .when(buffer).write(any(Record.class), anyInt());
 
         Thread readerThread = new Thread(() -> {
-            final TailFileReader reader = createReader(testFile);
+            final FileReader reader = createReader(testFile);
             reader.run();
         });
         readerThread.start();
@@ -1155,13 +1155,13 @@ class TailFileReaderTest {
         when(metrics.getBytesRead()).thenReturn(bytesRead);
         lenient().when(metrics.getDataLossEvents()).thenReturn(dataLossEvents);
 
-        TailFileReaderContext context = new TailFileReaderContext(
+        FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
                 Duration.ofMillis(1), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
 
         stubEventFactory();
         Counter linesRead = mock(Counter.class);
@@ -1170,7 +1170,7 @@ class TailFileReaderTest {
         lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
 
         fileIdentity = mock(FileIdentity.class);
-        final TailFileReader reader = new TailFileReader(testFile, fileIdentity, checkpointEntry, context,
+        final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
         reader.run();
     }
@@ -1190,7 +1190,7 @@ class TailFileReaderTest {
         stubEventFactory();
         stubReadMetrics();
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         assertThat(onCompleteCalled.get(), equalTo(true));
@@ -1211,8 +1211,8 @@ class TailFileReaderTest {
         AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(ackSet);
 
-        TailFileReaderContext context = createContextWithAcknowledgements(10000, Duration.ofHours(1), 3);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(10000, Duration.ofHours(1), 3);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(ackSet, atLeastOnce()).add(any(Event.class));
@@ -1231,7 +1231,7 @@ class TailFileReaderTest {
         stubEventFactory();
         when(fileOps.size(testFile)).thenReturn(Files.size(testFile));
 
-        final TailFileReader reader = createReader(testFile);
+        final FileReader reader = createReader(testFile);
         reader.run();
 
         verify(acknowledgementSetManager, never()).create(any(), any(Duration.class));
@@ -1254,8 +1254,8 @@ class TailFileReaderTest {
         lenient().when(metrics.getBytesRead()).thenReturn(bytesRead);
         lenient().when(metrics.getFileLagBytes()).thenReturn(new AtomicLong(0));
 
-        TailFileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofMillis(0), 3);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithAcknowledgements(1000, Duration.ofMillis(0), 3);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(acknowledgementSetManager, never()).create(any(), any(Duration.class));
@@ -1292,8 +1292,8 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
-        final TailFileReader reader = createReaderWithContext(testFile, context);
+        FileReaderContext context = createContextWithCodec(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
         reader.run();
 
         verify(acknowledgementSetManager, never()).create(any(), any(Duration.class));
@@ -1323,7 +1323,7 @@ class TailFileReaderTest {
                 .when(buffer).write(any(Record.class), anyInt());
 
         Thread readerThread = new Thread(() -> {
-            final TailFileReader reader = createReader(testFile);
+            final FileReader reader = createReader(testFile);
             reader.run();
         });
         readerThread.start();
@@ -1364,10 +1364,10 @@ class TailFileReaderTest {
             return null;
         }).when(mockCodec).parse(any(), any());
 
-        TailFileReaderContext context = createContextWithCodec(mockCodec);
+        FileReaderContext context = createContextWithCodec(mockCodec);
 
         Thread readerThread = new Thread(() -> {
-            final TailFileReader reader = createReaderWithContext(testFile, context);
+            final FileReader reader = createReaderWithContext(testFile, context);
             reader.run();
         });
         readerThread.start();
@@ -1390,7 +1390,7 @@ class TailFileReaderTest {
         stubReadMetrics();
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile, 3, 1048576, false);
+        final FileReader reader = createReader(testFile, 3, 1048576, false);
         reader.run();
 
         verify(buffer, atLeastOnce()).write(any(Record.class), eq(5000));
@@ -1410,7 +1410,7 @@ class TailFileReaderTest {
         when(metrics.getLinesTruncated()).thenReturn(linesTruncated);
         stubEventFactory();
 
-        final TailFileReader reader = createReader(testFile, 20, 10, false);
+        final FileReader reader = createReader(testFile, 20, 10, false);
         reader.run();
 
         verify(linesTruncated, atLeastOnce()).increment();
@@ -1442,16 +1442,16 @@ class TailFileReaderTest {
         doThrow(new TimeoutException("buffer full"))
                 .when(buffer).write(any(Record.class), anyInt());
 
-        TailFileReaderContext context = new TailFileReaderContext(
+        FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofMillis(100),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
                 Duration.ofMillis(100), 1000,
-                Duration.ofSeconds(5), 3, null);
+                Duration.ofSeconds(5), 3, null, true, null);
 
         fileIdentity = mock(FileIdentity.class);
-        final TailFileReader reader = new TailFileReader(testFile, fileIdentity, checkpointEntry, context,
+        final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
                 () -> onCompleteCalled.set(true));
         reader.run();
 

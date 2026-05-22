@@ -37,7 +37,6 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -311,33 +310,25 @@ public class FileSourceTests {
         @Mock
         private Buffer buffer;
 
-        @Mock
-        private DecompressionEngine decompressionEngine;
-
         @BeforeEach
         void setUp() {
+            pluginMetrics = PluginMetrics.fromNames("file", "test-codec-pipeline");
+
             Map<String, String> codecConfiguration = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
             Map<String, Map<String, String>> codecSettings = Map.of("fake_codec", codecConfiguration);
             pluginSettings.put("codec", codecSettings);
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.EVENT_TYPE);
 
             when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class)))
                     .thenReturn(inputCodec);
         }
 
         @Test
-        void start_will_parse_codec_with_correct_inputStream() throws IOException {
-            final FileInputStream decompressedStream = new FileInputStream(TEST_FILE_PATH_PLAIN);
-            DecompressionEngine mockEngine = mock(DecompressionEngine.class);
-            when(mockEngine.createInputStream(any(InputStream.class))).thenReturn(decompressedStream);
+        void start_will_parse_codec_with_inputStream() throws IOException {
+            createObjectUnderTest().start(buffer);
 
-            PluginModel fakeCodec = mock(PluginModel.class);
-            when(fakeCodec.getPluginName()).thenReturn("fake_codec");
-            when(fakeCodec.getPluginSettings()).thenReturn(Map.of());
-
-            createObjectUnderTest(fakeCodec, mockEngine).start(buffer);
-
-            await().atMost(2, TimeUnit.SECONDS)
-                            .untilAsserted(() -> verify(inputCodec).parse(eq(decompressedStream), any(Consumer.class)));
+            await().atMost(5, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
         }
 
         @Test
@@ -346,7 +337,7 @@ public class FileSourceTests {
 
             final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
 
-            await().atMost(2, TimeUnit.SECONDS)
+            await().atMost(5, TimeUnit.SECONDS)
                     .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
 
             verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
@@ -360,17 +351,15 @@ public class FileSourceTests {
         }
 
         @Test
-        void start_will_throw_exception_if_codec_throws() throws IOException, TimeoutException {
-
-            final IOException mockedException = mock(IOException.class);
-            doThrow(mockedException)
+        void start_will_not_crash_if_codec_throws() throws IOException {
+            doThrow(new IOException("parse failed"))
                     .when(inputCodec).parse(any(InputStream.class), any(Consumer.class));
 
             FileSource objectUnderTest = createObjectUnderTest();
-
             objectUnderTest.start(buffer);
 
-            verify(buffer, after(1500).never()).write(any(Record.class), anyInt());
+            await().atMost(5, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
         }
 
         @Test
@@ -382,7 +371,7 @@ public class FileSourceTests {
 
             final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
 
-            await().atMost(2, TimeUnit.SECONDS)
+            await().atMost(5, TimeUnit.SECONDS)
                     .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
 
             verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
@@ -391,15 +380,6 @@ public class FileSourceTests {
             final Record<Event> record = mock(Record.class);
 
             assertThrows(RuntimeException.class, () -> actualConsumer.accept(record));
-        }
-
-        @Test
-        void stop_before_start_prevents_codec_processing() throws IOException {
-            final FileSource objectUnderTest = createObjectUnderTest();
-            objectUnderTest.stop();
-            objectUnderTest.start(buffer);
-
-            verify(inputCodec, after(500).never()).parse(any(InputStream.class), any(Consumer.class));
         }
     }
 

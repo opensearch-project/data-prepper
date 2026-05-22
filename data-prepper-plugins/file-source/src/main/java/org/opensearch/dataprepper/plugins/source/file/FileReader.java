@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.file;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.FileChannel;
@@ -31,6 +33,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -42,9 +45,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class TailFileReader implements Runnable {
+public final class FileReader implements Runnable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TailFileReader.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileReader.class);
     private static final long BACK_PRESSURE_SLEEP_MILLIS = 100;
     private static final String MESSAGE_KEY = "message";
     private static final String EVENT_TYPE = "event";
@@ -77,6 +80,8 @@ public final class TailFileReader implements Runnable {
     private final Duration batchTimeout;
     private final int maxAcknowledgmentRetries;
     private final InputCodec codec;
+    private final boolean tailMode;
+    private final DecompressionEngine decompressionEngine;
 
     private final AtomicLong readOffset;
     private final StringBuilder partialLine;
@@ -92,10 +97,10 @@ public final class TailFileReader implements Runnable {
     private final AtomicInteger acknowledgmentRetryCount = new AtomicInteger(0);
     private volatile RotationType lastRotationType;
 
-    public TailFileReader(final Path path,
+    public FileReader(final Path path,
                           final FileIdentity fileIdentity,
                           final CheckpointEntry checkpointEntry,
-                          final TailFileReaderContext context,
+                          final FileReaderContext context,
                           final Runnable onComplete) {
         this.path = Objects.requireNonNull(path, "path must not be null");
         this.fileIdentity = Objects.requireNonNull(fileIdentity, "fileIdentity must not be null");
@@ -123,6 +128,8 @@ public final class TailFileReader implements Runnable {
         this.batchTimeout = context.getBatchTimeout();
         this.maxAcknowledgmentRetries = context.getMaxAcknowledgmentRetries();
         this.codec = context.getCodec();
+        this.tailMode = context.isTailMode();
+        this.decompressionEngine = context.getDecompressionEngine();
 
         this.readOffset = new AtomicLong(checkpointEntry.getReadOffset());
         if (checkpointEntry.getReadOffset() == 0 && startPosition == StartPosition.END) {
@@ -146,6 +153,11 @@ public final class TailFileReader implements Runnable {
     @Override
     public void run() {
         try {
+            if (!tailMode && codec != null) {
+                readFileWithCodecOneShot();
+                return;
+            }
+
             final RotationResult rotation = rotationDetector.checkRotation(path, fileIdentity, readOffset.get());
             lastRotationType = rotation.getRotationType();
 
@@ -178,6 +190,27 @@ public final class TailFileReader implements Runnable {
             flushPartialLine();
             completePendingAckSet();
             onComplete.run();
+        }
+    }
+
+    private void readFileWithCodecOneShot() {
+        try (final InputStream rawStream = Files.newInputStream(path);
+             final InputStream decompressedStream = decompressionEngine.createInputStream(rawStream)) {
+            metrics.getFilesOpened().increment();
+            codec.parse(decompressedStream, record -> {
+                try {
+                    buffer.write((Record) record, writeTimeout);
+                    metrics.getEventsEmitted().increment();
+                } catch (final TimeoutException e) {
+                    metrics.getWriteTimeouts().increment();
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (final IOException e) {
+            LOG.error("Error reading file with codec: {}", path, e);
+            metrics.getReadErrors().increment();
+        } finally {
+            metrics.getFilesClosed().increment();
         }
     }
 

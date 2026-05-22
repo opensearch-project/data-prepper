@@ -58,7 +58,7 @@ class DirectoryWatcherTest {
     Path tempDir;
 
     @Mock
-    private TailFileReaderPool readerPool;
+    private FileReaderPool readerPool;
 
     @Mock
     private CheckpointRegistry checkpointRegistry;

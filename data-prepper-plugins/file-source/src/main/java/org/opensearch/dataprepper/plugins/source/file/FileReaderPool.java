@@ -26,13 +26,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public final class TailFileReaderPool {
+public final class FileReaderPool {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TailFileReaderPool.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileReaderPool.class);
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
     private static final long RE_POLL_DELAY_MILLIS = 500;
 
-    private final ConcurrentHashMap<FileIdentity, TailFileReader> activeReaders;
+    private final ConcurrentHashMap<FileIdentity, FileReader> activeReaders;
     private final Set<FileIdentity> pendingIdentities;
     private final ConcurrentLinkedQueue<PendingFile> pendingQueue;
     private final ExecutorService executorService;
@@ -41,14 +41,14 @@ public final class TailFileReaderPool {
     private final FileMetrics metrics;
     private final int maxActiveFiles;
     private final Duration closeInactive;
-    private final TailFileReaderContext readerContext;
+    private final FileReaderContext readerContext;
 
-    public TailFileReaderPool(final CheckpointRegistry checkpointRegistry,
+    public FileReaderPool(final CheckpointRegistry checkpointRegistry,
                               final FileMetrics metrics,
                               final int maxActiveFiles,
                               final int readerThreads,
                               final Duration closeInactive,
-                              final TailFileReaderContext readerContext) {
+                              final FileReaderContext readerContext) {
         this(checkpointRegistry, metrics, maxActiveFiles, closeInactive, readerContext,
                 () -> Executors.newFixedThreadPool(readerThreads, r -> {
                     final Thread thread = new Thread(r, "file-reader");
@@ -57,11 +57,11 @@ public final class TailFileReaderPool {
                 }));
     }
 
-    TailFileReaderPool(final CheckpointRegistry checkpointRegistry,
+    FileReaderPool(final CheckpointRegistry checkpointRegistry,
                        final FileMetrics metrics,
                        final int maxActiveFiles,
                        final Duration closeInactive,
-                       final TailFileReaderContext readerContext,
+                       final FileReaderContext readerContext,
                        final Supplier<ExecutorService> executorServiceSupplier) {
         this.checkpointRegistry = Objects.requireNonNull(checkpointRegistry, "checkpointRegistry must not be null");
         this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
@@ -98,7 +98,7 @@ public final class TailFileReaderPool {
             return;
         }
         final CheckpointEntry checkpoint = checkpointRegistry.getOrCreate(fileIdentity.toString());
-        final TailFileReader reader = new TailFileReader(
+        final FileReader reader = new FileReader(
                 path, fileIdentity, checkpoint, readerContext,
                 () -> onReaderComplete(fileIdentity, path));
         activeReaders.put(fileIdentity, reader);
@@ -113,7 +113,7 @@ public final class TailFileReaderPool {
     }
 
     private synchronized void onReaderComplete(final FileIdentity fileIdentity, final Path path) {
-        final TailFileReader completedReader = activeReaders.remove(fileIdentity);
+        final FileReader completedReader = activeReaders.remove(fileIdentity);
         if (completedReader == null) {
             return;
         }
@@ -173,7 +173,7 @@ public final class TailFileReaderPool {
         final long now = System.currentTimeMillis();
         final long inactiveThresholdMillis = closeInactive.toMillis();
         activeReaders.entrySet().removeIf(entry -> {
-            final TailFileReader reader = entry.getValue();
+            final FileReader reader = entry.getValue();
             if ((now - reader.getLastActivityMillis()) >= inactiveThresholdMillis) {
                 LOG.info("Closing inactive reader for file identity {}", entry.getKey());
                 metrics.getActiveFileCount().decrementAndGet();
@@ -188,7 +188,7 @@ public final class TailFileReaderPool {
     public synchronized void closeReaderForPath(final Path path) {
         final Path absolutePath = path.toAbsolutePath().normalize();
         activeReaders.entrySet().removeIf(entry -> {
-            final TailFileReader reader = entry.getValue();
+            final FileReader reader = entry.getValue();
             if (reader.getPath().toAbsolutePath().normalize().equals(absolutePath)) {
                 LOG.info("Closing reader for removed file: {}", path);
                 metrics.getActiveFileCount().decrementAndGet();
