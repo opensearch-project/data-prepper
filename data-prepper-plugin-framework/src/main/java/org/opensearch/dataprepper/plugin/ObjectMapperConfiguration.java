@@ -60,9 +60,13 @@ public class ObjectMapperConfiguration {
         TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES.stream().forEach(clazz -> simpleModule.addDeserializer(
                 clazz, new DataPrepperScalarTypeDeserializer<>(variableExpander, clazz)));
 
+        final SimpleModule nestedPluginModule = new SimpleModule("DataPrepperNestedPluginModule");
+        nestedPluginModule.setDeserializerModifier(new DataPrepperPluginBeanDeserializerModifier());
+
         return new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
                 .registerModule(simpleModule)
+                .registerModule(nestedPluginModule)
                 .addHandler(dataPrepperDeserializationProblemHandler);
     }
 }
