@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.plugins.aws;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -16,6 +18,7 @@ import org.opensearch.dataprepper.model.annotations.TransformationFunction;
 import org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider;
 
 import java.lang.reflect.Method;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,6 +26,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PipelineTransformFunctionsTest {
+
+    private Supplier<String> originalSupplier;
+
+    @BeforeEach
+    void setUp() {
+        originalSupplier = PipelineTransformFunctions.sourceCoordinationIdentifierSupplier;
+    }
+
+    @AfterEach
+    void tearDown() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = originalSupplier;
+    }
 
     @Test
     void class_implements_PipelineTransformFunctionProvider() {
@@ -46,6 +61,8 @@ class PipelineTransformFunctionsTest {
         }
     }
 
+    // --- calculateDepth ---
+
     @Test
     void calculateDepth_returns_4_when_prefix_is_null() {
         assertEquals("4", PipelineTransformFunctions.calculateDepth(null));
@@ -61,57 +78,96 @@ class PipelineTransformFunctionsTest {
         assertEquals("6", PipelineTransformFunctions.calculateDepth("prefix/subfolder"));
     }
 
+    // --- calculateDepthForRdsSource ---
+
     @Test
     void calculateDepthForRdsSource_returns_2_when_prefix_is_null_and_no_env_var() {
-        // Without env var set, baseDepth = 2
-        String result = PipelineTransformFunctions.calculateDepthForRdsSource(null);
-        assertNotNull(result);
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> null;
+        assertEquals("2", PipelineTransformFunctions.calculateDepthForRdsSource(null));
     }
 
     @Test
-    void calculateDepthForRdsSource_adds_prefix_segments_to_base_depth() {
-        // Without env var, baseDepth = 2, prefix "a/b" = 2 segments → total 4
-        // With env var, baseDepth = 3, prefix "a/b" = 2 segments → total 5
-        String result = PipelineTransformFunctions.calculateDepthForRdsSource("a/b");
-        assertNotNull(result);
-        int depth = Integer.parseInt(result);
-        assertTrue(depth >= 4, "Depth should be at least 4 (2 segments + 2 base)");
+    void calculateDepthForRdsSource_returns_3_when_prefix_is_null_and_env_var_set() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "my-identifier";
+        assertEquals("3", PipelineTransformFunctions.calculateDepthForRdsSource(null));
     }
+
+    @Test
+    void calculateDepthForRdsSource_adds_prefix_segments_with_env_var() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "my-identifier";
+        assertEquals("5", PipelineTransformFunctions.calculateDepthForRdsSource("a/b"));
+    }
+
+    @Test
+    void calculateDepthForRdsSource_adds_prefix_segments_without_env_var() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> null;
+        assertEquals("4", PipelineTransformFunctions.calculateDepthForRdsSource("a/b"));
+    }
+
+    // --- getSourceCoordinationIdentifierEnvVariable ---
 
     @Test
     void getSourceCoordinationIdentifierEnvVariable_returns_env_var_when_prefix_null() {
-        // Returns the env var value (which may be null in test env)
-        String result = PipelineTransformFunctions.getSourceCoordinationIdentifierEnvVariable(null);
-        // In test environment, env var is likely not set
-        assertNull(result);
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "test-id";
+        assertEquals("test-id", PipelineTransformFunctions.getSourceCoordinationIdentifierEnvVariable(null));
+    }
+
+    @Test
+    void getSourceCoordinationIdentifierEnvVariable_returns_null_when_env_not_set_and_prefix_null() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> null;
+        assertNull(PipelineTransformFunctions.getSourceCoordinationIdentifierEnvVariable(null));
     }
 
     @Test
     void getSourceCoordinationIdentifierEnvVariable_prepends_prefix_to_env_var() {
-        String result = PipelineTransformFunctions.getSourceCoordinationIdentifierEnvVariable("myprefix");
-        // env var is null in test, so result will be "myprefix/null"
-        assertNotNull(result);
-        assertTrue(result.startsWith("myprefix/"));
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "test-id";
+        assertEquals("myprefix/test-id",
+                PipelineTransformFunctions.getSourceCoordinationIdentifierEnvVariable("myprefix"));
     }
+
+    // --- getIncludePrefixForRdsSource ---
 
     @Test
     void getIncludePrefixForRdsSource_returns_buffer_prefix_when_all_null() {
-        // When both s3Prefix and env var are null
-        String result = PipelineTransformFunctions.getIncludePrefixForRdsSource(null);
-        assertEquals("/buffer", result);
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> null;
+        assertEquals("/buffer", PipelineTransformFunctions.getIncludePrefixForRdsSource(null));
     }
 
     @Test
-    void getIncludePrefixForRdsSource_prepends_s3prefix_when_no_env_var() {
-        String result = PipelineTransformFunctions.getIncludePrefixForRdsSource("myprefix");
-        assertEquals("myprefix/buffer", result);
+    void getIncludePrefixForRdsSource_returns_shortened_id_plus_buffer_when_prefix_null_and_env_set() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "short";
+        assertEquals("short/buffer", PipelineTransformFunctions.getIncludePrefixForRdsSource(null));
     }
+
+    @Test
+    void getIncludePrefixForRdsSource_returns_prefix_plus_buffer_when_env_null() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> null;
+        assertEquals("myprefix/buffer", PipelineTransformFunctions.getIncludePrefixForRdsSource("myprefix"));
+    }
+
+    @Test
+    void getIncludePrefixForRdsSource_returns_full_path_when_both_set() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "short";
+        assertEquals("myprefix/short/buffer",
+                PipelineTransformFunctions.getIncludePrefixForRdsSource("myprefix"));
+    }
+
+    @Test
+    void getIncludePrefixForRdsSource_shortens_long_identifier() {
+        PipelineTransformFunctions.sourceCoordinationIdentifierSupplier = () -> "this-is-a-very-long-identifier-exceeding-max";
+        String result = PipelineTransformFunctions.getIncludePrefixForRdsSource(null);
+        assertNotNull(result);
+        assertTrue(result.endsWith("/buffer"));
+        // shortened id is 15 chars + "/buffer" = 22 chars total
+        assertEquals(22, result.length());
+    }
+
+    // --- getAccountIdFromRole ---
 
     @Test
     void getAccountIdFromRole_returns_account_id_from_valid_arn() {
-        String roleArn = "arn:aws:iam::123456789012:role/MyRole";
-        String result = PipelineTransformFunctions.getAccountIdFromRole(roleArn);
-        assertEquals("123456789012", result);
+        assertEquals("123456789012",
+                PipelineTransformFunctions.getAccountIdFromRole("arn:aws:iam::123456789012:role/MyRole"));
     }
 
     @Test
@@ -120,16 +176,16 @@ class PipelineTransformFunctionsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "not-an-arn", "arn:aws:iam::invalid"})
+    @ValueSource(strings = {"", "not-an-arn", "arn:aws:iam:::role/test-role"})
     void getAccountIdFromRole_returns_null_for_invalid_arns(String invalidArn) {
-        String result = PipelineTransformFunctions.getAccountIdFromRole(invalidArn);
-        assertNull(result);
+        assertNull(PipelineTransformFunctions.getAccountIdFromRole(invalidArn));
     }
+
+    // --- shortenIdentifier ---
 
     @Test
     void shortenIdentifier_returns_original_when_within_limit() {
-        String result = PipelineTransformFunctions.shortenIdentifier("short", 15);
-        assertEquals("short", result);
+        assertEquals("short", PipelineTransformFunctions.shortenIdentifier("short", 15));
     }
 
     @Test

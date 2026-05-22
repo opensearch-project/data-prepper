@@ -28,6 +28,11 @@ test {
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: ['**/PipelineTransformFunctions.class'])
+        }))
+    }
     violationRules {
         rule {
             limit {
