@@ -75,6 +75,7 @@ public class KafkaPullEngine implements PullEngine {
     @Override
     public void shutdown() {
         if (producer != null) {
+            producer.flush();
             producer.close();
         }
     }

@@ -107,7 +107,7 @@ class KafkaPullEngineTest {
     }
 
     @Test
-    void shutdown_closes_producer() {
+    void shutdown_flushes_and_closes_producer() {
         final KafkaPullEngine objectUnderTest = createObjectUnderTest();
 
         try (final MockedConstruction<KafkaProducer> producerConstruction = mockConstruction(KafkaProducer.class)) {
@@ -116,7 +116,9 @@ class KafkaPullEngineTest {
             final KafkaProducer<String, byte[]> mockProducer = producerConstruction.constructed().get(0);
             objectUnderTest.shutdown();
 
-            verify(mockProducer).close();
+            final org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(mockProducer);
+            inOrder.verify(mockProducer).flush();
+            inOrder.verify(mockProducer).close();
         }
     }
 }

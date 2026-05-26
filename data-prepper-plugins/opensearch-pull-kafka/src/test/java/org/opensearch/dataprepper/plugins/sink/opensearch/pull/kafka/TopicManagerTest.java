@@ -16,6 +16,7 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartitionInfo;
+import org.apache.kafka.common.errors.ReassignmentInProgressException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -130,6 +132,40 @@ class TopicManagerTest {
                     () -> createObjectUnderTest().createTopicWithPartitions(topicName, partitionCount));
             assertThat(thrown.getCause(), instanceOf(ExecutionException.class));
         }
+    }
+
+    @Test
+    void createTopicWithPartitions_retries_on_reassignment_in_progress() throws Exception {
+        final AdminClient mockAdminCreate = mock(AdminClient.class);
+        mockCreateTopicsFailsWithExists(mockAdminCreate);
+
+        final AdminClient mockAdminEnsure = mock(AdminClient.class);
+        mockDescribeTopicsSequential(mockAdminEnsure, 1, partitionCount);
+        mockCreatePartitionsFailsThenSucceeds(mockAdminEnsure);
+
+        try (final MockedStatic<AdminClient> adminStatic = mockStatic(AdminClient.class)) {
+            adminStatic.when(() -> AdminClient.create(any(java.util.Properties.class)))
+                    .thenReturn(mockAdminCreate, mockAdminEnsure);
+
+            createObjectUnderTest().createTopicWithPartitions(topicName, partitionCount);
+        }
+
+        verify(mockAdminEnsure, times(2)).createPartitions(any());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void mockCreatePartitionsFailsThenSucceeds(final AdminClient mockAdmin) throws Exception {
+        final CreatePartitionsResult failResult = mock(CreatePartitionsResult.class);
+        final KafkaFuture<Void> failFuture = mock(KafkaFuture.class);
+        when(failResult.all()).thenReturn(failFuture);
+        when(failFuture.get()).thenThrow(new ExecutionException(new ReassignmentInProgressException("in progress")));
+
+        final CreatePartitionsResult successResult = mock(CreatePartitionsResult.class);
+        final KafkaFuture<Void> successFuture = mock(KafkaFuture.class);
+        when(successResult.all()).thenReturn(successFuture);
+        when(successFuture.get()).thenReturn(null);
+
+        when(mockAdmin.createPartitions(any())).thenReturn(failResult, successResult);
     }
 
     @SuppressWarnings("unchecked")

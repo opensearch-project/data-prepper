@@ -25,11 +25,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.common.errors.InvalidPartitionsException;
+import org.apache.kafka.common.errors.ReassignmentInProgressException;
+
 @Named
 public class TopicManager {
     private static final Logger LOG = LoggerFactory.getLogger(TopicManager.class);
     private static final long TOPIC_READY_TIMEOUT_MS = 30_000;
     private static final long PARTITION_POLL_INTERVAL_MS = 500;
+    private static final int MAX_PARTITION_RETRIES = 3;
+    private static final long PARTITION_RETRY_BACKOFF_MS = 1_000;
 
     private final String bootstrapServers;
 
@@ -74,10 +79,7 @@ public class TopicManager {
             if (currentPartitions < requiredPartitions) {
                 LOG.info("Topic '{}' has {} partition(s) but {} required, increasing partition count",
                         topicName, currentPartitions, requiredPartitions);
-                adminClient.createPartitions(
-                        Collections.singletonMap(topicName, NewPartitions.increaseTo(requiredPartitions))
-                ).all().get();
-                LOG.info("Increased partition count for topic '{}' to {}", topicName, requiredPartitions);
+                increasePartitionsWithRetry(adminClient, topicName, requiredPartitions);
                 waitForPartitions(adminClient, topicName, requiredPartitions);
             } else {
                 LOG.info("Topic '{}' already has {} partition(s), required {}", topicName, currentPartitions, requiredPartitions);
@@ -87,6 +89,28 @@ public class TopicManager {
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while verifying partition count for topic: " + topicName, e);
+        }
+    }
+
+    private void increasePartitionsWithRetry(final AdminClient adminClient, final String topicName, final int requiredPartitions) throws InterruptedException {
+        for (int attempt = 1; attempt <= MAX_PARTITION_RETRIES; attempt++) {
+            try {
+                adminClient.createPartitions(
+                        Collections.singletonMap(topicName, NewPartitions.increaseTo(requiredPartitions))
+                ).all().get();
+                LOG.info("Increased partition count for topic '{}' to {}", topicName, requiredPartitions);
+                return;
+            } catch (final ExecutionException e) {
+                final Throwable cause = e.getCause();
+                if ((cause instanceof InvalidPartitionsException || cause instanceof ReassignmentInProgressException)
+                        && attempt < MAX_PARTITION_RETRIES) {
+                    LOG.warn("Partition reassignment conflict on topic '{}' (attempt {}/{}), retrying after backoff",
+                            topicName, attempt, MAX_PARTITION_RETRIES, cause);
+                    Thread.sleep(PARTITION_RETRY_BACKOFF_MS * attempt);
+                } else {
+                    throw new RuntimeException("Failed to increase partition count for topic: " + topicName, e);
+                }
+            }
         }
     }
 
