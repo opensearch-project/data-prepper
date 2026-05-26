@@ -12,4 +12,4 @@ apply_when:
   - "$..source.rds"
   - "$..source.rds.joins"
 function_providers:
-  - "org.opensearch.dataprepper.pipeline.parser.transformer.TestTransformFunctionProvider"
+  - "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.TestTransformFunctionProvider"

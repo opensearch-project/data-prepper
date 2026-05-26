@@ -11,4 +11,4 @@ plugin_name: "rds"
 apply_when:
   - "$..source.rds"
 function_providers:
-  - "org.opensearch.dataprepper.pipeline.parser.transformer.TestTransformFunctionProvider"
+  - "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.TestTransformFunctionProvider"

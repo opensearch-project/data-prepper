@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.pipeline.parser.TestConfigurationProvider;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleStream;
 
+import java.util.Arrays;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -38,7 +39,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -480,10 +483,72 @@ class DynamicConfigTransformerTest {
         assertThat(resultOs.get("script").has("custom_field")).isFalse();
     }
 
-    // Inner test helper classes for invokeMethod validation tests
+    private static final String PROVIDER_PKG = "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.";
+
+    // --- invokeMethod: Happy path ---
+
+    @Test
+    void test_invokeMethod_succeeds_with_valid_provider_and_annotated_method() throws Exception {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList(PROVIDER_PKG + "ValidAnnotatedProvider");
+        Object result = transformer.invokeMethod(providers, "transformValue", String.class, "hello");
+        assertEquals("HELLO", result);
+    }
+
+    // --- invokeMethod: Non-existent class name ---
+
+    @Test
+    void test_invokeMethod_throws_when_class_does_not_exist() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList("com.example.does.not.Exist");
+        assertThrows(Exception.class, () ->
+                transformer.invokeMethod(providers, "someMethod", String.class, "arg"));
+    }
+
+    // --- invokeMethod: Multiple providers, correct resolution ---
+
+    @Test
+    void test_invokeMethod_resolves_method_from_second_provider_when_first_lacks_it() throws Exception {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Arrays.asList(
+                PROVIDER_PKG + "ProviderWithoutTargetMethod",
+                PROVIDER_PKG + "ValidAnnotatedProvider");
+        Object result = transformer.invokeMethod(providers, "transformValue", String.class, "world");
+        assertEquals("WORLD", result);
+    }
+
+    // --- invokeMethod: Non-static annotated method ---
+
+    @Test
+    void test_invokeMethod_throws_when_annotated_method_is_non_static() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList(PROVIDER_PKG + "ProviderWithNonStaticMethod");
+        assertThrows(Exception.class, () ->
+                transformer.invokeMethod(providers, "instanceMethod", String.class, "arg"));
+    }
+
+    // --- invokeMethod: Static initializer safety ---
+
+    @Test
+    void test_invokeMethod_throws_for_non_provider_before_running_methods() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        List<String> providers = Collections.singletonList(PROVIDER_PKG + "NonProviderWithStaticInit");
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(providers, "getValue", String.class, "arg"));
+        assertTrue(exception.getMessage().contains("does not implement PipelineTransformFunctionProvider"));
+    }
+
+    // --- Inner test helper class for package-check-independent tests ---
+
     public static class ValidProviderNoAnnotation implements org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider {
         public static String unannotatedMethod(String input) {
             return input;
         }
     }
 }
+

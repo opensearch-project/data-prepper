@@ -7,7 +7,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.dataprepper.plugins.aws;
+package org.opensearch.dataprepper.plugins.aws.dataprepper_transformer;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +60,15 @@ class PipelineTransformFunctionsTest {
                     "Method " + methodName + " should be annotated with @TransformationFunction");
         }
     }
+
+    @Test
+    void default_sourceCoordinationIdentifierSupplier_reads_env_variable() {
+        // Exercises the default lambda on line 39: () -> System.getenv(...)
+        // env var is not set in test, so returns null — but the lambda bytecode is covered
+        String result = originalSupplier.get();
+        assertNull(result);
+    }
+
 
     // --- calculateDepth ---
 

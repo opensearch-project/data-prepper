@@ -7,7 +7,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.dataprepper.pipeline.parser.transformer;
+package org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer;
 
 import org.opensearch.dataprepper.model.annotations.TransformationFunction;
 import org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider;

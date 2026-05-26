@@ -7,7 +7,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.dataprepper.plugins.aws;
+package org.opensearch.dataprepper.plugins.aws.dataprepper_transformer;
 
 import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 import org.opensearch.dataprepper.model.annotations.TransformationFunction;

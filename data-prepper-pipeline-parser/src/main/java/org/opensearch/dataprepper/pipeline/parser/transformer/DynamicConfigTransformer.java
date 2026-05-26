@@ -47,9 +47,6 @@ import java.util.regex.Pattern;
 public class DynamicConfigTransformer implements PipelineConfigurationTransformer {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamicConfigTransformer.class);
-    private static final Pattern FULLY_QUALIFIED_METHOD_PATTERN = Pattern.compile(
-        "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*(\\.|::)[a-zA-Z_][a-zA-Z0-9_]*$"
-    );
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RuleEvaluator ruleEvaluator;
@@ -92,6 +89,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * The captured group is the target path (e.g., "sink[*].opensearch")
      */
     private static final Pattern OVERLAY_PATTERN = Pattern.compile("^<<overlay\\s+(.+?)>>$");
+    private static final String REQUIRED_PACKAGE_PREFIX = "org.opensearch.dataprepper";
+    private static final String REQUIRED_PACKAGE_SEGMENT = "dataprepper_transformer";
+
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -424,13 +424,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
     }
 
-    public static boolean isFullyQualifiedMethod(String input) {
-        if (input == null || input.isEmpty()) {
-            return false;
-        }
-        return FULLY_QUALIFIED_METHOD_PATTERN.matcher(input).matches();
-    }
-
     /**
      * Invokes a method dynamically on a given object.
      *
@@ -446,6 +439,13 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         }
 
         Class<?> clazz = resolveClassForMethod(functionProviders, methodName, parameterType);
+
+        String packageName = clazz.getPackageName();
+        if (!packageName.startsWith(REQUIRED_PACKAGE_PREFIX) || !packageName.contains(REQUIRED_PACKAGE_SEGMENT)) {
+            throw new RuntimeException("Class '" + clazz.getName() +
+                    "' is not in a valid package. Package must start with '" + REQUIRED_PACKAGE_PREFIX +
+                    "' and contain '" + REQUIRED_PACKAGE_SEGMENT + "'");
+        }
 
         if (!PipelineTransformFunctionProvider.class.isAssignableFrom(clazz)) {
             throw new RuntimeException("Class '" + clazz.getName() +
@@ -463,10 +463,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     private Class<?> resolveClassForMethod(final List<String> functionProviders, String methodName, Class<?> parameterType) throws ReflectiveOperationException {
-        if (functionProviders.size() == 1) {
-            return Class.forName(functionProviders.get(0));
-        }
-
         for (final String functionProvider : functionProviders) {
             try {
                 Class<?> candidate = Class.forName(functionProvider);

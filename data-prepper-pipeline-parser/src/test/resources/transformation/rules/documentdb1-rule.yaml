@@ -2,4 +2,4 @@ plugin_name: "documentdb"
 apply_when:
   - "$..source.documentdb"
 function_providers:
-  - "org.opensearch.dataprepper.pipeline.parser.transformer.TestTransformFunctionProvider"
+  - "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.TestTransformFunctionProvider"

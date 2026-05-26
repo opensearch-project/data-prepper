@@ -3,4 +3,4 @@ apply_when:
   - "$..source.documentdb"
   - "$..source.documentdb.s3_bucket"
 function_providers:
-  - "org.opensearch.dataprepper.plugins.aws.PipelineTransformFunctions"
+  - "org.opensearch.dataprepper.plugins.aws.dataprepper_transformer.PipelineTransformFunctions"
