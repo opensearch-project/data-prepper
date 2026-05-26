@@ -19,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -122,10 +121,8 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_entity_config_with_empty_key_attributes_WHEN_validated_SHOULD_fail_NotEmpty_constraint()
-            throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_entity_config_with_default_key_attributes_WHEN_validated_SHOULD_fail_NotEmpty_constraint() {
         final EntityConfig entityConfig = new EntityConfig();
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, Collections.emptyMap());
 
         final Set<ConstraintViolation<EntityConfig>> violations = validator.validate(entityConfig);
 
@@ -135,14 +132,19 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_entity_config_with_default_key_attributes_WHEN_validated_SHOULD_fail_NotEmpty_constraint() {
+    void GIVEN_null_attributes_WHEN_validated_SHOULD_fail_NotNull_constraint()
+            throws NoSuchFieldException, IllegalAccessException {
         final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Service");
+        keyAttributes.put("Name", "my-app");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, ATTRIBUTES_FIELD, null);
 
         final Set<ConstraintViolation<EntityConfig>> violations = validator.validate(entityConfig);
 
         assertThat(violations, hasSize(1));
-        final ConstraintViolation<EntityConfig> violation = violations.iterator().next();
-        assertThat(violation.getPropertyPath().toString(), equalTo(KEY_ATTRIBUTES_FIELD));
+        assertThat(violations.iterator().next().getPropertyPath().toString(), equalTo(ATTRIBUTES_FIELD));
     }
 
     @Test

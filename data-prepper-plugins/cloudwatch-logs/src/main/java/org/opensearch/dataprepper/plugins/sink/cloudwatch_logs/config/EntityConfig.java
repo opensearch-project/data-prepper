@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Collections;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class EntityConfig {
     private Map<String, String> keyAttributes = Collections.emptyMap();
 
     @JsonProperty("attributes")
+    @NotNull
     private Map<String, String> attributes = Collections.emptyMap();
 
     public Map<String, String> getKeyAttributes() {

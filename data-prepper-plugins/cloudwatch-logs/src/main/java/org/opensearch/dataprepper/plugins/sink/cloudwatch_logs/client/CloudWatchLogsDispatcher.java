@@ -177,7 +177,7 @@ public class CloudWatchLogsDispatcher {
                 }
                 if (putLogEventsResponse != null && putLogEventsResponse.rejectedEntityInfo() != null) {
                     cloudWatchLogsMetrics.increaseEntityRejectedCounter(1);
-                    LOG.warn("Entity was rejected by CloudWatch: {}",
+                    LOG.warn(NOISY, "Entity was rejected by CloudWatch: {}",
                             putLogEventsResponse.rejectedEntityInfo().errorTypeAsString());
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
