@@ -17,7 +17,7 @@ jobs:
         java-version: 11
         distribution: temurin
     - name: Checkout Data Prepper
-      uses: actions/checkout@v2
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
       with:
@@ -33,13 +33,13 @@ jobs:
 
     - name: GitHub App token
       id: github_app_token
-      uses: tibdex/github-app-token@v1.5.0
+      uses: tibdex/github-app-token@1901dc7d52169e70c27a8da37aef0d423e2867a2 # v1.5.0
       with:
         app_id: ${{ secrets.APP_ID }}
         private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v4
+      uses: peter-evans/create-pull-request@38e0b6e68b4c852a5500a94740f0e535e0d7ba54 # v4
       with:
         token: ${{ steps.github_app_token.outputs.token }}
         add-paths: THIRD-PARTY

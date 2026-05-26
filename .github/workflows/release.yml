@@ -41,7 +41,7 @@ jobs:
         java-version: 11
         distribution: temurin
     - name: Checkout Data Prepper
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
       with:
@@ -52,7 +52,7 @@ jobs:
       run: ./gradlew --parallel --max-workers 2 build
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
       with:
         role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
         aws-region: us-east-1
@@ -71,7 +71,7 @@ jobs:
 
     - name: Log into Amazon ECR Public
       id: login-ecr
-      uses: docker/login-action@v4
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
       with:
         registry: public.ecr.aws
       env:
@@ -90,7 +90,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
@@ -119,7 +119,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
@@ -144,7 +144,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         id: get_version
         run: |
@@ -155,7 +155,7 @@ jobs:
         id: get_approvers
         run: |
           echo "approvers=$(cat .github/CODEOWNERS | grep @ | tr -d '* ' | sed 's/@/,/g' | sed 's/,//1')" >> $GITHUB_OUTPUT
-      - uses: trstringer/manual-approval@v1
+      - uses: trstringer/manual-approval@74d99dff7380e3e4b122d4ededcbca2b6ce59367 # v1
         with:
           secret: ${{ github.TOKEN }}
           approvers: ${{ steps.get_approvers.outputs.approvers }}
@@ -182,7 +182,7 @@ jobs:
           echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
 
       - name: Create tag
-        uses: actions/github-script@v6
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
         with:
           github-token: ${{ github.TOKEN }}
           script: |
@@ -194,7 +194,7 @@ jobs:
             })
 
       - name: Draft release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           draft: true
           name: '${{ env.version }}'
@@ -208,7 +208,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -217,7 +217,7 @@ jobs:
         run: git fetch origin --tags
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
 
@@ -229,13 +229,13 @@ jobs:
 
       - name: GitHub App token
         id: github_app_token
-        uses: tibdex/github-app-token@v2
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           token: ${{ steps.github_app_token.outputs.token }}
           add-paths: |
