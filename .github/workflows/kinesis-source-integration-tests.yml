@@ -5,12 +5,17 @@ on:
     paths:
       - 'data-prepper-plugins/kinesis-source/**'
       - '*gradle*'
-  pull_request:
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
     paths:
       - 'data-prepper-plugins/kinesis-source/**'
       - '*gradle*'
 
   workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   build:
