@@ -21,7 +21,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java: [ 11, 17, 21, docker ]
+        java: [ 11, 17, 21 ]
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -64,7 +64,7 @@ jobs:
       - name: Run Kinesis Source integration tests
         run: |
           ./gradlew data-prepper-plugins:kinesis-source:integrationTest \
-            -Dtests.kinesis.source.aws.region=us-east-1 --tests KinesisSourceIT
+            -Dtests.kinesis.source.aws.region=${{ secrets.TEST_REGION }} --tests KinesisSourceIT
       - name: Upload Unit Test Results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
