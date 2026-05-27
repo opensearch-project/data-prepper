@@ -249,7 +249,7 @@ public class KinesisSourceIT {
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any()))
                 .thenReturn(new NdjsonInputCodec(new NdjsonInputConfig(), TestEventFactory.getTestEventFactory()));
 
-        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        final List<Record<?>> actualRecordsWritten = Collections.synchronizedList(new ArrayList<>());
         doAnswer(a -> actualRecordsWritten.addAll(a.getArgument(0, Collection.class)))
                 .when(buffer).writeAll(anyCollection(), anyInt());
 
