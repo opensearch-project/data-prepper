@@ -57,45 +57,45 @@ class DynamicConfigTransformerTest {
     void test_invokeMethod_throws_when_functionProviders_is_null() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 transformer.invokeMethod(null, "someMethod", String.class, "arg"));
+        assertTrue(exception.getMessage().contains("function_providers cannot be empty"));
     }
 
     @Test
     void test_invokeMethod_throws_when_functionProviders_is_empty() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 transformer.invokeMethod(Collections.emptyList(), "someMethod", String.class, "arg"));
+        assertTrue(exception.getMessage().contains("function_providers cannot be empty"));
     }
 
     @Test
     void test_invokeMethod_throws_when_class_does_not_implement_interface() {
+        // java.lang.String does NOT implement PipelineTransformFunctionProvider.
+        // resolveMethod should reject it with the interface check.
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
         List<String> providers = Collections.singletonList("java.lang.String");
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 transformer.invokeMethod(providers, "valueOf", String.class, "test"));
+        assertTrue(exception.getMessage().contains("does not implement PipelineTransformFunctionProvider"),
+                "Expected interface check failure, got: " + exception.getMessage());
     }
 
     @Test
     void test_invokeMethod_throws_when_method_not_annotated() {
+        // ValidProviderNoAnnotation implements the interface but its method
+        // lacks @TransformationFunction. invokeMethod should reject it.
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
         List<String> providers = Collections.singletonList(
                 "org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformerTest$ValidProviderNoAnnotation");
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 transformer.invokeMethod(providers, "unannotatedMethod", String.class, "arg"));
-    }
-
-    @Test
-    void test_invokeMethod_throws_when_method_not_found_in_any_provider() {
-        ruleEvaluator = mock(RuleEvaluator.class);
-        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
-        List<String> providers = Collections.singletonList(
-                "org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformerTest$ValidProviderNoAnnotation");
-        assertThrows(Exception.class, () ->
-                transformer.invokeMethod(providers, "nonExistentMethod", String.class, "arg"));
+        assertTrue(exception.getMessage().contains("is not annotated with @TransformationFunction"),
+                "Expected annotation check failure, got: " + exception.getMessage());
     }
 
 
@@ -485,8 +485,6 @@ class DynamicConfigTransformerTest {
 
     private static final String PROVIDER_PKG = "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.";
 
-    // --- invokeMethod: Happy path ---
-
     @Test
     void test_invokeMethod_succeeds_with_valid_provider_and_annotated_method() throws Exception {
         ruleEvaluator = mock(RuleEvaluator.class);
@@ -496,23 +494,26 @@ class DynamicConfigTransformerTest {
         assertEquals("HELLO", result);
     }
 
-    // --- invokeMethod: Non-existent class name ---
-
     @Test
     void test_invokeMethod_throws_when_class_does_not_exist() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
         List<String> providers = Collections.singletonList("com.example.does.not.Exist");
-        assertThrows(Exception.class, () ->
+        Exception exception = assertThrows(Exception.class, () ->
                 transformer.invokeMethod(providers, "someMethod", String.class, "arg"));
+        // Class.forName fails, wraps into a ReflectiveOperationException (ClassNotFoundException)
+        assertTrue(exception instanceof ClassNotFoundException ||
+                exception.getCause() instanceof ClassNotFoundException ||
+                exception.getMessage().contains("Exist"),
+                "Expected ClassNotFoundException for non-existent class, got: " + exception);
     }
-
-    // --- invokeMethod: Multiple providers, correct resolution ---
 
     @Test
     void test_invokeMethod_resolves_method_from_second_provider_when_first_lacks_it() throws Exception {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        // ProviderWithoutTargetMethod has 'otherMethod' but not 'transformValue'
+        // ValidAnnotatedProvider has 'transformValue'
         List<String> providers = Arrays.asList(
                 PROVIDER_PKG + "ProviderWithoutTargetMethod",
                 PROVIDER_PKG + "ValidAnnotatedProvider");
@@ -520,30 +521,60 @@ class DynamicConfigTransformerTest {
         assertEquals("WORLD", result);
     }
 
-    // --- invokeMethod: Non-static annotated method ---
-
     @Test
     void test_invokeMethod_throws_when_annotated_method_is_non_static() {
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        // ProviderWithNonStaticMethod has 'instanceMethod' which is non-static but annotated.
+        // getMethod finds it (public), annotation check passes, but invoke(null, arg) fails
+        // because you cannot invoke a non-static method on null.
         List<String> providers = Collections.singletonList(PROVIDER_PKG + "ProviderWithNonStaticMethod");
-        assertThrows(Exception.class, () ->
+        Exception exception = assertThrows(Exception.class, () ->
                 transformer.invokeMethod(providers, "instanceMethod", String.class, "arg"));
+        // Should get a NullPointerException or IllegalArgumentException from Method.invoke(null, ...)
+        assertTrue(exception instanceof NullPointerException ||
+                exception instanceof IllegalArgumentException ||
+                exception.getCause() instanceof NullPointerException ||
+                exception.getCause() instanceof IllegalArgumentException,
+                "Expected invocation failure for non-static method, got: " + exception);
     }
 
-    // --- invokeMethod: Static initializer safety ---
-
     @Test
-    void test_invokeMethod_throws_for_non_provider_before_running_methods() {
+    void test_invokeMethod_rejects_class_not_implementing_interface_without_running_static_init() {
+        // NonProviderWithStaticInit does NOT implement PipelineTransformFunctionProvider
+        // and has a static initializer that sets a system property.
+        // Class.forName(name, false, classLoader) should NOT run the static initializer.
+        // resolveMethod should reject it with the interface check.
+        System.clearProperty("test.static.init.ran");
+
         ruleEvaluator = mock(RuleEvaluator.class);
         DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
         List<String> providers = Collections.singletonList(PROVIDER_PKG + "NonProviderWithStaticInit");
+
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 transformer.invokeMethod(providers, "getValue", String.class, "arg"));
-        assertTrue(exception.getMessage().contains("does not implement PipelineTransformFunctionProvider"));
+
+        assertTrue(exception.getMessage().contains("does not implement PipelineTransformFunctionProvider"),
+                "Expected interface check failure, got: " + exception.getMessage());
+
+        // Verify static initializer was NOT executed (Class.forName with initialize=false)
+        assertTrue(System.getProperty("test.static.init.ran") == null,
+                "Static initializer should not have run when Class.forName uses initialize=false");
     }
 
-    // --- Inner test helper class for package-check-independent tests ---
+    @Test
+    void test_invokeMethod_throws_when_no_provider_has_the_method() {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        // Both providers implement the interface but neither has 'nonExistentMethod'
+        List<String> providers = Arrays.asList(
+                PROVIDER_PKG + "ProviderWithoutTargetMethod",
+                PROVIDER_PKG + "ValidAnnotatedProvider");
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                transformer.invokeMethod(providers, "nonExistentMethod", String.class, "arg"));
+        assertTrue(exception.getMessage().contains("Could not find a class with method"),
+                "Expected 'could not find' message, got: " + exception.getMessage());
+    }
 
     public static class ValidProviderNoAnnotation implements org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider {
         public static String unannotatedMethod(String input) {
@@ -551,4 +582,3 @@ class DynamicConfigTransformerTest {
         }
     }
 }
-

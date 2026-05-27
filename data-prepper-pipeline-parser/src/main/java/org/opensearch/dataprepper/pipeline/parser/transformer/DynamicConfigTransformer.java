@@ -89,8 +89,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * The captured group is the target path (e.g., "sink[*].opensearch")
      */
     private static final Pattern OVERLAY_PATTERN = Pattern.compile("^<<overlay\\s+(.+?)>>$");
-    private static final String REQUIRED_PACKAGE_PREFIX = "org.opensearch.dataprepper";
-    private static final String REQUIRED_PACKAGE_SEGMENT = "dataprepper_transformer";
 
 
     Configuration parseConfigWithJsonNode = Configuration.builder()
@@ -427,47 +425,42 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     /**
      * Invokes a method dynamically on a given object.
      *
+     * @param functionProviders list of fully qualified class names to search
      * @param methodName    the name of the method to be invoked
      * @param parameterType the Class object representing the parameter type
      * @param arg           the parameter to be passed to the method
      * @return the result of the method invocation
      * @throws ReflectiveOperationException if the method cannot be invoked
      */
-    public Object invokeMethod(final List<String> functionProviders, String methodName, Class<?> parameterType, Object arg) throws ReflectiveOperationException {
+    Object invokeMethod(final List<String> functionProviders, String methodName, Class<?> parameterType, Object arg) throws ReflectiveOperationException {
         if (functionProviders == null || functionProviders.isEmpty()) {
             throw new RuntimeException("function_providers cannot be empty");
         }
 
-        Class<?> clazz = resolveClassForMethod(functionProviders, methodName, parameterType);
-
-        String packageName = clazz.getPackageName();
-        if (!packageName.startsWith(REQUIRED_PACKAGE_PREFIX) || !packageName.contains(REQUIRED_PACKAGE_SEGMENT)) {
-            throw new RuntimeException("Class '" + clazz.getName() +
-                    "' is not in a valid package. Package must start with '" + REQUIRED_PACKAGE_PREFIX +
-                    "' and contain '" + REQUIRED_PACKAGE_SEGMENT + "'");
-        }
-
-        if (!PipelineTransformFunctionProvider.class.isAssignableFrom(clazz)) {
-            throw new RuntimeException("Class '" + clazz.getName() +
-                    "' does not implement PipelineTransformFunctionProvider");
-        }
-
-        Method method = clazz.getMethod(methodName, parameterType);
+        Method method = resolveMethod(functionProviders, methodName, parameterType);
 
         if (!method.isAnnotationPresent(TransformationFunction.class)) {
-            throw new RuntimeException("Method '" + methodName + "' in class '" + clazz.getName() +
+            throw new RuntimeException("Method '" + methodName + "' in class '" + method.getDeclaringClass().getName() +
                     "' is not annotated with @TransformationFunction");
         }
 
         return method.invoke(null, arg);
     }
 
-    private Class<?> resolveClassForMethod(final List<String> functionProviders, String methodName, Class<?> parameterType) throws ReflectiveOperationException {
+    private Method resolveMethod(final List<String> functionProviders, String methodName, Class<?> parameterType) throws ReflectiveOperationException {
         for (final String functionProvider : functionProviders) {
             try {
-                Class<?> candidate = Class.forName(functionProvider);
-                candidate.getMethod(methodName, parameterType);
-                return candidate;
+                // Load class without running static initializers
+                Class<?> candidate = Class.forName(functionProvider, false, Thread.currentThread().getContextClassLoader());
+
+
+                // Validate interface before calling getMethod
+                if (!PipelineTransformFunctionProvider.class.isAssignableFrom(candidate)) {
+                    throw new RuntimeException("Class '" + candidate.getName() +
+                            "' does not implement PipelineTransformFunctionProvider");
+                }
+
+                return candidate.getMethod(methodName, parameterType);
             } catch (NoSuchMethodException e) {
                 continue;
             }
@@ -475,7 +468,6 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
 
         throw new RuntimeException("Could not find a class with method '" + methodName + "' in function_providers: " + functionProviders);
     }
-
 
     /**
      * Processes <<overlay path>> directives in the template.
