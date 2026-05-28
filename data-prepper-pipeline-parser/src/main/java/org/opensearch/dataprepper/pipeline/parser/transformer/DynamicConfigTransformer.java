@@ -451,7 +451,7 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
         for (final String functionProvider : functionProviders) {
             try {
                 // Load class without running static initializers
-                Class<?> candidate = Class.forName(functionProvider, false, Thread.currentThread().getContextClassLoader());
+                Class<?> candidate = Class.forName(functionProvider, false, this.getClass().getClassLoader());
 
 
                 // Validate interface before calling getMethod

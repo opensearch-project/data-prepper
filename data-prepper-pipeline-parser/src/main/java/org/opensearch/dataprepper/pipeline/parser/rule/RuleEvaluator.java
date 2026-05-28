@@ -182,7 +182,7 @@ public class RuleEvaluator {
 
             final Class<?> clazz;
             try {
-                clazz = Class.forName(provider, false, Thread.currentThread().getContextClassLoader());
+                clazz = Class.forName(provider, false, this.getClass().getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException("function_provider class '" + provider +
                         "' in rule file '" + ruleFileName + "' could not be found", e);
