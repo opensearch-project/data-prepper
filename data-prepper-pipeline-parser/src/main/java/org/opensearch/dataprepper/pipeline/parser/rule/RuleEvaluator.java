@@ -111,7 +111,6 @@ public class RuleEvaluator {
             for (RuleStream ruleStream : ruleStreams) {
                 try {
                     RuleTransformerModel model = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
-                    validateFunctionProviders(model.getFunctionProviders(), ruleStream.getName());
                     parsedRules.add(new ParsedRule(model, ruleStream.getName()));
                 } finally {
                     ruleStream.close();
@@ -142,6 +141,7 @@ public class RuleEvaluator {
                     }
 
                     if (allRulesValid) {
+                        validateFunctionProviders(rulesModel.getFunctionProviders(), parsedRule.fileName);
                         return RuleFileEvaluation.builder()
                                 .withPluginName(pluginName)
                                 .withRuleFileName(parsedRule.fileName)
