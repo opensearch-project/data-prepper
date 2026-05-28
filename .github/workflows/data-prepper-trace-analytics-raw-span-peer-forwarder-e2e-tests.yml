@@ -25,7 +25,7 @@ jobs:
           java-version: 11
           distribution: temurin
       - name: Checkout Data Prepper
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
         with:
@@ -34,7 +34,7 @@ jobs:
         run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:trace:rawSpanPeerForwarderEndToEndTest
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: raw-span-peer-forwarder-e2e-results-java-${{ matrix.java }}
           path: '**/test-results/**/*.xml'

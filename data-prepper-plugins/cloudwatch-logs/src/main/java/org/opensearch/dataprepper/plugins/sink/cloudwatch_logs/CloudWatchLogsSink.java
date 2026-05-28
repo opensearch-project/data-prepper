@@ -24,11 +24,13 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsClientFactory;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConfig;
 
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.exception.InvalidBufferTypeException;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.slf4j.Logger;
@@ -87,6 +89,12 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
 
         Executor executor = Executors.newFixedThreadPool(cloudWatchLogsSinkConfig.getWorkers());
 
+        final EntityConfig entityConfig = cloudWatchLogsSinkConfig.getEntityConfig();
+        final Entity entity = entityConfig == null ? null : Entity.builder()
+                .keyAttributes(entityConfig.getKeyAttributes())
+                .attributes(entityConfig.getAttributes())
+                .build();
+
         CloudWatchLogsDispatcher cloudWatchLogsDispatcher = CloudWatchLogsDispatcher.builder()
                 .cloudWatchLogsClient(cloudWatchLogsClient)
                 .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
@@ -98,6 +106,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .executor(executor)
                 .createLogGroup(cloudWatchLogsSinkConfig.getCreateLogGroup())
                 .createLogStream(cloudWatchLogsSinkConfig.getCreateLogStream())
+                .entity(entity)
                 .build();
 
         Buffer buffer;

@@ -15,6 +15,8 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupReques
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
+import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedEntityInfo;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
@@ -25,10 +27,16 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -549,5 +557,113 @@ class CloudWatchLogsDispatcherTest {
         // Subsequent ResourceNotFoundExceptions flow to the normal retry/DLQ path: fail counter incremented for every retry.
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+    }
+
+    @Test
+    void GIVEN_resource_not_found_and_both_create_group_and_stream_throw_non_already_exists_SHOULD_not_kill_uploader() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenThrow(CloudWatchLogsException.builder().message("access denied").build());
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenThrow(CloudWatchLogsException.builder().message("access denied").build());
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // Both creation calls failed but the helper swallowed both exceptions; PutLogEvents retry succeeded.
+        verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_entity_configured_WHEN_dispatch_logs_called_SHOULD_set_entity_on_put_log_events_request() {
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "RemoteService");
+        keyAttributes.put("Name", "okta_auth0");
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("AWS.ServiceNameSource", "UserConfiguration");
+        final Entity entity = Entity.builder().keyAttributes(keyAttributes).attributes(attributes).build();
+
+        cloudWatchLogsDispatcher = CloudWatchLogsDispatcher.builder()
+                .cloudWatchLogsClient(mockCloudWatchLogsClient)
+                .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
+                .executor(mockExecutor)
+                .logGroup(LOG_GROUP)
+                .logStream(LOG_STREAM)
+                .retryCount(RETRY_COUNT)
+                .dropIfDlqNotConfigured(true)
+                .entity(entity)
+                .build();
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(response.rejectedEntityInfo()).thenReturn(null);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        final ArgumentCaptor<PutLogEventsRequest> requestCaptor = ArgumentCaptor.forClass(PutLogEventsRequest.class);
+        verify(mockCloudWatchLogsClient).putLogEvents(requestCaptor.capture());
+        final PutLogEventsRequest captured = requestCaptor.getValue();
+
+        assertThat(captured.entity(), notNullValue());
+        assertThat(captured.entity().keyAttributes(), equalTo(keyAttributes));
+        assertThat(captured.entity().attributes(), equalTo(attributes));
+    }
+
+    @Test
+    void GIVEN_entity_not_configured_WHEN_dispatch_logs_called_SHOULD_not_set_entity_on_put_log_events_request() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(response.rejectedEntityInfo()).thenReturn(null);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        final ArgumentCaptor<PutLogEventsRequest> requestCaptor = ArgumentCaptor.forClass(PutLogEventsRequest.class);
+        verify(mockCloudWatchLogsClient).putLogEvents(requestCaptor.capture());
+
+        assertThat(requestCaptor.getValue().entity(), nullValue());
+    }
+
+    @Test
+    void GIVEN_entity_rejected_WHEN_put_log_events_succeeds_SHOULD_increment_rejection_metric_and_release_events() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        final RejectedEntityInfo rejectedEntityInfo = mock(RejectedEntityInfo.class);
+        when(rejectedEntityInfo.errorTypeAsString()).thenReturn("InvalidEntity");
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(response.rejectedEntityInfo()).thenReturn(rejectedEntityInfo);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseEntityRejectedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 }
