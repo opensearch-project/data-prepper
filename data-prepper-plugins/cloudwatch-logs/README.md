@@ -111,6 +111,7 @@ threshold parameters.
 * `cloudWatchLogsRequestsSucceeded` - The number of log requests successfully made to CloudWatch Logs.
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.
 * `cloudWatchLogsEntityRejected` - The number of `PutLogEvents` responses where CloudWatch rejected the configured entity. The request itself still succeeds and events are released; this counter is the primary signal for misconfigured `entity` attributes.
+* `cloudWatchLogsUnhandledError` - The number of times an unexpected `Throwable` escaped the Uploader's normal retry/DLQ path. Distinct from `cloudWatchLogsEventsFailed`; non-zero values indicate a logic bug, classpath linkage failure, or response-handling error rather than transient API failure.
 
 ## Developer Guide
 
