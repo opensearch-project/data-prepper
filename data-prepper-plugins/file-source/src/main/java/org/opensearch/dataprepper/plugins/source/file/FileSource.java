@@ -120,7 +120,7 @@ public class FileSource implements Source<Record<Object>> {
         LOG.info("Starting file source with paths: {}", fileSourceConfig.getAllPaths());
 
         final int maxActiveFiles = fileSourceConfig.getMaxActiveFiles();
-        final int readerThreads = fileSourceConfig.getEffectiveReaderThreads();
+        final int readerThreads = fileSourceConfig.getReaderThreads();
         if (readerThreads > 0 && maxActiveFiles / readerThreads > MAX_FILES_PER_THREAD_WARNING_THRESHOLD) {
             LOG.warn("max_active_files ({}) is {} times reader_threads ({}). Files with pending data may experience high latency.",
                     maxActiveFiles, maxActiveFiles / readerThreads, readerThreads);

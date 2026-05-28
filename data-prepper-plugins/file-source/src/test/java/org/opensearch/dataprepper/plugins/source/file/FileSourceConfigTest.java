@@ -170,7 +170,7 @@ class FileSourceConfigTest {
         assertThat(config.getEncoding(), equalTo("UTF-8"));
         assertThat(config.getReadBufferSize(), equalTo(65536));
         assertThat(config.getMaxActiveFiles(), equalTo(1000));
-        assertThat(config.getReaderThreads(), equalTo(4));
+        assertThat(config.getReaderThreads(), equalTo(1));
         assertThat(config.getMaxReadTimePerFile(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getRotateWait(), equalTo(Duration.ofSeconds(5)));
         assertThat(config.getRotationDrainTimeout(), equalTo(Duration.ofSeconds(30)));
@@ -194,6 +194,44 @@ class FileSourceConfigTest {
         final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
 
         assertThat(config.getExcludePaths(), empty());
+    }
+
+    @Test
+    void reader_threads_defaults_to_four_when_tail_is_true() {
+        final Map<String, Object> configMap = Map.of("path", "/tmp/test.log", "tail", true);
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        assertThat(config.getReaderThreads(), equalTo(4));
+    }
+
+    @Test
+    void reader_threads_defaults_to_one_when_tail_is_false() {
+        final Map<String, Object> configMap = Map.of("path", "/tmp/test.log", "tail", false);
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        assertThat(config.getReaderThreads(), equalTo(1));
+    }
+
+    @Test
+    void reader_threads_honors_explicit_value_when_tail_is_false() {
+        final Map<String, Object> configMap = Map.of(
+                "path", "/tmp/test.log",
+                "tail", false,
+                "reader_threads", 8);
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        assertThat(config.getReaderThreads(), equalTo(8));
+    }
+
+    @Test
+    void reader_threads_honors_explicit_value_when_tail_is_true() {
+        final Map<String, Object> configMap = Map.of(
+                "path", "/tmp/test.log",
+                "tail", true,
+                "reader_threads", 2);
+        final FileSourceConfig config = OBJECT_MAPPER.convertValue(configMap, FileSourceConfig.class);
+
+        assertThat(config.getReaderThreads(), equalTo(2));
     }
 
     @Test

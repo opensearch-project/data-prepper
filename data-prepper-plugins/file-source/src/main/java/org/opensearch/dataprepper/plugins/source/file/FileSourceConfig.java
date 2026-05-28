@@ -28,6 +28,8 @@ public class FileSourceConfig {
     static final int DEFAULT_TIMEOUT = 5_000;
     static final String DEFAULT_TYPE = "string";
     static final String EVENT_TYPE = "event";
+    static final int DEFAULT_READER_THREADS_TAIL = 4;
+    static final int DEFAULT_READER_THREADS_ONE_SHOT = 1;
 
     @JsonProperty(ATTRIBUTE_PATH)
     private String filePathToRead;
@@ -66,7 +68,7 @@ public class FileSourceConfig {
     private int maxActiveFiles = 1000;
 
     @JsonProperty("reader_threads")
-    private int readerThreads = 4;
+    private Integer readerThreads;
 
     @JsonProperty("max_read_time_per_file")
     private Duration maxReadTimePerFile = Duration.ofSeconds(5);
@@ -176,7 +178,10 @@ public class FileSourceConfig {
     }
 
     public int getReaderThreads() {
-        return readerThreads;
+        if (readerThreads != null) {
+            return readerThreads;
+        }
+        return tail ? DEFAULT_READER_THREADS_TAIL : DEFAULT_READER_THREADS_ONE_SHOT;
     }
 
     public Duration getMaxReadTimePerFile() {
@@ -259,10 +264,6 @@ public class FileSourceConfig {
 
     public boolean isLegacyConfig() {
         return codec == null && !tail && paths.isEmpty() && excludePaths.isEmpty();
-    }
-
-    public int getEffectiveReaderThreads() {
-        return tail ? readerThreads : 1;
     }
 
     @AssertTrue(message = "The file source requires recordType to be event when using a codec.")
