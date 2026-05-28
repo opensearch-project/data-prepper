@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.TransportOptions;
@@ -17,10 +18,12 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
@@ -29,6 +32,7 @@ import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPol
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.PullIndexingConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilderFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -38,6 +42,11 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPI
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion.IndexRouter;
+import org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion.IndexShardProvider;
+import org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion.PullIngester;
+import org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion.PullIngestionEnvelopeBuilder;
+import org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion.PullIngestionMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +77,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final ExpressionEvaluator expressionEvaluator;
   private final SinkContext sinkContext;
   private final String pipeline;
+  private final PluginFactory pluginFactory;
+  private final OpenSearchSinkConfig openSearchSinkConfiguration;
   private Ingester ingester;
 
   private RestHighLevelClient restHighLevelClient;
@@ -83,6 +94,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                         final AwsCredentialsSupplier awsCredentialsSupplier,
                         final PipelineDescription pipelineDescription,
                         final PluginConfigObservable pluginConfigObservable,
+                        final PluginFactory pluginFactory,
                         final OpenSearchSinkConfig openSearchSinkConfiguration) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
@@ -96,6 +108,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.pipeline = pipelineDescription.getPipelineName();
+    this.pluginFactory = pluginFactory;
+    this.openSearchSinkConfiguration = openSearchSinkConfiguration;
     this.initialized = false;
   }
 
@@ -105,7 +119,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
-        this.shutdown();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
         this.shutdown();
@@ -116,7 +129,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         throw e;
     } catch (Exception e) {
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
-        this.shutdown();
     }
   }
 
@@ -150,25 +162,46 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     maybeUpdateServerlessNetworkPolicy();
 
-    // Create index with semantic enrichment via AWS control plane (AOSS or managed domain) if configured.
-    new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
-            connectionConfiguration,
-            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
-            openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentResourceName(),
-            configuredIndexAlias);
+    if (openSearchSinkConfiguration.getPullIndexing() == null) {
+      // Create index with semantic enrichment via AWS control plane (AOSS or managed domain) if configured.
+      new SemanticEnrichmentIndexManager(awsCredentialsSupplier).maybeCreateIndex(
+              openSearchSinkConfig.getConnectionConfiguration(),
+              openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentConfig(),
+              openSearchSinkConfig.getIndexConfiguration().getSemanticEnrichmentResourceName(),
+              configuredIndexAlias);
 
-    indexManager.setupIndex();
+      indexManager.setupIndex();
+    }
 
     final EventActionResolver eventActionResolver = new EventActionResolver(
             openSearchSinkConfig.getIndexConfiguration().getAction(),
             openSearchSinkConfig.getIndexConfiguration().getActions(),
             expressionEvaluator);
 
-    ingester = new BulkIngester(openSearchSinkConfig, expressionEvaluator, sinkContext,
-            pluginMetrics, pipeline, eventActionResolver,
-            openSearchClient, () -> openSearchClientRefresher.get(),
-            this::getIndexManager, this::getFailurePipeline,
-            new CustomDocumentBuilderFactory().create(this.indexType));
+    final PullIndexingConfig pullIndexingConfig = openSearchSinkConfiguration.getPullIndexing();
+    if (pullIndexingConfig != null) {
+      final PluginModel engineModel = pullIndexingConfig.getEngine();
+      final PluginSetting enginePluginSetting = new PluginSetting(
+              engineModel.getPluginName(), engineModel.getPluginSettings());
+      enginePluginSetting.setPipelineName(pipeline);
+      final PullEngine pullEngine = pluginFactory.loadPlugin(PullEngine.class, enginePluginSetting);
+      final IndexShardProvider indexShardProvider = new IndexShardProvider(restHighLevelClient);
+      final IndexRouter indexRouter = new IndexRouter(indexShardProvider);
+      final PullIngestionEnvelopeBuilder envelopeBuilder = new PullIngestionEnvelopeBuilder(new ObjectMapper());
+      final DocumentIdResolver documentIdResolver = new DocumentIdResolver(
+              openSearchSinkConfig.getIndexConfiguration().getDocumentIdField(),
+              openSearchSinkConfig.getIndexConfiguration().getDocumentId(),
+              expressionEvaluator);
+      final PullIngestionMetrics pullIngestionMetrics = new PullIngestionMetrics(pluginMetrics);
+      ingester = new PullIngester(pullEngine, indexRouter, indexShardProvider, envelopeBuilder, documentIdResolver,
+              openSearchSinkConfig, expressionEvaluator, sinkContext, eventActionResolver, pullIngestionMetrics);
+    } else {
+      ingester = new BulkIngester(openSearchSinkConfig, expressionEvaluator, sinkContext,
+              pluginMetrics, pipeline, eventActionResolver,
+              openSearchClient, () -> openSearchClientRefresher.get(),
+              this::getIndexManager, this::getFailurePipeline,
+              new CustomDocumentBuilderFactory().create(this.indexType));
+    }
 
     ingester.initialize();
 
