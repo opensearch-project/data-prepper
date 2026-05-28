@@ -10,26 +10,22 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
+import org.apache.tools.ant.DirectoryScanner;
+import org.apache.tools.ant.types.selectors.SelectorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.PatternSyntaxException;
 
 public final class GlobPathResolver {
 
@@ -38,91 +34,66 @@ public final class GlobPathResolver {
 
     private final List<String> includePatterns;
     private final List<String> excludePatterns;
-    private final List<PathMatcher> includeMatchers;
-    private final List<PathMatcher> excludeMatchers;
 
     public GlobPathResolver(final List<String> includePatterns, final List<String> excludePatterns) {
-        this.includePatterns = Objects.requireNonNull(includePatterns, "includePatterns must not be null");
-        this.excludePatterns = excludePatterns != null ? excludePatterns : Collections.emptyList();
-        this.includeMatchers = buildMatchers(this.includePatterns);
-        this.excludeMatchers = buildMatchers(this.excludePatterns);
+        Objects.requireNonNull(includePatterns, "includePatterns must not be null");
+        this.includePatterns = List.copyOf(includePatterns);
+        this.excludePatterns = excludePatterns != null
+                ? List.copyOf(excludePatterns)
+                : Collections.emptyList();
     }
 
     public Set<Path> resolve() {
         final Set<Path> result = new HashSet<>();
-        final Set<Path> baseDirectories = getWatchDirectories();
+        final Map<Path, List<String>> includesByBase = groupByBaseDirectory(includePatterns);
 
-        for (final Path baseDir : baseDirectories) {
+        for (final Map.Entry<Path, List<String>> entry : includesByBase.entrySet()) {
+            final Path baseDir = entry.getKey();
             if (!Files.isDirectory(baseDir)) {
                 LOG.warn("Base directory does not exist or is not a directory: {}", baseDir);
                 continue;
             }
-            walkDirectory(baseDir, result);
+            final DirectoryScanner scanner = new DirectoryScanner();
+            scanner.setBasedir(baseDir.toFile());
+            scanner.setIncludes(entry.getValue().toArray(new String[0]));
+            final List<String> relativeExcludes = relativizeExcludes(baseDir, excludePatterns);
+            if (!relativeExcludes.isEmpty()) {
+                scanner.setExcludes(relativeExcludes.toArray(new String[0]));
+            }
+            scanner.addDefaultExcludes();
+            scanner.setErrorOnMissingDir(false);
+            scanner.scan();
+            for (final String included : scanner.getIncludedFiles()) {
+                result.add(baseDir.resolve(included).toAbsolutePath().normalize());
+            }
         }
-
         return result;
     }
 
-    void walkDirectory(final Path baseDir, final Set<Path> result) {
-        walkDirectory(baseDir, createFileVisitor(result));
-    }
-
-    void walkDirectory(final Path baseDir, final SimpleFileVisitor<Path> visitor) {
-        try {
-            Files.walkFileTree(baseDir, visitor);
-        } catch (final IOException e) {
-            LOG.warn("Failed to walk directory tree at: {}", baseDir, e);
-        }
-    }
-
-    SimpleFileVisitor<Path> createFileVisitor(final Set<Path> result) {
-        return new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
-                final Path normalized = file.toAbsolutePath().normalize();
-                if (matches(normalized)) {
-                    result.add(normalized);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(final Path file, final IOException exc) {
-                LOG.warn("Failed to access file during glob resolution: {}", file, exc);
-                return FileVisitResult.CONTINUE;
-            }
-        };
-    }
-
     public boolean matches(final Path path) {
-        final Path normalized = path.toAbsolutePath().normalize();
-
+        final String normalized = path.toAbsolutePath().normalize().toString();
         boolean included = false;
-        for (final PathMatcher matcher : includeMatchers) {
-            if (matcher.matches(normalized)) {
+        for (final String pattern : includePatterns) {
+            if (SelectorUtils.matchPath(toAbsolutePattern(pattern), normalized)) {
                 included = true;
                 break;
             }
         }
-
         if (!included) {
             return false;
         }
-
-        for (final PathMatcher matcher : excludeMatchers) {
-            if (matcher.matches(normalized)) {
+        for (final String pattern : excludePatterns) {
+            if (SelectorUtils.matchPath(toAbsolutePattern(pattern), normalized)) {
                 return false;
             }
         }
-
         return true;
     }
 
     public Set<Path> getWatchDirectories() {
         final Set<Path> directories = new HashSet<>();
         for (final String pattern : includePatterns) {
-            final Path baseDir = extractBaseDirectory(pattern);
-            directories.add(baseDir);
+            directories.add(extractBaseDirectory(pattern));
         }
         return directories;
     }
@@ -149,22 +120,33 @@ public final class GlobPathResolver {
         if (Files.isDirectory(result)) {
             return result;
         }
-
         final Path parent = result.getParent();
         return Objects.requireNonNullElse(parent, result);
     }
 
-    private static List<PathMatcher> buildMatchers(final List<String> patterns) {
-        final List<PathMatcher> matchers = new ArrayList<>(patterns.size());
+    private static Map<Path, List<String>> groupByBaseDirectory(final List<String> patterns) {
+        final Map<Path, List<String>> grouped = new LinkedHashMap<>();
         for (final String pattern : patterns) {
-            try {
-                final String absolutePattern = Paths.get(pattern).toAbsolutePath().normalize().toString();
-                matchers.add(FileSystems.getDefault().getPathMatcher("glob:" + absolutePattern));
-            } catch (final PatternSyntaxException | InvalidPathException e) {
-                LOG.error("Invalid glob pattern '{}': {}", pattern, e.getMessage());
-                throw new IllegalArgumentException("Invalid glob pattern: " + pattern, e);
+            final Path baseDir = extractBaseDirectory(pattern);
+            final Path absolute = Paths.get(pattern).toAbsolutePath().normalize();
+            grouped.computeIfAbsent(baseDir, k -> new ArrayList<>())
+                    .add(baseDir.relativize(absolute).toString());
+        }
+        return grouped;
+    }
+
+    private static List<String> relativizeExcludes(final Path baseDir, final List<String> excludes) {
+        final List<String> result = new ArrayList<>(excludes.size());
+        for (final String exclude : excludes) {
+            final Path absolute = Paths.get(exclude).toAbsolutePath().normalize();
+            if (absolute.startsWith(baseDir)) {
+                result.add(baseDir.relativize(absolute).toString());
             }
         }
-        return matchers;
+        return result;
+    }
+
+    private static String toAbsolutePattern(final String pattern) {
+        return Paths.get(pattern).toAbsolutePath().normalize().toString();
     }
 }

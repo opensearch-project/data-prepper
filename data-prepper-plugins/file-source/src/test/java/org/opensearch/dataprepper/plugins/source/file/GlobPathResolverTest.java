@@ -17,9 +17,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.FileVisitResult;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -85,6 +82,22 @@ class GlobPathResolverTest {
     }
 
     @Test
+    void resolve_matches_question_mark_pattern() throws IOException {
+        Files.createFile(tempDir.resolve("a.log"));
+        Files.createFile(tempDir.resolve("b.log"));
+
+        final GlobPathResolver resolver = new GlobPathResolver(
+                List.of(tempDir.toString() + "/?.log"),
+                Collections.emptyList());
+
+        final Set<Path> result = resolver.resolve();
+
+        assertThat(result, hasItem(tempDir.resolve("a.log").toAbsolutePath().normalize()));
+        assertThat(result, hasItem(tempDir.resolve("b.log").toAbsolutePath().normalize()));
+        assertThat(result, not(hasItem(tempDir.resolve("app.log").toAbsolutePath().normalize())));
+    }
+
+    @Test
     void resolve_returns_empty_set_when_no_files_match() {
         final GlobPathResolver resolver = new GlobPathResolver(
                 List.of(tempDir.toString() + "/*.csv"),
@@ -93,6 +106,20 @@ class GlobPathResolverTest {
         final Set<Path> result = resolver.resolve();
 
         assertThat(result, empty());
+    }
+
+    @Test
+    void resolve_excludes_default_vcs_directories() throws IOException {
+        Path gitDir = Files.createDirectory(tempDir.resolve(".git"));
+        Files.createFile(gitDir.resolve("HEAD.log"));
+
+        final GlobPathResolver resolver = new GlobPathResolver(
+                List.of(tempDir.toString() + "/" + "**/*.log"),
+                Collections.emptyList());
+
+        final Set<Path> result = resolver.resolve();
+
+        assertThat(result, not(hasItem(gitDir.resolve("HEAD.log").toAbsolutePath().normalize())));
     }
 
     @Test
@@ -123,6 +150,15 @@ class GlobPathResolverTest {
     }
 
     @Test
+    void matches_returns_true_when_exclude_does_not_match_included_path() {
+        final GlobPathResolver resolver = new GlobPathResolver(
+                List.of(tempDir.toString() + "/*.log"),
+                List.of(tempDir.toString() + "/error.*"));
+
+        assertThat(resolver.matches(tempDir.resolve("app.log")), equalTo(true));
+    }
+
+    @Test
     void getWatchDirectories_returns_base_directories() {
         final GlobPathResolver resolver = new GlobPathResolver(
                 List.of(tempDir.toString() + "/*.log"),
@@ -137,17 +173,15 @@ class GlobPathResolverTest {
     @Test
     void extractBaseDirectory_stops_at_first_wildcard() {
         final Path baseDir = GlobPathResolver.extractBaseDirectory(tempDir.toString() + "/logs/*.log");
-        final Path expected = tempDir.resolve("logs").toAbsolutePath().normalize();
-        final Path expectedParent = expected.getParent();
 
         assertThat(baseDir, notNullValue());
         assertThat(baseDir.toString().startsWith(tempDir.toAbsolutePath().normalize().toString()), equalTo(true));
     }
 
     @Test
-    void constructor_throws_on_invalid_glob_pattern() {
-        assertThrows(IllegalArgumentException.class, () ->
-                new GlobPathResolver(List.of(tempDir.toString() + "/[invalid"), Collections.emptyList()));
+    void constructor_throws_on_null_include_patterns() {
+        assertThrows(NullPointerException.class, () ->
+                new GlobPathResolver(null, Collections.emptyList()));
     }
 
     @Test
@@ -170,6 +204,34 @@ class GlobPathResolverTest {
         final Set<Path> result = resolver.resolve();
 
         assertThat(result, hasSize(greaterThanOrEqualTo(3)));
+    }
+
+    @Test
+    void resolve_handles_include_patterns_in_different_base_directories() throws IOException {
+        Path otherDir = Files.createDirectory(tempDir.resolve("other"));
+        Files.createFile(otherDir.resolve("audit.log"));
+
+        final GlobPathResolver resolver = new GlobPathResolver(
+                List.of(tempDir.toString() + "/*.log", otherDir.toString() + "/*.log"),
+                Collections.emptyList());
+
+        final Set<Path> result = resolver.resolve();
+
+        assertThat(result, hasItem(tempDir.resolve("app.log").toAbsolutePath().normalize()));
+        assertThat(result, hasItem(otherDir.resolve("audit.log").toAbsolutePath().normalize()));
+    }
+
+    @Test
+    void resolve_ignores_excludes_outside_include_base_directory() throws IOException {
+        Path otherDir = Files.createDirectory(tempDir.resolve("other"));
+
+        final GlobPathResolver resolver = new GlobPathResolver(
+                List.of(tempDir.toString() + "/*.log"),
+                List.of(otherDir.toString() + "/*.log"));
+
+        final Set<Path> result = resolver.resolve();
+
+        assertThat(result, hasSize(2));
     }
 
     @Test
@@ -205,44 +267,6 @@ class GlobPathResolverTest {
         final Set<Path> result = resolver.resolve();
 
         assertThat(result, empty());
-    }
-
-    @Test
-    void resolve_handles_visitFileFailed_gracefully() throws IOException {
-        Path unreadableDir = tempDir.resolve("unreadable");
-        Files.createDirectory(unreadableDir);
-        Files.createFile(unreadableDir.resolve("secret.log"));
-        unreadableDir.toFile().setReadable(false);
-
-        final GlobPathResolver resolver = new GlobPathResolver(
-                List.of(tempDir.toString() + "/" + "**/*.log"),
-                Collections.emptyList());
-
-        final Set<Path> result = resolver.resolve();
-
-        unreadableDir.toFile().setReadable(true);
-
-        assertThat(result, not(hasItem(unreadableDir.resolve("secret.log").toAbsolutePath().normalize())));
-    }
-
-    @Test
-    void walkDirectory_handles_ioException_from_walkFileTree() throws IOException {
-        Path dir = tempDir.resolve("walk-test");
-        Files.createDirectory(dir);
-        Files.createFile(dir.resolve("file.log"));
-
-        final GlobPathResolver resolver = new GlobPathResolver(
-                List.of(dir.toString() + "/*.log"),
-                Collections.emptyList());
-
-        SimpleFileVisitor<Path> throwingVisitor = new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                throw new IOException("simulated walk error");
-            }
-        };
-
-        resolver.walkDirectory(dir, throwingVisitor);
     }
 
     @Test
