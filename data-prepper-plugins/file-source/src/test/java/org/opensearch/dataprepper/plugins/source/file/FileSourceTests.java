@@ -361,26 +361,6 @@ public class FileSourceTests {
             await().atMost(5, TimeUnit.SECONDS)
                     .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
         }
-
-        @Test
-        void start_codec_consumer_wraps_timeout_exception() throws IOException, TimeoutException {
-            doThrow(new TimeoutException("buffer full"))
-                    .when(buffer).write(any(Record.class), eq(FileSourceConfig.DEFAULT_TIMEOUT));
-
-            createObjectUnderTest().start(buffer);
-
-            final ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
-
-            await().atMost(5, TimeUnit.SECONDS)
-                    .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
-
-            verify(inputCodec).parse(any(InputStream.class), consumerArgumentCaptor.capture());
-
-            final Consumer<Record<Event>> actualConsumer = consumerArgumentCaptor.getValue();
-            final Record<Event> record = mock(Record.class);
-
-            assertThrows(RuntimeException.class, () -> actualConsumer.accept(record));
-        }
     }
 
     @Nested

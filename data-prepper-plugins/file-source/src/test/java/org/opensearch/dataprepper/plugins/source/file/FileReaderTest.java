@@ -540,6 +540,16 @@ class FileReaderTest {
                 () -> onCompleteCalled.set(true));
     }
 
+    private FileReaderContext createOneShotContextWithCodecAndAcknowledgements(final InputCodec codec) {
+        return new FileReaderContext(
+                buffer, eventFactory, fileOps, metrics, rotationDetector,
+                acknowledgementSetManager, true, StandardCharsets.UTF_8,
+                4096, 1048576, 5000, Duration.ofSeconds(30),
+                Duration.ofSeconds(30), StartPosition.BEGINNING, false,
+                Duration.ofSeconds(30), 1,
+                Duration.ofSeconds(5), 3, codec, false, in -> in);
+    }
+
     @Test
     void start_position_end_falls_back_to_zero_on_io_exception() throws Exception {
         Path testFile = tempDir.resolve("startend-error.log");
@@ -847,6 +857,58 @@ class FileReaderTest {
         verify(acknowledgementSetManager, atLeastOnce()).create(any(), any(Duration.class));
         verify(ackSet, atLeastOnce()).add(any(Event.class));
         verify(ackSet, atLeastOnce()).complete();
+    }
+
+    @Test
+    void run_one_shot_codec_handles_io_exception() throws Exception {
+        Path missingFile = tempDir.resolve("does-not-exist.log");
+
+        Counter filesClosed = mock(Counter.class);
+        Counter readErrors = mock(Counter.class);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        when(metrics.getReadErrors()).thenReturn(readErrors);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(missingFile, context);
+        reader.run();
+
+        verify(readErrors).increment();
+    }
+
+    @Test
+    void run_one_shot_codec_with_acknowledgements_creates_ack_set() throws Exception {
+        Path testFile = tempDir.resolve("one-shot-codec-ack.log");
+        Files.writeString(testFile, "line1\n");
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter linesRead = mock(Counter.class);
+        Counter eventsEmitted = mock(Counter.class);
+        Timer backpressureTimer = mock(Timer.class);
+        when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        when(metrics.getLinesRead()).thenReturn(linesRead);
+        when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
+        lenient().when(metrics.getBackpressureTimer()).thenReturn(backpressureTimer);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+        doAnswer(inv -> {
+            Consumer<Record<Event>> consumer = inv.getArgument(1);
+            consumer.accept(new Record<>(mock(Event.class)));
+            return null;
+        }).when(mockCodec).parse(any(), any());
+
+        AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
+        when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(ackSet);
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
+        reader.run();
+
+        verify(acknowledgementSetManager, atLeastOnce()).create(any(), any(Duration.class));
+        verify(ackSet, atLeastOnce()).add(any(Event.class));
     }
 
     @Test

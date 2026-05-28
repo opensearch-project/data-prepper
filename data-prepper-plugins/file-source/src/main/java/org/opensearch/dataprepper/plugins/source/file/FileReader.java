@@ -197,15 +197,7 @@ public final class FileReader implements Runnable {
         try (final InputStream rawStream = Files.newInputStream(path);
              final InputStream decompressedStream = decompressionEngine.createInputStream(rawStream)) {
             metrics.getFilesOpened().increment();
-            codec.parse(decompressedStream, record -> {
-                try {
-                    buffer.write((Record) record, writeTimeout);
-                    metrics.getEventsEmitted().increment();
-                } catch (final TimeoutException e) {
-                    metrics.getWriteTimeouts().increment();
-                    throw new RuntimeException(e);
-                }
-            });
+            parseWithCodec(decompressedStream);
         } catch (final IOException e) {
             LOG.error("Error reading file with codec: {}", path, e);
             metrics.getReadErrors().increment();
@@ -319,7 +311,7 @@ public final class FileReader implements Runnable {
         }
 
         if (codec != null && codecAccumulator.size() > 0) {
-            if (parseWithCodec(codecAccumulator.toByteArray())) {
+            if (parseWithCodec(new ByteArrayInputStream(codecAccumulator.toByteArray()))) {
                 checkpointEntry.setReadOffset(readOffset.get());
             }
         } else if (codec == null) {
@@ -379,9 +371,9 @@ public final class FileReader implements Runnable {
         }
     }
 
-    private boolean parseWithCodec(final byte[] bytes) {
+    private boolean parseWithCodec(final InputStream stream) {
         try {
-            codec.parse(new ByteArrayInputStream(bytes), record -> {
+            codec.parse(stream, record -> {
                 emitCodecRecord(record);
             });
             return true;
