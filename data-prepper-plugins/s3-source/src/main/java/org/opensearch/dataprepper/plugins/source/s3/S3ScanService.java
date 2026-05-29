@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvide
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanProcessingCondition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
  * objects and spawn a thread {@link S3SelectObjectWorker}
  */
 public class S3ScanService {
+    private static final Logger LOG = LoggerFactory.getLogger(S3ScanService.class);
     static final long SHUTDOWN_TIMEOUT = 30L;
 
     private final S3SourceConfig s3SourceConfig;
@@ -106,7 +109,13 @@ public class S3ScanService {
                     acknowledgementSetManager, s3ObjectDeleteWorker, backOffMs, pluginMetrics, conditionEvaluator,
                     bucketProcessingConditionsMap);
             workers.add(scanObjectWorker);
-            executorService.submit(new Thread(scanObjectWorker));
+            executorService.submit(() -> {
+                try {
+                    scanObjectWorker.run();
+                } catch (final Throwable t) {
+                    LOG.error("S3 scan worker terminated due to uncaught error", t);
+                }
+            });
         }
     }
 
