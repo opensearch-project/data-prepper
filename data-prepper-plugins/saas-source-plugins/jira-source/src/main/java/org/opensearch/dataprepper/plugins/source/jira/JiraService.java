@@ -97,15 +97,15 @@ public class JiraService {
                                                   Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
-        int total;
-        int startAt = 0;
+        int total = 0;
+        String nextPageToken = "";
         do {
-            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt);
+            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, nextPageToken);
             List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
-            total = searchIssues.getTotal();
-            startAt += searchIssues.getIssues().size();
+            total = total + issueList.size();
+            nextPageToken =  searchIssues.getNextPageToken();
             addItemsToQueue(issueList, itemInfoQueue);
-        } while (startAt < total);
+        } while (nextPageToken != null && !nextPageToken.isEmpty() && !nextPageToken.isBlank());
         searchResultsFoundCounter.increment(total);
         log.info("Number of tickets found in search api call: {}", total);
     }
