@@ -101,6 +101,10 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                             .log();
                     recordEvent.getMetadata().addTags(config.getTagsOnFailure());
                 }
+
+                if(config.isDeleteSourceRequested()) {
+                    recordEvent.delete(config.getSource());
+                }
             } catch (final Exception e) {
                 LOG.atError()
                         .addMarker(EVENT)
