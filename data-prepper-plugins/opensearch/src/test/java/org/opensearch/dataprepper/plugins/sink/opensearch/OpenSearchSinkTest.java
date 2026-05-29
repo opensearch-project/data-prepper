@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
@@ -69,6 +70,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.INVALID_VERSION_EXPRESSION_DROPPED_EVENTS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_BULK_SIZE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_FLUSH_TIMEOUT;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 @ExtendWith(MockitoExtension.class)
 public class OpenSearchSinkTest {
@@ -111,6 +113,9 @@ public class OpenSearchSinkTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private PluginFactory pluginFactory;
 
     @BeforeEach
     void setup() {
@@ -165,13 +170,12 @@ public class OpenSearchSinkTest {
              final MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class);
              final MockedConstruction<IndexManagerFactory> indexManagerFactoryMockedConstruction = mockConstruction(IndexManagerFactory.class, (mock, context) -> {
                  indexManagerFactory = mock;
-             });
-             final MockedConstruction<BulkIngester> bulkIngesterMockedConstruction = mockConstruction(BulkIngester.class)) {
+             })) {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting)).thenReturn(pluginMetrics);
             openSearchSinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfig, expressionEvaluator))
                     .thenReturn(openSearchSinkConfiguration);
             return new OpenSearchSink(
-                    pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                    pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         }
     }
 
@@ -181,7 +185,10 @@ public class OpenSearchSinkTest {
         when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
                 .thenReturn(indexManager);
         doNothing().when(indexManager).setupIndex();
-        objectUnderTest.initialize();
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+        }
 
         verify(pluginConfigObservable).addPluginConfigObserver(any());
         assertThat(objectUnderTest.isReady(), equalTo(true));
@@ -193,8 +200,11 @@ public class OpenSearchSinkTest {
         when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
                 .thenThrow(RuntimeException.class).thenReturn(indexManager);
         doNothing().when(indexManager).setupIndex();
-        objectUnderTest.initialize();
-        objectUnderTest.initialize();
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            objectUnderTest.initialize();
+        }
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
     }
 
@@ -202,7 +212,8 @@ public class OpenSearchSinkTest {
     void doOutput_delegates_to_ingester() throws Exception {
         final OpenSearchSink objectUnderTest = createObjectUnderTest();
 
-        final Ingester ingester = getField(objectUnderTest, "ingester");
+        final Ingester ingester = mock(Ingester.class);
+        setField(OpenSearchSink.class, objectUnderTest, "ingester", ingester);
         final List<Record<Event>> records = Collections.emptyList();
         objectUnderTest.doOutput(records);
 
@@ -213,16 +224,17 @@ public class OpenSearchSinkTest {
     void shutdown_delegates_to_ingester() throws Exception {
         final OpenSearchSink objectUnderTest = createObjectUnderTest();
 
-        final Ingester ingester = getField(objectUnderTest, "ingester");
+        final Ingester ingester = mock(Ingester.class);
+        setField(OpenSearchSink.class, objectUnderTest, "ingester", ingester);
         objectUnderTest.shutdown();
 
         verify(ingester).shutdown();
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T getField(final Object target, final String fieldName) throws Exception {
-        java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return (T) field.get(target);
+    @Test
+    void shutdown_without_initialization_does_not_throw() throws Exception {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        objectUnderTest.shutdown();
     }
+
 }

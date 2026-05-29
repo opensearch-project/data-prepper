@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
+import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTargetException;
 import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -126,7 +127,21 @@ public class PeerForwarderHttpService {
         final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap =
                 peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap();
 
-        return pipelinePeerForwarderReceiveBufferMap
-                .get(destinationPipelineName).get(destinationPluginId);
+        final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> pluginBufferMap =
+                pipelinePeerForwarderReceiveBufferMap.get(destinationPipelineName);
+        if (pluginBufferMap == null) {
+            throw new NoPeerForwarderTargetException(
+                    "Unable to find a peer-forwarder target with destinationPluginId='" + destinationPluginId +
+                            "' and destinationPipelineName='" + destinationPipelineName + "'");
+        }
+
+        final PeerForwarderReceiveBuffer<Record<Event>> buffer = pluginBufferMap.get(destinationPluginId);
+        if (buffer == null) {
+            throw new NoPeerForwarderTargetException(
+                    "Unable to find a peer-forwarder target with destinationPluginId='" + destinationPluginId +
+                            "' and destinationPipelineName='" + destinationPipelineName + "'");
+        }
+
+        return buffer;
     }
 }

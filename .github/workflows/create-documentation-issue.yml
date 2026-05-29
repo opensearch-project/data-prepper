@@ -14,14 +14,14 @@ jobs:
     steps:
       - name: GitHub App token
         id: github_app_token
-        uses: tibdex/github-app-token@v1.5.0
+        uses: tibdex/github-app-token@1901dc7d52169e70c27a8da37aef0d423e2867a2 # v1.5.0
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           installation_id: 22958780
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Edit the issue template
         run: |
@@ -29,7 +29,7 @@ jobs:
 
       - name: Create Issue From File
         id: create-issue
-        uses: peter-evans/create-issue-from-file@v4
+        uses: peter-evans/create-issue-from-file@433e51abf769039ee20ba1293a088ca19d573b7f # v4
         with:
           title: Add documentation related to new feature
           content-filepath: ./ci/documentation/issue.md

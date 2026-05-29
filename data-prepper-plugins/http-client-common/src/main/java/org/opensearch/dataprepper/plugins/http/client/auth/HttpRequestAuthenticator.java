@@ -7,25 +7,29 @@
  * compatible open source license.
  *
  */
-package org.opensearch.dataprepper.plugins.source.prometheus;
+
+package org.opensearch.dataprepper.plugins.http.client.auth;
 
 import com.linecorp.armeria.common.HttpHeadersBuilder;
 
-public interface ScrapeRequestAuthenticator {
+/**
+ * Interface for applying authentication to outgoing HTTP requests.
+ */
+public interface HttpRequestAuthenticator {
 
     void applyAuth(HttpHeadersBuilder builder);
 
-    static ScrapeRequestAuthenticator create(final ScrapeAuthenticationConfig config) {
+    static HttpRequestAuthenticator create(final HttpClientAuthenticationConfig config) {
         if (config == null) {
             return null;
         }
         if (config.getHttpBasic() != null) {
-            return new BasicAuthenticator(
+            return new BasicAuthHttpRequestAuthenticator(
                     config.getHttpBasic().getUsername(),
                     config.getHttpBasic().getPassword());
         }
         if (config.getBearerToken() != null) {
-            return new BearerTokenAuthenticator(config.getBearerToken());
+            return new BearerTokenHttpRequestAuthenticator(config.getBearerToken());
         }
         return null;
     }

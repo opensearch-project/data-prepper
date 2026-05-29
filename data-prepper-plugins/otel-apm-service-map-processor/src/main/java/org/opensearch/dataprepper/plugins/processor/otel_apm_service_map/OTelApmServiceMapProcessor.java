@@ -356,9 +356,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 combinedAttributes.put("resource", resource);
             }
             final Map<String, Object> scope = span.getScope();
-            if (scope != null ) {
+            if (scope != null) {
                 final Map<String, Object> scopeAttributes = (Map<String, Object>)scope.get("attributes");
-                if (attributes != null) {
+                if (scopeAttributes != null) {
                     combinedAttributes.putAll(scopeAttributes);
                 }
             }

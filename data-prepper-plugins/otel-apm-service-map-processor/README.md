@@ -75,6 +75,38 @@ The `metric_timestamp_granularity` option controls the truncation granularity fo
 
 In `arrival_time` mode, granularity has minimal impact since all spans in a window share the same `clock.instant()` — each window always produces one data point per label combination regardless of truncation.
 
+## Environment Derivation
+
+For every emitted `NodeOperationDetail` the processor populates `sourceNode.keyAttributes.environment` (and the matching `targetNode.keyAttributes.environment` on edge events) by inspecting OTel resource attributes — and where applicable span attributes — on the underlying spans. The same value is also written to each raw span as `attributes.derived.environment` by the companion `otel_traces` processor.
+
+Lookup precedence (first match wins):
+
+1. AWS platform detection from `cloud.platform` (and a few platform-specific signals listed below).
+2. `deployment.environment.name` from `resource.attributes`.
+3. `deployment.environment` from `resource.attributes` (legacy OTel key).
+4. Default fallback: `generic:default`.
+
+For every AWS attribute the processor checks both span-level attributes and `resource.attributes` (since most OTel SDKs emit them in the resource).
+
+| Resource (or span) attributes | `environment` value |
+|---|---|
+| `cloud.platform=aws_api_gateway` (+ optional `aws.api_gateway.stage=<s>`) | `api-gateway:<s>` |
+| `cloud.platform=aws_ec2` | `ec2:default` |
+| `cloud.platform=aws_ecs` + `aws.ecs.launchtype=fargate` | `ecs-fargate:default` |
+| `cloud.platform=aws_ecs` + `aws.ecs.launchtype=ec2` | `ecs-ec2:default` |
+| `cloud.platform=aws_ecs` (launchtype absent or other) | `ecs:default` |
+| `cloud.platform=aws_eks` | `eks:default` |
+| `cloud.platform=aws_elastic_beanstalk` | `elastic-beanstalk:default` |
+| `cloud.platform=aws_lambda` | `lambda:default` |
+| `cloud.resource_id` starts with `arn:aws:lambda:` | `lambda:default` |
+| `aws.lambda.invoked_arn` is set | `lambda:default` |
+| `cloud.provider=aws` + `faas.name=<n>` | `lambda:default` |
+| `deployment.environment.name=<env>` | `<env>` |
+| `deployment.environment=<env>` | `<env>` (legacy) |
+| (none of the above) | `generic:default` |
+
+Attribute names follow the OpenTelemetry semantic conventions for [cloud](https://opentelemetry.io/docs/specs/semconv/registry/attributes/cloud/) and [AWS](https://opentelemetry.io/docs/specs/semconv/registry/attributes/aws/).
+
 ## Pipeline Examples
 
 ### Basic Pipeline

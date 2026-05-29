@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
-import com.amazonaws.SdkClientException;
 import com.linecorp.armeria.client.retry.Backoff;
 import lombok.Getter;
 import lombok.Setter;
@@ -34,6 +33,7 @@ import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSo
 import org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisShardRecordProcessorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.BillingMode;

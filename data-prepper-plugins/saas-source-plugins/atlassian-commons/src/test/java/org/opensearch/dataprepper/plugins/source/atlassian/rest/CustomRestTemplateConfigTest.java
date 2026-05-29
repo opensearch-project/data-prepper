@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Authent
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianBearerTokenAuthConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
@@ -49,6 +50,9 @@ class CustomRestTemplateConfigTest {
     private AtlassianAuthConfig mockAuthConfig;
 
     @Mock
+    private AtlassianBearerTokenAuthConfig mockBearerAuthConfig;
+
+    @Mock
     private BasicConfig mockBasicConfig;
 
     @Mock
@@ -67,6 +71,7 @@ class CustomRestTemplateConfigTest {
         return Stream.of(
                 Arguments.of(Constants.OAUTH2, OAuth2RequestInterceptor.class),
                 Arguments.of(Constants.BASIC, BasicAuthInterceptor.class),
+                Arguments.of(Constants.BEARER_TOKEN, BearerTokenInterceptor.class),
                 Arguments.of("Default", BasicAuthInterceptor.class),
                 Arguments.of(null, BasicAuthInterceptor.class)
         );
@@ -92,7 +97,8 @@ class CustomRestTemplateConfigTest {
         lenient().when(mockBasicConfig.getUsername()).thenReturn("username");
         lenient().when(mockBasicConfig.getPassword()).thenReturn("password");
 
-        RestTemplate restTemplate = config.basicAuthRestTemplate(mockSourceConfig, mockAuthConfig);
+        AtlassianAuthConfig authConfigToUse = Constants.BEARER_TOKEN.equals(authType) ? mockBearerAuthConfig : mockAuthConfig;
+        RestTemplate restTemplate = config.basicAuthRestTemplate(mockSourceConfig, authConfigToUse);
         assertNotNull(restTemplate);
         assertInstanceOf(InterceptingClientHttpRequestFactory.class, restTemplate.getRequestFactory());
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();

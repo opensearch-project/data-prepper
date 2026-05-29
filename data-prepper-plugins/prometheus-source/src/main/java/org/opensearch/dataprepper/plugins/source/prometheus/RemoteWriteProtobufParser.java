@@ -75,9 +75,6 @@ public class RemoteWriteProtobufParser {
     private static final String SUM_SUFFIX = "_sum";
     private static final String TOTAL_SUFFIX = "_total";
     private static final String CREATED_SUFFIX = "_created";
-    private static final String SERVICE_NAME_LABEL = "service.name";
-    private static final String SERVICE_NAME_UNDERSCORE_LABEL = "service_name";
-    private static final String JOB_LABEL = "job";
 
     private final PrometheusRemoteWriteSourceConfig config;
 
@@ -284,13 +281,13 @@ public class RemoteWriteProtobufParser {
 
         final List<Record<Event>> records = new ArrayList<>();
         final Map<String, Object> commonAttributes = new HashMap<>(group.buckets.get(0).labels.commonLabels);
-        final String serviceName = extractServiceName(commonAttributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(commonAttributes);
         final Instant timeReceived = Instant.now();
 
         for (final long ts : timestampOrder.keySet()) {
             final TreeMap<Double, Long> cumulativeBuckets = new TreeMap<>();
             for (final BucketEntry bucket : group.buckets) {
-                final Double leBound = parseLeValue((String) bucket.labels.attributes.get(LE_LABEL));
+                final Double leBound = PrometheusMetricUtils.parseLeValue((String) bucket.labels.attributes.get(LE_LABEL));
                 if (leBound == null) {
                     continue;
                 }
@@ -343,7 +340,7 @@ public class RemoteWriteProtobufParser {
                     .withExplicitBoundsList(explicitBounds)
                     .withBucketCount(perBucketCounts.size())
                     .withExplicitBoundsCount(explicitBounds.size())
-                    .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
+                    .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                     .withAttributes(new HashMap<>(commonAttributes))
                     .withServiceName(serviceName)
                     .withTimeReceived(timeReceived)
@@ -373,14 +370,14 @@ public class RemoteWriteProtobufParser {
 
         final List<Record<Event>> records = new ArrayList<>();
         final Map<String, Object> commonAttributes = new HashMap<>(group.quantiles.get(0).labels.commonLabels);
-        final String serviceName = extractServiceName(commonAttributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(commonAttributes);
         final Instant timeReceived = Instant.now();
 
         for (final long ts : timestampOrder.keySet()) {
             final List<Quantile> quantiles = new ArrayList<>();
 
             for (final QuantileEntry qe : group.quantiles) {
-                final Double quantileValue = parseQuantileValue(
+                final Double quantileValue = PrometheusMetricUtils.parseQuantileValue(
                         (String) qe.labels.attributes.get(QUANTILE_LABEL));
                 if (quantileValue == null) {
                     continue;
@@ -428,21 +425,21 @@ public class RemoteWriteProtobufParser {
 
     private List<Record<Event>> convertStandalone(final StandaloneTimeSeries standalone) {
         final List<Record<Event>> records = new ArrayList<>();
-        final String serviceName = extractServiceName(standalone.labels.attributes);
+        final String serviceName = PrometheusMetricUtils.extractServiceName(standalone.labels.attributes);
         final Instant timeReceived = Instant.now();
 
         for (final Types.Sample sample : standalone.timeSeries.getSamplesList()) {
             final String timestamp = resolveTimestamp(sample.getTimestamp());
 
             if (standalone.isCounter) {
-                final String counterName = stripCounterSuffix(standalone.labels.metricName);
+                final String counterName = PrometheusMetricUtils.stripCounterSuffix(standalone.labels.metricName);
                 records.add(new Record<>(JacksonSum.builder()
                         .withName(counterName)
                         .withTime(timestamp)
                         .withValue(sample.getValue())
                         .withAttributes(new HashMap<>(standalone.labels.attributes))
                         .withIsMonotonic(true)
-                        .withAggregationTemporality("AGGREGATION_TEMPORALITY_CUMULATIVE")
+                        .withAggregationTemporality(PrometheusMetricUtils.AGGREGATION_TEMPORALITY_CUMULATIVE)
                         .withServiceName(serviceName)
                         .withTimeReceived(timeReceived)
                         .build(config.isFlattenLabels())));
@@ -461,87 +458,16 @@ public class RemoteWriteProtobufParser {
         return records;
     }
 
-    /**
-     * Extracts the service name from attributes using priority order:
-     * service.name > service_name > job > empty string.
-     */
-    static String extractServiceName(final Map<String, Object> attributes) {
-        if (attributes.containsKey(SERVICE_NAME_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_LABEL);
-        }
-        if (attributes.containsKey(SERVICE_NAME_UNDERSCORE_LABEL)) {
-            return (String) attributes.get(SERVICE_NAME_UNDERSCORE_LABEL);
-        }
-        if (attributes.containsKey(JOB_LABEL)) {
-            return (String) attributes.get(JOB_LABEL);
-        }
-        return "";
-    }
 
-    /**
-     * Strips the {@code _total} or {@code _created} suffix from counter metric names.
-     */
-    static String stripCounterSuffix(final String metricName) {
-        if (metricName.endsWith(TOTAL_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - TOTAL_SUFFIX.length());
-        }
-        if (metricName.endsWith(CREATED_SUFFIX)) {
-            return metricName.substring(0, metricName.length() - CREATED_SUFFIX.length());
-        }
-        return metricName;
-    }
-
-    /**
-     * Infers whether a metric is a counter (Sum) based on its name suffix.
-     *
-     * @param metricName the metric name
-     * @return true if the metric is a counter
-     */
     static boolean isCounter(final String metricName) {
         return metricName.endsWith(TOTAL_SUFFIX) || metricName.endsWith(CREATED_SUFFIX);
     }
 
-    /**
-     * Resolves a timestamp, using current time if the value is 0.
-     */
     private static String resolveTimestamp(final long timestampMs) {
         if (timestampMs == 0) {
             return Instant.now().toString();
         }
         return Instant.ofEpochMilli(timestampMs).toString();
-    }
-
-    /**
-     * Parses an {@code le} label value to a Double. Returns null if unparseable.
-     */
-    static Double parseLeValue(final String leValue) {
-        if (leValue == null) {
-            return null;
-        }
-        if ("+Inf".equals(leValue)) {
-            return Double.POSITIVE_INFINITY;
-        }
-        try {
-            return Double.parseDouble(leValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping histogram bucket with unparseable le value: '{}'", leValue);
-            return null;
-        }
-    }
-
-    /**
-     * Parses a {@code quantile} label value to a Double. Returns null if unparseable.
-     */
-    static Double parseQuantileValue(final String quantileValue) {
-        if (quantileValue == null) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(quantileValue);
-        } catch (final NumberFormatException e) {
-            LOG.warn("Skipping summary quantile with unparseable value: '{}'", quantileValue);
-            return null;
-        }
     }
 
     /**

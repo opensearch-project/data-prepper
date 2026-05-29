@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.annotation.Configuration;
 
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.OAUTH2;
 
 @Configuration
@@ -30,6 +31,9 @@ public class AtlassianAuthFactory implements FactoryBean<AtlassianAuthConfig> {
         String authType = sourceConfig.getAuthType();
         if (OAUTH2.equals(authType)) {
             return new AtlassianOauthConfig(sourceConfig);
+        }
+        if (BEARER_TOKEN.equals(authType)) {
+            return new AtlassianBearerTokenAuthConfig(sourceConfig);
         }
         return new AtlassianBasicAuthConfig(sourceConfig);
     }

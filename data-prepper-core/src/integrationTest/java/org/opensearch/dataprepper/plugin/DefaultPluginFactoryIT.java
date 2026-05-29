@@ -26,7 +26,12 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
+import org.opensearch.dataprepper.plugins.TestNestedPluginInterface;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
+import org.opensearch.dataprepper.plugins.TestPluginWithNestedPlugin;
+import org.opensearch.dataprepper.plugins.TestPluginWithNestedPluginConfig;
+import org.opensearch.dataprepper.plugins.TestPluginWithPluginModel;
+import org.opensearch.dataprepper.plugins.TestPluginWithPluginModelConfig;
 import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
 import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
@@ -248,6 +253,62 @@ class DefaultPluginFactoryIT {
         final TestPluggableInterface plugin = createObjectUnderTest().loadPlugin(TestPluggableInterface.class, pluginSetting);
 
         assertThat(plugin, notNullValue());
+    }
+
+    @Test
+    void loadPlugin_should_resolve_nested_plugin_annotated_with_UsesDataPrepperPlugin() {
+        final String nameValue = UUID.randomUUID().toString();
+        final String nestedTestValue = UUID.randomUUID().toString();
+
+        final Map<String, Object> nestedPluginSettings = new HashMap<>();
+        nestedPluginSettings.put("test_value", nestedTestValue);
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("name", nameValue);
+        pluginSettingMap.put("nested_plugin", Collections.singletonMap("test_nested_plugin", nestedPluginSettings));
+
+        final PluginSetting pluginSetting = new PluginSetting("test_plugin_with_nested", pluginSettingMap);
+        pluginSetting.setPipelineName(pipelineName);
+
+        final TestPluggableInterface plugin = createObjectUnderTest().loadPlugin(TestPluggableInterface.class, pluginSetting);
+
+        assertThat(plugin, instanceOf(TestPluginWithNestedPlugin.class));
+
+        final TestPluginWithNestedPlugin testPlugin = (TestPluginWithNestedPlugin) plugin;
+        final TestPluginWithNestedPluginConfig configuration = testPlugin.getConfiguration();
+
+        assertThat(configuration.getName(), equalTo(nameValue));
+        assertThat(configuration.getNestedPlugin(), notNullValue());
+        assertThat(configuration.getNestedPlugin(), instanceOf(TestNestedPluginInterface.class));
+        assertThat(configuration.getNestedPlugin().getValue(), equalTo(nestedTestValue));
+    }
+
+    @Test
+    void loadPlugin_should_deserialize_PluginModel_field_annotated_with_UsesDataPrepperPlugin_without_loading_nested_plugin() {
+        final String nameValue = UUID.randomUUID().toString();
+        final String nestedTestValue = UUID.randomUUID().toString();
+
+        final Map<String, Object> nestedPluginSettings = new HashMap<>();
+        nestedPluginSettings.put("test_value", nestedTestValue);
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("name", nameValue);
+        pluginSettingMap.put("nested_action", Collections.singletonMap("test_nested_plugin", nestedPluginSettings));
+
+        final PluginSetting pluginSetting = new PluginSetting("test_plugin_with_plugin_model", pluginSettingMap);
+        pluginSetting.setPipelineName(pipelineName);
+
+        final TestPluggableInterface plugin = createObjectUnderTest().loadPlugin(TestPluggableInterface.class, pluginSetting);
+
+        assertThat(plugin, instanceOf(TestPluginWithPluginModel.class));
+
+        final TestPluginWithPluginModel testPlugin = (TestPluginWithPluginModel) plugin;
+        final TestPluginWithPluginModelConfig configuration = testPlugin.getConfiguration();
+
+        assertThat(configuration.getName(), equalTo(nameValue));
+        assertThat(configuration.getNestedAction(), notNullValue());
+        assertThat(configuration.getNestedAction().getPluginName(), equalTo("test_nested_plugin"));
+        assertThat(configuration.getNestedAction().getPluginSettings().get("test_value"), equalTo(nestedTestValue));
     }
 
     private PluginSetting createPluginSettings(final Map<String, Object> pluginSettingMap) {

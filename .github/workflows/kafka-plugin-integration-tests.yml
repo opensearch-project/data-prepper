@@ -31,11 +31,16 @@ jobs:
 
     steps:
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: ${{ matrix.java }}
+          distribution: temurin
       - name: Checkout Data Prepper
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          add-job-summary: on-failure
 
       - name: Run Kafka Docker
         run: |
@@ -48,7 +53,7 @@ jobs:
 
       - name: Configure AWS credentials
         id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.TEST_IAM_ROLE_ARN }}
           aws-region: ${{ secrets.TEST_REGION }}
@@ -71,7 +76,7 @@ jobs:
 
       - name: Upload Unit Test Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: data-prepper-kafka-integration-tests-kafka-${{ matrix.kafka }}-java-${{ matrix.java }}
           path: '**/test-results/**/*.xml'
@@ -84,11 +89,11 @@ jobs:
 
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: test-results
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: EnricoMi/publish-unit-test-result-action@b9f6c61d965bcaa18acc02d6daf706373a448f02 # v1
         with:
           files: "test-results/**/*.xml"

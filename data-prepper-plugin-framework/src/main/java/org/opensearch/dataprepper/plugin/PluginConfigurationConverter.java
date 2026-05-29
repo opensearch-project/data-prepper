@@ -1,18 +1,26 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;
@@ -45,17 +53,20 @@ class PluginConfigurationConverter {
     }
 
     /**
-     * Converts and validates to a plugin model type. The conversion happens via
-     * Java Bean Validation 2.0.
+     * Converts and validates to a plugin model type, resolving nested plugin fields
+     * annotated with {@link org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin}.
      *
      * @param pluginConfigurationType the destination type
      * @param pluginSetting           The source {@link PluginSetting}
+     * @param pluginFactory           The {@link PluginFactory} for loading nested plugins
      * @return The converted object of type pluginConfigurationType
      * @throws InvalidPluginConfigurationException - If the plugin configuration is invalid
      */
-    public Object convert(final Class<?> pluginConfigurationType, final PluginSetting pluginSetting) {
+    public Object convert(final Class<?> pluginConfigurationType, final PluginSetting pluginSetting,
+                          final PluginFactory pluginFactory) {
         Objects.requireNonNull(pluginConfigurationType);
         Objects.requireNonNull(pluginSetting);
+        Objects.requireNonNull(pluginFactory);
 
         if (pluginConfigurationType.equals(PluginSetting.class)) {
             final Map<String, Object> settings = pluginSetting.getSettings();
@@ -64,7 +75,7 @@ class PluginConfigurationConverter {
             return pluginSetting;
         }
 
-        final Object configuration = convertSettings(pluginConfigurationType, pluginSetting);
+        final Object configuration = convertSettings(pluginConfigurationType, pluginSetting, pluginFactory);
 
         final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(configuration);
 
@@ -81,13 +92,18 @@ class PluginConfigurationConverter {
         return configuration;
     }
 
-    private Object convertSettings(final Class<?> pluginConfigurationType, final PluginSetting pluginSetting) {
+    private Object convertSettings(final Class<?> pluginConfigurationType, final PluginSetting pluginSetting,
+                                   final PluginFactory pluginFactory) {
         Map<String, Object> settingsMap = pluginSetting.getSettings();
         if (settingsMap == null)
             settingsMap = Collections.emptyMap();
 
         try {
-            return objectMapper.convertValue(settingsMap, pluginConfigurationType);
+            final JsonNode tree = objectMapper.valueToTree(settingsMap);
+            final ObjectReader reader = objectMapper.readerFor(pluginConfigurationType)
+                    .withAttribute(NestedPluginDeserializer.PLUGIN_FACTORY_ATTRIBUTE_KEY, pluginFactory);
+            final JsonParser parser = tree.traverse(objectMapper);
+            return reader.readValue(parser);
         } catch (final Exception e) {
             throw pluginConfigurationErrorHandler.handleException(pluginSetting, e);
         }

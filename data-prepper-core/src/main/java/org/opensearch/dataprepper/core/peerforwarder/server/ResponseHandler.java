@@ -13,6 +13,7 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTargetException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 
@@ -53,6 +54,11 @@ public class ResponseHandler {
         if (e instanceof TimeoutException) {
             requestTimeoutsCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, message);
+        }
+
+        if (e instanceof NoPeerForwarderTargetException) {
+            badRequestsCounter.increment();
+            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, e.getMessage());
         }
 
         if (e instanceof NullPointerException) {

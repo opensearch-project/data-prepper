@@ -61,6 +61,16 @@ public class CloudWatchLogsSinkConfig {
     @JsonProperty("endpoint")
     private String endpoint;
 
+    @JsonProperty(value = "create_log_group", defaultValue = "false")
+    private boolean createLogGroup = false;
+
+    @JsonProperty(value = "create_log_stream", defaultValue = "false")
+    private boolean createLogStream = false;
+
+    @JsonProperty("entity")
+    @Valid
+    private EntityConfig entityConfig;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -95,6 +105,18 @@ public class CloudWatchLogsSinkConfig {
 
     public String getEndpoint() {
         return endpoint;
+    }
+
+    public boolean getCreateLogGroup() {
+        return createLogGroup;
+    }
+
+    public boolean getCreateLogStream() {
+        return createLogStream;
+    }
+
+    public EntityConfig getEntityConfig() {
+        return entityConfig;
     }
 
 }

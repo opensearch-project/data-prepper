@@ -39,26 +39,73 @@ class ServiceEnvironmentProviders {
         return "generic:default";
     }
 
+    /**
+     * Get an attribute by checking span-level attributes first, then resource attributes.
+     */
+    private static String getAttributeFromSpanOrResource(final Map<String, Object> spanAttributes,
+                                                          final Map<String, Object> resourceAttributes,
+                                                          final String key) {
+        String value = getStringAttribute(spanAttributes, key);
+        if (value == null && resourceAttributes != null) {
+            value = getStringAttribute(resourceAttributes, key);
+        }
+        return value;
+    }
+
+    /**
+     * Try to extract resource attributes from the nested structure: spanAttributes["resource"]["attributes"]
+     */
+    private static Map<String, Object> extractResourceAttributes(final Map<String, Object> spanAttributes) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> resourceAttrs = (Map<String, Object>)
+                ((Map<String, Object>) spanAttributes.get("resource")).get("attributes");
+            return resourceAttrs;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     public static String getAwsServiceEnvironment(final Map<String, Object> spanAttributes) {
         try {
-            String cloudPlatform = getStringAttribute(spanAttributes, "cloud.platform");
-            if (cloudPlatform != null && cloudPlatform.equals("aws_api_gateway")) {
-                return "api-gateway:"+getStringAttribute(spanAttributes, "aws.api_gateway.stage");
+            final Map<String, Object> resourceAttributes = extractResourceAttributes(spanAttributes);
+
+            String cloudPlatform = getAttributeFromSpanOrResource(spanAttributes, resourceAttributes, "cloud.platform");
+            if ("aws_api_gateway".equals(cloudPlatform)) {
+                String stage = getAttributeFromSpanOrResource(spanAttributes, resourceAttributes, "aws.api_gateway.stage");
+                return "api-gateway:" + stage;
             }
-            if (cloudPlatform != null && cloudPlatform.equals("aws_ec2")) {
+            if ("aws_ec2".equals(cloudPlatform)) {
                 return "ec2:default";
             }
-            String cloudResourceId = getStringAttribute(spanAttributes, "cloud.resource_id");
-            String invokedArn = getStringAttribute(spanAttributes, "aws.lambda.invoked_arn");
-            if (cloudResourceId != null && cloudResourceId.startsWith("arn:aws:lambda:") || invokedArn != null) {
+            if ("aws_ecs".equals(cloudPlatform)) {
+                String launchType = getAttributeFromSpanOrResource(spanAttributes, resourceAttributes, "aws.ecs.launchtype");
+                if ("fargate".equals(launchType)) {
+                    return "ecs-fargate:default";
+                }
+                if ("ec2".equals(launchType)) {
+                    return "ecs-ec2:default";
+                }
+                return "ecs:default";
+            }
+            if ("aws_eks".equals(cloudPlatform)) {
+                return "eks:default";
+            }
+            if ("aws_elastic_beanstalk".equals(cloudPlatform)) {
+                return "elastic-beanstalk:default";
+            }
+            if ("aws_lambda".equals(cloudPlatform)) {
                 return "lambda:default";
             }
-        
-            @SuppressWarnings("unchecked")
-            Map<String, Object> resourceAttributes = (Map<String, Object>)
-                ((Map<String, Object>) spanAttributes.get("resource")).get("attributes");
-            String cloudProvider = getStringAttribute(resourceAttributes, "cloud.provider");
-            String faasName = getStringAttribute(resourceAttributes, "faas.name");
+
+            String cloudResourceId = getAttributeFromSpanOrResource(spanAttributes, resourceAttributes, "cloud.resource_id");
+            String invokedArn = getAttributeFromSpanOrResource(spanAttributes, resourceAttributes, "aws.lambda.invoked_arn");
+            if ((cloudResourceId != null && cloudResourceId.startsWith("arn:aws:lambda:")) || invokedArn != null) {
+                return "lambda:default";
+            }
+
+            String cloudProvider = resourceAttributes != null ? getStringAttribute(resourceAttributes, "cloud.provider") : null;
+            String faasName = resourceAttributes != null ? getStringAttribute(resourceAttributes, "faas.name") : null;
             if (cloudProvider != null && cloudProvider.equals("aws") && faasName != null) {
                 return "lambda:default";
             }

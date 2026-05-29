@@ -11,9 +11,15 @@ package org.opensearch.dataprepper.core.peerforwarder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.UnprocessedRequestException;
+import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.ClosedSessionException;
+import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.server.Server;
 import io.netty.handler.ssl.NotSslRecordException;
 import org.junit.jupiter.api.AfterEach;
@@ -27,6 +33,7 @@ import org.opensearch.dataprepper.core.peerforwarder.codec.JacksonPeerForwarderC
 import org.opensearch.dataprepper.core.peerforwarder.codec.JavaPeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodecAppConfig;
+import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService;
@@ -339,6 +346,65 @@ class PeerForwarder_ClientServerIT {
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_invalid_content_type_with_valid_body_returns_ok(final boolean binaryCodec) throws Exception {
+            setUpServer(binaryCodec);
+            final PeerForwarderCodec codec = applicationContext.getBean(PeerForwarderCodec.class);
+            final List<Event> eventList = outgoingRecords.stream().map(Record::getData).collect(Collectors.toList());
+            final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(eventList, pluginId, pipelineName);
+            final byte[] serializedBody = codec.serialize(peerForwardingEvents);
+
+            final WebClient client = WebClient.of("http://" + LOCALHOST + ":4994");
+
+            final AggregatedHttpResponse response = client.execute(
+                    HttpRequest.of(
+                            RequestHeaders.builder()
+                                    .method(HttpMethod.POST)
+                                    .path(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI)
+                                    .contentType(MediaType.parse("application/x-www-form-urlencoded"))
+                                    .build(),
+                            HttpData.wrap(serializedBody)
+                    )
+            ).aggregate().join();
+
+            assertThat(response.status(), equalTo(HttpStatus.OK));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_malformed_body_returns_bad_request(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
+            final String body = "this is not valid json or yaml";
+
+            final WebClient client = WebClient.of("http://" + LOCALHOST + ":4994");
+
+            final AggregatedHttpResponse response = client.execute(
+                    HttpRequest.of(
+                            RequestHeaders.builder()
+                                    .method(HttpMethod.POST)
+                                    .path(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI)
+                                    .build(),
+                            HttpData.ofUtf8(body)
+                    )
+            ).aggregate().join();
+
+            assertThat(response.status(), equalTo(HttpStatus.BAD_REQUEST));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_unknown_destination_returns_bad_request(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, UUID.randomUUID().toString(), UUID.randomUUID().toString());
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
+
+            assertThat(httpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
         }
     }
 

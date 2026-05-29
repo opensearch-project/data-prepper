@@ -90,8 +90,6 @@ public class VariableExpander {
 
         @Override
         public void refresh() {
-            // No-op as this is immutable
-            throw new UnsupportedOperationException("ImmutablePluginConfigVariable doesn't support this operation");
         }
 
         @Override
