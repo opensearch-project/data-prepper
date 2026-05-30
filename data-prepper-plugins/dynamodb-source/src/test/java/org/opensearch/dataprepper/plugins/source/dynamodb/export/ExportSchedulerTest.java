@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
+import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DescribeExportRequest;
@@ -184,6 +185,12 @@ class ExportSchedulerTest {
         assertThat(createdPartitions.get(0), instanceOf(GlobalState.class));
         assertThat(createdPartitions.get(1), instanceOf(DataFilePartition.class));
         assertThat(createdPartitions.get(2), instanceOf(DataFilePartition.class));
+
+        // Verify the GlobalState LoadStatus has accurate totalFiles count
+        GlobalState globalState = (GlobalState) createdPartitions.get(0);
+        LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
+        assertThat(loadStatus.getTotalFiles(), equalTo(2));
+        assertThat(loadStatus.getLoadedFiles(), equalTo(0));
 
         // Complete the export partition
         verify(coordinator).completePartition(any(EnhancedSourcePartition.class));
