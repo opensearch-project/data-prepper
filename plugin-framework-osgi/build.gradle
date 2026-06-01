@@ -1,0 +1,87 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+plugins {
+    id 'data-prepper.publish'
+    id 'biz.aQute.bnd.builder'
+}
+
+group = 'org.opensearch.dataprepper.core'
+
+jar {
+    bundle {
+        bnd '''\
+            Bundle-SymbolicName: org.opensearch.dataprepper.plugin.osgi
+            Export-Package: org.opensearch.dataprepper.plugin.osgi
+            Import-Package: \
+                org.opensearch.dataprepper.model.annotations,\
+                org.opensearch.dataprepper.model.source,\
+                org.opensearch.dataprepper.model.buffer,\
+                org.opensearch.dataprepper.model.processor,\
+                org.opensearch.dataprepper.model.sink,\
+                org.opensearch.dataprepper.model.plugin,\
+                org.opensearch.dataprepper.model.configuration,\
+                org.opensearch.dataprepper.model.event,\
+                org.opensearch.dataprepper.model.record,\
+                org.opensearch.dataprepper.plugin,\
+                org.apache.felix.framework,\
+                org.osgi.framework;version="[1.10,2)",\
+                org.osgi.framework.launch;version="[1.2,2)",\
+                org.osgi.framework.wiring;version="[1.2,2)",\
+                io.micrometer.core.instrument,\
+                org.slf4j;version="[2.0,3)",\
+                *;resolution:=optional
+        '''
+    }
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugin-framework')
+    implementation libs.felix.framework
+    implementation libs.slf4j.api
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'javax.inject:javax.inject:1'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    testImplementation 'ch.qos.logback:logback-classic:1.5.16'
+    testImplementation 'io.micrometer:micrometer-test'
+}
+
+// Generate a properties resource containing the data-prepper-api version so the
+// OSGi package version resolver can read it at runtime without depending on
+// manifest attributes being present in the data-prepper-api jar.
+task generateVersionResource {
+    def outputDir = layout.buildDirectory.dir('generated-resources/version')
+    inputs.property("apiVersion", project(':data-prepper-api').version)
+    outputs.dir(outputDir)
+    doLast {
+        def dir = outputDir.get().asFile
+        def metaInf = new File(dir, 'META-INF')
+        metaInf.mkdirs()
+        def propsFile = new File(metaInf, 'data-prepper-api.version.properties')
+        propsFile.text = "data-prepper-api.version=${project(':data-prepper-api').version}\n"
+    }
+}
+
+// Wiring the source dir to the task (not the raw path) makes Gradle infer the
+// dependency for every consumer of main resources (processResources, sourcesJar, ...).
+sourceSets.main.resources.srcDir(generateVersionResource)
+
+task validateBundle {
+    dependsOn jar
+    doLast {
+        def jarFile = jar.archiveFile.get().asFile
+        def jarFileObj = new java.util.jar.JarFile(jarFile)
+        def manifest = jarFileObj.manifest
+        def symbolicName = manifest.mainAttributes.getValue('Bundle-SymbolicName')
+        if (symbolicName == null || symbolicName.isEmpty()) {
+            throw new GradleException("Bundle-SymbolicName is missing from ${jarFile.name}")
+        }
+        logger.lifecycle("Bundle validation passed: ${symbolicName}")
+        jarFileObj.close()
+    }
+}
+
+check.dependsOn validateBundle

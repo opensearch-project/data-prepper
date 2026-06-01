@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugin;
@@ -65,5 +70,29 @@ class PluginProviderLoaderTest {
 
         assertThat(actualPluginProviders, not(sameInstance(originalPluginProviders)));
         assertThat(actualPluginProviders, equalTo(originalPluginProviders));
+    }
+
+    @Test
+    void getPluginProviders_caches_mode_at_construction_and_ignores_later_property_change() {
+        // Construct with legacy mode (default)
+        given(serviceLoader.spliterator())
+                .willReturn(Collections.<PluginProvider>emptyList().spliterator());
+        final PluginProviderLoader loader = createObjectUnderTest();
+
+        // Register an additional provider
+        final PluginProvider osgiProvider = mock(PluginProvider.class);
+        loader.registerProvider(osgiProvider);
+
+        // Even if we change the system property now, the mode was cached at construction
+        System.setProperty("plugin.framework", "osgi");
+        try {
+            given(serviceLoader.spliterator())
+                    .willReturn(Collections.<PluginProvider>emptyList().spliterator());
+            final Collection<PluginProvider> providers = loader.getPluginProviders();
+            // Should use legacy behavior since the mode was cached as "legacy" at construction
+            assertThat(providers.size(), equalTo(0));
+        } finally {
+            System.clearProperty("plugin.framework");
+        }
     }
 }

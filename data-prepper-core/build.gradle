@@ -37,6 +37,7 @@ dependencies {
     implementation project(':data-prepper-logstash-configuration')
     implementation project(':data-prepper-pipeline-parser')
     implementation project(':data-prepper-plugin-framework')
+    runtimeOnly project(':plugin-framework-osgi')
     testImplementation project(':data-prepper-plugin-framework').sourceSets.test.output
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation project(':data-prepper-plugins:file-source')
