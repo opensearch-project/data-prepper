@@ -40,7 +40,7 @@ import java.util.function.Function;
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
-    private final Collection<PluginProvider> pluginProviders;
+    private final PluginProviderLoader pluginProviderLoader;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
@@ -59,19 +59,13 @@ public class DefaultPluginFactory implements PluginFactory {
             final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers) {
         this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
         this.definedPluginConsumers = definedPluginConsumers;
-        Objects.requireNonNull(pluginProviderLoader);
+        this.pluginProviderLoader = Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
         this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
-        this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
-
-        if (pluginProviders.isEmpty()) {
-            throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
-                    "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
-        }
     }
 
     @Override
@@ -141,7 +135,12 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
-        final Class<? extends T> pluginClass = pluginProviders.stream()
+        final Collection<PluginProvider> currentProviders = pluginProviderLoader.getPluginProviders();
+        if (currentProviders.isEmpty()) {
+            throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
+                    "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
+        }
+        final Class<? extends T> pluginClass = currentProviders.stream()
                 .map(pluginProvider -> pluginProvider.findPluginClass(baseClass, pluginName))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
