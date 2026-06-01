@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.test.TestDISource;
@@ -44,6 +45,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,21 +126,38 @@ class DefaultPluginFactoryTest {
     }
 
     @Test
-    void constructor_should_throw_if_pluginProviders_is_null() {
-        given(pluginProviderLoader.getPluginProviders()).willReturn(null);
+    void loadPlugin_should_throw_if_pluginProviders_is_empty() {
+        given(pluginProviderLoader.getPluginProviders()).willReturn(Collections.emptyList());
 
-        assertThrows(NullPointerException.class,
-                this::createObjectUnderTest);
-        verifyNoInteractions(beanFactoryProvider);
+        final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+        final PluginSetting pluginSetting = new PluginSetting("test", Collections.emptyMap());
+        pluginSetting.setPipelineName("pipeline");
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> objectUnderTest.loadPlugin(Processor.class, pluginSetting));
+
+        assertThat(actualException.getMessage(),
+                containsString("missing the org.opensearch.dataprepper.plugin.PluginProvider file"));
+        assertThat(actualException.getMessage(),
+                containsString("the OSGi framework has not finished starting"));
     }
 
     @Test
-    void constructor_should_throw_if_pluginProviders_is_empty() {
+    void loadPlugin_should_re_read_pluginProviders_so_a_provider_registered_after_construction_is_used() {
         given(pluginProviderLoader.getPluginProviders()).willReturn(Collections.emptyList());
 
-        assertThrows(RuntimeException.class,
-                this::createObjectUnderTest);
-        verifyNoInteractions(beanFactoryProvider);
+        final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+
+        final PluginProvider lateRegisteredProvider = mock(PluginProvider.class);
+        given(lateRegisteredProvider.findPluginClass(Sink.class, pluginName))
+                .willReturn(Optional.of(TestSink.class));
+        given(pluginProviderLoader.getPluginProviders()).willReturn(List.of(lateRegisteredProvider));
+
+        final TestSink expectedInstance = mock(TestSink.class);
+        given(pluginCreator.newPluginInstance(eq(TestSink.class), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
+                .willReturn(expectedInstance);
+
+        assertThat(objectUnderTest.loadPlugin(Sink.class, pluginSetting), equalTo(expectedInstance));
     }
 
     @Test
