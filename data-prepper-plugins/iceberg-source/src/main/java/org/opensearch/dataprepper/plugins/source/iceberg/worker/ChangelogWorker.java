@@ -10,21 +10,17 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.worker;
 
-import org.apache.iceberg.FileFormat;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
-import org.apache.iceberg.avro.Avro;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.data.avro.DataReader;
-import org.apache.iceberg.data.orc.GenericOrcReader;
-import org.apache.iceberg.data.parquet.GenericParquetReaders;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.InputFile;
-import org.apache.iceberg.orc.ORC;
-import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.types.Types;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -69,6 +65,14 @@ public class ChangelogWorker implements Runnable {
     private static final int BUFFER_ACCUMULATOR_SIZE = 100;
     private static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
 
+    static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
+    static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
+    static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
+    static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordsProcessingErrors";
+    static final String BYTES_PROCESSED = "bytesProcessed";
+    static final String CARRYOVER_ROWS_REMOVED = "carryoverRowsRemoved";
+    static final String SHUFFLE_RECORDS_WRITTEN_COUNT = "shuffleRecordsWritten";
+
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final IcebergSourceConfig sourceConfig;
     private final Map<String, Table> tables;
@@ -79,6 +83,14 @@ public class ChangelogWorker implements Runnable {
     private final ShuffleStorage shuffleStorage;
     private final ShuffleNodeClient shuffleNodeClient;
     private final String localNodeAddress;
+    private final IcebergDataFileReader dataFileReader;
+    private final Counter changeEventsProcessedCounter;
+    private final Counter changeEventsProcessingErrorCounter;
+    private final Counter exportRecordsProcessedCounter;
+    private final Counter exportRecordsProcessingErrorCounter;
+    private final DistributionSummary bytesProcessedSummary;
+    private final DistributionSummary carryoverRowsRemovedSummary;
+    private final Counter shuffleRecordsWrittenCounter;
 
     public ChangelogWorker(final EnhancedSourceCoordinator sourceCoordinator,
                            final IcebergSourceConfig sourceConfig,
@@ -88,7 +100,9 @@ public class ChangelogWorker implements Runnable {
                            final AcknowledgementSetManager acknowledgementSetManager,
                            final EventFactory eventFactory,
                            final ShuffleStorage shuffleStorage,
-                           final Certificate certificate) {
+                           final Certificate certificate,
+                           final PluginMetrics pluginMetrics,
+                           final IcebergDataFileReader dataFileReader) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.tables = tables;
@@ -99,6 +113,14 @@ public class ChangelogWorker implements Runnable {
         this.shuffleStorage = shuffleStorage;
         this.shuffleNodeClient = new ShuffleNodeClient(sourceConfig.getShuffleConfig(), certificate);
         this.localNodeAddress = ShuffleNodeClient.resolveLocalAddress();
+        this.dataFileReader = dataFileReader;
+        this.changeEventsProcessedCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
+        this.changeEventsProcessingErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
+        this.exportRecordsProcessedCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
+        this.exportRecordsProcessingErrorCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSING_ERROR_COUNT);
+        this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        this.carryoverRowsRemovedSummary = pluginMetrics.summary(CARRYOVER_ROWS_REMOVED);
+        this.shuffleRecordsWrittenCounter = pluginMetrics.counter(SHUFFLE_RECORDS_WRITTEN_COUNT);
     }
 
     @Override
@@ -113,14 +135,24 @@ public class ChangelogWorker implements Runnable {
                         sourceCoordinator.acquireAvailablePartition(ChangelogTaskPartition.PARTITION_TYPE);
 
                 if (partition.isPresent() && partition.get() instanceof ChangelogTaskPartition) {
-                    processPartition((ChangelogTaskPartition) partition.get());
+                    try {
+                        processPartition((ChangelogTaskPartition) partition.get());
+                    } catch (final Exception e) {
+                        changeEventsProcessingErrorCounter.increment();
+                        throw e;
+                    }
                     processed = true;
                 } else {
                     partition.ifPresent(sourceCoordinator::giveUpPartition);
                     // Try shuffle write tasks
                     partition = sourceCoordinator.acquireAvailablePartition(ShuffleWritePartition.PARTITION_TYPE);
                     if (partition.isPresent() && partition.get() instanceof ShuffleWritePartition) {
-                        processShuffleWrite((ShuffleWritePartition) partition.get());
+                        try {
+                            processShuffleWrite((ShuffleWritePartition) partition.get());
+                        } catch (final Exception e) {
+                            changeEventsProcessingErrorCounter.increment();
+                            throw e;
+                        }
                         processed = true;
                     } else {
                         partition.ifPresent(sourceCoordinator::giveUpPartition);
@@ -135,7 +167,12 @@ public class ChangelogWorker implements Runnable {
                             partition = sourceCoordinator.acquireAvailablePartition(
                                     InitialLoadTaskPartition.PARTITION_TYPE);
                             if (partition.isPresent() && partition.get() instanceof InitialLoadTaskPartition) {
-                                processInitialLoadPartition((InitialLoadTaskPartition) partition.get());
+                                try {
+                                    processInitialLoadPartition((InitialLoadTaskPartition) partition.get());
+                                } catch (final Exception e) {
+                                    exportRecordsProcessingErrorCounter.increment();
+                                    throw e;
+                                }
                                 processed = true;
                             } else {
                                 partition.ifPresent(sourceCoordinator::giveUpPartition);
@@ -177,7 +214,7 @@ public class ChangelogWorker implements Runnable {
                 tableName, tableConfig.getIdentifierColumns(), eventFactory);
         final CarryoverRemover carryoverRemover = new CarryoverRemover();
 
-        LOG.info("Processing partition for table {} snapshot {} with {} file(s)",
+        LOG.debug("Processing partition for table {} snapshot {} with {} file(s)",
                 tableName, state.getSnapshotId(), state.getDataFilePaths().size());
 
         // Step 1: Read all rows from all data files in this partition
@@ -187,10 +224,11 @@ public class ChangelogWorker implements Runnable {
             final String taskType = state.getTaskTypes().get(i);
             final String operation = "DELETED".equals(taskType) ? "DELETE" : "INSERT";
 
-            LOG.info("Reading file {} (type: {}, operation: {})", filePath, taskType, operation);
+            LOG.debug("Reading file {} (type: {}, operation: {})", filePath, taskType, operation);
 
             final InputFile inputFile = table.io().newInputFile(filePath);
-            try (CloseableIterable<Record> reader = openDataFile(inputFile, schema, filePath)) {
+            bytesProcessedSummary.record(inputFile.getLength());
+            try (CloseableIterable<Record> reader = dataFileReader.open(inputFile, schema, filePath)) {
                 for (final Record record : reader) {
                     allRows.add(new RowWithMeta(record, operation));
                     LOG.debug("  Row: {} op={}", record, operation);
@@ -212,7 +250,9 @@ public class ChangelogWorker implements Runnable {
                 changelogRows.add(new CarryoverRemover.ChangelogRow(dataColumns, row.operation, i));
             }
             survivingIndices = carryoverRemover.removeCarryover(changelogRows);
-            LOG.info("Carryover removal: {} rows -> {} rows", allRows.size(), survivingIndices.size());
+            final int removedCount = allRows.size() - survivingIndices.size();
+            LOG.debug("Carryover removal: {} rows -> {} rows", allRows.size(), survivingIndices.size());
+            carryoverRowsRemovedSummary.record(removedCount);
             for (final int idx : survivingIndices) {
                 final RowWithMeta row = allRows.get(idx);
                 LOG.debug("  Surviving row: {} op={}", row.record, row.operation);
@@ -271,7 +311,7 @@ public class ChangelogWorker implements Runnable {
                 }
             }
             if (!deletesToSkip.isEmpty()) {
-                LOG.info("Merged {} UPDATE pair(s) (DELETE + INSERT -> INDEX only)", deletesToSkip.size());
+                LOG.debug("Merged {} UPDATE pair(s) (DELETE + INSERT -> INDEX only)", deletesToSkip.size());
             }
         }
 
@@ -305,8 +345,9 @@ public class ChangelogWorker implements Runnable {
             incrementSnapshotCompletionCount(state.getSnapshotId());
         }
 
-        LOG.info("Completed processing partition for table {} snapshot {}: {} events written",
-                tableName, state.getSnapshotId(), survivingIndices.size());
+        LOG.debug("Completed processing partition for table {} snapshot {}: {} events written",
+                tableName, state.getSnapshotId(), survivingIndices.size() - deletesToSkip.size());
+        changeEventsProcessedCounter.increment(survivingIndices.size() - deletesToSkip.size());
     }
 
     private void processInitialLoadPartition(final InitialLoadTaskPartition partition) throws Exception {
@@ -325,10 +366,11 @@ public class ChangelogWorker implements Runnable {
         final ChangelogRecordConverter converter = new ChangelogRecordConverter(
                 tableName, tableConfig.getIdentifierColumns(), eventFactory);
 
-        LOG.info("Processing initial load partition for table {} file {}",
+        LOG.debug("Processing initial load partition for table {} file {}",
                 tableName, state.getDataFilePath());
 
         final InputFile inputFile = table.io().newInputFile(state.getDataFilePath());
+        bytesProcessedSummary.record(inputFile.getLength());
 
         final boolean ackEnabled = sourceConfig.isAcknowledgmentsEnabled();
         AcknowledgementSet acknowledgementSet = null;
@@ -353,7 +395,7 @@ public class ChangelogWorker implements Runnable {
                 BufferAccumulator.create(buffer, BUFFER_ACCUMULATOR_SIZE, BUFFER_TIMEOUT);
 
         int rowCount = 0;
-        try (CloseableIterable<Record> reader = openDataFile(inputFile, schema, state.getDataFilePath())) {
+        try (CloseableIterable<Record> reader = dataFileReader.open(inputFile, schema, state.getDataFilePath())) {
             for (final Record record : reader) {
                 final Event event = converter.convert(record, schema, "INSERT", state.getSnapshotId());
                 if (acknowledgementSet != null) {
@@ -373,7 +415,8 @@ public class ChangelogWorker implements Runnable {
             incrementSnapshotCompletionCount("initial-" + state.getSnapshotId());
         }
 
-        LOG.info("Completed initial load partition for table {}: {} rows", tableName, rowCount);
+        LOG.debug("Completed initial load partition for table {}: {} rows", tableName, rowCount);
+        exportRecordsProcessedCounter.increment(rowCount);
     }
 
     private void incrementSnapshotCompletionCount(final long snapshotId) {
@@ -411,37 +454,6 @@ public class ChangelogWorker implements Runnable {
         throw new RuntimeException("Failed to update completion count for " + completionKey + " after " + maxRetries + " attempts");
     }
 
-    // TODO: Replace format switch with FormatModelRegistry when available (Iceberg 1.11+).
-    // TODO: Add GenericDeleteFilter for MoR support. See GenericReader.open(FileScanTask)
-    // in iceberg-data for the reference pattern (delete file merge + format-agnostic reading).
-    private CloseableIterable<Record> openDataFile(final InputFile inputFile,
-                                                    final Schema schema,
-                                                    final String filePath) {
-        final FileFormat format = FileFormat.fromFileName(filePath);
-        if (format == null) {
-            throw new IllegalArgumentException("Cannot determine file format for: " + filePath);
-        }
-        switch (format) {
-            case PARQUET:
-                return Parquet.read(inputFile)
-                        .project(schema)
-                        .createReaderFunc(fs -> GenericParquetReaders.buildReader(schema, fs))
-                        .build();
-            case AVRO:
-                return Avro.read(inputFile)
-                        .project(schema)
-                        .createReaderFunc(DataReader::create)
-                        .build();
-            case ORC:
-                return ORC.read(inputFile)
-                        .project(schema)
-                        .createReaderFunc(fs -> GenericOrcReader.buildReader(schema, fs))
-                        .build();
-            default:
-                throw new UnsupportedOperationException("Unsupported file format: " + format);
-        }
-    }
-
     private static class RowWithMeta {
         final Record record;
         final String operation;
@@ -470,24 +482,28 @@ public class ChangelogWorker implements Runnable {
         final String snapshotIdStr = String.valueOf(state.getSnapshotId());
         final String operation = "DELETED".equals(state.getTaskType()) ? "DELETE" : "INSERT";
 
-        LOG.info("SHUFFLE_WRITE: table={} file={} type={}", tableName, state.getDataFilePath(), state.getTaskType());
+        LOG.debug("SHUFFLE_WRITE: table={} file={} type={}", tableName, state.getDataFilePath(), state.getTaskType());
 
         // Record node address for SHUFFLE_READ to know where to pull from
         state.setNodeAddress(localNodeAddress);
 
         final InputFile inputFile = table.io().newInputFile(state.getDataFilePath());
+        bytesProcessedSummary.record(inputFile.getLength());
         try (ShuffleWriter writer = shuffleStorage.createWriter(snapshotIdStr, state.getShuffleTaskId(), numPartitions);
-             CloseableIterable<Record> reader = openDataFile(inputFile, schema, state.getDataFilePath())) {
+             CloseableIterable<Record> reader = dataFileReader.open(inputFile, schema, state.getDataFilePath())) {
 
             final org.apache.avro.Schema avroSchema = AvroSchemaUtil.convert(schema, tableName);
 
+            int recordCount = 0;
             for (final Record record : reader) {
                 final int partitionNum = computeShufflePartition(record, identifierColumns, numPartitions);
                 final byte op = "DELETE".equals(operation) ? ShuffleRecord.OP_DELETE : ShuffleRecord.OP_INSERT;
                 final byte[] serialized = RecordAvroSerializer.serialize(record, avroSchema);
                 writer.addRecord(partitionNum, op, state.getChangeOrdinal(), serialized);
+                recordCount++;
             }
             writer.finish();
+            shuffleRecordsWrittenCounter.increment(recordCount);
         }
 
         // Register location in GlobalState (Spark MapStatus pattern)
@@ -495,7 +511,7 @@ public class ChangelogWorker implements Runnable {
 
         sourceCoordinator.completePartition(partition);
         incrementSnapshotCompletionCount("sw-" + state.getSnapshotId());
-        LOG.info("SHUFFLE_WRITE completed: task={}", state.getShuffleTaskId());
+        LOG.debug("SHUFFLE_WRITE completed: task={}", state.getShuffleTaskId());
     }
 
     private void processShuffleRead(final ShuffleReadPartition partition) {
@@ -514,7 +530,7 @@ public class ChangelogWorker implements Runnable {
         final int startPartition = state.getPartitionRangeStart();
         final int endPartition = state.getPartitionRangeEnd();
 
-        LOG.info("SHUFFLE_READ: table={} partitions={}-{}", tableName, startPartition, endPartition);
+        LOG.debug("SHUFFLE_READ: table={} partitions={}-{}", tableName, startPartition, endPartition);
 
         try {
             // Collect records from all nodes for our partition range
@@ -562,6 +578,11 @@ public class ChangelogWorker implements Runnable {
                 changelogRows.add(new CarryoverRemover.ChangelogRow(dataColumns, row.operation, i));
             }
             final List<Integer> survivingIndices = carryoverRemover.removeCarryover(changelogRows);
+            final int removedCount = rows.size() - survivingIndices.size();
+            if (removedCount > 0) {
+                LOG.debug("Carryover removal: {} rows -> {} rows", rows.size(), survivingIndices.size());
+                carryoverRowsRemovedSummary.record(removedCount);
+            }
 
             // UPDATE merge
             final Set<Integer> deletesToSkip = new HashSet<>();
@@ -583,6 +604,9 @@ public class ChangelogWorker implements Runnable {
                     }
                 }
             }
+            if (!deletesToSkip.isEmpty()) {
+                LOG.debug("Merged {} UPDATE pair(s) (DELETE + INSERT -> INDEX only)", deletesToSkip.size());
+            }
 
             // Write to buffer
             final BufferAccumulator<org.opensearch.dataprepper.model.record.Record<Event>> accumulator =
@@ -596,12 +620,14 @@ public class ChangelogWorker implements Runnable {
             }
             accumulator.flush();
 
+            final int eventsWritten = survivingIndices.size() - deletesToSkip.size();
             sourceCoordinator.completePartition(partition);
             incrementSnapshotCompletionCount("sr-" + state.getSnapshotId());
-            LOG.info("SHUFFLE_READ completed: partitions={}-{}, {} events", startPartition, endPartition,
-                    survivingIndices.size() - deletesToSkip.size());
+            changeEventsProcessedCounter.increment(eventsWritten);
+            LOG.debug("SHUFFLE_READ completed: partitions={}-{}, {} events", startPartition, endPartition, eventsWritten);
 
         } catch (final Exception e) {
+            changeEventsProcessingErrorCounter.increment();
             LOG.error("SHUFFLE_READ failed for partitions {}-{}", startPartition, endPartition, e);
             markShuffleFailed(snapshotIdStr);
             sourceCoordinator.giveUpPartition(partition);

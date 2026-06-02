@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.source.iceberg.leader;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.iceberg.ChangelogScanTask;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.IncrementalChangelogScan;
@@ -17,6 +19,7 @@ import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableScan;
 import org.apache.iceberg.io.CloseableIterable;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.iceberg.TableConfig;
@@ -56,6 +59,9 @@ public class LeaderScheduler implements Runnable {
     private static final Duration DEFAULT_EXTEND_LEASE_DURATION = Duration.ofMinutes(3);
     private static final Duration COMPLETION_CHECK_INTERVAL = Duration.ofSeconds(2);
     static final String SNAPSHOT_COMPLETION_PREFIX = "snapshot-completion-";
+    static final String SNAPSHOTS_PROCESSED_COUNT = "snapshotsProcessed";
+    static final String DATA_FILE_BYTES = "dataFileBytes";
+    static final String DATA_FILES_PER_TASK = "dataFilesPerTask";
     public static final String SHUFFLE_FAILED_PREFIX = "shuffle-failed-";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
@@ -66,6 +72,9 @@ public class LeaderScheduler implements Runnable {
     private final ShuffleConfig shuffleConfig;
     private final Certificate certificate;
     private final TaskGrouper taskGrouper = new TaskGrouper();
+    private final Counter snapshotsProcessedCounter;
+    private final DistributionSummary dataFileBytesSummary;
+    private final DistributionSummary dataFilesPerTaskSummary;
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
@@ -74,7 +83,8 @@ public class LeaderScheduler implements Runnable {
                            final Map<String, Table> tables,
                            final ShuffleStorage shuffleStorage,
                            final ShuffleConfig shuffleConfig,
-                           final Certificate certificate) {
+                           final Certificate certificate,
+                           final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
         this.tableConfigs = tableConfigs;
         this.pollingInterval = pollingInterval;
@@ -82,6 +92,9 @@ public class LeaderScheduler implements Runnable {
         this.shuffleStorage = shuffleStorage;
         this.shuffleConfig = shuffleConfig;
         this.certificate = certificate;
+        this.snapshotsProcessedCounter = pluginMetrics.counter(SNAPSHOTS_PROCESSED_COUNT);
+        this.dataFileBytesSummary = pluginMetrics.summary(DATA_FILE_BYTES);
+        this.dataFilesPerTaskSummary = pluginMetrics.summary(DATA_FILES_PER_TASK);
     }
 
     @Override
@@ -162,6 +175,9 @@ public class LeaderScheduler implements Runnable {
 
             try (CloseableIterable<FileScanTask> tasks = scan.planFiles()) {
                 for (final FileScanTask task : tasks) {
+                    dataFileBytesSummary.record(task.file().fileSizeInBytes());
+                    dataFilesPerTaskSummary.record(1);
+
                     final InitialLoadTaskProgressState taskState = new InitialLoadTaskProgressState();
                     taskState.setSnapshotId(snapshotId);
                     taskState.setTableName(tableName);
@@ -244,7 +260,7 @@ public class LeaderScheduler implements Runnable {
                     continue;
                 }
 
-                LOG.info("Planning snapshot {} for table {} (operation: {})",
+                LOG.debug("Planning snapshot {} for table {} (operation: {})",
                         snapshot.snapshotId(), tableName, snapshot.operation());
 
                 // Scan once and decide path based on DELETED file presence
@@ -275,7 +291,8 @@ public class LeaderScheduler implements Runnable {
                 sourceCoordinator.saveProgressStateForPartition(
                         leaderPartition, DEFAULT_EXTEND_LEASE_DURATION);
 
-                LOG.info("Snapshot {} completed for table {}", snapshot.snapshotId(), tableName);
+                LOG.debug("Snapshot {} completed for table {}", snapshot.snapshotId(), tableName);
+                snapshotsProcessedCounter.increment();
             }
         }
     }
@@ -366,7 +383,7 @@ public class LeaderScheduler implements Runnable {
             sourceCoordinator.createPartition(new ChangelogTaskPartition(partitionKey, taskState));
         }
 
-        LOG.info("Created {} INSERT-only partition(s) for snapshot {}", taskGroups.size(), snapshotId);
+        LOG.debug("Created {} INSERT-only partition(s) for snapshot {}", taskGroups.size(), snapshotId);
         waitForSnapshotComplete(completionKey, taskGroups.size());
     }
 
@@ -393,7 +410,7 @@ public class LeaderScheduler implements Runnable {
             sourceCoordinator.createPartition(new ShuffleWritePartition(partitionKey, taskState));
         }
 
-        LOG.info("Created {} SHUFFLE_WRITE task(s) for snapshot {}", shuffleTasks.size(), snapshotId);
+        LOG.debug("Created {} SHUFFLE_WRITE task(s) for snapshot {}", shuffleTasks.size(), snapshotId);
         waitForShuffleComplete(writeCompletionKey, shuffleTasks.size(), snapshotIdStr);
 
         // Check if shuffle failed
@@ -417,7 +434,7 @@ public class LeaderScheduler implements Runnable {
                     entry.getKey(), entry.getValue(),
                     entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "null");
         }
-        LOG.info("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
+        LOG.debug("Collected {} shuffle write locations for snapshot {}", completedTaskIds.size(), snapshotId);
 
         final int numPartitions = shuffleConfig.getPartitions();
         final ShuffleNodeClient client = new ShuffleNodeClient(shuffleConfig, certificate);
@@ -429,7 +446,7 @@ public class LeaderScheduler implements Runnable {
         final List<ShufflePartitionCoalescer.PartitionRange> ranges = coalescer.coalesce(partitionSizes);
 
         if (ranges.isEmpty()) {
-            LOG.info("No data after shuffle for snapshot {}", snapshotId);
+            LOG.debug("No data after shuffle for snapshot {}", snapshotId);
             cleanupAllNodes(snapshotIdStr, locationKey);
             return true;
         }
@@ -452,7 +469,7 @@ public class LeaderScheduler implements Runnable {
             sourceCoordinator.createPartition(new ShuffleReadPartition(partitionKey, readState));
         }
 
-        LOG.info("Created {} SHUFFLE_READ task(s) for snapshot {} (coalesced from {} partitions)",
+        LOG.debug("Created {} SHUFFLE_READ task(s) for snapshot {} (coalesced from {} partitions)",
                 ranges.size(), snapshotId, numPartitions);
         waitForShuffleComplete(readCompletionKey, ranges.size(), snapshotIdStr);
 
