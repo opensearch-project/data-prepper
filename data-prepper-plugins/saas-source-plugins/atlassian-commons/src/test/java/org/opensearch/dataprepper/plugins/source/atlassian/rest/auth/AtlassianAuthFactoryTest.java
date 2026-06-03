@@ -20,7 +20,6 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 
-import java.util.UUID;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,6 +45,9 @@ public class AtlassianAuthFactoryTest {
 
     @Mock
     private PluginConfigVariable refreshTokenPluginConfigVariable;
+
+    @Mock
+    private PluginConfigVariable bearerTokenVariable;
 
     private AtlassianAuthFactory confluenceAuthFactory;
 
@@ -73,10 +75,9 @@ public class AtlassianAuthFactoryTest {
 
     @Test
     void testGetObjectBearerToken() {
-        final String token = UUID.randomUUID().toString();
         when(sourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         assertInstanceOf(AtlassianBearerTokenAuthConfig.class, confluenceAuthFactory.getObject());
     }
