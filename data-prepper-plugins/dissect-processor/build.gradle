@@ -29,10 +29,6 @@ test {
     useJUnitPlatform()
 }
 
-tasks.withType(Zip).configureEach {
-    zip64 = true
-}
-
 jmh {
     profilers = ['gc']
 }
