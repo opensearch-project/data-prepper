@@ -188,4 +188,65 @@ public class AtlassianOauthConfigTest {
         }
     }
 
+    @Test
+    void testConstructor_handles_non_string_getValue() throws NoSuchFieldException, IllegalAccessException {
+        Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
+        PluginConfigVariable nonStringAccessToken = new PluginConfigVariable() {
+            @Override
+            public Object getValue() { return 12345; }
+            @Override
+            public void setValue(Object updatedValue) {}
+            @Override
+            public void refresh() {}
+            @Override
+            public boolean isUpdatable() { return false; }
+        };
+        PluginConfigVariable nonStringRefreshToken = new PluginConfigVariable() {
+            @Override
+            public Object getValue() { return 67890; }
+            @Override
+            public void setValue(Object updatedValue) {}
+            @Override
+            public void refresh() {}
+            @Override
+            public boolean isUpdatable() { return false; }
+        };
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", nonStringAccessToken);
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "refreshToken", nonStringRefreshToken);
+
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
+
+        assertEquals("12345", jiraOauthConfig.getAccessToken());
+        assertEquals("67890", jiraOauthConfig.getRefreshToken());
+    }
+
+    @Test
+    void testRenewCredentials_handles_non_string_getValue_after_refresh()
+            throws NoSuchFieldException, IllegalAccessException {
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
+        Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
+
+        PluginConfigVariable nonStringAccessToken = new PluginConfigVariable() {
+            @Override
+            public Object getValue() { return 99999; }
+            @Override
+            public void setValue(Object updatedValue) {}
+            @Override
+            public void refresh() {}
+            @Override
+            public boolean isUpdatable() { return true; }
+        };
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", nonStringAccessToken);
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "refreshToken", accessTokenVariable);
+        when(accessTokenVariable.getValue()).thenReturn("refreshed_token");
+
+        HttpClientErrorException unauthorizedException = new HttpClientErrorException(HttpStatus.UNAUTHORIZED);
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
+                .thenThrow(unauthorizedException);
+        jiraOauthConfig.restTemplate = restTemplateMock;
+
+        assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
+        assertEquals("99999", jiraOauthConfig.getAccessToken());
+    }
+
 }
