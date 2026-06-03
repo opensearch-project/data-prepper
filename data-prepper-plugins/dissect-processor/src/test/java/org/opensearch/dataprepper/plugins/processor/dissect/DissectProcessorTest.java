@@ -131,6 +131,7 @@ class DissectProcessorTest {
         final Record<Event> record = getEvent("");
         final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+        // assert event is not modified
         assertThat(dissectedRecords.get(0).getData(), is(record.getData()));
     }
 
@@ -143,6 +144,7 @@ class DissectProcessorTest {
         final Record<Event> record = getEvent("");
         final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+        // assert event is not modified
         assertThat(dissectedRecords.get(0).getData(), is(record.getData()));
     }
 
