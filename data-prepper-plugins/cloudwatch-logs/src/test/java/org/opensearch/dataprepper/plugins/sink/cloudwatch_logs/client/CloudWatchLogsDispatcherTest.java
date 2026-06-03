@@ -38,6 +38,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -292,6 +294,13 @@ class CloudWatchLogsDispatcherTest {
 
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+
+        // Pin the contract that the catch-all in run() does NOT fire on the normal
+        // CloudWatchLogsException retry-exhaustion path. Without this, a future refactor that
+        // accidentally routes a normal exception through the catch-all (e.g. by removing the
+        // inner catch (Exception e)) would silently double-fire metrics — every retry-exhaustion
+        // would increment both eventsFailed AND unhandledError, and this test would still pass.
+        verify(mockCloudWatchLogsMetrics, never()).increaseUnhandledErrorCounter(anyInt());
 
         // No events should be released after max retries
         eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
@@ -665,5 +674,102 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsMetrics, times(1)).increaseEntityRejectedCounter(1);
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
         eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
+    }
+
+    @Test
+    void GIVEN_error_thrown_from_put_log_events_WHEN_run_SHOULD_route_to_unhandled_error_path() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(new NoSuchMethodError("simulated linkage failure"));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // Dedicated unhandled-error metric incremented once — distinct from normal retry exhaustion.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseUnhandledErrorCounter(1);
+        // Neither count flag was set before the Error escaped, so events must be accounted as failed.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
+        // No phantom successes.
+        verify(mockCloudWatchLogsMetrics, never()).increaseLogEventSuccessCounter(anyInt());
+        // Every handle released exactly once with dropIfDlqNotConfigured=true so the source can make forward progress.
+        eventHandles.forEach(handle -> verify(handle, times(1)).release(true));
+    }
+
+    @Test
+    void GIVEN_runtime_exception_from_response_handling_WHEN_run_SHOULD_route_to_unhandled_error_path() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenThrow(new RuntimeException("simulated response failure"));
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseUnhandledErrorCounter(1);
+        // PutLogEvents itself succeeded (request-level success), but the events couldn't be
+        // accounted because of the response-handling failure → fail counter increments.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
+        verify(mockCloudWatchLogsMetrics, never()).increaseLogEventSuccessCounter(anyInt());
+        eventHandles.forEach(handle -> verify(handle, times(1)).release(true));
+    }
+
+    @Test
+    void GIVEN_throwable_after_success_counted_WHEN_run_SHOULD_not_double_count_failures() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo())
+                .thenReturn(null)
+                .thenThrow(new RuntimeException("simulated post-success failure"));
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // Catch-all fired.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseUnhandledErrorCounter(1);
+        // Critical: success was already counted; the catch-all must NOT also count failures.
+        verify(mockCloudWatchLogsMetrics, never()).increaseLogEventFailCounter(anyInt());
+        // Success counter was incremented before the Throwable escaped.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventSuccessCounter(eventHandles.size());
+    }
+
+    @Test
+    void GIVEN_event_handle_release_throws_WHEN_run_SHOULD_swallow_and_continue_releasing_other_handles() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        // Handle at index 5 throws on release() — releaseOnce must swallow and the loop must continue.
+        doThrow(new RuntimeException("simulated bad handle"))
+                .when(eventHandles.get(5)).release(true);
+
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // Every handle had release(true) attempted exactly once — the bad handle did not abort the loop.
+        eventHandles.forEach(handle -> verify(handle, times(1)).release(true));
+        // No handle was released with the catch-all's negative result — the success path completed.
+        eventHandles.forEach(handle -> verify(handle, never()).release(false));
+        // Success path completed normally — catch-all NOT triggered.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventSuccessCounter(eventHandles.size());
+        verify(mockCloudWatchLogsMetrics, never()).increaseUnhandledErrorCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseLogEventFailCounter(anyInt());
     }
 }
