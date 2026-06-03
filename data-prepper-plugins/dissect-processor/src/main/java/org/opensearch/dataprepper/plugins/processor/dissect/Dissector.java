@@ -26,7 +26,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Dissector {
+    private static final Logger LOG = LoggerFactory.getLogger(Dissector.class);
     private Map<String, SkipField> skipFieldMap;
     private Map<String, NormalField> normalFieldMap;
     private Map<String, IndirectField> indirectFieldMap;
@@ -76,7 +80,7 @@ public class Dissector {
         if (!computeDelimiterPositions(text, delimStarts, delimEnds, n)) {
             return null;
         }
-        Map<Field, String> localValues = new HashMap<>(); // keyed by identity — same Field instances used for put and get
+        Map<Field, String> localValues = new HashMap<>(delimiterList.size());
         Field head = fieldsList.getFirst();
         for (int i = 0; i < n; i++) {
             int fieldStart = 0;
@@ -88,6 +92,7 @@ public class Dissector {
                 fieldStart = delimEnds[i - 1] + 1;
             }
             if (head == null) {
+                LOG.error("Dissect pattern has fewer fields than delimiters found in input");
                 return null;
             }
             String val = text.substring(fieldStart, fieldEnd);
@@ -96,6 +101,7 @@ public class Dissector {
         }
         if (delimEnds[n - 1] != text.length() - 1) {
             if (head == null) {
+                LOG.error("Dissect pattern has fewer fields than segments found in input");
                 return null;
             }
             String val = text.substring(delimEnds[n - 1] + 1);
@@ -105,7 +111,7 @@ public class Dissector {
     }
 
     private Map<String, String> getDissectedFields(Map<Field, String> localValues) {
-        final Map<String, String> results = new HashMap<>();
+        final Map<String, String> results = new HashMap<>(normalFieldMap.size() + unAppendedFieldsMap.size() + indirectFieldMap.size());
         Map<String, String> appendFieldMap = getAppendedFields(localValues);
 
         for (NormalField templateField : normalFieldMap.values()) {
@@ -130,7 +136,7 @@ public class Dissector {
                 resolvedKey = appendFieldMap.get(templateKey);
             }
             String val = localValues.get(templateField);
-            if (resolvedKey != null && val != null) {
+            if (resolvedKey != null && !resolvedKey.isEmpty() && val != null) {
                 results.put(resolvedKey, val);
             }
         }
@@ -141,7 +147,13 @@ public class Dissector {
         this.normalFieldMap = Collections.unmodifiableMap(fieldHelper.getNormalFieldMap());
         this.skipFieldMap = Collections.unmodifiableMap(fieldHelper.getSkipFieldMap());
         this.indirectFieldMap = Collections.unmodifiableMap(fieldHelper.getIndirectFieldMap());
-        this.unAppendedFieldsMap = Collections.unmodifiableMap(fieldHelper.getAppendFieldMap());
+        Map<String, List<AppendField>> sortedAppendMap = new HashMap<>();
+        for (Map.Entry<String, List<AppendField>> entry : fieldHelper.getAppendFieldMap().entrySet()) {
+            List<AppendField> sorted = new ArrayList<>(entry.getValue());
+            Collections.sort(sorted);
+            sortedAppendMap.put(entry.getKey(), Collections.unmodifiableList(sorted));
+        }
+        this.unAppendedFieldsMap = Collections.unmodifiableMap(sortedAppendMap);
     }
 
     private void parseFields(String[] fieldsArray){
@@ -149,14 +161,9 @@ public class Dissector {
             if(fieldString==null) {
                 return;
             }
-            Field field = fieldHelper.getField(fieldString);
-            if(fieldsList.size()==0) {
-                fieldsList.addLast(field);
-            }
-            else{
-                fieldsList.getLast().setNext(field);
-                fieldsList.addLast(field);
-            }
+            Field lastField = fieldsList.size() > 0 ? fieldsList.getLast() : null;
+            Field field = fieldHelper.getField(fieldString, lastField);
+            fieldsList.addLast(field);
         }
     }
 
@@ -201,9 +208,7 @@ public class Dissector {
     private Map<String, String> getAppendedFields(Map<Field, String> localValues) {
         final Map<String, String> appendFieldMap = new HashMap<>();
         for (Map.Entry<String, List<AppendField>> entry : unAppendedFieldsMap.entrySet()) {
-            List<AppendField> copy = new ArrayList<>(entry.getValue());
-            Collections.sort(copy);
-            String value = copy.stream()
+            String value = entry.getValue().stream()
                     .map(f -> localValues.getOrDefault(f, ""))
                     .collect(Collectors.joining());
             appendFieldMap.put(entry.getKey(), value);

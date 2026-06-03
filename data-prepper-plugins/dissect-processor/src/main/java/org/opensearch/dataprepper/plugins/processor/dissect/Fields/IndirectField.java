@@ -13,7 +13,7 @@ public class IndirectField extends Field {
 
 
     public IndirectField(String key) {
-        this.setKey(key);
+        super(key);
     }
 
 }
