@@ -49,6 +49,64 @@ public class AwsConfigTest {
         assertThat(awsConfig.getAwsRegion(), equalTo(Region.of(testRegion)));
     }
 
+    @Test
+    void TestConfigOptions_configuration_returns_value() throws NoSuchFieldException, IllegalAccessException {
+        final String configName = "ecs_task_role";
+        reflectivelySetField(awsConfig, "configuration", configName);
+        assertThat(awsConfig.getConfiguration(), equalTo(configName));
+    }
+
+    @Test
+    void TestConfigOptions_configuration_returns_null_by_default() {
+        assertThat(awsConfig.getConfiguration(), equalTo(null));
+    }
+
+    @Test
+    void isValidConfiguration_returns_true_when_configuration_is_null() {
+        assertThat(awsConfig.isValidConfiguration(), equalTo(true));
+    }
+
+    @Test
+    void isValidConfiguration_returns_true_when_only_configuration_is_set() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "configuration", "my_config");
+        assertThat(awsConfig.isValidConfiguration(), equalTo(true));
+    }
+
+    @Test
+    void isValidConfiguration_returns_false_when_configuration_and_region_are_set() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "configuration", "my_config");
+        reflectivelySetField(awsConfig, "awsRegion", "us-east-1");
+        assertThat(awsConfig.isValidConfiguration(), equalTo(false));
+    }
+
+    @Test
+    void isValidConfiguration_returns_false_when_configuration_and_sts_role_arn_are_set() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "configuration", "my_config");
+        reflectivelySetField(awsConfig, "awsStsRoleArn", "arn:aws:iam::123456789012:role/TestRole");
+        assertThat(awsConfig.isValidConfiguration(), equalTo(false));
+    }
+
+    @Test
+    void isValidConfiguration_returns_false_when_configuration_and_sts_header_overrides_are_set() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "configuration", "my_config");
+        reflectivelySetField(awsConfig, "awsStsHeaderOverrides", Map.of("key", "value"));
+        assertThat(awsConfig.isValidConfiguration(), equalTo(false));
+    }
+
+    @Test
+    void isValidConfiguration_returns_false_when_configuration_and_sts_external_id_are_set() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "configuration", "my_config");
+        reflectivelySetField(awsConfig, "awsStsExternalId", "ext-id-123");
+        assertThat(awsConfig.isValidConfiguration(), equalTo(false));
+    }
+
+    @Test
+    void isValidConfiguration_returns_true_when_inline_credentials_used_without_configuration() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsConfig, "awsRegion", "us-east-1");
+        reflectivelySetField(awsConfig, "awsStsRoleArn", "arn:aws:iam::123456789012:role/TestRole");
+        assertThat(awsConfig.isValidConfiguration(), equalTo(true));
+    }
+
     private void reflectivelySetField(final AwsConfig awsConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
         final Field field = AwsConfig.class.getDeclaredField(fieldName);
         try {

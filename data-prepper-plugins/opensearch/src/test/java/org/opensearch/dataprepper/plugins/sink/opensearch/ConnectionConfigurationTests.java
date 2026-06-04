@@ -168,7 +168,7 @@ class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
@@ -410,7 +410,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -435,7 +435,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final OpenSearchClient openSearchClient;
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
@@ -473,7 +473,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -509,7 +509,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
@@ -549,7 +549,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -584,7 +584,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);

@@ -28,6 +28,10 @@ public class AwsStsConfiguration {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("use_aws_sdk_default")
+    private boolean useAwsSdkDefault = false;
+
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -38,5 +42,9 @@ public class AwsStsConfiguration {
 
     public Map<String, String> getStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public boolean isUseAwsSdkDefault() {
+        return useAwsSdkDefault;
     }
 }

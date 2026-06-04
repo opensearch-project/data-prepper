@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ActionType;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
@@ -66,7 +67,7 @@ public class MlCommonRequesterTest {
         when(mockMLProcessorConfig.getActionType()).thenReturn(ActionType.BATCH_PREDICT);
         when(mockMLProcessorConfig.getAwsAuthenticationOptions()).thenReturn(mockAwsAuthenticationOptions);
         when(mockAwsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
         when(mockAwsCredentialsProvider.resolveCredentials()).thenReturn(mockAwsCredentials);
 
         mlCommonRequester = new MlCommonRequester(Aws4Signer.create(), mockMLProcessorConfig, mockAwsCredentialsSupplier, mockHttpClientExecutor);

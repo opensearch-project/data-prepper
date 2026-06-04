@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.aws.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
@@ -33,6 +34,10 @@ public class AwsConfig {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("configuration")
+    private String configuration;
+
+
     @JsonProperty("sts_external_id")
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
@@ -52,4 +57,18 @@ public class AwsConfig {
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
     }
+
+    @AssertTrue(message = "'configuration' cannot be used together with 'region', 'sts_role_arn', 'sts_header_overrides', or 'sts_external_id'. " +
+            "Use either a named configuration reference or inline credentials, not both.")
+    public boolean isValidConfiguration() {
+        if (configuration != null) {
+            return awsRegion == null && awsStsRoleArn == null && awsStsHeaderOverrides == null && awsStsExternalId == null;
+        }
+        return true;
+    }
+
+    public String getConfiguration() {
+        return configuration;
+    }
+
 }

@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSink
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -85,7 +86,7 @@ public class PrometheusSinkTest extends BaseDataPrepperPluginStandardTestSuite {
         PluginModel codecConfiguration = new PluginModel("http", new HashMap<>());
         awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("us-west-2")));
         counter = mock(Counter.class);
         summary = mock(DistributionSummary.class);

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp.http;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -41,7 +42,7 @@ class SigV4SignerTest {
 
         final AwsBasicCredentials mockCredentials = AwsBasicCredentials.create("mockAccessKey", "mockSecretKey");
         final StaticCredentialsProvider mockCredentialsProvider = StaticCredentialsProvider.create(mockCredentials);
-        when(mockSupplier.getProvider(any())).thenReturn(mockCredentialsProvider);
+        when(mockSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockCredentialsProvider);
     }
 
     @Test

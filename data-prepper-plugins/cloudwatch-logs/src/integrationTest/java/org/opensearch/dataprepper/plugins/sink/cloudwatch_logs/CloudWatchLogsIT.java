@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsClientFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsRequest;
@@ -157,7 +158,7 @@ public class CloudWatchLogsIT {
         when(awsConfig.getAwsStsRoleArn()).thenReturn(awsRole);
         when(awsConfig.getAwsStsExternalId()).thenReturn(null);
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(null);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, new HashMap<>(), null);
         logGroupName = System.getProperty("tests.cloudwatch.log_group");
         logStreamName = createLogStream(logGroupName);
@@ -557,7 +558,7 @@ public class CloudWatchLogsIT {
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(provider);
 
         sink = createObjectUnderTest();
         Collection<Record<Event>> records = getRecordList(NUM_RECORDS);

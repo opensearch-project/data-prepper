@@ -22,6 +22,7 @@ import org.opensearch.client.core.MainResponse;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 
 import javax.net.ssl.SSLException;
@@ -128,7 +129,7 @@ class ConnectionConfiguration_ServerTest {
     class DefaultSigV4Configuration {
         @BeforeEach
         void setUp() {
-            when(awsCredentialsSupplier.getProvider(any())).thenReturn(AnonymousCredentialsProvider.create());
+            when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(AnonymousCredentialsProvider.create());
         }
 
         private ConnectionConfiguration createObjectUnderTest() {

@@ -110,4 +110,20 @@ class DefaultAwsCredentialsSupplierTest {
     private static List<Region> getRegions() {
         return Region.regions();
     }
+
+    @Test
+    void getProvider_with_configurationName_resolves_and_delegates() {
+        final String configName = "ecs_task_role";
+        final AwsCredentialsOptions resolvedOptions = mock(AwsCredentialsOptions.class);
+        final AwsCredentialsProvider expectedProvider = mock(AwsCredentialsProvider.class);
+
+        when(credentialsProviderFactory.resolveNamedConfiguration(configName)).thenReturn(resolvedOptions);
+        when(credentialsCache.getOrCreate(any(), any())).thenReturn(expectedProvider);
+
+        final AwsCredentialsProvider result = createObjectUnderTest().getProvider(configName);
+
+        assertThat(result, equalTo(expectedProvider));
+        verify(credentialsProviderFactory).resolveNamedConfiguration(configName);
+    }
+
 }
