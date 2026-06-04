@@ -41,11 +41,20 @@ public class AwsAuthenticationDecorator implements AuthenticationDecorator {
     private final String serviceName;
 
     public AwsAuthenticationDecorator(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier,
-                                      @Nonnull final AwsConfig awsConfig,
+                                      final AwsConfig awsConfig,
                                       @Nonnull final String serviceName) {
-        this.region = awsConfig.getAwsRegion();
         this.serviceName = serviceName;
-        this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig));
+        if (awsConfig != null && awsConfig.getConfiguration() != null) {
+            this.region = awsCredentialsSupplier.getDefaultRegion().orElse(null);
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(awsConfig.getConfiguration());
+        } else if (awsConfig != null) {
+            this.region = awsConfig.getAwsRegion();
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig));
+        } else {
+            this.region = awsCredentialsSupplier.getDefaultRegion().orElse(null);
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(
+                    AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider());
+        }
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {

@@ -28,6 +28,14 @@ public interface AwsCredentialsSupplier {
     AwsCredentialsProvider getProvider(AwsCredentialsOptions options);
 
     /**
+     * Gets an AWS SDK {@link AwsCredentialsProvider} resolved from a named configuration
+     * defined in the extensions.aws.configurations block.
+     * @param configurationName The name of the configuration (e.g. "ecs_task_role")
+     * @return An {@link AwsCredentialsProvider} to use.
+     */
+    AwsCredentialsProvider getProvider(String configurationName);
+
+    /**
      * Gets the default region if it is configured. Otherwise returns null
      * @return Default {@link Region}
      */

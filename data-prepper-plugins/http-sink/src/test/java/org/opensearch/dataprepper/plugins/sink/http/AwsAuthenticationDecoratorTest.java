@@ -206,7 +206,18 @@ public class AwsAuthenticationDecoratorTest {
     }
 
     @Test
-    void test_constructor_with_null_config_throws_exception() {
-        assertThrows(NullPointerException.class, () -> new AwsAuthenticationDecorator(awsCredentialsSupplier, null, TEST_SERVICE_NAME));
+    void test_constructor_with_null_config_uses_default_credentials() {
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, null, TEST_SERVICE_NAME);
+        assertThat(decorator, notNullValue());
+    }
+
+    @Test
+    void test_constructor_with_named_configuration() {
+        when(awsConfig.getConfiguration()).thenReturn("ecs_task_role");
+        when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(java.util.Optional.of(TEST_REGION));
+        when(awsCredentialsSupplier.getProvider("ecs_task_role")).thenReturn(awsCredentialsProvider);
+
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, awsConfig, TEST_SERVICE_NAME);
+        assertThat(decorator, notNullValue());
     }
 }

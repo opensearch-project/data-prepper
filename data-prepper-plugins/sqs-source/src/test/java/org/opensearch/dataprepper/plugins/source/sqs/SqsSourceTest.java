@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.sqs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -57,7 +58,7 @@ class SqsSourceTest {
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/example-role");
         when(sqsSourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(mock(AwsCredentialsProvider.class));
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mock(AwsCredentialsProvider.class));
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-2"));
         assertDoesNotThrow(() -> sqsSource.start(buffer));
     }

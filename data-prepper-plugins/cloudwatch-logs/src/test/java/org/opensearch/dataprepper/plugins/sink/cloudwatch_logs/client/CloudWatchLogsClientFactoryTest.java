@@ -63,7 +63,7 @@ class CloudWatchLogsClientFactoryTest {
 
     @Test
     void GIVEN_default_credentials_SHOULD_return_non_null_client() {
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
         final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
 
         assertNotNull(cloudWatchLogsClientToTest);
@@ -94,7 +94,7 @@ class CloudWatchLogsClientFactoryTest {
         when(mockAwsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(mockAwsCredentialsSupplier.getProvider(ArgumentMatchers.any())).thenReturn(expectedCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(ArgumentMatchers.any(AwsCredentialsOptions.class))).thenReturn(expectedCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(mockAwsConfig.getAwsRegion())).thenReturn(cloudWatchLogsClientBuilder);
@@ -130,7 +130,7 @@ class CloudWatchLogsClientFactoryTest {
             "X-Custom-Header", "custom-value",
             "X-Request-ID", "request-123"
         );
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
@@ -161,7 +161,7 @@ class CloudWatchLogsClientFactoryTest {
     void GIVEN_empty_custom_headers_SHOULD_create_client_without_custom_headers() {
         // Arrange
         final Map<String, String> emptyHeaders = new HashMap<>();
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
@@ -191,7 +191,7 @@ class CloudWatchLogsClientFactoryTest {
     void GIVEN_endpoint_SHOULD_create_client_with_endpoint_override() {
         // Arrange
         final String customEndpoint = "https://logs.us-west-2.amazonaws.com";
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
@@ -218,7 +218,7 @@ class CloudWatchLogsClientFactoryTest {
     @Test
     void GIVEN_null_endpoint_SHOULD_create_client_without_endpoint_override() {
         // Arrange
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
@@ -240,7 +240,7 @@ class CloudWatchLogsClientFactoryTest {
     @Test
     void GIVEN_empty_endpoint_SHOULD_create_client_without_endpoint_override() {
         // Arrange
-        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
