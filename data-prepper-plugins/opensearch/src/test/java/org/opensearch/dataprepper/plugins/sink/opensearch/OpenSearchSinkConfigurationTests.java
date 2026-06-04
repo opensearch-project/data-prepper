@@ -31,6 +31,7 @@ public class OpenSearchSinkConfigurationTests {
     private static final String INVALID_ACTIONS_WITH_EXPRESSION_CONFIG = "invalid-actions-with-expression";
     private static final String CREATE_ACTION_CONFIG = "create-action";
     private static final String CREATE_ACTIONS_WITH_EXPRESSION_CONFIG = "create-actions-with-expression";
+    private static final String VALID_SINK_WITH_PATH_PREFIX_CONFIG = "valid-sink-with-path-prefix";
     private ExpressionEvaluator expressionEvaluator;
 
     ObjectMapper objectMapper;
@@ -92,6 +93,13 @@ public class OpenSearchSinkConfigurationTests {
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
         assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
+    }
+
+    @Test
+    public void testReadOSConfigWithPathPrefix() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(VALID_SINK_WITH_PATH_PREFIX_CONFIG);
+
+        assertEquals("/os", openSearchSinkConfig.getPathPrefix());
     }
 
 
