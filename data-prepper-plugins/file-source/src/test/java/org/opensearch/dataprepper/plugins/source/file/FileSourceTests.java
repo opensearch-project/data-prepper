@@ -196,6 +196,15 @@ public class FileSourceTests {
         }
 
         @Test
+        public void testLegacyPathWithWildcardIsReadLiterallyAndNotGlobExpanded() throws TimeoutException {
+            buffer = mock(Buffer.class);
+            pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, "src/test/resources/*.tst");
+            fileSource = createObjectUnderTest();
+            fileSource.start(buffer);
+            verify(buffer, after(500).never()).write(any(Record.class), anyInt());
+        }
+
+        @Test
         public void testFileSourceWithNullFilePathThrowsNullPointerException() {
             pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, null);
             assertThrows(IllegalArgumentException.class, FileSourceTests.this::createObjectUnderTest);
