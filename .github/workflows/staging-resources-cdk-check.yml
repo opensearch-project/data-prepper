@@ -22,12 +22,12 @@ jobs:
         working-directory: ./release/staging-resources-cdk
     steps:
     - name: Set up Node.js
-      uses: actions/setup-node@7c12f8017d5436eb855f1ed4399f037a36fbd9e8 # v2
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '16'
 
     - name: Checkout Data Prepper
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install NPM Dependencies
       run: npm install
