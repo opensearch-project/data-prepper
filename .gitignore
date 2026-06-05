@@ -25,7 +25,8 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 .DS_Store
 .idea
 *.iml
-.kiro
+.kiro/*
+!.kiro/steering/
 .vscode
 .project
 .classpath
@@ -40,4 +41,3 @@ trace-tester.py
 
 # Claude Code
 .claude/settings.local.json
-CLAUDE.md
