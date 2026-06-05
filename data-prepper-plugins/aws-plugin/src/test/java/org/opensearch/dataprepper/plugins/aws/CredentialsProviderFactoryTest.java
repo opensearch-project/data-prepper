@@ -52,6 +52,8 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -530,4 +532,67 @@ class CredentialsProviderFactoryTest {
     private String createStsRole() {
         return String.format("arn:aws:iam::123456789012:role/%s", UUID.randomUUID());
     }
+
+    @Nested
+    class ResolveNamedConfiguration {
+        @Test
+        void throws_when_awsPluginConfig_is_null() {
+            final CredentialsProviderFactory factory = new CredentialsProviderFactory(defaultStsConfiguration);
+            assertThrows(IllegalArgumentException.class, () -> factory.resolveNamedConfiguration("some_config"));
+        }
+
+        @Test
+        void throws_when_named_config_not_found() {
+            final AwsPluginConfig pluginConfig = mock(AwsPluginConfig.class);
+            when(pluginConfig.getConfiguration("missing")).thenReturn(null);
+            final CredentialsProviderFactory factory = new CredentialsProviderFactory(defaultStsConfiguration, pluginConfig);
+            assertThrows(IllegalArgumentException.class, () -> factory.resolveNamedConfiguration("missing"));
+        }
+
+        @Test
+        void returns_default_credentials_when_useAwsSdkDefault_is_true() {
+            final AwsPluginConfig pluginConfig = mock(AwsPluginConfig.class);
+            final AwsStsConfiguration namedConfig = mock(AwsStsConfiguration.class);
+            when(namedConfig.isUseAwsSdkDefault()).thenReturn(true);
+            when(pluginConfig.getConfiguration("ecs_task_role")).thenReturn(namedConfig);
+            final CredentialsProviderFactory factory = new CredentialsProviderFactory(defaultStsConfiguration, pluginConfig);
+
+            final AwsCredentialsOptions result = factory.resolveNamedConfiguration("ecs_task_role");
+            assertThat(result, equalTo(AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider()));
+        }
+
+        @Test
+        void returns_options_with_region_and_role() {
+            final AwsPluginConfig pluginConfig = mock(AwsPluginConfig.class);
+            final AwsStsConfiguration namedConfig = mock(AwsStsConfiguration.class);
+            when(namedConfig.isUseAwsSdkDefault()).thenReturn(false);
+            when(namedConfig.getAwsRegion()).thenReturn(Region.EU_WEST_1);
+            when(namedConfig.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/TestRole");
+            when(namedConfig.getStsHeaderOverrides()).thenReturn(Map.of("key", "value"));
+            when(pluginConfig.getConfiguration("custom_config")).thenReturn(namedConfig);
+            final CredentialsProviderFactory factory = new CredentialsProviderFactory(defaultStsConfiguration, pluginConfig);
+
+            final AwsCredentialsOptions result = factory.resolveNamedConfiguration("custom_config");
+            assertThat(result.getRegion(), equalTo(Region.EU_WEST_1));
+            assertThat(result.getStsRoleArn(), equalTo("arn:aws:iam::123456789012:role/TestRole"));
+            assertThat(result.getStsHeaderOverrides(), equalTo(Map.of("key", "value")));
+        }
+
+        @Test
+        void returns_options_with_nulls_when_fields_not_set() {
+            final AwsPluginConfig pluginConfig = mock(AwsPluginConfig.class);
+            final AwsStsConfiguration namedConfig = mock(AwsStsConfiguration.class);
+            when(namedConfig.isUseAwsSdkDefault()).thenReturn(false);
+            when(namedConfig.getAwsRegion()).thenReturn(null);
+            when(namedConfig.getAwsStsRoleArn()).thenReturn(null);
+            when(namedConfig.getStsHeaderOverrides()).thenReturn(null);
+            when(pluginConfig.getConfiguration("minimal")).thenReturn(namedConfig);
+            final CredentialsProviderFactory factory = new CredentialsProviderFactory(defaultStsConfiguration, pluginConfig);
+
+            final AwsCredentialsOptions result = factory.resolveNamedConfiguration("minimal");
+            assertThat(result.getRegion(), nullValue());
+            assertThat(result.getStsRoleArn(), nullValue());
+        }
+    }
+
 }

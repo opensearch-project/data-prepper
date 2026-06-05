@@ -24,6 +24,7 @@ public class CloudWatchLogsMetrics {
     public static final String CLOUDWATCH_LOGS_LOG_SIZE = "cloudWatchLogsLogSize";
     public static final String CLOUDWATCH_LOGS_REQUEST_SIZE = "cloudWatchLogsRequestSize";
     public static final String CLOUDWATCH_LOGS_ENTITY_REJECTED = "cloudWatchLogsEntityRejected";
+    public static final String CLOUDWATCH_LOGS_UNHANDLED_ERROR = "cloudWatchLogsUnhandledError";
     private final Counter logEventSuccessCounter;
     private final Counter logEventFailCounter;
     private final Counter requestSuccessCount;
@@ -31,6 +32,7 @@ public class CloudWatchLogsMetrics {
     private final Counter requestMultiFailCount;
     private final Counter logLargeEventsDroppedCounter;
     private final Counter entityRejectedCounter;
+    private final Counter unhandledErrorCounter;
     private final DistributionSummary logSizeMetric;
     private final DistributionSummary requestSizeMetric;
 
@@ -42,6 +44,7 @@ public class CloudWatchLogsMetrics {
         this.requestSuccessCount = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED);
         this.logLargeEventsDroppedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_LARGE_EVENTS_DROPPED);
         this.entityRejectedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_REJECTED);
+        this.unhandledErrorCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_UNHANDLED_ERROR);
         this.logSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_LOG_SIZE);
         this.requestSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_REQUEST_SIZE);
     }
@@ -72,6 +75,10 @@ public class CloudWatchLogsMetrics {
 
     public void increaseEntityRejectedCounter(int value) {
         entityRejectedCounter.increment(value);
+    }
+
+    public void increaseUnhandledErrorCounter(int value) {
+        unhandledErrorCounter.increment(value);
     }
 
     public void recordLogSize(int value) {

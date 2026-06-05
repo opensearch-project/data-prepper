@@ -38,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
@@ -145,7 +146,7 @@ public class LambdaProcessorIT {
         lambdaProcessorConfig = mock(LambdaProcessorConfig.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         pluginFactory = mock(PluginFactory.class);
         JsonInputCodecConfig jsonInputCodecConfig = mock(JsonInputCodecConfig.class);
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
@@ -476,7 +477,7 @@ public class LambdaProcessorIT {
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
 
         // Setup the mock for getProvider
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         // Mock the factory to inject our CountingRetryCondition into the LambdaAsyncClient
         try (MockedStatic<LambdaClientFactory> mockedFactory = mockStatic(LambdaClientFactory.class)) {

@@ -31,7 +31,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 @Builder
@@ -117,9 +119,27 @@ public class CloudWatchLogsDispatcher {
         private final boolean createLogGroup;
         private final boolean createLogStream;
 
+        @Builder.Default
+        private final Set<EventHandle> releasedHandles = new HashSet<>();
+        private boolean countedAsSuccess;
+        private boolean countedAsFailure;
+
         @Override
         public void run() {
-            upload();
+            try {
+                upload();
+            } catch (Throwable t) {
+                // Last-resort safety net for Throwables that escape upload().
+                LOG.error("Uploader thread for {}/{} encountered unexpected error; releasing {} events without DLQ",
+                        putLogEventsRequest.logGroupName(), putLogEventsRequest.logStreamName(), totalEventCount, t);
+                cloudWatchLogsMetrics.increaseUnhandledErrorCounter(1);
+                if (!countedAsSuccess && !countedAsFailure) {
+                    cloudWatchLogsMetrics.increaseLogEventFailCounter(totalEventCount);
+                }
+                for (final EventHandle handle : eventHandles) {
+                    releaseOnce(handle, dropIfDlqNotConfigured);
+                }
+            }
         }
 
         public void upload() {
@@ -164,6 +184,7 @@ public class CloudWatchLogsDispatcher {
 
             if (failedToTransmit) {
                 cloudWatchLogsMetrics.increaseLogEventFailCounter(totalEventCount);
+                countedAsFailure = true;
                 List<InputLogEvent> logEvents = putLogEventsRequest.logEvents();
                 for (int i = 0; i < logEvents.size(); i++) {
                     DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, eventHandles.get(i), logEvents.get(i).message(), failureMessage, dlqPushHandler, dropIfDlqNotConfigured);
@@ -181,6 +202,7 @@ public class CloudWatchLogsDispatcher {
                             putLogEventsResponse.rejectedEntityInfo().errorTypeAsString());
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
+                countedAsSuccess = true;
                 releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
@@ -281,7 +303,7 @@ public class CloudWatchLogsDispatcher {
 
         private void releaseEventHandles(final PutLogEventsResponse putLogEventsResponse) {
             if (putLogEventsResponse == null || putLogEventsResponse.rejectedLogEventsInfo() == null) {
-                eventHandles.forEach(eventHandle -> eventHandle.release(true));
+                eventHandles.forEach(eventHandle -> releaseOnce(eventHandle, true));
                 return;
             }
 
@@ -293,7 +315,22 @@ public class CloudWatchLogsDispatcher {
                         (tooNewStartIndex != null && i >= tooNewStartIndex);
 
                 if (!isRejected) {
-                    eventHandles.get(i).release(true);
+                    releaseOnce(eventHandles.get(i), true);
+                }
+            }
+        }
+
+        /**
+         * Releases an event handle exactly once. Prevents a second release with a conflicting
+         * result on the catch-all path, and prevents a single bad handle from aborting the rest
+         * of the batch.
+         */
+        private void releaseOnce(final EventHandle handle, final boolean result) {
+            if (releasedHandles.add(handle)) {
+                try {
+                    handle.release(result);
+                } catch (Throwable t) {
+                    LOG.warn("EventHandle.release threw", t);
                 }
             }
         }

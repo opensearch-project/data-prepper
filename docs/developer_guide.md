@@ -251,6 +251,12 @@ fails, please check the *Summary* section of that Action. There may be artifacts
 can download these and view the result information. Additionally, many builds have *Unit Test Results* job
 which includes a summary of the results.
 
+## AI and agentic development
+
+We welcome and encourage the use of AI tools and agentic development.
+This project does not enforce or require any particular AI tool and the tool choice is similar to choosing an IDE.
+If you want to add AI tooling to the project, please commit it in such a way that it can be used by other AI tools.
+
 ## More Information
 
 We have the following pages for specific development guidance on the topics:

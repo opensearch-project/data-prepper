@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
@@ -77,7 +78,7 @@ class AwsConnectorExecutorTest {
         when(config.getAwsAuthenticationOptions()).thenReturn(awsAuthOptions);
         when(awsAuthOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthOptions.getAwsStsRoleArn()).thenReturn(null);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         when(awsCredentialsProvider.resolveCredentials()).thenReturn(AwsBasicCredentials.create("accessKey", "secretKey"));
 
         executor = new AwsConnectorExecutor(connector, config, awsCredentialsSupplier, httpClientExecutor);

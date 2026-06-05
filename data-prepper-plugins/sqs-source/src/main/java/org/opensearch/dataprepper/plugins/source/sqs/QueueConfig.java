@@ -5,7 +5,6 @@
  * The OpenSearch Contributors require contributions made to
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.source.sqs;
@@ -17,10 +16,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
+import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.sqs.common.OnErrorOption;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class QueueConfig {
 
@@ -69,7 +69,8 @@ public class QueueConfig {
     private Duration waitTime = DEFAULT_WAIT_TIME_SECONDS;
 
     @JsonProperty("codec")
-    private PluginModel codec = null;
+    @UsesDataPrepperPlugin(pluginType = InputCodec.class)
+    private InputCodec codec;
 
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
@@ -104,7 +105,7 @@ public class QueueConfig {
         return pollDelay;
     }
 
-    public PluginModel getCodec() {
+    public InputCodec getCodec() {
         return codec;
     }
 
