@@ -249,18 +249,10 @@ public class FileSource implements Source<Record<Object>> {
     private class ClassicFileStrategy implements FileStrategy {
         @Override
         public void start(Buffer<Record<Object>> buffer) {
-            final GlobPathResolver resolver = new GlobPathResolver(
-                    fileSourceConfig.getAllPaths(), fileSourceConfig.getExcludePaths());
-            final Set<Path> resolvedPaths = resolver.resolve();
-            if (resolvedPaths.isEmpty() && fileSourceConfig.getFilePathToRead() != null) {
-                resolvedPaths.add(Paths.get(fileSourceConfig.getFilePathToRead()).toAbsolutePath().normalize());
+            if (isStopRequested) {
+                return;
             }
-            for (final Path filePath : resolvedPaths) {
-                if (isStopRequested) {
-                    break;
-                }
-                readFile(filePath, buffer);
-            }
+            readFile(Paths.get(fileSourceConfig.getFilePathToRead()), buffer);
         }
 
         private void readFile(final Path filePath, final Buffer<Record<Object>> buffer) {
