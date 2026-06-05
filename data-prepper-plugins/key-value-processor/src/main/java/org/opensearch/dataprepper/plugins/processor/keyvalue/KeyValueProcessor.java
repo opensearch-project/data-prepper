@@ -32,9 +32,9 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-import java.util.regex.Matcher;
+import com.google.re2j.Pattern;
+import com.google.re2j.PatternSyntaxException;
+import com.google.re2j.Matcher;
 import java.util.Stack;
 import java.util.ArrayList;
 
@@ -85,7 +85,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 && !keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
                 throw new IllegalArgumentException("field_delimiter_regex and field_split_characters cannot both be defined.");
             } else if (!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
-                throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
+                throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex());
             }
 
             fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
@@ -121,7 +121,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 && !keyValueProcessorConfig.getValueSplitCharacters().isEmpty()) {
                 throw new IllegalArgumentException("key_value_delimiter_regex and value_split_characters cannot both be defined.");
             } else if (!validateRegex(keyValueProcessorConfig.getKeyValueDelimiterRegex())) {
-                throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
+                throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex());
             }
 
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
@@ -152,11 +152,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
-            throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
+            throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex());
         }
 
         if (!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
-            throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
+            throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex());
         }
 
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
