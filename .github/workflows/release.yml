@@ -182,7 +182,7 @@ jobs:
           echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
 
       - name: Create tag
-        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ github.TOKEN }}
           script: |
