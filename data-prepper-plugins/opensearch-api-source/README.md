@@ -17,6 +17,24 @@ source:
 * `413`: the request data size is larger than the configured capacity.
 * `429`: the request has been rejected due to the OpenSearch API source executor being in full capacity.
 
+### Response format
+
+On success, the `_bulk` endpoint returns a JSON response compatible with the OpenSearch Bulk API:
+
+```json
+{"took": 5, "errors": false, "items": []}
+```
+
+* `took`: actual processing time in milliseconds, measured from request receipt to buffer write completion.
+* `errors`: `false` when all events are successfully written to the buffer.
+* `items`: always an empty array. Because Data Prepper buffers documents for asynchronous pipeline processing rather than indexing them directly, per-item results are not available at request time. Clients that inspect individual item responses will see zero items regardless of how many documents were submitted.
+
+### Response semantics
+
+The response indicates buffer acceptance, not end-to-end delivery to the sink. If downstream processors or sinks fail, events may be lost after a successful response has been returned to the client. This is consistent with how all Data Prepper HTTP sources operate.
+
+For guaranteed delivery, use a Kafka buffer which provides persistence and replayability.
+
 ## Configurations
 
 * port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```9202```.
