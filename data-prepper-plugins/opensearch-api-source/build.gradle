@@ -22,6 +22,7 @@ dependencies {
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation 'org.assertj:assertj-core:3.25.3'
+    testImplementation libs.opensearch.rhlc
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 }
