@@ -23,8 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
@@ -95,6 +94,10 @@ public class Office365RestClient {
                 
                 metricsRecorder.recordListSubscriptionSuccess();
                 return result;
+            } catch (SaaSCrawlerException e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Failed to list subscriptions: {}", e.getMessage());
+                throw e;
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Failed to list subscriptions: {}", e.getMessage());
@@ -133,12 +136,19 @@ public class Office365RestClient {
                     log.info("Successfully started subscription for {}: {}", contentType, response.getBody());
                     return response;
                 }, authConfig::renewCredentials, metricsRecorder::recordSubscriptionFailure);
-            } catch (HttpClientErrorException | HttpServerErrorException e) {
-                if (e.getResponseBodyAsString().contains("AF20024")) {
-                    log.debug("Subscription for {} is already enabled", contentType);
+            } catch (SaaSCrawlerException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof RestClientResponseException) {
+                    RestClientResponseException restEx = (RestClientResponseException) cause;
+                    if (restEx.getResponseBodyAsString().contains("AF20024")) {
+                        log.debug("Subscription for {} is already enabled", contentType);
+                    } else {
+                        metricsRecorder.recordError(e);
+                        throw e;
+                    }
                 } else {
                     metricsRecorder.recordError(e);
-                    throw new SaaSCrawlerException("Failed to start subscription for " + contentType + ": " + e.getMessage(), e, true);
+                    throw e;
                 }
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
@@ -204,6 +214,10 @@ public class Office365RestClient {
                 startSubscriptionsForContentTypes(contentTypesToStart);
                 metricsRecorder.recordSubscriptionSuccess();
                 return null;
+            } catch (SaaSCrawlerException e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Failed to initialize subscriptions", e);
+                throw e;
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Failed to initialize subscriptions", e);
@@ -267,6 +281,11 @@ public class Office365RestClient {
                         authConfig::renewCredentials,
                         metricsRecorder::recordSearchFailure
                 );
+            } catch (SaaSCrawlerException e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
+                        contentType, url, e);
+                throw e;
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Error while fetching audit logs for content type {} from URL: {}",
@@ -311,6 +330,10 @@ public class Office365RestClient {
                 metricsRecorder.recordGetSuccess();
 
                 return response;
+            } catch (SaaSCrawlerException e) {
+                metricsRecorder.recordError(e);
+                log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
+                throw e;
             } catch (Exception e) {
                 metricsRecorder.recordError(e);
                 log.error(NOISY, "Error while fetching audit log content from URI: {}", contentUri, e);
