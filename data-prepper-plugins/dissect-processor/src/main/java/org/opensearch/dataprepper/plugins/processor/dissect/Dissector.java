@@ -135,9 +135,15 @@ public class Dissector {
             } else if (appendFieldMap.containsKey(templateKey)) {
                 resolvedKey = appendFieldMap.get(templateKey);
             }
+            if (resolvedKey == null || resolvedKey.isEmpty()) {
+                LOG.debug("Indirect field reference %{&{}} could not be resolved; dropping value", templateKey);
+                continue;
+            }
             String val = localValues.get(templateField);
-            if (resolvedKey != null && !resolvedKey.isEmpty() && val != null) {
+            if (val != null) {
                 results.put(resolvedKey, val);
+            } else {
+                LOG.debug("Indirect field reference %{&{}} had no captured value; dropping", templateKey);
             }
         }
         return results;
