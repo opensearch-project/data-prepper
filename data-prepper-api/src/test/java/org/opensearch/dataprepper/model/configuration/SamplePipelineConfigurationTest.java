@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,8 +23,6 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * End-to-end tests for sample pipeline YAML configurations, verifying that
@@ -109,13 +106,11 @@ class SamplePipelineConfigurationTest {
     }
 
     @Test
-    void deserialize_pipeline_withEmptyStringPluginConfig_throwsException() {
+    void deserialize_pipeline_withEmptyStringPluginConfig_treatedAsNull() throws IOException {
         final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_plugin_empty_string.yaml");
 
-        final JsonMappingException exception = assertThrows(
-            JsonMappingException.class,
-            () -> objectMapper.readValue(inputStream, PipelinesDataFlowModel.class)
-        );
-        assertThat(exception.getMessage(), containsString("Empty string is not allowed"));
+        final PipelinesDataFlowModel model = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(model, notNullValue());
+        assertThat(model.getPipelines().containsKey("test-pipeline"), equalTo(true));
     }
 }
