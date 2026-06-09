@@ -9,7 +9,6 @@ import com.mongodb.MongoClientException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import io.micrometer.core.instrument.Counter;
 import org.bson.Document;
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.mongo.client.MongoDBConnection;
@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateM
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -92,38 +93,45 @@ public class MongoDBExportPartitionSupplierTest {
     @Test
     public void test_buildPartitionsCollection() {
         try (MockedStatic<MongoDBConnection> mongoDBConnectionMockedStatic = mockStatic(MongoDBConnection.class)) {
-            // Given a collection with 5000 items which should be split to two partitions: 0-3999 and 4000-4999
             MongoClient mongoClient = mock(MongoClient.class);
             MongoDatabase mongoDatabase = mock(MongoDatabase.class);
             MongoCollection col = mock(MongoCollection.class);
-            FindIterable findIterable = mock(FindIterable.class);
-            MongoCursor cursor = mock(MongoCursor.class);
+
             mongoDBConnectionMockedStatic.when(() -> MongoDBConnection.getMongoClient(any(MongoDBSourceConfig.class)))
                     .thenReturn(mongoClient);
             when(mongoClient.getDatabase(anyString())).thenReturn(mongoDatabase);
             when(mongoDatabase.getCollection(anyString())).thenReturn(col);
-            when(col.find()).thenReturn(findIterable);
-            when(col.find(any(Bson.class))).thenReturn(findIterable);
-            when(findIterable.projection(any())).thenReturn(findIterable);
-            when(findIterable.sort(any())).thenReturn(findIterable);
-            when(findIterable.skip(anyInt())).thenReturn(findIterable);
-            when(findIterable.limit(anyInt())).thenReturn(findIterable);
-            when(findIterable.iterator()).thenReturn(cursor);
-            when(cursor.hasNext()).thenReturn(true, true, false);
-            // mock startDoc and endDoc returns, 0-3999, and 4000-4999
-            when(cursor.next())
-                    .thenReturn(new Document("_id", "0"))
-                    .thenReturn(new Document("_id", "4000"));
-            when(findIterable.first())
-                    .thenReturn(new Document("_id", "3999"))
-                    .thenReturn(null)
-                    .thenReturn(new Document("_id", "4999"));
-            // When Apply Partition create logics
+
+            // Track col.find() calls (no-arg) to distinguish isUniformIdType and lastDoc queries
+            final AtomicInteger noArgFindCount = new AtomicInteger(0);
+            when(col.find()).thenAnswer((Answer<FindIterable>) invocation -> {
+                int callNum = noArgFindCount.incrementAndGet();
+                switch (callNum) {
+                    case 1: return createFindIterable(new Document("_id", "0"));    // isUniformIdType first
+                    case 2: return createFindIterable(new Document("_id", "4999")); // isUniformIdType last
+                    case 3: return createFindIterable(new Document("_id", "4999")); // lastDoc when endOfPage is null
+                    default: return createFindIterable(null);
+                }
+            });
+
+            // Track col.find(Bson) calls for partition boundary queries
+            final AtomicInteger bsonFindCount = new AtomicInteger(0);
+            when(col.find(any(Bson.class))).thenAnswer((Answer<FindIterable>) invocation -> {
+                int callNum = bsonFindCount.incrementAndGet();
+                switch (callNum) {
+                    case 1: return createFindIterable(new Document("_id", "0"));    // 1st start doc
+                    case 2: return createFindIterableWithSkip(new Document("_id", "3999")); // 1st end
+                    case 3: return createFindIterable(new Document("_id", "4000")); // 2nd start doc
+                    case 4: return createFindIterableWithSkip(null);                 // 2nd end -> null
+                    default: return createFindIterable(null);
+                }
+            });
+
             final PartitionIdentifierBatch partitionIdentifierBatch = testSupplier.apply(exportPartition);
             assertThat(partitionIdentifierBatch.isLastBatch(), is(true));
             assertThat(partitionIdentifierBatch.getEndDocId(), equalTo("4999"));
             List<PartitionIdentifier> partitions = partitionIdentifierBatch.getPartitionIdentifiers();
-            // Then dependencies are called
+
             verify(mongoClient).getDatabase(eq("test"));
             verify(mongoClient, times(1)).close();
             verify(mongoDatabase).getCollection(eq("collection"));
@@ -131,7 +139,7 @@ public class MongoDBExportPartitionSupplierTest {
             verify(exportPartitionQueryCount, times(2)).increment();
             verify(export4xxErrors, never()).increment();
             verify(export5xxErrors, never()).increment();
-            // And partitions are created
+
             assertThat(partitions.size(), is(2));
             assertThat(partitions.get(0).getPartitionKey(), is("test.collection|0|3999|java.lang.String|java.lang.String"));
             assertThat(partitions.get(1).getPartitionKey(), is("test.collection|4000|4999|java.lang.String|java.lang.String"));
@@ -159,5 +167,24 @@ public class MongoDBExportPartitionSupplierTest {
             verify(export4xxErrors).increment();
             verify(export5xxErrors, never()).increment();
         }
+    }
+
+    private FindIterable createFindIterable(Document result) {
+        FindIterable iterable = mock(FindIterable.class);
+        when(iterable.projection(any())).thenReturn(iterable);
+        when(iterable.sort(any())).thenReturn(iterable);
+        when(iterable.limit(anyInt())).thenReturn(iterable);
+        when(iterable.first()).thenReturn(result);
+        return iterable;
+    }
+
+    private FindIterable createFindIterableWithSkip(Document result) {
+        FindIterable iterable = mock(FindIterable.class);
+        when(iterable.projection(any())).thenReturn(iterable);
+        when(iterable.sort(any())).thenReturn(iterable);
+        when(iterable.skip(anyInt())).thenReturn(iterable);
+        when(iterable.limit(anyInt())).thenReturn(iterable);
+        when(iterable.first()).thenReturn(result);
+        return iterable;
     }
 }
