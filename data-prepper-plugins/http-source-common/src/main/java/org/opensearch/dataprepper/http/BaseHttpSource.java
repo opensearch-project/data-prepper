@@ -102,7 +102,18 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
                         new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                         )
                 );
+                authenticationProvider.getClientAuthConfiguration().ifPresent(clientAuthConfig -> {
+                    sb.tlsCustomizer(sslContextBuilder -> {
+                        sslContextBuilder.clientAuth(clientAuthConfig.getClientAuth());
+                        sslContextBuilder.trustManager(clientAuthConfig.getTrustManagerFactory());
+                    });
+                });
             } else {
+                if (authenticationProvider.getClientAuthConfiguration().isPresent()) {
+                    throw new IllegalStateException(
+                            "mutual_tls authentication requires ssl: true. " +
+                            "Configure ssl: true with ssl_certificate_file and ssl_key_file.");
+                }
                 logger.warn("Creating {} source without SSL/TLS. This is not secure.", sourceName);
                 logger.warn("In order to set up TLS for the {} source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl", sourceName);
                 sb.http(sourceConfig.getPort());

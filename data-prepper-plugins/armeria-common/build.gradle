@@ -13,4 +13,6 @@ dependencies {
     implementation libs.armeria.core
     implementation libs.armeria.grpc
     testImplementation libs.armeria.junit
+    testImplementation libs.bouncycastle.bcprov
+    testImplementation libs.bouncycastle.bcpkix
 }
