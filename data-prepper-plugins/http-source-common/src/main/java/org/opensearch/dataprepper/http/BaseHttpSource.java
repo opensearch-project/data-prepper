@@ -102,6 +102,7 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
                         new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                         )
                 );
+                authenticationProvider.getTlsCustomizer().ifPresent(sb::tlsCustomizer);
             } else {
                 logger.warn("Creating {} source without SSL/TLS. This is not secure.", sourceName);
                 logger.warn("In order to set up TLS for the {} source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl", sourceName);

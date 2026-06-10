@@ -11,8 +11,10 @@ package org.opensearch.dataprepper.armeria.authentication;
 
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServerBuilder;
+import io.netty.handler.ssl.SslContextBuilder;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -37,6 +39,16 @@ public interface ArmeriaHttpAuthenticationProvider {
      * @return returns authentication decorator
      */
     default Optional<Function<? super HttpService, ? extends HttpService>> getAuthenticationDecorator() {
+        return Optional.empty();
+    }
+
+    /**
+     * Gets a TLS customizer for configuring client authentication (e.g., mTLS).
+     * Called during server setup when SSL is enabled.
+     *
+     * @return an optional consumer that configures the {@link SslContextBuilder}
+     */
+    default Optional<Consumer<SslContextBuilder>> getTlsCustomizer() {
         return Optional.empty();
     }
 }
