@@ -5,10 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Blocking;
@@ -55,6 +58,7 @@ public class OpenSearchAPIService implements BaseHttpService {
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAPIService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final MultiLineJsonCodec jsonCodec = new MultiLineJsonCodec();
@@ -102,6 +106,7 @@ public class OpenSearchAPIService implements BaseHttpService {
     }
 
     private HttpResponse processBulkRequest(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest, final BulkAPIRequestParams bulkAPIRequestParams) throws Exception {
+        final long startNanos = System.nanoTime();
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(aggregatedHttpRequest.content().length());
 
@@ -132,7 +137,16 @@ public class OpenSearchAPIService implements BaseHttpService {
             throw e;
         }
         successRequestsCounter.increment();
-        return HttpResponse.of(HttpStatus.OK);
+        return buildBulkResponse(startNanos, false);
+    }
+
+    private HttpResponse buildBulkResponse(final long startNanos, final boolean errors) {
+        final long tookMillis = (System.nanoTime() - startNanos) / 1_000_000;
+        final ObjectNode root = OBJECT_MAPPER.createObjectNode();
+        root.put("took", tookMillis);
+        root.put("errors", errors);
+        root.putArray("items");
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON_UTF_8, root.toString());
     }
 
     private boolean isValidBulkAction(Map<String, Object> actionMap) {
