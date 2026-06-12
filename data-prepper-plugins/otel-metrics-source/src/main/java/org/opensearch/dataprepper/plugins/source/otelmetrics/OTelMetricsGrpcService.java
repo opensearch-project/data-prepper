@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.Context;
+import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -52,6 +53,19 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
     private final Set<String> bufferPartitionKeys;
+
+    public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
+                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
+                                  Buffer<Record<? extends Metric>> buffer,
+                                  final Set<String> bufferPartitionKeys,
+                                  final PluginMetrics pluginMetrics) {
+        this(bufferWriteTimeoutInMillis,
+                oTelProtoDecoder,
+                buffer,
+                bufferPartitionKeys,
+                pluginMetrics,
+                null);
+    }
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
@@ -137,5 +151,9 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
         successRequestsCounter.increment();
         responseObserver.onNext(ExportMetricsServiceResponse.newBuilder().build());
         responseObserver.onCompleted();
+    }
+
+    public MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> getExportMethodDescriptor() {
+        return MetricsServiceGrpc.getExportMethod();
     }
 }
