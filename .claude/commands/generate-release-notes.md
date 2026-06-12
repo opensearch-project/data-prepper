@@ -1,3 +1,13 @@
+---
+description: Generate release notes for Data Prepper version $ARGUMENTS.
+allowed-tools:
+  - Bash(gh issue list *)
+  - Bash(gh pr list *)
+  - Read(release/script/release-notes/**)
+  - Read(release/release-notes/**)
+  - Write(release/release-notes/**)
+---
+
 Generate release notes for Data Prepper version $ARGUMENTS.
 
 ## Overview
