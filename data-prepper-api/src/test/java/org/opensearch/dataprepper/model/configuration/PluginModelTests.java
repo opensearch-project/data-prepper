@@ -33,6 +33,7 @@ import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
@@ -229,15 +230,12 @@ class PluginModelTests {
     }
 
     @Test
-    final void testDeserialize_emptyString_throwsException() throws IOException {
+    final void testDeserialize_emptyString_treatedAsNull() throws IOException {
         final InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_empty_string.yaml");
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
-        final JsonMappingException exception = assertThrows(
-            JsonMappingException.class,
-            () -> mapper.readValue(inputStream, PluginModel.class)
-        );
-        assertThat(exception.getMessage(), containsString("Empty string is not allowed"));
+        final PluginModel result = mapper.readValue(inputStream, PluginModel.class);
+        assertThat(result.getPluginSettings(), nullValue());
     }
 
     @Test
