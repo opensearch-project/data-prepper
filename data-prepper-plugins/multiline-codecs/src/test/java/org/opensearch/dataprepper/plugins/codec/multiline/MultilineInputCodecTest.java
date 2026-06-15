@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -66,80 +67,39 @@ class MultilineInputCodecTest {
     }
 
     @Test
-    void constructor_throws_if_match_pattern_is_invalid() {
-        when(config.getMatch()).thenReturn("[invalid(");
+    void constructor_throws_if_no_pattern_configured() {
+        when(config.getCompiledPattern()).thenReturn(null);
 
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
     @Test
-    void parse_throws_if_inputStream_is_null() {
-        when(config.getMatch()).thenReturn("^\\S");
-        when(config.getNegate()).thenReturn(true);
-        when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-        when(config.getMaxLines()).thenReturn(500);
-        when(config.getMaxLength()).thenReturn(10000);
-        when(config.getLineSeparator()).thenReturn("\n");
+    void constructor_throws_if_pattern_is_invalid() {
+        when(config.getCompiledPattern()).thenReturn(null);
 
-        final MultilineInputCodec codec = createObjectUnderTest();
-        assertThrows(NullPointerException.class, () -> codec.parse(null, events -> {}));
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
-    @Test
-    void parse_throws_if_consumer_is_null() {
-        when(config.getMatch()).thenReturn("^\\S");
-        when(config.getNegate()).thenReturn(true);
-        when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
+    private void setupConfig(final String patternStr) {
+        when(config.getCompiledPattern()).thenReturn(Pattern.compile(patternStr));
         when(config.getMaxLines()).thenReturn(500);
         when(config.getMaxLength()).thenReturn(10000);
         when(config.getLineSeparator()).thenReturn("\n");
-
-        final MultilineInputCodec codec = createObjectUnderTest();
-        assertThrows(NullPointerException.class, () -> codec.parse(toInputStream("test"), null));
-    }
-
-    @Test
-    void parse_empty_input_produces_no_events() throws IOException {
-        when(config.getMatch()).thenReturn("^\\S");
-        when(config.getNegate()).thenReturn(true);
-        when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-        when(config.getMaxLines()).thenReturn(500);
-        when(config.getMaxLength()).thenReturn(10000);
-        when(config.getLineSeparator()).thenReturn("\n");
-
-        final List<Record<Event>> events = parseContent("");
-        assertThat(events.size(), equalTo(0));
-    }
-
-    @Test
-    void parse_single_line_produces_one_event() throws IOException {
-        when(config.getMatch()).thenReturn("^\\d{4}-\\d{2}-\\d{2}");
-        when(config.getNegate()).thenReturn(true);
-        when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-        when(config.getMaxLines()).thenReturn(500);
-        when(config.getMaxLength()).thenReturn(10000);
-        when(config.getLineSeparator()).thenReturn("\n");
-
-        final List<Record<Event>> events = parseContent("2024-01-01 INFO single line\n");
-        assertThat(events.size(), equalTo(1));
-        assertThat(events.get(0).getData().get("message", String.class), equalTo("2024-01-01 INFO single line"));
+        when(config.getOmitMatchedSection()).thenReturn(false);
+        when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
     }
 
     @Nested
-    class PreviousModeWithNegateTrue {
+    class EventStartMode {
 
         @BeforeEach
         void setUp() {
-            when(config.getMatch()).thenReturn("^\\d{4}-\\d{2}-\\d{2}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
+            setupConfig("^\\d{4}-\\d{2}-\\d{2}");
+            when(config.getEventStartPattern()).thenReturn("^\\d{4}-\\d{2}-\\d{2}");
         }
 
         @Test
-        void groups_java_stack_trace_with_timestamp_start() throws IOException {
+        void groups_stack_trace_with_timestamp_start() throws IOException {
             final String input = "2024-01-01 ERROR NullPointerException\n" +
                     "  at com.example.Service.method(Service.java:42)\n" +
                     "  at com.example.Main.run(Main.java:10)\n" +
@@ -157,7 +117,7 @@ class MultilineInputCodecTest {
         }
 
         @Test
-        void multiple_single_line_events_each_matching_pattern() throws IOException {
+        void multiple_single_line_events() throws IOException {
             final String input = "2024-01-01 INFO line one\n" +
                     "2024-01-02 INFO line two\n" +
                     "2024-01-03 INFO line three\n";
@@ -171,64 +131,115 @@ class MultilineInputCodecTest {
         }
 
         @Test
-        void continuation_lines_at_beginning_are_grouped_as_first_event() throws IOException {
-            final String input = "  orphan continuation line 1\n" +
-                    "  orphan continuation line 2\n" +
-                    "2024-01-01 INFO first real entry\n";
+        void continuation_lines_at_beginning_grouped_as_first_event() throws IOException {
+            final String input = "  orphan line 1\n" +
+                    "  orphan line 2\n" +
+                    "2024-01-01 INFO first entry\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(2));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("  orphan continuation line 1\n  orphan continuation line 2"));
+                    equalTo("  orphan line 1\n  orphan line 2"));
             assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("2024-01-01 INFO first real entry"));
+                    equalTo("2024-01-01 INFO first entry"));
         }
 
         @Test
-        void last_event_with_continuations_flushed_at_end_of_stream() throws IOException {
-            final String input = "2024-01-01 ERROR Exception occurred\n" +
-                    "  at com.example.Foo.bar(Foo.java:1)\n" +
-                    "  at com.example.Baz.run(Baz.java:2)\n";
+        void last_event_flushed_at_end_of_stream() throws IOException {
+            final String input = "2024-01-01 ERROR Exception\n" +
+                    "  at com.example.Foo.bar(Foo.java:1)\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(1));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01 ERROR Exception occurred\n" +
-                            "  at com.example.Foo.bar(Foo.java:1)\n" +
-                            "  at com.example.Baz.run(Baz.java:2)"));
+                    equalTo("2024-01-01 ERROR Exception\n  at com.example.Foo.bar(Foo.java:1)"));
         }
 
         @Test
-        void no_lines_match_pattern_produces_single_event() throws IOException {
-            final String input = "  continuation line 1\n" +
-                    "  continuation line 2\n" +
-                    "  continuation line 3\n";
+        void empty_input_produces_no_events() throws IOException {
+            final List<Record<Event>> events = parseContent("");
+            assertThat(events.size(), equalTo(0));
+        }
+
+        @Test
+        void no_lines_match_produces_single_event() throws IOException {
+            final String input = "  line 1\n  line 2\n  line 3\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(1));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("  continuation line 1\n  continuation line 2\n  continuation line 3"));
+                    equalTo("  line 1\n  line 2\n  line 3"));
         }
     }
 
     @Nested
-    class PreviousModeWithNegateFalse {
+    class EventEndMode {
 
         @BeforeEach
         void setUp() {
-            when(config.getMatch()).thenReturn("^\\s+(at |\\.\\.\\.|Caused by:)");
-            when(config.getNegate()).thenReturn(false);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
+            setupConfig("^---$");
+            when(config.getEventEndPattern()).thenReturn("^---$");
         }
 
         @Test
-        void groups_stack_trace_lines_matching_pattern_with_previous() throws IOException {
+        void groups_lines_until_separator() throws IOException {
+            final String input = "line 1\n" +
+                    "line 2\n" +
+                    "---\n" +
+                    "line 3\n" +
+                    "line 4\n" +
+                    "---\n";
+
+            final List<Record<Event>> events = parseContent(input);
+
+            assertThat(events.size(), equalTo(2));
+            assertThat(events.get(0).getData().get("message", String.class),
+                    equalTo("line 1\nline 2\n---"));
+            assertThat(events.get(1).getData().get("message", String.class),
+                    equalTo("line 3\nline 4\n---"));
+        }
+
+        @Test
+        void trailing_lines_without_end_marker_flushed() throws IOException {
+            final String input = "line 1\n" +
+                    "---\n" +
+                    "line 2\n" +
+                    "line 3\n";
+
+            final List<Record<Event>> events = parseContent(input);
+
+            assertThat(events.size(), equalTo(2));
+            assertThat(events.get(0).getData().get("message", String.class),
+                    equalTo("line 1\n---"));
+            assertThat(events.get(1).getData().get("message", String.class),
+                    equalTo("line 2\nline 3"));
+        }
+
+        @Test
+        void single_line_matching_end_pattern() throws IOException {
+            final String input = "---\n";
+
+            final List<Record<Event>> events = parseContent(input);
+
+            assertThat(events.size(), equalTo(1));
+            assertThat(events.get(0).getData().get("message", String.class), equalTo("---"));
+        }
+    }
+
+    @Nested
+    class ContinuationStartMode {
+
+        @BeforeEach
+        void setUp() {
+            setupConfig("^\\s+(at |\\.\\.\\.|Caused by:)");
+            when(config.getContinuationLineStartPattern()).thenReturn("^\\s+(at |\\.\\.\\.|Caused by:)");
+        }
+
+        @Test
+        void groups_stack_trace_lines_with_previous() throws IOException {
             final String input = "java.lang.NullPointerException: null\n" +
                     "  at com.example.Service.process(Service.java:42)\n" +
                     "  at com.example.Main.run(Main.java:10)\n" +
@@ -246,7 +257,7 @@ class MultilineInputCodecTest {
         }
 
         @Test
-        void caused_by_is_grouped_with_previous() throws IOException {
+        void caused_by_grouped_with_previous() throws IOException {
             final String input = "java.lang.RuntimeException: error\n" +
                     "  at com.example.A.method(A.java:1)\n" +
                     "  Caused by: java.io.IOException\n" +
@@ -265,16 +276,11 @@ class MultilineInputCodecTest {
     }
 
     @Nested
-    class NextMode {
+    class ContinuationEndMode {
 
         @BeforeEach
         void setUp() {
-            when(config.getMatch()).thenReturn("^\\s");
-            when(config.getNegate()).thenReturn(false);
-            when(config.getWhat()).thenReturn(MultilineWhat.NEXT);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
+            setupConfig("^\\s");
         }
 
         @Test
@@ -291,7 +297,7 @@ class MultilineInputCodecTest {
         }
 
         @Test
-        void multiple_groups_in_next_mode() throws IOException {
+        void multiple_groups() throws IOException {
             final String input = "  context A\n" +
                     "EVENT A\n" +
                     "  context B\n" +
@@ -307,25 +313,22 @@ class MultilineInputCodecTest {
         }
 
         @Test
-        void trailing_continuation_lines_flushed_at_end_of_stream() throws IOException {
+        void trailing_continuation_lines_flushed() throws IOException {
             final String input = "EVENT A\n" +
-                    "  trailing context 1\n" +
-                    "  trailing context 2\n";
+                    "  trailing 1\n" +
+                    "  trailing 2\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(2));
-            assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("EVENT A"));
+            assertThat(events.get(0).getData().get("message", String.class), equalTo("EVENT A"));
             assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("  trailing context 1\n  trailing context 2"));
+                    equalTo("  trailing 1\n  trailing 2"));
         }
 
         @Test
-        void no_continuation_lines_each_line_is_separate_event() throws IOException {
-            final String input = "EVENT A\n" +
-                    "EVENT B\n" +
-                    "EVENT C\n";
+        void no_continuation_lines_each_is_separate_event() throws IOException {
+            final String input = "EVENT A\nEVENT B\nEVENT C\n";
 
             final List<Record<Event>> events = parseContent(input);
 
@@ -337,60 +340,69 @@ class MultilineInputCodecTest {
     }
 
     @Nested
-    class NextModeMaxLinesLimit {
-
-        @BeforeEach
-        void setUp() {
-            when(config.getMatch()).thenReturn("^\\d{4}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.NEXT);
-            when(config.getMaxLines()).thenReturn(3);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-        }
+    class OmitMatchedSection {
 
         @Test
-        void flushes_continuation_lines_when_max_lines_exceeded_in_next_mode() throws IOException {
-            final String input = "  ctx 1\n" +
-                    "  ctx 2\n" +
-                    "  ctx 3\n" +
-                    "  ctx 4\n" +
-                    "2024 EVENT\n";
+        void event_start_pattern_omits_matched_section() throws IOException {
+            when(config.getCompiledPattern()).thenReturn(Pattern.compile("^\\d{4}-\\d{2}-\\d{2}\\s+"));
+            when(config.getEventStartPattern()).thenReturn("^\\d{4}-\\d{2}-\\d{2}\\s+");
+            when(config.getMaxLines()).thenReturn(500);
+            when(config.getMaxLength()).thenReturn(10000);
+            when(config.getLineSeparator()).thenReturn("\n");
+            when(config.getOmitMatchedSection()).thenReturn(true);
+            when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
+
+            final String input = "2024-01-01 ERROR something\n" +
+                    "  stack trace line\n" +
+                    "2024-01-02 INFO recovered\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(2));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("  ctx 1\n  ctx 2\n  ctx 3"));
+                    equalTo("ERROR something\n  stack trace line"));
             assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("  ctx 4\n2024 EVENT"));
-        }
-    }
-
-    @Nested
-    class NextModeWithNegateTrue {
-
-        @BeforeEach
-        void setUp() {
-            when(config.getMatch()).thenReturn("^\\[");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.NEXT);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
+                    equalTo("INFO recovered"));
         }
 
         @Test
-        void lines_not_matching_pattern_are_prepended_to_next_matching_line() throws IOException {
-            final String input = "preamble line 1\n" +
-                    "preamble line 2\n" +
-                    "[2024-01-01] Log entry\n";
+        void event_end_pattern_omits_matched_section() throws IOException {
+            when(config.getCompiledPattern()).thenReturn(Pattern.compile("^---$"));
+            when(config.getEventEndPattern()).thenReturn("^---$");
+            when(config.getMaxLines()).thenReturn(500);
+            when(config.getMaxLength()).thenReturn(10000);
+            when(config.getLineSeparator()).thenReturn("\n");
+            when(config.getOmitMatchedSection()).thenReturn(true);
+            when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
+
+            final String input = "line 1\nline 2\n---\nline 3\n---\n";
+
+            final List<Record<Event>> events = parseContent(input);
+
+            assertThat(events.size(), equalTo(2));
+            assertThat(events.get(0).getData().get("message", String.class),
+                    equalTo("line 1\nline 2\n"));
+            assertThat(events.get(1).getData().get("message", String.class),
+                    equalTo("line 3\n"));
+        }
+
+        @Test
+        void omit_false_preserves_matched_section() throws IOException {
+            when(config.getCompiledPattern()).thenReturn(Pattern.compile("^\\d{4}-\\d{2}-\\d{2}\\s+"));
+            when(config.getEventStartPattern()).thenReturn("^\\d{4}-\\d{2}-\\d{2}\\s+");
+            when(config.getMaxLines()).thenReturn(500);
+            when(config.getMaxLength()).thenReturn(10000);
+            when(config.getLineSeparator()).thenReturn("\n");
+            when(config.getOmitMatchedSection()).thenReturn(false);
+            when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
+
+            final String input = "2024-01-01 ERROR something\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(1));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("preamble line 1\npreamble line 2\n[2024-01-01] Log entry"));
+                    equalTo("2024-01-01 ERROR something"));
         }
     }
 
@@ -399,32 +411,28 @@ class MultilineInputCodecTest {
 
         @BeforeEach
         void setUp() {
-            when(config.getMatch()).thenReturn("^\\d{4}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
+            when(config.getCompiledPattern()).thenReturn(Pattern.compile("^\\d{4}"));
+            when(config.getEventStartPattern()).thenReturn("^\\d{4}");
             when(config.getMaxLines()).thenReturn(3);
             when(config.getMaxLength()).thenReturn(10000);
             when(config.getLineSeparator()).thenReturn("\n");
+            when(config.getOmitMatchedSection()).thenReturn(false);
+            when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
         }
 
         @Test
         void flushes_event_when_max_lines_exceeded() throws IOException {
-            final String input = "2024-01-01 ERROR start\n" +
-                    "  line 2\n" +
-                    "  line 3\n" +
-                    "  line 4\n" +
-                    "  line 5\n" +
-                    "2024-01-02 INFO next\n";
+            final String input = "2024 start\n  line 2\n  line 3\n  line 4\n  line 5\n2024 next\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(3));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01 ERROR start\n  line 2\n  line 3"));
+                    equalTo("2024 start\n  line 2\n  line 3"));
             assertThat(events.get(1).getData().get("message", String.class),
                     equalTo("  line 4\n  line 5"));
             assertThat(events.get(2).getData().get("message", String.class),
-                    equalTo("2024-01-02 INFO next"));
+                    equalTo("2024 next"));
         }
     }
 
@@ -433,25 +441,22 @@ class MultilineInputCodecTest {
 
         @BeforeEach
         void setUp() {
-            when(config.getMatch()).thenReturn("^\\d{4}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
+            when(config.getCompiledPattern()).thenReturn(Pattern.compile("^\\d{4}"));
+            when(config.getEventStartPattern()).thenReturn("^\\d{4}");
             when(config.getMaxLines()).thenReturn(500);
             when(config.getMaxLength()).thenReturn(30);
             when(config.getLineSeparator()).thenReturn("\n");
+            when(config.getOmitMatchedSection()).thenReturn(false);
+            when(config.getEncoding()).thenReturn(StandardCharsets.UTF_8);
         }
 
         @Test
         void flushes_event_when_max_length_exceeded() throws IOException {
-            final String input = "2024 start line here\n" +
-                    "  continuation is long\n" +
-                    "2024 next entry\n";
+            final String input = "2024 start line here\n  continuation is long\n2024 next entry\n";
 
             final List<Record<Event>> events = parseContent(input);
 
             assertThat(events.size(), equalTo(3));
-            // First event is "2024 start line here" (20 chars)
-            // Adding "\n  continuation is long" would be 20+1+22=43 > 30, so it flushes
             assertThat(events.get(0).getData().get("message", String.class),
                     equalTo("2024 start line here"));
             assertThat(events.get(1).getData().get("message", String.class),
@@ -461,163 +466,10 @@ class MultilineInputCodecTest {
         }
     }
 
-    @Nested
-    class CustomLineSeparator {
-
-        @BeforeEach
-        void setUp() {
-            when(config.getMatch()).thenReturn("^\\d{4}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\r\n");
-        }
-
-        @Test
-        void uses_custom_line_separator_when_joining() throws IOException {
-            final String input = "2024-01-01 ERROR start\n" +
-                    "  continuation\n" +
-                    "2024-01-02 INFO next\n";
-
-            final List<Record<Event>> events = parseContent(input);
-
-            assertThat(events.size(), equalTo(2));
-            assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01 ERROR start\r\n  continuation"));
-        }
-    }
-
-    @Nested
-    class RealWorldScenarios {
-
-        @Test
-        void python_traceback() throws IOException {
-            when(config.getMatch()).thenReturn("^Traceback|^\\s|^\\w+Error");
-            when(config.getNegate()).thenReturn(false);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-
-            final String input = "2024-01-01 INFO Starting application\n" +
-                    "Traceback (most recent call last):\n" +
-                    "  File \"main.py\", line 10, in <module>\n" +
-                    "    result = process()\n" +
-                    "  File \"service.py\", line 5, in process\n" +
-                    "    return 1/0\n" +
-                    "ZeroDivisionError: division by zero\n" +
-                    "2024-01-01 INFO Recovered\n";
-
-            final List<Record<Event>> events = parseContent(input);
-
-            assertThat(events.size(), equalTo(2));
-            assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01 INFO Starting application\n" +
-                            "Traceback (most recent call last):\n" +
-                            "  File \"main.py\", line 10, in <module>\n" +
-                            "    result = process()\n" +
-                            "  File \"service.py\", line 5, in process\n" +
-                            "    return 1/0\n" +
-                            "ZeroDivisionError: division by zero"));
-            assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("2024-01-01 INFO Recovered"));
-        }
-
-        @Test
-        void multiline_xml_in_logs() throws IOException {
-            when(config.getMatch()).thenReturn("^\\d{4}-\\d{2}-\\d{2}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-
-            final String input = "2024-01-01 Request body:\n" +
-                    "<root>\n" +
-                    "  <element>value</element>\n" +
-                    "</root>\n" +
-                    "2024-01-01 Response sent\n";
-
-            final List<Record<Event>> events = parseContent(input);
-
-            assertThat(events.size(), equalTo(2));
-            assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01 Request body:\n<root>\n  <element>value</element>\n</root>"));
-            assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("2024-01-01 Response sent"));
-        }
-
-        @Test
-        void log4j_multiline_with_nested_exception() throws IOException {
-            when(config.getMatch()).thenReturn("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-
-            final String input = "2024-01-01T12:00:00 ERROR Application failed\n" +
-                    "java.lang.RuntimeException: Outer\n" +
-                    "\tat com.example.A.run(A.java:10)\n" +
-                    "Caused by: java.io.IOException: Inner\n" +
-                    "\tat com.example.B.read(B.java:20)\n" +
-                    "\t... 5 more\n" +
-                    "2024-01-01T12:00:01 INFO Shutdown complete\n";
-
-            final List<Record<Event>> events = parseContent(input);
-
-            assertThat(events.size(), equalTo(2));
-            assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("2024-01-01T12:00:00 ERROR Application failed\n" +
-                            "java.lang.RuntimeException: Outer\n" +
-                            "\tat com.example.A.run(A.java:10)\n" +
-                            "Caused by: java.io.IOException: Inner\n" +
-                            "\tat com.example.B.read(B.java:20)\n" +
-                            "\t... 5 more"));
-        }
-    }
-
-    @Nested
-    class IsContinuationLineTests {
-
-        @Test
-        void negate_false_matching_line_is_continuation() {
-            when(config.getMatch()).thenReturn("^\\s");
-            when(config.getNegate()).thenReturn(false);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-
-            final MultilineInputCodec codec = createObjectUnderTest();
-            assertThat(codec.isContinuationLine("  indented"), equalTo(true));
-            assertThat(codec.isContinuationLine("not indented"), equalTo(false));
-        }
-
-        @Test
-        void negate_true_non_matching_line_is_continuation() {
-            when(config.getMatch()).thenReturn("^\\d{4}");
-            when(config.getNegate()).thenReturn(true);
-            when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-            when(config.getMaxLines()).thenReturn(500);
-            when(config.getMaxLength()).thenReturn(10000);
-            when(config.getLineSeparator()).thenReturn("\n");
-
-            final MultilineInputCodec codec = createObjectUnderTest();
-            assertThat(codec.isContinuationLine("  no timestamp"), equalTo(true));
-            assertThat(codec.isContinuationLine("2024 has timestamp"), equalTo(false));
-        }
-    }
-
     @Test
     void event_metadata_is_log_type() throws IOException {
-        when(config.getMatch()).thenReturn("^\\d{4}");
-        when(config.getNegate()).thenReturn(true);
-        when(config.getWhat()).thenReturn(MultilineWhat.PREVIOUS);
-        when(config.getMaxLines()).thenReturn(500);
-        when(config.getMaxLength()).thenReturn(10000);
-        when(config.getLineSeparator()).thenReturn("\n");
+        setupConfig("^\\d{4}");
+        when(config.getEventStartPattern()).thenReturn("^\\d{4}");
 
         final List<Record<Event>> events = parseContent("2024-01-01 test\n");
 

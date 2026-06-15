@@ -10,12 +10,9 @@
 package org.opensearch.dataprepper.plugins.codec.multiline;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.lang.reflect.Field;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class MultilineInputCodecConfigTest {
@@ -24,71 +21,102 @@ class MultilineInputCodecConfigTest {
     void defaults_are_correct() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
 
-        assertThat(config.getNegate(), equalTo(false));
-        assertThat(config.getWhat(), equalTo(MultilineWhat.PREVIOUS));
+        assertThat(config.getEventStartPattern(), nullValue());
+        assertThat(config.getEventEndPattern(), nullValue());
+        assertThat(config.getContinuationLineStartPattern(), nullValue());
+        assertThat(config.getContinuationLineEndPattern(), nullValue());
+        assertThat(config.getOmitMatchedSection(), equalTo(false));
         assertThat(config.getMaxLines(), equalTo(MultilineInputCodecConfig.DEFAULT_MAX_LINES));
         assertThat(config.getMaxLength(), equalTo(MultilineInputCodecConfig.DEFAULT_MAX_LENGTH));
         assertThat(config.getLineSeparator(), equalTo(MultilineInputCodecConfig.DEFAULT_LINE_SEPARATOR));
-        assertThat(config.getMatch(), equalTo(null));
+        assertThat(config.getConfiguredPatternString(), nullValue());
     }
 
     @Test
-    void getMatch_returns_configured_value() throws Exception {
-        final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "match", "^\\d{4}");
-        assertThat(config.getMatch(), equalTo("^\\d{4}"));
+    void isExactlyOnePatternSpecified_returns_true_for_event_start_pattern() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withEventStartPattern("^\\d{4}")
+                .build();
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(true));
     }
 
     @Test
-    void isValidPattern_returns_true_for_valid_regex() throws Exception {
+    void isExactlyOnePatternSpecified_returns_true_for_event_end_pattern() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withEventEndPattern("^---$")
+                .build();
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(true));
+    }
+
+    @Test
+    void isExactlyOnePatternSpecified_returns_true_for_continuation_line_start_pattern() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withContinuationLineStartPattern("^\\s")
+                .build();
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(true));
+    }
+
+    @Test
+    void isExactlyOnePatternSpecified_returns_true_for_continuation_line_end_pattern() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withContinuationLineEndPattern("^\\s")
+                .build();
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(true));
+    }
+
+    @Test
+    void isExactlyOnePatternSpecified_returns_false_when_none_specified() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "match", "^\\d{4}-\\d{2}-\\d{2}");
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(false));
+    }
+
+    @Test
+    void isExactlyOnePatternSpecified_returns_false_when_two_specified() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withEventStartPattern("^\\d{4}")
+                .withEventEndPattern("^---$")
+                .build();
+        assertThat(config.isExactlyOnePatternSpecified(), equalTo(false));
+    }
+
+    @Test
+    void isValidPattern_returns_true_for_valid_regex() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withEventStartPattern("^\\d{4}-\\d{2}-\\d{2}")
+                .build();
         assertThat(config.isValidPattern(), equalTo(true));
     }
 
     @Test
-    void isValidPattern_returns_false_for_invalid_regex() throws Exception {
-        final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "match", "[invalid(");
+    void isValidPattern_returns_false_for_invalid_regex() {
+        final MultilineInputCodecConfig config = MultilineInputCodecConfig.builder()
+                .withEventStartPattern("[invalid(")
+                .build();
         assertThat(config.isValidPattern(), equalTo(false));
     }
 
     @Test
-    void isValidPattern_returns_false_for_null_match() {
+    void isValidPattern_returns_false_when_no_pattern_configured() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
         assertThat(config.isValidPattern(), equalTo(false));
     }
 
     @Test
-    void isValidPattern_returns_false_for_empty_match() throws Exception {
+    void getConfiguredPatternString_returns_null_when_none_specified() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "match", "");
-        assertThat(config.isValidPattern(), equalTo(false));
+        assertThat(config.getConfiguredPatternString(), nullValue());
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {1, 100, 1000})
-    void getMaxLines_returns_configured_value(final int maxLines) throws Exception {
+    @Test
+    void isValidEncoding_returns_true_for_default_utf8() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "maxLines", maxLines);
-        assertThat(config.getMaxLines(), equalTo(maxLines));
+        assertThat(config.isValidEncoding(), equalTo(true));
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {1, 5000, 50000})
-    void getMaxLength_returns_configured_value(final int maxLength) throws Exception {
+    @Test
+    void isValidEncoding_returns_true_for_valid_charset() {
         final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
-        setField(config, "maxLength", maxLength);
-        assertThat(config.getMaxLength(), equalTo(maxLength));
-    }
-
-    private void setField(final Object object, final String fieldName, final Object value) throws Exception {
-        final Field field = object.getClass().getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(object, value);
-        } finally {
-            field.setAccessible(false);
-        }
+        assertThat(config.isValidEncoding(), equalTo(true));
+        assertThat(config.getEncoding().name(), equalTo("UTF-8"));
     }
 }

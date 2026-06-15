@@ -24,9 +24,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -37,46 +39,57 @@ import java.util.regex.Pattern;
  * such as Java stack traces, Python tracebacks, or any log format where entries begin with
  * a recognizable pattern (e.g., a timestamp).</p>
  *
- * <p>The codec supports two grouping modes via the {@code what} configuration:</p>
+ * <p>The codec supports four mutually exclusive pattern modes:</p>
  * <ul>
- *   <li>{@code previous}: Continuation lines are appended to the preceding event.</li>
- *   <li>{@code next}: Continuation lines are prepended to the following event.</li>
- * </ul>
- *
- * <p>The {@code negate} option controls which lines are considered continuation lines:</p>
- * <ul>
- *   <li>{@code negate=false}: Lines matching the pattern are continuation lines.</li>
- *   <li>{@code negate=true}: Lines NOT matching the pattern are continuation lines.</li>
+ *   <li>{@code event_start_pattern}: A new event begins at each matching line.</li>
+ *   <li>{@code event_end_pattern}: An event ends at each matching line (inclusive).</li>
+ *   <li>{@code continuation_line_start_pattern}: Matching lines are continuations of the previous event.</li>
+ *   <li>{@code continuation_line_end_pattern}: Matching lines are prepended to the next event.</li>
  * </ul>
  */
 @DataPrepperPlugin(name = "multiline", pluginType = InputCodec.class, pluginConfigurationType = MultilineInputCodecConfig.class)
 public class MultilineInputCodec implements InputCodec {
 
     private static final Logger LOG = LoggerFactory.getLogger(MultilineInputCodec.class);
-    static final String MESSAGE_FIELD_NAME = "message";
+    private static final String MESSAGE_FIELD_NAME = "message";
 
     private final Pattern pattern;
-    private final boolean negate;
-    private final MultilineWhat what;
+    private final MultilineMode mode;
+    private final boolean omitMatchedSection;
     private final int maxLines;
     private final int maxLength;
     private final String lineSeparator;
+    private final Charset encoding;
     private final EventFactory eventFactory;
 
     @DataPrepperPluginConstructor
     public MultilineInputCodec(final MultilineInputCodecConfig config, final EventFactory eventFactory) {
         Objects.requireNonNull(config, "config must not be null");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory must not be null");
-        try {
-            this.pattern = Pattern.compile(config.getMatch());
-        } catch (final Exception e) {
-            throw new IllegalArgumentException("Invalid regex pattern for 'match': " + config.getMatch(), e);
+
+        this.pattern = config.getCompiledPattern();
+        if (this.pattern == null) {
+            throw new IllegalArgumentException("A valid pattern must be configured");
         }
-        this.negate = config.getNegate();
-        this.what = config.getWhat();
+
+        this.mode = resolveMode(config);
+        this.omitMatchedSection = config.getOmitMatchedSection();
         this.maxLines = config.getMaxLines();
         this.maxLength = config.getMaxLength();
         this.lineSeparator = config.getLineSeparator();
+        this.encoding = config.getEncoding();
+    }
+
+    private static MultilineMode resolveMode(final MultilineInputCodecConfig config) {
+        if (config.getEventStartPattern() != null) {
+            return MultilineMode.EVENT_START;
+        } else if (config.getEventEndPattern() != null) {
+            return MultilineMode.EVENT_END;
+        } else if (config.getContinuationLineStartPattern() != null) {
+            return MultilineMode.CONTINUATION_START;
+        } else {
+            return MultilineMode.CONTINUATION_END;
+        }
     }
 
     @Override
@@ -84,33 +97,69 @@ public class MultilineInputCodec implements InputCodec {
         Objects.requireNonNull(inputStream, "inputStream must not be null");
         Objects.requireNonNull(eventConsumer, "eventConsumer must not be null");
 
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            if (what == MultilineWhat.PREVIOUS) {
-                parsePreviousMode(reader, eventConsumer);
-            } else {
-                parseNextMode(reader, eventConsumer);
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, encoding))) {
+            switch (mode) {
+                case EVENT_START:
+                    parseEventStartMode(reader, eventConsumer);
+                    break;
+                case EVENT_END:
+                    parseEventEndMode(reader, eventConsumer);
+                    break;
+                case CONTINUATION_START:
+                    parseContinuationStartMode(reader, eventConsumer);
+                    break;
+                case CONTINUATION_END:
+                    parseContinuationEndMode(reader, eventConsumer);
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown multiline mode: " + mode);
             }
         }
     }
 
     /**
-     * In PREVIOUS mode, continuation lines are appended to the preceding event.
-     * A new event boundary is detected when a line is NOT a continuation line
-     * (i.e., it's a "start" line).
+     * EVENT_START mode: A new event begins at each line matching the pattern.
+     * Non-matching lines are continuations of the preceding event.
      */
-    private void parsePreviousMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    private void parseEventStartMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
         final StringBuilder buffer = new StringBuilder();
         int lineCount = 0;
         String line;
 
         while ((line = reader.readLine()) != null) {
-            final boolean isContinuation = isContinuationLine(line);
+            final boolean matches = pattern.matcher(line).find();
 
-            if (!isContinuation && buffer.length() > 0) {
-                emitEvent(buffer.toString(), eventConsumer);
-                buffer.setLength(0);
-                lineCount = 0;
+            if (matches || shouldFlush(buffer, lineCount, line)) {
+                if (buffer.length() > 0) {
+                    emitEvent(buffer.toString(), eventConsumer);
+                    buffer.setLength(0);
+                    lineCount = 0;
+                }
             }
+
+            if (buffer.length() > 0) {
+                buffer.append(lineSeparator);
+            }
+            buffer.append(processLine(line, matches));
+            lineCount++;
+        }
+
+        if (buffer.length() > 0) {
+            emitEvent(buffer.toString(), eventConsumer);
+        }
+    }
+
+    /**
+     * EVENT_END mode: An event ends at each line matching the pattern (inclusive).
+     * The matching line is included in the current event, then a new event begins.
+     */
+    private void parseEventEndMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        final StringBuilder buffer = new StringBuilder();
+        int lineCount = 0;
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            final boolean matches = pattern.matcher(line).find();
 
             if (shouldFlush(buffer, lineCount, line)) {
                 if (buffer.length() > 0) {
@@ -123,7 +172,45 @@ public class MultilineInputCodec implements InputCodec {
             if (buffer.length() > 0) {
                 buffer.append(lineSeparator);
             }
-            buffer.append(line);
+            buffer.append(processLine(line, matches));
+            lineCount++;
+
+            if (matches) {
+                emitEvent(buffer.toString(), eventConsumer);
+                buffer.setLength(0);
+                lineCount = 0;
+            }
+        }
+
+        if (buffer.length() > 0) {
+            emitEvent(buffer.toString(), eventConsumer);
+        }
+    }
+
+    /**
+     * CONTINUATION_START mode: Lines matching the pattern are continuations of the previous event.
+     * Non-matching lines start new events.
+     */
+    private void parseContinuationStartMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        final StringBuilder buffer = new StringBuilder();
+        int lineCount = 0;
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            final boolean matches = pattern.matcher(line).find();
+
+            if (!matches || shouldFlush(buffer, lineCount, line)) {
+                if (buffer.length() > 0) {
+                    emitEvent(buffer.toString(), eventConsumer);
+                    buffer.setLength(0);
+                    lineCount = 0;
+                }
+            }
+
+            if (buffer.length() > 0) {
+                buffer.append(lineSeparator);
+            }
+            buffer.append(processLine(line, matches));
             lineCount++;
         }
 
@@ -133,42 +220,35 @@ public class MultilineInputCodec implements InputCodec {
     }
 
     /**
-     * In NEXT mode, continuation lines are prepended to the following event.
-     * A new event boundary is detected when a line is NOT a continuation line,
-     * and the buffer (containing prior continuation lines) is combined with this line.
+     * CONTINUATION_END mode: Lines matching the pattern are prepended to the next event.
+     * Non-matching lines complete the current event.
      */
-    private void parseNextMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    private void parseContinuationEndMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
         final StringBuilder buffer = new StringBuilder();
         int lineCount = 0;
         boolean bufferHasNonContinuation = false;
         String line;
 
         while ((line = reader.readLine()) != null) {
-            final boolean isContinuation = isContinuationLine(line);
+            final boolean matches = pattern.matcher(line).find();
 
-            if (!isContinuation) {
+            if (!matches) {
                 if (bufferHasNonContinuation) {
-                    // The buffer already has a complete event (non-continuation at end).
-                    // Emit it and start fresh.
                     emitEvent(buffer.toString(), eventConsumer);
                     buffer.setLength(0);
                     lineCount = 0;
                     bufferHasNonContinuation = false;
                 }
-                // Append this non-continuation line to the buffer (with any preceding continuations).
                 if (buffer.length() > 0) {
                     buffer.append(lineSeparator);
                 }
-                buffer.append(line);
+                buffer.append(processLine(line, false));
                 lineCount++;
                 bufferHasNonContinuation = true;
                 continue;
             }
 
-            // This is a continuation line.
             if (bufferHasNonContinuation) {
-                // Buffer has a complete event ending with non-continuation.
-                // Emit it, then start collecting continuations for the next event.
                 emitEvent(buffer.toString(), eventConsumer);
                 buffer.setLength(0);
                 lineCount = 0;
@@ -186,7 +266,7 @@ public class MultilineInputCodec implements InputCodec {
             if (buffer.length() > 0) {
                 buffer.append(lineSeparator);
             }
-            buffer.append(line);
+            buffer.append(processLine(line, matches));
             lineCount++;
         }
 
@@ -195,17 +275,19 @@ public class MultilineInputCodec implements InputCodec {
         }
     }
 
-    /**
-     * Determines if a line is a continuation line based on the pattern and negate settings.
-     *
-     * <p>When {@code negate=false}: a line matching the pattern IS a continuation line.</p>
-     * <p>When {@code negate=true}: a line NOT matching the pattern IS a continuation line.</p>
-     */
-    boolean isContinuationLine(final String line) {
-        final boolean matches = pattern.matcher(line).find();
-        return negate != matches;
+    private String processLine(final String line, final boolean matches) {
+        if (!omitMatchedSection || !matches) {
+            return line;
+        }
+        final Matcher matcher = pattern.matcher(line);
+        return matcher.replaceFirst("");
     }
 
+    /**
+     * Determines if the buffer should be flushed before appending the next line.
+     * Note: if a single line exceeds max_length on its own, it will still be emitted
+     * as a complete event without truncation.
+     */
     private boolean shouldFlush(final StringBuilder buffer, final int lineCount, final String nextLine) {
         if (lineCount >= maxLines) {
             LOG.debug("Flushing multiline event due to max_lines limit of {}", maxLines);

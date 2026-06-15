@@ -12,9 +12,12 @@ package org.opensearch.dataprepper.plugins.codec.multiline;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -22,25 +25,19 @@ import java.util.regex.PatternSyntaxException;
  * Configuration class for the multiline input codec.
  *
  * <p>The multiline codec groups consecutive lines from an input stream into a single event
- * based on a regex pattern. This is useful for log formats where a single logical event
- * spans multiple lines (e.g., Java stack traces, multi-line application logs).</p>
+ * based on a regex pattern. Exactly one of the four pattern fields must be specified:</p>
+ * <ul>
+ *   <li>{@code event_start_pattern}: A new event begins at each line matching this pattern.</li>
+ *   <li>{@code event_end_pattern}: An event ends at each line matching this pattern (inclusive).</li>
+ *   <li>{@code continuation_line_start_pattern}: Lines matching this pattern are continuations of the previous event.</li>
+ *   <li>{@code continuation_line_end_pattern}: Lines matching this pattern are prepended to the next event.</li>
+ * </ul>
  *
  * <p>Example configuration for Java stack traces:</p>
  * <pre>
  * codec:
  *   multiline:
- *     match: "^\\s+(at |\\.\\.\\.|Caused by:)"
- *     negate: false
- *     what: previous
- * </pre>
- *
- * <p>Example configuration for timestamp-prefixed logs:</p>
- * <pre>
- * codec:
- *   multiline:
- *     match: "^\\d{4}-\\d{2}-\\d{2}"
- *     negate: true
- *     what: previous
+ *     event_start_pattern: "^\\d{4}-\\d{2}-\\d{2}"
  * </pre>
  */
 public class MultilineInputCodecConfig {
@@ -49,17 +46,20 @@ public class MultilineInputCodecConfig {
     static final int DEFAULT_MAX_LENGTH = 10000;
     static final String DEFAULT_LINE_SEPARATOR = "\n";
 
-    @NotEmpty(message = "match must not be empty")
-    @JsonProperty("match")
-    private String match;
+    @JsonProperty("event_start_pattern")
+    private String eventStartPattern;
 
-    @NotNull(message = "negate must not be null")
-    @JsonProperty("negate")
-    private Boolean negate = false;
+    @JsonProperty("event_end_pattern")
+    private String eventEndPattern;
 
-    @NotNull(message = "what must not be null")
-    @JsonProperty("what")
-    private MultilineWhat what = MultilineWhat.PREVIOUS;
+    @JsonProperty("continuation_line_start_pattern")
+    private String continuationLineStartPattern;
+
+    @JsonProperty("continuation_line_end_pattern")
+    private String continuationLineEndPattern;
+
+    @JsonProperty("omit_matched_section")
+    private boolean omitMatchedSection = false;
 
     @Min(value = 1, message = "max_lines must be at least 1")
     @JsonProperty("max_lines")
@@ -73,75 +73,139 @@ public class MultilineInputCodecConfig {
     @JsonProperty("line_separator")
     private String lineSeparator = DEFAULT_LINE_SEPARATOR;
 
-    /**
-     * The regex pattern used to identify line boundaries.
-     *
-     * @return The regex pattern string.
-     */
-    public String getMatch() {
-        return match;
+    @JsonProperty("encoding")
+    private String encoding = StandardCharsets.UTF_8.name();
+
+    private Pattern compiledPattern;
+    private Charset encodingCharset;
+
+    public String getEventStartPattern() {
+        return eventStartPattern;
     }
 
-    /**
-     * Whether to negate the pattern match.
-     * <p>When false: lines matching the pattern are considered continuation lines.</p>
-     * <p>When true: lines NOT matching the pattern are considered continuation lines.</p>
-     *
-     * @return true if the pattern should be negated.
-     */
-    public Boolean getNegate() {
-        return negate;
+    public String getEventEndPattern() {
+        return eventEndPattern;
     }
 
-    /**
-     * Defines whether unmatched (continuation) lines belong to the previous or next event.
-     *
-     * @return The multiline grouping direction.
-     */
-    public MultilineWhat getWhat() {
-        return what;
+    public String getContinuationLineStartPattern() {
+        return continuationLineStartPattern;
     }
 
-    /**
-     * The maximum number of lines that can be combined into a single event.
-     * When this limit is reached, the accumulated lines are flushed as an event
-     * and a new accumulation begins.
-     *
-     * @return The maximum number of lines per event.
-     */
+    public String getContinuationLineEndPattern() {
+        return continuationLineEndPattern;
+    }
+
+    public boolean getOmitMatchedSection() {
+        return omitMatchedSection;
+    }
+
     public int getMaxLines() {
         return maxLines;
     }
 
-    /**
-     * The maximum character length of a combined multiline event.
-     * When this limit is reached, the accumulated lines are flushed as an event.
-     *
-     * @return The maximum character length per event.
-     */
     public int getMaxLength() {
         return maxLength;
     }
 
-    /**
-     * The separator string to use when joining multiple lines into a single event message.
-     *
-     * @return The line separator string.
-     */
     public String getLineSeparator() {
         return lineSeparator;
     }
 
-    @AssertTrue(message = "match must be a valid regular expression")
+    /**
+     * Returns the validated Charset. The encoding is validated once during
+     * bean validation and stored to avoid repeated parsing.
+     *
+     * @return The validated Charset.
+     */
+    public Charset getEncoding() {
+        return encodingCharset;
+    }
+
+    /**
+     * Returns the compiled regex pattern. The pattern is compiled once during validation
+     * and reused to avoid duplicate compilation.
+     *
+     * @return The compiled Pattern.
+     */
+    public Pattern getCompiledPattern() {
+        return compiledPattern;
+    }
+
+    @AssertTrue(message = "Exactly one pattern field must be specified: event_start_pattern, event_end_pattern, " +
+            "continuation_line_start_pattern, or continuation_line_end_pattern")
+    boolean isExactlyOnePatternSpecified() {
+        int count = 0;
+        if (eventStartPattern != null) count++;
+        if (eventEndPattern != null) count++;
+        if (continuationLineStartPattern != null) count++;
+        if (continuationLineEndPattern != null) count++;
+        return count == 1;
+    }
+
+    @AssertTrue(message = "The specified pattern must be a valid regular expression")
     boolean isValidPattern() {
-        if (match == null || match.isEmpty()) {
+        final String patternString = getConfiguredPatternString();
+        if (patternString == null || patternString.isEmpty()) {
             return false;
         }
         try {
-            Pattern.compile(match);
+            compiledPattern = Pattern.compile(patternString);
             return true;
         } catch (final PatternSyntaxException e) {
             return false;
+        }
+    }
+
+    @AssertTrue(message = "The specified encoding must be a valid charset")
+    boolean isValidEncoding() {
+        if (encoding == null || encoding.isEmpty()) {
+            return false;
+        }
+        try {
+            encodingCharset = Charset.forName(encoding);
+            return true;
+        } catch (final IllegalCharsetNameException | UnsupportedCharsetException e) {
+            return false;
+        }
+    }
+
+    String getConfiguredPatternString() {
+        if (eventStartPattern != null) return eventStartPattern;
+        if (eventEndPattern != null) return eventEndPattern;
+        if (continuationLineStartPattern != null) return continuationLineStartPattern;
+        if (continuationLineEndPattern != null) return continuationLineEndPattern;
+        return null;
+    }
+
+    static Builder builder() {
+        return new Builder();
+    }
+
+    static class Builder {
+        private final MultilineInputCodecConfig config = new MultilineInputCodecConfig();
+
+        Builder withEventStartPattern(final String pattern) {
+            config.eventStartPattern = pattern;
+            return this;
+        }
+
+        Builder withEventEndPattern(final String pattern) {
+            config.eventEndPattern = pattern;
+            return this;
+        }
+
+        Builder withContinuationLineStartPattern(final String pattern) {
+            config.continuationLineStartPattern = pattern;
+            return this;
+        }
+
+        Builder withContinuationLineEndPattern(final String pattern) {
+            config.continuationLineEndPattern = pattern;
+            return this;
+        }
+
+        MultilineInputCodecConfig build() {
+            return config;
         }
     }
 }
