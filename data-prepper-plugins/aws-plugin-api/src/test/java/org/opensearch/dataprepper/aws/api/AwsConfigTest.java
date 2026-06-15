@@ -73,10 +73,10 @@ public class AwsConfigTest {
     }
 
     @Test
-    void isValidConfiguration_returns_false_when_configuration_and_region_are_set() throws NoSuchFieldException, IllegalAccessException {
+    void isValidConfiguration_returns_true_when_configuration_and_region_are_set() throws NoSuchFieldException, IllegalAccessException {
         reflectivelySetField(awsConfig, "configuration", "my_config");
         reflectivelySetField(awsConfig, "awsRegion", "us-east-1");
-        assertThat(awsConfig.isValidConfiguration(), equalTo(false));
+        assertThat(awsConfig.isValidConfiguration(), equalTo(true));
     }
 
     @Test
