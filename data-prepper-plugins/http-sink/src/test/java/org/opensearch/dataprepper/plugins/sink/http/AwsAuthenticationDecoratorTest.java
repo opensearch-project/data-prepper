@@ -220,4 +220,78 @@ public class AwsAuthenticationDecoratorTest {
         final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, awsConfig, TEST_SERVICE_NAME);
         assertThat(decorator, notNullValue());
     }
+    @Test
+    void test_constructor_with_named_configuration_resolves_region_from_supplier_default() {
+        when(awsConfig.getConfiguration()).thenReturn("my_named_config");
+        when(awsConfig.getAwsRegion()).thenReturn(null);
+        when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(java.util.Optional.of(Region.EU_WEST_1));
+        when(awsCredentialsSupplier.getProvider("my_named_config")).thenReturn(awsCredentialsProvider);
+
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, awsConfig, TEST_SERVICE_NAME);
+
+        final HttpRequest request = decorator.buildRequest(TEST_URL, TEST_PAYLOAD, null);
+        final String authHeader = request.headers().get("Authorization");
+        assertTrue(authHeader.contains("eu-west-1"), "Should use region from supplier default when awsConfig.getAwsRegion() is null");
+    }
+
+    @Test
+    void test_constructor_with_named_configuration_uses_explicit_region_when_set() {
+        when(awsConfig.getConfiguration()).thenReturn("my_named_config");
+        when(awsConfig.getAwsRegion()).thenReturn(Region.AP_SOUTHEAST_1);
+        when(awsCredentialsSupplier.getProvider("my_named_config")).thenReturn(awsCredentialsProvider);
+
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, awsConfig, TEST_SERVICE_NAME);
+
+        final HttpRequest request = decorator.buildRequest(TEST_URL, TEST_PAYLOAD, null);
+        final String authHeader = request.headers().get("Authorization");
+        assertTrue(authHeader.contains("ap-southeast-1"), "Should use explicit region from awsConfig when set");
+    }
+
+    @Test
+    void test_constructor_with_named_configuration_calls_getProvider_with_config_name() {
+        final String configName = "ecs_task_role";
+        when(awsConfig.getConfiguration()).thenReturn(configName);
+        when(awsConfig.getAwsRegion()).thenReturn(TEST_REGION);
+        when(awsCredentialsSupplier.getProvider(configName)).thenReturn(awsCredentialsProvider);
+
+        new AwsAuthenticationDecorator(awsCredentialsSupplier, awsConfig, TEST_SERVICE_NAME);
+
+        verify(awsCredentialsSupplier).getProvider(configName);
+    }
+
+    @Test
+    void test_constructor_with_null_config_uses_default_credentials_provider() {
+        when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(java.util.Optional.of(TEST_REGION));
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
+
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, null, TEST_SERVICE_NAME);
+
+        final ArgumentCaptor<AwsCredentialsOptions> captor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
+        verify(awsCredentialsSupplier).getProvider(captor.capture());
+        assertTrue(captor.getValue().isUseDefaultCredentialsProvider(),
+                "Should use default credentials provider when awsConfig is null");
+    }
+
+    @Test
+    void test_constructor_with_null_config_resolves_region_from_supplier_default() {
+        when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(java.util.Optional.of(Region.US_WEST_2));
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
+
+        final AwsAuthenticationDecorator decorator = new AwsAuthenticationDecorator(awsCredentialsSupplier, null, TEST_SERVICE_NAME);
+
+        final HttpRequest request = decorator.buildRequest(TEST_URL, TEST_PAYLOAD, null);
+        final String authHeader = request.headers().get("Authorization");
+        assertTrue(authHeader.contains("us-west-2"), "Should use region from supplier default when config is null");
+    }
+
+    @Test
+    void test_constructor_with_inline_config_does_not_call_getProvider_with_string() {
+        // awsConfig has no 'configuration' set (returns null) — should use convertToCredentialOptions path
+        when(awsConfig.getConfiguration()).thenReturn(null);
+
+        createObjectUnderTest();
+
+        verify(awsCredentialsSupplier).getProvider(any(AwsCredentialsOptions.class));
+        verify(awsCredentialsSupplier, org.mockito.Mockito.never()).getProvider(org.mockito.ArgumentMatchers.anyString());
+    }
 }

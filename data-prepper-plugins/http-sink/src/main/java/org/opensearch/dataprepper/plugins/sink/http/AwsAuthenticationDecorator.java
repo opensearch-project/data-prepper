@@ -45,7 +45,7 @@ public class AwsAuthenticationDecorator implements AuthenticationDecorator {
                                       @Nonnull final String serviceName) {
         this.serviceName = serviceName;
         if (awsConfig != null && awsConfig.getConfiguration() != null) {
-            this.region = awsCredentialsSupplier.getDefaultRegion().orElse(null);
+            this.region = resolveRegion(awsConfig.getAwsRegion(), awsCredentialsSupplier);
             this.credentialsProvider = awsCredentialsSupplier.getProvider(awsConfig.getConfiguration());
         } else if (awsConfig != null) {
             this.region = awsConfig.getAwsRegion();
@@ -55,6 +55,15 @@ public class AwsAuthenticationDecorator implements AuthenticationDecorator {
             this.credentialsProvider = awsCredentialsSupplier.getProvider(
                     AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider());
         }
+    }
+
+    /**
+     * Resolves region using: 1) use the region provided 2) if no region provided, use the default
+     */
+    private static Region resolveRegion(final Region awsRegion, final AwsCredentialsSupplier awsCredentialsSupplier) {
+        if (awsRegion != null)
+            return awsRegion;
+        return awsCredentialsSupplier.getDefaultRegion().orElseGet(null);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {
