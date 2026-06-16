@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
-import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
@@ -30,6 +29,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.grpc.GrpcServiceConfigurator;
+import org.opensearch.dataprepper.plugins.source.otelmetrics.http.HttpServiceConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +37,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 @DataPrepperPlugin(name = "otlp_metrics",
         deprecatedName = "otel_metrics_source",
@@ -103,11 +104,13 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     }
 
     private Server buildServer(final Buffer<Record<? extends Metric>> buffer) {
+        final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(oTelMetricsSourceConfig.getThreadCount());
+
         final ServerBuilder sb = Server.builder();
         sb.disableServerHeader();
         configureServerLimits(sb);
         configureTls(sb);
-        configureTaskExecutor(sb);
+        configureTaskExecutor(sb, executor);
         configureHttpHealthCheck(sb);
 
         final OTelMetricsGrpcService grpcService = new OTelMetricsGrpcService(
@@ -119,6 +122,11 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
 
         new GrpcServiceConfigurator(oTelMetricsSourceConfig, pluginMetrics, pipelineName, authenticationProvider)
                 .configure(sb, grpcService);
+
+        if (oTelMetricsSourceConfig.getHttpPath() != null) {
+            new HttpServiceConfigurator(oTelMetricsSourceConfig, pluginMetrics, pipelineName, pluginFactory)
+                    .configure(sb, buffer, executor.getQueue());
+        }
 
         return sb.build();
     }
@@ -132,7 +140,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     }
 
     private void configureTls(final ServerBuilder sb) {
-        if (oTelMetricsSourceConfig.isSsl() || oTelMetricsSourceConfig.useAcmCertForSSL()) {
+        if (oTelMetricsSourceConfig.isSsl() || oTelMetricsSourceConfig.isUseAcmCertForSSL()) {
             LOG.info("SSL/TLS is enabled.");
             final Certificate certificate = certificateProviderFactory.getCertificateProvider().getCertificate();
             sb.https(oTelMetricsSourceConfig.getPort()).tls(
@@ -145,16 +153,12 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         }
     }
 
-    private void configureTaskExecutor(final ServerBuilder sb) {
-        final BlockingTaskExecutor executor = BlockingTaskExecutor.builder()
-                .numThreads(oTelMetricsSourceConfig.getThreadCount())
-                .threadNamePrefix(pipelineName + "-" + PLUGIN_NAME)
-                .build();
+    private void configureTaskExecutor(final ServerBuilder sb, final ScheduledThreadPoolExecutor executor) {
         sb.blockingTaskExecutor(executor, true);
     }
 
     private void configureHttpHealthCheck(final ServerBuilder sb) {
-        if (oTelMetricsSourceConfig.enableHttpHealthCheck()) {
+        if (oTelMetricsSourceConfig.isHealthCheck()) {
             LOG.info("HTTP health check is enabled.");
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }

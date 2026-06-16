@@ -73,17 +73,17 @@ public class GrpcServiceConfigurator {
             grpcSB.addService(ServerInterceptors.intercept(grpcService, interceptors));
         }
 
-        if (config.hasHealthCheck()) {
+        if (config.isHealthCheck()) {
             LOG.info("gRPC health check service is enabled.");
             grpcSB.addService(new HealthGrpcService());
         }
 
-        if (config.hasProtoReflectionService()) {
+        if (config.isProtoReflectionService()) {
             LOG.info("gRPC proto reflection service is enabled.");
             grpcSB.addService(ProtoReflectionService.newInstance());
         }
 
-        grpcSB.enableUnframedRequests(config.enableUnframedRequests());
+        grpcSB.enableUnframedRequests(config.isEnableUnframedRequests());
 
         final com.linecorp.armeria.server.grpc.GrpcService builtGrpcService = grpcSB.build();
         if (CompressionOption.NONE.equals(config.getCompression())) {
