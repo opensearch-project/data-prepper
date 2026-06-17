@@ -26,7 +26,7 @@ class S3EventBridgeNotificationParserTest {
             "\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\"," +
             "\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"617f08299329d189\"}," +
             "\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\"," +
-            "\"reason\":\"PutObject\"}}";
+            "\"reason\":\"PutObject\",\"event-version\":\"1.0\"}}";
 
     private final String SECURITY_LAKE_MESSAGE = "{\"source\":\"aws.s3\",\"time\":\"2021-11-12T00:00:00Z\",\"account\":\"123456789012\",\"region\":\"ca-central-1\"," +
             "\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"bucket\":{\"name\":\"example-bucket\"}," +
