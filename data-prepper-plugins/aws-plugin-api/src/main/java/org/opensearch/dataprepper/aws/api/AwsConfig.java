@@ -62,7 +62,7 @@ public class AwsConfig {
             "Use either a named configuration reference or inline credentials, not both.")
     public boolean isValidConfiguration() {
         if (configuration != null) {
-            return awsRegion == null && awsStsRoleArn == null && awsStsHeaderOverrides == null && awsStsExternalId == null;
+            return awsStsRoleArn == null && awsStsHeaderOverrides == null && awsStsExternalId == null;
         }
         return true;
     }
