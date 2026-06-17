@@ -23,7 +23,7 @@ public class S3EventNotificationParserTest {
                     "\"responseElements\":{\"x-amz-request-id\":\"xyz\",\"x-amz-id-2\":\"xyz\"},\"s3\":{\"s3SchemaVersion\":\"1.0\"," +
                     "\"configurationId\":\"xyz\",\"bucket\":{\"name\":\"my-bucket\",\"ownerIdentity\":{\"principalId\":\"ABC\"}," +
                     "\"arn\":\"arn:aws:s3:::my-bucket\"},\"object\":{\"key\":\"path/to/myfile.log.gz\",\"size\":3159112,\"eTag\":\"abcd123\"," +
-                    "\"sequencer\":\"000\"}}}]}";
+                    "\"sequencer\":\"000\",\"hasObjectAnnotation\":false}}}]}";
 
     public static final String SNS_BASED_MESSAGE = "{\n" +
             "  \"Type\" : \"Notification\",\n" +
