@@ -54,7 +54,8 @@ public class MultilineInputCodec implements InputCodec {
     private static final String MESSAGE_FIELD_NAME = "message";
 
     private final Pattern pattern;
-    private final MultilineMode mode;
+    private final boolean boundaryOnMatch;
+    private final boolean flushAfter;
     private final boolean omitMatchedSection;
     private final int maxLines;
     private final int maxLength;
@@ -72,7 +73,9 @@ public class MultilineInputCodec implements InputCodec {
             throw new IllegalArgumentException("A valid pattern must be configured");
         }
 
-        this.mode = resolveMode(config);
+        final MultilineMode mode = resolveMode(config);
+        this.boundaryOnMatch = (mode == MultilineMode.EVENT_START || mode == MultilineMode.EVENT_END);
+        this.flushAfter = (mode == MultilineMode.EVENT_END || mode == MultilineMode.CONTINUATION_END);
         this.omitMatchedSection = config.getOmitMatchedSection();
         this.maxLines = config.getMaxLines();
         this.maxLength = config.getMaxLength();
@@ -97,182 +100,34 @@ public class MultilineInputCodec implements InputCodec {
         Objects.requireNonNull(inputStream, "inputStream must not be null");
         Objects.requireNonNull(eventConsumer, "eventConsumer must not be null");
 
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, encoding))) {
-            switch (mode) {
-                case EVENT_START:
-                    parseEventStartMode(reader, eventConsumer);
-                    break;
-                case EVENT_END:
-                    parseEventEndMode(reader, eventConsumer);
-                    break;
-                case CONTINUATION_START:
-                    parseContinuationStartMode(reader, eventConsumer);
-                    break;
-                case CONTINUATION_END:
-                    parseContinuationEndMode(reader, eventConsumer);
-                    break;
-                default:
-                    throw new IllegalStateException("Unknown multiline mode: " + mode);
-            }
-        }
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, encoding));
+        parseLines(reader, eventConsumer);
     }
 
-    /**
-     * EVENT_START mode: A new event begins at each line matching the pattern.
-     * Non-matching lines are continuations of the preceding event.
-     */
-    private void parseEventStartMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    private void parseLines(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
         final StringBuilder buffer = new StringBuilder();
         int lineCount = 0;
         String line;
 
         while ((line = reader.readLine()) != null) {
             final boolean matches = pattern.matcher(line).find();
+            final boolean isBoundary = (boundaryOnMatch == matches);
 
-            if (matches || shouldFlush(buffer, lineCount, line)) {
-                if (buffer.length() > 0) {
-                    emitEvent(buffer.toString(), eventConsumer);
-                    buffer.setLength(0);
-                    lineCount = 0;
-                }
+            if ((!flushAfter && isBoundary) || shouldFlush(buffer, lineCount, line)) {
+                flushIfNonEmpty(buffer, eventConsumer);
+                lineCount = 0;
             }
 
-            if (buffer.length() > 0) {
-                buffer.append(lineSeparator);
-            }
-            buffer.append(processLine(line, matches));
-            lineCount++;
-        }
-
-        if (buffer.length() > 0) {
-            emitEvent(buffer.toString(), eventConsumer);
-        }
-    }
-
-    /**
-     * EVENT_END mode: An event ends at each line matching the pattern (inclusive).
-     * The matching line is included in the current event, then a new event begins.
-     */
-    private void parseEventEndMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        final StringBuilder buffer = new StringBuilder();
-        int lineCount = 0;
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            final boolean matches = pattern.matcher(line).find();
-
-            if (shouldFlush(buffer, lineCount, line)) {
-                if (buffer.length() > 0) {
-                    emitEvent(buffer.toString(), eventConsumer);
-                    buffer.setLength(0);
-                    lineCount = 0;
-                }
-            }
-
-            if (buffer.length() > 0) {
-                buffer.append(lineSeparator);
-            }
-            buffer.append(processLine(line, matches));
+            appendLineToBuffer(buffer, processLine(line, matches));
             lineCount++;
 
-            if (matches) {
-                emitEvent(buffer.toString(), eventConsumer);
-                buffer.setLength(0);
+            if (flushAfter && isBoundary) {
+                flushIfNonEmpty(buffer, eventConsumer);
                 lineCount = 0;
             }
         }
 
-        if (buffer.length() > 0) {
-            emitEvent(buffer.toString(), eventConsumer);
-        }
-    }
-
-    /**
-     * CONTINUATION_START mode: Lines matching the pattern are continuations of the previous event.
-     * Non-matching lines start new events.
-     */
-    private void parseContinuationStartMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        final StringBuilder buffer = new StringBuilder();
-        int lineCount = 0;
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            final boolean matches = pattern.matcher(line).find();
-
-            if (!matches || shouldFlush(buffer, lineCount, line)) {
-                if (buffer.length() > 0) {
-                    emitEvent(buffer.toString(), eventConsumer);
-                    buffer.setLength(0);
-                    lineCount = 0;
-                }
-            }
-
-            if (buffer.length() > 0) {
-                buffer.append(lineSeparator);
-            }
-            buffer.append(processLine(line, matches));
-            lineCount++;
-        }
-
-        if (buffer.length() > 0) {
-            emitEvent(buffer.toString(), eventConsumer);
-        }
-    }
-
-    /**
-     * CONTINUATION_END mode: Lines matching the pattern are prepended to the next event.
-     * Non-matching lines complete the current event.
-     */
-    private void parseContinuationEndMode(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        final StringBuilder buffer = new StringBuilder();
-        int lineCount = 0;
-        boolean bufferHasNonContinuation = false;
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            final boolean matches = pattern.matcher(line).find();
-
-            if (!matches) {
-                if (bufferHasNonContinuation) {
-                    emitEvent(buffer.toString(), eventConsumer);
-                    buffer.setLength(0);
-                    lineCount = 0;
-                    bufferHasNonContinuation = false;
-                }
-                if (buffer.length() > 0) {
-                    buffer.append(lineSeparator);
-                }
-                buffer.append(processLine(line, false));
-                lineCount++;
-                bufferHasNonContinuation = true;
-                continue;
-            }
-
-            if (bufferHasNonContinuation) {
-                emitEvent(buffer.toString(), eventConsumer);
-                buffer.setLength(0);
-                lineCount = 0;
-                bufferHasNonContinuation = false;
-            }
-
-            if (shouldFlush(buffer, lineCount, line)) {
-                if (buffer.length() > 0) {
-                    emitEvent(buffer.toString(), eventConsumer);
-                    buffer.setLength(0);
-                    lineCount = 0;
-                }
-            }
-
-            if (buffer.length() > 0) {
-                buffer.append(lineSeparator);
-            }
-            buffer.append(processLine(line, matches));
-            lineCount++;
-        }
-
-        if (buffer.length() > 0) {
-            emitEvent(buffer.toString(), eventConsumer);
-        }
+        flushIfNonEmpty(buffer, eventConsumer);
     }
 
     private String processLine(final String line, final boolean matches) {
@@ -281,6 +136,23 @@ public class MultilineInputCodec implements InputCodec {
         }
         final Matcher matcher = pattern.matcher(line);
         return matcher.replaceFirst("");
+    }
+
+    private void appendLineToBuffer(final StringBuilder buffer, final String processedLine) {
+        if (processedLine.isEmpty()) {
+            return;
+        }
+        if (buffer.length() > 0) {
+            buffer.append(lineSeparator);
+        }
+        buffer.append(processedLine);
+    }
+
+    private void flushIfNonEmpty(final StringBuilder buffer, final Consumer<Record<Event>> eventConsumer) {
+        if (buffer.length() > 0) {
+            emitEvent(buffer.toString(), eventConsumer);
+            buffer.setLength(0);
+        }
     }
 
     /**

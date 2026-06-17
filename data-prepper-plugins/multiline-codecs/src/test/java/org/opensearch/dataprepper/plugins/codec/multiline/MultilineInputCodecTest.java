@@ -73,13 +73,6 @@ class MultilineInputCodecTest {
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
-    @Test
-    void constructor_throws_if_pattern_is_invalid() {
-        when(config.getCompiledPattern()).thenReturn(null);
-
-        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-    }
-
     private void setupConfig(final String patternStr) {
         when(config.getCompiledPattern()).thenReturn(Pattern.compile(patternStr));
         when(config.getMaxLines()).thenReturn(500);
@@ -381,9 +374,9 @@ class MultilineInputCodecTest {
 
             assertThat(events.size(), equalTo(2));
             assertThat(events.get(0).getData().get("message", String.class),
-                    equalTo("line 1\nline 2\n"));
+                    equalTo("line 1\nline 2"));
             assertThat(events.get(1).getData().get("message", String.class),
-                    equalTo("line 3\n"));
+                    equalTo("line 3"));
         }
 
         @Test

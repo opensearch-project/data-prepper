@@ -77,7 +77,6 @@ public class MultilineInputCodecConfig {
     private String encoding = StandardCharsets.UTF_8.name();
 
     private Pattern compiledPattern;
-    private Charset encodingCharset;
 
     public String getEventStartPattern() {
         return eventStartPattern;
@@ -112,22 +111,23 @@ public class MultilineInputCodecConfig {
     }
 
     /**
-     * Returns the validated Charset. The encoding is validated once during
-     * bean validation and stored to avoid repeated parsing.
+     * Returns the validated Charset, compiled on first access.
      *
-     * @return The validated Charset.
+     * @return The Charset.
      */
     public Charset getEncoding() {
-        return encodingCharset;
+        return Charset.forName(encoding);
     }
 
     /**
-     * Returns the compiled regex pattern. The pattern is compiled once during validation
-     * and reused to avoid duplicate compilation.
+     * Returns the compiled regex pattern, compiled on first access.
      *
      * @return The compiled Pattern.
      */
     public Pattern getCompiledPattern() {
+        if (compiledPattern == null) {
+            compiledPattern = Pattern.compile(getConfiguredPatternString());
+        }
         return compiledPattern;
     }
 
@@ -149,7 +149,7 @@ public class MultilineInputCodecConfig {
             return false;
         }
         try {
-            compiledPattern = Pattern.compile(patternString);
+            Pattern.compile(patternString);
             return true;
         } catch (final PatternSyntaxException e) {
             return false;
@@ -162,7 +162,7 @@ public class MultilineInputCodecConfig {
             return false;
         }
         try {
-            encodingCharset = Charset.forName(encoding);
+            Charset.forName(encoding);
             return true;
         } catch (final IllegalCharsetNameException | UnsupportedCharsetException e) {
             return false;

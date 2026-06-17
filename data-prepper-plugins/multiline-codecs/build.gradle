@@ -12,4 +12,5 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
     testImplementation project(':data-prepper-plugins:common')
     testImplementation project(':data-prepper-test:test-event')
+    testImplementation project(':data-prepper-test:plugin-test-framework')
 }
