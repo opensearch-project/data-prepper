@@ -1,0 +1,17 @@
+# Auto-detect pipeline: no codec specified — format detection picks the codec
+s3-auto-detect-pipeline:
+  source:
+    s3:
+      compression: "none"
+      aws:
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_ROLE_NAME>"
+      scan:
+        buckets:
+          - bucket:
+              name: "<YOUR_BUCKET_NAME>"
+              filter:
+                include_prefix:
+                  - "test-data/"
+  sink:
+    - stdout:

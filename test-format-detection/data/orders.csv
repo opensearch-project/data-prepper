@@ -1,0 +1,6 @@
+order_id,customer_id,product,quantity,price,timestamp
+ORD-001,C-123,Widget Pro,2,29.99,2026-06-19T08:00:00Z
+ORD-002,C-456,Gadget X,1,49.99,2026-06-19T08:01:00Z
+ORD-003,C-789,Widget Pro,5,29.99,2026-06-19T08:02:00Z
+ORD-004,C-123,Cable USB-C,3,9.99,2026-06-19T08:03:00Z
+ORD-005,C-101,Gadget X,1,49.99,2026-06-19T08:04:00Z
