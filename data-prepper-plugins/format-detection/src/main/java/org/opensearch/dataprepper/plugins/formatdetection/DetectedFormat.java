@@ -1,0 +1,24 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.formatdetection;
+
+/**
+ * Data formats that can be detected from S3 object bytes.
+ */
+public enum DetectedFormat {
+    PARQUET,
+    AVRO,
+    ORC,
+    PDF,
+    IMAGE,
+    JSON,
+    NDJSON,
+    XML,
+    CSV,
+    TSV,
+    TEXT,
+    UNKNOWN
+}
