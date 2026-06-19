@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.otellogs;
+package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
 import static com.linecorp.armeria.common.HttpStatus.INSUFFICIENT_STORAGE;
 import static com.linecorp.armeria.common.HttpStatus.INTERNAL_SERVER_ERROR;
@@ -34,14 +34,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createConfigBuilderWithBasicAuth;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createDefaultConfigBuilder;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createJsonHttpPayload;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithSsl;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createLogsServiceRequest;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_PASSWORD;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.BASIC_AUTH_USERNAME;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigTestData.CONFIG_HTTP_PATH;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createBuilderForConfigWithSsl;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createConfigBuilderWithBasicAuth;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createDefaultConfig;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createDefaultConfigBuilder;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createJsonHttpPayload;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfigFixture.createMetricsServiceRequest;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.BASIC_AUTH_PASSWORD;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.BASIC_AUTH_USERNAME;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OtelMetricsSourceConfigTestData.CONFIG_HTTP_PATH;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -49,12 +50,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,6 +78,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -83,7 +86,7 @@ import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -107,16 +110,14 @@ import io.grpc.BindableService;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.logs.v1.LogRecord;
-import io.opentelemetry.proto.logs.v1.ResourceLogs;
-import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 
+
 @ExtendWith(MockitoExtension.class)
-class OTelLogsSourceHttpTest {
+class OTelMetricsSourceHttpTest {
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
 
     @Mock
@@ -132,22 +133,19 @@ class OTelLogsSourceHttpTest {
     private GrpcService grpcService;
 
     @Mock
-    private CompletableFuture<Void> completableFuture;
-
-    @Mock
     private PluginFactory pluginFactory;
 
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
     @Mock
-    private BlockingBuffer<Record<Object>> buffer;
+    private BlockingBuffer<Record<? extends Metric>> buffer;
 
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
-    private OTelLogsSource SOURCE;
-    private static final ExportLogsServiceRequest LOGS_REQUEST = ExportLogsServiceRequest.newBuilder()
-            .addResourceLogs(ResourceLogs.newBuilder().build()).build();
+    private OTelMetricsSource SOURCE;
+    private static final ExportMetricsServiceRequest METRICS_REQUEST = ExportMetricsServiceRequest.newBuilder()
+            .addResourceMetrics(ResourceMetrics.newBuilder().build()).build();
 
     @BeforeEach
     public void beforeEach() {
@@ -161,12 +159,9 @@ class OTelLogsSourceHttpTest {
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
         MetricsTestUtil.initMetrics();
-        pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
+        pluginMetrics = PluginMetrics.fromNames("otel_metrics", "pipeline");
 
         lenient().when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authenticationProvider);
-        final HttpBasicAuthenticationConfig PROVIDED_CONFIG = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
-        HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig(PROVIDED_CONFIG.getUsername(), PROVIDED_CONFIG.getPassword()));
-        lenient().when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
     }
@@ -177,47 +172,64 @@ class OTelLogsSourceHttpTest {
     }
 
     private void configureSource() {
-        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).build());
+        configureSource(createDefaultConfig());
     }
 
-    private void configureSource(OTelLogsSourceConfig config) {
-        SOURCE = new OTelLogsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
-        assertInstanceOf(OTelLogsDecoder.class, SOURCE.getDecoder());
+    private void configureSource(OTelMetricsSourceConfig config) {
+        SOURCE = new OTelMetricsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
+        assertInstanceOf(OTelMetricDecoder.class, SOURCE.getDecoder());
     }
 
     private RequestHeadersBuilder getDefaultRequestHeadersBuilder() {
         return RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21892")
-                        .method(HttpMethod.POST)
-                        .path(CONFIG_HTTP_PATH)
-                        .contentType(MediaType.JSON_UTF_8);
+                .scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:21891")
+                .method(HttpMethod.POST)
+                .path(CONFIG_HTTP_PATH)
+                .contentType(MediaType.JSON_UTF_8);
     }
 
     @ParameterizedTest
     @MethodSource("getPathParams")
     void httpRequest_writesToBuffer_returnsSuccessfulResponse(String givenPath, String resolvedRequestPath) throws Exception {
-        OTelLogsSourceConfig config = createDefaultConfigBuilder().httpPath(givenPath).build();
+        OTelMetricsSourceConfig config = createDefaultConfigBuilder().httpPath(givenPath).build();
         configureSource(config);
         SOURCE.start(buffer);
-        ExportLogsServiceRequest request = createExportLogsRequest();
+        ExportMetricsServiceRequest request = createMetricsServiceRequest();
 
         WebClient.of().execute(
-                getDefaultRequestHeadersBuilder().path(resolvedRequestPath).scheme(SessionProtocol.HTTP).build(),
-                HttpData.copyOf(JsonFormat.printer().print(request).getBytes())
-        )
-            .aggregate()
-            .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
-            .join();
+                        getDefaultRequestHeadersBuilder().path(resolvedRequestPath).scheme(SessionProtocol.HTTP).build(),
+                        HttpData.copyOf(JsonFormat.printer().print(request).getBytes())
+                )
+                .aggregate()
+                .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
+                .join();
+
+        verify(buffer).writeAll(any(), anyInt());
+    }
+
+    @Test
+    void httpRequest_payloadIsProtobuf_returnsSuccessfulResponse() throws Exception {
+        configureSource();
+        SOURCE.start(buffer);
+        ExportMetricsServiceRequest request = createMetricsServiceRequest();
+
+        WebClient.of().execute(
+                        getDefaultRequestHeadersBuilder().contentType(MediaType.PROTOBUF).scheme(SessionProtocol.HTTP).build(),
+                        HttpData.copyOf(request.toByteArray())
+                )
+                .aggregate()
+                .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
+                .join();
 
         verify(buffer).writeAll(any(), anyInt());
     }
 
     @Test
     void httpsRequest_requestIsProcessed_writesToBufferAndReturnsSuccessfulResponse() throws Exception {
-        configureSource(createBuilderForConfigWithSsl().httpPath(CONFIG_HTTP_PATH).build());
+        configureSource(createBuilderForConfigWithSsl().build());
         SOURCE.start(buffer);
-        ExportLogsServiceRequest request = createExportLogsRequest();
+        ExportMetricsServiceRequest request = createExportMetricsRequest();
 
         WebClient.builder()
                 .factory(ClientFactory.insecure()).
@@ -232,12 +244,6 @@ class OTelLogsSourceHttpTest {
         verify(buffer).writeAll(any(), anyInt());
     }
 
-    private static Stream<Arguments> getPathParams() {
-        return Stream.of(
-                Arguments.of(CONFIG_HTTP_PATH, CONFIG_HTTP_PATH),
-                Arguments.of("/${pipelineName}/v1/logs", "/test_pipeline/v1/logs")
-        );
-    }
 
     @Test
     void httpRequest_oneConnectionIsEstablished_metricsReflectCorrectConnectionCount() throws InvalidProtocolBufferException {
@@ -249,7 +255,7 @@ class OTelLogsSourceHttpTest {
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
 
-        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList("pipeline.otel_logs.serverConnections");
+        List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList("pipeline.otel_metrics.serverConnections");
         Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
         assertEquals(1.0, serverConnectionsMeasurement.getValue());
 
@@ -258,13 +264,13 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_payloadIsCompressed_returns200() throws IOException {
-        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).compression(CompressionOption.GZIP).build());
+        configureSource( createDefaultConfigBuilder().compression(CompressionOption.GZIP).build());
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
                                 .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
                                 .build(),
-                        createGZipCompressedPayload(JsonFormat.printer().print(createLogsServiceRequest())))
+                        createGZipCompressedPayload(JsonFormat.printer().print(createMetricsServiceRequest())))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
@@ -272,21 +278,18 @@ class OTelLogsSourceHttpTest {
 
     @ParameterizedTest
     @MethodSource("getBasicAuthTestData")
-    void httpRequest_withBasicAuth_returnsAppropriateResponse(
-            String givenUsername,
-            String givenPassword,
-            HttpStatus expectedStatus,
-            VerificationMode expectedBufferWrites) throws Exception {
+    void httpRequest_withBasicAuth_returnsAppropriateResponse(String givenUsername, String givenPassword, HttpStatus expectedStatus, VerificationMode expectedBufferWrites) throws Exception {
         final HttpBasicAuthenticationConfig basicAuthConfig = new HttpBasicAuthenticationConfig(BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD);
-        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(new GrpcBasicAuthenticationProvider(basicAuthConfig));
-        configureSource(createConfigBuilderWithBasicAuth().httpPath(CONFIG_HTTP_PATH).build());
+        final HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(basicAuthConfig);
+        when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
+        configureSource(createConfigBuilderWithBasicAuth().build());
         SOURCE.start(buffer);
 
         final String encodedCredentials = Base64.getEncoder().encodeToString(String.format("%s:%s", givenUsername, givenPassword).getBytes(StandardCharsets.UTF_8));
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
                                 .add(HttpHeaderNames.AUTHORIZATION, "Basic " + encodedCredentials)
                                 .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
+                        HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, expectedStatus, throwable))
                 .join();
@@ -303,15 +306,15 @@ class OTelLogsSourceHttpTest {
 
     @ParameterizedTest
     @MethodSource("getHealthCheckParams")
-    void healthCheckRequest_requestIsProcesses_returnsStatusCodeAccordingToConfig(boolean givenHealthCheckConfig, HttpStatus expectedStatus) throws IOException {
-        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).healthCheck(givenHealthCheckConfig).build());
+    void healthCheckRequest_requestIsProcessed_returnsStatusCodeAccordingToConfig(boolean givenHealthCheckConfig, HttpStatus expectedStatus) throws IOException {
+        configureSource(createDefaultConfigBuilder().healthCheck(givenHealthCheckConfig).build());
         SOURCE.start(buffer);
 
         WebClient.of().execute(getDefaultRequestHeadersBuilder()
-                        .path("/health")
+                                .path("/health")
                                 .method(HttpMethod.GET)
                                 .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
+                        HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, expectedStatus, throwable))
                 .join();
@@ -352,7 +355,7 @@ class OTelLogsSourceHttpTest {
 
     @Test
     void httpRequest_requestBodyIsTooLarge_returns413() throws InvalidProtocolBufferException {
-        configureSource(createDefaultConfigBuilder().httpPath(CONFIG_HTTP_PATH).maxRequestLength(ByteCount.ofBytes(4)).build());
+        configureSource(createDefaultConfigBuilder().maxRequestLength(ByteCount.ofBytes(4)).build());
         SOURCE.start(buffer);
 
         WebClient.of()
@@ -376,22 +379,22 @@ class OTelLogsSourceHttpTest {
         }
     }
 
-    private ExportLogsServiceRequest createExportLogsRequest() {
+    private ExportMetricsServiceRequest createExportMetricsRequest() {
         final Resource resource = Resource.newBuilder()
                 .addAttributes(KeyValue.newBuilder()
                         .setKey("service.name")
                         .setValue(AnyValue.newBuilder().setStringValue("service").build())
                 ).build();
 
-        final ResourceLogs resourceLogs = ResourceLogs.newBuilder()
-                .addScopeLogs(ScopeLogs.newBuilder()
-                        .addLogRecords(LogRecord.newBuilder().setSeverityNumberValue(1))
+        final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
+                .addScopeMetrics(ScopeMetrics.newBuilder()
+                        .addMetrics(io.opentelemetry.proto.metrics.v1.Metric.newBuilder().build())
                         .build())
                 .setResource(resource)
                 .build();
 
-        return ExportLogsServiceRequest.newBuilder()
-                .addResourceLogs(resourceLogs)
+        return ExportMetricsServiceRequest.newBuilder()
+                .addResourceMetrics(resourceMetrics)
                 .build();
     }
 
@@ -419,4 +422,10 @@ class OTelLogsSourceHttpTest {
         return byteStream.toByteArray();
     }
 
+    private static Stream<Arguments> getPathParams() {
+        return Stream.of(
+                Arguments.of(CONFIG_HTTP_PATH, CONFIG_HTTP_PATH),
+                Arguments.of("/${pipelineName}/v1/metrics", "/test_pipeline/v1/metrics")
+        );
+    }
 }

@@ -35,11 +35,7 @@ import java.util.stream.Collectors;
 public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGrpcService.class);
 
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
-    public static final String BAD_REQUESTS = "badRequests";
-    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
-    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";

@@ -4,20 +4,19 @@
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
-#
-otel-logs-pipeline:
+
+otel-metrics-pipeline:
   workers: 2
   source:
-    otel_logs_source:
-      http_path: "/${pipelineName}/logs"
+    otel_metrics_source:
+      http_path: "/${pipelineName}/metrics"
       port: 2021
       ssl: false
-      authentication:
   sink:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
         insecure: true
-        index: "otel-logs-index"
+        index: "otel-metrics-index"
         flush_timeout: 5000
