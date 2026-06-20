@@ -29,6 +29,10 @@ public class AwsAuthenticationConfig {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("endpoint")
+    @Size(min = 10, max = 2048, message = "endpoint length should be between 10 and 2048 characters")
+    private String endpoint;
+
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
     }
@@ -43,6 +47,10 @@ public class AwsAuthenticationConfig {
 
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public String getEndpointOverride() {
+        return endpoint;
     }
 }
 
