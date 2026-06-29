@@ -20,7 +20,7 @@
 #                                   of this repository (same fork network), as
 #                                   cross-repository PRs are only allowed within
 #                                   a fork network.
-#   secrets.RELEASE_FORK_TOKEN    - a classic personal access token with the
+#   secrets.OPENSEARCH_CI_BOT_TOKEN    - a classic personal access token with the
 #                                   'public_repo' (or 'repo' for private
 #                                   repositories) and 'workflow' scopes. The
 #                                   action uses it to push the branch to the
@@ -99,8 +99,8 @@ jobs:
             echo "Set it to the 'owner/repo' of a fork of this repository that the changelog PR branch will be pushed to."
             exit 1
           fi
-          if [ -z "${{ secrets.RELEASE_FORK_TOKEN }}" ]; then
-            echo "::error::The RELEASE_FORK_TOKEN secret is not set."
+          if [ -z "${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}" ]; then
+            echo "::error::The OPENSEARCH_CI_BOT_TOKEN secret is not set."
             echo "Set it to a token with write access to ${{ vars.RELEASE_FORK_REPOSITORY }} and permission to create pull requests against this repository."
             exit 1
           fi
@@ -295,7 +295,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
-          token: ${{ secrets.RELEASE_FORK_TOKEN }}
+          token: ${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}
           push-to-fork: ${{ vars.RELEASE_FORK_REPOSITORY }}
           add-paths: |
             release/release-notes/data-prepper.change-log-${{ needs.promote.outputs.version }}.md

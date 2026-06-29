@@ -38,7 +38,7 @@ This must be an actual GitHub fork of the repository you are releasing, because 
 cross-repository PRs between repositories in the same fork network.
 
 The fork is identified by the `RELEASE_FORK_REPOSITORY` variable, and the token used to push to it and open
-the PR is the `RELEASE_FORK_TOKEN` secret. `RELEASE_FORK_TOKEN` must be a **classic** personal access token
+the PR is the `OPENSEARCH_CI_BOT_TOKEN` secret. `OPENSEARCH_CI_BOT_TOKEN` must be a **classic** personal access token
 (PAT) meeting the following requirements.
 
 * It is a classic PAT. A fine-grained token does not work because the single token must act on two
@@ -61,7 +61,7 @@ Configure the following on the repository that runs the release workflows. Creat
 | Name | Type | Source | Description |
 | ---- | ---- | ------ | ----------- |
 | `RELEASE_FORK_REPOSITORY` | Variable | You | The `owner/repo` of the fork the PR branches are pushed to, for example `opensearch-ci-bot/data-prepper`. |
-| `RELEASE_FORK_TOKEN` | Secret | You | A classic PAT used to push the PR branch to the fork and open the PR. See the requirements above. |
+| `OPENSEARCH_CI_BOT_TOKEN` | Secret | You | A classic PAT used to push the PR branch to the fork and open the PR. See the requirements above. |
 | `RELEASE_IAM_ROLE` | Secret | CDK | The ARN of the IAM role GitHub Actions assumes to access the staging resources. |
 | `ARCHIVES_BUCKET_NAME` | Secret | CDK | The name of the S3 bucket the release archives and Maven artifacts are uploaded to. |
 | `ARCHIVES_PUBLIC_URL` | Secret | CDK | The public base URL the uploaded archives are served from, used by the tarball smoke tests. |
@@ -80,7 +80,7 @@ To set this up:
   It is required because GitHub does not allow a PR where the head and base are the same repository.
   Note that GitHub permits only one fork per account, so the second fork must live in a different account
   or organization; both forks remain in the same fork network, which is what allows the cross-repository PR.
-* Set `RELEASE_FORK_REPOSITORY` and `RELEASE_FORK_TOKEN` on your fork as described in
+* Set `RELEASE_FORK_REPOSITORY` and `OPENSEARCH_CI_BOT_TOKEN` on your fork as described in
   [Configuring the GitHub repo](#configuring-the-github-repo), pointing `RELEASE_FORK_REPOSITORY` at the
   second fork.
 

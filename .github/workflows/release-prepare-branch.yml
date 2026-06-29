@@ -21,7 +21,7 @@
 #                                   of this repository (same fork network), as
 #                                   cross-repository PRs are only allowed within
 #                                   a fork network.
-#   secrets.RELEASE_FORK_TOKEN    - a classic personal access token with the
+#   secrets.OPENSEARCH_CI_BOT_TOKEN    - a classic personal access token with the
 #                                   'public_repo' (or 'repo' for private
 #                                   repositories) and 'workflow' scopes. The
 #                                   action uses it to push the branch to the
@@ -90,8 +90,8 @@ jobs:
           echo "Set it to the 'owner/repo' of a fork of this repository that the release PR branch will be pushed to."
           exit 1
         fi
-        if [ -z "${{ secrets.RELEASE_FORK_TOKEN }}" ]; then
-          echo "::error::The RELEASE_FORK_TOKEN secret is not set."
+        if [ -z "${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}" ]; then
+          echo "::error::The OPENSEARCH_CI_BOT_TOKEN secret is not set."
           echo "Set it to a token with write access to ${{ vars.RELEASE_FORK_REPOSITORY }} and permission to create pull requests against this repository."
           exit 1
         fi
@@ -142,7 +142,7 @@ jobs:
       id: create_pr
       uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
       with:
-        token: ${{ secrets.RELEASE_FORK_TOKEN }}
+        token: ${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}
         push-to-fork: ${{ vars.RELEASE_FORK_REPOSITORY }}
         add-paths: |
           gradle.properties
@@ -195,7 +195,7 @@ jobs:
       run: |
         echo "::error::Failed to create pull request"
         echo "This could be due to:"
-        echo "  - An invalid or expired RELEASE_FORK_TOKEN"
+        echo "  - An invalid or expired OPENSEARCH_CI_BOT_TOKEN"
         echo "  - The token lacking write access to ${{ vars.RELEASE_FORK_REPOSITORY }} or permission to create pull requests"
         echo "  - RELEASE_FORK_REPOSITORY (${{ vars.RELEASE_FORK_REPOSITORY }}) not being a fork of this repository in the same fork network"
         echo "  - Network issues"
