@@ -520,6 +520,8 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+        // Non-access-denied exception during creation must NOT be misclassified.
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
     }
 
     @Test
@@ -911,5 +913,93 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_access_denied_without_exception_suffix_WHEN_put_log_events_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDenied")
+                        .errorMessage("User is not authorized")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("User is not authorized")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(accessDeniedException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_create_log_stream_throws_access_denied_WHEN_create_resources_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDeniedException")
+                        .errorMessage("Not authorized to create log stream")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("Not authorized to create log stream")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenThrow(accessDeniedException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+    }
+
+    @Test
+    void GIVEN_create_log_group_throws_access_denied_WHEN_create_resources_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDenied")
+                        .errorMessage("Not authorized to create log group")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("Not authorized to create log group")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenThrow(accessDeniedException);
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
     }
 }

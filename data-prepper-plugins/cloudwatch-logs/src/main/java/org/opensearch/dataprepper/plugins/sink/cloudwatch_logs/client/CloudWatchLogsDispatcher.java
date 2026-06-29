@@ -245,13 +245,19 @@ public class CloudWatchLogsDispatcher {
                     cloudWatchLogsMetrics.increaseThrottledCounter(1);
                     return "throttled";
                 }
-                if (ase.awsErrorDetails() != null
-                        && "AccessDeniedException".equals(ase.awsErrorDetails().errorCode())) {
+                if (isAccessDenied(ase)) {
                     cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
                     return "accessDenied";
                 }
             }
             return "unclassified";
+        }
+
+        private static boolean isAccessDenied(final AwsServiceException ase) {
+            if (ase.awsErrorDetails() == null || ase.awsErrorDetails().errorCode() == null) {
+                return false;
+            }
+            return ase.awsErrorDetails().errorCode().contains("AccessDenied");
         }
 
         /**
@@ -274,7 +280,7 @@ public class CloudWatchLogsDispatcher {
                 } catch (ResourceAlreadyExistsException e) {
                     LOG.debug("Log group already exists: {}", logGroupName);
                 } catch (CloudWatchLogsException | SdkClientException e) {
-                    LOG.warn("Unable to create log group '{}': {}", logGroupName, e.getMessage());
+                    classifyAndCountResourceCreationFailure(e, "log group", logGroupName);
                 }
             }
 
@@ -289,8 +295,17 @@ public class CloudWatchLogsDispatcher {
                 } catch (ResourceAlreadyExistsException e) {
                     LOG.debug("Log stream already exists: {}/{}", logGroupName, logStreamName);
                 } catch (CloudWatchLogsException | SdkClientException e) {
-                    LOG.warn("Unable to create log stream '{}/{}': {}", logGroupName, logStreamName, e.getMessage());
+                    classifyAndCountResourceCreationFailure(e, "log stream", logGroupName + "/" + logStreamName);
                 }
+            }
+        }
+
+        private void classifyAndCountResourceCreationFailure(final Exception e, final String resourceType, final String resourceName) {
+            if (e instanceof AwsServiceException && isAccessDenied((AwsServiceException) e)) {
+                cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
+                LOG.warn("Access denied creating {} '{}': {}", resourceType, resourceName, e.getMessage());
+            } else {
+                LOG.warn("Unable to create {} '{}': {}", resourceType, resourceName, e.getMessage());
             }
         }
 
