@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -50,6 +51,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayContaining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -88,6 +91,7 @@ class OTelTraceGroupProcessorTests {
     private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE_2 = "raw-span-complete-2.json";
     private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1 = "raw-span-missing-trace-group-1.json";
     private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_2 = "raw-span-missing-trace-group-2.json";
+    private static final String DEFAULT_RAW_INDEX_ALIAS = "otel-v1-apm-span";
     private static final int TEST_NUM_WORKERS = 2;
 
     private MockedStatic<OpenSearchClientFactory> openSearchClientFactoryMockedStatic;
@@ -130,6 +134,7 @@ class OTelTraceGroupProcessorTests {
                 any(ConnectionConfiguration.class)))
                 .thenReturn(openSearchClientFactory);
         when(otelTraceGroupProcessorConfig.getEsConnectionConfig()).thenReturn(connectionConfigurationMock);
+        Mockito.lenient().when(otelTraceGroupProcessorConfig.getIndices()).thenReturn(List.of(DEFAULT_RAW_INDEX_ALIAS));
         when(openSearchClientFactory.createRestHighLevelClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         doNothing().when(restHighLevelClient).close();
@@ -296,6 +301,32 @@ class OTelTraceGroupProcessorTests {
         otelTraceGroupProcessor.prepareForShutdown();
 
         assertTrue(otelTraceGroupProcessor.isReadyForShutdown());
+    }
+
+    @Test
+    void searchRequest_usesDefaultRawIndexAliasWhenIndicesNotOverridden() throws IOException {
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
+
+        otelTraceGroupProcessor.doExecute(testRecords);
+
+        final ArgumentCaptor<SearchRequest> searchRequestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(restHighLevelClient).search(searchRequestCaptor.capture(), any(RequestOptions.class));
+        assertThat(searchRequestCaptor.getValue().indices(), arrayContaining(DEFAULT_RAW_INDEX_ALIAS));
+    }
+
+    @Test
+    void searchRequest_usesConfiguredIndicesWhenOverridden() throws IOException {
+        final List<String> customIndices = List.of("my-traces-2026", "my-traces-2027");
+        when(otelTraceGroupProcessorConfig.getIndices()).thenReturn(customIndices);
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
+
+        otelTraceGroupProcessor.doExecute(testRecords);
+
+        final ArgumentCaptor<SearchRequest> searchRequestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(restHighLevelClient).search(searchRequestCaptor.capture(), any(RequestOptions.class));
+        assertThat(searchRequestCaptor.getValue().indices(), arrayContaining("my-traces-2026", "my-traces-2027"));
     }
 
     private Record<Span> buildSpanRecordFromJsonFile(final String jsonFileName) throws IOException {

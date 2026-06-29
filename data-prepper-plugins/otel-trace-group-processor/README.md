@@ -39,6 +39,8 @@ See [security.md](https://github.com/opensearch-project/data-prepper/blob/main/d
 
 - `hosts`: A list of IP addresses of OpenSearch nodes.
 
+- `indices` (optional): A list of OpenSearch indices, aliases, or index patterns (such as `otel-v1-apm-span-*`) to query when looking up trace group information. Default is `["otel-v1-apm-span"]`, which preserves the legacy trace analytics raw alias.
+
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that OpenSearch is using.
 Default is null.
 
