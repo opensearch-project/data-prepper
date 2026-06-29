@@ -65,6 +65,7 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     useJUnitPlatform()
+    forkEvery = 1
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.cloudwatch.log_group', System.getProperty('tests.cloudwatch.log_group')
