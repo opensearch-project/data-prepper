@@ -912,6 +912,62 @@ class FileReaderTest {
     }
 
     @Test
+    void run_one_shot_codec_persists_read_offset_after_successful_parse() throws Exception {
+        Path testFile = tempDir.resolve("one-shot-offset.log");
+        final String contents = "line1\nline2\nline3\n";
+        Files.writeString(testFile, contents);
+        final long fileSize = Files.size(testFile);
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter linesRead = mock(Counter.class);
+        Counter eventsEmitted = mock(Counter.class);
+        Timer backpressureTimer = mock(Timer.class);
+        when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        lenient().when(metrics.getLinesRead()).thenReturn(linesRead);
+        lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
+        lenient().when(metrics.getBackpressureTimer()).thenReturn(backpressureTimer);
+
+        when(fileOps.size(testFile)).thenReturn(fileSize);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+        doAnswer(inv -> null).when(mockCodec).parse(any(), any());
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
+        reader.run();
+
+        assertThat(checkpointEntry.getReadOffset(), equalTo(fileSize));
+        assertThat(checkpointEntry.getCommittedOffset(), equalTo(fileSize));
+        assertThat(reader.getReadOffset(), equalTo(fileSize));
+    }
+
+    @Test
+    void run_one_shot_codec_does_not_persist_offset_when_parse_throws() throws Exception {
+        Path testFile = tempDir.resolve("one-shot-offset-fail.log");
+        Files.writeString(testFile, "line1\n");
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter readErrors = mock(Counter.class);
+        when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        when(metrics.getReadErrors()).thenReturn(readErrors);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+        doThrow(new IOException("parse failed")).when(mockCodec).parse(any(), any());
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
+        reader.run();
+
+        assertThat(checkpointEntry.getReadOffset(), equalTo(0L));
+        assertThat(checkpointEntry.getCommittedOffset(), equalTo(0L));
+        verify(readErrors).increment();
+    }
+
+    @Test
     void run_with_acknowledgements_batch_timeout_triggers_complete() throws Exception {
         Path testFile = tempDir.resolve("ack-timeout.log");
         Files.writeString(testFile, "line1\nline2\n");
