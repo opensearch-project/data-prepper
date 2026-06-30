@@ -9,6 +9,7 @@
 
 plugins {
     id 'data-prepper.publish'
+    id 'data-prepper.jmh'
 }
 
 def dataPrepperVersion = version
@@ -129,6 +130,10 @@ task integrationTest(type: Test) {
 }
 
 check.dependsOn integrationTest
+
+jmhJar {
+    zip64 = true
+}
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
