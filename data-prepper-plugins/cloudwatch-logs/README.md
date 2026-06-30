@@ -112,6 +112,9 @@ threshold parameters.
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.
 * `cloudWatchLogsEntityRejected` - The number of `PutLogEvents` responses where CloudWatch rejected the configured entity. The request itself still succeeds and events are released; this counter is the primary signal for misconfigured `entity` attributes.
 * `cloudWatchLogsUnhandledError` - The number of times an unexpected `Throwable` escaped the Uploader's normal retry/DLQ path. Distinct from `cloudWatchLogsEventsFailed`; non-zero values indicate a logic bug, classpath linkage failure, or response-handling error rather than transient API failure.
+* `cloudWatchLogsThrottled` - The number of `PutLogEvents` attempts that failed due to throttling (HTTP 429). Each retry that receives a throttle response increments this counter independently.
+* `cloudWatchLogsAccessDenied` - The number of requests or resource-creation attempts that failed due to insufficient IAM permissions. Covers both `PutLogEvents` access-denied responses and `CreateLogGroup`/`CreateLogStream` permission failures when `create_log_group` or `create_log_stream` is enabled.
+* `cloudWatchLogsResourceNotFound` - The number of `PutLogEvents` attempts that failed because the target log group or log stream does not exist. Only incremented when `create_log_group` and `create_log_stream` are both disabled — if the sink is configured to create resources, a resource-not-found error is internal control flow rather than an actionable user signal.
 
 ## Developer Guide
 
