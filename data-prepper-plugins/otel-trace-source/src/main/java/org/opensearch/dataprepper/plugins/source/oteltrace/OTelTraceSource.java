@@ -155,6 +155,12 @@ public class OTelTraceSource implements Source<Record<Object>> {
         if(oTelTraceSourceConfig.getMaxRequestLength() != null) {
             serverBuilder.maxRequestLength(oTelTraceSourceConfig.getMaxRequestLength().getBytes());
         }
+        if (oTelTraceSourceConfig.getMaxConnectionAge() != null) {
+            serverBuilder.maxConnectionAge(oTelTraceSourceConfig.getMaxConnectionAge());
+        }
+        if (oTelTraceSourceConfig.getConnectionDrainDuration() != null) {
+            serverBuilder.connectionDrainDuration(oTelTraceSourceConfig.getConnectionDrainDuration());
+        }
         serverBuilder.maxNumConnections(oTelTraceSourceConfig.getMaxConnectionCount());
     }
 

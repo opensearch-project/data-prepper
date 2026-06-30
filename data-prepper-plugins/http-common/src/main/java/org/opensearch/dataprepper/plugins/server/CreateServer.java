@@ -179,6 +179,12 @@ public class CreateServer {
         if(serverConfiguration.getMaxRequestLength() != null) {
             sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
         }
+        if (serverConfiguration.getMaxConnectionAge() != null) {
+            sb.maxConnectionAge(serverConfiguration.getMaxConnectionAge());
+        }
+        if (serverConfiguration.getConnectionDrainDuration() != null) {
+            sb.connectionDrainDuration(serverConfiguration.getConnectionDrainDuration());
+        }
 
         // ACM Cert for SSL takes preference
         if (serverConfiguration.isSsl() || serverConfiguration.useAcmCertForSSL()) {

@@ -15,11 +15,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
+
+import java.time.Duration;
 
 @Builder
 @NoArgsConstructor
@@ -125,6 +129,16 @@ public class OTelLogsSourceConfig {
 
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
+
+    @JsonProperty("max_connection_age")
+    @DurationMin(seconds = 1)
+    @DurationMax(hours = 24)
+    private Duration maxConnectionAge;
+
+    @JsonProperty("connection_drain_duration")
+    @DurationMin(millis = 0)
+    @DurationMax(hours = 1)
+    private Duration connectionDrainDuration;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -250,6 +264,14 @@ public class OTelLogsSourceConfig {
 
     public void setRetryInfo(RetryInfoConfig retryInfo) {
         this.retryInfo = retryInfo;
+    }
+
+    public Duration getMaxConnectionAge() {
+        return maxConnectionAge;
+    }
+
+    public Duration getConnectionDrainDuration() {
+        return connectionDrainDuration;
     }
 }
 
