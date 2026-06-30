@@ -570,6 +570,8 @@ class CloudWatchLogsDispatcherTest {
         // Subsequent ResourceNotFoundExceptions flow to the normal retry/DLQ path: fail counter incremented for every retry.
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+        // When create flags are on, RNF after failed creation is internal control flow — not actionable by the user.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
     }
 
     @Test
@@ -1001,5 +1003,45 @@ class CloudWatchLogsDispatcherTest {
 
         verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
+    }
+
+    @Test
+    void GIVEN_only_create_log_stream_true_AND_rnf_after_creation_SHOULD_not_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // User delegated creation to the sink — RNF is internal, not actionable.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_only_create_log_group_true_AND_rnf_after_creation_SHOULD_not_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, false);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // User delegated creation to the sink — RNF is internal, not actionable.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
     }
 }

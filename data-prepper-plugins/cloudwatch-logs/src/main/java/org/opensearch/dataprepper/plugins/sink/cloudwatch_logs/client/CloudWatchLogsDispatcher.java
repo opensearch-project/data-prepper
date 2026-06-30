@@ -169,7 +169,9 @@ public class CloudWatchLogsDispatcher {
                             // else branch and normal retry/DLQ logic takes over.
                         } else {
                             failureMessage = e.getMessage();
-                            cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
+                            if (!createLogGroup && !createLogStream) {
+                                cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
+                            }
                             failCount = handlePutLogEventsFailure(e, failCount, backoff);
                         }
                     } catch (CloudWatchLogsException | SdkClientException e) {
