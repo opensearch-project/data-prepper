@@ -9,6 +9,7 @@ import lombok.Builder;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import com.linecorp.armeria.client.retry.Backoff;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -168,6 +169,9 @@ public class CloudWatchLogsDispatcher {
                             // else branch and normal retry/DLQ logic takes over.
                         } else {
                             failureMessage = e.getMessage();
+                            if (!createLogGroup && !createLogStream) {
+                                cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
+                            }
                             failCount = handlePutLogEventsFailure(e, failCount, backoff);
                         }
                     } catch (CloudWatchLogsException | SdkClientException e) {
@@ -216,7 +220,8 @@ public class CloudWatchLogsDispatcher {
          */
         private int handlePutLogEventsFailure(final Exception e, final int currentFailCount, final Backoff backoff)
                 throws InterruptedException {
-            LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
+            final String classification = classifyAndCountFailure(e);
+            LOG.error(NOISY, "Failed to push logs (classification={}): {}", classification, e.getMessage());
             cloudWatchLogsMetrics.increaseRequestFailCounter(1);
             final int newFailCount = currentFailCount + 1;
             if (newFailCount % MULTIPLE_FAILURES_METRIC_COUNT == 0) {
@@ -227,6 +232,34 @@ public class CloudWatchLogsDispatcher {
                 Thread.sleep(delayMillis);
             }
             return newFailCount;
+        }
+
+        /**
+         * Classifies an exception as access-denied, throttled, or unclassified and increments
+         * the corresponding classified counter. ResourceNotFound is NOT classified here — it is
+         * counted structurally at the terminal catch site. Returns the classification label for
+         * logging. Never throws.
+         */
+        private String classifyAndCountFailure(final Exception e) {
+            if (e instanceof AwsServiceException) {
+                final AwsServiceException ase = (AwsServiceException) e;
+                if (ase.isThrottlingException()) {
+                    cloudWatchLogsMetrics.increaseThrottledCounter(1);
+                    return "throttled";
+                }
+                if (isAccessDenied(ase)) {
+                    cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
+                    return "accessDenied";
+                }
+            }
+            return "unclassified";
+        }
+
+        private static boolean isAccessDenied(final AwsServiceException ase) {
+            if (ase.awsErrorDetails() == null || ase.awsErrorDetails().errorCode() == null) {
+                return false;
+            }
+            return ase.awsErrorDetails().errorCode().contains("AccessDenied");
         }
 
         /**
@@ -249,7 +282,7 @@ public class CloudWatchLogsDispatcher {
                 } catch (ResourceAlreadyExistsException e) {
                     LOG.debug("Log group already exists: {}", logGroupName);
                 } catch (CloudWatchLogsException | SdkClientException e) {
-                    LOG.warn("Unable to create log group '{}': {}", logGroupName, e.getMessage());
+                    classifyAndCountResourceCreationFailure(e, "log group", logGroupName);
                 }
             }
 
@@ -264,8 +297,17 @@ public class CloudWatchLogsDispatcher {
                 } catch (ResourceAlreadyExistsException e) {
                     LOG.debug("Log stream already exists: {}/{}", logGroupName, logStreamName);
                 } catch (CloudWatchLogsException | SdkClientException e) {
-                    LOG.warn("Unable to create log stream '{}/{}': {}", logGroupName, logStreamName, e.getMessage());
+                    classifyAndCountResourceCreationFailure(e, "log stream", logGroupName + "/" + logStreamName);
                 }
+            }
+        }
+
+        private void classifyAndCountResourceCreationFailure(final Exception e, final String resourceType, final String resourceName) {
+            if (e instanceof AwsServiceException && isAccessDenied((AwsServiceException) e)) {
+                cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
+                LOG.warn("Access denied creating {} '{}': {}", resourceType, resourceName, e.getMessage());
+            } else {
+                LOG.warn("Unable to create {} '{}': {}", resourceType, resourceName, e.getMessage());
             }
         }
 
