@@ -120,6 +120,10 @@ public final class BulkRetryStrategy {
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
+    private final long initialDelayMs;
+    private final long maxDelayMs;
+    private final double jitter;
+    private final AdaptiveBackoffState adaptiveBackoffState;
     private final ObjectMapper objectMapper;
 
     private final Counter sentDocumentsCounter;
@@ -170,6 +174,25 @@ public final class BulkRetryStrategy {
                              final String pluginName,
                              final ExistingDocumentQueryManager existingDocumentQueryManager,
                              final boolean isExternalVersioning) {
+        this(requestFunction, logFailure, successfulOperationsHandler, pluginMetrics, maxRetries,
+             bulkRequestSupplier, pipelineName, pluginName, existingDocumentQueryManager,
+             isExternalVersioning, INITIAL_DELAY_MS, MAXIMUM_DELAY_MS, 0.0, null);
+    }
+
+    public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+                             final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
+                             final Consumer<List<BulkOperationWrapper>> successfulOperationsHandler,
+                             final PluginMetrics pluginMetrics,
+                             final int maxRetries,
+                             final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
+                             final String pipelineName,
+                             final String pluginName,
+                             final ExistingDocumentQueryManager existingDocumentQueryManager,
+                             final boolean isExternalVersioning,
+                             final long initialDelayMs,
+                             final long maxDelayMs,
+                             final double jitter,
+                             final AdaptiveBackoffState adaptiveBackoffState) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.isExternalVersioning = isExternalVersioning;
         this.requestFunction = requestFunction;
@@ -178,6 +201,10 @@ public final class BulkRetryStrategy {
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
         this.maxRetries = maxRetries;
+        this.initialDelayMs = initialDelayMs;
+        this.maxDelayMs = maxDelayMs;
+        this.jitter = jitter;
+        this.adaptiveBackoffState = adaptiveBackoffState;
         this.objectMapper = new ObjectMapper();
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
@@ -215,12 +242,17 @@ public final class BulkRetryStrategy {
     }
 
     public void execute(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
-        final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
+        final long startDelay = (adaptiveBackoffState != null) ? adaptiveBackoffState.getStartingDelay() : initialDelayMs;
+        Backoff backoff = Backoff.exponential(startDelay, maxDelayMs).withMaxAttempts(maxRetries);
+        if (jitter > 0) {
+            backoff = backoff.withJitter(jitter);
+        }
         BulkOperationRequestResponse operationResponse;
         BulkResponse response = null;
         Exception exception = null;
         AccumulatingBulkRequest request = bulkRequest;
         int attempt = 1;
+        long lastDelayMs = 0;
         do {
             operationResponse = handleRetry(request, response, attempt, exception);
             if (operationResponse != null) {
@@ -235,6 +267,7 @@ public final class BulkRetryStrategy {
                     handleFailures(request, null, e);
                     break;
                 }
+                lastDelayMs = delayMillis;
                 // Wait for backOff duration
                 try {
                     Thread.sleep(delayMillis);
@@ -243,6 +276,17 @@ public final class BulkRetryStrategy {
                 }
             }
         } while (operationResponse != null);
+
+        // Update adaptive state
+        if (adaptiveBackoffState != null) {
+            if (attempt == 1) {
+                // Succeeded on first attempt — no retries needed
+                adaptiveBackoffState.recordFirstAttemptSuccess();
+            } else if (lastDelayMs > 0) {
+                // Required retries — record the delay that worked
+                adaptiveBackoffState.recordRetrySuccess(lastDelayMs);
+            }
+        }
     }
 
     public boolean canRetry(final BulkResponse response) {
