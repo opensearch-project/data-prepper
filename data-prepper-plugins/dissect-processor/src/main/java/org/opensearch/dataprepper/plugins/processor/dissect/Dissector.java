@@ -16,17 +16,21 @@ import org.opensearch.dataprepper.plugins.processor.dissect.Fields.IndirectField
 import org.opensearch.dataprepper.plugins.processor.dissect.Fields.NormalField;
 import org.opensearch.dataprepper.plugins.processor.dissect.Fields.SkipField;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Dissector {
+    private static final Logger LOG = LoggerFactory.getLogger(Dissector.class);
     private Map<String, SkipField> skipFieldMap;
     private Map<String, NormalField> normalFieldMap;
     private Map<String, IndirectField> indirectFieldMap;
@@ -66,64 +70,96 @@ public class Dissector {
         setFieldsMaps();
     }
 
-    public boolean dissectText(String text){
-        try {
-            if (!setDelimiterIndexes(text)) {
-                return false;
-            }
-            Field head = fieldsList.getFirst();
-            for (final Delimiter delimiter : delimiterList) {
-                int fieldStart = 0;
-                int fieldEnd = delimiter.getStart();
-                if (delimiter.getPrev() == null && delimiter.getStart() == 0) {
-                    continue;
-                }
-                if (delimiter.getPrev() != null || delimiter.getStart() == 0) {
-                    fieldStart = delimiter.getPrev().getEnd() + 1;
-                }
-                head.setValue(text.substring(fieldStart, fieldEnd));
-                head = head.getNext();
-            }
-            if (delimiterList.getLast().getEnd() != text.length() - 1) {
-                int fieldStart = delimiterList.getLast().getEnd() + 1;
-                int fieldEnd = text.length();
-                head.setValue(text.substring(fieldStart, fieldEnd));
-            }
-            return true;
-        } catch (Exception e) {
-            return false;
+    public Map<String, String> dissectText(String text) {
+        if (text == null) {
+            return null;
         }
+        int n = delimiterList.size();
+        int[] delimStarts = new int[n];
+        int[] delimEnds = new int[n];
+        if (!computeDelimiterPositions(text, delimStarts, delimEnds, n)) {
+            return null;
+        }
+        Map<Field, String> localValues = new HashMap<>(delimiterList.size());
+        Field head = fieldsList.getFirst();
+        for (int i = 0; i < n; i++) {
+            int fieldStart = 0;
+            int fieldEnd = delimStarts[i];
+            if (i == 0 && delimStarts[i] == 0) {
+                continue;
+            }
+            if (i > 0) {
+                fieldStart = delimEnds[i - 1] + 1;
+            }
+            if (head == null) {
+                LOG.error("Dissect pattern has fewer fields than delimiters found in input");
+                return null;
+            }
+            String val = text.substring(fieldStart, fieldEnd);
+            localValues.put(head, head.isStripTrailing() ? val.stripTrailing() : val);
+            head = head.getNext();
+        }
+        if (delimEnds[n - 1] != text.length() - 1) {
+            if (head == null) {
+                LOG.error("Dissect pattern has fewer fields than segments found in input");
+                return null;
+            }
+            String val = text.substring(delimEnds[n - 1] + 1);
+            localValues.put(head, head.isStripTrailing() ? val.stripTrailing() : val);
+        }
+        return getDissectedFields(localValues);
     }
 
-    public List<Field> getDissectedFields(){
-        final List<Field> dissectedFields = new ArrayList<>();
-        Map<String, AppendField> appendFieldMap = getAppendedFields(unAppendedFieldsMap);
+    private Map<String, String> getDissectedFields(Map<Field, String> localValues) {
+        final Map<String, String> results = new HashMap<>(normalFieldMap.size() + unAppendedFieldsMap.size() + indirectFieldMap.size());
+        Map<String, String> appendFieldMap = getAppendedFields(localValues);
 
-        dissectedFields.addAll(normalFieldMap.values());
-        dissectedFields.addAll(appendFieldMap.values());
-
-        for(final Field indirectField : indirectFieldMap.values()){
-            if(normalFieldMap.containsKey(indirectField.getKey())){
-                indirectField.setKey(normalFieldMap.get(indirectField.getKey()).getValue());
+        for (NormalField templateField : normalFieldMap.values()) {
+            String val = localValues.get(templateField);
+            if (val != null) {
+                results.put(templateField.getKey(), val);
             }
-            if(skipFieldMap.containsKey(indirectField.getKey())){
-                indirectField.setKey(skipFieldMap.get(indirectField.getKey()).getValue());
-            }
-            if(appendFieldMap.containsKey(indirectField.getKey())){
-                indirectField.setKey(appendFieldMap
-                                             .get(indirectField.getKey()).getValue());
-            }
-            dissectedFields.add(indirectField);
         }
 
-        return dissectedFields;
+        for (Map.Entry<String, String> entry : appendFieldMap.entrySet()) {
+            results.put(entry.getKey(), entry.getValue());
+        }
+
+        for (IndirectField templateField : indirectFieldMap.values()) {
+            String templateKey = templateField.getKey();
+            String resolvedKey = null;
+            if (normalFieldMap.containsKey(templateKey)) {
+                resolvedKey = localValues.get(normalFieldMap.get(templateKey));
+            } else if (skipFieldMap.containsKey(templateKey)) {
+                resolvedKey = localValues.get(skipFieldMap.get(templateKey));
+            } else if (appendFieldMap.containsKey(templateKey)) {
+                resolvedKey = appendFieldMap.get(templateKey);
+            }
+            if (resolvedKey == null || resolvedKey.isEmpty()) {
+                LOG.debug("Indirect field reference %{&{}} could not be resolved; dropping value", templateKey);
+                continue;
+            }
+            String val = localValues.get(templateField);
+            if (val != null) {
+                results.put(resolvedKey, val);
+            } else {
+                LOG.debug("Indirect field reference %{&{}} had no captured value; dropping", templateKey);
+            }
+        }
+        return results;
     }
 
     private void setFieldsMaps(){
-        this.normalFieldMap = fieldHelper.getNormalFieldMap();
-        this.skipFieldMap = fieldHelper.getSkipFieldMap();
-        this.indirectFieldMap = fieldHelper.getIndirectFieldMap();
-        this.unAppendedFieldsMap = fieldHelper.getAppendFieldMap();
+        this.normalFieldMap = Collections.unmodifiableMap(fieldHelper.getNormalFieldMap());
+        this.skipFieldMap = Collections.unmodifiableMap(fieldHelper.getSkipFieldMap());
+        this.indirectFieldMap = Collections.unmodifiableMap(fieldHelper.getIndirectFieldMap());
+        Map<String, List<AppendField>> sortedAppendMap = new HashMap<>();
+        for (Map.Entry<String, List<AppendField>> entry : fieldHelper.getAppendFieldMap().entrySet()) {
+            List<AppendField> sorted = new ArrayList<>(entry.getValue());
+            Collections.sort(sorted);
+            sortedAppendMap.put(entry.getKey(), Collections.unmodifiableList(sorted));
+        }
+        this.unAppendedFieldsMap = Collections.unmodifiableMap(sortedAppendMap);
     }
 
     private void parseFields(String[] fieldsArray){
@@ -131,14 +167,9 @@ public class Dissector {
             if(fieldString==null) {
                 return;
             }
-            Field field = fieldHelper.getField(fieldString);
-            if(fieldsList.size()==0) {
-                fieldsList.addLast(field);
-            }
-            else{
-                fieldsList.getLast().setNext(field);
-                fieldsList.addLast(field);
-            }
+            Field lastField = fieldsList.size() > 0 ? fieldsList.getLast() : null;
+            Field field = fieldHelper.getField(fieldString, lastField);
+            fieldsList.addLast(field);
         }
     }
 
@@ -150,47 +181,43 @@ public class Dissector {
             if (delimiterString.length() == 0) {
                 continue;
             }
-            Delimiter delimiter = new Delimiter(delimiterString);
-            if (delimiterList.size() == 0) {
-                delimiterList.addLast(delimiter);
-            } else {
-                delimiterList.getLast().setNext(delimiter);
-                delimiter.setPrev(delimiterList.getLast());
-                delimiterList.addLast(delimiter);
-            }
+            delimiterList.addLast(new Delimiter(delimiterString));
         }
     }
 
-    private boolean setDelimiterIndexes(String text){
+    private boolean computeDelimiterPositions(String text, int[] starts, int[] ends, int n) {
+        int i = 0;
         for (Delimiter delimiter : delimiterList) {
             int prevEnd = 0;
-            if (delimiter.getPrev() != null) {
-                prevEnd = delimiter.getPrev().getEnd() + 1;
+            if (i > 0) {
+                prevEnd = ends[i - 1] + 1;
             }
             String delimiterString = delimiter.toString();
             int start = text.indexOf(delimiterString, prevEnd);
+            if (start < 0) {
+                return false;
+            }
             if (delimiterString.trim().isEmpty()) {
                 start = start + findLastWhitespaceIndex(text.substring(start), delimiterString.length());
             }
-            int end = start + delimiterString.length() -1;
-            if (start < 0 || end > text.length()) {
+            int end = start + delimiterString.length() - 1;
+            if (end > text.length()) {
                 return false;
             }
-            delimiter.setStart(start);
-            delimiter.setEnd(end);
+            starts[i] = start;
+            ends[i] = end;
+            i++;
         }
         return true;
     }
 
-    private Map<String, AppendField> getAppendedFields(Map<String, List<AppendField>> unAppendedFieldsMap){
-        final Map<String, AppendField> appendFieldMap = new HashMap<>();
-        for(final String key : unAppendedFieldsMap.keySet()){
-            List<AppendField> appendFields = unAppendedFieldsMap.get(key);
-            Collections.sort(appendFields);
-            String value = appendFields.stream().map(AppendField::getValue).collect(Collectors.joining());
-            AppendField sortedField = new AppendField(key);
-            sortedField.setValue(value);
-            appendFieldMap.put(sortedField.getKey(), sortedField);
+    private Map<String, String> getAppendedFields(Map<Field, String> localValues) {
+        final Map<String, String> appendFieldMap = new HashMap<>();
+        for (Map.Entry<String, List<AppendField>> entry : unAppendedFieldsMap.entrySet()) {
+            String value = entry.getValue().stream()
+                    .map(f -> localValues.getOrDefault(f, ""))
+                    .collect(Collectors.joining());
+            appendFieldMap.put(entry.getKey(), value);
         }
         return appendFieldMap;
     }
