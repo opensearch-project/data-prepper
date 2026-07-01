@@ -32,6 +32,8 @@
 * Support conditional script updates of documents in the OpenSearch sink ([#3563](https://github.com/opensearch-project/data-prepper/issues/3563))
 * Support client certificate authentication for OpenSearch ([#633](https://github.com/opensearch-project/data-prepper/issues/633))
 * Split array fields into separate events with the `split_event` processor ([#5707](https://github.com/opensearch-project/data-prepper/issues/5707))
+* Configure the sort fields used for pagination in the OpenSearch source ([#6332](https://github.com/opensearch-project/data-prepper/issues/6332))
+* Look up private IP addresses in the GeoIP processor ([#6079](https://github.com/opensearch-project/data-prepper/issues/6079))
 
 ### Bug Fixes
 
@@ -56,3 +58,5 @@
 * Support experimental features within Data Prepper plugins ([#6811](https://github.com/opensearch-project/data-prepper/pull/6811))
 * Fix the flaky DefaultAcknowledgementSetManagerTests ([#6719](https://github.com/opensearch-project/data-prepper/issues/6719))
 * Fix the KafkaSourceJsonTypeIT ClassCastException on the kafka_headers cast ([#6865](https://github.com/opensearch-project/data-prepper/issues/6865))
+* Move common HTTP Basic and Bearer Token authentication into a shared module ([#6767](https://github.com/opensearch-project/data-prepper/issues/6767))
+* Generate the OpenSearch sink mTLS test certificates at runtime instead of committing them ([#6826](https://github.com/opensearch-project/data-prepper/issues/6826))
