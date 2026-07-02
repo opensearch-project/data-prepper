@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -49,6 +50,9 @@ import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -438,5 +442,45 @@ class OpenSearchAPIServiceTest {
         }
         HttpData httpData = HttpData.ofUtf8(String.join("\n", jsonList));
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
+    }
+
+    @Test
+    public void testBulkResponseContainsValidJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequest(2);
+        AggregatedHttpResponse response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                null, null).aggregate().get();
+
+        assertEquals(HttpStatus.OK, response.status());
+        String body = response.contentUtf8();
+        JsonNode root = mapper.readTree(body);
+
+        assertTrue(root.has("took"));
+        assertTrue(root.get("took").isNumber());
+        assertTrue(root.get("took").longValue() >= 0);
+        assertFalse(root.get("errors").booleanValue());
+        assertTrue(root.get("items").isArray());
+        assertEquals(0, root.get("items").size());
+    }
+
+    @Test
+    public void testBulkResponseContentTypeIsJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequest(1);
+        AggregatedHttpResponse response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                null, null).aggregate().get();
+
+        assertTrue(response.contentType().is(MediaType.JSON_UTF_8));
+    }
+
+    @Test
+    public void testBulkResponseWithIndexPathContainsValidJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequestWithNoIndexInBody(1);
+        AggregatedHttpResponse response = openSearchAPIService.doPostBulkIndex(serviceRequestContext, testRequest,
+                "my-index", null, null).aggregate().get();
+
+        assertEquals(HttpStatus.OK, response.status());
+        JsonNode root = mapper.readTree(response.contentUtf8());
+        assertNotNull(root.get("took"));
+        assertFalse(root.get("errors").booleanValue());
+        assertEquals(0, root.get("items").size());
     }
 }
