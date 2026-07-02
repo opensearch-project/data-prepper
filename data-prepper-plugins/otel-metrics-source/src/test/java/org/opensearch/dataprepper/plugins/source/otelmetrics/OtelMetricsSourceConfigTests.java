@@ -329,6 +329,35 @@ class OtelMetricsSourceConfigTests {
         assertThat(retryInfo.getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
 
+    @Test
+    void maxConnectionAge_defaultsToNull() {
+        final OTelMetricsSourceConfig config = new OTelMetricsSourceConfig();
+        assertNull(config.getMaxConnectionAge());
+        assertNull(config.getConnectionDrainDuration());
+    }
+
+    @Test
+    void maxConnectionAge_deserializesFromYaml() {
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put("max_connection_age", "PT60M");
+        settings.put("connection_drain_duration", "PT20S");
+        final OTelMetricsSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTelMetricsSourceConfig.class);
+        assertThat(config.getMaxConnectionAge(), equalTo(Duration.ofMinutes(60)));
+        assertThat(config.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(20)));
+    }
+
+    @Test
+    void convertConfiguration_propagatesKeepaliveSettings() {
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put("max_connection_age", "PT12M");
+        settings.put("connection_drain_duration", "PT7S");
+        final OTelMetricsSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTelMetricsSourceConfig.class);
+        final org.opensearch.dataprepper.plugins.server.ServerConfiguration server =
+                ConvertConfiguration.convertConfiguration(config);
+        assertThat(server.getMaxConnectionAge(), equalTo(Duration.ofMinutes(12)));
+        assertThat(server.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(7)));
+    }
+
     private PluginSetting completePluginSettingForOtelMetricsSource(final int requestTimeoutInMillis,
                                                                     final int port,
                                                                     final String path,
