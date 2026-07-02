@@ -19,16 +19,16 @@ pipeline {
                 [key: 'ref', value: ('$.release.tag_name')],
                 [key: 'tag', value: '$.release.name'],
                 [key: 'action', value: '$.action'],
-                [key: 'isDraft', value: '$.release.draft'],
+                [key: 'isPreRelease', value: '$.release.prerelease'],
                 [key: 'release_url', value: '$.release.url'],
                 [key: 'assets_url', value: '$.release.assets_url']
             ],
             tokenCredentialId: 'jenkins-data-prepper-generic-webhook-token',
-            causeString: 'Triggered by draft release on data-prepper repository',
+            causeString: 'Triggered by pre-release on data-prepper repository',
             printContributedVariables: false,
             printPostContent: false,
-            regexpFilterText: ('$isDraft $action'),
-            regexpFilterExpression: ('^true created$')
+            regexpFilterText: ('$isPreRelease $action'),
+            regexpFilterExpression: ('^true published$')
         )
     }
     environment {
@@ -51,7 +51,7 @@ pipeline {
                     if ("$assets_url" != '') {
                         withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
                             String assets = sh(
-                                script: "curl -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${assets_url}",
+                                script: "curl -s --fail -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${assets_url}",
                                 returnStdout: true
                             )
                             String assetUrl = null
@@ -62,8 +62,12 @@ pipeline {
                                     assetUrl = item.url
                                 }
                             }
+                            if (assetUrl == null) {
+                                def availableAssets = parsedJson.collect { it.name }.join(', ')
+                                error("Asset '${assetName}' not found in release assets. Available assets: [${availableAssets}]. Assets URL: ${assets_url}")
+                            }
                             echo "Downloading release-description.yaml from $assetUrl"
-                            sh "curl -J -L -H 'Accept: application/octet-stream' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${assetUrl} -o ${WORKSPACE}/release-description.yaml"
+                            sh "curl -s --fail -J -L -H 'Accept: application/octet-stream' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${assetUrl} -o ${WORKSPACE}/release-description.yaml"
                         }
                         def yamlFile = readYaml(file: "${WORKSPACE}/release-description.yaml")
                         VERSION = yamlFile.version
@@ -275,10 +279,33 @@ pipeline {
         success {
             node('Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host') {
                 script {
-                    if (release_url != null) {
-                        withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
-                            sh "curl -X PATCH -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${release_url} -d '{\"tag_name\":\"${TAG}\",\"draft\":false,\"prerelease\":false}'"
-                        }
+                    // The OpenSearch project no longer supports bot tokens with write access
+                    // to publish releases automatically. Instead, open an issue asking
+                    // maintainers to convert the pre-release into a full release.
+                    withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                        def repository = 'opensearch-project/data-prepper'
+                        def codeOwners = sh(
+                            script: "GH_TOKEN=${GITHUB_TOKEN} gh api repos/${repository}/contents/.github/CODEOWNERS --jq '.content' 2>/dev/null | tr -d '\\n' | base64 -d | grep -oP '@[\\w/-]+' | sort -u | tr '\\n' ' ' || echo ''",
+                            returnStdout: true
+                        ).trim()
+                        def issueBody = "The release workflow for tag `${TAG}` completed successfully.\n\nBuild: ${env.BUILD_URL}\n\nPlease publish the release on GitHub by converting the pre-release to a full release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners}"
+                        sh "GH_TOKEN=${GITHUB_TOKEN} gh issue create --title \"[Release - Action Required] Publish release for tag ${TAG}\" --body \"${issueBody}\" --repo ${repository}"
+                    }
+                }
+            }
+        }
+        failure {
+            node('Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host') {
+                script {
+                    // Notify maintainers so a broken release pipeline is not missed.
+                    withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                        def repository = 'opensearch-project/data-prepper'
+                        def codeOwners = sh(
+                            script: "GH_TOKEN=${GITHUB_TOKEN} gh api repos/${repository}/contents/.github/CODEOWNERS --jq '.content' 2>/dev/null | tr -d '\\n' | base64 -d | grep -oP '@[\\w/-]+' | sort -u | tr '\\n' ' ' || echo ''",
+                            returnStdout: true
+                        ).trim()
+                        def issueBody = "The release workflow for tag `${TAG}` failed.\n\nBuild: ${env.BUILD_URL}\n\nPlease investigate the failure and retry the release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners} @opensearch-project/engineering-effectiveness"
+                        sh "GH_TOKEN=${GITHUB_TOKEN} gh issue create --title \"[RELEASE] Failed: release for tag ${TAG}\" --body \"${issueBody}\" --repo ${repository}"
                     }
                 }
             }

@@ -258,14 +258,15 @@ jobs:
           echo 'release_major_tag: ${{ github.event.inputs.release-major-tag }}' >> release-description.yaml
           echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
 
-      - name: Draft release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+      - name: Publish pre-release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
-          draft: true
+          immutableCreate: false
+          generateReleaseNotes: false
           name: '${{ env.version }}'
-          tag_name: '${{ env.version }}'
-          files: |
-            release-description.yaml
+          tag: '${{ env.version }}'
+          artifacts: 'release-description.yaml'
+          prerelease: true
 
   generate-changelog:
     runs-on: ubuntu-latest
