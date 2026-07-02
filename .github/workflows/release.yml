@@ -258,10 +258,11 @@ jobs:
           echo 'release_major_tag: ${{ github.event.inputs.release-major-tag }}' >> release-description.yaml
           echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
 
-      - name: Draft release
+      - name: Publish pre-release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          draft: true
+          draft: false
+          prerelease: true
           name: '${{ env.version }}'
           tag_name: '${{ env.version }}'
           files: |
