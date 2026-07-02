@@ -1,0 +1,8 @@
+host|port|protocol|status|response_time_ms|timestamp
+web-01|8080|HTTPS|healthy|12|2026-06-30T10:00:00Z
+web-02|8080|HTTPS|healthy|8|2026-06-30T10:00:00Z
+web-03|8080|HTTPS|degraded|450|2026-06-30T10:00:00Z
+db-01|5432|TCP|healthy|3|2026-06-30T10:00:00Z
+db-02|5432|TCP|unhealthy|5000|2026-06-30T10:00:00Z
+cache-01|6379|TCP|healthy|1|2026-06-30T10:00:00Z
+queue-01|5672|AMQP|healthy|5|2026-06-30T10:00:00Z

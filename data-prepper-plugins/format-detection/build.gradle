@@ -8,6 +8,7 @@ plugins {
 }
 
 dependencies {
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.8'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testImplementation 'org.assertj:assertj-core:3.25.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

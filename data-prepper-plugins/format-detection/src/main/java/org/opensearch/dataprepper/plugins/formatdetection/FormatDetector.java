@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 
+import org.xerial.snappy.SnappyInputStream;
+
 /**
  * Detects data format and compression from raw bytes.
  *
@@ -30,7 +32,8 @@ public class FormatDetector {
     // Compression magic bytes
     private static final byte[] GZIP_MAGIC = {(byte) 0x1F, (byte) 0x8B};
     private static final byte[] ZSTD_MAGIC = {(byte) 0x28, (byte) 0xB5, (byte) 0x2F, (byte) 0xFD};
-    private static final byte[] SNAPPY_MAGIC = {(byte) 0xFF, 0x06, 0x00, 0x00, 0x73, 0x4E, 0x61, 0x50, 0x70, 0x59};
+    private static final byte[] SNAPPY_FRAMED_MAGIC = {(byte) 0xFF, 0x06, 0x00, 0x00, 0x73, 0x4E, 0x61, 0x50, 0x70, 0x59};
+    private static final byte[] SNAPPY_STREAM_MAGIC = {(byte) 0x82, 0x53, 0x4E, 0x41, 0x50, 0x50, 0x59}; // snappy-java SnappyOutputStream
 
     // Binary format magic bytes
     private static final byte[] PARQUET_MAGIC = "PAR1".getBytes(StandardCharsets.US_ASCII);
@@ -70,7 +73,11 @@ public class FormatDetector {
         }
 
         // Text-based detection
-        final String text = new String(decompressed, StandardCharsets.UTF_8).trim();
+        String text = new String(decompressed, StandardCharsets.UTF_8).trim();
+        // Strip UTF-8 BOM if present
+        if (text.startsWith("\uFEFF")) {
+            text = text.substring(1);
+        }
         if (text.isEmpty()) {
             return new FormatDetectionResult(compression, DetectedFormat.UNKNOWN, Confidence.LOW);
         }
@@ -85,7 +92,7 @@ public class FormatDetector {
         if (startsWith(data, ZSTD_MAGIC)) {
             return DetectedCompression.ZSTD;
         }
-        if (startsWith(data, SNAPPY_MAGIC)) {
+        if (startsWith(data, SNAPPY_FRAMED_MAGIC) || startsWith(data, SNAPPY_STREAM_MAGIC)) {
             return DetectedCompression.SNAPPY;
         }
         return DetectedCompression.NONE;
@@ -149,6 +156,11 @@ public class FormatDetector {
             }
         }
 
+        // Check if content is actually readable text (not binary garbage)
+        if (!isReadableText(text)) {
+            return new FormatDetectionResult(compression, DetectedFormat.UNKNOWN, Confidence.LOW);
+        }
+
         // Fallback: plain text
         return new FormatDetectionResult(compression, DetectedFormat.TEXT, Confidence.LOW);
     }
@@ -169,14 +181,14 @@ public class FormatDetector {
 
     private boolean isConsistentDelimiter(final String[] lines, final char delimiter) {
         final int sampleSize = Math.min(lines.length, CSV_MAX_SAMPLE_LINES);
-        final long firstLineCount = countChar(lines[0], delimiter);
+        final long firstLineCount = countDelimiterOutsideQuotes(lines[0], delimiter);
         if (firstLineCount == 0) {
             return false;
         }
 
         int matches = 0;
         for (int i = 1; i < sampleSize; i++) {
-            if (countChar(lines[i], delimiter) == firstLineCount) {
+            if (countDelimiterOutsideQuotes(lines[i], delimiter) == firstLineCount) {
                 matches++;
             }
         }
@@ -250,6 +262,42 @@ public class FormatDetector {
         return s.chars().filter(ch -> ch == c).count();
     }
 
+    private long countDelimiterOutsideQuotes(final String line, final char delimiter) {
+        long count = 0;
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            final char c = line.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == delimiter && !inQuotes) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Checks if the text content is readable (mostly printable characters).
+     * Binary data disguised as text will have a high ratio of non-printable chars.
+     * Returns false if more than 10% of characters are non-printable (excluding common whitespace).
+     */
+    private boolean isReadableText(final String text) {
+        if (text.isEmpty()) {
+            return false;
+        }
+        final int sampleLength = Math.min(text.length(), 1024);
+        int nonPrintable = 0;
+        for (int i = 0; i < sampleLength; i++) {
+            final char c = text.charAt(i);
+            if (c < 0x20 && c != '\n' && c != '\r' && c != '\t') {
+                nonPrintable++;
+            } else if (c >= 0x7F && c <= 0x9F) {
+                nonPrintable++;
+            }
+        }
+        return (double) nonPrintable / sampleLength < 0.10;
+    }
+
     private boolean startsWith(final byte[] data, final byte[] prefix) {
         if (data.length < prefix.length) {
             return false;
@@ -266,8 +314,10 @@ public class FormatDetector {
         if (compression == DetectedCompression.GZIP) {
             return decompressGzip(data);
         }
-        // For POC, only gzip decompression is implemented.
-        // Zstd and Snappy would require additional library dependencies.
+        if (compression == DetectedCompression.SNAPPY) {
+            return decompressSnappy(data);
+        }
+        // Zstd decompression not yet implemented
         return data;
     }
 
@@ -284,6 +334,23 @@ public class FormatDetector {
             return out.toByteArray();
         } catch (final IOException e) {
             // Corrupt gzip — return original bytes so format comes back UNKNOWN
+            return new byte[0];
+        }
+    }
+
+    private byte[] decompressSnappy(final byte[] data) {
+        try (final InputStream is = new SnappyInputStream(new ByteArrayInputStream(data))) {
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            final byte[] buffer = new byte[4096];
+            int bytesRead;
+            int totalRead = 0;
+            while ((bytesRead = is.read(buffer)) != -1 && totalRead < DEFAULT_SAMPLE_SIZE) {
+                out.write(buffer, 0, bytesRead);
+                totalRead += bytesRead;
+            }
+            return out.toByteArray();
+        } catch (final IOException e) {
+            // Corrupt snappy — return empty so format comes back UNKNOWN
             return new byte[0];
         }
     }

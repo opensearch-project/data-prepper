@@ -33,12 +33,14 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
     private final S3ObjectRequest s3ObjectRequest;
     private final AutoDetectCodecFactory codecFactory;
     private final FormatDetector formatDetector;
+    private final DetectionMetrics metrics;
 
     AutoDetectS3ObjectWorker(final S3ObjectRequest s3ObjectRequest,
                              final AutoDetectCodecFactory codecFactory) {
         this.s3ObjectRequest = s3ObjectRequest;
         this.codecFactory = codecFactory;
         this.formatDetector = codecFactory.getFormatDetector();
+        this.metrics = new DetectionMetrics();
     }
 
     @Override
@@ -60,9 +62,12 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
                 s3ObjectReference.getBucketName(), s3ObjectReference.getKey(),
                 detection.getFormat(), detection.getCompression(), detection.getConfidence());
 
+        metrics.record(detection);
+
         if (detection.getFormat() == DetectedFormat.UNKNOWN) {
             LOG.error("Unable to detect format for s3://{}/{}. Skipping.",
                     s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
+            metrics.logSummary();
             return;
         }
 
@@ -86,6 +91,7 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
                     LOG.error("Failed writing to buffer: {}", e.getMessage());
                 }
             });
+            metrics.logSummary();
         } catch (final Exception e) {
             LOG.error("Failed to parse s3://{}/{} with codec {}: {}",
                     s3ObjectReference.getBucketName(), s3ObjectReference.getKey(),

@@ -1,0 +1,9 @@
+order_id,customer_id,product_name,category,quantity,unit_price,total,order_date,status
+ORD-10001,C-501,Widget Pro Max,Electronics,2,49.99,99.98,2026-06-22T08:00:00Z,completed
+ORD-10002,C-502,USB-C Cable 2m,Accessories,5,9.99,49.95,2026-06-22T08:15:00Z,completed
+ORD-10003,C-503,Wireless Mouse,Electronics,1,29.99,29.99,2026-06-22T08:30:00Z,pending
+ORD-10004,C-501,Screen Protector,Accessories,3,12.99,38.97,2026-06-22T09:00:00Z,completed
+ORD-10005,C-504,Laptop Stand,Furniture,1,79.99,79.99,2026-06-22T09:30:00Z,shipped
+ORD-10006,C-505,Keyboard Mechanical,Electronics,1,149.99,149.99,2026-06-22T10:00:00Z,completed
+ORD-10007,C-502,HDMI Cable 3m,Accessories,2,14.99,29.98,2026-06-22T10:15:00Z,cancelled
+ORD-10008,C-506,Monitor 27inch,Electronics,1,399.99,399.99,2026-06-22T10:30:00Z,pending

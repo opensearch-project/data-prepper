@@ -1,0 +1,7 @@
+[
+  {"user_id": "U001", "action": "login", "timestamp": "2026-06-22T10:00:00Z", "ip": "192.168.1.1"},
+  {"user_id": "U002", "action": "purchase", "timestamp": "2026-06-22T10:01:00Z", "ip": "10.0.0.5", "amount": 99.99},
+  {"user_id": "U001", "action": "logout", "timestamp": "2026-06-22T10:05:00Z", "ip": "192.168.1.1"},
+  {"user_id": "U003", "action": "login", "timestamp": "2026-06-22T10:06:00Z", "ip": "172.16.0.100"},
+  {"user_id": "U003", "action": "search", "timestamp": "2026-06-22T10:07:00Z", "ip": "172.16.0.100", "query": "opensearch serverless"}
+]

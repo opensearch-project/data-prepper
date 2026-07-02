@@ -56,7 +56,7 @@ class AutoDetectCodecFactory {
     }
 
     private String mapFormatToCodecPlugin(final DetectedFormat format) {
-        if (format == DetectedFormat.NDJSON) return "newline";
+        if (format == DetectedFormat.NDJSON) return "ndjson";
         if (format == DetectedFormat.JSON) return "json";
         if (format == DetectedFormat.CSV) return "csv";
         if (format == DetectedFormat.TSV) return "csv";

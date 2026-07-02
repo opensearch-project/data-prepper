@@ -1,0 +1,18 @@
+# Event-driven pipeline: detects and indexes new files as they arrive in S3
+s3-auto-detect-pipeline:
+  source:
+    s3:
+      notification_type: "sqs"
+      sqs:
+        queue_url: "https://queue.amazonaws.com/463470984675/siqi-format-detector-notifications"
+      aws:
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::463470984675:role/Admin"
+  sink:
+    - opensearch:
+        hosts: ["https://search-performance-test-karge-khjgzsxmasemes3xcfmaepgwbe.us-east-1.es.amazonaws.com"]
+        index: "format-detection-v3"
+        aws:
+          region: "us-east-1"
+          sts_role_arn: "arn:aws:iam::463470984675:role/Admin"
+          serverless: false

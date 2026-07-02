@@ -1,0 +1,9 @@
+product_id,product_name,category,price,stock_count,supplier,last_restocked
+P-001,Wireless Mouse,Electronics,29.99,150,TechCorp,2026-06-15T08:00:00Z
+P-002,USB-C Hub,Accessories,49.99,75,ConnectPro,2026-06-20T10:00:00Z
+P-003,Standing Desk,Furniture,399.99,12,OfficePlus,2026-06-10T14:00:00Z
+P-004,Noise Cancelling Headphones,Electronics,199.99,45,AudioMax,2026-06-22T09:00:00Z
+P-005,Webcam HD,Electronics,79.99,200,TechCorp,2026-06-25T11:00:00Z
+P-006,Ergonomic Keyboard,Accessories,129.99,60,TypeWell,2026-06-18T16:00:00Z
+P-007,Monitor Arm,Furniture,89.99,30,OfficePlus,2026-06-12T08:00:00Z
+P-008,Cable Management Kit,Accessories,19.99,500,ConnectPro,2026-06-28T07:00:00Z
