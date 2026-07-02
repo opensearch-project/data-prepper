@@ -80,6 +80,7 @@ public class Pipeline implements HeadlessPipeline {
     private final ExecutorService sinkExecutorService;
     private final EventFactory eventFactory;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private volatile boolean sourceStarted = false;
     private final List<PipelineObserver> observers = Collections.synchronizedList(new LinkedList<>());
 
     /**
@@ -242,6 +243,15 @@ public class Pipeline implements HeadlessPipeline {
         return true;
     }
 
+    /**
+     * Returns whether the pipeline source has been started and is ready to receive traffic.
+     *
+     * @return true if the source has been started, false otherwise
+     */
+    public boolean isSourceStarted() {
+        return sourceStarted;
+    }
+
     // This method needs to be synchronzied with shutdown
     private synchronized void startSourceAndProcessors() {
         if (isStopRequested()) {
@@ -249,8 +259,8 @@ public class Pipeline implements HeadlessPipeline {
         }
         LOG.info("Pipeline [{}] Sink is ready, starting source...", name);
         source.start(buffer);
-
-        LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
+        sourceStarted = true;
+        LOG.info("Pipeline [{}] - Source started, pipeline ready for traffic", name);
         for (int i = 0; i < processorThreads; i++) {
             final int finalI = i;
             final List<Processor> processors = processorSets.stream().map(
