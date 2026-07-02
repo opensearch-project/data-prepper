@@ -197,7 +197,12 @@ public final class FileReader implements Runnable {
         try (final InputStream rawStream = Files.newInputStream(path);
              final InputStream decompressedStream = decompressionEngine.createInputStream(rawStream)) {
             metrics.getFilesOpened().increment();
-            parseWithCodec(decompressedStream);
+            if (parseWithCodec(decompressedStream)) {
+                final long fileSize = fileOps.size(path);
+                readOffset.set(fileSize);
+                checkpointEntry.setReadOffset(fileSize);
+                checkpointEntry.setCommittedOffset(fileSize);
+            }
         } catch (final IOException e) {
             LOG.error("Error reading file with codec: {}", path, e);
             metrics.getReadErrors().increment();

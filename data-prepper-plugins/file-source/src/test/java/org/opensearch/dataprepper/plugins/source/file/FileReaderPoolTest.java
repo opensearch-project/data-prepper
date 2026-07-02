@@ -49,6 +49,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -619,5 +621,70 @@ class FileReaderPoolTest {
         await().atMost(5, TimeUnit.SECONDS).until(() -> limitedPool.getActiveReaderCount() == 0);
 
         limitedPool.shutdown();
+    }
+
+    private FileReaderContext createNonTailReaderContext() {
+        return new FileReaderContext(
+                buffer, eventFactory, fileOps, metrics, rotationDetector,
+                acknowledgementSetManager, false, StandardCharsets.UTF_8,
+                4096, 1048576, 5000, Duration.ofSeconds(5),
+                Duration.ofSeconds(30), StartPosition.BEGINNING, false,
+                Duration.ofSeconds(30), 1000,
+                Duration.ofSeconds(5), 3, null, false, in -> in);
+    }
+
+    @Test
+    void onReaderComplete_in_non_tail_mode_does_not_reschedule() throws Exception {
+        Path testFile = tempDir.resolve("non-tail.log");
+        Files.writeString(testFile, "line1\nline2\nline3\n");
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter bytesRead = mock(Counter.class);
+        Counter linesRead = mock(Counter.class);
+        Counter eventsEmitted = mock(Counter.class);
+        Timer backpressureTimer = mock(Timer.class);
+        lenient().when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        lenient().when(metrics.getBytesRead()).thenReturn(bytesRead);
+        lenient().when(metrics.getLinesRead()).thenReturn(linesRead);
+        lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
+        lenient().when(metrics.getBackpressureTimer()).thenReturn(backpressureTimer);
+        lenient().when(metrics.getFileLagBytes()).thenReturn(new AtomicLong(0));
+        when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
+
+        BasicFileAttributes attrs = mock(BasicFileAttributes.class);
+        when(attrs.fileKey()).thenReturn("inode-non-tail");
+        when(attrs.creationTime()).thenReturn(FileTime.from(Instant.EPOCH));
+        when(fileOps.readAttributes(testFile)).thenReturn(attrs);
+        when(fileOps.size(testFile)).thenReturn(Files.size(testFile));
+        FileChannel realChannel = FileChannel.open(testFile, StandardOpenOption.READ);
+        when(fileOps.openReadChannel(testFile)).thenReturn(realChannel);
+
+        when(rotationDetector.checkRotation(any(), any(), any(long.class)))
+                .thenReturn(RotationResult.NO_ROTATION);
+
+        EventBuilder mockBuilder = mock(EventBuilder.class);
+        Event mockEvent = mock(Event.class);
+        lenient().when(eventFactory.eventBuilder(EventBuilder.class)).thenReturn(mockBuilder);
+        lenient().when(mockBuilder.withEventType(any())).thenReturn(mockBuilder);
+        lenient().when(mockBuilder.withData(any(Map.class))).thenReturn(mockBuilder);
+        lenient().when(mockBuilder.build()).thenReturn(mockEvent);
+
+        FileReaderPool pool = new FileReaderPool(
+                checkpointRegistry, metrics, 10, 2,
+                Duration.ofMinutes(30), createNonTailReaderContext());
+        when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
+
+        FileIdentity identity = FileIdentity.from(testFile, fileOps, 1024);
+        pool.addFile(identity, testFile);
+
+        verify(checkpointRegistry, timeout(5000)).markCompleted(anyString());
+
+        await().pollDelay(1500, TimeUnit.MILLISECONDS)
+                .atMost(3, TimeUnit.SECONDS)
+                .until(() -> pool.getActiveReaderCount() == 0);
+
+        pool.shutdown();
     }
 }

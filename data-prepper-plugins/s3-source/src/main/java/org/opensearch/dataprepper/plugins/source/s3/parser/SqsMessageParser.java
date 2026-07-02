@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3.parser;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -13,7 +14,8 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 public class SqsMessageParser {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .disable(FAIL_ON_UNKNOWN_PROPERTIES);
     private final S3SourceConfig s3SourceConfig;
     private final S3NotificationParser s3NotificationParser;
 
