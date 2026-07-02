@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.mongo.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.truststore.TrustStoreProvider;
 
@@ -30,12 +31,13 @@ public class MongoDBConnectionTest {
     @Mock
     private MongoDBSourceConfig.AuthenticationConfig authenticationConfig;
 
+    @Mock
+    private AwsConfig awsConfig;
+
     private final Random random = new Random();
 
     void setUp() {
         when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
-        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         when(mongoDBSourceConfig.getHost()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getPort()).thenReturn(getRandomInteger());
         when(mongoDBSourceConfig.getTls()).thenReturn(getRandomBoolean());
@@ -44,8 +46,10 @@ public class MongoDBConnectionTest {
     }
 
     @Test
-    public void getMongoClient() {
+    public void getMongoClientWithUsernamePassword() {
         setUp();
+        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
+        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         final MongoClient mongoClient = MongoDBConnection.getMongoClient(mongoDBSourceConfig);
         assertThat(mongoClient, is(notNullValue()));
     }
@@ -53,6 +57,8 @@ public class MongoDBConnectionTest {
     @Test
     public void getMongoClientWithTLS() {
         setUp();
+        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
+        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         when(mongoDBSourceConfig.getTrustStoreFilePath()).thenReturn(UUID.randomUUID().toString());
         when(mongoDBSourceConfig.getTrustStorePassword()).thenReturn(UUID.randomUUID().toString());
         final Path path = mock(Path.class);
@@ -68,20 +74,24 @@ public class MongoDBConnectionTest {
 
     @Test
     public void getMongoClientNullHost() {
-        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
-        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         when(mongoDBSourceConfig.getHost()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
     }
 
     @Test
     public void getMongoClientEmptyHost() {
-        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getUsername()).thenReturn("\uD800\uD800" + UUID.randomUUID());
-        when(authenticationConfig.getPassword()).thenReturn("aЯ ⾀sd?q=%%l€0£.lo" + UUID.randomUUID());
         when(mongoDBSourceConfig.getHost()).thenReturn(" ");
         assertThrows(RuntimeException.class, () -> MongoDBConnection.getMongoClient(mongoDBSourceConfig));
+    }
+
+    @Test
+    public void getMongoClientWithIAMAuth() {
+        setUp();
+        when(mongoDBSourceConfig.getAuthenticationConfig()).thenReturn(null);
+        when(mongoDBSourceConfig.getAwsConfig()).thenReturn(awsConfig);
+        when(awsConfig.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/testRole");
+        final MongoClient mongoClient = MongoDBConnection.getMongoClient(mongoDBSourceConfig);
+        assertThat(mongoClient, is(notNullValue()));
     }
 
     private Boolean getRandomBoolean() {
