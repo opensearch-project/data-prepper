@@ -39,6 +39,8 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.26'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
     testImplementation project(path: ':data-prepper-test:test-common')
+    integrationTestImplementation 'org.wiremock:wiremock:3.13.2'
+    integrationTestImplementation project(':data-prepper-api').sourceSets.test.output
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 }
@@ -63,6 +65,7 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     useJUnitPlatform()
+    forkEvery = 1
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.cloudwatch.log_group', System.getProperty('tests.cloudwatch.log_group')

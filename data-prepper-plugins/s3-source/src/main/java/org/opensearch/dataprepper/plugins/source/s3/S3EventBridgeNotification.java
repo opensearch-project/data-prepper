@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.joda.time.DateTime;
@@ -86,6 +87,7 @@ public class S3EventBridgeNotification {
         return detail;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Detail {
         private final String version;
         private final Bucket bucket;
@@ -94,6 +96,7 @@ public class S3EventBridgeNotification {
         private final String requester;
         private final String sourceIpAddress;
         private final String reason;
+        private final String eventVersion;
 
         @JsonCreator
         public Detail(@JsonProperty(value = "version") final String version,
@@ -102,7 +105,8 @@ public class S3EventBridgeNotification {
                       @JsonProperty("request-id") final String requestId,
                       @JsonProperty("requester") final String requester,
                       @JsonProperty("source-ip-address") final String sourceIpAddress,
-                      @JsonProperty("reason") final String reason) {
+                      @JsonProperty("reason") final String reason,
+                      @JsonProperty("event-version") final String eventVersion) {
             this.version = version;
             this.bucket = bucket;
             this.object = object;
@@ -110,6 +114,7 @@ public class S3EventBridgeNotification {
             this.requester = requester;
             this.sourceIpAddress = sourceIpAddress;
             this.reason = reason;
+            this.eventVersion = eventVersion;
         }
 
         public String getVersion() {
