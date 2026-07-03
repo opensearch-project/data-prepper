@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchTimeoutException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
@@ -300,7 +301,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
             }
             throw e;
         } catch (final IOException e) {
-            throw new RuntimeException(e);
+            throw new SearchTimeoutException(String.format("Search request failed due to I/O error: %s", e.getMessage()), e);
         }
     }
 
