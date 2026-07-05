@@ -340,22 +340,17 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            int idx = 1;
-            stmt.setString(idx++, item.getPartitionOwner());
-            stmt.setString(idx++, item.getPartitionProgressState());
-            stmt.setString(idx++, item.getSourcePartitionStatus().name());
-            setInstant(stmt, idx++, item.getPartitionOwnershipTimeout());
-            setInstant(stmt, idx++, item.getReOpenAt());
-            stmt.setLong(idx++, item.getClosedCount() != null ? item.getClosedCount() : 0);
-            stmt.setString(idx++, item.getPartitionPriority());
-            if (settings.getTtl() != null) {
-                setInstant(stmt, idx++, Instant.now().plus(settings.getTtl()));
-            } else {
-                setInstant(stmt, idx++, null);
-            }
-            stmt.setString(idx++, item.getSourceIdentifier());
-            stmt.setString(idx++, item.getSourcePartitionKey());
-            stmt.setLong(idx++, item.getVersion());
+            stmt.setString(1, item.getPartitionOwner());
+            stmt.setString(2, item.getPartitionProgressState());
+            stmt.setString(3, item.getSourcePartitionStatus().name());
+            setInstant(stmt, 4, item.getPartitionOwnershipTimeout());
+            setInstant(stmt, 5, item.getReOpenAt());
+            stmt.setLong(6, item.getClosedCount() != null ? item.getClosedCount() : 0);
+            stmt.setString(7, item.getPartitionPriority());
+            setInstant(stmt, 8, settings.getTtl() != null ? Instant.now().plus(settings.getTtl()) : null);
+            stmt.setString(9, item.getSourceIdentifier());
+            stmt.setString(10, item.getSourcePartitionKey());
+            stmt.setLong(11, item.getVersion());
 
             final int updated = stmt.executeUpdate();
             if (updated == 0) {
