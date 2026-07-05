@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.plugins.sourcecoordinator.jdbc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
@@ -20,7 +22,9 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +48,16 @@ class JdbcSourceCoordinationStoreIT {
 
     private JdbcSourceCoordinationStore store;
     private static final String SOURCE_ID = "test-source";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    private static JdbcStoreSettings buildSettings(final Map<String, Object> overrides) {
+        final Map<String, Object> settingsMap = new HashMap<>(Map.of(
+                "url", JDBC_URL,
+                "username", JDBC_USER,
+                "password", JDBC_PASS));
+        settingsMap.putAll(overrides);
+        return OBJECT_MAPPER.convertValue(settingsMap, JdbcStoreSettings.class);
+    }
 
     @BeforeEach
     void setUp() throws Exception {
@@ -52,9 +66,7 @@ class JdbcSourceCoordinationStoreIT {
             stmt.execute("DROP TABLE IF EXISTS source_coordination");
         }
 
-        final JdbcStoreSettings settings = new JdbcStoreSettings(
-                JDBC_URL, JDBC_USER, JDBC_PASS,
-                null, null, null, null, null);
+        final JdbcStoreSettings settings = buildSettings(Map.of());
         store = new JdbcSourceCoordinationStore(settings);
         store.initializeStore();
     }
@@ -215,9 +227,7 @@ class JdbcSourceCoordinationStoreIT {
             stmt.execute("DROP TABLE IF EXISTS source_coordination");
         }
 
-        final JdbcStoreSettings ttlSettings = new JdbcStoreSettings(
-                JDBC_URL, JDBC_USER, JDBC_PASS,
-                null, null, null, Duration.ofSeconds(2), null);
+        final JdbcStoreSettings ttlSettings = buildSettings(Map.of("ttl", "PT2S"));
         final JdbcSourceCoordinationStore ttlStore = new JdbcSourceCoordinationStore(ttlSettings);
         ttlStore.initializeStore();
 

@@ -9,50 +9,47 @@
 
 package org.opensearch.dataprepper.plugins.sourcecoordinator.jdbc;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Objects;
 
 public class JdbcStoreSettings {
 
     private static final String DEFAULT_TABLE_NAME = "source_coordination";
     private static final int DEFAULT_MAX_POOL_SIZE = 5;
 
-    private final String url;
-    private final String username;
-    private final String password;
-    private final String tableName;
-    private final boolean skipTableCreation;
-    private final int maxPoolSize;
-    private final Duration ttl;
-    private final Map<String, String> connectionProperties;
+    @JsonProperty("url")
+    @NotEmpty(message = "url is required for JDBC store settings")
+    private String url;
 
-    @JsonCreator
-    public JdbcStoreSettings(
-            @JsonProperty("url") final String url,
-            @JsonProperty("username") final String username,
-            @JsonProperty("password") final String password,
-            @JsonProperty("table_name") final String tableName,
-            @JsonProperty("skip_table_creation") final Boolean skipTableCreation,
-            @JsonProperty("max_pool_size") final Integer maxPoolSize,
-            @JsonProperty("ttl") final Duration ttl,
-            @JsonProperty("connection_properties") final Map<String, String> connectionProperties) {
-        Objects.requireNonNull(url, "url is required for JDBC store settings");
-        Objects.requireNonNull(username, "username is required for JDBC store settings");
-        Objects.requireNonNull(password, "password is required for JDBC store settings");
+    @JsonProperty("username")
+    @NotEmpty(message = "username is required for JDBC store settings")
+    private String username;
 
-        this.url = url;
-        this.username = username;
-        this.password = password;
-        this.tableName = tableName != null ? tableName : DEFAULT_TABLE_NAME;
-        this.skipTableCreation = skipTableCreation != null ? skipTableCreation : false;
-        this.maxPoolSize = maxPoolSize != null ? maxPoolSize : DEFAULT_MAX_POOL_SIZE;
-        this.ttl = ttl;
-        this.connectionProperties = connectionProperties;
-    }
+    @JsonProperty("password")
+    @NotEmpty(message = "password is required for JDBC store settings")
+    private String password;
+
+    @JsonProperty("table_name")
+    @NotNull
+    private String tableName = DEFAULT_TABLE_NAME;
+
+    @JsonProperty("skip_table_creation")
+    private boolean skipTableCreation = false;
+
+    @JsonProperty("max_pool_size")
+    @Min(1)
+    private int maxPoolSize = DEFAULT_MAX_POOL_SIZE;
+
+    @JsonProperty("ttl")
+    private Duration ttl;
+
+    @JsonProperty("connection_properties")
+    private Map<String, String> connectionProperties;
 
     public String getUrl() {
         return url;

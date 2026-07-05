@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.plugins.sourcecoordinator.jdbc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +32,7 @@ import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,16 +67,26 @@ class JdbcSourceCoordinationStoreTest {
     @Mock
     private HikariDataSource mockDataSource;
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
+
     private JdbcStoreSettings settings;
     private JdbcSourceCoordinationStore store;
 
     @BeforeEach
     void setUp() throws SQLException {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, null, null);
+        settings = buildSettings(Map.of());
         lenient().when(mockDataSource.getConnection()).thenReturn(connection);
         lenient().when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+    }
+
+    private static JdbcStoreSettings buildSettings(final Map<String, Object> overrides) {
+        final Map<String, Object> settingsMap = new HashMap<>(Map.of(
+                "url", "jdbc:postgresql://localhost/test",
+                "username", "user",
+                "password", "pass",
+                "skip_table_creation", true));
+        settingsMap.putAll(overrides);
+        return OBJECT_MAPPER.convertValue(settingsMap, JdbcStoreSettings.class);
     }
 
     @AfterEach
@@ -237,9 +250,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void tryCreatePartitionItem_with_ttl_sets_expiration_time() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, Duration.ofHours(1), null);
+        settings = buildSettings(Map.of("ttl", "PT1H"));
         createInitializedStore();
 
         when(preparedStatement.executeUpdate()).thenReturn(1);
@@ -253,9 +264,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void tryCreatePartitionItem_readonly_does_not_set_expiration_time() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, Duration.ofHours(1), null);
+        settings = buildSettings(Map.of("ttl", "PT1H"));
         createInitializedStore();
 
         when(preparedStatement.executeUpdate()).thenReturn(1);
@@ -458,9 +467,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void close_shuts_down_ttl_executor() {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, Duration.ofHours(1), null);
+        settings = buildSettings(Map.of("ttl", "PT1H"));
         createInitializedStore();
 
         store.close();
@@ -478,9 +485,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void initializeStore_creates_table_when_skip_is_false() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, false, null, null, null);
+        settings = buildSettings(Map.of("skip_table_creation", false));
         createInitializedStore();
 
         // createTable calls prepareStatement for CREATE TABLE and CREATE INDEX
@@ -489,9 +494,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void initializeStore_creates_table_handles_existing_index() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, false, null, null, null);
+        settings = buildSettings(Map.of("skip_table_creation", false));
 
         final PreparedStatement createTableStmt = mock(PreparedStatement.class);
         final PreparedStatement createIndexStmt = mock(PreparedStatement.class);
@@ -508,9 +511,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void initializeStore_with_connection_properties() {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, null, Map.of("ssl", "true"));
+        settings = buildSettings(Map.of("connection_properties", Map.of("ssl", "true")));
         createInitializedStore();
 
         assertThat(store, is(notNullValue()));
@@ -518,9 +519,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void tryUpdateSourcePartitionItem_with_ttl_sets_expiration() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, true, null, Duration.ofHours(1), null);
+        settings = buildSettings(Map.of("ttl", "PT1H"));
         createInitializedStore();
 
         when(preparedStatement.executeUpdate()).thenReturn(1);
@@ -570,9 +569,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void createTable_throws_on_non_index_sql_exception() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, false, null, null, null);
+        settings = buildSettings(Map.of("skip_table_creation", false));
 
         final PreparedStatement createTableStmt = mock(PreparedStatement.class);
         final PreparedStatement createIndexStmt = mock(PreparedStatement.class);
@@ -587,9 +584,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void createTable_throws_on_create_table_failure() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, false, null, null, null);
+        settings = buildSettings(Map.of("skip_table_creation", false));
 
         when(preparedStatement.execute()).thenThrow(new SQLException("connection lost"));
 
@@ -598,9 +593,7 @@ class JdbcSourceCoordinationStoreTest {
 
     @Test
     void createTable_handles_mysql_duplicate_index() throws Exception {
-        settings = new JdbcStoreSettings(
-                "jdbc:postgresql://localhost/test", "user", "pass",
-                null, false, null, null, null);
+        settings = buildSettings(Map.of("skip_table_creation", false));
 
         final PreparedStatement createTableStmt = mock(PreparedStatement.class);
         final PreparedStatement createIndexStmt = mock(PreparedStatement.class);
