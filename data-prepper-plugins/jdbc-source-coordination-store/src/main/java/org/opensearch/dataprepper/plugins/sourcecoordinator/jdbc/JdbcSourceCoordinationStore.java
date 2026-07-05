@@ -20,6 +20,10 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -101,19 +105,8 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
 
     private void createTable() {
         final String tableName = settings.getTableName();
-        final String createTableSql = "CREATE TABLE IF NOT EXISTS " + tableName + " ("
-                + "source_identifier VARCHAR(256) NOT NULL, "
-                + "source_partition_key VARCHAR(512) NOT NULL, "
-                + "partition_owner VARCHAR(256), "
-                + "partition_progress_state TEXT, "
-                + "source_partition_status VARCHAR(20) NOT NULL, "
-                + "partition_ownership_timeout TIMESTAMP, "
-                + "reopen_at TIMESTAMP, "
-                + "closed_count BIGINT DEFAULT 0, "
-                + "partition_priority VARCHAR(64), "
-                + "version BIGINT NOT NULL DEFAULT 0, "
-                + "expiration_time TIMESTAMP, "
-                + "PRIMARY KEY (source_identifier, source_partition_key))";
+        final String createTableSql = String.format(readSqlResource("create-table.sql"), tableName);
+        final String createIndexSql = String.format(readSqlResource("create-index.sql"), tableName);
 
         try (Connection conn = dataSource.getConnection()) {
             try (PreparedStatement stmt = conn.prepareStatement(createTableSql)) {
@@ -121,9 +114,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
             }
             // CREATE INDEX IF NOT EXISTS is not supported by MySQL.
             // Use plain CREATE INDEX and ignore the error if the index already exists.
-            try (PreparedStatement stmt = conn.prepareStatement(
-                    "CREATE INDEX idx_source_status_priority ON "
-                            + tableName + " (source_identifier, source_partition_status, partition_priority)")) {
+            try (PreparedStatement stmt = conn.prepareStatement(createIndexSql)) {
                 stmt.execute();
             } catch (final SQLException e) {
                 if (!isIndexAlreadyExists(e)) {
@@ -134,6 +125,17 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
             LOG.info("JDBC coordination store table {} initialized", tableName);
         } catch (final SQLException e) {
             throw new RuntimeException("Failed to create coordination store table", e);
+        }
+    }
+
+    private static String readSqlResource(final String resourceName) {
+        try (InputStream inputStream = JdbcSourceCoordinationStore.class.getResourceAsStream(resourceName)) {
+            if (inputStream == null) {
+                throw new IllegalStateException("SQL resource not found on classpath: " + resourceName);
+            }
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Failed to read SQL resource: " + resourceName, e);
         }
     }
 
