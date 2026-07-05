@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.Duration;
 import java.util.Map;
@@ -36,6 +37,8 @@ public class JdbcStoreSettings {
 
     @JsonProperty("table_name")
     @NotNull
+    @Pattern(regexp = "([A-Za-z_][A-Za-z0-9_]*\\.)?[A-Za-z_][A-Za-z0-9_]*",
+            message = "table_name must be a valid SQL identifier, optionally schema-qualified")
     private String tableName = DEFAULT_TABLE_NAME;
 
     @JsonProperty("skip_table_creation")

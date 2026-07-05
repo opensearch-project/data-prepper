@@ -141,4 +141,36 @@ class JdbcStoreSettingsTest {
 
         assertThat(validator.validate(settings), is(not(empty())));
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"source_coordination", "my_schema.my_table", "_private", "Table123"})
+    void validation_passes_for_valid_table_names(final String tableName) {
+        final Map<String, Object> settingsMap = requiredSettings();
+        settingsMap.put("table_name", tableName);
+
+        final JdbcStoreSettings settings = OBJECT_MAPPER.convertValue(settingsMap, JdbcStoreSettings.class);
+
+        assertThat(validator.validate(settings), is(empty()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "foo;DROP TABLE bar",
+            "foo bar",
+            "foo-bar",
+            "1foo",
+            "foo\"bar",
+            "foo'bar",
+            "schema.table.extra",
+            ".foo",
+            "foo."
+    })
+    void validation_fails_for_unsafe_table_names(final String tableName) {
+        final Map<String, Object> settingsMap = requiredSettings();
+        settingsMap.put("table_name", tableName);
+
+        final JdbcStoreSettings settings = OBJECT_MAPPER.convertValue(settingsMap, JdbcStoreSettings.class);
+
+        assertThat(validator.validate(settings), is(not(empty())));
+    }
 }
