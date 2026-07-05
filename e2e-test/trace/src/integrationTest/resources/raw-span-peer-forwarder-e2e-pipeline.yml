@@ -11,7 +11,10 @@ raw-pipeline:
       name: "entry-pipeline"
   processor:
     - otel_traces:
-        trace_flush_interval: 5
+        # Long enough that a peer-forwarded root span arrives before its
+        # buffered child spans are garbage-collected with a null trace group.
+        # See https://github.com/opensearch-project/data-prepper/issues/6721
+        trace_flush_interval: 30
     - otel_trace_group:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
