@@ -225,6 +225,51 @@ class JdbcSourceCoordinationStoreTest {
     }
 
     @Test
+    void tryCreatePartitionItem_with_null_status_stores_null() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        final boolean result = store.tryCreatePartitionItem(
+                "source-1|GLOBAL", "global-state", null, 0L, "{}", true);
+
+        assertThat(result, is(true));
+        verify(preparedStatement).setString(3, null);
+    }
+
+    @Test
+    void getSourcePartitionItem_maps_null_status() throws Exception {
+        createInitializedStore();
+
+        when(resultSet.next()).thenReturn(true, false);
+        mockResultSetRow();
+        when(resultSet.getString("source_partition_status")).thenReturn(null);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+
+        final Optional<SourcePartitionStoreItem> result = store.getSourcePartitionItem("source-1|GLOBAL", "global-state");
+
+        assertThat(result.isPresent(), is(true));
+        assertThat(result.get().getSourcePartitionStatus(), is(nullValue()));
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_with_null_status_stores_null() throws Exception {
+        createInitializedStore();
+
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        final JdbcPartitionItem item = new JdbcPartitionItem();
+        item.setSourceIdentifier("source-1|GLOBAL");
+        item.setSourcePartitionKey("global-state");
+        item.setPartitionProgressState("{\"progress\": 1}");
+        item.setVersion(0L);
+
+        store.tryUpdateSourcePartitionItem(item);
+
+        verify(preparedStatement).setString(3, null);
+    }
+
+    @Test
     void tryCreatePartitionItem_returns_false_on_constraint_violation_sqlstate() throws Exception {
         createInitializedStore();
 

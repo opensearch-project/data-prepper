@@ -215,7 +215,8 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, sourceIdentifier);
             stmt.setString(2, sourcePartitionKey);
-            stmt.setString(3, sourcePartitionStatus.name());
+            // Status is null for global state items, which are not for lease.
+            stmt.setString(3, sourcePartitionStatus != null ? sourcePartitionStatus.name() : null);
             stmt.setLong(4, closedCount);
             stmt.setString(5, partitionProgressState);
             stmt.setString(6, Instant.now().toString());
@@ -342,7 +343,7 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, item.getPartitionOwner());
             stmt.setString(2, item.getPartitionProgressState());
-            stmt.setString(3, item.getSourcePartitionStatus().name());
+            stmt.setString(3, item.getSourcePartitionStatus() != null ? item.getSourcePartitionStatus().name() : null);
             setInstant(stmt, 4, item.getPartitionOwnershipTimeout());
             setInstant(stmt, 5, item.getReOpenAt());
             stmt.setLong(6, item.getClosedCount() != null ? item.getClosedCount() : 0);
@@ -422,7 +423,8 @@ public class JdbcSourceCoordinationStore implements SourceCoordinationStore, Aut
         item.setSourcePartitionKey(rs.getString("source_partition_key"));
         item.setPartitionOwner(rs.getString("partition_owner"));
         item.setPartitionProgressState(rs.getString("partition_progress_state"));
-        item.setSourcePartitionStatus(SourcePartitionStatus.valueOf(rs.getString("source_partition_status")));
+        final String status = rs.getString("source_partition_status");
+        item.setSourcePartitionStatus(status != null ? SourcePartitionStatus.valueOf(status) : null);
         item.setPartitionOwnershipTimeout(getInstant(rs, "partition_ownership_timeout"));
         item.setReOpenAt(getInstant(rs, "reopen_at"));
         item.setClosedCount(rs.getLong("closed_count"));

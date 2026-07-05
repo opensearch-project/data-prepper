@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS %s (
     source_partition_key VARCHAR(512) NOT NULL,
     partition_owner VARCHAR(256),
     partition_progress_state TEXT,
-    source_partition_status VARCHAR(20) NOT NULL,
+    source_partition_status VARCHAR(20),
     partition_ownership_timeout TIMESTAMP,
     reopen_at TIMESTAMP,
     closed_count BIGINT DEFAULT 0,

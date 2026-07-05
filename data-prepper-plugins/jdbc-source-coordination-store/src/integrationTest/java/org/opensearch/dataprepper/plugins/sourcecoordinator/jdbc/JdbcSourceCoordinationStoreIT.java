@@ -33,6 +33,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JdbcSourceCoordinationStoreIT {
@@ -242,5 +243,25 @@ class JdbcSourceCoordinationStoreIT {
             ttlStore.deleteExpiredItems();
             return !ttlStore.getSourcePartitionItem(SOURCE_ID, "p1").isPresent();
         });
+    }
+
+    @Test
+    void global_state_item_with_null_status_round_trips() {
+        // Enhanced source coordination (e.g. the dynamodb source) creates global state
+        // items with a null status because they are not for lease.
+        final String globalSourceId = SOURCE_ID + "|GLOBAL";
+        assertThat(store.tryCreatePartitionItem(
+                globalSourceId, "table-state", null, 0L, "{\"exportArn\":\"arn:test\"}", true), is(true));
+
+        final SourcePartitionStoreItem created = store.getSourcePartitionItem(globalSourceId, "table-state").get();
+        assertThat(created.getSourcePartitionStatus(), is(nullValue()));
+        assertThat(created.getPartitionProgressState(), equalTo("{\"exportArn\":\"arn:test\"}"));
+
+        created.setPartitionProgressState("{\"exportArn\":\"arn:test\",\"loaded\":5}");
+        store.tryUpdateSourcePartitionItem(created);
+
+        final SourcePartitionStoreItem updated = store.getSourcePartitionItem(globalSourceId, "table-state").get();
+        assertThat(updated.getSourcePartitionStatus(), is(nullValue()));
+        assertThat(updated.getPartitionProgressState(), equalTo("{\"exportArn\":\"arn:test\",\"loaded\":5}"));
     }
 }
