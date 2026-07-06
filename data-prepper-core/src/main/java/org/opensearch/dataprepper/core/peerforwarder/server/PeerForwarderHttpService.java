@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTa
 import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
@@ -53,6 +54,7 @@ public class PeerForwarderHttpService {
     private final Timer serverRequestProcessingLatencyTimer;
     private final Counter recordsReceivedFromPeersCounter;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final CircuitBreaker circuitBreaker;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
@@ -60,11 +62,23 @@ public class PeerForwarderHttpService {
                                     final PeerForwarderCodec peerForwarderCodec,
                                     final AcknowledgementSetManager acknowledgementSetManager,
                                     final PluginMetrics pluginMetrics) {
+        this(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics, null);
+    }
+
+    public PeerForwarderHttpService(final ResponseHandler responseHandler,
+                                    final PeerForwarderProvider peerForwarderProvider,
+                                    final PeerForwarderConfiguration peerForwarderConfiguration,
+                                    final PeerForwarderCodec peerForwarderCodec,
+                                    final AcknowledgementSetManager acknowledgementSetManager,
+                                    final PluginMetrics pluginMetrics,
+                                    final CircuitBreaker circuitBreaker) {
         this.responseHandler = responseHandler;
         this.peerForwarderProvider = peerForwarderProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderCodec = peerForwarderCodec;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.circuitBreaker = circuitBreaker;
         serverRequestProcessingLatencyTimer = pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY);
         recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
     }
@@ -75,6 +89,11 @@ public class PeerForwarderHttpService {
     }
 
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {
+        // Priority 5: Protect peer forwarder receive buffers from uncontrolled growth
+        if (circuitBreaker != null && circuitBreaker.isOpen()) {
+            LOG.debug("Rejecting peer forwarder request: circuit breaker is open.");
+            return HttpResponse.of(HttpStatus.SERVICE_UNAVAILABLE);
+        }
 
         PeerForwardingEvents peerForwardingEvents;
         final HttpData content = aggregatedHttpRequest.content();

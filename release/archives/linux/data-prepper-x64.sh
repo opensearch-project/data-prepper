@@ -33,6 +33,7 @@ MIN_REQ_OPENJDK_VERSION=11
 DATA_PREPPER_BIN=$(dirname "$(readlink -f "$0")")
 DATA_PREPPER_HOME=`readlink -f "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
+JAVA_HOME=/home/tlongo/programming/languages/jdks/amazon-corretto-21.0.3.9.1-linux-x64
 
 #check if java is installed
 if type -p java; then
