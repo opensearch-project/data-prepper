@@ -230,29 +230,18 @@ public class OTelMetricsGrpcServiceTest {
             final OTelProtoCodec.OTelProtoDecoder decoder) {
         when(circuitBreaker.isOpen()).thenReturn(true);
         sut = createObjectUnderTestWithCircuitBreaker(decoder, circuitBreaker);
-
         final BufferWriteException thrown;
+
         try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
             mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
-            thrown = assertThrows(BufferWriteException.class,
-                    () -> sut.export(METRICS_REQUEST, responseObserver));
+            thrown = assertThrows(BufferWriteException.class, () -> sut.export(METRICS_REQUEST, responseObserver));
         }
 
-        // The breaker was consulted and tripped the rejection path.
         verify(circuitBreaker, times(1)).isOpen();
         assertThat(thrown.getMessage(), equalTo("Circuit breaker is open."));
         assertThat(thrown.getCause(), instanceOf(TimeoutException.class));
-
-        // Critical assertion: the buffer is NEVER written to, and no records are
-        // parsed into domain objects. This is the whole point of the pre-parse
-        // circuit breaker check.
         verifyNoInteractions(buffer);
-
-        // The client receives no response - gRPC will surface the error.
         verifyNoInteractions(responseObserver);
-
-        // Request reception is counted (it happens in export() before the check),
-        // but no success / parsing counters fire.
         verify(requestsReceivedCounter, times(1)).increment();
         verify(payloadSize, times(1)).record(anyDouble());
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());

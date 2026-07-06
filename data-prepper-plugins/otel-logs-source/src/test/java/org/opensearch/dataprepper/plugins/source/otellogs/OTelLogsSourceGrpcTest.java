@@ -226,45 +226,33 @@ class OTelLogsSourceGrpcTest {
     @Test
     void circuit_breaker_provided_registers_HTTP_decorator_that_rejects_open_breaker_requests() throws Exception {
         when(server.stop()).thenReturn(completableFuture);
-
         final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
         when(circuitBreaker.isOpen()).thenReturn(true);
-
-        // Package-private 6-arg constructor that accepts a CircuitBreaker.
         final OTelLogsSource source = new OTelLogsSource(
-                createDefaultConfig(), pluginMetrics, pluginFactory, certificateProviderFactory,
-                pipelineDescription, circuitBreaker);
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         final ArgumentCaptor<Function> decoratorCaptor = ArgumentCaptor.forClass(Function.class);
-
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(buffer);
         }
-
-        // Wiring: exactly one server-level decorator was registered on the shared builder
-        // (auth isn't configured by the default fixture, and http_path is null, so no
-        // other decorator(Function) call would fire).
         verify(serverBuilder, times(1)).decorator(decoratorCaptor.capture());
         verify(serverBuilder).service(isA(GrpcService.class));
-
-        // Behavior: prove the captured function is the circuit-breaker decorator by applying
-        // it to a stub inner service and invoking it with an open breaker.
         final HttpService innerService = (ctx, req) -> HttpResponse.of(HttpStatus.OK);
         @SuppressWarnings("unchecked")
         final HttpService decoratedService = (HttpService) decoratorCaptor.getValue().apply(innerService);
-
         final HttpRequest request = HttpRequest.of(HttpMethod.POST, "/opentelemetry.proto.collector.logs.v1.LogsService/Export");
         final ServiceRequestContext ctx = ServiceRequestContext.of(request);
+
         final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
 
-        // Open breaker -> HTTP 503 returned before any inner-service logic runs.
-        // The inner service would have returned 200; anything other than 503 means the breaker
-        // was not consulted or the wrong decorator was wired.
         assertThat(response.status(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
-
-
         source.stop();
     }
 

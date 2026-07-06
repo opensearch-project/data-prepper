@@ -89,7 +89,6 @@ public class PeerForwarderHttpService {
     }
 
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {
-        // Priority 5: Protect peer forwarder receive buffers from uncontrolled growth
         if (circuitBreaker != null && circuitBreaker.isOpen()) {
             LOG.debug("Rejecting peer forwarder request: circuit breaker is open.");
             return HttpResponse.of(HttpStatus.SERVICE_UNAVAILABLE);

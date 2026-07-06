@@ -105,7 +105,6 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     }
 
     private void processRequest(final ExportLogsServiceRequest request, final StreamObserver<ExportLogsServiceResponse> responseObserver) {
-        // Priority 2: Reject before expensive protobuf parsing when circuit breaker is open
         if (circuitBreaker != null && circuitBreaker.isOpen()) {
             throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
         }
