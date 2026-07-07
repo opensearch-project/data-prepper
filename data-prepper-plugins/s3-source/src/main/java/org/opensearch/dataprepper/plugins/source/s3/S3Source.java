@@ -139,7 +139,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
                         .s3Client(s3ClientBuilderFactory.getS3Client())
                         .compressionOption(CompressionOption.AUTOMATIC)
                         .build();
-                s3Handler = new AutoDetectS3ObjectWorker(s3ObjectRequest, autoDetectCodecFactory);
+                s3Handler = new AutoDetectS3ObjectWorker(s3ObjectRequest, autoDetectCodecFactory, pluginMetrics);
             }
         }
         if(Objects.nonNull(s3SourceConfig.getSqsOptions())) {

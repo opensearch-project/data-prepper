@@ -132,6 +132,19 @@ public class FormatDetector {
                 // Single JSON object — maps to NDJSON since json codec only handles arrays
                 return new FormatDetectionResult(compression, DetectedFormat.NDJSON, Confidence.HIGH);
             }
+            // Truncated JSON array: starts with [ and first element looks like a JSON object
+            if (text.startsWith("[") && text.length() > 2) {
+                final String afterBracket = text.substring(1).trim();
+                if (afterBracket.startsWith("{")) {
+                    return new FormatDetectionResult(compression, DetectedFormat.JSON, Confidence.MEDIUM);
+                }
+            }
+            // Truncated single JSON object (only if single line — not multi-line text)
+            if (text.startsWith("{") && text.length() > 10 && !text.contains("\n")) {
+                if (text.contains("\":") || text.contains("\": ")) {
+                    return new FormatDetectionResult(compression, DetectedFormat.NDJSON, Confidence.MEDIUM);
+                }
+            }
             // Could be truncated JSON or ND-JSON — try line-by-line
         }
 

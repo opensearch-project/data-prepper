@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -36,11 +37,12 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
     private final DetectionMetrics metrics;
 
     AutoDetectS3ObjectWorker(final S3ObjectRequest s3ObjectRequest,
-                             final AutoDetectCodecFactory codecFactory) {
+                             final AutoDetectCodecFactory codecFactory,
+                             final PluginMetrics pluginMetrics) {
         this.s3ObjectRequest = s3ObjectRequest;
         this.codecFactory = codecFactory;
         this.formatDetector = codecFactory.getFormatDetector();
-        this.metrics = new DetectionMetrics();
+        this.metrics = new DetectionMetrics(pluginMetrics);
     }
 
     @Override
@@ -56,13 +58,17 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
 
         // Read sample for detection
         final byte[] sample = readSample(inputFile);
+        final long detectStart = System.nanoTime();
         final FormatDetectionResult detection = formatDetector.detect(sample);
+        final long detectDurationNanos = System.nanoTime() - detectStart;
+        final java.time.Duration detectDuration = java.time.Duration.ofNanos(detectDurationNanos);
 
-        LOG.info("Auto-detected format for s3://{}/{}: format={}, compression={}, confidence={}",
+        LOG.debug("Auto-detected format for s3://{}/{}: format={}, compression={}, confidence={}, detectionTimeMs={}",
                 s3ObjectReference.getBucketName(), s3ObjectReference.getKey(),
-                detection.getFormat(), detection.getCompression(), detection.getConfidence());
+                detection.getFormat(), detection.getCompression(), detection.getConfidence(),
+                detectDurationNanos / 1_000_000.0);
 
-        metrics.record(detection);
+        metrics.record(detection, detectDuration);
 
         if (detection.getFormat() == DetectedFormat.UNKNOWN) {
             LOG.error("Unable to detect format for s3://{}/{}. Skipping.",

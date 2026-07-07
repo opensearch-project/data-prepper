@@ -50,7 +50,7 @@ class AutoDetectCodecFactory {
             return null;
         }
 
-        LOG.info("Auto-detecting codec: {} → {}", format, pluginName);
+        LOG.debug("Auto-detecting codec: {} → {}", format, pluginName);
         final PluginSetting pluginSetting = new PluginSetting(pluginName, Collections.emptyMap());
         return pluginFactory.loadPlugin(InputCodec.class, pluginSetting);
     }
