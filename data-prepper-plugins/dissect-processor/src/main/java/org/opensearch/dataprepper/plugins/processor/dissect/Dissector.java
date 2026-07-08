@@ -31,10 +31,10 @@ import org.slf4j.LoggerFactory;
 
 public class Dissector {
     private static final Logger LOG = LoggerFactory.getLogger(Dissector.class);
-    private Map<String, SkipField> skipFieldMap;
-    private Map<String, NormalField> normalFieldMap;
-    private Map<String, IndirectField> indirectFieldMap;
-    private Map<String, List<AppendField>> unAppendedFieldsMap;
+    private final Map<String, SkipField> skipFieldMap;
+    private final Map<String, NormalField> normalFieldMap;
+    private final Map<String, IndirectField> indirectFieldMap;
+    private final Map<String, List<AppendField>> unAppendedFieldsMap;
     private final FieldHelper fieldHelper = new FieldHelper();
     private final LinkedList<Field> fieldsList = new LinkedList<>();
     private final LinkedList<Delimiter> delimiterList = new LinkedList<>();
@@ -67,7 +67,16 @@ public class Dissector {
         }
         parseFields(fieldsArray);
         parseDelimiters(delimiterArray);
-        setFieldsMaps();
+        this.normalFieldMap = Collections.unmodifiableMap(fieldHelper.getNormalFieldMap());
+        this.skipFieldMap = Collections.unmodifiableMap(fieldHelper.getSkipFieldMap());
+        this.indirectFieldMap = Collections.unmodifiableMap(fieldHelper.getIndirectFieldMap());
+        Map<String, List<AppendField>> sortedAppendMap = new HashMap<>();
+        for (Map.Entry<String, List<AppendField>> entry : fieldHelper.getAppendFieldMap().entrySet()) {
+            List<AppendField> sorted = new ArrayList<>(entry.getValue());
+            Collections.sort(sorted);
+            sortedAppendMap.put(entry.getKey(), Collections.unmodifiableList(sorted));
+        }
+        this.unAppendedFieldsMap = Collections.unmodifiableMap(sortedAppendMap);
     }
 
     public Map<String, String> dissectText(String text) {
@@ -80,7 +89,7 @@ public class Dissector {
         if (!computeDelimiterPositions(text, delimStarts, delimEnds, n)) {
             return null;
         }
-        Map<Field, String> localValues = new HashMap<>(delimiterList.size());
+        Map<Field, String> localValues = new HashMap<>(fieldsList.size() * 2);
         Field head = fieldsList.getFirst();
         for (int i = 0; i < n; i++) {
             int fieldStart = 0;
@@ -147,19 +156,6 @@ public class Dissector {
             }
         }
         return results;
-    }
-
-    private void setFieldsMaps(){
-        this.normalFieldMap = Collections.unmodifiableMap(fieldHelper.getNormalFieldMap());
-        this.skipFieldMap = Collections.unmodifiableMap(fieldHelper.getSkipFieldMap());
-        this.indirectFieldMap = Collections.unmodifiableMap(fieldHelper.getIndirectFieldMap());
-        Map<String, List<AppendField>> sortedAppendMap = new HashMap<>();
-        for (Map.Entry<String, List<AppendField>> entry : fieldHelper.getAppendFieldMap().entrySet()) {
-            List<AppendField> sorted = new ArrayList<>(entry.getValue());
-            Collections.sort(sorted);
-            sortedAppendMap.put(entry.getKey(), Collections.unmodifiableList(sorted));
-        }
-        this.unAppendedFieldsMap = Collections.unmodifiableMap(sortedAppendMap);
     }
 
     private void parseFields(String[] fieldsArray){
