@@ -358,6 +358,9 @@ public final class BulkRetryStrategy {
             incrementErrorCounters(e);
             return handleRetriesAndFailures(bulkRequestForRetry, attemptNumber, null, e);
         }
+        if (LOG.isDebugEnabled()) {
+            logBulkResponseDetails(bulkRequestForRetry, bulkResponse, attemptNumber);
+        }
         if (bulkResponse.errors()) {
             return handleRetriesAndFailures(bulkRequestForRetry, attemptNumber, bulkResponse, null);
         } else {
@@ -371,7 +374,7 @@ public final class BulkRetryStrategy {
                 for (int i = 0; i < bulkRequestForRetry.getOperationsCount(); i++) {
                     final BulkOperationWrapper op = (BulkOperationWrapper) bulkRequestForRetry.getOperationAt(i);
                     final BulkResponseItem item = bulkResponse.items().get(i);
-                    LOG.debug("Document indexed successfully: id={}, index={}, status={}", op.getId(), op.getIndex(), item.status());
+                    LOG.debug("Document indexed successfully: id={}, index={}, status={}, seqNo={}, primaryTerm={}", op.getId(), op.getIndex(), item.status(), item.seqNo(), item.primaryTerm());
                 }
             }
             List<BulkOperationWrapper> successfulOperations = new ArrayList<>(bulkRequestForRetry.getOperations());
@@ -380,6 +383,32 @@ public final class BulkRetryStrategy {
             documentsDuplicates.increment(totalDuplicateDocuments);
         }
         return null;
+    }
+
+    private void logBulkResponseDetails(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest,
+                                          final BulkResponse bulkResponse,
+                                          final int attemptNumber) {
+        final int requestCount = bulkRequest.getOperationsCount();
+        final int responseCount = bulkResponse.items().size();
+        LOG.debug("Bulk response: attempt={}, errors={}, requestItems={}, responseItems={}, took={}ms",
+                attemptNumber, bulkResponse.errors(), requestCount, responseCount, bulkResponse.took());
+        if (requestCount != responseCount) {
+            LOG.warn("BULK RESPONSE MISMATCH: request had {} items but response has {} items. attempt={}",
+                    requestCount, responseCount, attemptNumber);
+        }
+        for (int i = 0; i < responseCount; i++) {
+            final BulkResponseItem item = bulkResponse.items().get(i);
+            final BulkOperationWrapper op = (i < requestCount) ? (BulkOperationWrapper) bulkRequest.getOperationAt(i) : null;
+            final String docId = op != null ? op.getId() : "UNKNOWN";
+            final ErrorCause error = item.error();
+            if (error != null) {
+                LOG.debug("Bulk response item: position={}, id={}, responseId={}, status={}, seqNo={}, primaryTerm={}, error.type={}, error.reason={}",
+                        i, docId, item.id(), item.status(), item.seqNo(), item.primaryTerm(), error.type(), error.reason());
+            } else {
+                LOG.debug("Bulk response item: position={}, id={}, responseId={}, status={}, seqNo={}, primaryTerm={}",
+                        i, docId, item.id(), item.status(), item.seqNo(), item.primaryTerm());
+            }
+        }
     }
 
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
@@ -430,7 +459,7 @@ public final class BulkRetryStrategy {
                     if(isDuplicateDocument(bulkItemResponse)) {
                         documentsDuplicates.increment();
                     }
-                    LOG.debug("Document indexed successfully (retry path): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
+                    LOG.debug("Document indexed successfully (retry path): id={}, index={}, status={}, seqNo={}, primaryTerm={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status(), bulkItemResponse.seqNo(), bulkItemResponse.primaryTerm());
                     successfulOperations.add(bulkOperation);
                 }
                 index++;
@@ -471,7 +500,7 @@ public final class BulkRetryStrategy {
                 if(isDuplicateDocument(bulkItemResponse)) {
                     documentsDuplicates.increment();
                 }
-                LOG.debug("Document indexed successfully (final attempt): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
+                LOG.debug("Document indexed successfully (final attempt): id={}, index={}, status={}, seqNo={}, primaryTerm={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status(), bulkItemResponse.seqNo(), bulkItemResponse.primaryTerm());
                 successfulOperations.add(bulkOperation);
             }
         }
