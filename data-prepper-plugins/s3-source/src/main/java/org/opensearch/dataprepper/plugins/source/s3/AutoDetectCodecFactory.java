@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.formatdetection.DetectedFormat;
-import org.opensearch.dataprepper.plugins.formatdetection.FormatDetectionResult;
 import org.opensearch.dataprepper.plugins.formatdetection.FormatDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
