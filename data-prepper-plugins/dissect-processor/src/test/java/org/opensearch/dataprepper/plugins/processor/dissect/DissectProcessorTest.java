@@ -20,17 +20,18 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.processor.dissect.Fields.AppendField;
-import org.opensearch.dataprepper.plugins.processor.dissect.Fields.Field;
-import org.opensearch.dataprepper.plugins.processor.dissect.Fields.IndirectField;
-import org.opensearch.dataprepper.plugins.processor.dissect.Fields.NormalField;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,13 +73,7 @@ class DissectProcessorTest {
     @Test
     void test_normal_fields_dissect_succeeded() throws NoSuchFieldException, IllegalAccessException {
 
-        Field field1 = new NormalField("field1");
-        Field field2 = new NormalField("field2");
-        field1.setValue("foo");
-        field2.setValue("bar");
-
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "foo", "field2", "bar"));
 
         final DissectProcessor processor = createObjectUnderTest();
         reflectivelySetDissectorMap(processor);
@@ -94,13 +90,7 @@ class DissectProcessorTest {
     @Test
     void test_append_fields_dissect_succeeded() throws NoSuchFieldException, IllegalAccessException {
 
-        Field field1 = new AppendField("field1");
-        Field field2 = new AppendField("field2");
-        field1.setValue("foo");
-        field2.setValue("bar");
-
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "foo", "field2", "bar"));
 
         final DissectProcessor processor = createObjectUnderTest();
         reflectivelySetDissectorMap(processor);
@@ -117,13 +107,7 @@ class DissectProcessorTest {
     @Test
     void test_indirect_fields_dissect_succeeded() throws NoSuchFieldException, IllegalAccessException {
 
-        Field field1 = new IndirectField("field1");
-        Field field2 = new IndirectField("field2");
-        field1.setValue("foo");
-        field2.setValue("bar");
-
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "foo", "field2", "bar"));
 
         final DissectProcessor processor = createObjectUnderTest();
         reflectivelySetDissectorMap(processor);
@@ -138,9 +122,9 @@ class DissectProcessorTest {
     }
 
     @Test
-    void test_dissectText_returns_false() throws NoSuchFieldException, IllegalAccessException {
+    void test_dissectText_returns_null_on_failure() throws NoSuchFieldException, IllegalAccessException {
 
-        when(dissector.dissectText(any(String.class))).thenReturn(false);
+        when(dissector.dissectText(any(String.class))).thenReturn(null);
 
         final DissectProcessor processor = createObjectUnderTest();
         reflectivelySetDissectorMap(processor);
@@ -167,12 +151,7 @@ class DissectProcessorTest {
     @Test
     void test_target_type_int() throws NoSuchFieldException, IllegalAccessException {
 
-        Field field1 = new IndirectField("field1");
-        Field field2 = new IndirectField("field2");
-        field1.setValue("20");
-        field2.setValue("30");
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "20", "field2", "30"));
 
         Map<String, TargetType> targetsMap = Map.of("field1", TargetType.INTEGER);
         when(dissectConfig.getTargetTypes()).thenReturn(targetsMap);
@@ -193,12 +172,8 @@ class DissectProcessorTest {
 
     @Test
     void test_target_type_bool() throws NoSuchFieldException, IllegalAccessException {
-        Field field1 = new IndirectField("field1");
-        Field field2 = new IndirectField("field2");
-        field1.setValue("true");
-        field2.setValue("30");
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "true", "field2", "30"));
 
         Map<String, TargetType> targetsMap = Map.of("field1", TargetType.BOOLEAN);
         when(dissectConfig.getTargetTypes()).thenReturn(targetsMap);
@@ -219,12 +194,8 @@ class DissectProcessorTest {
 
     @Test
     void test_target_type_double() throws NoSuchFieldException, IllegalAccessException {
-        Field field1 = new IndirectField("field1");
-        Field field2 = new IndirectField("field2");
-        field1.setValue("20.0");
-        field2.setValue("30");
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(field1, field2));
+
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "20.0", "field2", "30"));
 
         Map<String, TargetType> targetsMap = Map.of("field1", TargetType.DOUBLE);
         when(dissectConfig.getTargetTypes()).thenReturn(targetsMap);
@@ -276,11 +247,7 @@ class DissectProcessorTest {
     @Test
     void test_delete_source_requested() throws NoSuchFieldException, IllegalAccessException {
 
-        Field dissectedField = new NormalField("level");
-        dissectedField.setValue("WARN");
-
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(dissectedField));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("level", "WARN"));
         when(dissectConfig.isDeleteSourceRequested()).thenReturn(true);
 
         final DissectProcessor processor = createObjectUnderTest();
@@ -295,11 +262,8 @@ class DissectProcessorTest {
 
     @Test
     void test_delete_source_not_requested() throws NoSuchFieldException, IllegalAccessException {
-        Field dissectedField = new NormalField("level");
-        dissectedField.setValue("WARN");
 
-        when(dissector.dissectText(any(String.class))).thenReturn(true);
-        when(dissector.getDissectedFields()).thenReturn(List.of(dissectedField));
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("level", "WARN"));
         when(dissectConfig.isDeleteSourceRequested()).thenReturn(false);
 
         final DissectProcessor processor = createObjectUnderTest();
@@ -315,7 +279,7 @@ class DissectProcessorTest {
     @Test
     void test_delete_source_requested_dissect_fail() throws NoSuchFieldException, IllegalAccessException {
 
-        when(dissector.dissectText(any(String.class))).thenReturn(false);
+        when(dissector.dissectText(any(String.class))).thenReturn(null);
         when(dissectConfig.isDeleteSourceRequested()).thenReturn(true);
 
         final DissectProcessor processor = createObjectUnderTest();
@@ -324,6 +288,91 @@ class DissectProcessorTest {
         final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(dataPrepperRecord));
 
         assertTrue(dissectedRecords.get(0).getData().containsKey("test"));
+    }
+
+    @Test
+    void test_dissect_when_condition_false_skips_event() throws NoSuchFieldException, IllegalAccessException {
+        final String dissectWhen = UUID.randomUUID().toString();
+        when(dissectConfig.getDissectWhen()).thenReturn(dissectWhen);
+        when(expressionEvaluator.isValidExpressionStatement(dissectWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(dissectWhen), any())).thenReturn(false);
+
+        final DissectProcessor processor = createObjectUnderTest();
+        reflectivelySetDissectorMap(processor);
+        final Record<Event> record = getEvent("some text");
+        processor.doExecute(Collections.singletonList(record));
+
+        org.mockito.Mockito.verify(dissector, org.mockito.Mockito.never()).dissectText(any());
+    }
+
+    @Test
+    void test_dissect_when_condition_true_processes_event() throws NoSuchFieldException, IllegalAccessException {
+        final String dissectWhen = UUID.randomUUID().toString();
+        when(dissectConfig.getDissectWhen()).thenReturn(dissectWhen);
+        when(expressionEvaluator.isValidExpressionStatement(dissectWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(dissectWhen), any())).thenReturn(true);
+        when(dissector.dissectText(any(String.class))).thenReturn(Map.of("field1", "foo"));
+
+        final DissectProcessor processor = createObjectUnderTest();
+        reflectivelySetDissectorMap(processor);
+        final Record<Event> record = getEvent("some text");
+        final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        org.mockito.Mockito.verify(dissector).dissectText(any());
+        assertTrue(dissectedRecords.get(0).getData().containsKey("field1"));
+    }
+
+    @Test
+    void test_concurrent_doExecute_no_cross_contamination() throws InterruptedException {
+        when(dissectConfig.getMap()).thenReturn(Map.of("message", "%{timestamp} %{level} %{content}"));
+        final DissectProcessor processor = createObjectUnderTest();
+
+        int threadCount = 10;
+        int iterationsPerThread = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+        List<String> errors = Collections.synchronizedList(new ArrayList<>());
+
+        for (int t = 0; t < threadCount; t++) {
+            final String timestamp = "2024-01-" + String.format("%02d", t + 1);
+            final String level = "LEVEL" + t;
+            final String content = "content" + t;
+            final String input = timestamp + " " + level + " " + content;
+
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        final Map<String, Object> data = new HashMap<>();
+                        data.put("message", input);
+                        final Record<Event> record = new Record<>(JacksonEvent.builder()
+                                .withData(data).withEventType("event").build());
+                        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+                        final Event resultEvent = results.get(0).getData();
+                        if (!timestamp.equals(resultEvent.get("timestamp", String.class))) {
+                            errors.add("timestamp mismatch: expected " + timestamp + " got " + resultEvent.get("timestamp", String.class));
+                        }
+                        if (!level.equals(resultEvent.get("level", String.class))) {
+                            errors.add("level mismatch: expected " + level + " got " + resultEvent.get("level", String.class));
+                        }
+                        if (!content.equals(resultEvent.get("content", String.class))) {
+                            errors.add("content mismatch: expected " + content + " got " + resultEvent.get("content", String.class));
+                        }
+                    }
+                } catch (Exception e) {
+                    errors.add(e.getMessage());
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue(doneLatch.await(5, TimeUnit.SECONDS), "Test timed out");
+        executor.shutdown();
+
+        assertTrue(errors.isEmpty(), "Concurrency errors: " + errors);
     }
 
 }

@@ -7,8 +7,8 @@
 # compatible open source license.
 #
 
-# This workflow builds and validates the release artifacts, drafts the GitHub
-# release, and opens the changelog pull request.
+# This workflow builds and validates the release artifacts, publishes the GitHub
+# pre-release, and opens the changelog pull request.
 #
 # The OpenSearch project does not permit this repository's workflows to push
 # branches and open pull requests against itself. Instead, the changelog PR
