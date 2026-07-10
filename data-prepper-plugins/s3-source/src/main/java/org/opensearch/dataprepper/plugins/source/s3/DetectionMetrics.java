@@ -56,7 +56,9 @@ class DetectionMetrics {
     private final AtomicInteger totalDetections = new AtomicInteger(0);
     private final AtomicInteger failedDetections = new AtomicInteger(0);
     private volatile long lastSummaryTime = 0;
+    private volatile long lastDetectionTime = 0;
     private volatile int lastSummaryTotal = 0;
+    private volatile boolean pendingFinalSummary = false;
     private static final long SUMMARY_INTERVAL_MS = 60_000; // Log summary every 60 seconds
 
     DetectionMetrics(final PluginMetrics pluginMetrics) {
@@ -80,6 +82,8 @@ class DetectionMetrics {
         totalCounter.increment();
         totalDetections.incrementAndGet();
         detectionTimer.record(duration);
+        lastDetectionTime = System.currentTimeMillis();
+        pendingFinalSummary = true;
 
         // Combined type key: format or format.compression
         final String typeKey = buildTypeKey(result);
@@ -114,6 +118,7 @@ class DetectionMetrics {
     /**
      * Log a summary of detection statistics if enough time has passed and there's new activity.
      * Only logs every 60 seconds, and only if new detections occurred since last summary.
+     * Also logs a final summary when activity stops (no new detections for the interval).
      */
     void logSummary() {
         final int total = totalDetections.get();
@@ -122,16 +127,27 @@ class DetectionMetrics {
         }
 
         final long now = System.currentTimeMillis();
+
+        // Check if enough time has passed
         if (now - lastSummaryTime < SUMMARY_INTERVAL_MS) {
-            return; // Too soon since last summary
-        }
-        if (total == lastSummaryTotal) {
-            return; // No new activity
+            return;
         }
 
-        lastSummaryTime = now;
-        lastSummaryTotal = total;
-        printSummary(total);
+        // If there's new activity since last summary, log it
+        if (total != lastSummaryTotal) {
+            lastSummaryTime = now;
+            lastSummaryTotal = total;
+            pendingFinalSummary = false;
+            printSummary(total);
+            return;
+        }
+
+        // No new activity, but if we have a pending final summary (last batch wasn't summarized)
+        if (pendingFinalSummary) {
+            pendingFinalSummary = false;
+            lastSummaryTime = now;
+            printSummary(total);
+        }
     }
 
     /**

@@ -1,5 +1,0 @@
-{"timestamp":"2026-06-19T10:00:00Z","level":"INFO","service":"api-gateway","message":"Request received","duration_ms":12,"status":200}
-{"timestamp":"2026-06-19T10:00:01Z","level":"ERROR","service":"auth-service","message":"Token expired","duration_ms":3,"status":401}
-{"timestamp":"2026-06-19T10:00:02Z","level":"INFO","service":"api-gateway","message":"Response sent","duration_ms":145,"status":200}
-{"timestamp":"2026-06-19T10:00:03Z","level":"WARN","service":"db-pool","message":"Connection pool at 90%","duration_ms":0,"status":0}
-{"timestamp":"2026-06-19T10:00:04Z","level":"DEBUG","service":"cache","message":"Cache hit for key user:12345","duration_ms":1,"status":200}

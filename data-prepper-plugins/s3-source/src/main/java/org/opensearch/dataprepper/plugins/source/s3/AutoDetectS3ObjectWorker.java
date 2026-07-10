@@ -70,9 +70,11 @@ class AutoDetectS3ObjectWorker implements S3ObjectHandler {
 
         metrics.record(detection, detectDuration);
 
-        if (detection.getFormat() == DetectedFormat.UNKNOWN) {
-            LOG.error("Unable to detect format for s3://{}/{}. Skipping.",
-                    s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
+        if (detection.getFormat() == DetectedFormat.UNKNOWN ||
+                detection.getFormat() == DetectedFormat.PDF ||
+                detection.getFormat() == DetectedFormat.IMAGE) {
+            LOG.error("Unsupported format for s3://{}/{}: format={}. Skipping.",
+                    s3ObjectReference.getBucketName(), s3ObjectReference.getKey(), detection.getFormat());
             metrics.logSummary();
             return;
         }

@@ -1,6 +1,0 @@
-192.168.1.1 - frank [22/Jun/2026:10:00:00 +0000] "GET /api/users HTTP/1.1" 200 1234
-10.0.0.5 - - [22/Jun/2026:10:00:01 +0000] "POST /api/orders HTTP/1.1" 201 567
-192.168.1.1 - frank [22/Jun/2026:10:00:02 +0000] "GET /api/products?q=widget HTTP/1.1" 200 8901
-172.16.0.100 - admin [22/Jun/2026:10:00:03 +0000] "DELETE /api/cache HTTP/1.1" 204 0
-10.0.0.5 - - [22/Jun/2026:10:00:04 +0000] "PUT /api/users/123 HTTP/1.1" 200 234
-192.168.2.50 - bot [22/Jun/2026:10:00:05 +0000] "GET /health HTTP/1.1" 200 15

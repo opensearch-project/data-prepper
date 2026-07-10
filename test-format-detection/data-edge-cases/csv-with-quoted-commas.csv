@@ -1,8 +1,0 @@
-name,address,city,state,notes
-"Smith, John","123 Main St, Apt 4B",New York,NY,"Regular customer, high value"
-"Doe, Jane","456 Oak Ave",Los Angeles,CA,"New customer"
-"O'Brien, Patrick","789 Pine Rd, Suite 100",Chicago,IL,"VIP, handle with care"
-"Garcia, Maria","321 Elm St","San Francisco",CA,"Referred by Smith, John"
-"Kim, David","555 Cedar Blvd, Floor 3",Seattle,WA,"Corporate account, net-30 terms"
-"Williams, Sarah","888 Maple Dr",Austin,TX,"Trial period"
-"Johnson, Robert","111 Birch Way, Unit 2A",Denver,CO,"Recurring subscription, monthly"

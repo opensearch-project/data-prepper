@@ -1,6 +1,0 @@
-{"event":"click","element":"button","page":"/home"}
-{"event":"scroll","depth":75,"page":"/products"}
-{"event":"purchase","product_id":"P-123","amount":49.99}
-not a json line - this should test the 80% threshold
-{"event":"pageview","page":"/checkout","referrer":"google.com"}
-{"event":"error","message":"Payment failed","code":402}
