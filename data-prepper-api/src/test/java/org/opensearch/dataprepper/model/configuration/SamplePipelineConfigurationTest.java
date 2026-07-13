@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -109,13 +110,36 @@ class SamplePipelineConfigurationTest {
     }
 
     @Test
-    void deserialize_pipeline_withEmptyStringPluginConfig_throwsException() {
+    void deserialize_pipeline_withBareKeyPlugins_succeeds() throws IOException {
+        final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_plugin_bare_keys.yaml");
+
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+
+        assertThat(result, notNullValue());
+        assertThat(result.getPipelines().containsKey("test-pipeline"), equalTo(true));
+        final PipelineModel pipeline = result.getPipelines().get("test-pipeline");
+        assertThat(pipeline.getSource().getPluginName(), equalTo("http"));
+        assertThat(pipeline.getSource().getPluginSettings(), nullValue());
+    }
+
+    @Test
+    void deserialize_pipeline_withEmptyStringPluginConfig_treatedAsNull() throws IOException {
         final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_plugin_empty_string.yaml");
 
-        final JsonMappingException exception = assertThrows(
-            JsonMappingException.class,
-            () -> objectMapper.readValue(inputStream, PipelinesDataFlowModel.class)
-        );
-        assertThat(exception.getMessage(), containsString("Empty string is not allowed"));
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(result, notNullValue());
+    }
+
+    @Test
+    void deserialize_pipeline_withNestedBareKeys_treatsEmptyStringsAsNull() throws IOException {
+        final InputStream inputStream = getClass().getResourceAsStream("sample_pipelines/sample_pipeline_nested_bare_keys.yaml");
+
+        final PipelinesDataFlowModel result = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+        assertThat(result, notNullValue());
+
+        final Map<String, Object> sinkSettings = result.getPipelines().get("test-pipeline").getSinks().get(0).getPluginSettings();
+        // codec.newline: (bare key) should be deserialized as null, not ""
+        final Map<String, Object> codec = (Map<String, Object>) sinkSettings.get("codec");
+        assertThat(codec.get("newline"), nullValue());
     }
 }
