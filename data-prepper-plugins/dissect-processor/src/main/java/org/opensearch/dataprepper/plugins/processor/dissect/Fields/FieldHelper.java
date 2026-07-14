@@ -40,12 +40,16 @@ public class FieldHelper {
         return appendFieldMap;
     }
 
-    public Field getField(String fieldString) {
+    public Field getField(String fieldString, Field lastField) {
         if (fieldString == null) {
             return null;
         }
         if(fieldString.trim().isEmpty()){
-            return new AppendField("");
+            AppendField emptyField = new AppendField("");
+            if (lastField != null) {
+                lastField.setNext(emptyField);
+            }
+            return emptyField;
         }
 
         Field field = null;
@@ -53,53 +57,54 @@ public class FieldHelper {
         Matcher matcher = prefixPattern.matcher(fieldString);
         if (matcher.matches()) {
             final String notation = matcher.group(1);
-            final String key = matcher.group(2);
+            String key = matcher.group(2);
             if (Objects.equals(notation, "+")) {
+                Matcher indexMatcher = indexPattern.matcher(key);
+                int index = -1;
+                if (indexMatcher.find()) {
+                    index = Integer.parseInt(indexMatcher.group(1));
+                    key = key.substring(0, indexMatcher.start());
+                }
+                Matcher trailingMatcher = appendPattern.matcher(key);
+                boolean stripTrailing = trailingMatcher.find();
+                if (stripTrailing) {
+                    key = trailingMatcher.group(1);
+                }
                 field = new AppendField(key);
-                setAppendIndex((AppendField) field);
-                setStripTrailing(field);
+                if (index >= 0) ((AppendField) field).setIndex(index);
+                field.stripTrailing = stripTrailing;
                 putInAppendMap((AppendField) field);
             } else if (Objects.equals(notation, "?")) {
+                Matcher trailingMatcher = appendPattern.matcher(key);
+                boolean stripTrailing = trailingMatcher.find();
+                if (stripTrailing) {
+                    key = trailingMatcher.group(1);
+                }
                 field = new SkipField(key);
-                setStripTrailing(field);
+                field.stripTrailing = stripTrailing;
                 skipFieldMap.put(field.getKey(), (SkipField) field);
             } else if (Objects.equals(notation, "&")) {
+                Matcher trailingMatcher = appendPattern.matcher(key);
+                boolean stripTrailing = trailingMatcher.find();
+                if (stripTrailing) {
+                    key = trailingMatcher.group(1);
+                }
                 field = new IndirectField(key);
-                setStripTrailing(field);
+                field.stripTrailing = stripTrailing;
                 indirectFieldMap.put(field.getKey(), (IndirectField) field);
             }
         } else {
-            field = new NormalField(fieldString);
-            setStripTrailing(field);
+            Matcher trailingMatcher = appendPattern.matcher(fieldString);
+            boolean stripTrailing = trailingMatcher.find();
+            String key = stripTrailing ? trailingMatcher.group(1) : fieldString;
+            field = new NormalField(key);
+            field.stripTrailing = stripTrailing;
             normalFieldMap.put(field.getKey(), (NormalField) field);
         }
+        if (lastField != null && field != null) {
+            lastField.setNext(field);
+        }
         return field;
-    }
-
-    private void setAppendIndex(AppendField field) {
-        String fieldString = field.getKey();
-        Matcher matcher = indexPattern.matcher(fieldString);
-
-        if (matcher.find()) {
-            String key = fieldString.substring(0, matcher.start());
-            int index = Integer.parseInt(matcher.group(1));
-            field.setKey(key);
-            field.setIndex(index);
-        }
-    }
-
-    private void setStripTrailing(Field field) {
-        if (field == null) {
-            return;
-        }
-
-        String fieldString = field.getKey();
-
-        Matcher matcher = appendPattern.matcher(fieldString);
-        if (matcher.find()) {
-            field.setKey(matcher.group(1));
-            field.stripTrailing = true;
-        }
     }
 
     private void putInAppendMap(AppendField field) {

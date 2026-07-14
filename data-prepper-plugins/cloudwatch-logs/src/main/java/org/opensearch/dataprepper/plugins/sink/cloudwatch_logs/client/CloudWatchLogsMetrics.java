@@ -25,6 +25,9 @@ public class CloudWatchLogsMetrics {
     public static final String CLOUDWATCH_LOGS_REQUEST_SIZE = "cloudWatchLogsRequestSize";
     public static final String CLOUDWATCH_LOGS_ENTITY_REJECTED = "cloudWatchLogsEntityRejected";
     public static final String CLOUDWATCH_LOGS_UNHANDLED_ERROR = "cloudWatchLogsUnhandledError";
+    public static final String CLOUDWATCH_LOGS_ACCESS_DENIED = "cloudWatchLogsAccessDenied";
+    public static final String CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND = "cloudWatchLogsResourceNotFound";
+    public static final String CLOUDWATCH_LOGS_THROTTLED = "cloudWatchLogsThrottled";
     private final Counter logEventSuccessCounter;
     private final Counter logEventFailCounter;
     private final Counter requestSuccessCount;
@@ -33,6 +36,9 @@ public class CloudWatchLogsMetrics {
     private final Counter logLargeEventsDroppedCounter;
     private final Counter entityRejectedCounter;
     private final Counter unhandledErrorCounter;
+    private final Counter accessDeniedCounter;
+    private final Counter resourceNotFoundCounter;
+    private final Counter throttledCounter;
     private final DistributionSummary logSizeMetric;
     private final DistributionSummary requestSizeMetric;
 
@@ -45,6 +51,9 @@ public class CloudWatchLogsMetrics {
         this.logLargeEventsDroppedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_LARGE_EVENTS_DROPPED);
         this.entityRejectedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_REJECTED);
         this.unhandledErrorCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_UNHANDLED_ERROR);
+        this.accessDeniedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ACCESS_DENIED);
+        this.resourceNotFoundCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND);
+        this.throttledCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_THROTTLED);
         this.logSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_LOG_SIZE);
         this.requestSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_REQUEST_SIZE);
     }
@@ -79,6 +88,18 @@ public class CloudWatchLogsMetrics {
 
     public void increaseUnhandledErrorCounter(int value) {
         unhandledErrorCounter.increment(value);
+    }
+
+    public void increaseAccessDeniedCounter(int value) {
+        accessDeniedCounter.increment(value);
+    }
+
+    public void increaseResourceNotFoundCounter(int value) {
+        resourceNotFoundCounter.increment(value);
+    }
+
+    public void increaseThrottledCounter(int value) {
+        throttledCounter.increment(value);
     }
 
     public void recordLogSize(int value) {

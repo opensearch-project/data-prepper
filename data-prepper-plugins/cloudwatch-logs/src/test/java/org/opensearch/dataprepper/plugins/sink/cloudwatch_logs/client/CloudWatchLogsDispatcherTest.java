@@ -23,7 +23,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse
 import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInfo;
 import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceAlreadyExistsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceNotFoundException;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 
 import java.util.ArrayList;
@@ -518,6 +520,8 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestFailCounter(1);
+        // Non-access-denied exception during creation must NOT be misclassified.
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
     }
 
     @Test
@@ -566,6 +570,8 @@ class CloudWatchLogsDispatcherTest {
         // Subsequent ResourceNotFoundExceptions flow to the normal retry/DLQ path: fail counter incremented for every retry.
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+        // When create flags are on, RNF after failed creation is internal control flow — not actionable by the user.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
     }
 
     @Test
@@ -771,5 +777,271 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventSuccessCounter(eventHandles.size());
         verify(mockCloudWatchLogsMetrics, never()).increaseUnhandledErrorCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseLogEventFailCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_access_denied_exception_WHEN_put_log_events_SHOULD_increment_access_denied_counter_and_request_fail_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDeniedException")
+                        .errorMessage("User is not authorized")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("User is not authorized")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(accessDeniedException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_throttling_exception_WHEN_put_log_events_SHOULD_increment_throttled_counter_and_request_fail_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException throttledException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("Throttling")
+                        .errorMessage("Rate exceeded")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(429).build())
+                        .build())
+                .message("Rate exceeded")
+                .statusCode(429)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(throttledException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseThrottledCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_resource_not_found_and_create_flag_false_WHEN_terminal_rnf_SHOULD_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, false);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseResourceNotFoundCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_resource_not_found_and_create_flag_true_WHEN_creation_succeeds_SHOULD_not_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+    }
+
+    @Test
+    void GIVEN_sdk_client_exception_WHEN_put_log_events_SHOULD_only_increment_generic_fail_counter_and_no_classified_counters() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(SdkClientException.create("Connection timed out"));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_aws_service_exception_with_null_error_details_WHEN_put_log_events_SHOULD_only_increment_generic_fail_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException exceptionWithNullDetails = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("Unknown service error")
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(exceptionWithNullDetails);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_access_denied_without_exception_suffix_WHEN_put_log_events_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDenied")
+                        .errorMessage("User is not authorized")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("User is not authorized")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(accessDeniedException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+    }
+
+    @Test
+    void GIVEN_create_log_stream_throws_access_denied_WHEN_create_resources_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDeniedException")
+                        .errorMessage("Not authorized to create log stream")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("Not authorized to create log stream")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenThrow(accessDeniedException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+    }
+
+    @Test
+    void GIVEN_create_log_group_throws_access_denied_WHEN_create_resources_SHOULD_increment_access_denied_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException accessDeniedException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDenied")
+                        .errorMessage("Not authorized to create log group")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(403).build())
+                        .build())
+                .message("Not authorized to create log group")
+                .statusCode(403)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build())
+                .thenReturn(mock(PutLogEventsResponse.class));
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenThrow(accessDeniedException);
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
+    }
+
+    @Test
+    void GIVEN_only_create_log_stream_true_AND_rnf_after_creation_SHOULD_not_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, true);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+        when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenReturn(mock(CreateLogStreamResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // User delegated creation to the sink — RNF is internal, not actionable.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_only_create_log_group_true_AND_rnf_after_creation_SHOULD_not_increment_resource_not_found_counter() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, false);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+        when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenReturn(mock(CreateLogGroupResponse.class));
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        // User delegated creation to the sink — RNF is internal, not actionable.
+        verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
     }
 }

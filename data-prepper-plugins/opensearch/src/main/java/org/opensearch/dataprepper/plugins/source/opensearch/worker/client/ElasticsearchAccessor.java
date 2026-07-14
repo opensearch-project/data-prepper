@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,6 +60,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -307,13 +309,19 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
 
     private List<Event> getDocumentsFromResponse(final SearchResponse<ObjectNode> searchResponse) {
         return searchResponse.hits().hits().stream()
-                .map(hit -> JacksonEvent.builder()
-                        .withData(hit.source())
-                        .withEventMetadataAttributes(
-                                Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(),
-                                        INDEX_METADATA_ATTRIBUTE_NAME, hit.index(),
-                                        DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
-                        .withEventType(EventType.DOCUMENT.toString()).build())
+                .map(hit -> {
+                    final Map<String, Object> eventMetadataAttributes = new HashMap<>();
+                    eventMetadataAttributes.put(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id());
+                    eventMetadataAttributes.put(INDEX_METADATA_ATTRIBUTE_NAME, hit.index());
+                    eventMetadataAttributes.put(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version());
+                    if (Objects.nonNull(hit.routing())) {
+                        eventMetadataAttributes.put(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME, hit.routing());
+                    }
+                    return JacksonEvent.builder()
+                            .withData(hit.source())
+                            .withEventMetadataAttributes(eventMetadataAttributes)
+                            .withEventType(EventType.DOCUMENT.toString()).build();
+                })
                 .collect(Collectors.toList());
     }
 
