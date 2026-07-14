@@ -103,9 +103,18 @@ class FileReaderPoolTest {
                 Duration.ofMinutes(30), createReaderContext());
     }
 
+    private FileReaderPool createPoolWithNonRunningExecutor(final int maxActiveFiles) {
+        when(metrics.getActiveFileCount()).thenReturn(new AtomicLong(0));
+        final ExecutorService nonRunningExecutor = mock(ExecutorService.class);
+        return new FileReaderPool(
+                checkpointRegistry, metrics, maxActiveFiles,
+                Duration.ofMinutes(30), createReaderContext(),
+                () -> nonRunningExecutor);
+    }
+
     @Test
     void addFile_submits_reader_when_under_max_active_files() {
-        FileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(10);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -120,7 +129,7 @@ class FileReaderPoolTest {
 
     @Test
     void addFile_is_idempotent_for_same_identity() {
-        FileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(10);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -135,7 +144,7 @@ class FileReaderPoolTest {
 
     @Test
     void addFile_queues_pending_when_at_max_active_files() {
-        FileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(1);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -151,7 +160,7 @@ class FileReaderPoolTest {
 
     @Test
     void addFile_does_not_add_pending_duplicate_to_queue() {
-        FileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(1);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -167,7 +176,7 @@ class FileReaderPoolTest {
 
     @Test
     void addFile_queues_multiple_pending_files() {
-        FileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(1);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);
@@ -220,7 +229,7 @@ class FileReaderPoolTest {
     void closeReaderForPath_removes_matching_reader() {
         Counter filesClosed = mock(Counter.class);
         lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
-        FileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(10);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -236,7 +245,7 @@ class FileReaderPoolTest {
 
     @Test
     void closeReaderForPath_does_nothing_when_no_match() {
-        FileReaderPool pool = createPool(10, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(10);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity = mock(FileIdentity.class);
@@ -251,7 +260,7 @@ class FileReaderPoolTest {
     void closeReaderForPath_promotes_pending_files() {
         Counter filesClosed = mock(Counter.class);
         lenient().when(metrics.getFilesClosed()).thenReturn(filesClosed);
-        FileReaderPool pool = createPool(1, 2);
+        FileReaderPool pool = createPoolWithNonRunningExecutor(1);
         when(checkpointRegistry.getOrCreate(anyString())).thenReturn(new CheckpointEntry());
 
         FileIdentity identity1 = mock(FileIdentity.class);

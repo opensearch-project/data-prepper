@@ -36,6 +36,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -82,6 +83,7 @@ public final class FileReader implements Runnable {
     private final InputCodec codec;
     private final boolean tailMode;
     private final DecompressionEngine decompressionEngine;
+    private final Clock clock;
 
     private final AtomicLong readOffset;
     private final StringBuilder partialLine;
@@ -102,11 +104,21 @@ public final class FileReader implements Runnable {
                           final CheckpointEntry checkpointEntry,
                           final FileReaderContext context,
                           final Runnable onComplete) {
+        this(path, fileIdentity, checkpointEntry, context, onComplete, Clock.systemDefaultZone());
+    }
+
+    FileReader(final Path path,
+                   final FileIdentity fileIdentity,
+                   final CheckpointEntry checkpointEntry,
+                   final FileReaderContext context,
+                   final Runnable onComplete,
+                   final Clock clock) {
         this.path = Objects.requireNonNull(path, "path must not be null");
         this.fileIdentity = Objects.requireNonNull(fileIdentity, "fileIdentity must not be null");
         this.checkpointEntry = Objects.requireNonNull(checkpointEntry, "checkpointEntry must not be null");
         Objects.requireNonNull(context, "context must not be null");
         this.onComplete = Objects.requireNonNull(onComplete, "onComplete must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
 
         this.buffer = context.getBuffer();
         this.eventFactory = context.getEventFactory();
@@ -145,9 +157,9 @@ public final class FileReader implements Runnable {
         this.cachedAbsolutePath = path.toAbsolutePath().toString();
         this.currentBatchCount = 0;
         this.batchStartOffset = readOffset.get();
-        this.batchOpenedAtMillis = System.currentTimeMillis();
+        this.batchOpenedAtMillis = clock.millis();
         this.lastRotationType = RotationType.NO_ROTATION;
-        this.lastActivityMillis = System.currentTimeMillis();
+        this.lastActivityMillis = clock.millis();
     }
 
     @Override
@@ -244,7 +256,7 @@ public final class FileReader implements Runnable {
 
     private void readLoop(final FileChannel channel, final long timeoutMillis, final boolean isDraining) throws IOException {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(readBufferSize);
-        final long loopStart = System.currentTimeMillis();
+        final long loopStart = clock.millis();
         final ByteArrayOutputStream codecAccumulator = codec != null ? new ByteArrayOutputStream() : null;
         long codecBytesAccumulated = 0;
         final CharsetDecoder decoder = codec == null ? encoding.newDecoder()
@@ -254,7 +266,7 @@ public final class FileReader implements Runnable {
         final ByteBuffer decoderCarryover = codec == null ? ByteBuffer.allocate(8) : null;
 
         while (!Thread.currentThread().isInterrupted()) {
-            final long elapsed = System.currentTimeMillis() - loopStart;
+            final long elapsed = clock.millis() - loopStart;
             if (elapsed >= timeoutMillis) {
                 if (isDraining) {
                     long currentFileSize = 0;
@@ -305,10 +317,10 @@ public final class FileReader implements Runnable {
             }
 
             readOffset.addAndGet(Math.max(0, bytesRead));
-            lastActivityMillis = System.currentTimeMillis();
+            lastActivityMillis = clock.millis();
 
             if (acknowledgementsEnabled && currentAckSet != null && currentBatchCount > 0) {
-                final long batchAge = System.currentTimeMillis() - batchOpenedAtMillis;
+                final long batchAge = clock.millis() - batchOpenedAtMillis;
                 if (batchAge >= batchTimeout.toMillis()) {
                     completePendingAckSet();
                 }
@@ -421,9 +433,9 @@ public final class FileReader implements Runnable {
         long backpressureStartNanos = 0;
         boolean backpressureActive = false;
         final long maxRetryMillis = maxReadTimePerFile.toMillis();
-        final long retryStart = System.currentTimeMillis();
+        final long retryStart = clock.millis();
         while (!written && !Thread.currentThread().isInterrupted()) {
-            if (System.currentTimeMillis() - retryStart > maxRetryMillis) {
+            if (clock.millis() - retryStart > maxRetryMillis) {
                 LOG.warn("Backpressure retry timeout exceeded for file {}. Event may be lost.", path);
                 metrics.getDataLossEvents().increment();
                 break;
@@ -468,7 +480,7 @@ public final class FileReader implements Runnable {
         if (currentAckSet == null) {
             final long capturedBatchStart = readOffset.get();
             batchStartOffset = capturedBatchStart;
-            batchOpenedAtMillis = System.currentTimeMillis();
+            batchOpenedAtMillis = clock.millis();
             currentAckSet = acknowledgementSetManager.create(
                     result -> handleAcknowledgement(result, capturedBatchStart, currentBatchEndOffset),
                     acknowledgmentTimeout);
