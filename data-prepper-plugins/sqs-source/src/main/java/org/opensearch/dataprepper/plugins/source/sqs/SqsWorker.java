@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.source.sqs.common.OnErrorOption;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SafeExceptionSummary;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsWorkerCommon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class SqsWorker implements Runnable {
             try {
                 messagesProcessed = processSqsMessages();
             } catch (final Exception e) {
-                LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
+                LOG.error("Unable to process SQS messages. Processing error due to: {}", SafeExceptionSummary.summarize(e));
                 sqsWorkerCommon.applyBackoff();
             }
 
@@ -201,7 +202,7 @@ public class SqsWorker implements Runnable {
             return Optional.of(sqsWorkerCommon.buildDeleteMessageBatchRequestEntry(message.messageId(), message.receiptHandle()));
         } catch (final Exception e) {
             sqsWorkerCommon.getSqsMessagesFailedCounter().increment();
-            LOG.error("Error processing from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            LOG.error("Error processing from SQS: {}. Retrying with exponential backoff.", SafeExceptionSummary.summarize(e));
             sqsWorkerCommon.applyBackoff();
             if (queueConfig.getOnErrorOption().equals(OnErrorOption.DELETE_MESSAGES)) {
                 return Optional.of(sqsWorkerCommon.buildDeleteMessageBatchRequestEntry(message.messageId(), message.receiptHandle()));
