@@ -41,6 +41,7 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
     private final Timer sqsMessageDelayTimer;
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
+    static final String SQS_MESSAGES_DELETED_WITHOUT_ACK_METRIC_NAME = "sqsMessagesDeletedWithoutAcknowledgment";
     private final SqsWorkerCommon sqsWorkerCommon;
     private final SqsEventProcessor sqsEventProcessor;
     private final SqsClient sqsClient;
@@ -50,6 +51,7 @@ public class SqsWorker implements Runnable {
     private final int bufferTimeoutMillis;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Counter acknowledgementSetCallbackCounter;
+    private final Counter sqsMessagesDeletedWithoutAckCounter;
     private int failedAttemptCount;
     private volatile boolean isStopped = false;
     private final Map<Message, Integer> messageVisibilityTimesMap;
@@ -74,6 +76,7 @@ public class SqsWorker implements Runnable {
         this.messageVisibilityTimesMap = new HashMap<>();
         this.failedAttemptCount = 0;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
+        sqsMessagesDeletedWithoutAckCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_WITHOUT_ACK_METRIC_NAME);
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
 
     }
@@ -188,7 +191,10 @@ public class SqsWorker implements Runnable {
                     acknowledgementSet.complete();
                 }
             } else {
-                deleteEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
+                deleteEntry.ifPresent(entry -> {
+                    deleteMessageBatchRequestEntryCollection.add(entry);
+                    sqsMessagesDeletedWithoutAckCounter.increment();
+                });
             }
         }
         return deleteMessageBatchRequestEntryCollection;

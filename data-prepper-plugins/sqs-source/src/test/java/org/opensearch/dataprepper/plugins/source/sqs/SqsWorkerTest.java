@@ -80,6 +80,8 @@ class SqsWorkerTest {
     private Timer sqsMessageDelayTimer;
     @Mock
     private Counter sqsMessagesFailedCounter;
+    @Mock
+    private Counter sqsMessagesDeletedWithoutAckCounter;
     private final int bufferTimeoutMillis = 10000;
     private SqsWorker sqsWorker;
 
@@ -105,6 +107,8 @@ class SqsWorkerTest {
         lenient().when(queueConfig.getMaximumMessages()).thenReturn(10);
         lenient().when(queueConfig.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(30));
         when(pluginMetrics.timer(SqsWorker.SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
+        lenient().when(pluginMetrics.counter(SqsWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(mock(Counter.class));
+        lenient().when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_WITHOUT_ACK_METRIC_NAME)).thenReturn(sqsMessagesDeletedWithoutAckCounter);
         lenient().doNothing().when(sqsMessageDelayTimer).record(any(Duration.class));
         sqsWorker = new SqsWorker(
                 buffer,
@@ -370,5 +374,65 @@ class SqsWorkerTest {
         SqsWorker worker = createObjectUnderTest();
         worker.processSqsMessages();
         verify(sqsMessageDelayTimer, never()).record(any(Duration.class));
+    }
+
+    @Test
+    void processSqsMessages_withAcknowledgmentsDisabled_processingFailure_stillDeletesMessage() throws IOException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(false);
+        when(queueConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
+        doThrow(new RuntimeException("Simulated processing failure"))
+                .when(sqsEventProcessor).addSqsObject(any(), anyString(), any(), anyInt(), any());
+        when(sqsWorkerCommon.getSqsMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
+
+        SqsWorker worker = createObjectUnderTest();
+        int messagesProcessed = worker.processSqsMessages();
+
+        assertThat(messagesProcessed, equalTo(1));
+        // With ack disabled and on_error=delete_messages, message is deleted despite failure — data loss
+        verify(sqsWorkerCommon, times(1)).deleteSqsMessages(
+                anyString(), eq(sqsClient), anyList());
+    }
+
+    @Test
+    void processSqsMessages_withAcknowledgmentsEnabled_processingFailure_doesNotDeleteMessage() throws IOException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        when(queueConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
+        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        doThrow(new RuntimeException("Simulated processing failure"))
+                .when(sqsEventProcessor).addSqsObject(any(), anyString(), any(), anyInt(), any());
+        when(sqsWorkerCommon.getSqsMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
+
+        SqsWorker worker = createObjectUnderTest();
+        int messagesProcessed = worker.processSqsMessages();
+
+        assertThat(messagesProcessed, equalTo(1));
+        // With ack enabled, message is NOT deleted on failure — stays in SQS for retry
+        verify(sqsWorkerCommon, never()).deleteSqsMessages(
+                anyString(), eq(sqsClient), anyList());
+    }
+
+    @Test
+    void processSqsMessages_withAcknowledgmentsDisabled_successfulProcessing_incrementsDeletedWithoutAckCounter() throws IOException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(false);
+
+        SqsWorker worker = createObjectUnderTest();
+        int messagesProcessed = worker.processSqsMessages();
+
+        assertThat(messagesProcessed, equalTo(1));
+        verify(sqsMessagesDeletedWithoutAckCounter, times(1)).increment();
+    }
+
+    @Test
+    void processSqsMessages_withAcknowledgmentsEnabled_successfulProcessing_doesNotIncrementDeletedWithoutAckCounter() throws IOException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+
+        SqsWorker worker = createObjectUnderTest();
+        int messagesProcessed = worker.processSqsMessages();
+
+        assertThat(messagesProcessed, equalTo(1));
+        verify(sqsMessagesDeletedWithoutAckCounter, never()).increment();
     }
 }
