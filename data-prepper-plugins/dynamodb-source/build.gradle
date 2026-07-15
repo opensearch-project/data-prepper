@@ -28,4 +28,5 @@ dependencies {
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-pipeline-parser')
 }
