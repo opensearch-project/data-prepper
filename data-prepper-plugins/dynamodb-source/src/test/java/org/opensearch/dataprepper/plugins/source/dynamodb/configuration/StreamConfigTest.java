@@ -7,22 +7,39 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.configuration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.time.Duration;
+import java.util.Set;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 
 class StreamConfigTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory())
-            .registerModule(new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer()));
+    private ObjectMapper objectMapper;
+    private Validator validator;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper(new YAMLFactory())
+                .registerModule(new JavaTimeModule());
+        validator = Validation.byDefaultProvider()
+                .configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory()
+                .getValidator();
+    }
 
     @Test
     void test_defaults() throws JsonProcessingException {
@@ -37,14 +54,14 @@ class StreamConfigTest {
 
     @Test
     void test_shard_discovery_interval_is_configurable() throws JsonProcessingException {
-        final String yaml = "shard_discovery_interval: 15s";
+        final String yaml = "shard_discovery_interval: PT15S";
         final StreamConfig streamConfig = objectMapper.readValue(yaml, StreamConfig.class);
 
         assertThat(streamConfig.getShardDiscoveryInterval(), equalTo(Duration.ofSeconds(15)));
     }
 
     @Test
-    void test_shard_discovery_interval_accepts_iso8601() throws JsonProcessingException {
+    void test_shard_discovery_interval_accepts_iso8601_minutes() throws JsonProcessingException {
         final String yaml = "shard_discovery_interval: PT5M";
         final StreamConfig streamConfig = objectMapper.readValue(yaml, StreamConfig.class);
 
@@ -52,29 +69,37 @@ class StreamConfigTest {
     }
 
     @Test
-    void test_shard_discovery_interval_validation_accepts_default() {
+    void test_validation_passes_with_default_value() {
         final StreamConfig streamConfig = new StreamConfig();
-        assertThat(streamConfig.isShardDiscoveryIntervalValid(), equalTo(true));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(0));
     }
 
     @Test
-    void test_shard_discovery_interval_validation_accepts_minimum() throws NoSuchFieldException, IllegalAccessException {
+    void test_validation_passes_at_minimum_boundary() throws NoSuchFieldException, IllegalAccessException {
         final StreamConfig streamConfig = new StreamConfig();
         ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardDiscoveryInterval", Duration.ofSeconds(1));
-        assertThat(streamConfig.isShardDiscoveryIntervalValid(), equalTo(true));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(0));
     }
 
     @Test
-    void test_shard_discovery_interval_validation_rejects_below_minimum() throws NoSuchFieldException, IllegalAccessException {
+    void test_validation_fails_below_minimum() throws NoSuchFieldException, IllegalAccessException {
         final StreamConfig streamConfig = new StreamConfig();
         ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardDiscoveryInterval", Duration.ofMillis(500));
-        assertThat(streamConfig.isShardDiscoveryIntervalValid(), equalTo(false));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(1));
     }
 
     @Test
-    void test_shard_discovery_interval_validation_rejects_null() throws NoSuchFieldException, IllegalAccessException {
+    void test_validation_fails_when_null() throws NoSuchFieldException, IllegalAccessException {
         final StreamConfig streamConfig = new StreamConfig();
         ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardDiscoveryInterval", null);
-        assertThat(streamConfig.isShardDiscoveryIntervalValid(), equalTo(false));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(1));
     }
 }
