@@ -31,7 +31,8 @@ public class KafkaAdminAccessor {
 
     public KafkaAdminAccessor(final KafkaClusterAuthConfig kafkaClusterAuthConfig, final List<String> consumerGroupIds) {
         Properties authProperties = new Properties();
-        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaClusterAuthConfig, LOG);
+        // no AwsCredentialsSupplier on the admin path
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaClusterAuthConfig, null, LOG);
         this.kafkaAdminClient = KafkaAdminClient.create(authProperties);
         this.topicEmptinessMetadata = new TopicEmptinessMetadata();
         this.consumerGroupIds = consumerGroupIds;

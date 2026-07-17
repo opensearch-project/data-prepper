@@ -82,7 +82,7 @@ public class KafkaCustomProducerFactory {
         prepareTopicAndSchema(kafkaProducerConfig, maxRequestSize);
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaProducerConfig);
         properties = Objects.requireNonNull(properties);
-        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, awsCredentialsSupplier, LOG);
 
         TopicProducerConfig topic = kafkaProducerConfig.getTopic();
         KafkaDataConfig dataConfig = new KafkaDataConfigAdapter(keyFactory, topic);

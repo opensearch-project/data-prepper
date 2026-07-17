@@ -6,6 +6,8 @@ This source allows Data Prepper to use Kafka as source. This source reads record
 
 For usage and configuration, please refer to the documentation [here] (https://opensearch.org/docs/2.9/data-prepper/pipelines/configuration/sources/sources/kafka-source).
 
+The `azure_federated` SASL/OAUTHBEARER mechanism additionally lets the Kafka source consume from an Azure
+Event Hubs Kafka endpoint using AWS to Azure Entra workload-identity federation, with no stored secret.
 
 ## Developer guide
 
