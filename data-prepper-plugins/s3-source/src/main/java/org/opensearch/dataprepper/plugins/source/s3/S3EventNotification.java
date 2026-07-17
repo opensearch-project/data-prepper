@@ -55,6 +55,7 @@ public class S3EventNotification {
     }
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class S3BucketEntity {
 
     private final String name;
