@@ -1,0 +1,55 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.source.rss.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.opensearch.dataprepper.plugins.source.rss.config.FeedSourceConfig.DEFAULT_POLLING_FREQUENCY;
+
+class FeedSourceConfigTest {
+
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
+    @Test
+    void defaults_are_applied() {
+        final FeedSourceConfig config = new FeedSourceConfig();
+        assertThat(config.getPollingFrequency(), equalTo(DEFAULT_POLLING_FREQUENCY));
+        assertThat(config.getWorkers(), equalTo(1));
+    }
+
+    @Test
+    void deserializes_feeds_map_and_globals() throws Exception {
+        final String json = "{\"feeds\":{\"a\":{\"url\":\"https://a/f\"},\"b\":{\"url\":\"https://b/f\"}},"
+                + "\"polling_frequency\":\"PT10M\",\"workers\":3}";
+        final FeedSourceConfig config = objectMapper.readValue(json, FeedSourceConfig.class);
+        assertThat(config.getFeeds().size(), equalTo(2));
+        assertThat(config.getFeeds().get("a").getUrl(), equalTo("https://a/f"));
+        assertThat(config.getFeeds().get("b").getUrl(), equalTo("https://b/f"));
+        assertThat(config.getPollingFrequency(), equalTo(Duration.ofMinutes(10)));
+        assertThat(config.getWorkers(), equalTo(3));
+    }
+
+    @Test
+    void resolvePollingFrequency_uses_feed_override_then_falls_back_to_global() {
+        final FeedSourceConfig config = new FeedSourceConfig();
+        final FeedConfig withOverride = new FeedConfig() {
+            @Override
+            public Duration getPollingFrequency() {
+                return Duration.ofMinutes(1);
+            }
+        };
+        final FeedConfig noOverride = new FeedConfig();
+        assertThat(config.resolvePollingFrequency(withOverride), equalTo(Duration.ofMinutes(1)));
+        assertThat(config.resolvePollingFrequency(noOverride), equalTo(DEFAULT_POLLING_FREQUENCY));
+    }
+}
