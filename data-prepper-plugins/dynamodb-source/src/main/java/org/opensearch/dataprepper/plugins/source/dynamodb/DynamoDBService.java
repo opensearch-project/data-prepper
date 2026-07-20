@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -102,11 +103,10 @@ public class DynamoDBService {
         final StreamConfig streamConfig = dynamoDBSourceConfig.getTableConfigs().get(0).getStreamConfig();
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, new BackoffCalculator(dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null));
-        // leader scheduler will handle the initialization. The shard discovery interval is only relevant when
-        // streaming; export-only tables (no stream config) fall back to the default interval.
-        Runnable leaderScheduler = streamConfig == null
-                ? new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs)
-                : new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs, streamConfig.getShardDiscoveryInterval());
+        final Duration leaseInterval = streamConfig == null
+                ? StreamConfig.DEFAULT_SHARD_DISCOVERY_INTERVAL
+                : streamConfig.getShardDiscoveryInterval();
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs, leaseInterval);
 
         // May consider start or shutdown the scheduler on demand
         // Currently, event after the exports are done, the related scheduler will not be shutdown

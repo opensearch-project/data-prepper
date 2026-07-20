@@ -20,7 +20,7 @@ public class StreamConfig {
      * discovered and leased. Lowering it reduces shard-rotation read latency at the cost of more
      * frequent DescribeStream/ListShards calls against DynamoDB Streams.
      */
-    static final Duration DEFAULT_SHARD_DISCOVERY_INTERVAL = Duration.ofMinutes(1);
+    public static final Duration DEFAULT_SHARD_DISCOVERY_INTERVAL = Duration.ofMinutes(1);
 
     @JsonProperty(value = "start_position")
     private StreamStartPosition startPosition = StreamStartPosition.LATEST;
