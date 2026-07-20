@@ -37,6 +37,10 @@ public class IndexShardProvider {
         return getSettings(indexName).numberOfShards();
     }
 
+    public int getNumberOfRoutingShards(final String indexName) throws IOException {
+        return getSettings(indexName).routingNumShards();
+    }
+
     public String getIngestionTopic(final String indexName) throws IOException {
         return getSettings(indexName).ingestionTopic();
     }
@@ -72,26 +76,38 @@ public class IndexShardProvider {
         if (shardsNode.isMissingNode()) {
             throw new IllegalStateException("number_of_shards not found in settings for index: " + indexName);
         }
+        final int numberOfShards = Integer.parseInt(shardsNode.asText());
+
+        final JsonNode routingShardsNode = indexNode.path("number_of_routing_shards");
+        final int routingNumShards = routingShardsNode.isMissingNode()
+                ? numberOfShards
+                : Integer.parseInt(routingShardsNode.asText());
 
         final JsonNode topicNode = indexNode.path("ingestion_source").path("param").path("topic");
         if (topicNode.isMissingNode()) {
             throw new IllegalStateException("ingestion_source.param.topic not found in settings for index: " + indexName);
         }
 
-        return new IndexIngestionSettings(Integer.parseInt(shardsNode.asText()), topicNode.asText());
+        return new IndexIngestionSettings(numberOfShards, routingNumShards, topicNode.asText());
     }
 
     static class IndexIngestionSettings {
         private final int numberOfShards;
+        private final int routingNumShards;
         private final String ingestionTopic;
 
-        IndexIngestionSettings(final int numberOfShards, final String ingestionTopic) {
+        IndexIngestionSettings(final int numberOfShards, final int routingNumShards, final String ingestionTopic) {
             this.numberOfShards = numberOfShards;
+            this.routingNumShards = routingNumShards;
             this.ingestionTopic = ingestionTopic;
         }
 
         int numberOfShards() {
             return numberOfShards;
+        }
+
+        int routingNumShards() {
+            return routingNumShards;
         }
 
         String ingestionTopic() {

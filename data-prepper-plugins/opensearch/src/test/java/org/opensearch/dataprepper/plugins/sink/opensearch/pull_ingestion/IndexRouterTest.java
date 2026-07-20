@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,6 +73,7 @@ class IndexRouterTest {
     @Test
     void getShardForRouting_returns_valid_partition() throws IOException {
         when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(shardCount);
         final IndexRouter objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(indexName);
 
@@ -85,6 +87,7 @@ class IndexRouterTest {
     @Test
     void getShardForRouting_is_deterministic() throws IOException {
         when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(shardCount);
         final IndexRouter objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(indexName);
 
@@ -96,11 +99,12 @@ class IndexRouterTest {
     @ParameterizedTest
     @CsvSource({
             "1, 0",
-            "5, 1",
-            "12, 1"
+            "5, 4",
+            "12, 9"
     })
     void getShardForRouting_known_values_for_abc123(final int shardCount, final int expectedShard) throws IOException {
         when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(shardCount);
         final IndexRouter objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(indexName);
 
@@ -108,15 +112,51 @@ class IndexRouterTest {
     }
 
     @Test
-    void getShardForRouting_calls_provider_each_time() throws IOException {
-        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(5, 10);
+    void murmur3Hash_matches_opensearch_known_values() {
+        assertThat(IndexRouter.murmur3Hash("hell"), equalTo(0x5a0cb7c3));
+        assertThat(IndexRouter.murmur3Hash("hello"), equalTo(0xd7c31989));
+        assertThat(IndexRouter.murmur3Hash("hello w"), equalTo(0x22ab2984));
+        assertThat(IndexRouter.murmur3Hash("hello wo"), equalTo(0xdf0ca123));
+        assertThat(IndexRouter.murmur3Hash("hello wor"), equalTo(0xe7744d61));
+        assertThat(IndexRouter.murmur3Hash("The quick brown fox jumps over the lazy dog"), equalTo(0xe07db09c));
+        assertThat(IndexRouter.murmur3Hash("The quick brown fox jumps over the lazy cog"), equalTo(0x4e63d2ad));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "abc123, 5, 1, 4",
+            "abc123, 10, 2, 4",
+            "abc123, 12, 1, 9",
+            "abc123, 12, 4, 2",
+            "hello, 5, 1, 1",
+            "hello, 10, 2, 0",
+            "hell, 12, 1, 3"
+    })
+    void calculateShard_matches_opensearch_scaled_formula(final String routingValue, final int routingNumShards,
+                                                          final int routingFactor, final int expectedShard) {
+        assertThat(IndexRouter.calculateShard(routingValue, routingNumShards, routingFactor), equalTo(expectedShard));
+    }
+
+    @Test
+    void getShardForRouting_scales_by_routing_factor_when_routing_num_shards_exceeds_shards() throws IOException {
+        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(5);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(10);
         final IndexRouter objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(indexName);
 
-        final int firstResult = objectUnderTest.getShardForRouting("abc123");
-        final int secondResult = objectUnderTest.getShardForRouting("abc123");
+        assertThat(objectUnderTest.getShardForRouting("abc123"), equalTo(4));
+    }
 
-        assertThat(firstResult, equalTo(IndexRouter.calculateShard("abc123", 5)));
-        assertThat(secondResult, equalTo(IndexRouter.calculateShard("abc123", 10)));
+    @Test
+    void getShardForRouting_calls_provider_each_time() throws IOException {
+        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(shardCount);
+        final IndexRouter objectUnderTest = createObjectUnderTest();
+        objectUnderTest.initialize(indexName);
+
+        objectUnderTest.getShardForRouting("abc123");
+        objectUnderTest.getShardForRouting("abc123");
+
+        verify(indexShardProvider, times(2)).getNumberOfRoutingShards(indexName);
     }
 }

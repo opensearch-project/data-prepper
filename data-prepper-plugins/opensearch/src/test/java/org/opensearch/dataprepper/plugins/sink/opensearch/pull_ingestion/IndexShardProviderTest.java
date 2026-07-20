@@ -50,18 +50,41 @@ class IndexShardProviderTest {
     private String indexName;
     private String topicName;
     private int shardCount;
+    private int routingShardCount;
 
     @BeforeEach
     void setUp() {
         indexName = UUID.randomUUID().toString();
         topicName = UUID.randomUUID().toString();
         shardCount = 5;
+        routingShardCount = 20;
 
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
     }
 
     private IndexShardProvider createObjectUnderTest() {
         return new IndexShardProvider(restHighLevelClient);
+    }
+
+    private String buildSettingsResponseWithRoutingShards() {
+        return "{\n" +
+                "  \"" + indexName + "\": {\n" +
+                "    \"settings\": {\n" +
+                "      \"index\": {\n" +
+                "        \"ingestion_source\": {\n" +
+                "          \"type\": \"kafka\",\n" +
+                "          \"param\": {\n" +
+                "            \"bootstrap_servers\": \"kafka:9092\",\n" +
+                "            \"topic\": \"" + topicName + "\"\n" +
+                "          }\n" +
+                "        },\n" +
+                "        \"number_of_shards\": \"" + shardCount + "\",\n" +
+                "        \"number_of_routing_shards\": \"" + routingShardCount + "\",\n" +
+                "        \"number_of_replicas\": \"1\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
     }
 
     private String buildSettingsResponse() {
@@ -96,6 +119,20 @@ class IndexShardProviderTest {
         mockSettingsResponse(buildSettingsResponse());
 
         assertThat(createObjectUnderTest().getIngestionTopic(indexName), equalTo(topicName));
+    }
+
+    @Test
+    void getNumberOfRoutingShards_fetches_from_cluster() throws IOException {
+        mockSettingsResponse(buildSettingsResponseWithRoutingShards());
+
+        assertThat(createObjectUnderTest().getNumberOfRoutingShards(indexName), equalTo(routingShardCount));
+    }
+
+    @Test
+    void getNumberOfRoutingShards_falls_back_to_number_of_shards_when_absent() throws IOException {
+        mockSettingsResponse(buildSettingsResponse());
+
+        assertThat(createObjectUnderTest().getNumberOfRoutingShards(indexName), equalTo(shardCount));
     }
 
     @Test

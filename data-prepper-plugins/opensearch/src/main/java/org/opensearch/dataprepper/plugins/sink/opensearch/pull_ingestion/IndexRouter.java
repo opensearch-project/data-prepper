@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Determines the shard (partition) for a given document and index.
@@ -50,20 +49,28 @@ public class IndexRouter {
             throw new IllegalStateException("IndexRouter has not been initialized");
         }
         final int numberOfShards = indexShardProvider.getNumberOfShards(indexName);
-        return calculateShard(routingValue, numberOfShards);
+        final int routingNumShards = indexShardProvider.getNumberOfRoutingShards(indexName);
+        final int routingFactor = routingNumShards / numberOfShards;
+        return calculateShard(routingValue, routingNumShards, routingFactor);
     }
 
-    static int calculateShard(final String routingValue, final int numberOfShards) {
+    static int calculateShard(final String routingValue, final int routingNumShards, final int routingFactor) {
         final int hash = murmur3Hash(routingValue);
-        return Math.floorMod(hash, numberOfShards);
+        return Math.floorMod(hash, routingNumShards) / routingFactor;
     }
 
     /**
      * Murmur3 hash matching OpenSearch's Murmur3HashFunction.hash(String).
-     * 32-bit Murmur3 with seed 0, operating on the UTF-8 bytes of the input.
+     * 32-bit Murmur3 with seed 0, operating on the UTF-16 little-endian bytes of the input
+     * (low byte then high byte for each char), the same byte layout OpenSearch hashes.
      */
     static int murmur3Hash(final String routing) {
-        final byte[] bytes = routing.getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = new byte[routing.length() * 2];
+        for (int i = 0; i < routing.length(); i++) {
+            final char c = routing.charAt(i);
+            bytes[i * 2] = (byte) c;
+            bytes[i * 2 + 1] = (byte) (c >>> 8);
+        }
         return murmur3_32(bytes, 0, bytes.length, 0);
     }
 
