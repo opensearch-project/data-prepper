@@ -63,14 +63,16 @@ public class IndexShardProvider {
     }
 
     private IndexIngestionSettings fetchSettings(final String indexName) throws IOException {
-        final Request request = new Request("GET", "/" + indexName + "/_settings");
+        final Request request = new Request("GET", "/_cluster/state/metadata/" + indexName);
         final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
         final JsonNode root = OBJECT_MAPPER.readTree(response.getEntity().getContent());
 
-        final JsonNode indexNode = root.path(indexName).path("settings").path("index");
-        if (indexNode.isMissingNode()) {
-            throw new IllegalStateException("No settings found for index: " + indexName);
+        final JsonNode metadataNode = root.path("metadata").path("indices").path(indexName);
+        if (metadataNode.isMissingNode()) {
+            throw new IllegalStateException("No metadata found for index: " + indexName);
         }
+
+        final JsonNode indexNode = metadataNode.path("settings").path("index");
 
         final JsonNode shardsNode = indexNode.path("number_of_shards");
         if (shardsNode.isMissingNode()) {
@@ -78,10 +80,10 @@ public class IndexShardProvider {
         }
         final int numberOfShards = Integer.parseInt(shardsNode.asText());
 
-        final JsonNode routingShardsNode = indexNode.path("number_of_routing_shards");
+        final JsonNode routingShardsNode = metadataNode.path("routing_num_shards");
         final int routingNumShards = routingShardsNode.isMissingNode()
                 ? numberOfShards
-                : Integer.parseInt(routingShardsNode.asText());
+                : routingShardsNode.asInt();
 
         final JsonNode topicNode = indexNode.path("ingestion_source").path("param").path("topic");
         if (topicNode.isMissingNode()) {

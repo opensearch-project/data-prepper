@@ -68,19 +68,23 @@ class IndexShardProviderTest {
 
     private String buildSettingsResponseWithRoutingShards() {
         return "{\n" +
-                "  \"" + indexName + "\": {\n" +
-                "    \"settings\": {\n" +
-                "      \"index\": {\n" +
-                "        \"ingestion_source\": {\n" +
-                "          \"type\": \"kafka\",\n" +
-                "          \"param\": {\n" +
-                "            \"bootstrap_servers\": \"kafka:9092\",\n" +
-                "            \"topic\": \"" + topicName + "\"\n" +
+                "  \"metadata\": {\n" +
+                "    \"indices\": {\n" +
+                "      \"" + indexName + "\": {\n" +
+                "        \"routing_num_shards\": " + routingShardCount + ",\n" +
+                "        \"settings\": {\n" +
+                "          \"index\": {\n" +
+                "            \"ingestion_source\": {\n" +
+                "              \"type\": \"kafka\",\n" +
+                "              \"param\": {\n" +
+                "                \"bootstrap_servers\": \"kafka:9092\",\n" +
+                "                \"topic\": \"" + topicName + "\"\n" +
+                "              }\n" +
+                "            },\n" +
+                "            \"number_of_shards\": \"" + shardCount + "\",\n" +
+                "            \"number_of_replicas\": \"1\"\n" +
                 "          }\n" +
-                "        },\n" +
-                "        \"number_of_shards\": \"" + shardCount + "\",\n" +
-                "        \"number_of_routing_shards\": \"" + routingShardCount + "\",\n" +
-                "        \"number_of_replicas\": \"1\"\n" +
+                "        }\n" +
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
@@ -89,18 +93,22 @@ class IndexShardProviderTest {
 
     private String buildSettingsResponse() {
         return "{\n" +
-                "  \"" + indexName + "\": {\n" +
-                "    \"settings\": {\n" +
-                "      \"index\": {\n" +
-                "        \"ingestion_source\": {\n" +
-                "          \"type\": \"kafka\",\n" +
-                "          \"param\": {\n" +
-                "            \"bootstrap_servers\": \"kafka:9092\",\n" +
-                "            \"topic\": \"" + topicName + "\"\n" +
+                "  \"metadata\": {\n" +
+                "    \"indices\": {\n" +
+                "      \"" + indexName + "\": {\n" +
+                "        \"settings\": {\n" +
+                "          \"index\": {\n" +
+                "            \"ingestion_source\": {\n" +
+                "              \"type\": \"kafka\",\n" +
+                "              \"param\": {\n" +
+                "                \"bootstrap_servers\": \"kafka:9092\",\n" +
+                "                \"topic\": \"" + topicName + "\"\n" +
+                "              }\n" +
+                "            },\n" +
+                "            \"number_of_shards\": \"" + shardCount + "\",\n" +
+                "            \"number_of_replicas\": \"1\"\n" +
                 "          }\n" +
-                "        },\n" +
-                "        \"number_of_shards\": \"" + shardCount + "\",\n" +
-                "        \"number_of_replicas\": \"1\"\n" +
+                "        }\n" +
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
@@ -177,7 +185,7 @@ class IndexShardProviderTest {
 
     @Test
     void getNumberOfShards_throws_when_settings_missing() throws IOException {
-        mockSettingsResponse("{\"" + indexName + "\": {\"settings\": {}}}");
+        mockSettingsResponse("{\"metadata\": {\"indices\": {\"" + indexName + "\": {\"settings\": {\"index\": {}}}}}}");
 
         assertThrows(IllegalStateException.class, () -> createObjectUnderTest().getNumberOfShards(indexName));
     }
@@ -185,10 +193,14 @@ class IndexShardProviderTest {
     @Test
     void getIngestionTopic_throws_when_ingestion_source_missing() throws IOException {
         final String noIngestionSource = "{\n" +
-                "  \"" + indexName + "\": {\n" +
-                "    \"settings\": {\n" +
-                "      \"index\": {\n" +
-                "        \"number_of_shards\": \"" + shardCount + "\"\n" +
+                "  \"metadata\": {\n" +
+                "    \"indices\": {\n" +
+                "      \"" + indexName + "\": {\n" +
+                "        \"settings\": {\n" +
+                "          \"index\": {\n" +
+                "            \"number_of_shards\": \"" + shardCount + "\"\n" +
+                "          }\n" +
+                "        }\n" +
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
