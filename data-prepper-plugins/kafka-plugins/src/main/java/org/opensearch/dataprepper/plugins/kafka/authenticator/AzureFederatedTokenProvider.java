@@ -139,6 +139,18 @@ public class AzureFederatedTokenProvider {
         return stsClient;
     }
 
+    public void close() {
+        lock.lock();
+        try {
+            if (stsClient != null) {
+                stsClient.close();
+                stsClient = null;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     private static AwsCredentialsProvider baseCredentials(final String region, final String stsRoleArn,
                                                           final Map<String, String> stsHeaderOverrides,
                                                           final AwsCredentialsSupplier awsCredentialsSupplier) {

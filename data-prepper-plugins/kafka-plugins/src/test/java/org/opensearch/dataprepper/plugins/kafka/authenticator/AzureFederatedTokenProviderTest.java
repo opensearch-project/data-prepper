@@ -45,6 +45,7 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -300,5 +301,29 @@ class AzureFederatedTokenProviderTest {
                         Collections.emptyMap(), null).getToken());
 
         assertThat(e.getCause().getMessage(), containsString("requires an AWS credentials extension"));
+    }
+
+    @Test
+    void close_afterStsClientCreated_closesStsClient() throws IOException, InterruptedException {
+        stubWebIdentityTokenSuccess();
+        final HttpResponse<String> response =
+                httpResponse(200, "{\"access_token\":\"azure-access-token\",\"expires_in\":3599}");
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(response);
+        final AzureFederatedTokenProvider provider = providerWith(stsClient, httpClient);
+        provider.getToken();
+
+        provider.close();
+
+        verify(stsClient).close();
+    }
+
+    @Test
+    void close_whenStsClientNeverCreated_isNoOp() {
+        final AzureFederatedTokenProvider provider = providerWith(stsClient, httpClient);
+
+        provider.close();
+
+        verify(stsClient, never()).close();
     }
 }

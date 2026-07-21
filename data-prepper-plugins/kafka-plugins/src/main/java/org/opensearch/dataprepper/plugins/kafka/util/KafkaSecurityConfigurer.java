@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.AwsCredentialsSupplierProvider;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.AzureFederatedCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
@@ -94,6 +95,8 @@ public class KafkaSecurityConfigurer {
     private static final String PLAIN_MECHANISM = "PLAIN";
     private static final String OAUTHBEARER_MECHANISM = "OAUTHBEARER";
 
+    private static final String SASL_SSL_PROTOCOL = "SASL_SSL";
+
     private static final String SASL_PLAINTEXT_PROTOCOL = "SASL_PLAINTEXT";
 
     private static final String PLAINTEXT_PROTOCOL = "PLAINTEXT";
@@ -140,7 +143,7 @@ public class KafkaSecurityConfigurer {
         properties.put(SASL_MECHANISM, "PLAIN");
         properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
         if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
-            properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+            properties.put(SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);
             setSecurityProtocolSSLProperties(properties, encryptionConfig);
         } else { // EncryptionType.NONE
             properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
@@ -155,7 +158,7 @@ public class KafkaSecurityConfigurer {
         properties.put(SASL_MECHANISM, mechanism);
         properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
         if (checkEncryptionType(encryptionConfig, EncryptionType.SSL)) {
-            properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+            properties.put(SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);
             setSecurityProtocolSSLProperties(properties, encryptionConfig);
         } else { // EncryptionType.NONE
             properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
@@ -235,7 +238,7 @@ public class KafkaSecurityConfigurer {
     }
 
     public static void setAwsIamAuthProperties(Properties properties, final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
-        properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+        properties.put(SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);
         properties.put(SASL_MECHANISM, "AWS_MSK_IAM");
         properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
@@ -266,21 +269,22 @@ public class KafkaSecurityConfigurer {
             throw new RuntimeException("azure_federated requires aws.region");
         }
         properties.put(SASL_MECHANISM, OAUTHBEARER_MECHANISM);
-        properties.put(SECURITY_PROTOCOL, "SASL_SSL");
+        properties.put(SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);
         properties.put(SASL_CALLBACK_HANDLER_CLASS, AZURE_FEDERATED_HANDLER_CLASS);
         final StringBuilder jaas = new StringBuilder(
                 "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ");
-        appendJaasOption(jaas, "azureFederatedRegion", awsConfig.getRegion());
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_REGION, awsConfig.getRegion());
         if (Objects.nonNull(awsConfig.getStsRoleArn())) {
-            appendJaasOption(jaas, "azureFederatedStsRoleArn", awsConfig.getStsRoleArn());
+            appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_STS_ROLE_ARN, awsConfig.getStsRoleArn());
         }
         if (Objects.nonNull(awsConfig.getAwsStsHeaderOverrides()) && !awsConfig.getAwsStsHeaderOverrides().isEmpty()) {
-            appendJaasOption(jaas, "azureFederatedStsHeaderOverrides",
+            appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_STS_HEADER_OVERRIDES,
                     encodeStsHeaderOverrides(awsConfig.getAwsStsHeaderOverrides()));
         }
-        appendJaasOption(jaas, "azureFederatedTokenEndpoint", azureFederatedAuthConfig.getAzureTokenEndpoint());
-        appendJaasOption(jaas, "azureFederatedClientId", azureFederatedAuthConfig.getAzureClientId());
-        jaas.append("azureFederatedScope=\"").append(azureFederatedAuthConfig.getScope()).append("\";");
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_TOKEN_ENDPOINT, azureFederatedAuthConfig.getAzureTokenEndpoint());
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_CLIENT_ID, azureFederatedAuthConfig.getAzureClientId());
+        jaas.append(AzureFederatedCallbackHandler.OPT_SCOPE).append("=\"")
+                .append(azureFederatedAuthConfig.getScope()).append("\";");
         properties.put(SASL_JAAS_CONFIG, jaas.toString());
     }
 

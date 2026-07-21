@@ -160,4 +160,21 @@ class AzureFederatedCallbackHandlerTest {
         assertThrows(UnsupportedCallbackException.class,
                 () -> handler.handle(new Callback[] {unsupported}));
     }
+
+    @Test
+    void close_withProvider_closesTokenProvider() {
+        final AzureFederatedTokenProvider provider = mock(AzureFederatedTokenProvider.class);
+        final AzureFederatedCallbackHandler handler = new AzureFederatedCallbackHandler(provider);
+
+        handler.close();
+
+        verify(provider).close();
+    }
+
+    @Test
+    void close_withoutConfiguredProvider_isNoOp() {
+        final AzureFederatedCallbackHandler handler = new AzureFederatedCallbackHandler();
+
+        handler.close();
+    }
 }

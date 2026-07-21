@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.Map;
 
 public class AzureFederatedCallbackHandler implements AuthenticateCallbackHandler {
-    static final String OPT_REGION = "azureFederatedRegion";
-    static final String OPT_STS_ROLE_ARN = "azureFederatedStsRoleArn";
-    static final String OPT_TOKEN_ENDPOINT = "azureFederatedTokenEndpoint";
-    static final String OPT_CLIENT_ID = "azureFederatedClientId";
-    static final String OPT_SCOPE = "azureFederatedScope";
-    static final String OPT_STS_HEADER_OVERRIDES = "azureFederatedStsHeaderOverrides";
+    public static final String OPT_REGION = "azureFederatedRegion";
+    public static final String OPT_STS_ROLE_ARN = "azureFederatedStsRoleArn";
+    public static final String OPT_TOKEN_ENDPOINT = "azureFederatedTokenEndpoint";
+    public static final String OPT_CLIENT_ID = "azureFederatedClientId";
+    public static final String OPT_SCOPE = "azureFederatedScope";
+    public static final String OPT_STS_HEADER_OVERRIDES = "azureFederatedStsHeaderOverrides";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -86,6 +86,9 @@ public class AzureFederatedCallbackHandler implements AuthenticateCallbackHandle
 
     @Override
     public void close() {
+        if (tokenProvider != null) {
+            tokenProvider.close();
+        }
     }
 
     AzureFederatedTokenProvider getTokenProvider() {
