@@ -100,6 +100,14 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'otel-logs-source-pipeline.yml',
                 'data_prepper.yml'
         ),
+        new LogTestConfiguration(
+                'otelMetricsSourceJsonPayloadEndToEndTest',
+                'Runs the basic end-to-end test using the otel metrics source http service.',
+                'org.opensearch.dataprepper.integration.metrics.EndToEndOtelMetricsSourceTest.testOtelMetricsSourcePipelineHttpService*',
+                'data-prepper-otel-metrics-source',
+                'metrics/otel-metrics-source-pipeline.yml',
+                'data_prepper.yml'
+        ),
 ]
 
 
