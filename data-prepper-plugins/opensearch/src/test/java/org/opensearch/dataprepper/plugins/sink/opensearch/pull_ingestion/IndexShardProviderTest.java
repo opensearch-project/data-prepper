@@ -144,6 +144,24 @@ class IndexShardProviderTest {
     }
 
     @Test
+    void getRoutingPartitionSize_defaults_to_one_when_absent() throws IOException {
+        mockSettingsResponse(buildSettingsResponse());
+
+        assertThat(createObjectUnderTest().getRoutingPartitionSize(indexName), equalTo(1));
+    }
+
+    @Test
+    void getRoutingPartitionSize_fetches_from_cluster() throws IOException {
+        final String json = "{\"metadata\": {\"indices\": {\"" + indexName + "\": {\"settings\": {\"index\": {"
+                + "\"number_of_shards\": \"" + shardCount + "\","
+                + "\"routing_partition_size\": \"4\","
+                + "\"ingestion_source\": {\"param\": {\"topic\": \"" + topicName + "\"}}}}}}}}";
+        mockSettingsResponse(json);
+
+        assertThat(createObjectUnderTest().getRoutingPartitionSize(indexName), equalTo(4));
+    }
+
+    @Test
     void getNumberOfShards_caches_result() throws IOException {
         mockSettingsResponse(buildSettingsResponse());
 

@@ -41,6 +41,10 @@ public class IndexShardProvider {
         return getSettings(indexName).routingNumShards();
     }
 
+    public int getRoutingPartitionSize(final String indexName) throws IOException {
+        return getSettings(indexName).routingPartitionSize();
+    }
+
     public String getIngestionTopic(final String indexName) throws IOException {
         return getSettings(indexName).ingestionTopic();
     }
@@ -78,29 +82,35 @@ public class IndexShardProvider {
         if (shardsNode.isMissingNode()) {
             throw new IllegalStateException("number_of_shards not found in settings for index: " + indexName);
         }
-        final int numberOfShards = Integer.parseInt(shardsNode.asText());
+        final int numberOfShards = shardsNode.asInt();
 
         final JsonNode routingShardsNode = metadataNode.path("routing_num_shards");
         final int routingNumShards = routingShardsNode.isMissingNode()
                 ? numberOfShards
                 : routingShardsNode.asInt();
 
+        final JsonNode partitionSizeNode = indexNode.path("routing_partition_size");
+        final int routingPartitionSize = partitionSizeNode.isMissingNode() ? 1 : partitionSizeNode.asInt();
+
         final JsonNode topicNode = indexNode.path("ingestion_source").path("param").path("topic");
         if (topicNode.isMissingNode()) {
             throw new IllegalStateException("ingestion_source.param.topic not found in settings for index: " + indexName);
         }
 
-        return new IndexIngestionSettings(numberOfShards, routingNumShards, topicNode.asText());
+        return new IndexIngestionSettings(numberOfShards, routingNumShards, routingPartitionSize, topicNode.asText());
     }
 
     static class IndexIngestionSettings {
         private final int numberOfShards;
         private final int routingNumShards;
+        private final int routingPartitionSize;
         private final String ingestionTopic;
 
-        IndexIngestionSettings(final int numberOfShards, final int routingNumShards, final String ingestionTopic) {
+        IndexIngestionSettings(final int numberOfShards, final int routingNumShards,
+                               final int routingPartitionSize, final String ingestionTopic) {
             this.numberOfShards = numberOfShards;
             this.routingNumShards = routingNumShards;
+            this.routingPartitionSize = routingPartitionSize;
             this.ingestionTopic = ingestionTopic;
         }
 
@@ -110,6 +120,10 @@ public class IndexShardProvider {
 
         int routingNumShards() {
             return routingNumShards;
+        }
+
+        int routingPartitionSize() {
+            return routingPartitionSize;
         }
 
         String ingestionTopic() {

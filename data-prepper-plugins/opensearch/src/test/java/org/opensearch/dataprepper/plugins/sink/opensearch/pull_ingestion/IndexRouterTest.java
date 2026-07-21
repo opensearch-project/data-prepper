@@ -26,7 +26,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -148,15 +147,25 @@ class IndexRouterTest {
     }
 
     @Test
-    void getShardForRouting_calls_provider_each_time() throws IOException {
-        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
-        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(shardCount);
+    void getShardForRouting_uses_refetched_routing_shard_count_each_call() throws IOException {
+        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(5);
+        when(indexShardProvider.getNumberOfRoutingShards(indexName)).thenReturn(5, 10);
         final IndexRouter objectUnderTest = createObjectUnderTest();
         objectUnderTest.initialize(indexName);
 
-        objectUnderTest.getShardForRouting("abc123");
-        objectUnderTest.getShardForRouting("abc123");
+        final int firstResult = objectUnderTest.getShardForRouting("hello");
+        final int secondResult = objectUnderTest.getShardForRouting("hello");
 
-        verify(indexShardProvider, times(2)).getNumberOfRoutingShards(indexName);
+        assertThat(firstResult, equalTo(IndexRouter.calculateShard("hello", 5, 1)));
+        assertThat(secondResult, equalTo(IndexRouter.calculateShard("hello", 10, 2)));
+    }
+
+    @Test
+    void initialize_throws_for_routing_partitioned_index() throws IOException {
+        when(indexShardProvider.getNumberOfShards(indexName)).thenReturn(shardCount);
+        when(indexShardProvider.getRoutingPartitionSize(indexName)).thenReturn(4);
+        final IndexRouter objectUnderTest = createObjectUnderTest();
+
+        assertThrows(UnsupportedOperationException.class, () -> objectUnderTest.initialize(indexName));
     }
 }

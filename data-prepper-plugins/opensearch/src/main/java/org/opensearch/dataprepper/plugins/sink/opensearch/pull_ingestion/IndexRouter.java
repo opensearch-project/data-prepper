@@ -34,6 +34,13 @@ public class IndexRouter {
     public void initialize(final String indexName) throws IOException {
         this.indexName = indexName;
         indexShardProvider.getNumberOfShards(indexName);
+        final int routingPartitionSize = indexShardProvider.getRoutingPartitionSize(indexName);
+        if (routingPartitionSize > 1) {
+            throw new UnsupportedOperationException(String.format(
+                    "routing-partitioned indices (routing_partition_size=%d) are not supported by pull-based ingestion; "
+                            + "shard routing for index '%s' would require the document id to compute the partition offset",
+                    routingPartitionSize, indexName));
+        }
         initialized = true;
     }
 
@@ -50,6 +57,11 @@ public class IndexRouter {
         }
         final int numberOfShards = indexShardProvider.getNumberOfShards(indexName);
         final int routingNumShards = indexShardProvider.getNumberOfRoutingShards(indexName);
+        if (routingNumShards < numberOfShards) {
+            throw new IllegalStateException(String.format(
+                    "number_of_routing_shards (%d) must be >= number_of_shards (%d) for index '%s'",
+                    routingNumShards, numberOfShards, indexName));
+        }
         final int routingFactor = routingNumShards / numberOfShards;
         return calculateShard(routingValue, routingNumShards, routingFactor);
     }
@@ -63,6 +75,7 @@ public class IndexRouter {
      * Murmur3 hash matching OpenSearch's Murmur3HashFunction.hash(String).
      * 32-bit Murmur3 with seed 0, operating on the UTF-16 little-endian bytes of the input
      * (low byte then high byte for each char), the same byte layout OpenSearch hashes.
+     * See https://github.com/opensearch-project/OpenSearch/blob/main/server/src/main/java/org/opensearch/cluster/routing/Murmur3HashFunction.java
      */
     static int murmur3Hash(final String routing) {
         final byte[] bytes = new byte[routing.length() * 2];
