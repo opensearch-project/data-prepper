@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
+import java.time.Duration;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -69,4 +71,16 @@ class SourceTopicConfigTest {
         assertThat(objectUnderTest.getIsolationLevel(), equalTo(IsolationLevel.READ_COMMITTED));
     }
 
+    @Test
+    void verify_default_connections_max_idle() {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.getConnectionsMaxIdle(), equalTo(SourceTopicConfig.DEFAULT_CONNECTIONS_MAX_IDLE));
+    }
+
+    @Test
+    void verify_custom_connections_max_idle() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        setField(SourceTopicConfig.class, objectUnderTest, "connectionsMaxIdle", Duration.ofSeconds(180));
+        assertThat(objectUnderTest.getConnectionsMaxIdle(), equalTo(Duration.ofSeconds(180)));
+    }
 }

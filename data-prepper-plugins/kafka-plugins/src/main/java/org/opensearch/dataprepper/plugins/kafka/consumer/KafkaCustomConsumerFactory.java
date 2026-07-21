@@ -45,6 +45,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionsMaxIdleConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
@@ -56,6 +57,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +187,12 @@ public class KafkaCustomConsumerFactory {
             IsolationLevel isolationLevel = ((KafkaIsolationLevelConfig) topicConfig).getIsolationLevel();
             if (isolationLevel != null) {
                 properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
+            }
+        }
+        if (topicConfig instanceof KafkaConnectionsMaxIdleConfig) {
+            final Duration connectionsMaxIdle = ((KafkaConnectionsMaxIdleConfig) topicConfig).getConnectionsMaxIdle();
+            if (connectionsMaxIdle != null) {
+                properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, connectionsMaxIdle.toMillis());
             }
         }
     }
