@@ -144,14 +144,6 @@ task integrationTest(type: Test) {
     systemProperty 'tests.kafka.authconfig.password', System.getProperty('tests.kafka.authconfig.password')
     systemProperty 'tests.kafka.authconfig.mechanism', System.getProperty('tests.kafka.authconfig.mechanism')
     systemProperty 'tests.kafka.kms_key', System.getProperty('tests.kafka.kms_key')
-    systemProperty 'tests.azure.eventhubs.bootstrap_servers', System.getProperty('tests.azure.eventhubs.bootstrap_servers')
-    systemProperty 'tests.azure.eventhubs.topic', System.getProperty('tests.azure.eventhubs.topic')
-    systemProperty 'tests.azure.tenant_id', System.getProperty('tests.azure.tenant_id')
-    systemProperty 'tests.azure.client_id', System.getProperty('tests.azure.client_id')
-    systemProperty 'tests.azure.token_endpoint', System.getProperty('tests.azure.token_endpoint')
-    systemProperty 'tests.azure.scope', System.getProperty('tests.azure.scope')
-    systemProperty 'tests.aws.sts_role_arn', System.getProperty('tests.aws.sts_role_arn')
-    systemProperty 'tests.aws.region', System.getProperty('tests.aws.region')
 
     filter {
         includeTestsMatching '*IT'

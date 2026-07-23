@@ -264,25 +264,32 @@ public class KafkaSecurityConfigurer {
     }
 
     private static void setAzureFederatedAuthProperties(final Properties properties,
-            final AzureFederatedAuthConfig azureFederatedAuthConfig, final AwsConfig awsConfig) {
-        if (Objects.isNull(awsConfig) || Objects.isNull(awsConfig.getRegion())) {
-            throw new RuntimeException("azure_federated requires aws.region");
+            final AzureFederatedAuthConfig azureFederatedAuthConfig, final AwsConfig awsConfig,
+            final AwsCredentialsSupplier awsCredentialsSupplier) {
+        final boolean hasAwsConfig = Objects.nonNull(awsConfig);
+        // Region may come from the pipeline aws config or, if absent there, the data-prepper-config.yaml default.
+        final String region = hasAwsConfig && Objects.nonNull(awsConfig.getRegion())
+                ? awsConfig.getRegion()
+                : awsCredentialsSupplier.getDefaultRegion().map(Region::id).orElse(null);
+        if (Objects.isNull(region)) {
+            throw new RuntimeException("azure_federated requires a region in the pipeline aws config or data-prepper-config.yaml");
         }
         properties.put(SASL_MECHANISM, OAUTHBEARER_MECHANISM);
         properties.put(SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);
         properties.put(SASL_CALLBACK_HANDLER_CLASS, AZURE_FEDERATED_HANDLER_CLASS);
         final StringBuilder jaas = new StringBuilder(
                 "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ");
-        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_REGION, awsConfig.getRegion());
-        if (Objects.nonNull(awsConfig.getStsRoleArn())) {
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_REGION, region);
+        if (hasAwsConfig && Objects.nonNull(awsConfig.getStsRoleArn())) {
             appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_STS_ROLE_ARN, awsConfig.getStsRoleArn());
         }
-        if (Objects.nonNull(awsConfig.getAwsStsHeaderOverrides()) && !awsConfig.getAwsStsHeaderOverrides().isEmpty()) {
+        if (hasAwsConfig && Objects.nonNull(awsConfig.getAwsStsHeaderOverrides())
+                && !awsConfig.getAwsStsHeaderOverrides().isEmpty()) {
             appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_STS_HEADER_OVERRIDES,
                     encodeStsHeaderOverrides(awsConfig.getAwsStsHeaderOverrides()));
         }
-        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_TOKEN_ENDPOINT, azureFederatedAuthConfig.getAzureTokenEndpoint());
-        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_CLIENT_ID, azureFederatedAuthConfig.getAzureClientId());
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_TOKEN_ENDPOINT, azureFederatedAuthConfig.getTokenEndpoint());
+        appendJaasOption(jaas, AzureFederatedCallbackHandler.OPT_CLIENT_ID, azureFederatedAuthConfig.getClientId());
         jaas.append(AzureFederatedCallbackHandler.OPT_SCOPE).append("=\"")
                 .append(azureFederatedAuthConfig.getScope()).append("\";");
         properties.put(SASL_JAAS_CONFIG, jaas.toString());
@@ -441,7 +448,8 @@ public class KafkaSecurityConfigurer {
                 }  else if (Objects.nonNull(plainTextAuthConfig) && Objects.nonNull(kafkaClusterAuthConfig.getEncryptionConfig())) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig, kafkaClusterAuthConfig.getEncryptionConfig());
                 } else if (Objects.nonNull(saslAuthConfig.getAzureFederatedAuthConfig())) {
-                    setAzureFederatedAuthProperties(properties, saslAuthConfig.getAzureFederatedAuthConfig(), awsConfig);
+                    setAzureFederatedAuthProperties(properties, saslAuthConfig.getAzureFederatedAuthConfig(), awsConfig,
+                            awsCredentialsSupplier);
                 } else {
                     throw new RuntimeException("No SASL auth config specified");
                 }

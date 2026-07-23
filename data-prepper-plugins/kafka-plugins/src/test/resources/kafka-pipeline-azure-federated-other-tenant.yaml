@@ -15,9 +15,8 @@ log-pipeline :
         authentication:
           sasl:
             azure_federated:
-              azure_tenant_id: "22222222-2222-2222-2222-222222222222"
-              azure_client_id: "33333333-3333-3333-3333-333333333333"
-              azure_token_endpoint: "https://login.microsoftonline.com/22222222-2222-2222-2222-222222222222/oauth2/v2.0/token"
+              client_id: "33333333-3333-3333-3333-333333333333"
+              token_endpoint: "https://login.microsoftonline.com/22222222-2222-2222-2222-222222222222/oauth2/v2.0/token"
               scope: "https://other-namespace.servicebus.windows.net/.default"
         aws:
           region: us-west-2

@@ -50,6 +50,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -528,31 +529,52 @@ public class KafkaSecurityConfigurerTest {
     }
 
     @Test
-    void testSetAuthPropertiesWithAzureFederated_nullAwsConfig_throws() throws Exception {
+    void testSetAuthPropertiesWithAzureFederated_nullAwsConfig_noDefaultRegion_throws() throws Exception {
         final KafkaSourceConfig kafkaSourceConfig = azureFederatedSourceConfig(null);
+        final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
+        when(supplier.getDefaultRegion()).thenReturn(Optional.empty());
 
         final Properties props = new Properties();
         final RuntimeException e = assertThrows(RuntimeException.class,
-                () -> KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, null, LOG));
-        assertThat(e.getMessage(), is("azure_federated requires aws.region"));
+                () -> KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, supplier, LOG));
+        assertThat(e.getMessage(),
+                is("azure_federated requires a region in the pipeline aws config or data-prepper-config.yaml"));
     }
 
     @Test
-    void testSetAuthPropertiesWithAzureFederated_missingRegion_throws() throws Exception {
+    void testSetAuthPropertiesWithAzureFederated_missingRegion_noDefaultRegion_throws() throws Exception {
         final AwsConfig awsConfig = new AwsConfig();
         setField(AwsConfig.class, awsConfig, "stsRoleArn", "arn:aws:iam::123456789012:role/eh-federation");
         final KafkaSourceConfig kafkaSourceConfig = azureFederatedSourceConfig(awsConfig);
+        final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
+        when(supplier.getDefaultRegion()).thenReturn(Optional.empty());
 
         final Properties props = new Properties();
         final RuntimeException e = assertThrows(RuntimeException.class,
-                () -> KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, null, LOG));
-        assertThat(e.getMessage(), is("azure_federated requires aws.region"));
+                () -> KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, supplier, LOG));
+        assertThat(e.getMessage(),
+                is("azure_federated requires a region in the pipeline aws config or data-prepper-config.yaml"));
+    }
+
+    @Test
+    void testSetAuthPropertiesWithAzureFederated_regionFromDefaultRegion() throws Exception {
+        final KafkaSourceConfig config = azureFederatedConfig(null, null,
+                "11111111-1111-1111-1111-111111111111",
+                "https://login.microsoftonline.com/t/oauth2/v2.0/token",
+                "https://ns.servicebus.windows.net/.default");
+        final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
+        when(supplier.getDefaultRegion()).thenReturn(Optional.of(Region.US_WEST_2));
+
+        final Properties props = new Properties();
+        KafkaSecurityConfigurer.setAuthProperties(props, config, supplier, LOG);
+
+        assertThat(props.getProperty("sasl.jaas.config"), containsString("azureFederatedRegion=\"us-west-2\""));
     }
 
     @Test
     void testSetAuthPropertiesWithAzureFederated_missingStsRoleArn_omitsRoleJaasOption() throws Exception {
         final KafkaSourceConfig kafkaSourceConfig = azureFederatedConfig("us-east-1", null,
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         final Properties props = new Properties();
@@ -568,7 +590,7 @@ public class KafkaSecurityConfigurerTest {
     @Test
     void setAuthProperties_azureFederatedWithoutRole_omitsRoleJaasOption() throws Exception {
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1", null,
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         final Properties properties = new Properties();
@@ -585,7 +607,7 @@ public class KafkaSecurityConfigurerTest {
     void setAuthProperties_azureFederatedWithRole_includesRoleJaasOption() throws Exception {
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1",
                 "arn:aws:iam::123456789012:role/eh-federation",
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         final Properties properties = new Properties();
@@ -599,7 +621,7 @@ public class KafkaSecurityConfigurerTest {
     @Test
     void setAuthProperties_populatesSupplierSingleton() throws Exception {
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1", null,
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
@@ -613,7 +635,7 @@ public class KafkaSecurityConfigurerTest {
     @Test
     void setAuthProperties_withNullSupplier_doesNotThrow() throws Exception {
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1", null,
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         AwsCredentialsSupplierProvider.getInstance().set(null);
@@ -629,7 +651,7 @@ public class KafkaSecurityConfigurerTest {
                 "x-amz-source-account", "quoted \"value\" with spaces");
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1",
                 "arn:aws:iam::123456789012:role/eh-federation",
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default", stsHeaderOverrides);
         final Properties properties = new Properties();
@@ -649,7 +671,7 @@ public class KafkaSecurityConfigurerTest {
     void setAuthProperties_azureFederatedWithoutStsHeaderOverrides_omitsJaasOption() throws Exception {
         final KafkaSourceConfig config = azureFederatedConfig("us-east-1",
                 "arn:aws:iam::123456789012:role/eh-federation",
-                "00000000-0000-0000-0000-000000000000", "11111111-1111-1111-1111-111111111111",
+                "11111111-1111-1111-1111-111111111111",
                 "https://login.microsoftonline.com/t/oauth2/v2.0/token",
                 "https://ns.servicebus.windows.net/.default");
         final Properties properties = new Properties();
@@ -660,20 +682,19 @@ public class KafkaSecurityConfigurerTest {
                 not(containsString("azureFederatedStsHeaderOverrides")));
     }
 
-    private KafkaSourceConfig azureFederatedConfig(final String region, final String stsRoleArn, final String tenantId,
+    private KafkaSourceConfig azureFederatedConfig(final String region, final String stsRoleArn,
             final String clientId, final String tokenEndpoint, final String scope)
             throws NoSuchFieldException, IllegalAccessException {
-        return azureFederatedConfig(region, stsRoleArn, tenantId, clientId, tokenEndpoint, scope, null);
+        return azureFederatedConfig(region, stsRoleArn, clientId, tokenEndpoint, scope, null);
     }
 
-    private KafkaSourceConfig azureFederatedConfig(final String region, final String stsRoleArn, final String tenantId,
+    private KafkaSourceConfig azureFederatedConfig(final String region, final String stsRoleArn,
             final String clientId, final String tokenEndpoint, final String scope,
             final Map<String, String> stsHeaderOverrides)
             throws NoSuchFieldException, IllegalAccessException {
         final AzureFederatedAuthConfig azureFederatedAuthConfig = new AzureFederatedAuthConfig();
-        setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "azureTenantId", tenantId);
-        setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "azureClientId", clientId);
-        setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "azureTokenEndpoint", tokenEndpoint);
+        setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "clientId", clientId);
+        setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "tokenEndpoint", tokenEndpoint);
         setField(AzureFederatedAuthConfig.class, azureFederatedAuthConfig, "scope", scope);
         final AuthConfig.SaslAuthConfig localSaslAuthConfig = new AuthConfig.SaslAuthConfig();
         setField(AuthConfig.SaslAuthConfig.class, localSaslAuthConfig, "azureFederatedAuthConfig", azureFederatedAuthConfig);

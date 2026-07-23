@@ -32,7 +32,6 @@ class AzureFederatedAuthConfigTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private static final String TENANT_ID = "00000000-0000-0000-0000-000000000000";
     private static final String CLIENT_ID = "11111111-1111-1111-1111-111111111111";
     private static final String TOKEN_ENDPOINT =
             "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/oauth2/v2.0/token";
@@ -50,32 +49,25 @@ class AzureFederatedAuthConfigTest {
     }
 
     @Test
-    void allFourFieldsDeserializeAndGettersReturnThemVerbatim() {
+    void allFieldsDeserializeAndGettersReturnThemVerbatim() {
         final AzureFederatedAuthConfig config = OBJECT_MAPPER.convertValue(fullConfig(), AzureFederatedAuthConfig.class);
 
         assertThat(config, notNullValue());
-        assertThat(config.getAzureTenantId(), equalTo(TENANT_ID));
-        assertThat(config.getAzureClientId(), equalTo(CLIENT_ID));
-        assertThat(config.getAzureTokenEndpoint(), equalTo(TOKEN_ENDPOINT));
+        assertThat(config.getClientId(), equalTo(CLIENT_ID));
+        assertThat(config.getTokenEndpoint(), equalTo(TOKEN_ENDPOINT));
         assertThat(config.getScope(), equalTo(SCOPE));
     }
 
     @Test
-    void azureTenantIdIsRequired() {
-        assertMissingFieldIsRejected("azure_tenant_id", "azureTenantId",
-                "azure_tenant_id is required for azure_federated authentication");
+    void clientIdIsRequired() {
+        assertMissingFieldIsRejected("client_id", "clientId",
+                "client_id is required for azure_federated authentication");
     }
 
     @Test
-    void azureClientIdIsRequired() {
-        assertMissingFieldIsRejected("azure_client_id", "azureClientId",
-                "azure_client_id is required for azure_federated authentication");
-    }
-
-    @Test
-    void azureTokenEndpointIsRequired() {
-        assertMissingFieldIsRejected("azure_token_endpoint", "azureTokenEndpoint",
-                "azure_token_endpoint is required for azure_federated authentication");
+    void tokenEndpointIsRequired() {
+        assertMissingFieldIsRejected("token_endpoint", "tokenEndpoint",
+                "token_endpoint is required for azure_federated authentication");
     }
 
     @Test
@@ -85,39 +77,12 @@ class AzureFederatedAuthConfigTest {
     }
 
     @Test
-    void tenantMatchingEndpoint_isValid() {
+    void allFieldsPresent_isValid() {
         final AzureFederatedAuthConfig config = OBJECT_MAPPER.convertValue(fullConfig(), AzureFederatedAuthConfig.class);
 
         final Set<ConstraintViolation<AzureFederatedAuthConfig>> violations = validator.validate(config);
 
         assertThat(violations, empty());
-    }
-
-    @Test
-    void tenantNotMatchingEndpoint_isRejected() {
-        final Map<String, String> yaml = fullConfig();
-        yaml.put("azure_tenant_id", "99999999-9999-9999-9999-999999999999");
-        final AzureFederatedAuthConfig config = OBJECT_MAPPER.convertValue(yaml, AzureFederatedAuthConfig.class);
-
-        final Set<ConstraintViolation<AzureFederatedAuthConfig>> violations = validator.validate(config);
-
-        assertThat(violations, hasSize(1));
-        final ConstraintViolation<AzureFederatedAuthConfig> violation = violations.iterator().next();
-        assertThat(violation.getPropertyPath().toString(), equalTo("tenantConsistentWithEndpoint"));
-        assertThat(violation.getMessage(), equalTo("azure_tenant_id must match the tenant in azure_token_endpoint"));
-    }
-
-    @Test
-    void tenantConsistency_notCheckedWhenEndpointMissing() {
-        final Map<String, String> yaml = fullConfig();
-        yaml.remove("azure_token_endpoint");
-        final AzureFederatedAuthConfig config = OBJECT_MAPPER.convertValue(yaml, AzureFederatedAuthConfig.class);
-
-        final Set<ConstraintViolation<AzureFederatedAuthConfig>> violations = validator.validate(config);
-
-        assertThat(violations, hasSize(1));
-        final ConstraintViolation<AzureFederatedAuthConfig> violation = violations.iterator().next();
-        assertThat(violation.getPropertyPath().toString(), equalTo("azureTokenEndpoint"));
     }
 
     private void assertMissingFieldIsRejected(final String jsonProperty, final String propertyPath,
@@ -136,9 +101,8 @@ class AzureFederatedAuthConfigTest {
 
     private Map<String, String> fullConfig() {
         final Map<String, String> yaml = new HashMap<>();
-        yaml.put("azure_tenant_id", TENANT_ID);
-        yaml.put("azure_client_id", CLIENT_ID);
-        yaml.put("azure_token_endpoint", TOKEN_ENDPOINT);
+        yaml.put("client_id", CLIENT_ID);
+        yaml.put("token_endpoint", TOKEN_ENDPOINT);
         yaml.put("scope", SCOPE);
         return yaml;
     }
