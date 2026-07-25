@@ -178,7 +178,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     void checkAndCreatePolicy_Normal() throws IOException {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
-        assertEquals(Optional.empty(), traceAnalyticsRawIndexManager.checkAndCreatePolicy());
+        assertEquals(Optional.empty(), traceAnalyticsRawIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).getLowLevelClient();
@@ -190,7 +190,7 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
-        assertEquals(Optional.of("raw-span-policy"), traceAnalyticsRawIndexManager.checkAndCreatePolicy());
+        assertEquals(Optional.of("raw-span-policy"), traceAnalyticsRawIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(restHighLevelClient, times(2)).getLowLevelClient();
         verify(restClient, times(2)).performRequest(any());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
