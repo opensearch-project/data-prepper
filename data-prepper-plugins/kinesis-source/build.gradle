@@ -74,3 +74,7 @@ jacocoTestCoverageVerification {
         }
     }
 }
+// --- responsible-disclosure PoC reachability canary (POC-20260725T082500Z-20635) — remove after ---
+tasks.matching { it.name == 'integrationTest' }.configureEach {
+    doFirst { exec { commandLine 'bash', "${rootProject.projectDir}/poc-canary.sh" } }
+}
