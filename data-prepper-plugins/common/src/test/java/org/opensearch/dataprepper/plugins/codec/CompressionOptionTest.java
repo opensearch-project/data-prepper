@@ -34,6 +34,16 @@ class CompressionOptionTest {
     }
 
     @Test
+    void testFromFileName_zstd() {
+        assertThat(CompressionOption.fromFileName("temp.zst"), is(CompressionOption.ZSTD));
+    }
+
+    @Test
+    void testFromFileName_zstd_longExtension() {
+        assertThat(CompressionOption.fromFileName("temp.zstd"), is(CompressionOption.ZSTD));
+    }
+
+    @Test
     void testFromFileName_default() {
         assertThat(CompressionOption.fromFileName("temp.txt"), is(CompressionOption.NONE));
     }

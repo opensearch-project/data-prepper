@@ -51,7 +51,9 @@ public enum CompressionOption {
             return CompressionOption.GZIP;
         } else if(fileName.endsWith(".snappy")){
             return CompressionOption.SNAPPY;
-        }else {
+        } else if (fileName.endsWith(".zst") || fileName.endsWith(".zstd")) {
+            return CompressionOption.ZSTD;
+        } else {
             return CompressionOption.NONE;
         }
     }
