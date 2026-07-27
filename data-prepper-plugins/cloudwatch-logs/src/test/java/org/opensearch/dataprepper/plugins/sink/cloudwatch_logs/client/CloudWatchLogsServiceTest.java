@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -22,12 +23,15 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
@@ -249,6 +253,132 @@ class CloudWatchLogsServiceTest {
         setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
 
         verify(mockDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(List.class));
+    }
+
+    // --- Dynamic-entity mode -------------------------------------------------
+
+    private CloudWatchLogsService getDynamicService(final EntityResolver entityResolver) {
+        return new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
+                mockDispatcher, null, true, entityResolver);
+    }
+
+    private EntityResolver resourceIdResolver() {
+        return resourceIdResolver(1000);
+    }
+
+    private EntityResolver resourceIdResolver(final int maxCardinality) {
+        final Map<String, String> keyAttributes = new java.util.LinkedHashMap<>();
+        keyAttributes.put("Type", "Service");
+        keyAttributes.put("Name", "${resourceId}");
+        return new EntityResolver(keyAttributes, Map.of(), maxCardinality);
+    }
+
+    private Collection<Record<Event>> recordsWithResourceId(final String resourceId, final int count) {
+        final ArrayList<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            final Event event = JacksonLog.builder()
+                    .withData(Map.of("resourceId", resourceId, "seq", i))
+                    .withEventHandle(mock(EventHandle.class))
+                    .build();
+            records.add(new Record<>(event));
+        }
+        return records;
+    }
+
+    @Test
+    void GIVEN_dynamic_mode_WHEN_events_share_a_resource_id_THEN_dispatch_carries_that_resolved_entity() {
+        cloudWatchLogsService = getDynamicService(resourceIdResolver());
+
+        cloudWatchLogsService.processLogEvents(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+
+        final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
+        assertThat(entityCaptor.getValue().keyAttributes().get("Name"), equalTo("res-A"));
+    }
+
+    @Test
+    void GIVEN_dynamic_mode_WHEN_events_have_distinct_resource_ids_THEN_each_group_dispatches_its_own_entity() {
+        cloudWatchLogsService = getDynamicService(resourceIdResolver());
+
+        final Collection<Record<Event>> combined = new ArrayList<>();
+        combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+        combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
+
+        cloudWatchLogsService.processLogEvents(combined);
+
+        final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
+        verify(mockDispatcher, atLeast(2)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
+        final List<String> dispatchedNames = new ArrayList<>();
+        for (final Entity entity : entityCaptor.getAllValues()) {
+            dispatchedNames.add(entity.keyAttributes().get("Name"));
+        }
+        assertThat(dispatchedNames.contains("res-A"), equalTo(true));
+        assertThat(dispatchedNames.contains("res-B"), equalTo(true));
+        // Each distinct key opens exactly one group.
+        verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
+    }
+
+    @Test
+    void GIVEN_dynamic_mode_WHEN_event_missing_templated_field_THEN_delivered_via_shared_group_with_empty_name() {
+        cloudWatchLogsService = getDynamicService(resourceIdResolver());
+
+        final ArrayList<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
+            final Event event = JacksonLog.builder()
+                    .withData(Map.of("someOtherField", "value", "seq", i))
+                    .withEventHandle(mock(EventHandle.class))
+                    .build();
+            records.add(new Record<>(event));
+        }
+
+        cloudWatchLogsService.processLogEvents(records);
+
+        // The templated ${resourceId} is absent, so every such event resolves to the same key
+        // attributes ({Type=Service, Name=}) and shares one group. Events are still delivered; the
+        // resolved entity carries an empty Name rather than being dropped.
+        final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
+        assertThat(entityCaptor.getValue().keyAttributes().get("Name"), equalTo(""));
+    }
+
+    @Test
+    void GIVEN_dynamic_mode_WHEN_many_threads_process_distinct_resource_ids_THEN_all_dispatched_without_races() throws InterruptedException {
+        cloudWatchLogsService = getDynamicService(resourceIdResolver());
+
+        final int numberOfThreads = 50;
+        final Thread[] threads = new Thread[numberOfThreads];
+        for (int i = 0; i < numberOfThreads; i++) {
+            final String resourceId = "res-" + i;
+            threads[i] = new Thread(() ->
+                    cloudWatchLogsService.processLogEvents(recordsWithResourceId(resourceId, thresholdConfig.getBatchSize())));
+            threads[i].start();
+        }
+        for (int i = 0; i < numberOfThreads; i++) {
+            threads[i].join();
+        }
+
+        verify(mockDispatcher, atLeast(numberOfThreads)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+        verify(cloudWatchLogsMetrics, times(numberOfThreads)).increaseEntityGroupsCreatedCounter(eq(1));
+    }
+
+    @Test
+    void GIVEN_dynamic_mode_WHEN_distinct_keys_exceed_max_cardinality_THEN_groups_are_bounded_and_overflow_uses_fallback() {
+        // Bound of 2: the first two distinct resource ids each open their own group; every further
+        // distinct id must reuse the shared fallback group rather than growing the groups map.
+        final int maxCardinality = 2;
+        cloudWatchLogsService = getDynamicService(resourceIdResolver(maxCardinality));
+
+        final Collection<Record<Event>> combined = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            combined.addAll(recordsWithResourceId("res-" + i, thresholdConfig.getBatchSize()));
+        }
+
+        cloudWatchLogsService.processLogEvents(combined);
+
+        // Despite five distinct keys, group creation is bounded: maxCardinality named groups plus
+        // one shared fallback group for the overflow. Without the bound this would be five.
+        verify(cloudWatchLogsMetrics, times(maxCardinality + 1)).increaseEntityGroupsCreatedCounter(eq(1));
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
     }
 
      private Record<Event> getLargeRecord(long size) {

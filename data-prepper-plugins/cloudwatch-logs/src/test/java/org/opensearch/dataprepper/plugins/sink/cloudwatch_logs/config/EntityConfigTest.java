@@ -17,9 +17,12 @@ import jakarta.validation.Validator;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,13 +32,24 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class EntityConfigTest {
     private static final String KEY_ATTRIBUTES_FIELD = "keyAttributes";
     private static final String ATTRIBUTES_FIELD = "attributes";
 
+    private static Map<String, String> validKeyAttributes() {
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Service");
+        keyAttributes.put("Name", "my-app");
+        return keyAttributes;
+    }
+
     private ObjectMapper objectMapper;
     private Validator validator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     void setUp() {
@@ -45,6 +59,18 @@ class EntityConfigTest {
                 .messageInterpolator(new ParameterMessageInterpolator())
                 .buildValidatorFactory()
                 .getValidator();
+
+        // Mirror the real evaluator's contract: a value carrying a ${...} field reference yields a
+        // non-empty key list; a plain constant yields empty lists.
+        expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.extractDynamicKeysFromFormatExpression(anyString()))
+                .thenAnswer(invocation -> {
+                    final String value = invocation.getArgument(0);
+                    return value != null && value.contains("${")
+                            ? List.of(value) : Collections.<String>emptyList();
+                });
+        when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(anyString()))
+                .thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -169,5 +195,71 @@ class EntityConfigTest {
 
         assertThrows(UnsupportedOperationException.class,
                 () -> entityConfig.getAttributes().put("new", "value"));
+    }
+
+    @Test
+    void GIVEN_new_entity_config_WHEN_dynamic_getters_called_SHOULD_return_defaults() {
+        final EntityConfig entityConfig = new EntityConfig();
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_templated_key_attributes_in_yaml_WHEN_deserialized_SHOULD_be_dynamic() {
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Azure::Resource");
+        keyAttributes.put("Identifier", "${resourceId}");
+        final Map<String, Object> jsonMap = new HashMap<>();
+        jsonMap.put("key_attributes", keyAttributes);
+
+        final EntityConfig entityConfig = objectMapper.convertValue(jsonMap, EntityConfig.class);
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_no_templated_attributes_WHEN_is_dynamic_called_SHOULD_be_static() {
+        final EntityConfig entityConfig = new EntityConfig();
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_only_constant_key_attributes_WHEN_is_dynamic_called_SHOULD_be_static()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Service");
+        keyAttributes.put("Name", "my-app");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_templated_key_attribute_WHEN_is_dynamic_called_SHOULD_be_dynamic()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Azure::Resource");
+        keyAttributes.put("Identifier", "${resourceId}");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_templated_attribute_only_WHEN_is_dynamic_called_SHOULD_be_dynamic()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "Service");
+        keyAttributes.put("Name", "my-app");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("AWS.ServiceNameSource", "${source}");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, ATTRIBUTES_FIELD, attributes);
+
+        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(true));
     }
 }
