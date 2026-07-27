@@ -18,9 +18,23 @@ on:
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 jobs:
+  Code-Diff-Analyzer:
+    uses: opensearch-project/opensearch-build/.github/workflows/code-diff-analyzer.yml@main
+    if: github.repository == 'opensearch-project/data-prepper'
+    permissions:
+      id-token: write
+      pull-requests: write
+    secrets:
+      BEDROCK_ACCESS_ROLE: ${{ secrets.BEDROCK_ACCESS_ROLE }}
+    with:
+      skip_diff_analyzer_with_label_name: 'skip-diff-analyzer'
+      update_pr_comment_with_analyzer_report: false
+
   integration-tests:
+    needs: [Code-Diff-Analyzer]
     strategy:
       matrix:
         java: [11]
