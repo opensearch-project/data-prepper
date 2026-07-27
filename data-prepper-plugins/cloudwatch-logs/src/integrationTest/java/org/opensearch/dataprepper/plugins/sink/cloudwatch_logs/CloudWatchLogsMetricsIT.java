@@ -21,6 +21,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -283,7 +284,8 @@ public class CloudWatchLogsMetricsIT {
         final PluginFactory pluginFactory = mock(PluginFactory.class);
 
         final CloudWatchLogsSink sink = new CloudWatchLogsSink(
-                pluginSetting, pluginMetrics, pluginFactory, config, awsCredentialsSupplier);
+                pluginSetting, pluginMetrics, pluginFactory, config, awsCredentialsSupplier,
+                mock(ExpressionEvaluator.class));
         sink.doInitialize();
 
         final Collection<Record<Event>> records = createRecords(1);
@@ -346,7 +348,9 @@ public class CloudWatchLogsMetricsIT {
 
         final PluginFactory pluginFactory = mock(PluginFactory.class);
 
-        return new CloudWatchLogsSink(pluginSetting, pluginMetrics, pluginFactory, config, awsCredentialsSupplier);
+        // These tests configure a static entity (or none), so the evaluator is never consulted.
+        return new CloudWatchLogsSink(pluginSetting, pluginMetrics, pluginFactory, config, awsCredentialsSupplier,
+                mock(ExpressionEvaluator.class));
     }
 
     private Collection<Record<Event>> createRecords(final int count) {
