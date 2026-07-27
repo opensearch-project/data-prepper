@@ -334,6 +334,26 @@ class LeaderSchedulerTest {
     }
 
     @Test
+    void test_custom_lease_interval_controls_discovery_cadence() {
+        // A short interval should drive multiple shard-discovery passes in a small window,
+        // demonstrating that the configurable interval controls the leader loop cadence.
+        final Duration leaseInterval = Duration.ofMillis(100);
+        leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, List.of(tableConfig), leaseInterval);
+        leaderPartition = new LeaderPartition();
+        leaderPartition.getProgressState().get().setInitialized(true);
+        leaderPartition.getProgressState().get().setStreamArns(List.of(streamArn));
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> leaderScheduler.run());
+
+        await().atMost(leaseInterval.multipliedBy(20))
+                .untilAsserted(() -> verify(coordinator, atLeast(3))
+                        .queryCompletedPartitions(eq(StreamPartition.PARTITION_TYPE), any(Instant.class)));
+        executorService.shutdownNow();
+    }
+
+    @Test
     void test_shardDiscovery_with_failure_to_save_partition_state_reacquires_partition() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, List.of(tableConfig));
         leaderPartition = new LeaderPartition();
