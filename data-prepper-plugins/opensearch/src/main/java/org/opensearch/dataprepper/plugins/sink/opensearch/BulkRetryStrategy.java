@@ -268,7 +268,7 @@ public final class BulkRetryStrategy {
         if (isDeleteOperationWithNotFoundError(bulkItemResponse)) {
             return canRetryDeleteNotFoundOperation(bulkItemResponse, attemptNumber);
         }
-        
+
         return isGenerallyRetryableOperation(bulkItemResponse);
     }
 
@@ -279,7 +279,7 @@ public final class BulkRetryStrategy {
 
     private boolean canRetryDeleteNotFoundOperation(final BulkResponseItem bulkItemResponse, final int attemptNumber) {
         if (attemptNumber > DELETE_404_MAX_RETRIES) {
-            LOG.info("DELETE operation for index '{}' reached maximum retry limit ({}) for 404 errors, sending to DLQ", 
+            LOG.info("DELETE operation for index '{}' reached maximum retry limit ({}) for 404 errors, sending to DLQ",
                     bulkItemResponse.index(), DELETE_404_MAX_RETRIES);
             return false;
         }
@@ -295,7 +295,7 @@ public final class BulkRetryStrategy {
                                                                   final BulkResponse bulkResponse,
                                                                   final Exception exceptionFromRequest) {
         final boolean doRetry = (Objects.isNull(exceptionFromRequest)) ? canRetry(bulkResponse) : canRetry(exceptionFromRequest);
-        if (!Objects.isNull(bulkResponse) && attemptNumber == 1) { 
+        if (!Objects.isNull(bulkResponse) && attemptNumber == 1) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (!isItemInError(bulkItemResponse)) {
                     sentDocumentsOnFirstAttemptCounter.increment();
@@ -303,7 +303,7 @@ public final class BulkRetryStrategy {
             }
         }
         if (doRetry) {
-            if (attemptNumber % 5 == 1) { 
+            if (attemptNumber % 5 == 1) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
@@ -326,11 +326,10 @@ public final class BulkRetryStrategy {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
-                    // Skip logging the error for version conflicts when using external versioning
-                    final ErrorCause error = bulkItemResponse.error();
-                    if (isExternalVersioning && error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+                    if (isSkippableConflictError(bulkItemResponse)) {
                         continue;
                     }
+                    final ErrorCause error = bulkItemResponse.error();
                     LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
             }
@@ -411,11 +410,9 @@ public final class BulkRetryStrategy {
 
                     if (canRetryItem(bulkItemResponse, attemptNumber)) {
                         requestToReissue.addOperation(bulkOperation);
-                    } else if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    } else if (isSkippableConflictError(bulkItemResponse)) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
-                        // When using external versioning, version conflicts are expected and not true errors.
-                        // Release the eventHandle without counting as a document error.
                         bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
@@ -452,11 +449,9 @@ public final class BulkRetryStrategy {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (isItemInError(bulkItemResponse)) {
-                if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                if (isSkippableConflictError(bulkItemResponse)) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
-                    // When using external versioning, version conflicts are expected and not true errors.
-                    // Release the eventHandle without counting as a document error.
                     bulkOperation.releaseEventHandle(true);
                 } else {
                     failures.add(FailedBulkOperation.builder()
@@ -517,5 +512,23 @@ public final class BulkRetryStrategy {
         }
 
         return false;
+    }
+
+    /**
+     * Determines whether a version conflict error on a bulk response item is acceptable
+     * and should not be treated as a failure or sent to the DLQ.
+     *
+     * A version conflict is acceptable when:
+     * 1. External versioning is used - conflicts indicate the document already has a newer version
+     * 2. The operation is a 'create' and the document already exists - the 409 conflict means
+     *    the document was already successfully written
+     */
+    private boolean isSkippableConflictError(final BulkResponseItem bulkItemResponse) {
+        final ErrorCause error = bulkItemResponse.error();
+        if (error == null || !VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+            return false;
+        }
+
+        return isExternalVersioning || OperationType.Create.equals(bulkItemResponse.operationType());
     }
 }

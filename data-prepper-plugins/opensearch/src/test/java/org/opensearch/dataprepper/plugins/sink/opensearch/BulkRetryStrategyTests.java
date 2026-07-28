@@ -290,7 +290,7 @@ public class BulkRetryStrategyTests {
         final String testIndex = "delete-404-retry-limit";
         final FakeClient client = new FakeClient(testIndex);
         client.deleteNotFoundMaxRetries = true;
-        
+
         numEventsSucceeded = 0;
         numEventsFailed = 0;
         final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
@@ -303,18 +303,18 @@ public class BulkRetryStrategyTests {
 
         bulkRetryStrategy.execute(accumulatingBulkRequest);
 
-        assertEquals("DELETE+404 should retry exactly 3 times before giving up", 3, client.attempt); 
+        assertEquals("DELETE+404 should retry exactly 3 times before giving up", 3, client.attempt);
         assertEquals("No events should succeed", 0, numEventsSucceeded);
         assertEquals("DELETE+404 operation should be sent to DLQ after max retries", 1, numEventsFailed);
     }
 
-    
+
     @Test
     public void testDeleteNotFound_MixedWithSuccessfulOperations() throws Exception {
         final String testIndex = "mixed-delete-404-test";
         final FakeClient client = new FakeClient(testIndex);
         client.deleteNotFoundMixed = true;
-        
+
         numEventsSucceeded = 0;
         numEventsFailed = 0;
         final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
@@ -324,7 +324,7 @@ public class BulkRetryStrategyTests {
         final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
         final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
         final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
-        
+
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation1).build(), eventHandle1));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle2));
@@ -341,7 +341,7 @@ public class BulkRetryStrategyTests {
         final String testIndex = "other-404-test";
         final FakeClient client = new FakeClient(testIndex);
         client.indexNotFoundTest = true;
-        
+
         numEventsSucceeded = 0;
         numEventsFailed = 0;
         final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
@@ -364,7 +364,7 @@ public class BulkRetryStrategyTests {
         final String testIndex = "retry-isolation-test";
         final FakeClient client = new FakeClient(testIndex);
         client.retryCountIsolationTest = true;
-        
+
         numEventsSucceeded = 0;
         numEventsFailed = 0;
         final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
@@ -373,7 +373,7 @@ public class BulkRetryStrategyTests {
 
         final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
         final IndexOperation<SerializedJson> indexOperation = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        
+
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle1));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation).build(), eventHandle2));
@@ -388,7 +388,7 @@ public class BulkRetryStrategyTests {
         final String testIndex = "delete-404-with-others-test";
         final FakeClient client = new FakeClient(testIndex);
         client.deleteNotFoundWithOthers = true;
-        
+
         numEventsSucceeded = 0;
         numEventsFailed = 0;
         final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
@@ -397,7 +397,7 @@ public class BulkRetryStrategyTests {
 
         final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
         final IndexOperation<SerializedJson> indexOperation = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        
+
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle1));
         accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation).build(), eventHandle2));
@@ -781,7 +781,7 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
-    public void testExecute_VersionConflictIncrementsDocumentErrors_WhenNotExternalVersioning() throws Exception {
+    public void testExecute_VersionConflictIncrementsDocumentErrors_WhenConflictShouldNotBeIgnored() throws Exception {
         final String testIndex = "version-conflict-index";
         final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
         final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
@@ -839,6 +839,119 @@ public class BulkRetryStrategyTests {
         assertEquals(1, successMeasurements.size());
         assertEquals(1.0, successMeasurements.get(0).getValue(), 0);
     }
+
+    @Test
+    public void testExecute_CreateActionDocumentAlreadyExists_DoesNotIncrementDocumentErrors() throws Exception {
+        final String testIndex = "create-conflict-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        // Use default (non-external versioning)
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+        final BulkOperationWrapper wrapper3 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp3).build(), eventHandle3);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+        accumulatingBulkRequest.addOperation(wrapper3);
+
+        // Response: 1 success, 1 document-already-exists conflict (create action), 1 bad request
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem createConflictItem = createOperationConflictErrorItemResponse();
+        final BulkResponseItem badRequestItem = badRequestItemResponse(testIndex);
+        final List<BulkResponseItem> responseItems = Arrays.asList(successItem, createConflictItem, badRequestItem);
+
+        final BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.errors()).thenReturn(true);
+        when(bulkResponse.items()).thenReturn(responseItems);
+        when(requestFunction.apply(any())).thenReturn(bulkResponse);
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // Document-already-exists conflict on create should NOT be counted as a document error
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+        // Should be counted in the version conflict metric
+        final List<Measurement> versionConflictMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertEquals(1, versionConflictMeasurements.size());
+        assertEquals(1.0, versionConflictMeasurements.get(0).getValue(), 0);
+
+        // Success metric should count the 1 successful document
+        final List<Measurement> successMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, successMeasurements.size());
+        assertEquals(1.0, successMeasurements.get(0).getValue(), 0);
+
+        // Document-already-exists event handle should be released with true (success)
+        verify(eventHandle2).release(true);
+    }
+
+    @Test
+    public void testExecute_CreateActionDocumentAlreadyExists_DoesNotSendToDlq() throws Exception {
+        final String testIndex = "create-conflict-dlq-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        // Use default (non-external versioning)
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+
+        // Response: 1 success, 1 document-already-exists conflict (create action)
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem createConflictItem = createOperationConflictErrorItemResponse();
+        final List<BulkResponseItem> responseItems = Arrays.asList(successItem, createConflictItem);
+
+        final BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.errors()).thenReturn(true);
+        when(bulkResponse.items()).thenReturn(responseItems);
+        when(requestFunction.apply(any())).thenReturn(bulkResponse);
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // No events should have failed (nothing sent to DLQ)
+        assertEquals(0, numEventsFailed);
+
+        // No document errors
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(0.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+        // Event handle released with success
+        verify(eventHandle2).release(true);
+    }
+
+
 
     @Test
     public void testExecute_DeleteNotFound_RetriesAndSucceeds() throws Exception {
@@ -1357,6 +1470,18 @@ public class BulkRetryStrategyTests {
         return customBulkFailureResponse(RestStatus.CONFLICT, VERSION_CONFLICT_EXCEPTION_TYPE);
     }
 
+    private static BulkResponseItem createOperationConflictErrorItemResponse() {
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        lenient().when(errorCause.type()).thenReturn(VERSION_CONFLICT_EXCEPTION_TYPE);
+        lenient().when(errorCause.reason()).thenReturn("[test-index][_doc][1]: document already exists");
+        final BulkResponseItem badResponse = mock(BulkResponseItem.class);
+        lenient().when(badResponse.status()).thenReturn(RestStatus.CONFLICT.getStatus());
+        lenient().when(badResponse.error()).thenReturn(errorCause);
+        lenient().when(badResponse.operationType()).thenReturn(OperationType.Create);
+        lenient().when(badResponse.index()).thenReturn("test-index");
+        return badResponse;
+    }
+
     private static BulkResponseItem customBulkFailureResponse(final String index, final RestStatus restStatus) {
         final ErrorCause errorCause = mock(ErrorCause.class);
         final BulkResponseItem badResponse = mock(BulkResponseItem.class);
@@ -1556,7 +1681,7 @@ public class BulkRetryStrategyTests {
 
         private BulkResponse bulkDeleteNotFoundResponse(final BulkRequest bulkRequest) {
             final int requestSize = bulkRequest.operations().size();
-            assert requestSize == 1; 
+            assert requestSize == 1;
             final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                     deleteNotFoundItemResponse(index));
             return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
@@ -1564,18 +1689,18 @@ public class BulkRetryStrategyTests {
 
         private BulkResponse bulkDeleteNotFoundMixedResponse(final BulkRequest bulkRequest) {
             final int requestSize = bulkRequest.operations().size();
-            
+
             if (attempt == 1) {
                 assert requestSize == 3;
                 final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                        successItemResponse(index),     
-                        deleteNotFoundItemResponse(index), 
-                        successItemResponse(index));     
+                        successItemResponse(index),
+                        deleteNotFoundItemResponse(index),
+                        successItemResponse(index));
                 return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
             } else if (attempt <= 3) {
                 assert requestSize == 1;
                 final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                        deleteNotFoundItemResponse(index)); 
+                        deleteNotFoundItemResponse(index));
                 return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
             } else {
                 assert requestSize == 0;
@@ -1593,11 +1718,11 @@ public class BulkRetryStrategyTests {
 
         private BulkResponse bulkRetryCountIsolationResponse(final BulkRequest bulkRequest) {
             final int requestSize = bulkRequest.operations().size();
-            
+
             if (attempt == 1) {
                 assert requestSize == 2;
                 final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                        deleteNotFoundItemResponse(index),     
+                        deleteNotFoundItemResponse(index),
                         internalServerErrorItemResponse(index));
                 return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
             } else if (attempt <= 3) {
@@ -1618,38 +1743,38 @@ public class BulkRetryStrategyTests {
                     return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
                 }
             }
-            
+
             return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
         }
 
         private BulkResponse bulkDeleteNotFoundWithOthersResponse(final BulkRequest bulkRequest) {
             final int requestSize = bulkRequest.operations().size();
-            
+
             if (attempt == 1) {
                 assert requestSize == 2;
                 final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                         deleteNotFoundItemResponse(index),
-                        internalServerErrorItemResponse(index));   
+                        internalServerErrorItemResponse(index));
                 return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
             } else if (attempt <= 3) {
                 if (requestSize == 2) {
                     final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                            deleteNotFoundItemResponse(index),     
+                            deleteNotFoundItemResponse(index),
                             internalServerErrorItemResponse(index));
                     return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
                 } else if (requestSize == 1) {
                     final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                            successItemResponse(index)); 
+                            successItemResponse(index));
                     return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
                 }
             } else {
                 if (requestSize >= 1) {
                     final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
-                            successItemResponse(index)); 
+                            successItemResponse(index));
                     return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
                 }
             }
-            
+
             return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
         }
     }
