@@ -6,8 +6,9 @@
 package org.opensearch.dataprepper.plugins.source.rss.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 
 import java.time.Duration;
 
@@ -19,7 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class FeedConfigTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+            .registerModule(new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer()));
 
     @Test
     void deserializes_url_only_with_null_optionals() throws Exception {
@@ -38,5 +39,12 @@ class FeedConfigTest {
         assertThat(config.getPollingFrequency(), equalTo(Duration.ofMinutes(1)));
         assertThat(config.getAuthentication(), notNullValue());
         assertThat(config.getAuthentication().getBasic().getUsername(), equalTo("u"));
+    }
+
+    @Test
+    void deserializes_simple_duration_notation() throws Exception {
+        final FeedConfig config = objectMapper.readValue(
+                "{\"url\":\"https://x/f\",\"polling_frequency\":\"60s\"}", FeedConfig.class);
+        assertThat(config.getPollingFrequency(), equalTo(Duration.ofSeconds(60)));
     }
 }

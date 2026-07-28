@@ -6,8 +6,9 @@
 package org.opensearch.dataprepper.plugins.source.rss.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 
 import java.time.Duration;
 
@@ -18,7 +19,7 @@ import static org.opensearch.dataprepper.plugins.source.rss.config.FeedSourceCon
 class FeedSourceConfigTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+            .registerModule(new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer()));
 
     @Test
     void defaults_are_applied() {
