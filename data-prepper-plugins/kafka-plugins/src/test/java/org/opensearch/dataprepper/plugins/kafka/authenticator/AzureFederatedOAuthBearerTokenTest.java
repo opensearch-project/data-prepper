@@ -70,4 +70,19 @@ class AzureFederatedOAuthBearerTokenTest {
 
         assertThat(token.scope().isEmpty(), equalTo(true));
     }
+
+    @Test
+    void copyConstructor_preservesFieldsAndOriginalExpiry() {
+        // A token copy must keep the original expiry, or Kafka's refresh scheduling drifts forward.
+        final AzureFederatedOAuthBearerToken original =
+                new AzureFederatedOAuthBearerToken(TOKEN_VALUE, 3600L, SCOPE, PRINCIPAL);
+
+        final AzureFederatedOAuthBearerToken copy = new AzureFederatedOAuthBearerToken(original);
+
+        assertThat(copy.startTimeMs(), equalTo(original.startTimeMs()));
+        assertThat(copy.lifetimeMs(), equalTo(original.lifetimeMs()));
+        assertThat(copy.value(), equalTo(TOKEN_VALUE));
+        assertThat(copy.principalName(), equalTo(PRINCIPAL));
+        assertThat(copy.scope(), contains(SCOPE));
+    }
 }

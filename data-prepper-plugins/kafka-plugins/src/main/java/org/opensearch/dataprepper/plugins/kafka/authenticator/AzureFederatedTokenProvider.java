@@ -113,12 +113,12 @@ public class AzureFederatedTokenProvider {
     public AzureFederatedOAuthBearerToken getToken() {
         final CachedToken current = cached;
         if (current != null && current.isValid()) {
-            return current.token;
+            return current.newTokenInstance();
         }
         lock.lock();
         try {
             if (cached != null && cached.isValid()) {
-                return cached.token;
+                return cached.newTokenInstance();
             }
             final AzureFederatedOAuthBearerToken token = exchange();
             cached = new CachedToken(token);
@@ -248,6 +248,16 @@ public class AzureFederatedTokenProvider {
 
         private boolean isValid() {
             return System.currentTimeMillis() < validUntilMs;
+        }
+
+        /**
+         * Returns a distinct token instance carrying the cached credential's value and its
+         * original absolute lifetime. Kafka identifies tokens on the Subject by instance identity
+         * during re-login, so each callback must receive a new instance - while preserving the
+         * lifetime so refresh scheduling does not drift forward on every call.
+         */
+        private AzureFederatedOAuthBearerToken newTokenInstance() {
+            return new AzureFederatedOAuthBearerToken(token);
         }
     }
 }

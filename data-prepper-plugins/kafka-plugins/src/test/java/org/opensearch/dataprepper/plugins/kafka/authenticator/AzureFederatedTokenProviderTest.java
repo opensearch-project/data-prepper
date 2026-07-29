@@ -42,6 +42,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -199,6 +200,30 @@ class AzureFederatedTokenProviderTest {
 
         assertThat(supplierCalls.get(), equalTo(1));
         verify(httpClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    void getToken_whileCached_returnsDistinctInstancesWithSameValueAndLifetime() throws IOException, InterruptedException {
+        stubWebIdentityTokenSuccess();
+        final HttpResponse<String> response =
+                httpResponse(200, "{\"access_token\":\"azure-access-token\",\"expires_in\":3599}");
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(response);
+        final AzureFederatedTokenProvider provider = providerWith(stsClient, httpClient);
+
+        final AzureFederatedOAuthBearerToken first = provider.getToken();
+        final AzureFederatedOAuthBearerToken second = provider.getToken();
+
+        // Kafka's OAUTHBEARER re-login identifies tokens on the Subject by instance identity;
+        // reusing one instance makes commit() a no-op and the subsequent logout() empties the
+        // Subject. Each call must therefore return a new instance.
+        assertThat(second, not(sameInstance(first)));
+        // The exchange must not repeat while cached, so the fresh instance carries the same value
+        // and the same absolute lifetime rather than a lifetime recomputed from "now".
+        verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        assertThat(second.value(), equalTo(first.value()));
+        assertThat(second.lifetimeMs(), equalTo(first.lifetimeMs()));
+        assertThat(second.startTimeMs(), equalTo(first.startTimeMs()));
     }
 
     @Test
