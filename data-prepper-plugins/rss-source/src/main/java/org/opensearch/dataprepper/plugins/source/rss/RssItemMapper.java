@@ -11,6 +11,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,7 +79,40 @@ class RssItemMapper {
         }
     }
 
+    /**
+     * Returns a stable deduplication key for an item. Prefers {@code guid}, then
+     * {@code link}. When an item has neither, falls back to a content hash of
+     * title/description/pub_date so that distinct keyless items are not collapsed
+     * to a single empty key (which would silently drop all but the first).
+     */
     String dedupKey(final Item item) {
-        return item.getGuid().orElseGet(() -> item.getLink().orElse(""));
+        final String guid = item.getGuid().orElse(null);
+        if (guid != null && !guid.isBlank()) {
+            return guid;
+        }
+        final String link = item.getLink().orElse(null);
+        if (link != null && !link.isBlank()) {
+            return link;
+        }
+        return contentHash(item);
+    }
+
+    private String contentHash(final Item item) {
+        final String content = item.getTitle().orElse("") + '|'
+                + item.getDescription().orElse("") + '|'
+                + item.getPubDate().orElse("");
+        try {
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            final byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            final StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (final byte b : hash) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+                sb.append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (final NoSuchAlgorithmException e) {
+            // SHA-256 is guaranteed present on every JVM; treat absence as fatal.
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }

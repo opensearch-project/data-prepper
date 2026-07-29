@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.rss;
@@ -14,8 +19,10 @@ import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
 
 class RssItemMapperTest {
 
@@ -90,5 +97,20 @@ class RssItemMapperTest {
         final Item linkOnly = RssTestFixtures.item(null, "l2", null, null, null);
         assertThat(mapper.dedupKey(withGuid), equalTo("g"));
         assertThat(mapper.dedupKey(linkOnly), equalTo("l2"));
+    }
+
+    @Test
+    void dedupKey_falls_back_to_content_hash_when_guid_and_link_absent() {
+        // Two keyless items with different content must get different keys, so they
+        // are not collapsed to a single empty key (which would drop all but the first).
+        final Item first = RssTestFixtures.item("Title A", null, "desc A", null, null);
+        final Item second = RssTestFixtures.item("Title B", null, "desc B", null, null);
+        final String firstKey = mapper.dedupKey(first);
+        final String secondKey = mapper.dedupKey(second);
+        assertThat(firstKey, not(isEmptyOrNullString()));
+        assertThat(firstKey, not(equalTo(secondKey)));
+        // Same content -> same key (stable across polls).
+        final Item firstAgain = RssTestFixtures.item("Title A", null, "desc A", null, null);
+        assertThat(mapper.dedupKey(firstAgain), equalTo(firstKey));
     }
 }

@@ -1,13 +1,16 @@
 # RSS Source
 
 This source allows Data Prepper to poll one or more RSS/Atom feeds and convert
-their items into Data Prepper Events. Each feed is polled on a schedule, items
-are deduplicated within a run, and new items are written to the buffer.
+their items into Data Prepper Events. Each feed is polled on a schedule and new
+items are written to the buffer. Each feed keeps a bounded in-memory cache of
+recently seen items, so already-ingested items are not re-emitted on subsequent
+polls. This cache is not persisted, so it resets when Data Prepper restarts.
 
 ## Basic Usage
 
-Provide one or more feeds under `feeds`. Each feed requires a `url` and may
-optionally set a `name`, a per-feed `polling_frequency`, and `authentication`.
+Provide one or more feeds under `feeds`, a map keyed by feed name. Each feed
+requires a `url` and may optionally set a per-feed `polling_frequency` and
+`authentication`.
 
 ### Example
 

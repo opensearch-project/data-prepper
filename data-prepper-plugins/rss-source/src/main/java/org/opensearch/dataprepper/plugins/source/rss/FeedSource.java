@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.rss;
@@ -20,7 +25,9 @@ import org.opensearch.dataprepper.plugins.source.rss.config.FeedSourceConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,6 +46,7 @@ public class FeedSource implements Source<Record<Event>> {
 
     private final PluginMetrics pluginMetrics;
     private final FeedSourceConfig config;
+    private final List<FeedPoller> pollers = new ArrayList<>();
     private ScheduledExecutorService executor;
 
     @DataPrepperPluginConstructor
@@ -61,16 +69,21 @@ public class FeedSource implements Source<Record<Event>> {
             final Counter pollsFailed = pluginMetrics.counter("feedPollsFailed." + feedName);
             final Counter itemsIngested = pluginMetrics.counter("itemsIngested." + feedName);
             final Backoff backoff = new Backoff(BACKOFF_BASE, BACKOFF_MAX, BACKOFF_RATE, BACKOFF_JITTER);
+            final long periodMillis = config.resolvePollingFrequency(feed).toMillis();
             final FeedPoller poller = new FeedPoller(buildReader(feed), feed.getUrl(), feedName,
                     buffer, mapper, new SeenItemTracker(SEEN_CACHE_SIZE), pollsFailed, itemsIngested,
-                    backoff, BUFFER_TIMEOUT_MILLIS);
-            final long periodMillis = config.resolvePollingFrequency(feed).toMillis();
-            executor.scheduleAtFixedRate(poller, 0, periodMillis, TimeUnit.MILLISECONDS);
+                    backoff, BUFFER_TIMEOUT_MILLIS, executor, periodMillis);
+            pollers.add(poller);
+            // One-shot initial schedule; each poll re-schedules itself. Using
+            // schedule (not scheduleAtFixedRate) with a self-rescheduling task
+            // guarantees an inter-poll gap and keeps backoff off the pool threads.
+            executor.schedule(poller, 0, TimeUnit.MILLISECONDS);
         }
     }
 
     @Override
     public void stop() {
+        pollers.forEach(FeedPoller::stop);
         if (executor == null) {
             return;
         }
