@@ -31,9 +31,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -205,8 +207,10 @@ class AzureFederatedTokenProviderTest {
     @Test
     void getToken_whileCached_returnsDistinctInstancesWithSameValueAndLifetime() throws IOException, InterruptedException {
         stubWebIdentityTokenSuccess();
+        final String accessToken = UUID.randomUUID().toString();
+        final int expiresIn = ThreadLocalRandom.current().nextInt(1, 86_400);
         final HttpResponse<String> response =
-                httpResponse(200, "{\"access_token\":\"azure-access-token\",\"expires_in\":3599}");
+                httpResponse(200, "{\"access_token\":\"" + accessToken + "\",\"expires_in\":" + expiresIn + "}");
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(response);
         final AzureFederatedTokenProvider provider = providerWith(stsClient, httpClient);
@@ -221,6 +225,7 @@ class AzureFederatedTokenProviderTest {
         // The exchange must not repeat while cached, so the fresh instance carries the same value
         // and the same absolute lifetime rather than a lifetime recomputed from "now".
         verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        assertThat(second.value(), equalTo(accessToken));
         assertThat(second.value(), equalTo(first.value()));
         assertThat(second.lifetimeMs(), equalTo(first.lifetimeMs()));
         assertThat(second.startTimeMs(), equalTo(first.startTimeMs()));
