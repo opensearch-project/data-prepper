@@ -30,6 +30,18 @@ public class AzureFederatedOAuthBearerToken implements OAuthBearerToken {
         this.principalName = principalName;
     }
 
+    /**
+     * Copies an existing token, preserving its original absolute lifetime rather than recomputing
+     * it from the current time.
+     */
+    AzureFederatedOAuthBearerToken(final AzureFederatedOAuthBearerToken other) {
+        this.value = other.value;
+        this.startTimeMs = other.startTimeMs;
+        this.lifetimeMs = other.lifetimeMs;
+        this.scope = other.scope;
+        this.principalName = other.principalName;
+    }
+
     @Override
     public String value() {
         return value;

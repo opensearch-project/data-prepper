@@ -12,6 +12,9 @@ package org.opensearch.dataprepper.plugins.kafka.authenticator;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
@@ -69,5 +72,24 @@ class AzureFederatedOAuthBearerTokenTest {
                 new AzureFederatedOAuthBearerToken(TOKEN_VALUE, 3600L, null, PRINCIPAL);
 
         assertThat(token.scope().isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void copyConstructor_preservesFieldsAndOriginalExpiry() {
+        // A token copy must keep the original expiry, or Kafka's refresh scheduling drifts forward.
+        final String value = UUID.randomUUID().toString();
+        final String scope = UUID.randomUUID().toString();
+        final String principal = UUID.randomUUID().toString();
+        final long expiresInSeconds = ThreadLocalRandom.current().nextInt(1, 86_400);
+        final AzureFederatedOAuthBearerToken original =
+                new AzureFederatedOAuthBearerToken(value, expiresInSeconds, scope, principal);
+
+        final AzureFederatedOAuthBearerToken copy = new AzureFederatedOAuthBearerToken(original);
+
+        assertThat(copy.startTimeMs(), equalTo(original.startTimeMs()));
+        assertThat(copy.lifetimeMs(), equalTo(original.lifetimeMs()));
+        assertThat(copy.value(), equalTo(value));
+        assertThat(copy.principalName(), equalTo(principal));
+        assertThat(copy.scope(), contains(scope));
     }
 }
