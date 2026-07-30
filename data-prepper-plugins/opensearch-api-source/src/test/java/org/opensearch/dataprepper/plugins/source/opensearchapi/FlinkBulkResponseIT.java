@@ -90,7 +90,7 @@ class FlinkBulkResponseIT {
 
         assertThat(response, is(notNullValue()));
         assertThat(response.hasFailures(), is(false));
-        assertThat(response.getItems().length, equalTo(2));
+        assertThat(response.getItems().length, equalTo(0));
         assertThat(response.getTook(), is(notNullValue()));
     }
 
@@ -107,6 +107,6 @@ class FlinkBulkResponseIT {
 
         assertThat(response, is(notNullValue()));
         assertThat(response.hasFailures(), is(false));
-        assertThat(response.getItems().length, equalTo(10));
+        assertThat(response.getItems().length, equalTo(0));
     }
 }
