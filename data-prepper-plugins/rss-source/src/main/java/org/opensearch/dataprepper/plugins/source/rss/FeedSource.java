@@ -60,9 +60,17 @@ public class FeedSource implements Source<Record<Event>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
-        final int workers = workerCount(config.getWorkers(), config.getFeeds().size());
+        final int feedCount = config.getFeeds().size();
+        final int workers = workerCount(config.getWorkers(), feedCount);
         executor = Executors.newScheduledThreadPool(workers);
         final RssItemMapper mapper = new RssItemMapper();
+        // Spread the feeds' first polls evenly across a window bounded by the
+        // smallest polling interval, so all feeds do not fetch at once on startup
+        // (thundering herd) and stay decorrelated afterward (each repeats at its
+        // own interval). The window is capped at the smallest interval so no feed's
+        // first poll is delayed beyond its own polling period.
+        final long staggerStepMillis = smallestPollingIntervalMillis() / feedCount;
+        int index = 0;
         for (final Map.Entry<String, FeedConfig> entry : config.getFeeds().entrySet()) {
             final String feedName = entry.getKey();
             final FeedConfig feed = entry.getValue();
@@ -77,8 +85,16 @@ public class FeedSource implements Source<Record<Event>> {
             // One-shot initial schedule; each poll re-schedules itself. Using
             // schedule (not scheduleAtFixedRate) with a self-rescheduling task
             // guarantees an inter-poll gap and keeps backoff off the pool threads.
-            executor.schedule(poller, 0, TimeUnit.MILLISECONDS);
+            executor.schedule(poller, index * staggerStepMillis, TimeUnit.MILLISECONDS);
+            index++;
         }
+    }
+
+    private long smallestPollingIntervalMillis() {
+        return config.getFeeds().values().stream()
+                .mapToLong(feed -> config.resolvePollingFrequency(feed).toMillis())
+                .min()
+                .orElse(config.getPollingFrequency().toMillis());
     }
 
     @Override

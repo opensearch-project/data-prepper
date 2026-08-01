@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.rss.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
@@ -23,6 +24,7 @@ import java.util.Objects;
 public class FeedSourceConfig {
 
     public static final Duration DEFAULT_POLLING_FREQUENCY = Duration.ofMinutes(5);
+    static final Duration MINIMUM_POLLING_FREQUENCY = Duration.ofSeconds(1);
 
     @JsonProperty("feeds")
     @NotEmpty(message = "at least one feed is required")
@@ -51,5 +53,19 @@ public class FeedSourceConfig {
 
     public Duration resolvePollingFrequency(final FeedConfig feed) {
         return Objects.requireNonNullElse(feed.getPollingFrequency(), pollingFrequency);
+    }
+
+    @AssertTrue(message = "polling_frequency must be at least 1s (global default and every per-feed override)")
+    boolean isPollingFrequencyAboveMinimum() {
+        if (pollingFrequency != null && pollingFrequency.compareTo(MINIMUM_POLLING_FREQUENCY) < 0) {
+            return false;
+        }
+        if (feeds == null) {
+            return true;
+        }
+        return feeds.values().stream()
+                .map(FeedConfig::getPollingFrequency)
+                .filter(Objects::nonNull)
+                .noneMatch(frequency -> frequency.compareTo(MINIMUM_POLLING_FREQUENCY) < 0);
     }
 }

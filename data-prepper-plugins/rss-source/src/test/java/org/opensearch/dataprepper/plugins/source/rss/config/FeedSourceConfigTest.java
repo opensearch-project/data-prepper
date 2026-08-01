@@ -58,4 +58,28 @@ class FeedSourceConfigTest {
         assertThat(config.resolvePollingFrequency(withOverride), equalTo(Duration.ofMinutes(1)));
         assertThat(config.resolvePollingFrequency(noOverride), equalTo(DEFAULT_POLLING_FREQUENCY));
     }
+
+    @Test
+    void polling_frequency_at_or_above_one_second_is_valid() throws Exception {
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"a\":{\"url\":\"https://a/f\"}},\"polling_frequency\":\"1s\"}",
+                FeedSourceConfig.class);
+        assertThat(config.isPollingFrequencyAboveMinimum(), equalTo(true));
+    }
+
+    @Test
+    void global_polling_frequency_below_one_second_is_invalid() throws Exception {
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"a\":{\"url\":\"https://a/f\"}},\"polling_frequency\":\"500ms\"}",
+                FeedSourceConfig.class);
+        assertThat(config.isPollingFrequencyAboveMinimum(), equalTo(false));
+    }
+
+    @Test
+    void per_feed_polling_frequency_below_one_second_is_invalid() throws Exception {
+        final String json = "{\"feeds\":{\"a\":{\"url\":\"https://a/f\",\"polling_frequency\":\"0s\"}},"
+                + "\"polling_frequency\":\"PT5M\"}";
+        final FeedSourceConfig config = objectMapper.readValue(json, FeedSourceConfig.class);
+        assertThat(config.isPollingFrequencyAboveMinimum(), equalTo(false));
+    }
 }
