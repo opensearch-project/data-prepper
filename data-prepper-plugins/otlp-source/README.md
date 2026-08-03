@@ -44,6 +44,8 @@ otel-telemetry-pipeline:
 - unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. When `health_check_service` is true and `unframed_requests` is true, enables HTTP health check service under `/health`.
 - thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 - max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`.
+- max_connection_age(Optional) => An ISO-8601 duration string (for example `PT30M`) that sets the maximum age of a gRPC server connection before it is gracefully closed. Useful when horizontally scaling, because long-lived gRPC channels do not re-resolve DNS on their own. When unset (default), Armeria places no upper bound on connection age. Allowed range: 1s to 24h.
+- connection_drain_duration(Optional) => An ISO-8601 duration string (for example `PT15S`) that controls how long Armeria waits after `max_connection_age` expires before forcefully terminating outstanding RPCs. When unset (default), Armeria uses its built-in drain duration. Allowed range: 0ms to 1h.
 - compression(Optional) => The compression type applied on the client request payload. Defaults to `none`. Supported values are:
   - `none`: no compression
   - `gzip`: apply GZip de-compression on the incoming request.

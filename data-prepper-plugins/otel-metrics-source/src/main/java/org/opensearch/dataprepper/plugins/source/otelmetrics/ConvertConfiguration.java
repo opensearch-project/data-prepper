@@ -21,6 +21,8 @@ public class ConvertConfiguration {
             serverConfiguration.setRetryInfo(oTelMetricsSourceConfig.getRetryInfo());
             serverConfiguration.setThreadCount(oTelMetricsSourceConfig.getThreadCount());
             serverConfiguration.setMaxConnectionCount(oTelMetricsSourceConfig.getMaxConnectionCount());
+            serverConfiguration.setMaxConnectionAge(oTelMetricsSourceConfig.getMaxConnectionAge());
+            serverConfiguration.setConnectionDrainDuration(oTelMetricsSourceConfig.getConnectionDrainDuration());
 
         return serverConfiguration;
     }

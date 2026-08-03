@@ -31,6 +31,7 @@ dependencies {
     implementation libs.grpc.inprocess
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation libs.hibernate.validator
     implementation libs.commons.lang3
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix

@@ -304,6 +304,24 @@ class OtelLogsSourceConfigTests {
         assertThat(retryInfo.getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
 
+    @Test
+    void maxConnectionAge_defaultsToNull() {
+        final OTelLogsSourceConfig config = new OTelLogsSourceConfig();
+        assertNull(config.getMaxConnectionAge());
+        assertNull(config.getConnectionDrainDuration());
+    }
+
+    @Test
+    void maxConnectionAge_deserializesFromYaml() {
+        final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put("max_connection_age", "PT45M");
+        settings.put("connection_drain_duration", "PT10S");
+        final OTelLogsSourceConfig config = mapper.convertValue(settings, OTelLogsSourceConfig.class);
+        assertThat(config.getMaxConnectionAge(), equalTo(Duration.ofMinutes(45)));
+        assertThat(config.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(10)));
+    }
+
     private PluginSetting completePluginSettingForOtelLogsSource(final int requestTimeoutInMillis,
                                                                  final int port,
                                                                  final String path,

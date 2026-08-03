@@ -163,6 +163,12 @@ public class OTelLogsSource implements Source<Record<Object>> {
         if (oTelLogsSourceConfig.getMaxRequestLength() != null) {
             serverBuilder.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
         }
+        if (oTelLogsSourceConfig.getMaxConnectionAge() != null) {
+            serverBuilder.maxConnectionAge(oTelLogsSourceConfig.getMaxConnectionAge());
+        }
+        if (oTelLogsSourceConfig.getConnectionDrainDuration() != null) {
+            serverBuilder.connectionDrainDuration(oTelLogsSourceConfig.getConnectionDrainDuration());
+        }
         final int threadCount = oTelLogsSourceConfig.getThreadCount();
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount);
         serverBuilder.blockingTaskExecutor(executor, true);
