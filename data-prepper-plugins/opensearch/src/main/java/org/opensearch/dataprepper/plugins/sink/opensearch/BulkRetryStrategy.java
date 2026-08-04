@@ -137,6 +137,7 @@ public final class BulkRetryStrategy {
     private final Counter documentsDuplicates;
     private final ExistingDocumentQueryManager existingDocumentQueryManager;
     private final boolean isExternalVersioning;
+    private final boolean dropVersionConflicts;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -169,9 +170,11 @@ public final class BulkRetryStrategy {
                              final String pipelineName,
                              final String pluginName,
                              final ExistingDocumentQueryManager existingDocumentQueryManager,
-                             final boolean isExternalVersioning) {
+                             final boolean isExternalVersioning,
+                             final boolean dropVersionConflicts) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.isExternalVersioning = isExternalVersioning;
+        this.dropVersionConflicts = dropVersionConflicts;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.successfulOperationsHandler = successfulOperationsHandler;
@@ -326,7 +329,8 @@ public final class BulkRetryStrategy {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
-                    if (isSkippableConflictError(bulkItemResponse)) {
+                    final ErrorCause error = bulkItemResponse.error();
+                    if (shouldDropVersionConflict(error)) {
                         continue;
                     }
                     final ErrorCause error = bulkItemResponse.error();
@@ -410,7 +414,7 @@ public final class BulkRetryStrategy {
 
                     if (canRetryItem(bulkItemResponse, attemptNumber)) {
                         requestToReissue.addOperation(bulkOperation);
-                    } else if (isSkippableConflictError(bulkItemResponse)) {
+                    } else if (shouldDropVersionConflict(bulkItemResponse.error())) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
                         bulkOperation.releaseEventHandle(true);
@@ -449,7 +453,7 @@ public final class BulkRetryStrategy {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (isItemInError(bulkItemResponse)) {
-                if (isSkippableConflictError(bulkItemResponse)) {
+                if (shouldDropVersionConflict(bulkItemResponse.error())) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
                     bulkOperation.releaseEventHandle(true);
@@ -515,20 +519,18 @@ public final class BulkRetryStrategy {
     }
 
     /**
-     * Determines whether a version conflict error on a bulk response item is acceptable
-     * and should not be treated as a failure or sent to the DLQ.
+     * Determines whether a version conflict error on a bulk response item should be dropped
+     * (treated as success) rather than sent to the DLQ.
      *
-     * A version conflict is acceptable when:
+     * A version conflict is dropped when:
      * 1. External versioning is used - conflicts indicate the document already has a newer version
-     * 2. The operation is a 'create' and the document already exists - the 409 conflict means
-     *    the document was already successfully written
+     * 2. The drop_version_conflicts configuration option is enabled
      */
-    private boolean isSkippableConflictError(final BulkResponseItem bulkItemResponse) {
-        final ErrorCause error = bulkItemResponse.error();
+    private boolean shouldDropVersionConflict(final ErrorCause error) {
         if (error == null || !VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
             return false;
         }
 
-        return isExternalVersioning || OperationType.Create.equals(bulkItemResponse.operationType());
+        return isExternalVersioning || dropVersionConflicts;
     }
 }
