@@ -333,7 +333,6 @@ public final class BulkRetryStrategy {
                     if (shouldDropVersionConflict(error)) {
                         continue;
                     }
-                    final ErrorCause error = bulkItemResponse.error();
                     LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
             }
