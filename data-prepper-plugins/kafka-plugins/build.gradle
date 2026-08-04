@@ -54,6 +54,7 @@ dependencies {
     implementation 'software.amazon.glue:schema-registry-serde:1.1.24'
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'com.github.java-json-tools:json-schema-validator:2.2.14'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'

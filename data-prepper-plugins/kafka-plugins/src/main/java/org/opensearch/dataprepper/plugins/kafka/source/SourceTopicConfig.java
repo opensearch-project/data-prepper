@@ -8,19 +8,19 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionsMaxIdleConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
 
-class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig, KafkaIsolationLevelConfig, KafkaConnectionsMaxIdleConfig {
+class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig, KafkaIsolationLevelConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final String DEFAULT_FETCH_MAX_BYTES = "50mb";
@@ -106,6 +106,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     private IsolationLevel isolationLevel = IsolationLevel.READ_UNCOMMITTED;
 
     @JsonProperty("connections_max_idle")
+    @DurationMin(seconds = 1)
     private Duration connectionsMaxIdle = DEFAULT_CONNECTIONS_MAX_IDLE;
 
     @Override

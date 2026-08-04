@@ -66,9 +66,9 @@ class KafkaCustomConsumerFactoryTest {
     }
 
     @Test
-    void setConsumerTopicProperties_omits_connections_max_idle_for_non_source_config() {
-        // A TopicConsumerConfig that is NOT a KafkaConnectionsMaxIdleConfig (e.g. the buffer consumer).
+    void setConsumerTopicProperties_omits_connections_max_idle_when_null() {
         final TopicConsumerConfig topicConfig = mock(TopicConsumerConfig.class);
+        when(topicConfig.getConnectionsMaxIdle()).thenReturn(null);
         when(topicConfig.getMaxPartitionFetchBytes()).thenReturn(1024L);
         when(topicConfig.getRetryBackoff()).thenReturn(Duration.ofSeconds(10));
         when(topicConfig.getReconnectBackoff()).thenReturn(Duration.ofSeconds(10));

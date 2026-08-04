@@ -45,7 +45,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionsMaxIdleConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
@@ -189,11 +188,9 @@ public class KafkaCustomConsumerFactory {
                 properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
             }
         }
-        if (topicConfig instanceof KafkaConnectionsMaxIdleConfig) {
-            final Duration connectionsMaxIdle = ((KafkaConnectionsMaxIdleConfig) topicConfig).getConnectionsMaxIdle();
-            if (connectionsMaxIdle != null) {
-                properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, connectionsMaxIdle.toMillis());
-            }
+        final Duration connectionsMaxIdle = topicConfig.getConnectionsMaxIdle();
+        if (connectionsMaxIdle != null) {
+            properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, connectionsMaxIdle.toMillis());
         }
     }
 
