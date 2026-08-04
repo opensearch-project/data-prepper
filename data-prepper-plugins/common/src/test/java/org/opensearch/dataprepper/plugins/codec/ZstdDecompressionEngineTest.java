@@ -1,52 +1,55 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec;
 
+import com.github.luben.zstd.Zstd;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class GZipDecompressionEngineTest {
+class ZstdDecompressionEngineTest {
 
     private DecompressionEngine decompressionEngine;
 
     @BeforeEach
     void setUp() {
-        decompressionEngine = new GZipDecompressionEngine();
+        decompressionEngine = new ZstdDecompressionEngine();
     }
 
-    // Scenario 1: Pure gzip, no header
+    // Scenario 1: Pure zstd, no header
     @Test
-    void createInputStream_with_gzip_no_header() throws IOException {
+    void createInputStream_with_zstd_no_header() throws IOException {
         final String testString = UUID.randomUUID().toString();
-        final byte[] compressed = gzipCompress(testString.getBytes(StandardCharsets.UTF_8));
+        final byte[] compressed = Zstd.compress(testString.getBytes(StandardCharsets.UTF_8));
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
 
         assertThat(result.readAllBytes(), equalTo(testString.getBytes(StandardCharsets.UTF_8)));
     }
 
-    // Scenario 2: JSON header + gzip
+    // Scenario 2: JSON header + zstd
     @Test
-    void createInputStream_with_json_header_and_gzip() throws IOException {
-        final String header = "{\"compression\": \"gzip\", \"topic\": \"test\"}\n";
+    void createInputStream_with_json_header_and_zstd() throws IOException {
+        final String header = "{\"compression\": \"zstd\", \"topic\": \"test\"}\n";
         final String testString = UUID.randomUUID().toString();
-        final byte[] compressed = gzipCompress(testString.getBytes(StandardCharsets.UTF_8));
+        final byte[] compressed = Zstd.compress(testString.getBytes(StandardCharsets.UTF_8));
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
@@ -54,12 +57,12 @@ class GZipDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(testString.getBytes(StandardCharsets.UTF_8)));
     }
 
-    // Scenario 3: Multi-line header + gzip
+    // Scenario 3: Multi-line header + zstd
     @Test
-    void createInputStream_with_multiline_header_and_gzip() throws IOException {
+    void createInputStream_with_multiline_header_and_zstd() throws IOException {
         final String header = "line1: metadata\nline2: more metadata\nline3: even more\n";
         final String testString = UUID.randomUUID().toString();
-        final byte[] compressed = gzipCompress(testString.getBytes(StandardCharsets.UTF_8));
+        final byte[] compressed = Zstd.compress(testString.getBytes(StandardCharsets.UTF_8));
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
@@ -67,12 +70,12 @@ class GZipDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(testString.getBytes(StandardCharsets.UTF_8)));
     }
 
-    // Scenario 4: Header without newline + gzip
+    // Scenario 4: Header without newline + zstd
     @Test
-    void createInputStream_with_header_no_newline_and_gzip() throws IOException {
-        final String header = "{\"compression\": \"gzip\"}";
+    void createInputStream_with_header_no_newline_and_zstd() throws IOException {
+        final String header = "{\"compression\": \"zstd\"}";
         final String testString = UUID.randomUUID().toString();
-        final byte[] compressed = gzipCompress(testString.getBytes(StandardCharsets.UTF_8));
+        final byte[] compressed = Zstd.compress(testString.getBytes(StandardCharsets.UTF_8));
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
@@ -80,9 +83,9 @@ class GZipDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(testString.getBytes(StandardCharsets.UTF_8)));
     }
 
-    // Scenario 5: No valid gzip data (misconfigured)
+    // Scenario 5: No valid zstd data (misconfigured)
     @Test
-    void createInputStream_with_no_valid_gzip_throws_exception() {
+    void createInputStream_with_no_valid_zstd_throws_exception() {
         final byte[] plainText = "This is just plain text with no compression".getBytes(StandardCharsets.UTF_8);
 
         assertThrows(IOException.class, () ->
@@ -98,9 +101,9 @@ class GZipDecompressionEngineTest {
 
     // Additional: Large payload with no header
     @Test
-    void createInputStream_with_large_gzip_payload() throws IOException {
+    void createInputStream_with_large_zstd_payload() throws IOException {
         final byte[] original = generateBytes(100_000);
-        final byte[] compressed = gzipCompress(original);
+        final byte[] compressed = Zstd.compress(original);
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
 
@@ -109,10 +112,10 @@ class GZipDecompressionEngineTest {
 
     // Additional: Large payload with header
     @Test
-    void createInputStream_with_header_and_large_gzip_payload() throws IOException {
+    void createInputStream_with_header_and_large_zstd_payload() throws IOException {
         final String header = "{\"topic\": \"events\", \"partition\": 0}\n";
         final byte[] original = generateBytes(100_000);
-        final byte[] compressed = gzipCompress(original);
+        final byte[] compressed = Zstd.compress(original);
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
         final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
@@ -121,24 +124,16 @@ class GZipDecompressionEngineTest {
     }
 
     @Test
-    void getMagicBytes_returns_gzip_magic() {
-        final byte[] expected = {(byte) 0x1F, (byte) 0x8B};
+    void getMagicBytes_returns_zstd_magic() {
+        final byte[] expected = {(byte) 0x28, (byte) 0xB5, (byte) 0x2F, (byte) 0xFD};
         assertThat(decompressionEngine.getMagicBytes(), equalTo(expected));
     }
 
-    // Additional: Stream too short (1 byte)
+    // Additional: Stream too short
     @Test
-    void createInputStream_with_single_byte_throws_exception() {
+    void createInputStream_with_stream_shorter_than_magic_throws_exception() {
         assertThrows(IOException.class, () ->
-                decompressionEngine.createInputStream(new ByteArrayInputStream(new byte[]{0x1F})));
-    }
-
-    private byte[] gzipCompress(final byte[] data) throws IOException {
-        final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        final GZIPOutputStream gzipOut = new GZIPOutputStream(byteOut);
-        gzipOut.write(data);
-        gzipOut.close();
-        return byteOut.toByteArray();
+                decompressionEngine.createInputStream(new ByteArrayInputStream(new byte[]{0x28, 0x00})));
     }
 
     private byte[] generateBytes(final int size) {

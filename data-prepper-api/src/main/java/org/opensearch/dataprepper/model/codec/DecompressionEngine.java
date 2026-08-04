@@ -14,4 +14,12 @@ import java.io.InputStream;
 
 public interface DecompressionEngine {
     InputStream createInputStream(final InputStream responseInputStream) throws IOException;
+
+    /**
+     * Returns the magic bytes that identify this compression format,
+     * or empty array if the format has no fixed magic signature.
+     */
+    default byte[] getMagicBytes() {
+        return new byte[0];
+    }
 }
