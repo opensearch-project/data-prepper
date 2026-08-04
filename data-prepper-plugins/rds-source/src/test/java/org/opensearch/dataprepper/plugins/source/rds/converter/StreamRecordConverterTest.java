@@ -11,7 +11,10 @@ import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinRelation;
 import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -21,6 +24,7 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.Matchers.startsWith;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.BULK_ACTION_METADATA_ATTRIBUTE;
@@ -32,6 +36,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKe
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.JOIN_PRIMARY_KEY_METADATA;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter.S3_BUFFER_PREFIX;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter.STREAM_INGESTION_TYPE;
@@ -125,5 +130,126 @@ class StreamRecordConverterTest {
 
     private StreamRecordConverter createObjectUnderTest() {
         return new StreamRecordConverter(s3Prefix, random.nextInt(1000) + 1);
+    }
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private JoinRelation createRelation(String parent, String child,
+                                        Object parentKey, Object childKey,
+                                        Object childPrimaryKey, String joinType) {
+        try {
+            Map<String, Object> map = Map.of(
+                    "parent", parent, "child", child,
+                    "parent_key", parentKey, "child_key", childKey,
+                    "child_primary_key", childPrimaryKey, "join_type", joinType);
+            return MAPPER.convertValue(map, JoinRelation.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void test_convert_with_schema_qualified_join_table_enriches_metadata_for_postgresql() {
+        // Simulates PostgreSQL path: schema-qualified names in config, bare table name in runtime
+        final JoinRelation relation = createRelation(
+                "public.locations", "public.evses",
+                "id", "location_id", "id", "one_to_many");
+        final JoinMetadataEnricher enricher = new JoinMetadataEnricher(List.of(relation));
+        streamRecordConverter.setJoinMetadataEnricher(enricher);
+
+        final Map<String, Object> childRowData = Map.of("id", "evse-001", "location_id", "loc-001", "status", "available");
+        final Event testEvent = TestEventFactory.getTestEventFactory().eventBuilder(EventBuilder.class)
+                .withEventType("event")
+                .withData(childRowData)
+                .build();
+
+        // PostgreSQL passes schemaName="public", tableName="evses" (bare)
+        final Event result = streamRecordConverter.convert(
+                testEvent, "postgres", "public", "evses",
+                OpenSearchBulkActions.INDEX, List.of("id"),
+                System.currentTimeMillis(), 1000L,
+                StreamEventType.INSERT,
+                List.of("id", "location_id", "status"));
+
+        // Join metadata should be enriched using the qualified name "public.evses"
+        assertThat(result.getMetadata().getAttribute(JOIN_PRIMARY_KEY_METADATA), is("loc-001"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_IS_PARENT_METADATA), is("false"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_TABLE_METADATA), is("public.evses"));
+    }
+
+    @Test
+    void test_convert_with_schema_qualified_join_parent_table_enriches_metadata_for_postgresql() {
+        final JoinRelation relation = createRelation(
+                "public.locations", "public.evses",
+                "id", "location_id", "id", "one_to_many");
+        final JoinMetadataEnricher enricher = new JoinMetadataEnricher(List.of(relation));
+        streamRecordConverter.setJoinMetadataEnricher(enricher);
+
+        final Map<String, Object> parentRowData = Map.of("id", "loc-001", "name", "Station Alpha", "latitude", 55.67);
+        final Event testEvent = TestEventFactory.getTestEventFactory().eventBuilder(EventBuilder.class)
+                .withEventType("event")
+                .withData(parentRowData)
+                .build();
+
+        // PostgreSQL passes schemaName="public", tableName="locations" (bare)
+        final Event result = streamRecordConverter.convert(
+                testEvent, "postgres", "public", "locations",
+                OpenSearchBulkActions.INDEX, List.of("id"),
+                System.currentTimeMillis(), 1000L,
+                StreamEventType.INSERT,
+                List.of("id", "name", "latitude"));
+
+        // Join metadata should be enriched using the qualified name "public.locations"
+        assertThat(result.getMetadata().getAttribute(JOIN_PRIMARY_KEY_METADATA), is("loc-001"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_IS_PARENT_METADATA), is("true"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_TABLE_METADATA), is("public.locations"));
+    }
+
+    @Test
+    void test_convert_with_bare_join_table_enriches_metadata_for_mysql() {
+        // Simulates MySQL path: bare table names in config, bare table name in runtime
+        final JoinRelation relation = createRelation(
+                "orders", "order_items",
+                "order_id", "order_id", "item_id", "one_to_many");
+        final JoinMetadataEnricher enricher = new JoinMetadataEnricher(List.of(relation));
+        streamRecordConverter.setJoinMetadataEnricher(enricher);
+
+        final Map<String, Object> childRowData = Map.of("item_id", "item-1", "order_id", "ord-1", "product", "Widget");
+        final Event testEvent = TestEventFactory.getTestEventFactory().eventBuilder(EventBuilder.class)
+                .withEventType("event")
+                .withData(childRowData)
+                .build();
+
+        // MySQL passes schemaName="my_db" (same as databaseName), tableName="order_items" (bare)
+        final Event result = streamRecordConverter.convert(
+                testEvent, "my_db", "my_db", "order_items",
+                OpenSearchBulkActions.INDEX, List.of("item_id"),
+                System.currentTimeMillis(), 1000L,
+                StreamEventType.INSERT,
+                List.of("item_id", "order_id", "product"));
+
+        // Join metadata should be enriched using the bare name "order_items"
+        assertThat(result.getMetadata().getAttribute(JOIN_PRIMARY_KEY_METADATA), is("ord-1"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_IS_PARENT_METADATA), is("false"));
+        assertThat(result.getMetadata().getAttribute(JoinMetadataEnricher.JOIN_TABLE_METADATA), is("order_items"));
+    }
+
+    @Test
+    void test_convert_without_join_enricher_does_not_set_join_metadata() {
+        // No join enricher set — should not set any join metadata
+        final Map<String, Object> rowData = Map.of("id", "loc-001", "name", "Station Alpha");
+        final Event testEvent = TestEventFactory.getTestEventFactory().eventBuilder(EventBuilder.class)
+                .withEventType("event")
+                .withData(rowData)
+                .build();
+
+        final Event result = streamRecordConverter.convert(
+                testEvent, "postgres", "public", "locations",
+                OpenSearchBulkActions.INDEX, List.of("id"),
+                System.currentTimeMillis(), 1000L,
+                StreamEventType.INSERT,
+                List.of("id", "name"));
+
+        assertThat(result.getMetadata().getAttribute(JOIN_PRIMARY_KEY_METADATA), is(nullValue()));
     }
 }
