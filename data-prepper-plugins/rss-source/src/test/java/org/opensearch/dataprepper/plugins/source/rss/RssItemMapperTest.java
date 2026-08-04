@@ -40,15 +40,15 @@ class RssItemMapperTest {
         assertThat(event.get("title", String.class), equalTo("t"));
         assertThat(event.get("link", String.class), equalTo("https://example.com/a"));
         assertThat(event.get("description", String.class), equalTo("d"));
-        assertThat(event.get("pub_date", String.class), equalTo("Mon, 01 Jan 2024 00:00:00 GMT"));
-        assertThat(event.get("guid", String.class), equalTo("guid-1"));
+        assertThat(event.get("publication_date", String.class), equalTo("Mon, 01 Jan 2024 00:00:00 GMT"));
+        assertThat(event.get("item_id", String.class), equalTo("guid-1"));
     }
 
     @Test
-    void guid_falls_back_to_link_when_absent() {
+    void item_id_falls_back_to_link_when_guid_absent() {
         final Item item = RssTestFixtures.item(null, "https://example.com/b", null, null, null);
         final Record<Event> record = mapper.map(item, "https://example.com/feed", null);
-        assertThat(record.getData().get("guid", String.class), equalTo("https://example.com/b"));
+        assertThat(record.getData().get("item_id", String.class), equalTo("https://example.com/b"));
     }
 
     @Test

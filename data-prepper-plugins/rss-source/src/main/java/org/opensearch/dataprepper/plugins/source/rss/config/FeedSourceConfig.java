@@ -20,11 +20,16 @@ import jakarta.validation.constraints.NotEmpty;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class FeedSourceConfig {
 
     public static final Duration DEFAULT_POLLING_FREQUENCY = Duration.ofMinutes(5);
     static final Duration MINIMUM_POLLING_FREQUENCY = Duration.ofSeconds(1);
+    static final int MAX_FEED_NAME_LENGTH = 64;
+    // Feed names become metric name segments, so restrict to characters accepted
+    // across common metrics backends (Prometheus, OTel, CloudWatch).
+    static final Pattern FEED_NAME_PATTERN = Pattern.compile("[A-Za-z0-9_-]+");
 
     @JsonProperty("feeds")
     @NotEmpty(message = "at least one feed is required")
@@ -67,5 +72,16 @@ public class FeedSourceConfig {
                 .map(FeedConfig::getPollingFrequency)
                 .filter(Objects::nonNull)
                 .noneMatch(frequency -> frequency.compareTo(MINIMUM_POLLING_FREQUENCY) < 0);
+    }
+
+    @AssertTrue(message = "feed names must be 1-64 characters of letters, digits, '_' or '-'")
+    boolean isFeedNamesValid() {
+        if (feeds == null) {
+            return true;
+        }
+        return feeds.keySet().stream().allMatch(name ->
+                name != null
+                        && name.length() <= MAX_FEED_NAME_LENGTH
+                        && FEED_NAME_PATTERN.matcher(name).matches());
     }
 }

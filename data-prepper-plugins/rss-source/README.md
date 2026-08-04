@@ -54,8 +54,8 @@ fields:
 | `title` | Item title |
 | `link` | Item link |
 | `description` | Item description / summary |
-| `pub_date` | Item publication date |
-| `guid` | Item GUID, falling back to `link` when absent |
+| `publication_date` | Item publication date |
+| `item_id` | Item GUID, falling back to `link` when absent |
 | `feed_name` | The feed's key from the `feeds` map (always present) |
 | `feed_url` | The configured feed URL with its query string redacted (always present) |
 
@@ -70,7 +70,7 @@ in the document body), and only when the feed provides them:
 | `feed_categories` | The feed channel's `<category>` values |
 
 `feed_name` and `feed_url` are body fields, so they are searchable and can be
-used directly for per-feed routing at the sink. `guid` is well suited to
+used directly for per-feed routing at the sink. `item_id` is well suited to
 `document_id` for sink-side upserts. For example:
 
 ```yaml
@@ -78,7 +78,7 @@ used directly for per-feed routing at the sink. `guid` is well suited to
     - opensearch:
         hosts: ["https://opensearch:9200"]
         index: "rss-${/feed_name}-%{yyyy.MM.dd}"
-        document_id: "${/guid}"
+        document_id: "${/item_id}"
 ```
 
 The channel metadata attributes are attached only when the feed provides them,

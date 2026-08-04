@@ -49,8 +49,8 @@ class RssItemMapper {
         data.put("title", item.getTitle().orElse(""));
         data.put("link", link);
         data.put("description", item.getDescription().orElse(""));
-        data.put("pub_date", item.getPubDate().orElse(""));
-        data.put("guid", item.getGuid().orElse(link));
+        data.put("publication_date", item.getPubDate().orElse(""));
+        data.put("item_id", item.getGuid().orElse(link));
         data.put(FEED_NAME_ATTRIBUTE, feedName);
         data.put(FEED_URL_ATTRIBUTE, FeedUrls.redact(feedUrl));
 

@@ -82,4 +82,26 @@ class FeedSourceConfigTest {
         final FeedSourceConfig config = objectMapper.readValue(json, FeedSourceConfig.class);
         assertThat(config.isPollingFrequencyAboveMinimum(), equalTo(false));
     }
+
+    @Test
+    void feed_names_with_valid_characters_are_valid() throws Exception {
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"opensearch-forum_1\":{\"url\":\"https://a/f\"}}}", FeedSourceConfig.class);
+        assertThat(config.isFeedNamesValid(), equalTo(true));
+    }
+
+    @Test
+    void feed_name_with_invalid_characters_is_invalid() throws Exception {
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"bad name!\":{\"url\":\"https://a/f\"}}}", FeedSourceConfig.class);
+        assertThat(config.isFeedNamesValid(), equalTo(false));
+    }
+
+    @Test
+    void feed_name_exceeding_max_length_is_invalid() throws Exception {
+        final String longName = "a".repeat(65);
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"" + longName + "\":{\"url\":\"https://a/f\"}}}", FeedSourceConfig.class);
+        assertThat(config.isFeedNamesValid(), equalTo(false));
+    }
 }
