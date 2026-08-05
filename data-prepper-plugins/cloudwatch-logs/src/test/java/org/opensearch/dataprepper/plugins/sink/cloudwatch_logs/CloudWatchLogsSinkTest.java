@@ -31,8 +31,8 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import software.amazon.awssdk.regions.Region;
 
-
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -264,8 +264,136 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
+    void WHEN_dlq_configured_and_awsConfig_has_no_region_or_role_THEN_credentials_supplier_defaults_are_used() {
+        final String expectedRegion = "us-east-1";
+        final String expectedRole = "arn:aws:iam::123456789012:role/DefaultRole";
+
+        PluginModel dlqConfig = mock(PluginModel.class);
+        Map<String, Object> dlqPluginSettings = new HashMap<>();
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(dlqPluginSettings);
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+        // awsConfig has no region and no sts_role_arn — supplier defaults should be used
+        when(mockAwsConfig.getAwsRegion()).thenReturn(null);
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(null);
+        when(mockCredentialSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of(expectedRegion)));
+        when(mockCredentialSupplier.getDefaultStsRoleArn()).thenReturn(Optional.of(expectedRole));
+
+        final String[] capturedRegion = new String[1];
+        final String[] capturedRole = new String[1];
+
+        try (MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<DlqPushHandler> dlqMock =
+                    mockConstruction(DlqPushHandler.class, (mock, context) -> {
+                        // constructor: (pluginFactory, pluginSetting, pluginMetrics, dlqConfig, region, role, metricsPrefix)
+                        capturedRegion[0] = (String) context.arguments().get(4);
+                        capturedRole[0]   = (String) context.arguments().get(5);
+                    });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+
+            assertThat(dlqMock.constructed().size(), equalTo(1));
+            assertThat(capturedRegion[0], equalTo(expectedRegion));
+            assertThat(capturedRole[0],   equalTo(expectedRole));
+
+            dlqMock.close();
+        }
+    }
+
+    @Test
+    void WHEN_dlq_configured_and_awsConfig_has_region_but_no_role_THEN_supplier_default_role_is_used() {
+        final String sinkRegion = "eu-west-1";
+        final String supplierRole = "arn:aws:iam::123456789012:role/SupplierRole";
+
+        PluginModel dlqConfig = mock(PluginModel.class);
+        Map<String, Object> dlqPluginSettings = new HashMap<>();
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(dlqPluginSettings);
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+        // awsConfig has a region but no sts_role_arn — role should fall back to supplier default
+        when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of(sinkRegion));
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(null);
+        when(mockCredentialSupplier.getDefaultStsRoleArn()).thenReturn(Optional.of(supplierRole));
+
+        final String[] capturedRegion = new String[1];
+        final String[] capturedRole = new String[1];
+
+        try (MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<DlqPushHandler> dlqMock =
+                    mockConstruction(DlqPushHandler.class, (mock, context) -> {
+                        capturedRegion[0] = (String) context.arguments().get(4);
+                        capturedRole[0]   = (String) context.arguments().get(5);
+                    });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+
+            assertThat(dlqMock.constructed().size(), equalTo(1));
+            assertThat(capturedRegion[0], equalTo(sinkRegion));
+            assertThat(capturedRole[0],   equalTo(supplierRole));
+
+            dlqMock.close();
+        }
+    }
+
+    @Test
+    void WHEN_dlq_configured_and_awsConfig_has_role_but_no_region_THEN_supplier_default_region_is_used() {
+        final String supplierRegion = "ap-southeast-1";
+        final String sinkRole = "arn:aws:iam::123456789012:role/SinkRole";
+
+        PluginModel dlqConfig = mock(PluginModel.class);
+        Map<String, Object> dlqPluginSettings = new HashMap<>();
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(dlqPluginSettings);
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+        // awsConfig has sts_role_arn but no region — region should fall back to supplier default
+        when(mockAwsConfig.getAwsRegion()).thenReturn(null);
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(sinkRole);
+        when(mockCredentialSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of(supplierRegion)));
+
+        final String[] capturedRegion = new String[1];
+        final String[] capturedRole = new String[1];
+
+        try (MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            final MockedConstruction<DlqPushHandler> dlqMock =
+                    mockConstruction(DlqPushHandler.class, (mock, context) -> {
+                        capturedRegion[0] = (String) context.arguments().get(4);
+                        capturedRole[0]   = (String) context.arguments().get(5);
+                    });
+
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+
+            assertThat(dlqMock.constructed().size(), equalTo(1));
+            assertThat(capturedRegion[0], equalTo(supplierRegion));
+            assertThat(capturedRole[0],   equalTo(sinkRole));
+
+            dlqMock.close();
+        }
+    }
+
+    @Test
     void WHEN_sink_has_dlq_config_THEN_retries_set_to_user_configured_value() {
         PluginModel dlqConfig = mock(PluginModel.class);
+        Map<String, Object> dlqPluginSettings = new HashMap<>();
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(dlqPluginSettings);
         when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
         when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
@@ -288,6 +416,7 @@ class CloudWatchLogsSinkTest {
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
+            dlqMock.close();
             dispatcherMock.close();
         }
         // Arity guard: positional reads above silently rot when fields are added/reordered.

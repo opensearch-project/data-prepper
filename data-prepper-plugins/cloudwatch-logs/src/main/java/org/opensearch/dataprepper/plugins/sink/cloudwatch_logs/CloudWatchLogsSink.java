@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConf
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.exception.InvalidBufferTypeException;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
@@ -82,8 +83,21 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         bufferFactory = new InMemoryBufferFactory();
 
         if (cloudWatchLogsSinkConfig.getDlq() != null) {
-            String region = awsConfig.getAwsRegion().toString();
-            String role = awsConfig.getAwsStsRoleArn();
+            String region = null;
+            if (awsConfig != null && awsConfig.getAwsRegion() != null) {
+                region = awsConfig.getAwsRegion().toString();
+            } else if (awsCredentialsSupplier != null) {
+                region = awsCredentialsSupplier.getDefaultRegion()
+                        .map(Region::toString)
+                        .orElse(null);
+            }
+            String role = null;
+            if (awsConfig != null && awsConfig.getAwsStsRoleArn() != null) {
+                role = awsConfig.getAwsStsRoleArn();
+            } else if (awsCredentialsSupplier != null) {
+                role = awsCredentialsSupplier.getDefaultStsRoleArn()
+                        .orElse(null);
+            }
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, cloudWatchLogsSinkConfig.getDlq(), region, role, "cloudWatchLogs");
         }
 
