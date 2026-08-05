@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -33,6 +34,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+    static final Duration DEFAULT_CONNECTIONS_MAX_IDLE = Duration.ofMillis(540000);
 
 
     @JsonProperty("serde_format")
@@ -102,6 +104,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("isolation_level")
     private IsolationLevel isolationLevel = IsolationLevel.READ_UNCOMMITTED;
+
+    @JsonProperty("connections_max_idle")
+    @DurationMin(seconds = 1)
+    private Duration connectionsMaxIdle = DEFAULT_CONNECTIONS_MAX_IDLE;
 
     @Override
     public String getEncryptionId() {
@@ -221,5 +227,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @Override
     public IsolationLevel getIsolationLevel() {
         return isolationLevel;
+    }
+
+    @Override
+    public Duration getConnectionsMaxIdle() {
+        return connectionsMaxIdle;
     }
 }

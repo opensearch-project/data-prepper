@@ -56,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +187,10 @@ public class KafkaCustomConsumerFactory {
             if (isolationLevel != null) {
                 properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
             }
+        }
+        final Duration connectionsMaxIdle = topicConfig.getConnectionsMaxIdle();
+        if (connectionsMaxIdle != null) {
+            properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, connectionsMaxIdle.toMillis());
         }
     }
 
