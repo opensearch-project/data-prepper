@@ -108,7 +108,7 @@ class PostgresSchemaManagerTest {
         schemaManager.createLogicalReplicationSlot(tableNames, publicationName, slotName);
 
         List<String> statements = statementCaptor.getAllValues();
-        assertThat(statements.get(0), is("CREATE PUBLICATION " + publicationName + " FOR TABLE " + String.join(", ", tableNames) + ";"));
+        assertThat(statements.get(0), is("CREATE PUBLICATION " + publicationName + " FOR TABLE \"table1\", \"table2\";"));
         assertThat(statements.get(1), is("SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = ?);"));
         verify(preparedStatement).executeUpdate();
         verify(preparedStatement).executeQuery();
@@ -143,12 +143,58 @@ class PostgresSchemaManagerTest {
         schemaManager.createLogicalReplicationSlot(tableNames, publicationName, slotName);
 
         List<String> statements = statementCaptor.getAllValues();
-        assertThat(statements.get(0), is("CREATE PUBLICATION " + publicationName + " FOR TABLE " + String.join(", ", tableNames) + ";"));
+        assertThat(statements.get(0), is("CREATE PUBLICATION " + publicationName + " FOR TABLE \"table1\", \"table2\";"));
         assertThat(statements.get(1), is("SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = ?);"));
         verify(preparedStatement).executeUpdate();
         verify(preparedStatement).executeQuery();
         verify(pgConnection).getReplicationAPI();
         verify(replicationConnection, never()).createReplicationSlot();
+    }
+
+    @Test
+    void test_createLogicalReplicationSlot_delimits_identifiers_that_require_quoting() throws SQLException {
+        final List<String> tableNames = List.of("My-Db-1.dbo.MyTable", "My-Db-1.dbo.my_other_table");
+        final String publicationName = "publication1";
+        final String slotName = "slot1";
+        final PreparedStatement preparedStatement = mock(PreparedStatement.class);
+        final PGConnection pgConnection = mock(PGConnection.class);
+        final PGReplicationConnection replicationConnection = mock(PGReplicationConnection.class);
+        final ResultSet resultSet = mock(ResultSet.class);
+
+        ArgumentCaptor<String> statementCaptor = ArgumentCaptor.forClass(String.class);
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(statementCaptor.capture())).thenReturn(preparedStatement);
+        when(connection.unwrap(PGConnection.class)).thenReturn(pgConnection);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);  // Replication slot exists
+        when(resultSet.getBoolean(1)).thenReturn(true);
+        when(pgConnection.getReplicationAPI()).thenReturn(replicationConnection);
+
+        schemaManager.createLogicalReplicationSlot(tableNames, publicationName, slotName);
+
+        List<String> statements = statementCaptor.getAllValues();
+        assertThat(statements.get(0), is("CREATE PUBLICATION " + publicationName + " FOR TABLE " +
+                "\"My-Db-1\".\"dbo\".\"MyTable\", \"My-Db-1\".\"dbo\".\"my_other_table\";"));
+    }
+
+    @Test
+    void test_quoteFullTableName_delimits_every_part_and_preserves_case() {
+        assertThat(PostgresSchemaManager.quoteFullTableName("mydb.dbo.MyTable"),
+                is("\"mydb\".\"dbo\".\"MyTable\""));
+        assertThat(PostgresSchemaManager.quoteFullTableName("My-Db-1.dbo.MyTable"),
+                is("\"My-Db-1\".\"dbo\".\"MyTable\""));
+    }
+
+    @Test
+    void test_quoteFullTableName_when_name_needs_no_quoting_then_only_adds_delimiters() {
+        assertThat(PostgresSchemaManager.quoteFullTableName("mydb.public.orders"),
+                is("\"mydb\".\"public\".\"orders\""));
+    }
+
+    @Test
+    void test_quoteIdentifier_escapes_embedded_double_quote() {
+        assertThat(PostgresSchemaManager.quoteIdentifier("we\"ird"), is("\"we\"\"ird\""));
     }
 
     @Test
