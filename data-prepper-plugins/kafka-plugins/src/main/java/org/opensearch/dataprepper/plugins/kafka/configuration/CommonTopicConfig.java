@@ -19,6 +19,7 @@ import java.time.Duration;
 public abstract class CommonTopicConfig implements TopicConfig {
     static final Duration DEFAULT_RETRY_BACKOFF = Duration.ofSeconds(10);
     static final Duration DEFAULT_RECONNECT_BACKOFF = Duration.ofSeconds(10);
+    static final Duration DEFAULT_METADATA_MAX_AGE = Duration.ofMillis(300000);
 
     @JsonProperty("name")
     @NotNull
@@ -31,6 +32,8 @@ public abstract class CommonTopicConfig implements TopicConfig {
     @JsonProperty("reconnect_backoff")
     private Duration reconnectBackoff = DEFAULT_RECONNECT_BACKOFF;
 
+    @JsonProperty("metadata_max_age")
+    private Duration metadataMaxAge = DEFAULT_METADATA_MAX_AGE;
 
     @Override
     public Duration getRetryBackoff() {
@@ -40,6 +43,11 @@ public abstract class CommonTopicConfig implements TopicConfig {
     @Override
     public Duration getReconnectBackoff() {
         return reconnectBackoff;
+    }
+
+    @Override
+    public Duration getMetadataMaxAge() {
+        return metadataMaxAge;
     }
 
     @Override

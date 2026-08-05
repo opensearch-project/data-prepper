@@ -37,6 +37,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     private List<String> bootStrapServers;
 
     @JsonProperty("topics")
+    @Valid
     @NotNull
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
     private List<SourceTopicConfig> topics;
@@ -62,6 +63,9 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @JsonProperty("acknowledgments_timeout")
     private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
+    @JsonProperty("acknowledgments_expiry_reset")
+    private Boolean acknowledgementsExpiryResetEnabled = false;
+
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
 
@@ -77,6 +81,11 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @Override
     public Duration getAcknowledgementsTimeout() {
         return acknowledgementsTimeout;
+    }
+
+    @Override
+    public boolean getAcknowledgementsExpiryResetEnabled() {
+        return acknowledgementsExpiryResetEnabled;
     }
 
     public List<? extends TopicConsumerConfig> getTopics() {

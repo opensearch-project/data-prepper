@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
@@ -163,7 +164,8 @@ public class KafkaSource implements Source<Record<Event>> {
 
                         }
                         consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
-                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause());
+                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause(),
+                                CompressionOption.NONE, sourceConfig.getAcknowledgementsExpiryResetEnabled());
                         allTopicConsumers.add(consumer);
 
                         executorService.submit(consumer);
