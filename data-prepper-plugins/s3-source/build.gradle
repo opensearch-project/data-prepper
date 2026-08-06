@@ -35,7 +35,7 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation libs.commons.lang3
     testImplementation 'org.wiremock:wiremock:3.13.2'
-    testImplementation 'org.eclipse.jetty:jetty-bom:11.0.25'
+    testImplementation 'org.eclipse.jetty:jetty-bom:11.0.26'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-test:test-common')
