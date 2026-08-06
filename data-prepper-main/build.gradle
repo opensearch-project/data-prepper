@@ -52,3 +52,11 @@ artifacts {
     allDependencyJars(jar)
 }
 
+
+task runDataPrepper(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'org.opensearch.dataprepper.DataPrepperExecute'
+    if (project.hasProperty('pipelineArgs')) {
+        setArgs(project.pipelineArgs.split(',').toList())
+    }
+}
