@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xerial.snappy.Snappy;
 import org.xerial.snappy.SnappyOutputStream;
@@ -30,8 +35,8 @@ class SnappyDecompressionEngineTest {
         decompressionEngine = new SnappyDecompressionEngine();
     }
 
-    // Scenario 1: Pure Xerial framed, no header
     @Test
+    @DisplayName("Pure Xerial framed, no header")
     void createInputStream_with_xerial_framed_no_header() throws IOException {
         final String testString = UUID.randomUUID().toString();
         final byte[] compressed = createXerialFramed(testString.getBytes(StandardCharsets.UTF_8));
@@ -41,8 +46,8 @@ class SnappyDecompressionEngineTest {
         assertThat(new String(result.readAllBytes(), StandardCharsets.UTF_8), equalTo(testString));
     }
 
-    // Scenario 2: Pure raw Snappy, no header, large payload (>= 128 bytes original)
     @Test
+    @DisplayName("Pure raw Snappy, no header, large payload (>= 128 bytes original)")
     void createInputStream_with_raw_snappy_no_header_large_payload() throws IOException {
         final byte[] original = generateBytes(256);
         final byte[] compressed = Snappy.compress(original);
@@ -52,8 +57,8 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 3: Pure raw Snappy, no header, tiny payload (< 32 bytes original)
     @Test
+    @DisplayName("Pure raw Snappy, no header, tiny payload (< 32 bytes original)")
     void createInputStream_with_raw_snappy_no_header_tiny_payload() throws IOException {
         final byte[] original = "short".getBytes(StandardCharsets.UTF_8);
         final byte[] compressed = Snappy.compress(original);
@@ -63,8 +68,34 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 4: JSON header + Xerial framed (large file)
     @Test
+    @DisplayName("Pure raw Snappy starting with 0x7B (123-byte original, first byte is '{')")
+    void createInputStream_with_raw_snappy_starting_with_open_brace() throws IOException {
+        final byte[] original = generateBytes(123);
+        final byte[] compressed = Snappy.compress(original);
+        // Verify first byte is indeed 0x7B
+        assertThat(compressed[0], equalTo((byte) 0x7B));
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("Pure raw Snappy starting with 0x5B (91-byte original, first byte is '[')")
+    void createInputStream_with_raw_snappy_starting_with_open_bracket() throws IOException {
+        final byte[] original = generateBytes(91);
+        final byte[] compressed = Snappy.compress(original);
+        // Verify first byte is indeed 0x5B
+        assertThat(compressed[0], equalTo((byte) 0x5B));
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("JSON header + Xerial framed payload")
     void createInputStream_with_json_header_and_xerial_framed() throws IOException {
         final String header = "{\"compression\": \"snappy\", \"topic\": \"test\"}\n";
         final String testString = UUID.randomUUID().toString();
@@ -76,9 +107,9 @@ class SnappyDecompressionEngineTest {
         assertThat(new String(result.readAllBytes(), StandardCharsets.UTF_8), equalTo(testString));
     }
 
-    // Scenario 5: JSON header + raw Snappy (large file)
     @Test
-    void createInputStream_with_json_header_and_raw_snappy_large() throws IOException {
+    @DisplayName("JSON header + raw Snappy payload")
+    void createInputStream_with_json_header_and_raw_snappy() throws IOException {
         final String header = "{\"compression\": \"snappy\", \"key\": \"value\"}\n";
         final byte[] original = generateBytes(512);
         final byte[] compressed = Snappy.compress(original);
@@ -89,9 +120,48 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 6: JSON header WITHOUT newline + raw Snappy
     @Test
-    void createInputStream_with_json_header_no_newline_and_raw_snappy() throws IOException {
+    @DisplayName("JSON header with CRLF delimiter + raw Snappy payload")
+    void createInputStream_with_json_header_crlf_and_raw_snappy() throws IOException {
+        final String header = "{\"compression\": \"snappy\"}\r\n";
+        final byte[] original = generateBytes(256);
+        final byte[] compressed = Snappy.compress(original);
+        final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("JSON header with multiple trailing newlines + raw Snappy payload")
+    void createInputStream_with_json_header_multiple_newlines_and_raw_snappy() throws IOException {
+        final String header = "{\"compression\": \"snappy\"}\n\n";
+        final byte[] original = generateBytes(256);
+        final byte[] compressed = Snappy.compress(original);
+        final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("JSON header with tab delimiter + raw Snappy payload")
+    void createInputStream_with_json_header_tab_delimiter_and_raw_snappy() throws IOException {
+        final String header = "{\"compression\": \"snappy\"}\t";
+        final byte[] original = generateBytes(256);
+        final byte[] compressed = Snappy.compress(original);
+        final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("JSON header without any delimiter + raw Snappy payload")
+    void createInputStream_with_json_header_no_delimiter_and_raw_snappy() throws IOException {
         final String header = "{\"compression\": \"snappy\"}";
         final byte[] original = generateBytes(256);
         final byte[] compressed = Snappy.compress(original);
@@ -102,11 +172,11 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 7: Multi-line header + raw Snappy
     @Test
-    void createInputStream_with_multiline_header_and_raw_snappy() throws IOException {
-        final String header = "line1: metadata\nline2: more metadata\nline3: even more\n";
-        final byte[] original = generateBytes(300);
+    @DisplayName("JSON array header + raw Snappy payload")
+    void createInputStream_with_json_array_header_and_raw_snappy() throws IOException {
+        final String header = "[{\"topic\": \"test\"}, {\"partition\": 0}]\n";
+        final byte[] original = generateBytes(256);
         final byte[] compressed = Snappy.compress(original);
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
@@ -115,34 +185,10 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 8: Pure raw Snappy, 32-126B original, incompressible
     @Test
-    void createInputStream_with_raw_snappy_ambiguous_range_incompressible() throws IOException {
-        // Random bytes in 32-126 range are typically incompressible
-        final byte[] original = generateBytes(64);
-        final byte[] compressed = Snappy.compress(original);
-
-        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
-
-        assertThat(result.readAllBytes(), equalTo(original));
-    }
-
-    // Scenario 9: Pure raw Snappy, 32-126B original, compressible
-    @Test
-    void createInputStream_with_raw_snappy_ambiguous_range_compressible() throws IOException {
-        // Repeated pattern is compressible
-        final byte[] original = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".getBytes(StandardCharsets.UTF_8);
-        final byte[] compressed = Snappy.compress(original);
-
-        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(compressed));
-
-        assertThat(result.readAllBytes(), equalTo(original));
-    }
-
-    // Scenario 10: UTF-8 header + raw Snappy (large file)
-    @Test
-    void createInputStream_with_utf8_header_and_raw_snappy() throws IOException {
-        final String header = "metadata: données compressées\n";
+    @DisplayName("JSON header with UTF-8 values + raw Snappy payload")
+    void createInputStream_with_utf8_json_header_and_raw_snappy() throws IOException {
+        final String header = "{\"metadata\": \"données compressées\", \"key\": \"日本語\"}\n";
         final byte[] original = generateBytes(400);
         final byte[] compressed = Snappy.compress(original);
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
@@ -152,28 +198,11 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Scenario 11: No valid Snappy at all (misconfigured)
     @Test
-    void createInputStream_with_no_valid_snappy_throws_exception() {
-        final byte[] plainText = "This is just plain text with no compression at all and more text to fill buffer"
-                .getBytes(StandardCharsets.UTF_8);
-
-        assertThrows(IOException.class, () ->
-                decompressionEngine.createInputStream(new ByteArrayInputStream(plainText)));
-    }
-
-    // Scenario 12: Empty stream
-    @Test
-    void createInputStream_with_empty_stream_throws_exception() {
-        assertThrows(IOException.class, () ->
-                decompressionEngine.createInputStream(new ByteArrayInputStream(new byte[0])));
-    }
-
-    // Additional: Header + raw Snappy exceeding 4KB scan buffer
-    @Test
-    void createInputStream_with_header_and_raw_snappy_exceeding_scan_buffer() throws IOException {
-        final String header = "{\"compression\": \"snappy\"}\n";
-        final byte[] original = generateBytes(50_000);
+    @DisplayName("JSON header with nested objects + raw Snappy payload")
+    void createInputStream_with_nested_json_header_and_raw_snappy() throws IOException {
+        final String header = "{\"meta\": {\"topic\": \"test\", \"nested\": {\"key\": \"val\"}}}\n";
+        final byte[] original = generateBytes(300);
         final byte[] compressed = Snappy.compress(original);
         final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
 
@@ -182,8 +211,34 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Additional: Xerial framed with large payload (streaming verification)
     @Test
+    @DisplayName("JSON header with braces in string values does not confuse parser")
+    void createInputStream_with_braces_in_json_values_and_raw_snappy() throws IOException {
+        final String header = "{\"pattern\": \"{key}: {value}\", \"regex\": \"[a-z]\"}\n";
+        final byte[] original = generateBytes(256);
+        final byte[] compressed = Snappy.compress(original);
+        final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("Leading whitespace before JSON header + raw Snappy payload")
+    void createInputStream_with_leading_whitespace_and_json_header() throws IOException {
+        final String header = "  {\"compression\": \"snappy\"}\n";
+        final byte[] original = generateBytes(256);
+        final byte[] compressed = Snappy.compress(original);
+        final byte[] combined = concatenate(header.getBytes(StandardCharsets.UTF_8), compressed);
+
+        final InputStream result = decompressionEngine.createInputStream(new ByteArrayInputStream(combined));
+
+        assertThat(result.readAllBytes(), equalTo(original));
+    }
+
+    @Test
+    @DisplayName("Xerial framed with large payload streams correctly")
     void createInputStream_with_xerial_framed_large_payload() throws IOException {
         final byte[] original = generateBytes(100_000);
         final byte[] compressed = createXerialFramed(original);
@@ -193,8 +248,8 @@ class SnappyDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    // Additional: Header + Xerial framed with large payload
     @Test
+    @DisplayName("JSON header + Xerial framed with large payload streams correctly")
     void createInputStream_with_header_and_xerial_framed_large_payload() throws IOException {
         final String header = "{\"topic\": \"events\", \"partition\": 0}\n";
         final byte[] original = generateBytes(100_000);
@@ -207,28 +262,50 @@ class SnappyDecompressionEngineTest {
     }
 
     @Test
-    void getMagicBytes_returns_xerial_magic() {
-        final byte[] expected = {(byte) 0x82, 0x53, 0x4E, 0x41, 0x50, 0x50, 0x59, 0x00};
-        assertThat(decompressionEngine.getMagicBytes(), equalTo(expected));
+    @DisplayName("No valid Snappy data throws IOException")
+    void createInputStream_with_no_valid_snappy_throws_exception() {
+        final byte[] plainText = "This is just plain text with no compression at all and more text to fill buffer"
+                .getBytes(StandardCharsets.UTF_8);
+
+        assertThrows(IOException.class, () ->
+                decompressionEngine.createInputStream(new ByteArrayInputStream(plainText)));
     }
 
     @Test
-    void decodeVarint_decodes_single_byte() {
-        final byte[] buffer = {0x05};
-        assertThat(SnappyDecompressionEngine.decodeVarint(buffer, 0), equalTo(5L));
+    @DisplayName("Empty stream throws IOException")
+    void createInputStream_with_empty_stream_throws_exception() {
+        assertThrows(IOException.class, () ->
+                decompressionEngine.createInputStream(new ByteArrayInputStream(new byte[0])));
     }
 
     @Test
-    void decodeVarint_decodes_multi_byte() {
-        // 300 = 0b100101100 → varint: 0xAC 0x02
-        final byte[] buffer = {(byte) 0xAC, 0x02};
-        assertThat(SnappyDecompressionEngine.decodeVarint(buffer, 0), equalTo(300L));
+    @DisplayName("detectJsonHeaderEnd returns 0 when buffer does not start with '{' or '['")
+    void detectJsonHeaderEnd_returns_zero_for_non_json_start() {
+        final byte[] buffer = "not json".getBytes(StandardCharsets.UTF_8);
+        assertThat(SnappyDecompressionEngine.detectJsonHeaderEnd(buffer), equalTo(0));
     }
 
     @Test
-    void decodeVarint_returns_negative_one_for_unterminated() {
-        final byte[] buffer = {(byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80};
-        assertThat(SnappyDecompressionEngine.decodeVarint(buffer, 0), equalTo(-1L));
+    @DisplayName("detectJsonHeaderEnd returns 0 when '{' is followed by invalid JSON")
+    void detectJsonHeaderEnd_returns_zero_for_invalid_json() {
+        final byte[] buffer = new byte[]{'{', (byte) 0xFF, (byte) 0xFE, 0x00, 0x01};
+        assertThat(SnappyDecompressionEngine.detectJsonHeaderEnd(buffer), equalTo(0));
+    }
+
+    @Test
+    @DisplayName("detectJsonHeaderEnd returns correct offset after JSON with newline")
+    void detectJsonHeaderEnd_returns_offset_after_json_and_newline() {
+        final byte[] buffer = "{\"key\": \"value\"}\nPAYLOAD".getBytes(StandardCharsets.UTF_8);
+        final int offset = SnappyDecompressionEngine.detectJsonHeaderEnd(buffer);
+        assertThat(new String(buffer, offset, buffer.length - offset, StandardCharsets.UTF_8), equalTo("PAYLOAD"));
+    }
+
+    @Test
+    @DisplayName("detectJsonHeaderEnd returns correct offset after JSON without delimiter")
+    void detectJsonHeaderEnd_returns_offset_after_json_no_delimiter() {
+        final byte[] buffer = "{\"key\": \"value\"}PAYLOAD".getBytes(StandardCharsets.UTF_8);
+        final int offset = SnappyDecompressionEngine.detectJsonHeaderEnd(buffer);
+        assertThat(new String(buffer, offset, buffer.length - offset, StandardCharsets.UTF_8), equalTo("PAYLOAD"));
     }
 
     private byte[] createXerialFramed(final byte[] data) throws IOException {

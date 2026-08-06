@@ -120,12 +120,6 @@ class GZipDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    @Test
-    void getMagicBytes_returns_gzip_magic() {
-        final byte[] expected = {(byte) 0x1F, (byte) 0x8B};
-        assertThat(decompressionEngine.getMagicBytes(), equalTo(expected));
-    }
-
     // Additional: Stream too short (1 byte)
     @Test
     void createInputStream_with_single_byte_throws_exception() {

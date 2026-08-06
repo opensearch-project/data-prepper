@@ -32,7 +32,6 @@ tasks.named('validateCompatibility') {
     methodExcludes.add('org.opensearch.dataprepper.model.annotations.Experimental#message()')
     methodExcludes.add('org.opensearch.dataprepper.model.annotations.Experimental#groups()')
     methodExcludes.add('org.opensearch.dataprepper.model.annotations.Experimental#payload()')
-    methodExcludes.add('org.opensearch.dataprepper.model.codec.DecompressionEngine#getMagicBytes()')
 }
 
 jacocoTestCoverageVerification {

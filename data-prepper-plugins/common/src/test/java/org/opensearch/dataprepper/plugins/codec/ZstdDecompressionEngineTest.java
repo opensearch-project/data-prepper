@@ -123,12 +123,6 @@ class ZstdDecompressionEngineTest {
         assertThat(result.readAllBytes(), equalTo(original));
     }
 
-    @Test
-    void getMagicBytes_returns_zstd_magic() {
-        final byte[] expected = {(byte) 0x28, (byte) 0xB5, (byte) 0x2F, (byte) 0xFD};
-        assertThat(decompressionEngine.getMagicBytes(), equalTo(expected));
-    }
-
     // Additional: Stream too short
     @Test
     void createInputStream_with_stream_shorter_than_magic_throws_exception() {

@@ -16,11 +16,6 @@ public class GZipDecompressionEngine implements DecompressionEngine {
     private static final byte[] GZIP_MAGIC = {(byte) 0x1F, (byte) 0x8B};
 
     @Override
-    public byte[] getMagicBytes() {
-        return GZIP_MAGIC.clone();
-    }
-
-    @Override
     public InputStream createInputStream(final InputStream inputStream) throws IOException {
         final byte[] buffer = CompressionMagicDetector.bufferLookAhead(
                 inputStream, CompressionMagicDetector.SCAN_BUFFER_SIZE);
