@@ -367,6 +367,13 @@ public final class BulkRetryStrategy {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
             sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
+            if (LOG.isDebugEnabled()) {
+                for (int i = 0; i < bulkRequestForRetry.getOperationsCount(); i++) {
+                    final BulkOperationWrapper op = (BulkOperationWrapper) bulkRequestForRetry.getOperationAt(i);
+                    final BulkResponseItem item = bulkResponse.items().get(i);
+                    LOG.debug("Document indexed successfully: id={}, index={}, status={}", op.getId(), op.getIndex(), item.status());
+                }
+            }
             List<BulkOperationWrapper> successfulOperations = new ArrayList<>(bulkRequestForRetry.getOperations());
             successfulOperationsHandler.accept(successfulOperations);
             final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
@@ -423,6 +430,7 @@ public final class BulkRetryStrategy {
                     if(isDuplicateDocument(bulkItemResponse)) {
                         documentsDuplicates.increment();
                     }
+                    LOG.debug("Document indexed successfully (retry path): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
                     successfulOperations.add(bulkOperation);
                 }
                 index++;
@@ -463,6 +471,7 @@ public final class BulkRetryStrategy {
                 if(isDuplicateDocument(bulkItemResponse)) {
                     documentsDuplicates.increment();
                 }
+                LOG.debug("Document indexed successfully (final attempt): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
                 successfulOperations.add(bulkOperation);
             }
         }

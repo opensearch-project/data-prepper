@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
@@ -134,5 +135,14 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
 
     public void setAwsConfig(AwsConfig awsConfig) {
         this.awsConfig = awsConfig;
+    }
+
+    @AssertTrue(message = "azure_federated authentication requires aws.region to be set")
+    public boolean isAzureFederatedAwsConfigValid() {
+        if (authConfig == null || authConfig.getSaslAuthConfig() == null
+                || authConfig.getSaslAuthConfig().getAzureFederatedAuthConfig() == null) {
+            return true;
+        }
+        return awsConfig != null && awsConfig.getRegion() != null;
     }
 }

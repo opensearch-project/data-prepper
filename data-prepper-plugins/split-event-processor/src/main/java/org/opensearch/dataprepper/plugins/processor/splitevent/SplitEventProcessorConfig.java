@@ -18,6 +18,8 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.annotations.ValidRegex;
 
 @JsonPropertyOrder
@@ -53,6 +55,16 @@ public class SplitEventProcessorConfig {
         return !(hasDelimiter && hasRegex);
     }
 
+    @JsonProperty("split_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+            "such as <code>contains(/body, \"\\n\")</code>, that will be evaluated to determine whether the processor will be " +
+            "run on the event. By default, all events will be processed. If the condition evaluates to <code>false</code>, " +
+            "the event passes through unchanged.")
+    @ExampleValues({
+            @Example(value = "contains(/body, \"\\n\")", description = "Only splits the event if the body field contains a newline character.")
+    })
+    private String splitWhen;
+
     public String getField() {
         return field;
     }
@@ -63,5 +75,9 @@ public class SplitEventProcessorConfig {
 
     public String getDelimiter() {
         return delimiter;
+    }
+
+    public String getSplitWhen() {
+        return splitWhen;
     }
 }

@@ -212,6 +212,29 @@ class PipelineTests {
     }
 
     @Test
+    void testIsSourceStartedIsFalseBeforeExecuteAndTrueAfterSourceStarts() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent),
+                router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        assertFalse("isSourceStarted should be false before execute", testPipeline.isSourceStarted());
+
+        testPipeline.execute();
+
+        await().atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(100))
+                .until(testPipeline::isSourceStarted);
+        assertTrue("isSourceStarted should be true after source starts", testPipeline.isSourceStarted());
+
+        testPipeline.shutdown();
+    }
+
+    @Test
     void testPipelineDelayedReadyShutdownBeforeReady() throws InterruptedException {
         final Duration delayTime = Duration.ofSeconds(2);
         final Source<Record<String>> testSource = new TestSource();

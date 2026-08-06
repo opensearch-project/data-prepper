@@ -90,7 +90,7 @@ public class KafkaCustomConsumerFactory {
                                                              final CompressionOption compressionConfig,
                                                              final boolean invokeCallbackOnExpiry) {
         Properties authProperties = new Properties();
-        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, awsCredentialsSupplier, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
 
         Properties consumerProperties = getConsumerProperties(kafkaConsumerConfig, topic, authProperties);

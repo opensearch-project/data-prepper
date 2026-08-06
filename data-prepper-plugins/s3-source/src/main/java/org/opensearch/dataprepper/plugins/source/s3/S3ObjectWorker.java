@@ -214,7 +214,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                         saveStateCounter.getAndIncrement();
                     }
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
+                    LOG.error("Failed writing S3 objects to buffer.", e);
                 }
             });
 

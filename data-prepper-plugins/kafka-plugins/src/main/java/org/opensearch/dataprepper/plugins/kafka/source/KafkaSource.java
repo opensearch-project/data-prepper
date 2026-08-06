@@ -129,7 +129,7 @@ public class KafkaSource implements Source<Record<Event>> {
             setMdc();
             Properties authProperties = new Properties();
             KafkaSecurityConfigurer.setDynamicSaslClientCallbackHandler(authProperties, sourceConfig, pluginConfigObservable);
-            KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
+            KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, awsCredentialsSupplier, LOG);
             sourceConfig.getTopics().forEach(topic -> {
                 consumerGroupID = topic.getGroupId();
                 KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true);

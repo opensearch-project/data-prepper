@@ -316,7 +316,8 @@ public class SinkPropertyConfigurer {
     public static Properties getPropertiesForAdminClient(final KafkaProducerConfig kafkaProducerConfig) {
         Properties properties = new Properties();
         setCommonServerProperties(properties, kafkaProducerConfig);
-        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, LOG);
+        // the admin/topic-creation path has no AwsCredentialsSupplier to provide
+        KafkaSecurityConfigurer.setAuthProperties(properties, kafkaProducerConfig, null, LOG);
         properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopic().getRetentionPeriod());
         return properties;
     }
