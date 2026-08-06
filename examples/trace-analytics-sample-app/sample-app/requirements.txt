@@ -7,7 +7,7 @@ opentelemetry-instrumentation-requests==0.60b1
 opentelemetry-sdk==1.39.1
 protobuf==6.33.5
 requests==2.33.0
-setuptools==78.1.1
+setuptools==83.0.0
 urllib3==2.7.0
 werkzeug==3.1.6
 zipp==3.19.1
