@@ -44,18 +44,18 @@ public class SearchResultsTest {
         assertNotNull(searchResults);
 
         assertNull(searchResults.getExpand());
-        assertNull(searchResults.getStartAt());
         assertNull(searchResults.getMaxResults());
-        assertNull(searchResults.getTotal());
+        assertEquals(searchResults.getIsLast(), false);
+        assertNull(searchResults.getNextPageToken());
         assertNull(searchResults.getIssues());
     }
 
     @Test
     public void testGetters() throws JsonProcessingException {
         String expand = "expandTest";
-        Integer startAt = 1;
+        String nextPageToken = "tokenTest";
         Integer maxResults = 100;
-        Integer total = 10;
+        Boolean isLast = true;
         List<IssueBean> testIssues = new ArrayList<>();
         IssueBean issue1 = new IssueBean();
         IssueBean issue2 = new IssueBean();
@@ -67,19 +67,20 @@ public class SearchResultsTest {
 
         Map<String, Object> searchResultsMap = new HashMap<>();
         searchResultsMap.put("expand", expand);
-        searchResultsMap.put("startAt", startAt);
         searchResultsMap.put("maxResults", maxResults);
-        searchResultsMap.put("total", total);
+        searchResultsMap.put("nextPageToken", nextPageToken);
+        searchResultsMap.put("isLast", isLast);
         searchResultsMap.put("issues", testIssues);
+        
 
         String jsonString = objectMapper.writeValueAsString(searchResultsMap);
 
         searchResults = objectMapper.readValue(jsonString, SearchResults.class);
 
         assertEquals(searchResults.getExpand(), expand);
-        assertEquals(searchResults.getStartAt(), startAt);
         assertEquals(searchResults.getMaxResults(), maxResults);
-        assertEquals(searchResults.getTotal(), total);
+        assertEquals(searchResults.getNextPageToken(), nextPageToken);
+        assertEquals(searchResults.getIsLast(), isLast);
 
         List<IssueBean> returnedIssues = searchResults.getIssues();
         assertNotNull(returnedIssues);

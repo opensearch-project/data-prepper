@@ -48,7 +48,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -204,9 +203,8 @@ public class JiraServiceTest {
 
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(mockIssues.size());
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyString());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -223,16 +221,16 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
         List<IssueBean> mockIssues = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
+        Integer mockIssuesCount = 100;
+        for (int i = 0; i < mockIssuesCount; i++) {
             IssueBean issue1 = createIssueBean(false, false);
             mockIssues.add(issue1);
         }
 
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(100);
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyString());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -271,7 +269,7 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
 
-        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyString());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
