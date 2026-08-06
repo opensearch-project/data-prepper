@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -208,12 +209,12 @@ class Office365AuthenticationProviderTest {
             when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
                     .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
 
-            assertThrows(RuntimeException.class, () -> authProvider.renewCredentials());
+            assertThrows(SaaSCrawlerException.class, () -> authProvider.renewCredentials());
 
             // Verify metrics are recorded for failed authentication
             verify(metricsRecorder, times(1)).recordAuthLatency(any(Supplier.class));
             verify(metricsRecorder, times(1)).recordAuthFailure();
-            verify(metricsRecorder, times(1)).recordError(any(HttpClientErrorException.class));
+            verify(metricsRecorder, times(1)).recordError(any(SaaSCrawlerException.class));
             verify(metricsRecorder, times(0)).recordAuthSuccess();
         }
 
@@ -227,12 +228,12 @@ class Office365AuthenticationProviderTest {
             when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
                     .thenReturn(responseEntity);
 
-            assertThrows(IllegalStateException.class, () -> authProvider.renewCredentials());
+            assertThrows(SaaSCrawlerException.class, () -> authProvider.renewCredentials());
 
             // Verify metrics are recorded for invalid response
             verify(metricsRecorder, times(1)).recordAuthLatency(any(Supplier.class));
             verify(metricsRecorder, times(1)).recordAuthFailure();
-            verify(metricsRecorder, times(1)).recordError(any(IllegalStateException.class));
+            verify(metricsRecorder, times(1)).recordError(any(SaaSCrawlerException.class));
             verify(metricsRecorder, times(0)).recordAuthSuccess();
         }
 
@@ -241,7 +242,7 @@ class Office365AuthenticationProviderTest {
             when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
                     .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
 
-            assertThrows(RuntimeException.class, () -> authProvider.renewCredentials());
+            assertThrows(SaaSCrawlerException.class, () -> authProvider.renewCredentials());
         }
 
         @Test
@@ -254,7 +255,7 @@ class Office365AuthenticationProviderTest {
             when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
                     .thenReturn(responseEntity);
 
-            IllegalStateException exception = assertThrows(IllegalStateException.class,
+            SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
                     () -> authProvider.renewCredentials());
             assertEquals("Invalid token response: missing access_token", exception.getMessage());
         }
@@ -308,9 +309,9 @@ class Office365AuthenticationProviderTest {
             initThread.interrupt();
             initThread.join(1000); // Wait for thread to finish
 
-            // Verify that a RuntimeException was thrown due to interruption
+            // Verify that a SaaSCrawlerException was thrown due to interruption
             assertNotNull(thrownException.get());
-            assertThat(thrownException.get(), instanceOf(RuntimeException.class));
+            assertThat(thrownException.get(), instanceOf(SaaSCrawlerException.class));
             
             // Verify credentials were not initialized due to interruption
             assertFalse(authProvider.isCredentialsInitialized());
