@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.test.TestDISource;
@@ -124,21 +125,15 @@ class DefaultPluginFactoryTest {
     }
 
     @Test
-    void constructor_should_throw_if_pluginProviders_is_null() {
-        given(pluginProviderLoader.getPluginProviders()).willReturn(null);
-
-        assertThrows(NullPointerException.class,
-                this::createObjectUnderTest);
-        verifyNoInteractions(beanFactoryProvider);
-    }
-
-    @Test
-    void constructor_should_throw_if_pluginProviders_is_empty() {
+    void loadPlugin_should_throw_if_pluginProviders_is_empty() {
         given(pluginProviderLoader.getPluginProviders()).willReturn(Collections.emptyList());
 
+        final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+        final PluginSetting pluginSetting = new PluginSetting("test", Collections.emptyMap());
+        pluginSetting.setPipelineName("pipeline");
+
         assertThrows(RuntimeException.class,
-                this::createObjectUnderTest);
-        verifyNoInteractions(beanFactoryProvider);
+                () -> objectUnderTest.loadPlugin(Processor.class, pluginSetting));
     }
 
     @Test
