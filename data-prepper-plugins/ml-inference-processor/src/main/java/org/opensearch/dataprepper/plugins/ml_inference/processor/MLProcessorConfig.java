@@ -107,6 +107,17 @@ public class MLProcessorConfig {
     @DurationMax(seconds = 300)
     private Duration retryInterval = Duration.ofSeconds(DEFAULT_RETRY_INTERVAL_SECONDS);
 
+    @JsonPropertyDescription("Maps document fields to model input fields for the predict action type. "
+            + "Each element is a map of <model_input_field>: <document_field>.")
+    @JsonProperty("input_map")
+    private List<Map<String, String>> inputMap;
+
+    @JsonPropertyDescription("Maps model output fields to new document fields for the predict action type. "
+            + "Each element is a map of <new_document_field>: <model_output_field>.")
+    @JsonProperty("output_map")
+    private List<Map<String, String>> outputMap;
+
+
     @JsonProperty("dlq")
     private PluginModel dlq;
 
@@ -125,6 +136,11 @@ public class MLProcessorConfig {
     }
 
     public List<String> getTagsOnFailure() { return tagsOnFailure; }
+
+    public List<Map<String, String>> getInputMap() { return inputMap; }
+
+    public List<Map<String, String>> getOutputMap() { return outputMap; }
+
 
     public PluginModel getDlq() {
         return dlq;
