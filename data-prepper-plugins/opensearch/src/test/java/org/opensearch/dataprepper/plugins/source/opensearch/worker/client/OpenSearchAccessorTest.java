@@ -34,6 +34,7 @@ import org.opensearch.client.opensearch.core.search.HitsMetadata;
 import org.opensearch.dataprepper.plugins.source.opensearch.ClientRefresher;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchTimeoutException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
@@ -627,5 +628,33 @@ public class OpenSearchAccessorTest {
         final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
         assertThat(searchRequest.sort().size(), equalTo(1));
         assertThat(searchRequest.sort().get(0).field().field(), equalTo("@timestamp"));
+    }
+
+    @Test
+    void search_with_pit_throws_SearchTimeoutException_on_IOException() throws IOException {
+        final SearchPointInTimeRequest searchPointInTimeRequest = mock(SearchPointInTimeRequest.class);
+        when(searchPointInTimeRequest.getPitId()).thenReturn(UUID.randomUUID().toString());
+        when(searchPointInTimeRequest.getPaginationSize()).thenReturn(100);
+        when(searchPointInTimeRequest.getSearchAfter()).thenReturn(null);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class)))
+                .thenThrow(new IOException("Read timed out"));
+
+        final SearchAccessor accessor = createObjectUnderTest();
+        assertThrows(SearchTimeoutException.class, () -> accessor.searchWithPit(searchPointInTimeRequest));
+    }
+
+    @Test
+    void search_with_pit_throws_SearchTimeoutException_on_SocketTimeoutException() throws IOException {
+        final SearchPointInTimeRequest searchPointInTimeRequest = mock(SearchPointInTimeRequest.class);
+        when(searchPointInTimeRequest.getPitId()).thenReturn(UUID.randomUUID().toString());
+        when(searchPointInTimeRequest.getPaginationSize()).thenReturn(100);
+        when(searchPointInTimeRequest.getSearchAfter()).thenReturn(null);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class)))
+                .thenThrow(new java.net.SocketTimeoutException("connect timed out"));
+
+        final SearchAccessor accessor = createObjectUnderTest();
+        assertThrows(SearchTimeoutException.class, () -> accessor.searchWithPit(searchPointInTimeRequest));
     }
 }

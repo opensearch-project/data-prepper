@@ -114,6 +114,10 @@ public class OpenSearchClientFactory {
             builder.connectionTimeout(openSearchSourceConfiguration.getConnectionConfiguration().getConnectTimeout());
         }
 
+        if (Objects.nonNull(openSearchSourceConfiguration.getConnectionConfiguration().getSocketTimeout())) {
+            builder.readTimeout(openSearchSourceConfiguration.getConnectionConfiguration().getSocketTimeout());
+        }
+
         attachSSLContext(builder, openSearchSourceConfiguration);
 
         return builder.build();
