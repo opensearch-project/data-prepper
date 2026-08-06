@@ -182,6 +182,9 @@ public class KafkaCustomConsumerFactory {
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
         properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int)topicConfig.getFetchMinBytes());
         properties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName());
+        if (Objects.nonNull(topicConfig.getMetadataMaxAge())) {
+            properties.put(ConsumerConfig.METADATA_MAX_AGE_CONFIG, topicConfig.getMetadataMaxAge().toMillis());
+        }
         if (topicConfig instanceof KafkaIsolationLevelConfig) {
             IsolationLevel isolationLevel = ((KafkaIsolationLevelConfig) topicConfig).getIsolationLevel();
             if (isolationLevel != null) {
