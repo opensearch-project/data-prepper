@@ -100,6 +100,9 @@ Top level:
   that do not set their own. Defaults to 5 minutes.
 * `workers` (Optional): Integer - size of the polling thread pool, bounded by the
   number of feeds. Defaults to 1.
+* `request_timeout` (Optional): Duration - connection, request, and read timeout
+  applied to each feed fetch, so one slow or hung feed cannot block its worker
+  thread indefinitely. Defaults to 30 seconds.
 
 Per feed (values in the `feeds` map):
 

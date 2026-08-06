@@ -26,6 +26,7 @@ public class FeedSourceConfig {
 
     public static final Duration DEFAULT_POLLING_FREQUENCY = Duration.ofMinutes(5);
     static final Duration MINIMUM_POLLING_FREQUENCY = Duration.ofSeconds(1);
+    static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
     static final int MAX_FEED_NAME_LENGTH = 64;
     // Feed names become metric name segments, so restrict to characters accepted
     // across common metrics backends (Prometheus, OTel, CloudWatch).
@@ -44,8 +45,15 @@ public class FeedSourceConfig {
     @Max(1000)
     private int workers = 1;
 
+    @JsonProperty("request_timeout")
+    private Duration requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+
     public Map<String, FeedConfig> getFeeds() {
         return feeds;
+    }
+
+    public Duration getRequestTimeout() {
+        return requestTimeout;
     }
 
     public Duration getPollingFrequency() {

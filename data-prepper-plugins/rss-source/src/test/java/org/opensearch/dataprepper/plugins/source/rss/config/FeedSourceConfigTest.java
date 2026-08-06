@@ -31,6 +31,15 @@ class FeedSourceConfigTest {
         final FeedSourceConfig config = new FeedSourceConfig();
         assertThat(config.getPollingFrequency(), equalTo(DEFAULT_POLLING_FREQUENCY));
         assertThat(config.getWorkers(), equalTo(1));
+        assertThat(config.getRequestTimeout(), equalTo(Duration.ofSeconds(30)));
+    }
+
+    @Test
+    void request_timeout_override_is_applied() throws Exception {
+        final FeedSourceConfig config = objectMapper.readValue(
+                "{\"feeds\":{\"a\":{\"url\":\"https://a/f\"}},\"request_timeout\":\"10s\"}",
+                FeedSourceConfig.class);
+        assertThat(config.getRequestTimeout(), equalTo(Duration.ofSeconds(10)));
     }
 
     @Test

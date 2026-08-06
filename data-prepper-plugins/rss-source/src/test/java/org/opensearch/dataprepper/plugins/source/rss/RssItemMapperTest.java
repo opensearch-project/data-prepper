@@ -52,6 +52,17 @@ class RssItemMapperTest {
     }
 
     @Test
+    void item_id_matches_dedup_key_and_is_non_empty_for_keyless_item() {
+        // Item with neither guid nor link: item_id must equal the content-hash dedup
+        // key (not empty), so it is stable and safe to use as document_id.
+        final Item item = RssTestFixtures.item("Some Title", null, "Some description", null, null);
+        final Record<Event> record = mapper.map(item, "https://example.com/feed", null);
+        final String itemId = record.getData().get("item_id", String.class);
+        assertThat(itemId, not(isEmptyOrNullString()));
+        assertThat(itemId, equalTo(mapper.dedupKey(item)));
+    }
+
+    @Test
     void puts_feed_name_and_redacted_feed_url_in_body() {
         final Record<Event> record = mapper.map(item(),
                 "https://example.com/feed?token=secret", "tech");

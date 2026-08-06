@@ -50,7 +50,10 @@ class RssItemMapper {
         data.put("link", link);
         data.put("description", item.getDescription().orElse(""));
         data.put("publication_date", item.getPubDate().orElse(""));
-        data.put("item_id", item.getGuid().orElse(link));
+        // Use the same resolution as dedupKey so the emitted item_id and the dedup
+        // key never diverge — keyless items get a stable content hash rather than an
+        // empty id (which would collide when used as document_id at the sink).
+        data.put("item_id", dedupKey(item));
         data.put(FEED_NAME_ATTRIBUTE, feedName);
         data.put(FEED_URL_ATTRIBUTE, FeedUrls.redact(feedUrl));
 

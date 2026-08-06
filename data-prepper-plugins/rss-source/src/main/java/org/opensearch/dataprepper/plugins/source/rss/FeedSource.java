@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.rss;
 
 import com.apptasticsoftware.rssreader.RssReader;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -62,7 +63,8 @@ public class FeedSource implements Source<Record<Event>> {
         }
         final int feedCount = config.getFeeds().size();
         final int workers = workerCount(config.getWorkers(), feedCount);
-        executor = Executors.newScheduledThreadPool(workers);
+        executor = Executors.newScheduledThreadPool(workers,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rss-feed-poller"));
         final RssItemMapper mapper = new RssItemMapper();
         // Spread the feeds' first polls evenly across a window bounded by the
         // smallest polling interval, so all feeds do not fetch at once on startup
@@ -116,6 +118,12 @@ public class FeedSource implements Source<Record<Event>> {
 
     private RssReader buildReader(final FeedConfig feed) {
         final RssReader rssReader = new RssReader();
+        // Bound every network phase so one slow or hung feed cannot pin its worker
+        // thread indefinitely (which would also stop that feed from rescheduling).
+        final Duration timeout = config.getRequestTimeout();
+        rssReader.setConnectionTimeout(timeout);
+        rssReader.setRequestTimeout(timeout);
+        rssReader.setReadTimeout(timeout);
         if (feed.getAuthentication() != null && feed.getAuthentication().getBasic() != null) {
             final BasicAuthConfig basic = feed.getAuthentication().getBasic();
             final String token = Base64.getEncoder().encodeToString(
