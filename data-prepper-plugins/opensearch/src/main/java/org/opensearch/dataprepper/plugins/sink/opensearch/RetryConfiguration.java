@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.RetryConfig;
 
 import java.util.Optional;
 
@@ -20,6 +21,7 @@ public class RetryConfiguration {
   private final String dlqFile;
   private final int maxRetries;
   private final DlqConfiguration dlq;
+  private final RetryConfig retryConfig;
 
   public String getDlqFile() {
     return dlqFile;
@@ -27,6 +29,10 @@ public class RetryConfiguration {
 
   public Optional<DlqConfiguration> getDlq() {
     return Optional.ofNullable(dlq);
+  }
+
+  public RetryConfig getRetryConfig() {
+    return retryConfig;
   }
 
   public int getMaxRetries() {
@@ -39,8 +45,8 @@ public class RetryConfiguration {
   public static class Builder {
     private String dlqFile;
     private int maxRetries = Integer.MAX_VALUE;
-
     private DlqConfiguration dlq;
+    private RetryConfig retryConfig = new RetryConfig();
 
     public Builder withDlqFile(final String dlqFile) {
       checkNotNull(dlqFile, "dlqFile cannot be null.");
@@ -59,6 +65,13 @@ public class RetryConfiguration {
       this.dlq = dlq;
       return this;
     }
+
+    public Builder withRetryConfig(final RetryConfig retryConfig) {
+      checkNotNull(retryConfig, "retryConfig cannot be null");
+      this.retryConfig = retryConfig;
+      return this;
+    }
+
     public RetryConfiguration build() {
       return new RetryConfiguration(this);
     }
@@ -68,6 +81,7 @@ public class RetryConfiguration {
     this.dlqFile = builder.dlqFile;
     this.maxRetries = builder.maxRetries;
     this.dlq = builder.dlq;
+    this.retryConfig = builder.retryConfig;
   }
 
  public static RetryConfiguration readRetryConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
@@ -83,6 +97,10 @@ public class RetryConfiguration {
    final DlqConfiguration dlqConfiguration = openSearchSinkConfig.getDlq();
    if (dlqConfiguration != null) {
      builder = builder.withDlq(dlqConfiguration);
+   }
+   final RetryConfig retryConfig = openSearchSinkConfig.getRetryConfig();
+   if (retryConfig != null) {
+     builder = builder.withRetryConfig(retryConfig);
    }
    return builder.build();
   }
