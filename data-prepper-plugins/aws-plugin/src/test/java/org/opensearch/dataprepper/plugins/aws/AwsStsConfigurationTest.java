@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -43,6 +47,20 @@ public class AwsStsConfigurationTest {
         assertThat(objectUnderTest, notNullValue());
         assertThat(objectUnderTest.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:role/test-role"));
         assertThat(objectUnderTest.getStsHeaderOverrides(), equalTo(Map.of("abc", "123", "def", "456")));
+    }
+
+    @Test
+    void testUseAwsSdkDefault_defaults_to_false() throws JsonProcessingException {
+        final String jsonConfiguration = "{\"sts_role_arn\": \"arn:aws:iam::123456789012:role/test-role\"}";
+        final AwsStsConfiguration objectUnderTest = OBJECT_MAPPER.readValue(jsonConfiguration, AwsStsConfiguration.class);
+        assertThat(objectUnderTest.isUseAwsSdkDefault(), equalTo(false));
+    }
+
+    @Test
+    void testUseAwsSdkDefault_true() throws JsonProcessingException {
+        final String jsonConfiguration = "{\"use_aws_sdk_default\": true}";
+        final AwsStsConfiguration objectUnderTest = OBJECT_MAPPER.readValue(jsonConfiguration, AwsStsConfiguration.class);
+        assertThat(objectUnderTest.isUseAwsSdkDefault(), equalTo(true));
     }
 
     private static List<Region> getRegions() {

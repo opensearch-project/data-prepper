@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
@@ -10,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -37,6 +42,7 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+    static final Duration DEFAULT_CONNECTIONS_MAX_IDLE = Duration.ofMillis(540000);
 
     @JsonProperty("encryption_id")
     private String encryptionId;
@@ -116,6 +122,10 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
 
     @JsonProperty("fetch_min_bytes")
     private ByteCount fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
+
+    @JsonProperty("connections_max_idle")
+    @DurationMin(seconds = 1)
+    private Duration connectionsMaxIdle = DEFAULT_CONNECTIONS_MAX_IDLE;
 
     @Override
     @JsonIgnore
@@ -247,6 +257,11 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @Override
     public long getMaxPartitionFetchBytes() {
         return maxPartitionFetchBytes.getBytes();
+    }
+
+    @Override
+    public Duration getConnectionsMaxIdle() {
+        return connectionsMaxIdle;
     }
 
     @AssertTrue(message = "Either encryption_id or encryption_key together with kms_config must be specified, " +

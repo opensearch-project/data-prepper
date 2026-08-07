@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.joda.time.DateTime;
@@ -9,7 +10,7 @@ import software.amazon.awssdk.utils.http.SdkHttpUtils;
 import java.util.List;
 
 /**
- * A helper class that represents a strongly typed notification item sent to EvenBridge
+ * A helper class that represents a strongly typed notification item sent to EventBridge
  */
 public class S3EventBridgeNotification {
     private final String version;
@@ -86,6 +87,7 @@ public class S3EventBridgeNotification {
         return detail;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Detail {
         private final String version;
         private final Bucket bucket;
@@ -94,6 +96,7 @@ public class S3EventBridgeNotification {
         private final String requester;
         private final String sourceIpAddress;
         private final String reason;
+        private final String eventVersion;
 
         @JsonCreator
         public Detail(@JsonProperty(value = "version") final String version,
@@ -102,7 +105,8 @@ public class S3EventBridgeNotification {
                       @JsonProperty("request-id") final String requestId,
                       @JsonProperty("requester") final String requester,
                       @JsonProperty("source-ip-address") final String sourceIpAddress,
-                      @JsonProperty("reason") final String reason) {
+                      @JsonProperty("reason") final String reason,
+                      @JsonProperty("event-version") final String eventVersion) {
             this.version = version;
             this.bucket = bucket;
             this.object = object;
@@ -110,6 +114,7 @@ public class S3EventBridgeNotification {
             this.requester = requester;
             this.sourceIpAddress = sourceIpAddress;
             this.reason = reason;
+            this.eventVersion = eventVersion;
         }
 
         public String getVersion() {
@@ -156,13 +161,13 @@ public class S3EventBridgeNotification {
 
     public static class Object {
         private final String key;
-        private final int size;
+        private final long size;
         private final String etag;
         private final String versionId;
         private final String sequencer;
 
         public Object(@JsonProperty(value = "key") final String key,
-                      @JsonProperty(value = "size") final int size,
+                      @JsonProperty(value = "size") final long size,
                       @JsonProperty(value = "etag") final String etag,
                       @JsonProperty(value = "version-id") final String versionId,
                       @JsonProperty(value = "sequencer") final String sequencer) {
@@ -173,7 +178,7 @@ public class S3EventBridgeNotification {
             this.sequencer = sequencer;
         }
 
-        public int getSize() {
+        public long getSize() {
             return size;
         }
 

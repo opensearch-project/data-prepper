@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
@@ -188,7 +189,7 @@ public class LambdaProcessorSinkIT {
         lambdaProcessorConfig = mock(LambdaProcessorConfig.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         pluginFactory = mock(PluginFactory.class);
         JsonInputCodecConfig jsonInputCodecConfig = mock(JsonInputCodecConfig.class);
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);

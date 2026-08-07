@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.model.event;
@@ -28,7 +32,7 @@ class JacksonEventKey implements EventKey {
     private JsonPointer jsonPointer;
     private final Set<EventKeyFactory.EventAction> supportedActions;
     private static final Pattern INVALID_KEY_CHARS_PATTERN =
-            Pattern.compile("[^A-Za-z0-9._~@/\\[\\]-]");
+            Pattern.compile("[^A-Za-z0-9._~@/\\[\\]\\(\\)-]");
 
     /**
      * Constructor for the JacksonEventKey which should only be used by implementation
@@ -182,6 +186,8 @@ class JacksonEventKey implements EventKey {
                     || c == ']'
                     || c == ' '
                     || c == '$'
+                    || c == '('
+                    || c == ')'
             )) {
 
                 return false;

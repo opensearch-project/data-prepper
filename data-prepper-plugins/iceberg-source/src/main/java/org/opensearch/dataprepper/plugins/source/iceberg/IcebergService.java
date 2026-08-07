@@ -1,0 +1,168 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+package org.opensearch.dataprepper.plugins.source.iceberg;
+
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.Table;
+import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.iceberg.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.LocalDiskShuffleStorage;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleConfig;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpServer;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleHttpService;
+import org.opensearch.dataprepper.plugins.source.iceberg.shuffle.ShuffleStorage;
+import org.opensearch.dataprepper.plugins.source.iceberg.worker.ChangelogWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class IcebergService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(IcebergService.class);
+    private static final String COW_MODE = "copy-on-write";
+
+    private final EnhancedSourceCoordinator sourceCoordinator;
+    private final IcebergSourceConfig sourceConfig;
+    private final PluginMetrics pluginMetrics;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EventFactory eventFactory;
+    private final ShuffleStorage shuffleStorage;
+    private ShuffleHttpServer shuffleHttpServer;
+    private ExecutorService executor;
+
+    public IcebergService(final EnhancedSourceCoordinator sourceCoordinator,
+                          final IcebergSourceConfig sourceConfig,
+                          final PluginMetrics pluginMetrics,
+                          final AcknowledgementSetManager acknowledgementSetManager,
+                          final EventFactory eventFactory) {
+        this.sourceCoordinator = sourceCoordinator;
+        this.sourceConfig = sourceConfig;
+        this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
+        final Path shuffleBaseDir = resolveShuffleBaseDir(sourceConfig.getShuffleConfig());
+        this.shuffleStorage = new LocalDiskShuffleStorage(shuffleBaseDir);
+        this.shuffleStorage.cleanupAll();
+    }
+
+    public void start(final Buffer<Record<Event>> buffer) {
+        LOG.info("Starting Iceberg service");
+
+        // Start shuffle HTTP server
+        final ShuffleHttpService shuffleHttpService = new ShuffleHttpService(shuffleStorage);
+        shuffleHttpServer = new ShuffleHttpServer(sourceConfig.getShuffleConfig(), shuffleHttpService);
+        shuffleHttpServer.start();
+
+        // Load all tables upfront. Single point of Table lifecycle management.
+        final Map<String, Table> tables = new HashMap<>();
+        final Map<String, TableConfig> tableConfigs = new HashMap<>();
+
+        for (final TableConfig tableConfig : sourceConfig.getTables()) {
+            final String tableName = tableConfig.getTableName();
+            LOG.info("Loading catalog and table for {}", tableName);
+
+            final Map<String, String> catalogProps = new HashMap<>(
+                    tableConfig.getCatalog() != null ? tableConfig.getCatalog() : sourceConfig.getCatalog());
+            final Catalog catalog = CatalogUtil.buildIcebergCatalog(tableName, catalogProps, null);
+
+            final TableIdentifier tableId = TableIdentifier.parse(tableName);
+
+            final Table table = catalog.loadTable(tableId);
+            validateCoWTable(table, tableName);
+
+            if (tableConfig.getIdentifierColumns().isEmpty()) {
+                LOG.warn("No identifier_columns configured for table {}. "
+                        + "CDC correctness requires identifier_columns for UPDATE/DELETE support "
+                        + "and idempotent writes.", tableName);
+            } else {
+                for (final String col : tableConfig.getIdentifierColumns()) {
+                    if (table.schema().findField(col) == null) {
+                        throw new IllegalArgumentException(
+                                "identifier_columns contains '" + col + "' which does not exist in table " + tableName);
+                    }
+                }
+            }
+
+            tables.put(tableName, table);
+            tableConfigs.put(tableName, tableConfig);
+
+            LOG.info("Loaded table {} (current snapshot: {})",
+                    tableName,
+                    table.currentSnapshot() != null ? table.currentSnapshot().snapshotId() : "none");
+        }
+
+        // Start schedulers with shared table references
+        final List<Runnable> runnableList = new ArrayList<>();
+
+        final var certificate = shuffleHttpServer.getCertificate();
+
+        runnableList.add(new LeaderScheduler(sourceCoordinator, tableConfigs,
+                sourceConfig.getPollingInterval(), tables, shuffleStorage, sourceConfig.getShuffleConfig(), certificate));
+        runnableList.add(new ChangelogWorker(
+                sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate));
+
+        executor = Executors.newFixedThreadPool(runnableList.size());
+        runnableList.forEach(executor::submit);
+    }
+
+    private static Path resolveShuffleBaseDir(final ShuffleConfig shuffleConfig) {
+        final Path baseDir;
+        if (shuffleConfig.getStoragePath() != null) {
+            baseDir = Path.of(shuffleConfig.getStoragePath());
+        } else {
+            final String dataPrepperDir = System.getProperty("data-prepper.dir");
+            if (dataPrepperDir != null) {
+                baseDir = Path.of(dataPrepperDir, "data", "shuffle");
+            } else {
+                baseDir = Path.of(System.getProperty("java.io.tmpdir"), "data-prepper-shuffle");
+            }
+        }
+        return baseDir.resolve(String.valueOf(shuffleConfig.getServerPort()));
+    }
+
+    public void shutdown() {
+        LOG.info("Shutting down Iceberg service");
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+        if (shuffleHttpServer != null) {
+            shuffleHttpServer.stop();
+        }
+    }
+
+    private void validateCoWTable(final Table table, final String tableName) {
+        final String deleteMode = table.properties().getOrDefault("write.delete.mode", COW_MODE);
+        final String updateMode = table.properties().getOrDefault("write.update.mode", COW_MODE);
+        final String mergeMode = table.properties().getOrDefault("write.merge.mode", COW_MODE);
+
+        if (!COW_MODE.equals(deleteMode) || !COW_MODE.equals(updateMode) || !COW_MODE.equals(mergeMode)) {
+            throw new IllegalArgumentException(
+                    "Table " + tableName + " uses Merge-on-Read (delete.mode=" + deleteMode
+                            + ", update.mode=" + updateMode + ", merge.mode=" + mergeMode
+                            + "). Only Copy-on-Write tables are supported.");
+        }
+    }
+}

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.common.sink;
@@ -14,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvider, SinkDlqHandler {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultSinkOutputStrategy.class);
@@ -33,11 +38,14 @@ public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvid
         long startTime = System.nanoTime();
         // getFlushableBuffer() should return the buffer contents
         SinkFlushableBuffer flushableBuffer = sinkBuffer.getFlushableBuffer(sinkFlushContext);
+        if (flushableBuffer == null) {
+            return;
+        }
         List<Event> events = flushableBuffer.getEvents();
         try {      
             SinkFlushResult flushResult = flushableBuffer.flush();
             if (flushResult == null) { // success
-                sinkMetrics.recordRequestLatency((double)(System.nanoTime() - startTime));
+                sinkMetrics.recordRequestLatency(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
                 for (final Event event: events) {
                     event.getEventHandle().release(true);
                 }

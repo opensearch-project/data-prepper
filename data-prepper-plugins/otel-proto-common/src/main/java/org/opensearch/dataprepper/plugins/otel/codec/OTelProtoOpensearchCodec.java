@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
@@ -18,15 +18,15 @@ import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
-import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
+import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.opensearch.dataprepper.model.log.JacksonOtelLog;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
@@ -53,9 +53,6 @@ import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -72,6 +69,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 
 /**
  * OTelProtoOpensearchCodec is for encoding/decoding between {@link org.opensearch.dataprepper.model.trace} and {@link io.opentelemetry.proto} in Opensearch friendly way.
@@ -940,6 +941,20 @@ public class OTelProtoOpensearchCodec {
             }
 
             return anyValueBuilder.build();
+        }
+
+        @Override
+        public io.opentelemetry.proto.metrics.v1.ResourceMetrics convertToResourceMetrics(final org.opensearch.dataprepper.model.metric.Metric metric) 
+                throws UnsupportedEncodingException, DecoderException {
+            throw new UnsupportedOperationException(
+                "OTelProtoOpensearchCodec does not support metric encoding. Use OTelProtoStandardCodec instead.");
+        }
+
+        @Override
+        public io.opentelemetry.proto.logs.v1.ResourceLogs convertToResourceLogs(final org.opensearch.dataprepper.model.log.Log log) 
+                throws UnsupportedEncodingException, DecoderException {
+            throw new UnsupportedOperationException(
+                "OTelProtoOpensearchCodec does not support log encoding. Use OTelProtoStandardCodec instead.");
         }
     }
 

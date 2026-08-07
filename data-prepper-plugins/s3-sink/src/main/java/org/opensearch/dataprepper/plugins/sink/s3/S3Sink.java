@@ -175,4 +175,23 @@ public class S3Sink extends AbstractSink<Record<Event>> {
     public void doOutput(final Collection<Record<Event>> records) {
         s3SinkService.output(records);
     }
+
+    /**
+     * Shutdown the S3 sink by flushing all remaining data to S3 before shutting down.
+     * This ensures no data is lost during shutdown.
+     */
+    @Override
+    public void shutdown() {
+        LOG.info("S3 sink shutdown initiated. Flushing all remaining data to S3.");
+        try {
+            // Force flush all remaining groups to S3
+            s3SinkService.flushAllRemainingGroups();
+        } catch (Exception e) {
+            LOG.error("Error occurred while flushing remaining data during shutdown", e);
+        } finally {
+            // Call parent shutdown to stop retry thread
+            super.shutdown();
+            LOG.info("S3 sink shutdown completed.");
+        }
+    }
 }

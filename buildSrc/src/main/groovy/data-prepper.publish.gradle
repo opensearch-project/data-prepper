@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 plugins {
@@ -17,10 +21,11 @@ afterEvaluate {
             }
             maven {
                 name = 'snapshots'
-                url = 'https://central.sonatype.com/repository/maven-snapshots/'
-                credentials {
-                    username System.getenv("SONATYPE_USERNAME")
-                    password System.getenv("SONATYPE_PASSWORD")
+                url = System.getenv("MAVEN_SNAPSHOTS_S3_REPO")
+                credentials(AwsCredentials) {
+                    accessKey = System.getenv("AWS_ACCESS_KEY_ID")
+                    secretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+                    sessionToken = System.getenv("AWS_SESSION_TOKEN")
                 }
             }
         }

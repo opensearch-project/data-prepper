@@ -67,7 +67,39 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'data-prepper-parallel-log',
                 'parallel-grok-substitute-e2e-pipeline.yml',
                 'data_prepper.yml'
-        )
+        ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceTest.testOtelLogsSourcePipelineEndToEnd*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-pipeline.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceGrpcEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source grpc service.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceGrpcTest.testGrpcLogIngestion*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-pipeline.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceGrpcUnframedRequestsEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source grpc service with unframed requests enabled.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceTest.testOtelLogsSourceWithUnframedRequestsPipelineEndToEnd*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-unframed-requests-pipeline.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
+                'basicLogOtelLogsSourceProtobufPayloadEndToEndTest',
+                'Runs the basic end-to-end test using the otel logs source grpc service with unframed requests enabled.',
+                'org.opensearch.dataprepper.integration.log.EndToEndOtelLogsSourceTest.testOtelLogsSourcePipelineWithProtobufPayloadEndToEnd*',
+                'data-prepper-otel-logs-source',
+                'otel-logs-source-pipeline.yml',
+                'data_prepper.yml'
+        ),
 ]
 
 
@@ -138,7 +170,10 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
+    integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${targetOpenTelemetryVersion}"
     integrationTestImplementation libs.armeria.core
+    integrationTestImplementation libs.armeria.grpc
     integrationTestImplementation testLibs.awaitility
     integrationTestImplementation libs.opensearch.rhlc
+    integrationTestImplementation libs.protobuf.util
 }

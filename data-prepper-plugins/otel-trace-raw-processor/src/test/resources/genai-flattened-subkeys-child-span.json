@@ -1,0 +1,31 @@
+{
+  "traceId": "CREWAI_TRACE_ID",
+  "spanId": "CREWAI_CHILD_SPAN_ID",
+  "traceState": "",
+  "kind": "SPAN_KIND_CLIENT",
+  "name": "ChatBedrock.chat",
+  "startTime": "2026-02-17T12:00:00.100000000Z",
+  "durationInNanos": 500000000,
+  "endTime": "2026-02-17T12:00:00.600000000Z",
+  "parentSpanId": "CREWAI_ROOT_SPAN_ID",
+  "attributes": {
+    "gen_ai.system": "AWS",
+    "gen_ai.usage.input_tokens": 50,
+    "gen_ai.usage.output_tokens": 10,
+    "gen_ai.prompt.0.role": "user",
+    "gen_ai.prompt.0.content": "What is 2+2?",
+    "gen_ai.completion.0.role": "assistant",
+    "gen_ai.completion.0.content": "Four",
+    "llm.input_messages": "[{\"role\":\"user\",\"content\":\"What is 2+2?\"}]",
+    "llm.input_messages.0.message.role": "user",
+    "llm.input_messages.0.message.content": "What is 2+2?",
+    "llm.output_messages": "[{\"role\":\"assistant\",\"content\":\"Four\"}]",
+    "llm.output_messages.0.message.role": "assistant",
+    "llm.output_messages.0.message.content": "Four"
+  },
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}

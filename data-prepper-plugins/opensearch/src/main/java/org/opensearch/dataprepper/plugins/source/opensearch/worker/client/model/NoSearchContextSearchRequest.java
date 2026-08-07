@@ -12,11 +12,13 @@ public class NoSearchContextSearchRequest {
     private final String index;
     private final List<String> searchAfter;
     private final Integer paginationSize;
+    private final List<SortingOptions> sortingOptions;
 
     private NoSearchContextSearchRequest(final NoSearchContextSearchRequest.Builder builder) {
         this.index = builder.index;
         this.searchAfter = builder.searchAfter;
         this.paginationSize = builder.paginationSize;
+        this.sortingOptions = builder.sortingOptions;
     }
 
     public static NoSearchContextSearchRequest.Builder builder() {
@@ -35,11 +37,16 @@ public class NoSearchContextSearchRequest {
         return paginationSize;
     }
 
+    public List<SortingOptions> getSortOptions() {
+        return sortingOptions;
+    }
+
     public static class Builder {
 
         private String index;
         private List<String> searchAfter;
         private Integer paginationSize;
+        private List<SortingOptions> sortingOptions;
 
 
         public Builder() {
@@ -58,6 +65,11 @@ public class NoSearchContextSearchRequest {
 
         public NoSearchContextSearchRequest.Builder withIndex(final String index) {
             this.index = index;
+            return this;
+        }
+
+        public NoSearchContextSearchRequest.Builder withSortOptions(final List<SortingOptions> sortingOptions) {
+            this.sortingOptions = sortingOptions;
             return this;
         }
 

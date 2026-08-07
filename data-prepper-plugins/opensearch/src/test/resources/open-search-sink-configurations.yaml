@@ -8,6 +8,12 @@ valid-sink:
         sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
+valid-sink-with-path-prefix:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      path_prefix: "/os"
 invalid-action:
   sink:
     opensearch:

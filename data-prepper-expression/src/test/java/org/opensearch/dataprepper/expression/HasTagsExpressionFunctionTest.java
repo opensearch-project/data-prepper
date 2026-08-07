@@ -1,26 +1,31 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.api.BeforeEach;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.apache.commons.lang3.RandomStringUtils;
 import static org.mockito.Mockito.mock;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.function.Function;
 
 class HasTagsExpressionFunctionTest {
     private HasTagsExpressionFunction hasTagsExpressionFunction;
@@ -45,7 +50,7 @@ class HasTagsExpressionFunctionTest {
         for (int i = 0; i < numTags; i++) {
             String tag = RandomStringUtils.randomAlphabetic(5);
             testEvent.getMetadata().addTags(List.of(tag));
-            tags.add("\""+tag+"\"");
+            tags.add(tag);
         }
     }
 
@@ -69,7 +74,7 @@ class HasTagsExpressionFunctionTest {
         generateTags(testEvent, numTags);
         hasTagsExpressionFunction = createObjectUnderTest();
         for (int i = 0; i < numTags; i++) {
-            String unknownTag = "\""+RandomStringUtils.randomAlphabetic(5)+"\"";
+            String unknownTag = RandomStringUtils.randomAlphabetic(5);
             List<Object> tagsList = tags.subList(0, i);
             tagsList.add((Object)unknownTag);
             assertThat(hasTagsExpressionFunction.evaluate(tagsList, testEvent, testFunction), equalTo(false));
@@ -99,11 +104,4 @@ class HasTagsExpressionFunctionTest {
         hasTagsExpressionFunction = createObjectUnderTest();
         assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of(30), testEvent, testFunction));
     }
-
-    @Test
-    void testHasTagsWithStringTagsWithOutQuotes() {
-        hasTagsExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of("tag"), testEvent, testFunction));
-    }
-
 }

@@ -15,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.s3.common.config.AwsAuthenticationOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 

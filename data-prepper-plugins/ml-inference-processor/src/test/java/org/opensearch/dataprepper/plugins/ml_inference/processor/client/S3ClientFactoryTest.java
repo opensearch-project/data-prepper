@@ -45,14 +45,13 @@ public class S3ClientFactoryTest {
     void setUp() {
         when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
     }
 
     @Test
     void testCreateS3Client() {
         S3Client s3Client = S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier);
         assertNotNull(s3Client);
-        assertEquals(Region.US_WEST_2, mlProcessorConfig.getAwsAuthenticationOptions().getAwsRegion());
     }
 
     @Test

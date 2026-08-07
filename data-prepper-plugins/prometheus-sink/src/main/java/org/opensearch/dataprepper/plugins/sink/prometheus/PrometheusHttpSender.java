@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.client.retry.Backoff;
@@ -38,6 +39,7 @@ import com.google.common.annotations.VisibleForTesting;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
+import java.util.Base64;
 import java.util.Set;
 
 /**
@@ -58,12 +60,14 @@ public class PrometheusHttpSender {
     private final long idleTimeoutMillis;
     private final CompressionEngine compressionEngine;
     private final PrometheusSinkConfiguration config;
+    private final String authHeader;
 
     /**
      * Constructor for the PrometheusHttpSender.
      *
      * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config The configuration for the Prometheus sink plugin.
+     * @param sinkMetrics The sink metrics for recording request information
      */
     public PrometheusHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final PrometheusSinkConfiguration config, @Nonnull final SinkMetrics sinkMetrics) {
         this(awsCredentialsSupplier, buildWebClient(config), config, sinkMetrics);
@@ -78,7 +82,16 @@ public class PrometheusHttpSender {
         this.config = config;
         this.connectionTimeoutMillis = config.getConnectionTimeout().toMillis();
         this.idleTimeoutMillis = config.getIdleTimeout().toMillis();
+        this.authHeader = buildAuthHeader(config);
+    }
 
+    private static String buildAuthHeader(final PrometheusSinkConfiguration config) {
+        if (config.getAuthentication() != null && config.getAuthentication().getHttpBasic() != null) {
+            final String credentials = config.getAuthentication().getHttpBasic().getUsername()
+                    + ":" + config.getAuthentication().getHttpBasic().getPassword();
+            return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        }
+        return null;
     }
 
     /**
@@ -120,6 +133,7 @@ public class PrometheusHttpSender {
      * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
      *
      * @param payload - batch the batch of spans to send
+     * @return PrometheusPushResult containing the success status and response code
      */
     public PrometheusPushResult pushToEndpoint(final byte[] payload) {
         PrometheusPushResult result;
@@ -145,28 +159,32 @@ public class PrometheusHttpSender {
                     return new PrometheusPushResult(handleResponse(statusCode, responseBytes), statusCode);
                 })
                 .exceptionally(throwable -> {
-                    LOG.error("Request failed", throwable);
+                    LOG.error(NOISY, "Request failed", throwable);
                     return new PrometheusPushResult(false, 0);
                 })
                 .join();  // Wait for completion
         } catch (Exception e) {
-            LOG.error("Failed to execute request", e);
+            LOG.error(NOISY, "Failed to execute request", e);
             result = new PrometheusPushResult(false, 0);
         }
         return result;
     }
 
     private SdkHttpFullRequest createSdkHttpRequest(final String url, @Nonnull final byte[] payload) {
-        return SdkHttpFullRequest.builder()
+        final SdkHttpFullRequest.Builder builder = SdkHttpFullRequest.builder()
                 .method(SdkHttpMethod.POST)
                 .uri(URI.create(url))
-                .putHeader("Content-Encoding", config.getEncoding().toString())
+                .putHeader("Content-Encoding", config.getEncoding().name().toLowerCase())
                 .putHeader("Content-Type", config.getContentType())
                 .putHeader("X-Prometheus-Remote-Write-Version", config.getRemoteWriteVersion())
-                .putHeader("x-amz-content-sha256","required")
-                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream())
-                .build();
-
+                .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream());
+        if (authHeader != null) {
+            builder.putHeader("Authorization", authHeader);
+        }
+        if (signer != null) {
+            builder.putHeader("x-amz-content-sha256", "required");
+        }
+        return builder.build();
     }
 
     private HttpRequest buildHttpRequest(final byte[] payload) {
@@ -210,7 +228,7 @@ public class PrometheusHttpSender {
                 ? new String(responseBytes, StandardCharsets.UTF_8)
                 : "<no body>";
 
-        LOG.error("Non-successful Prometheus server response. Status: {}, Response: {}",
+        LOG.error(NOISY, "Non-successful Prometheus server response. Status: {}, Response: {}",
                     statusCode, responseBody);
         return false;
     }

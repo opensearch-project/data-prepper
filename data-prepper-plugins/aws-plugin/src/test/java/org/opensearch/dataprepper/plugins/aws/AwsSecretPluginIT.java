@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -95,6 +99,7 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
         when(awsSecretManagerConfiguration.getRefreshInterval()).thenReturn(testInterval);
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default behavior
         when(awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier)).thenReturn(secretsManagerClient);
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
@@ -129,6 +134,7 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_SECRET_CONFIG_ID, awsSecretManagerConfiguration));
         when(awsSecretManagerConfiguration.isDisableRefresh()).thenReturn(true);
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default behavior
         when(awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier)).thenReturn(secretsManagerClient);
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);

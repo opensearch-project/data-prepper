@@ -66,10 +66,10 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
 
     public AtlassianOauthConfig(AtlassianSourceConfig atlassianSourceConfig) {
         this.atlassianSourceConfig = atlassianSourceConfig;
-        this.accessToken = (String) atlassianSourceConfig.getAuthenticationConfig().getOauth2Config()
-                .getAccessToken().getValue();
-        this.refreshToken = (String) atlassianSourceConfig.getAuthenticationConfig()
-                .getOauth2Config().getRefreshToken().getValue();
+        this.accessToken = resolveStringValue(atlassianSourceConfig.getAuthenticationConfig().getOauth2Config()
+                .getAccessToken().getValue());
+        this.refreshToken = resolveStringValue(atlassianSourceConfig.getAuthenticationConfig()
+                .getOauth2Config().getRefreshToken().getValue());
         this.clientId = atlassianSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
         this.clientSecret = atlassianSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
@@ -150,8 +150,8 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
                     // Refreshing the secrets. It should help if someone already renewed the tokens.
                     // Refreshing one of the secret refreshes the entire store so triggering refresh on just one
                     oauth2Config.getAccessToken().refresh();
-                    this.accessToken = (String) oauth2Config.getAccessToken().getValue();
-                    this.refreshToken = (String) oauth2Config.getRefreshToken().getValue();
+                    this.accessToken = resolveStringValue(oauth2Config.getAccessToken().getValue());
+                    this.refreshToken = resolveStringValue(oauth2Config.getRefreshToken().getValue());
                     this.expireTime = Instant.now().plusSeconds(10);
                 }
                 throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
@@ -179,5 +179,12 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
         //For OAuth based flow, we use a different source url
         this.cloudId = getAtlassianAccountCloudId();
         this.url = OAuth2_URL + atlassianSourceConfig.getOauth2UrlContext() + SLASH + this.cloudId + SLASH;
+    }
+
+    private String resolveStringValue(final Object value) {
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value != null ? value.toString() : null;
     }
 }

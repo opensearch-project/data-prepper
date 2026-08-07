@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
@@ -193,6 +197,7 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/durationInNanos > 5000000000", event("{\"durationInNanos\": 6000000000}"), true),
                 arguments("/response == \"OK\"", event("{\"response\": \"OK\"}"), true),
                 arguments("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
+                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
                 arguments("hasTags(\""+ testTag1+"\")", longEvent, true),
                 arguments("hasTags(\""+ testTag1+"\",\""+testTag2+"\")", longEvent, true),
                 arguments("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
@@ -241,11 +246,29 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-212\"}"), true),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), false),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), true),
+                arguments("/name !~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-0\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
                 arguments("getEventType() == \"LOG\"",  longEvent, false),
-                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
+                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true),
+                arguments("substringAfter(\"file.txt\", \".\") == \"txt\"", event("{}"), true),
+                arguments("substringAfter(/path, \"/\") == \"app/src/main.py\"", event("{\"path\": \"/app/src/main.py\"}"), true),
+                arguments("substringBefore(\"key=a=b\", \"=\") == \"key\"", event("{}"), true),
+                arguments("substringAfterLast(\"/app/src/main.py\", \"/\") == \"main.py\"", event("{}"), true),
+                arguments("substringBeforeLast(\"app.src.main\", \".\") == \"app.src\"", event("{}"), true),
+                arguments("/value == \"value-a\" and contains(/string, \"x/y/\")", event("{\"value\": \"value-a\", \"string\": \"prefix/x/y/postfix\"}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": 200}"), true),
+                arguments("/status_code typeof integer", event("{\"status_code\": \"200\"}"), false),
+                arguments("/name typeof string", event("{\"name\": \"test\"}"), true),
+                arguments("/flag typeof boolean", event("{\"flag\": true}"), true),
+                arguments("/value typeof long", event("{\"value\": 2147483648}"), true),
+                arguments("/items typeof array", event("{\"items\": [1, 2]}"), true),
+                arguments("/data typeof map", event("{\"data\": {\"k\": \"v\"}}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": \"200\"}"), true),
+                arguments("not (/status_code typeof integer)", event("{\"status_code\": 200}"), false),
+                arguments("not (/name typeof string)", event("{\"name\": 123}"), true)
         );
     }
 
@@ -275,7 +298,6 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/status_code != null and /status_code >= 300", event("{\"status_code_not_present\": 200}")),
                 arguments("(/status_code >= 300) and (/value == 15)", event("{\"status_code2\": 200, \"value\" : 10}")),
                 arguments("/color in {\"blue\", 222.0, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
-                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/status_code > 3", event("{\"success\": true, \"status_code_not_present\": 200}")),
                 arguments("/success <= /status_code", event("{\"success\": true, \"status_code\": 200}")),
@@ -287,7 +309,17 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/status_code <= null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("not /status_code", event("{\"status_code\": 200}")),
                 arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
-                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}"))
+                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}")),
+                // Integer literals in function args are now valid syntax but fail at evaluation time
+                arguments("hasTags(10)", tagEvent),
+                arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("getMetadata(10)", tagEvent),
+                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                arguments("substringAfter()", event("{}")),
+                arguments("substringBefore()", event("{}")),
+                arguments("substringAfterLast()", event("{}")),
+                arguments("substringBeforeLast()", event("{}"))
         );
     }
 
@@ -317,16 +349,16 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("trueand/status_code", event("{\"status_code\": 200}")),
                 arguments("trueor/status_code", event("{\"status_code\": 200}")),
                 arguments("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
-                arguments("hasTags(10)", tagEvent),
                 arguments("hasTags("+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
-                arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("contains(\""+testTag2+"\"", tagEvent),
+                arguments("contains\""+testTag2+"\"", tagEvent),
+                arguments("contains", tagEvent),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
-                arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -338,13 +370,10 @@ class GenericExpressionEvaluator_ConditionalIT extends BaseExpressionEvaluatorIT
                 arguments("/color in {\"\",blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/value in {22a2.0, 100}", event("{\"value\": 100}")),
                 arguments("/value in {222, 10a0}", event("{\"value\": 100}")),
-                arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
-                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("getEventType() == \"test_event", tagEvent),
                 arguments("getEventType() == test_event\"", tagEvent)
-                
         );
     }
 

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -90,7 +91,7 @@ public class MLProcessorTest {
         lenient().when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(true);
         lenient().when(mlProcessorConfig.getServiceName()).thenReturn(ServiceName.SAGEMAKER);
         lenient().when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
-        lenient().when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        lenient().when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         lenient().when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         lenient().when(mlProcessorConfig.getDlqPluginSetting()).thenReturn(null);
         lenient().when(pluginMetrics.counter(NUMBER_OF_ML_PROCESSOR_SUCCESS)).thenReturn(successCounter);

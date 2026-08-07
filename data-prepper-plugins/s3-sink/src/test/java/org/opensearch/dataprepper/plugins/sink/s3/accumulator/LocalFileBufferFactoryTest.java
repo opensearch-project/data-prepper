@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
@@ -21,7 +25,7 @@ class LocalFileBufferFactoryTest {
     void test_buffer_notNull() {
         LocalFileBufferFactory localFileBufferFactory = new LocalFileBufferFactory();
         Assertions.assertNotNull(localFileBufferFactory);
-        Buffer buffer = localFileBufferFactory.getBuffer(null, null, null, null, null, null);
+        Buffer buffer = localFileBufferFactory.getBuffer(null, null, null, null, null, null, null);
         Assertions.assertNotNull(buffer);
         assertThat(buffer, instanceOf(LocalFileBuffer.class));
     }

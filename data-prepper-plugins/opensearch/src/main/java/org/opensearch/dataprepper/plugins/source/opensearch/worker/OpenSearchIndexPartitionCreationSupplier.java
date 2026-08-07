@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.configuration.OpenSe
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.ClusterClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -26,11 +27,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Matcher;
-import java.util.stream.Collectors;
 
 public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchIndexPartitionCreationSupplier.class);
+
+    public static final String SINGLE_SCAN_COMPLETE = "SINGLE_SCAN_COMPLETE";
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final IndexParametersConfiguration indexParametersConfiguration;
@@ -62,13 +64,32 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     @Override
     public List<PartitionIdentifier> apply(final Map<String, Object> globalStateMap) {
 
-        if (Objects.nonNull(openSearchClientRefresher)) {
-            return applyForOpenSearchClient(globalStateMap);
-        } else if (Objects.nonNull(elasticsearchClientRefresher)) {
-            return applyForElasticSearchClient(globalStateMap);
+        if (isSingleScanCompleted(globalStateMap)) {
+            LOG.debug("Discovery mode is SINGLE_SCAN and indices have already been discovered. Skipping rediscovery.");
+            return Collections.emptyList();
         }
 
-        return Collections.emptyList();
+        final List<PartitionIdentifier> partitions;
+        if (Objects.nonNull(openSearchClientRefresher)) {
+            partitions = applyForOpenSearchClient(globalStateMap);
+        } else if (Objects.nonNull(elasticsearchClientRefresher)) {
+            partitions = applyForElasticSearchClient(globalStateMap);
+        } else {
+            partitions = Collections.emptyList();
+        }
+
+        if (openSearchSourceConfiguration.isSingleScanMode() && Objects.nonNull(globalStateMap)) {
+            globalStateMap.put(SINGLE_SCAN_COMPLETE, Boolean.TRUE);
+            LOG.info("Discovery mode is SINGLE_SCAN. Completed one-time index discovery with {} partitions.", partitions.size());
+        }
+
+        return partitions;
+    }
+
+    private boolean isSingleScanCompleted(final Map<String, Object> globalStateMap) {
+        return openSearchSourceConfiguration.isSingleScanMode()
+                && Objects.nonNull(globalStateMap)
+                && Boolean.TRUE.equals(globalStateMap.get(SINGLE_SCAN_COMPLETE));
     }
 
     private List<PartitionIdentifier> applyForOpenSearchClient(final Map<String, Object> globalStateMap) {
@@ -82,10 +103,18 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
         LOG.debug("Found {} indices", indicesResponse.valueBody().size());
 
-        return indicesResponse.valueBody().stream()
-                .filter(osIndicesRecord -> shouldIndexBeProcessed(osIndicesRecord.index()))
-                .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
-                .collect(Collectors.toList());
+        final List<PartitionIdentifier> partitions = new java.util.ArrayList<>();
+        int matchCount = 0;
+        for (final var esIndicesRecord : indicesResponse.valueBody()) {
+            if (shouldIndexBeProcessed(esIndicesRecord.index())) {
+                partitions.add(PartitionIdentifier.builder().withPartitionKey(esIndicesRecord.index()).build());
+                matchCount++;
+            }
+        }
+        if (matchCount == 0) {
+            LOG.warn(NOISY, "No indices matched the configured regex patterns after applying include/exclude filters");
+        }
+        return partitions;
     }
 
     private List<PartitionIdentifier> applyForElasticSearchClient(final Map<String, Object> globalStateMap) {
@@ -99,10 +128,18 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
         LOG.debug("Found {} indices", indicesResponse.valueBody().size());
 
-        return indicesResponse.valueBody().stream()
-                .filter(esIndicesRecord -> shouldIndexBeProcessed(esIndicesRecord.index()))
-                .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
-                .collect(Collectors.toList());
+        final List<PartitionIdentifier> partitions = new java.util.ArrayList<>();
+        int matchCount = 0;
+        for (final var esIndicesRecord : indicesResponse.valueBody()) {
+            if (shouldIndexBeProcessed(esIndicesRecord.index())) {
+                partitions.add(PartitionIdentifier.builder().withPartitionKey(esIndicesRecord.index()).build());
+                matchCount++;
+            }
+        }
+        if (matchCount == 0) {
+            LOG.warn(NOISY, "No indices matched the configured regex patterns after applying include/exclude filters");
+        }
+        return partitions;
     }
 
     private boolean shouldIndexBeProcessed(final String indexName) {

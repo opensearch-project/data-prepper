@@ -320,7 +320,12 @@ public class ShardAcknowledgementManager {
     }
 
     void startUpdatingOwnershipForShard(final StreamPartition streamPartition) {
-        checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>());
+        lock.lock();
+        try {
+            checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>());
+        } finally {
+            lock.unlock();
+        }
     }
 
     boolean isStillTrackingShard(final StreamPartition streamPartition) {

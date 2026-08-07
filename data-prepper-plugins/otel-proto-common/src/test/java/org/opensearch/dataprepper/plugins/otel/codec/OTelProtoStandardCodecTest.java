@@ -21,6 +21,8 @@ import io.opentelemetry.proto.common.v1.KeyValueList;
 import io.opentelemetry.proto.metrics.v1.Exemplar;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
@@ -66,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,6 +81,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -97,6 +101,7 @@ public class OTelProtoStandardCodecTest {
     private static final String TEST_REQUEST_HISTOGRAM_METRICS_NO_EXPLICIT_BOUNDS_JSON_FILE = "test-histogram-metrics-no-explicit-bounds.json";
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
     private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
+    private static final String SPLIT_TEST_REQUEST_MULTIPLE_METRICS_FILE = "split-test-request-multiple-metrics.json";
 
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
@@ -152,6 +157,166 @@ public class OTelProtoStandardCodecTest {
 
     @Nested
     class OTelProtoDecoderTest {
+
+        @Test
+        public void testSplitExportMetricsServiceRequestWithNameKey() throws Exception {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(SPLIT_TEST_REQUEST_MULTIPLE_METRICS_FILE);
+            final Map<String, ExportMetricsServiceRequest> map = decoderUnderTest.splitExportMetricsServiceRequestByKeys(exportMetricsServiceRequest, Set.of("name"));
+            assertThat(map.size(), is(equalTo(5)));
+
+            ExportMetricsServiceRequest request = map.get("counter1");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            ResourceMetrics rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            ScopeMetrics sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            io.opentelemetry.proto.metrics.v1.Metric m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+            assertThat(m.getGauge().getDataPoints(0).getAsInt(), equalTo(123L));
+
+            request = map.get("counter3");
+            assertThat(request.getResourceMetricsList().size(), equalTo(3));
+            Set<Long> expectedValues = Set.of(1230L, 123L, 4123L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+                assertThat(expectedValues, hasItem(m.getGauge().getDataPoints(0).getAsInt()));
+            }
+
+            request = map.get("counter4");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+            assertThat(m.getGauge().getDataPoints(0).getAsInt(), equalTo(555L));
+
+            request = map.get("sum1");
+            assertThat(request.getResourceMetricsList().size(), equalTo(4));
+            expectedValues = Set.of(4560L, 4567L, 456L, 4562L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("SUM"));
+                assertThat(expectedValues, hasItem(m.getSum().getDataPoints(0).getAsInt()));
+            }
+            request = map.get("histogram2");
+            assertThat(request.getResourceMetricsList().size(), equalTo(2));
+            expectedValues = Set.of(30L, 40L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("HISTOGRAM"));
+                assertThat(expectedValues, hasItem(m.getHistogram().getDataPoints(0).getCount()));
+            }
+        }
+
+        @Test
+        public void testSplitExportMetricsServiceRequestWithNameAndServiceNameKeys() throws Exception {
+            final ExportMetricsServiceRequest exportMetricsServiceRequest = buildExportMetricsServiceRequestFromJsonFile(SPLIT_TEST_REQUEST_MULTIPLE_METRICS_FILE);
+            final Map<String, ExportMetricsServiceRequest> map = decoderUnderTest.splitExportMetricsServiceRequestByKeys(exportMetricsServiceRequest, Set.of("name", "service_name"));
+            assertThat(map.size(), is(equalTo(8)));
+            ExportMetricsServiceRequest request = map.get("service1:counter1");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            ResourceMetrics rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            ScopeMetrics sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            io.opentelemetry.proto.metrics.v1.Metric m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+            assertThat(m.getGauge().getDataPoints(0).getAsInt(), equalTo(123L));
+
+            request = map.get("service1:counter3");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            Set<Long> expectedValues = Set.of(1230L, 123L, 4123L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+                assertThat(m.getGauge().getDataPoints(0).getAsInt(), equalTo(123L));
+            }
+            request = map.get("service2:counter3");
+            assertThat(request.getResourceMetricsList().size(), equalTo(2));
+            expectedValues = Set.of(1230L, 4123L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+                assertThat(expectedValues, hasItem(m.getGauge().getDataPoints(0).getAsInt()));
+            }
+            request = map.get("service2:counter4");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("GAUGE"));
+            assertThat(m.getGauge().getDataPoints(0).getAsInt(), equalTo(555L));
+
+            request = map.get("service1:sum1");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            expectedValues = Set.of(4560L, 4567L, 456L, 4562L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("SUM"));
+                assertThat(m.getSum().getDataPoints(0).getAsInt(), equalTo(456L));
+            }
+            request = map.get("service1:histogram2");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("HISTOGRAM"));
+            assertThat(m.getHistogram().getDataPoints(0).getCount(), equalTo(30L));
+
+            request = map.get("service2:sum1");
+            assertThat(request.getResourceMetricsList().size(), equalTo(3));
+            expectedValues = Set.of(4560L, 4567L, 4562L);
+            for (int i = 0; i < request.getResourceMetricsList().size(); i++) {
+                rm = request.getResourceMetricsList().get(i);
+                assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+                sm = rm.getScopeMetricsList().get(0);
+                assertThat(sm.getMetricsList().size(), equalTo(1));
+                m = sm.getMetricsList().get(0);
+                assertThat(m.getDataCase().toString(), equalTo("SUM"));
+                assertThat(expectedValues, hasItem(m.getSum().getDataPoints(0).getAsInt()));
+            }
+            request = map.get("service2:histogram2");
+            assertThat(request.getResourceMetricsList().size(), equalTo(1));
+            rm = request.getResourceMetricsList().get(0);
+            assertThat(rm.getScopeMetricsList().size(), equalTo(1));
+            sm = rm.getScopeMetricsList().get(0);
+            assertThat(sm.getMetricsList().size(), equalTo(1));
+            m = sm.getMetricsList().get(0);
+            assertThat(m.getDataCase().toString(), equalTo("HISTOGRAM"));
+            assertThat(m.getHistogram().getDataPoints(0).getCount(), equalTo(40L));
+        }
+
         @Test
         public void testSplitExportTraceServiceRequestWithMultipleTraces() throws Exception {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_MULTIPLE_TRACES_FILE);

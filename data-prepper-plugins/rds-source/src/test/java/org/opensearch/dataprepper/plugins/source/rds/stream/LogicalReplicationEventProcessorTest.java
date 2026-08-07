@@ -21,8 +21,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
@@ -33,8 +37,10 @@ import java.util.Random;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,6 +69,15 @@ class LogicalReplicationEventProcessorTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
     private ByteBuffer message;
 
     private String s3Prefix;
@@ -77,6 +92,7 @@ class LogicalReplicationEventProcessorTest {
         random = new Random();
         when(pluginMetrics.timer(anyString())).thenReturn(Metrics.timer("test-timer"));
         when(pluginMetrics.counter(anyString())).thenReturn(Metrics.counter("test-counter"));
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
 
         objectUnderTest = spy(createObjectUnderTest());
     }
@@ -174,9 +190,53 @@ class LogicalReplicationEventProcessorTest {
         verify(logicalReplicationClient).disconnect();
     }
 
+    @Test
+    void test_sendToFailurePipeline_sends_event_with_failure_metadata() throws Exception {
+        final String pluginName = "rds";
+        final String pipelineName = "test-pipeline";
+        final String errorMessage = "test error";
+        final Event event = mock(Event.class);
+        final EventFailureMetadata failureMetadata = mock(EventFailureMetadata.class);
+
+        when(pluginSetting.getName()).thenReturn(pluginName);
+        when(event.updateFailureMetadata()).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginId(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginName(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPipelineName(pipelineName)).thenReturn(failureMetadata);
+        when(failureMetadata.withErrorMessage(errorMessage)).thenReturn(failureMetadata);
+
+        java.lang.reflect.Method method = LogicalReplicationEventProcessor.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(objectUnderTest, event, new RuntimeException(errorMessage));
+
+        verify(event).updateFailureMetadata();
+        verify(failureMetadata).withPluginId(pluginName);
+        verify(failureMetadata).withPluginName(pluginName);
+        verify(failureMetadata).withPipelineName(pipelineName);
+        verify(failureMetadata).withErrorMessage(errorMessage);
+        verify(failurePipeline).sendEvents(any());
+    }
+
+    @Test
+    void test_sendToFailurePipeline_does_nothing_when_failurePipeline_is_null() throws Exception {
+        LogicalReplicationEventProcessor processorWithNullDlq = new LogicalReplicationEventProcessor(
+                streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager,
+                pluginSetting, pipelineDescription, null);
+
+        final Event event = mock(Event.class);
+
+        java.lang.reflect.Method method = LogicalReplicationEventProcessor.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(processorWithNullDlq, event, new RuntimeException("error"));
+
+        verify(event, org.mockito.Mockito.never()).updateFailureMetadata();
+    }
+
     private LogicalReplicationEventProcessor createObjectUnderTest() {
         return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
-                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     private void setMessageType(MessageType messageType) {

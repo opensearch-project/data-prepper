@@ -11,6 +11,9 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchShardStatistics;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,11 +50,15 @@ public class WorkerCommonUtils {
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
                 if (result == true) {
-                    sourceCoordinator.closePartition(
-                            indexPartition.getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
-                            true);
+                    if (openSearchSourceConfiguration.isSingleScanMode()) {
+                        sourceCoordinator.completePartition(indexPartition.getPartitionKey(), true);
+                    } else {
+                        sourceCoordinator.closePartition(
+                                indexPartition.getPartitionKey(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
+                                openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount(),
+                                true);
+                    }
 
                     LOG.info("Received acknowledgment of completion from sink for index {}", indexPartition.getPartitionKey());
                 } else {
@@ -64,12 +71,18 @@ public class WorkerCommonUtils {
     }
 
     static void completeIndexPartition(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                                              final AcknowledgementSet acknowledgementSet,
-                                              final SourcePartition<OpenSearchIndexProgressState> indexPartition,
-                                              final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator) {
+                                       final AcknowledgementSet acknowledgementSet,
+                                       final SourcePartition<OpenSearchIndexProgressState> indexPartition,
+                                       final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
+                                       final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
+        emitFailureSummaryIfAny(indexPartition, openSearchSourcePluginMetrics);
+
         if (openSearchSourceConfiguration.isAcknowledgmentsEnabled()) {
             sourceCoordinator.updatePartitionForAcknowledgmentWait(indexPartition.getPartitionKey(), OWNERSHIP_TIMEOUT);
             acknowledgementSet.complete();
+        } else if (openSearchSourceConfiguration.isSingleScanMode()) {
+            sourceCoordinator.completePartition(indexPartition.getPartitionKey(), false);
+            LOG.info("Completed processing of index {} (single_scan mode; index will not be rescheduled)", indexPartition.getPartitionKey());
         } else {
             sourceCoordinator.closePartition(
                     indexPartition.getPartitionKey(),
@@ -80,8 +93,67 @@ public class WorkerCommonUtils {
         }
     }
 
+    private static void emitFailureSummaryIfAny(final SourcePartition<OpenSearchIndexProgressState> indexPartition,
+                                                final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
+        if (openSearchSourcePluginMetrics == null) {
+            return;
+        }
+        final OpenSearchIndexProgressState progressState = indexPartition.getPartitionState().orElse(null);
+        if (progressState == null || !progressState.isHadSearchFailures()) {
+            return;
+        }
+        LOG.warn("Index '{}' completed with search failures. Aggregated reasons: {}. Some documents may not have been read.",
+                indexPartition.getPartitionKey(),
+                progressState.getFailureReasonCounts());
+        openSearchSourcePluginMetrics.getIndicesCompletedWithFailuresCounter().increment();
+    }
+
     static long calculateExponentialBackoffAndJitter(final int retryCount) {
         final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
         return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, (int) min(retryCount - 1, 10)) + jitterMillis, MAX_BACKOFF.toMillis()));
+    }
+
+    /**
+     * Returns true when the search_after / PIT pagination loop should make another
+     * request. We stop when the cluster signals it has no more results (null
+     * nextSearchAfter) or when the last page returned zero documents. Short pages
+     * are never treated as end-of-index on their own: a short page can happen
+     * because of shard failures and we want to keep paging past those.
+     */
+    static boolean hasMorePages(final SearchWithSearchAfterResults results) {
+        if (results == null) {
+            return false;
+        }
+        if (results.getNextSearchAfter() == null) {
+            return false;
+        }
+        return results.getDocuments() != null && !results.getDocuments().isEmpty();
+    }
+
+    /**
+     * Record any shard-level failures observed on a single page: emit a warning
+     * log with the aggregated reason counts, increment the shard-failure counter,
+     * and merge the stats into the persisted progress state so the completion
+     * summary later has a full picture.
+     */
+    static void recordShardFailuresIfAny(final String indexName,
+                                         final SearchShardStatistics shardStatistics,
+                                         final OpenSearchIndexProgressState progressState,
+                                         final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
+        if (shardStatistics == null || !shardStatistics.hasFailures()) {
+            return;
+        }
+        LOG.warn("OpenSearch source observed {} failed shards out of {} on index '{}'. Reasons: {}. " +
+                        "Some documents may be missing; continuing pagination.",
+                shardStatistics.getFailed(),
+                shardStatistics.getTotal(),
+                indexName,
+                shardStatistics.getFailureReasonCounts());
+        if (openSearchSourcePluginMetrics != null && shardStatistics.getFailed() > 0) {
+            openSearchSourcePluginMetrics.getSearchShardsFailedCounter().increment(shardStatistics.getFailed());
+        }
+        if (progressState != null) {
+            progressState.recordShardFailures(shardStatistics);
+        }
     }
 }

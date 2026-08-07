@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.configuration.SpaceC
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
@@ -67,6 +69,9 @@ public class ConfluenceConfigHelperTest {
 
     @Mock
     PluginConfigVariable refreshTokenPluginConfigVariable;
+
+    @Mock
+    PluginConfigVariable bearerTokenVariable;
 
     @Test
     void testInitialization() {
@@ -118,7 +123,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigBasic() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
@@ -137,7 +142,7 @@ public class ConfluenceConfigHelperTest {
 
     @Test
     void testValidateConfigOauth2() {
-        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://somedomain.atlassian.net");
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
         when(confluenceSourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
@@ -151,6 +156,34 @@ public class ConfluenceConfigHelperTest {
         assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
 
         when(oauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
+        assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
+
+    @Test
+    void testValidateConfigBearerToken_nullToken_throwsException() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerTokenValue()).thenReturn(null);
+        assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
+
+    @Test
+    void testValidateConfigBearerToken_emptyToken_throwsException() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerTokenValue()).thenReturn("");
+        assertThrows(RuntimeException.class, () -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
+    }
+
+    @Test
+    void testValidateConfigBearerToken_validToken_succeeds() {
+        when(confluenceSourceConfig.getAccountUrl()).thenReturn("https://opensearch.org");
+        when(confluenceSourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerTokenValue()).thenReturn(UUID.randomUUID().toString());
+        when(confluenceSourceConfig.isAllowLocalAddress()).thenReturn(false);
         assertDoesNotThrow(() -> ConfluenceConfigHelper.validateConfig(confluenceSourceConfig));
     }
 }

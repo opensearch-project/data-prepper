@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 grammar DataPrepperExpression;
@@ -29,7 +33,7 @@ arithmeticExpression
     ;
 
 multiplicativeExpression
-    : multiplicativeExpression (MULTIPLY | DIVIDE | MOD) arithmeticTerm
+    : multiplicativeExpression (MULTIPLY | FORWARDSLASH | MOD) arithmeticTerm
     | arithmeticTerm
     ;
 
@@ -98,6 +102,7 @@ setOperatorExpression
     : setOperatorExpression setOperator setInitializer
     | unaryOperatorExpression
     | arithmeticUnaryExpression
+    | arithmeticExpression
     ;
 
 setOperator
@@ -126,7 +131,7 @@ setInitializer
     ;
 
 setMembers
-    : literal (SPACE* SET_DELIMITER SPACE* literal)*
+    : literal (SPACE* COMMA SPACE* literal)*
     ;
 
 unaryOperator
@@ -151,22 +156,19 @@ jsonPointer
     ;
 
 function
-    : Function
+    : Identifier LPAREN functionArgs? RPAREN
     ;
 
-Function
-    : JsonPointerCharacters LPAREN FunctionArgs RPAREN
+functionArgs
+    : functionArg (COMMA functionArg)*
     ;
 
-fragment
-FunctionArgs
-    : ((FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg)?
-    ;
-
-fragment
-FunctionArg
-    : JsonPointer
-    | String
+functionArg
+    : conditionalExpression
+    | arithmeticExpression
+    | stringExpression
+    | jsonPointer
+    | literal
     ;
 
 variableIdentifier
@@ -301,12 +303,12 @@ DataTypes
     | STRING
     ;
 
-SET_DELIMITER
-    : COMMA
-    ;
-
-DIVIDE
-    : FORWARDSLASH
+// Identifier MUST be defined after DataTypes (and all other keyword-like
+// lexer rules) because it matches [A-Za-z0-9_.@]+ which would shadow any
+// keyword defined later.  ANTLR resolves same-length lexer ambiguities by
+// choosing the rule that appears first in the grammar.
+Identifier
+    : JsonPointerCharacters
     ;
 
 COMMA : ',';

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -18,7 +22,6 @@ import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -77,7 +80,7 @@ public class AwsPluginIT {
 
         final AwsCredentialsProvider awsCredentialsProvider1 = awsCredentialsSupplier.getProvider(awsCredentialsOptions1);
 
-        assertThat(awsCredentialsProvider1, instanceOf(StsAssumeRoleCredentialsProvider.class));
+        assertThat(awsCredentialsProvider1, instanceOf(BackoffCredentialsProvider.class));
 
         final AwsCredentialsOptions awsCredentialsOptions2 = AwsCredentialsOptions.builder()
                 .withStsRoleArn(stsRole)
@@ -146,7 +149,7 @@ public class AwsPluginIT {
 
         final AwsCredentialsProvider awsCredentialsProvider1 = awsCredentialsSupplier.getProvider(awsCredentialsOptions1);
 
-        assertThat(awsCredentialsProvider1, instanceOf(StsAssumeRoleCredentialsProvider.class));
+        assertThat(awsCredentialsProvider1, instanceOf(BackoffCredentialsProvider.class));
 
         final AwsCredentialsOptions awsCredentialsOptions2 = AwsCredentialsOptions.builder()
                 .withRegion(Region.US_EAST_1)

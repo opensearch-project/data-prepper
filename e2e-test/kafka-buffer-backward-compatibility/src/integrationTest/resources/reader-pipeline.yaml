@@ -1,0 +1,28 @@
+test-http-to-kafka-pipeline:
+  source:
+    http:
+      port: 2300 # unused port
+      path: "/log/ingest"
+      health_check_service: false
+  buffer:
+    kafka:
+      topics:
+        - name: buffer-backward-compatibility-test-topic
+          group_id: backward-compatibility-reader-group
+      bootstrap_servers:
+        - "kafka:9092"
+      encryption:
+        type: none
+  processor:
+    - date:
+        from_time_received: true
+        destination: "@timestamp"
+  sink:
+    - opensearch:
+        flush_timeout: -1
+        hosts:
+          - "https://node-0.example.com:9200"
+        username: "admin"
+        password: "admin"
+        insecure: true
+        index: "kafka-buffer-backward-compatibility-test-index"

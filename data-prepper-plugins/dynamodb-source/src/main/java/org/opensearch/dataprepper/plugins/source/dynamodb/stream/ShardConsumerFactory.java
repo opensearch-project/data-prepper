@@ -134,6 +134,7 @@ public class ShardConsumerFactory {
      * @param streamArn      Stream Arn
      * @param shardId        Shard Id
      * @param sequenceNumber The last Sequence Number processed if any
+     * @param shardIteratorType The type of shard iterator to retrieve
      * @return A shard iterator.
      */
     public String getShardIterator(String streamArn, String shardId, String sequenceNumber, ShardIteratorType shardIteratorType) {

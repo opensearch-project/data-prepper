@@ -1,0 +1,227 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+# This workflow automates the preparation of patch release branches.
+# It validates the release branch, updates gradle.properties to the next version
+# generates the THIRD-PARTY file, and creates a pull request with all changes.
+#
+# The OpenSearch project does not permit this repository's workflows to push
+# branches and open pull requests against itself. Instead, the pull request
+# branch is pushed to a fork and the PR is opened from that fork against this
+# repository. This requires two settings to be configured:
+#
+#   vars.RELEASE_FORK_REPOSITORY  - the fork the PR branch is pushed to, as
+#                                   'owner/repo'. It must be a real GitHub fork
+#                                   of this repository (same fork network), as
+#                                   cross-repository PRs are only allowed within
+#                                   a fork network.
+#   secrets.OPENSEARCH_CI_BOT_TOKEN    - a classic personal access token with the
+#                                   'public_repo' (or 'repo' for private
+#                                   repositories) and 'workflow' scopes. The
+#                                   action uses it to push the branch to the
+#                                   fork and to open the PR against this
+#                                   repository, so its owner must have write
+#                                   access to the fork. The 'workflow' scope is
+#                                   required because the pushed branch may modify
+#                                   files under .github/workflows; GitHub rejects
+#                                   such pushes from a token without it. A
+#                                   fine-grained token does not work here because
+#                                   the single token must act on two repositories.
+#
+# The PR base is always this repository (the one running the workflow). To test
+# on your own fork, run this workflow from your fork and point
+# RELEASE_FORK_REPOSITORY at a fork of your fork within the same network.
+
+name: Prepare Release Branch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Data Prepper
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        # Do not persist the checkout credentials in the local git config.
+        # When pushing to a fork, peter-evans/create-pull-request adds its own
+        # authentication, and a persisted Authorization header would collide
+        # with it, causing 'Duplicate header: "Authorization"' (HTTP 400).
+        persist-credentials: false
+
+    - name: Validate release branch
+      id: validate_branch
+      run: |
+        BRANCH_NAME=${GITHUB_REF#refs/heads/}
+        echo "Running on branch: $BRANCH_NAME"
+        
+        # Validate branch name matches {major}.{minor} pattern
+        if ! [[ $BRANCH_NAME =~ ^[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::Invalid release branch name: $BRANCH_NAME"
+          echo "This workflow must run on a release branch with format {major}.{minor} (e.g., '2.6')"
+          echo "Current branch: $BRANCH_NAME"
+          echo ""
+          echo "To run this workflow:"
+          echo "  1. Switch to a release branch (e.g., 2.6)"
+          echo "  2. Navigate to Actions > Prepare Release Branch"
+          echo "  3. Click 'Run workflow' and select the release branch"
+          exit 1
+        fi
+        
+        echo "✅ Valid release branch: $BRANCH_NAME"
+        echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+    - name: Validate fork configuration
+      run: |
+        if [ -z "${{ vars.RELEASE_FORK_REPOSITORY }}" ]; then
+          echo "::error::The RELEASE_FORK_REPOSITORY variable is not set."
+          echo "Set it to the 'owner/repo' of a fork of this repository that the release PR branch will be pushed to."
+          exit 1
+        fi
+        if [ -z "${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}" ]; then
+          echo "::error::The OPENSEARCH_CI_BOT_TOKEN secret is not set."
+          echo "Set it to a token with write access to ${{ vars.RELEASE_FORK_REPOSITORY }} and permission to create pull requests against this repository."
+          exit 1
+        fi
+        echo "Pull request branch will be pushed to fork: ${{ vars.RELEASE_FORK_REPOSITORY }}"
+
+    - name: Set up JDK
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      with:
+        java-version: 21
+        distribution: temurin
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+      with:
+        add-job-summary: on-failure
+
+    - name: Update version to next release
+      id: version
+      run: |
+        ./gradlew updateToNextVersion
+        
+        RELEASE_VERSION=$(./gradlew -q printCurrentVersion)
+        echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Generate THIRD-PARTY file
+      run: |
+        echo "Generating THIRD-PARTY file..."
+        
+        # Run the Gradle task to generate the THIRD-PARTY file
+        # Capture both stdout and stderr for better error reporting
+        if ! OUTPUT=$(./gradlew --no-daemon generateThirdPartyReport 2>&1); then
+          echo "::error::Failed to generate THIRD-PARTY file"
+          echo "Gradle output:"
+          echo "$OUTPUT"
+          exit 1
+        fi
+        
+        # Verify the THIRD-PARTY file was created/updated
+        if [ ! -f THIRD-PARTY ]; then
+          echo "::error::THIRD-PARTY file not found after generation"
+          echo "The generateThirdPartyReport task completed but did not create the expected file"
+          exit 1
+        fi
+        
+        echo "Successfully generated THIRD-PARTY file"
+
+    - name: Create Pull Request
+      id: create_pr
+      uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+      with:
+        token: ${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}
+        push-to-fork: ${{ vars.RELEASE_FORK_REPOSITORY }}
+        add-paths: |
+          gradle.properties
+          THIRD-PARTY
+        commit-message: 'Prepare release ${{ steps.version.outputs.version }}'
+        signoff: true
+        branch: prepare-release-${{ steps.version.outputs.version }}
+        delete-branch: true
+        base: ${{ steps.validate_branch.outputs.branch }}
+        title: 'Prepare release ${{ steps.version.outputs.version }}'
+        body: |
+          ## Automated Release Preparation
+          
+          This PR prepares the release branch for version **${{ steps.version.outputs.version }}**.
+          
+          ### Automated Changes
+          - Updated `gradle.properties` version to `${{ steps.version.outputs.version }}`
+          - Generated `THIRD-PARTY` file
+          
+          ### Manual Steps Remaining
+          
+          Before merging this PR:
+          - [ ] Review the version number is correct
+          - [ ] Review the THIRD-PARTY file changes
+          
+          After merging this PR:
+          - [ ] Prepare release notes (see [release notes script](release/script/release-notes/README.md))
+          - [ ] Open an issue in the [opensearch-project/.github](https://github.com/opensearch-project/.github) repository requesting the release tag `${{ steps.version.outputs.version }}` be created and pushed.
+          - [ ] Run the [Release Artifacts workflow](https://github.com/opensearch-project/data-prepper/actions/workflows/release.yml)
+          - [ ] Approve the release issue (requires 2 maintainer approvals)
+          - [ ] Update the pre-release with release notes
+          - [ ] Publish the release (under "Release label", change from "Pre-release" to "Latest")
+          - [ ] Close the milestone
+          
+          ---
+          
+          Branch: ${{ steps.validate_branch.outputs.branch }}
+          
+          Generated by the [Prepare Release Branch workflow](https://github.com/opensearch-project/data-prepper/actions/workflows/release-prepare-branch.yml)
+
+    - name: Output PR URL
+      if: steps.create_pr.outputs.pull-request-url
+      run: |
+        echo "✅ Pull Request created successfully!"
+        echo "URL: ${{ steps.create_pr.outputs.pull-request-url }}"
+        echo "::notice::Pull Request created: ${{ steps.create_pr.outputs.pull-request-url }}"
+
+    - name: Check PR creation
+      if: steps.create_pr.outcome == 'failure'
+      run: |
+        echo "::error::Failed to create pull request"
+        echo "This could be due to:"
+        echo "  - An invalid or expired OPENSEARCH_CI_BOT_TOKEN"
+        echo "  - The token lacking write access to ${{ vars.RELEASE_FORK_REPOSITORY }} or permission to create pull requests"
+        echo "  - RELEASE_FORK_REPOSITORY (${{ vars.RELEASE_FORK_REPOSITORY }}) not being a fork of this repository in the same fork network"
+        echo "  - Network issues"
+        echo "Please check the logs above for more details"
+        exit 1
+
+    - name: Workflow summary
+      if: always()
+      run: |
+        echo "## Workflow Execution Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.validate_branch.outcome }}" == "success" ]; then
+          echo "✅ Branch validation: **${{ steps.validate_branch.outputs.branch }}**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Branch validation failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ steps.version.outcome }}" == "success" ]; then
+          echo "✅ Version determination: **${{ steps.version.outputs.version }}**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Version determination failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
+          echo "✅ Pull request created: ${{ steps.create_pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Pull request creation failed" >> $GITHUB_STEP_SUMMARY
+        fi

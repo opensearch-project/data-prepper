@@ -86,6 +86,16 @@ class ExportRecordConverterTest {
         assertThat(actualEvent, sameInstance(testEvent));
     }
 
+    @Test
+    void test_getVersionNumber_monotonically_increasing_same_millis() {
+        long millis = System.currentTimeMillis();
+        long v1 = exportRecordConverter.getVersionNumber(millis);
+        long v2 = exportRecordConverter.getVersionNumber(millis);
+        long v3 = exportRecordConverter.getVersionNumber(millis);
+        assertThat(v2, equalTo(v1 + 1));
+        assertThat(v3, equalTo(v2 + 1));
+    }
+
     private ExportRecordConverter createObjectUnderTest() {
         return new ExportRecordConverter(s3Prefix, random.nextInt(1000) + 1);
     }

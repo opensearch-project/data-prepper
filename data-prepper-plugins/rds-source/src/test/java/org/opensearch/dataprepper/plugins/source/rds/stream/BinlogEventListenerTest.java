@@ -24,8 +24,12 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
@@ -89,6 +93,15 @@ class BinlogEventListenerTest {
     private CascadingActionDetector cascadingActionDetector;
 
     @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
+    private HeadlessPipeline failurePipeline;
+
+    @Mock
     private ExecutorService eventListnerExecutorService;
 
     @Mock
@@ -120,6 +133,7 @@ class BinlogEventListenerTest {
         when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
         lenient().when(pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT)).thenReturn(eventProcessingErrorCounter);
         lenient().when(pluginMetrics.counter(any())).thenReturn(defaultCounter);
+        when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
             executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
@@ -237,9 +251,134 @@ class BinlogEventListenerTest {
         verify(objectUnderTest).handleDeleteEvent(binlogEvent);
     }
 
+    @Test
+    void test_sendToFailurePipeline_sends_event_with_failure_metadata() throws Exception {
+        final String pluginName = "rds";
+        final String pipelineName = "test-pipeline";
+        final String errorMessage = "test error";
+        final Event event = mock(Event.class);
+        final EventFailureMetadata failureMetadata = mock(EventFailureMetadata.class);
+
+        when(pluginSetting.getName()).thenReturn(pluginName);
+        when(event.updateFailureMetadata()).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginId(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPluginName(pluginName)).thenReturn(failureMetadata);
+        when(failureMetadata.withPipelineName(pipelineName)).thenReturn(failureMetadata);
+        when(failureMetadata.withErrorMessage(errorMessage)).thenReturn(failureMetadata);
+
+        // Use reflection to invoke sendToFailurePipeline
+        java.lang.reflect.Method method = BinlogEventListener.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(objectUnderTest, event, new RuntimeException(errorMessage));
+
+        verify(event).updateFailureMetadata();
+        verify(failureMetadata).withPluginId(pluginName);
+        verify(failureMetadata).withPluginName(pluginName);
+        verify(failureMetadata).withPipelineName(pipelineName);
+        verify(failureMetadata).withErrorMessage(errorMessage);
+        verify(failurePipeline).sendEvents(any());
+    }
+
+    @Test
+    void test_sendToFailurePipeline_does_nothing_when_failurePipeline_is_null() throws Exception {
+        // Create a listener with null failurePipeline
+        BinlogEventListener listenerWithNullDlq;
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
+            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
+            listenerWithNullDlq = BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                    streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,
+                    pluginSetting, pipelineDescription, null);
+        }
+
+        final Event event = mock(Event.class);
+
+        java.lang.reflect.Method method = BinlogEventListener.class.getDeclaredMethod("sendToFailurePipeline", Event.class, Exception.class);
+        method.setAccessible(true);
+        method.invoke(listenerWithNullDlq, event, new RuntimeException("error"));
+
+        verify(event, org.mockito.Mockito.never()).updateFailureMetadata();
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = {"UPDATE_ROWS", "EXT_UPDATE_ROWS"})
+    void test_handleUpdateEvent_does_not_throw_when_row_data_has_extra_columns(EventType eventType) throws NoSuchFieldException, IllegalAccessException {
+        // Simulate expression index: row data has 4 values but only 2 visible column names
+        final UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        final Serializable[] oldData = new Serializable[]{1, "a", "hidden1", "hidden2"};
+        final Serializable[] newData = new Serializable[]{1, "b", "hidden1", "hidden2"};
+        final List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(oldData, newData));
+        final long tableId = 1234L;
+        when(binlogEvent.getHeader().getEventType()).thenReturn(eventType);
+        when(binlogEvent.getData()).thenReturn(data);
+        when(data.getTableId()).thenReturn(tableId);
+        when(objectUnderTest.isValidTableId(tableId)).thenReturn(true);
+        when(data.getRows()).thenReturn(rows);
+
+        final TableMetadata tableMetadata = mock(TableMetadata.class);
+        final Map<Long, TableMetadata> tableMetadataMap = Map.of(tableId, tableMetadata);
+        Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        tableMetadataMapField.set(objectUnderTest, tableMetadataMap);
+        when(tableMetadata.getPrimaryKeys()).thenReturn(List.of("col1"));
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+
+        objectUnderTest.onEvent(binlogEvent);
+
+        verifyHandlerCallHelper();
+        verify(objectUnderTest).handleUpdateEvent(binlogEvent);
+
+        ArgumentCaptor<List<Serializable[]>> rowListCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionCaptor = ArgumentCaptor.forClass(List.class);
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListCaptor.capture(), bulkActionCaptor.capture(), eq(StreamEventType.UPDATE));
+
+        // No primary key change, so only the INDEX action for the new row
+        assertThat(rowListCaptor.getValue().size(), is(1));
+        assertThat(bulkActionCaptor.getValue().get(0), is(OpenSearchBulkActions.INDEX));
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = {"UPDATE_ROWS", "EXT_UPDATE_ROWS"})
+    void test_handleUpdateEvent_detects_primary_key_change_with_extra_columns(EventType eventType) throws NoSuchFieldException, IllegalAccessException {
+        // Row data has extra expression index columns, but primary key still changes
+        final UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        final Serializable[] oldData = new Serializable[]{1, "a", "hidden1"};
+        final Serializable[] newData = new Serializable[]{2, "a", "hidden1"};
+        final List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(oldData, newData));
+        final long tableId = 1234L;
+        when(binlogEvent.getHeader().getEventType()).thenReturn(eventType);
+        when(binlogEvent.getData()).thenReturn(data);
+        when(data.getTableId()).thenReturn(tableId);
+        when(objectUnderTest.isValidTableId(tableId)).thenReturn(true);
+        when(data.getRows()).thenReturn(rows);
+
+        final TableMetadata tableMetadata = mock(TableMetadata.class);
+        final Map<Long, TableMetadata> tableMetadataMap = Map.of(tableId, tableMetadata);
+        Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        tableMetadataMapField.set(objectUnderTest, tableMetadataMap);
+        when(tableMetadata.getPrimaryKeys()).thenReturn(List.of("col1"));
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+
+        objectUnderTest.onEvent(binlogEvent);
+
+        verifyHandlerCallHelper();
+
+        ArgumentCaptor<List<Serializable[]>> rowListCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionCaptor = ArgumentCaptor.forClass(List.class);
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListCaptor.capture(), bulkActionCaptor.capture(), eq(StreamEventType.UPDATE));
+
+        // Primary key changed: DELETE old + INDEX new
+        assertThat(rowListCaptor.getValue().size(), is(2));
+        assertThat(bulkActionCaptor.getValue().get(0), is(OpenSearchBulkActions.DELETE));
+        assertThat(bulkActionCaptor.getValue().get(1), is(OpenSearchBulkActions.INDEX));
+    }
+
     private BinlogEventListener createObjectUnderTest() {
         return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
-                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector);
+                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     private void verifyHandlerCallHelper() {

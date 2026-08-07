@@ -5,16 +5,35 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
+import java.time.Duration;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class SourceTopicConfigTest {
+    // ParameterMessageInterpolator avoids requiring a Jakarta EL provider on the test classpath.
+    private static final Validator VALIDATOR;
+
+    static {
+        try (final ValidatorFactory factory = Validation.byDefaultProvider().configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory()) {
+            VALIDATOR = factory.getValidator();
+        }
+    }
+
     private SourceTopicConfig createObjectUnderTest() {
         return new SourceTopicConfig();
     }
@@ -69,4 +88,30 @@ class SourceTopicConfigTest {
         assertThat(objectUnderTest.getIsolationLevel(), equalTo(IsolationLevel.READ_COMMITTED));
     }
 
+    @Test
+    void verify_default_connections_max_idle() {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.getConnectionsMaxIdle(), equalTo(SourceTopicConfig.DEFAULT_CONNECTIONS_MAX_IDLE));
+    }
+
+    @Test
+    void verify_custom_connections_max_idle() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        setField(SourceTopicConfig.class, objectUnderTest, "connectionsMaxIdle", Duration.ofSeconds(180));
+        assertThat(objectUnderTest.getConnectionsMaxIdle(), equalTo(Duration.ofSeconds(180)));
+    }
+
+    @Test
+    void connections_max_idle_at_or_above_one_second_is_valid() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        setField(SourceTopicConfig.class, objectUnderTest, "connectionsMaxIdle", Duration.ofSeconds(1));
+        assertThat(VALIDATOR.validateProperty(objectUnderTest, "connectionsMaxIdle"), empty());
+    }
+
+    @Test
+    void connections_max_idle_below_one_second_fails_validation() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        setField(SourceTopicConfig.class, objectUnderTest, "connectionsMaxIdle", Duration.ofMillis(500));
+        assertThat(VALIDATOR.validateProperty(objectUnderTest, "connectionsMaxIdle"), not(empty()));
+    }
 }

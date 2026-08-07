@@ -653,4 +653,26 @@ public class IndexConfigurationTests {
                 "\"mappings\":{\"properties\":{\"timestamp\":{\"type\":\"date\",\"format\":\"yyyy-MM-ddHH:mm:ss||yyyy-MM-dd||epoch_millis\"}," +
                 "\"value\":{\"type\":\"double\"}}}}}";
     }
+
+    @Test
+    public void testReadIndexConfig_withExternalVersionAndScript_throws_InvalidPluginConfigurationException() throws JsonProcessingException {
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put("index_type", "custom");
+        metadata.put("index", "test-index");
+        metadata.put("document_version_type", "external");
+        metadata.put("script", Map.of("source", "ctx._source.counter += 1"));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfig(metadata);
+        assertThrows(InvalidPluginConfigurationException.class, () -> IndexConfiguration.readIndexConfig(openSearchSinkConfig));
+    }
+
+    @Test
+    public void testReadIndexConfig_withScriptAndNoExternalVersion_doesNotThrow() throws JsonProcessingException {
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put("index_type", "custom");
+        metadata.put("index", "test-index");
+        metadata.put("script", Map.of("source", "ctx._source.counter += 1"));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfig(metadata);
+        final IndexConfiguration config = IndexConfiguration.readIndexConfig(openSearchSinkConfig);
+        assertThat(config.getScriptConfiguration(), notNullValue());
+    }
 }

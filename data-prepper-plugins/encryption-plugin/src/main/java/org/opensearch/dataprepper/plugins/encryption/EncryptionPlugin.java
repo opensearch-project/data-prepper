@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.encryption;
@@ -35,13 +39,13 @@ public class EncryptionPlugin implements ExtensionPlugin {
     @DataPrepperPluginConstructor
     public EncryptionPlugin(final EncryptionPluginConfig encryptionPluginConfig) {
         final KeyProviderFactory keyProviderFactory = KeyProviderFactory.create();
-        final EncryptionEngineFactory encryptionEngineFactory = EncryptionEngineFactory.create(keyProviderFactory);
+        pluginMetrics = PluginMetrics.fromPrefix("encryption");
+        final EncryptionEngineFactory encryptionEngineFactory = EncryptionEngineFactory.create(keyProviderFactory, pluginMetrics);
         final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory =
                 EncryptedDataKeySupplierFactory.create();
         if (encryptionPluginConfig != null) {
             encryptionSupplier = new DefaultEncryptionSupplier(
                     encryptionPluginConfig, encryptionEngineFactory, encryptedDataKeySupplierFactory);
-            pluginMetrics = PluginMetrics.fromPrefix("encryption");
             final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory = new EncryptedDataKeyWriterFactory();
             final EncryptionRotationHandlerFactory encryptionRotationHandlerFactory =
                     EncryptionRotationHandlerFactory.create(pluginMetrics, encryptedDataKeyWriterFactory);

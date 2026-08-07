@@ -15,9 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.ExportPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ExportSummary;
+import org.opensearch.dataprepper.plugins.source.dynamodb.model.LoadStatus;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DescribeExportRequest;
@@ -30,6 +33,7 @@ import software.amazon.awssdk.services.dynamodb.model.ExportTableToPointInTimeRe
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -171,7 +176,22 @@ class ExportSchedulerTest {
         verify(dynamoDBClient, times(2)).describeExport(any(DescribeExportRequest.class));
 
         // Create 2 data file partitions + 1 global state
-        verify(coordinator, times(3)).createPartition(any(EnhancedSourcePartition.class));
+        final ArgumentCaptor<EnhancedSourcePartition> argumentCaptorPartitionsCreated = ArgumentCaptor.forClass(EnhancedSourcePartition.class);
+
+        verify(coordinator, times(3)).createPartition(argumentCaptorPartitionsCreated.capture());
+
+        final List<EnhancedSourcePartition> createdPartitions = argumentCaptorPartitionsCreated.getAllValues();
+        assertThat(createdPartitions.size(), equalTo(3));
+        assertThat(createdPartitions.get(0), instanceOf(GlobalState.class));
+        assertThat(createdPartitions.get(1), instanceOf(DataFilePartition.class));
+        assertThat(createdPartitions.get(2), instanceOf(DataFilePartition.class));
+
+        // Verify the GlobalState LoadStatus has accurate totalFiles count
+        GlobalState globalState = (GlobalState) createdPartitions.get(0);
+        LoadStatus loadStatus = LoadStatus.fromMap(globalState.getProgressState().get());
+        assertThat(loadStatus.getTotalFiles(), equalTo(2));
+        assertThat(loadStatus.getLoadedFiles(), equalTo(0));
+
         // Complete the export partition
         verify(coordinator).completePartition(any(EnhancedSourcePartition.class));
         verify(exportJobSuccess).increment();

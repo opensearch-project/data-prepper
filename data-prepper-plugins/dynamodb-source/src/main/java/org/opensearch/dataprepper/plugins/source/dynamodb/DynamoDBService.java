@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileLoaderFactory;
 import org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler;
@@ -29,6 +30,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -98,10 +100,13 @@ public class DynamoDBService {
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
         Runnable fileLoaderScheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
 
-        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, dynamoDBSourceConfig.getTableConfigs().get(0).getStreamConfig());
+        final StreamConfig streamConfig = dynamoDBSourceConfig.getTableConfigs().get(0).getStreamConfig();
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, new BackoffCalculator(dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null));
-        // leader scheduler will handle the initialization
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs);
+        final Duration leaseInterval = streamConfig == null
+                ? StreamConfig.DEFAULT_SHARD_DISCOVERY_INTERVAL
+                : streamConfig.getShardDiscoveryInterval();
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, dynamoDbClient, shardManager, tableConfigs, leaseInterval);
 
         // May consider start or shutdown the scheduler on demand
         // Currently, event after the exports are done, the related scheduler will not be shutdown

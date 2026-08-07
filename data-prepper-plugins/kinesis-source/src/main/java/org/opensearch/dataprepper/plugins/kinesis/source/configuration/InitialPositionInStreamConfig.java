@@ -20,7 +20,8 @@ import java.util.stream.Collectors;
 @Getter
 public enum InitialPositionInStreamConfig {
     LATEST("latest", InitialPositionInStream.LATEST),
-    EARLIEST("earliest", InitialPositionInStream.TRIM_HORIZON);
+    EARLIEST("earliest", InitialPositionInStream.TRIM_HORIZON),
+    AT_TIMESTAMP("at_timestamp", InitialPositionInStream.AT_TIMESTAMP);
 
     private final String position;
 

@@ -1,0 +1,22 @@
+{
+  "traceId": "GENAI_TRACE_ID_1",
+  "spanId": "GENAI_CHILD_SPAN_ID_1",
+  "traceState": "",
+  "kind": "SPAN_KIND_CLIENT",
+  "name": "ChatBedrock.chat",
+  "startTime": "2026-02-17T12:00:00.100000000Z",
+  "durationInNanos": 500000000,
+  "endTime": "2026-02-17T12:00:00.600000000Z",
+  "parentSpanId": "GENAI_ROOT_SPAN_ID",
+  "attributes": {
+    "gen_ai.system": "aws.bedrock",
+    "gen_ai.provider.name": "aws.bedrock",
+    "gen_ai.agent.name": "Weather Agent",
+    "gen_ai.request.model": "anthropic.claude-sonnet-4.6"
+  },
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}

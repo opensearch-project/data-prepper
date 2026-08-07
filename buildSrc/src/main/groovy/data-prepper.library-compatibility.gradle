@@ -1,0 +1,53 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
+import me.champeau.gradle.japicmp.JapicmpTask
+import org.opensearch.dataprepper.gradle.compatibility.LastReleasedVersionProvider
+
+def lastVersion = LastReleasedVersionProvider.getLastReleasedMajorVersion(project)
+
+if (lastVersion == null) {
+    logger.info('No previous release found, skipping compatibility validation')
+    tasks.register('validateCompatibility') {
+        doLast {
+            logger.info('No previous release to compare against')
+        }
+    }
+} else {
+    def groupPath = project.group.toString().replace('.', '/')
+    def artifactId = project.name
+    
+    tasks.register('downloadLastRelease') {
+        def targetDir = layout.buildDirectory.dir('japicmp-target')
+        def targetJar = layout.buildDirectory.file("japicmp-target/${artifactId}-${lastVersion}.jar")
+        
+        outputs.file(targetJar)
+        doLast {
+            targetDir.get().asFile.mkdirs()
+            new URL("https://repo1.maven.org/maven2/${groupPath}/${artifactId}/${lastVersion}/${artifactId}-${lastVersion}.jar")
+                .withInputStream { input ->
+                    targetJar.get().asFile.withOutputStream { output -> output << input }
+                }
+        }
+    }
+    
+    tasks.register('validateCompatibility', JapicmpTask) {
+        logger.info("Comparing API from ${project.version} to ${lastVersion}")
+        compatibilityChangeExcludes = ['METHOD_ABSTRACT_NOW_DEFAULT', 'METHOD_ADDED_TO_INTERFACE']
+        oldClasspath.from(layout.buildDirectory.file("japicmp-target/${artifactId}-${lastVersion}.jar"))
+        newClasspath.from(tasks.named('jar'))
+        onlyModified = true
+        failOnModification = true
+        ignoreMissingClasses = true
+        failOnSourceIncompatibility = true
+        txtOutputFile = layout.buildDirectory.file('reports/library-compatibility/report.txt')
+        htmlOutputFile = layout.buildDirectory.file('reports/library-compatibility/report.html')
+        dependsOn downloadLastRelease
+    }
+}

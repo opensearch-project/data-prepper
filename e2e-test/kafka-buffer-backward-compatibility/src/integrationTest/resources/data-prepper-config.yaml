@@ -1,0 +1,4 @@
+#
+# Data Prepper Configuration for Backward Compatibility Test
+#
+ssl: false

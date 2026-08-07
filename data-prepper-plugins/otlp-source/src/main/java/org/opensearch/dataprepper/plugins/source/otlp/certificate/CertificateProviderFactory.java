@@ -80,7 +80,10 @@ public class CertificateProviderFactory {
           config.getSslKeyFile());
     } else {
       LOG.info("Using local file system to get certificate and private key for SSL/TLS.");
-      return new FileCertificateProvider(config.getSslKeyCertChainFile(), config.getSslKeyFile());
+      return new FileCertificateProvider(
+              config.getSslKeyCertChainFile(),
+              config.getSslKeyFile()
+      );
     }
   }
 }

@@ -1,0 +1,59 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.06
+    ports:
+      - "8333:8333"
+    command: server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.port=9333 -volume.port=8080 -filer -filer.port=8888
+    configs:
+      - source: s3-config
+        target: /etc/seaweedfs/s3.json
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8333 || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  create-bucket:
+    image: chrislusf/seaweedfs:4.06
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      until wget -q --spider http://seaweedfs:8333 2>/dev/null; do sleep 1; done;
+      /usr/bin/weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 <<EOF
+      s3.bucket.create -name warehouse
+      EOF
+      "
+
+  iceberg-rest:
+    image: apache/iceberg-rest-fixture
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+    ports:
+      - "8181:8181"
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://seaweedfs:8333
+      CATALOG_S3_ACCESS__KEY__ID: admin
+      CATALOG_S3_SECRET__ACCESS__KEY: password
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+
+configs:
+  s3-config:
+    content: |
+      { "identities": [ { "name": "anonymous", "credentials": [ { "accessKey": "admin", "secretKey": "password" } ], "actions": [ "Admin", "Read", "Write" ] } ] }

@@ -102,8 +102,8 @@ public class TokenPaginationCrawlerTest {
         Counter mockInvalidItemsCounter = mock(Counter.class);
 
         when(mockPluginMetrics.timer("crawlingTime")).thenReturn(mockCrawlingTimer);
-        when(mockPluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
-        when(mockPluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
+        when(mockPluginMetrics.timer("workerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(mockPluginMetrics.timer("workerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
         when(mockPluginMetrics.counter("paginationWorkerPartitionsCreated")).thenReturn(mockPartitionsCreatedCounter);
         when(mockPluginMetrics.counter("invalidPaginationItems")).thenReturn(mockInvalidItemsCounter);
 

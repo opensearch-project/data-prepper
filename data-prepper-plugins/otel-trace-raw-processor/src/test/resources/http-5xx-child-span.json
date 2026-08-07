@@ -1,0 +1,21 @@
+{
+  "traceId": "HTTP_5XX_TRACE_ID",
+  "spanId": "HTTP_5XX_CHILD_SPAN_ID",
+  "traceState": "HTTP_5XX_TRACE_STATE",
+  "kind": "SPAN_KIND_SERVER",
+  "name": "ORDER_CREATE",
+  "startTime": "2020-08-20T05:40:43.178010200Z",
+  "durationInNanos": 29160000,
+  "endTime": "2020-08-20T05:40:43.207170200Z",
+  "parentSpanId": "HTTP_5XX_ROOT_SPAN_ID",
+  "attributes": {
+    "http.response.status_code": 500,
+    "http.request.method": "POST",
+    "http.path": "/api/orders/create"
+  },
+  "droppedAttributesCount": 0,
+  "links": [],
+  "droppedLinksCount": 0,
+  "events": [],
+  "droppedEventsCount": 0
+}

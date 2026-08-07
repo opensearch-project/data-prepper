@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.s3.grouping;
@@ -79,7 +83,7 @@ public class S3GroupManager {
         if (allGroups.containsKey(s3GroupIdentifier)) {
             return allGroups.get(s3GroupIdentifier);
         } else {
-            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), s3GroupIdentifier::getMetadata,  bucketOwnerProvider);
+            final Buffer bufferForNewGroup =  bufferFactory.getBuffer(s3Client, s3GroupIdentifier::getFullBucketName, s3GroupIdentifier::getGroupIdentifierFullObjectKey, s3SinkConfig.getDefaultBucket(), s3GroupIdentifier::getMetadata,  bucketOwnerProvider, s3SinkConfig.getServerSideEncryptionConfig());
             final OutputCodec outputCodec = codecFactory.provideCodec();
             final S3Group s3Group = new S3Group(s3GroupIdentifier, bufferForNewGroup, outputCodec);
             allGroups.put(s3GroupIdentifier, s3Group);

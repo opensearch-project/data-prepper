@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.io.IOException;

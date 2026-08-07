@@ -14,11 +14,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
@@ -86,7 +86,7 @@ public class S3ScanPartitionCreationSupplierTest {
 
 
     private Function<Map<String, Object>, List<PartitionIdentifier>> createObjectUnderTest() {
-        return new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsList, schedulingOptions, folderPartitioningOptions, isDeleteS3ObjectsOnRead, sourceCoordinator);
+        return new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsList, schedulingOptions, folderPartitioningOptions, isDeleteS3ObjectsOnRead, sourceCoordinator, new S3ObjectKeyFilter(Collections.emptyMap()));
     }
 
     @Test

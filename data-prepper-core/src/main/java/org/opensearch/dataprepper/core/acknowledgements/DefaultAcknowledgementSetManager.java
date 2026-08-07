@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.acknowledgements;
@@ -42,6 +46,13 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
 
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
         AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutor, callback, timeout, metrics);
+        acknowledgementSetMonitor.add(acknowledgementSet);
+        metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
+        return acknowledgementSet;
+    }
+
+    public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry) {
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutor, callback, timeout, metrics, invokeCallbackOnExpiry);
         acknowledgementSetMonitor.add(acknowledgementSet);
         metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
         return acknowledgementSet;

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.pipeline.server;
@@ -33,6 +37,7 @@ public class DataPrepperServer {
     private final ListPipelinesHandler listPipelinesHandler;
     private final GetPipelinesHandler getPipelinesHandler;
     private final ShutdownHandler shutdownHandler;
+    private final ReadinessHandler readinessHandler;
     private final EncryptionHttpHandler encryptionHttpHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
@@ -45,6 +50,7 @@ public class DataPrepperServer {
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
+            final ReadinessHandler readinessHandler,
             @Autowired(required = false) @Nullable final EncryptionHttpHandler encryptionHttpHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
@@ -53,6 +59,7 @@ public class DataPrepperServer {
         this.listPipelinesHandler = listPipelinesHandler;
         this.shutdownHandler = shutdownHandler;
         this.getPipelinesHandler = getPipelinesHandler;
+        this.readinessHandler = readinessHandler;
         this.encryptionHttpHandler = encryptionHttpHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
@@ -75,6 +82,7 @@ public class DataPrepperServer {
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
+        createContext(server, readinessHandler, authenticator, "/ready");
 
         if (encryptionHttpHandler != null) {
             createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");

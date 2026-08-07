@@ -1,9 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
-import {Stack, StackProps} from 'aws-cdk-lib';
+import {CfnOutput, Stack, StackProps} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import {Role} from 'aws-cdk-lib/aws-iam';
 import {Key} from 'aws-cdk-lib/aws-kms';
@@ -27,6 +31,11 @@ export class KmsStack extends Stack {
     });
 
     this.kmsKey.grantEncryptDecrypt(props.testingRole)
+
+    new CfnOutput(this, 'KmsKeyId', {
+      value: this.kmsKey.keyArn,
+      exportName: 'DataPrepperAwsTesting-KmsKeyId',
+    });
   }
 }
 

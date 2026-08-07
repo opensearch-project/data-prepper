@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BasicAuthCredentials;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.common.sink.SinkMetrics;
 
@@ -31,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doNothing;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -38,8 +41,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 import java.util.UUID;
+
+import org.mockito.ArgumentCaptor;
 
 public class PrometheusHttpSenderTest {
     private static final int TEST_CONNECTION_TIMEOUT_MILLIS = 60_000;
@@ -132,5 +138,107 @@ public class PrometheusHttpSenderTest {
         assertFalse(result.isSuccess());
         assertThat(result.getStatusCode(), equalTo(0));
     }
-    
+
+    @Test
+    public void testHttpSenderWithoutAwsConfig_sendsSuccessfully() {
+        when(sinkConfig.getAwsConfig()).thenReturn(null);
+        when(sinkConfig.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final byte[] bytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        when(httpStatus.code()).thenReturn(200);
+        when(httpData.array()).thenReturn(bytes);
+        when(aggregatedHttpResponse.status()).thenReturn(httpStatus);
+        when(aggregatedHttpResponse.content()).thenReturn(httpData);
+        prometheusHttpSender = createObjectUnderTest();
+        final byte[] payloadBytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        final PrometheusPushResult result = prometheusHttpSender.pushToEndpoint(payloadBytes);
+        assertTrue(result.isSuccess());
+        assertThat(result.getStatusCode(), equalTo(200));
+    }
+
+    @Test
+    public void testHttpSenderWithoutAwsConfig_noAmzHeader() {
+        when(sinkConfig.getAwsConfig()).thenReturn(null);
+        when(sinkConfig.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final byte[] bytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        when(httpStatus.code()).thenReturn(200);
+        when(httpData.array()).thenReturn(bytes);
+        when(aggregatedHttpResponse.status()).thenReturn(httpStatus);
+        when(aggregatedHttpResponse.content()).thenReturn(httpData);
+        prometheusHttpSender = createObjectUnderTest();
+        final byte[] payloadBytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        prometheusHttpSender.pushToEndpoint(payloadBytes);
+
+        final ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        org.mockito.Mockito.verify(webClient).execute(requestCaptor.capture());
+        final HttpRequest capturedRequest = requestCaptor.getValue();
+        assertNull(capturedRequest.headers().get("x-amz-content-sha256"));
+    }
+
+    @Test
+    public void testHttpSenderWithBasicAuth_sendsSuccessfully() {
+        final AuthenticationOptions authOptions = mock(AuthenticationOptions.class);
+        final BasicAuthCredentials basicCreds = mock(BasicAuthCredentials.class);
+        when(basicCreds.getUsername()).thenReturn("user");
+        when(basicCreds.getPassword()).thenReturn("pass");
+        when(authOptions.getHttpBasic()).thenReturn(basicCreds);
+        when(sinkConfig.getAuthentication()).thenReturn(authOptions);
+        when(sinkConfig.getAwsConfig()).thenReturn(null);
+        when(sinkConfig.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final byte[] bytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        when(httpStatus.code()).thenReturn(200);
+        when(httpData.array()).thenReturn(bytes);
+        when(aggregatedHttpResponse.status()).thenReturn(httpStatus);
+        when(aggregatedHttpResponse.content()).thenReturn(httpData);
+        prometheusHttpSender = createObjectUnderTest();
+        final byte[] payloadBytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        final PrometheusPushResult result = prometheusHttpSender.pushToEndpoint(payloadBytes);
+        assertTrue(result.isSuccess());
+        assertThat(result.getStatusCode(), equalTo(200));
+    }
+
+    @Test
+    public void testHttpSenderWithBasicAuth_hasAuthorizationHeader() {
+        final AuthenticationOptions authOptions = mock(AuthenticationOptions.class);
+        final BasicAuthCredentials basicCreds = mock(BasicAuthCredentials.class);
+        when(basicCreds.getUsername()).thenReturn("user");
+        when(basicCreds.getPassword()).thenReturn("pass");
+        when(authOptions.getHttpBasic()).thenReturn(basicCreds);
+        when(sinkConfig.getAuthentication()).thenReturn(authOptions);
+        when(sinkConfig.getAwsConfig()).thenReturn(null);
+        when(sinkConfig.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final byte[] bytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        when(httpStatus.code()).thenReturn(200);
+        when(httpData.array()).thenReturn(bytes);
+        when(aggregatedHttpResponse.status()).thenReturn(httpStatus);
+        when(aggregatedHttpResponse.content()).thenReturn(httpData);
+        prometheusHttpSender = createObjectUnderTest();
+        final byte[] payloadBytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        prometheusHttpSender.pushToEndpoint(payloadBytes);
+
+        final ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        org.mockito.Mockito.verify(webClient).execute(requestCaptor.capture());
+        final HttpRequest capturedRequest = requestCaptor.getValue();
+        final String expectedAuth = "Basic " + Base64.getEncoder().encodeToString("user:pass".getBytes(StandardCharsets.UTF_8));
+        assertThat(capturedRequest.headers().get("authorization"), equalTo(expectedAuth));
+    }
+
+    @Test
+    public void testHttpSenderWithoutAuth_noAuthorizationHeader() {
+        when(sinkConfig.getAuthentication()).thenReturn(null);
+        when(sinkConfig.getAwsConfig()).thenReturn(null);
+        when(sinkConfig.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final byte[] bytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        when(httpStatus.code()).thenReturn(200);
+        when(httpData.array()).thenReturn(bytes);
+        when(aggregatedHttpResponse.status()).thenReturn(httpStatus);
+        when(aggregatedHttpResponse.content()).thenReturn(httpData);
+        prometheusHttpSender = createObjectUnderTest();
+        final byte[] payloadBytes = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+        prometheusHttpSender.pushToEndpoint(payloadBytes);
+
+        final ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        org.mockito.Mockito.verify(webClient).execute(requestCaptor.capture());
+        final HttpRequest capturedRequest = requestCaptor.getValue();
+        assertNull(capturedRequest.headers().get("authorization"));
+    }
 }

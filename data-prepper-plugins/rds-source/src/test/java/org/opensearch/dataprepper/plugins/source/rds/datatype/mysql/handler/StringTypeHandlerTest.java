@@ -79,6 +79,26 @@ public class StringTypeHandlerTest {
     }
 
     @Test
+    public void test_handle_enum_zero_value() {
+        StringTypeHandler handler = new StringTypeHandler();
+        String columnName = "testColumn";
+        Integer value = 0;
+        String[] enumValues = { "ENUM1", "ENUM2", "ENUM3" };
+        MySQLDataType columnType = MySQLDataType.ENUM;
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .withEnumStrValues(Map.of(columnName, enumValues))
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        String result = handler.handle(columnType, columnName, value, metadata);
+
+        assertThat(result, is(""));
+    }
+
+    @Test
     public void test_handle_set_string() {
         StringTypeHandler handler = new StringTypeHandler();
         String columnName = "testColumn";

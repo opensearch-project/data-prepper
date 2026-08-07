@@ -1,0 +1,35 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+    implementation 'dev.failsafe:failsafe:3.3.2'
+    implementation 'io.micrometer:micrometer-core'
+    testImplementation libs.commons.lang3
+    implementation libs.parquet.common
+    testImplementation testLibs.bundles.junit
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}

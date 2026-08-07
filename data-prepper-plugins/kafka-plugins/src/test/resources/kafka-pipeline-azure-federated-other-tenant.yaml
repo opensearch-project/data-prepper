@@ -1,0 +1,28 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+
+log-pipeline :
+  source:
+     kafka:
+        bootstrap_servers:
+          - "other-namespace.servicebus.windows.net:9093"
+        encryption:
+          type: "SSL"
+        authentication:
+          sasl:
+            azure_federated:
+              client_id: "33333333-3333-3333-3333-333333333333"
+              token_endpoint: "https://login.microsoftonline.com/22222222-2222-2222-2222-222222222222/oauth2/v2.0/token"
+              scope: "https://other-namespace.servicebus.windows.net/.default"
+        aws:
+          region: us-west-2
+          sts_role_arn: "arn:aws:iam::999999999999:role/other-eh-federation"
+        topics:
+        - name: "quickstart-events"
+          group_id: "groupdID1"
+  sink:
+    stdout:

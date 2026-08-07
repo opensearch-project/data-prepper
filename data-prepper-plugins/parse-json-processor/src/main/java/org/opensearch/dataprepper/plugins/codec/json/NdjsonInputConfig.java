@@ -18,7 +18,18 @@ public class NdjsonInputConfig {
     @JsonProperty("include_empty_objects")
     private boolean includeEmptyObjects = false;
 
+    /**
+     * Optional file extension used to identify enrichment source files.
+     * Defaults to "jsonl".
+     */
+    @JsonProperty("extension")
+    private String extension = "jsonl";
+
     public boolean isIncludeEmptyObjects() {
         return includeEmptyObjects;
+    }
+
+    public String getExtension() {
+        return extension;
     }
 }

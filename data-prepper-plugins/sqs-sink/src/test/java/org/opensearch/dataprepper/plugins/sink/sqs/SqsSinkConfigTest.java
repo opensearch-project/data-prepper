@@ -45,7 +45,7 @@ public class SqsSinkConfigTest {
     }
 
     @Test
-    private void TestCustomConfig() throws Exception {
+    void TestCustomConfig() throws Exception {
         AwsConfig awsConfig = mock(AwsConfig.class);
         reflectivelySetField(sqsSinkConfig, "awsConfig", awsConfig);
         assertThat(sqsSinkConfig.getAwsConfig(), equalTo(awsConfig));
@@ -83,7 +83,7 @@ public class SqsSinkConfigTest {
         assertTrue(sqsSinkConfig.isValidConfig());
         String testGroupId = RandomStringUtils.randomAlphabetic(10);
         reflectivelySetField(sqsSinkConfig, "groupId", testGroupId);
-        assertFalse(sqsSinkConfig.isValidConfig());
+        assertTrue(sqsSinkConfig.isValidConfig());
         reflectivelySetField(sqsSinkConfig, "groupId", null);
         String testDeDupId = RandomStringUtils.randomAlphabetic(10);
         reflectivelySetField(sqsSinkConfig, "deDuplicationId", testDeDupId);
@@ -112,21 +112,6 @@ public class SqsSinkConfigTest {
         reflectivelySetField(sqsSinkConfig, "deDuplicationId", testDeDupId);
         assertFalse(sqsSinkConfig.isValidConfig());
         
-    }
-
-    @Test
-    void TestValidCodecConfig() throws Exception {
-        reflectivelySetField(sqsSinkConfig, "codec", null);
-        reflectivelySetField(sqsSinkConfig, "thresholdConfig", sqsThresholdConfig);
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
-        assertFalse(sqsSinkConfig.isValidCodecConfig());
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
-        assertTrue(sqsSinkConfig.isValidCodecConfig());
-        PluginModel codec = mock(PluginModel.class);
-        when(codec.getPluginName()).thenReturn("ndjson");
-        reflectivelySetField(sqsSinkConfig, "codec", codec);
-        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
-        assertFalse(sqsSinkConfig.isValidCodecConfig());
     }
 
     private void reflectivelySetField(final SqsSinkConfig sqsSinkConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {

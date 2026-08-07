@@ -12,8 +12,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
@@ -32,6 +35,9 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -44,6 +50,8 @@ public class DataFileLoader implements Runnable {
     static final Duration VERSION_OVERLAP_TIME_FOR_EXPORT = Duration.ofMinutes(5);
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final Duration LEASE_RENEWAL_INTERVAL = Duration.ofMinutes(5);
+    static final Duration LEASE_RENEWAL_DURATION = Duration.ofMinutes(15);
     static final String EXPORT_RECORDS_TOTAL_COUNT = "exportRecordsTotal";
     static final String EXPORT_RECORDS_PROCESSED_COUNT = "exportRecordsProcessed";
     static final String EXPORT_RECORDS_PROCESSING_ERROR_COUNT = "exportRecordsProcessingErrors";
@@ -66,6 +74,9 @@ public class DataFileLoader implements Runnable {
     private final Counter exportRecordErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
+    private final PluginSetting pluginSetting;
+    private final String pipelineName;
+    private final HeadlessPipeline failurePipeline;
 
     private DataFileLoader(final DataFilePartition dataFilePartition,
                            final InputCodec codec,
@@ -76,7 +87,10 @@ public class DataFileLoader implements Runnable {
                            final EnhancedSourceCoordinator sourceCoordinator,
                            final AcknowledgementSet acknowledgementSet,
                            final Duration acknowledgmentTimeout,
-                           final DbTableMetadata dbTableMetadata) {
+                           final DbTableMetadata dbTableMetadata,
+                           final PluginSetting pluginSetting,
+                           final PipelineDescription pipelineDescription,
+                           final HeadlessPipeline failurePipeline) {
         this.dataFilePartition = dataFilePartition;
         bucket = dataFilePartition.getBucket();
         objectKey = dataFilePartition.getKey();
@@ -88,6 +102,9 @@ public class DataFileLoader implements Runnable {
         this.acknowledgementSet = acknowledgementSet;
         this.acknowledgmentTimeout = acknowledgmentTimeout;
         this.dbTableMetadata = dbTableMetadata;
+        this.pluginSetting = pluginSetting;
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.failurePipeline = failurePipeline;
 
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
         exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
@@ -105,14 +122,28 @@ public class DataFileLoader implements Runnable {
                                         final EnhancedSourceCoordinator sourceCoordinator,
                                         final AcknowledgementSet acknowledgementSet,
                                         final Duration acknowledgmentTimeout,
-                                        final DbTableMetadata dbTableMetadata) {
+                                        final DbTableMetadata dbTableMetadata,
+                                        final PluginSetting pluginSetting,
+                                        final PipelineDescription pipelineDescription,
+                                        final HeadlessPipeline failurePipeline) {
         return new DataFileLoader(dataFilePartition, codec, buffer, objectReader, recordConverter,
-                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata,
+                pluginSetting, pipelineDescription, failurePipeline);
     }
 
     @Override
     public void run() {
         LOG.info(SENSITIVE, "Start loading s3://{}/{}", bucket, objectKey);
+
+        final ScheduledExecutorService leaseRenewalScheduler = Executors.newSingleThreadScheduledExecutor();
+        leaseRenewalScheduler.scheduleAtFixedRate(() -> {
+            try {
+                sourceCoordinator.saveProgressStateForPartition(dataFilePartition, LEASE_RENEWAL_DURATION);
+                LOG.debug(SENSITIVE, "Successfully renewed lease for partition {}", objectKey);
+            } catch (Exception e) {
+                LOG.warn(SENSITIVE, "Failed to renew lease for partition {}", objectKey, e);
+            }
+        }, LEASE_RENEWAL_INTERVAL.toMillis(), LEASE_RENEWAL_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
 
@@ -133,7 +164,7 @@ public class DataFileLoader implements Runnable {
                     transformEvent(event, fullTableName, EngineType.fromString(progressState.getEngineType()));
 
                     final long snapshotTime = progressState.getSnapshotTime();
-                    final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
+                    final long eventVersionNumber = recordConverter.getVersionNumber(snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis());
                     final Event transformedEvent = recordConverter.convert(
                             event,
                             progressState.getSourceDatabase(),
@@ -143,7 +174,8 @@ public class DataFileLoader implements Runnable {
                             primaryKeys,
                             snapshotTime,
                             eventVersionNumber,
-                            null);
+                            null,
+                            new java.util.ArrayList<>(event.toMap().keySet()));
 
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(transformedEvent);
@@ -161,7 +193,12 @@ public class DataFileLoader implements Runnable {
                             .addArgument(objectKey)
                             .setCause(e)
                             .log();
-                    throw new RuntimeException(e);
+                    if (failurePipeline != null) {
+                        exportRecordErrorCounter.increment();
+                        sendToFailurePipeline(record.getData(), e);
+                    } else {
+                        throw new RuntimeException(e);
+                    }
                 }
             });
 
@@ -188,6 +225,9 @@ public class DataFileLoader implements Runnable {
         } catch (Exception e) {
             LOG.error(NOISY, "Failed to write events to buffer", e);
             exportRecordErrorCounter.increment(eventCount.get());
+            throw new RuntimeException(e);
+        } finally {
+            leaseRenewalScheduler.shutdownNow();
         }
     }
 
@@ -207,6 +247,22 @@ public class DataFileLoader implements Runnable {
                         entry.getValue());
                 event.put(entry.getKey(), data);
             }
+        }
+    }
+
+    private void sendToFailurePipeline(final Event event, final Exception e) {
+        if (failurePipeline == null) {
+            return;
+        }
+        try {
+            event.updateFailureMetadata()
+                    .withPluginId(pluginSetting.getName())
+                    .withPluginName(pluginSetting.getName())
+                    .withPipelineName(pipelineName)
+                    .withErrorMessage(e.getMessage());
+            failurePipeline.sendEvents(List.of(new Record<>(event)));
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Failed to send event to failure pipeline", ex);
         }
     }
 }

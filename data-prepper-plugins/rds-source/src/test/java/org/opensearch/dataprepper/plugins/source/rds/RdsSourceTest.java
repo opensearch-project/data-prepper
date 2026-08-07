@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +50,9 @@ class RdsSourceTest {
     @Mock
     private PipelineDescription pipelineDescription;
 
+    @Mock
+    private PluginSetting pluginSetting;
+
     @BeforeEach
     void setUp() {
         when(sourceConfig.getAwsAuthenticationConfig()).thenReturn(awsAuthenticationConfig);
@@ -63,6 +67,6 @@ class RdsSourceTest {
     private RdsSource createObjectUnderTest() {
         return new RdsSource(
                 pluginMetrics, sourceConfig, eventFactory, awsCredentialsSupplier, acknowledgementSetManager,
-                pluginConfigObservable, pipelineDescription);
+                pluginConfigObservable, pipelineDescription, pluginSetting);
     }
 }

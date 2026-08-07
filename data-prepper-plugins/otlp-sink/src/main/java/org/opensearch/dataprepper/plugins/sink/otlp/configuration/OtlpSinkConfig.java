@@ -16,6 +16,8 @@ import software.amazon.awssdk.regions.Region;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,11 @@ import java.util.stream.Collectors;
  */
 @NoArgsConstructor
 public class OtlpSinkConfig {
+
+    static final List<String> PROTECTED_HEADERS = List.of(
+            "authorization", "host", "content-type", "content-encoding", "content-length"
+    );
+    static final String PROTECTED_HEADER_PREFIX = "x-amz-";
 
     @Getter
     @JsonProperty("endpoint")
@@ -71,12 +78,31 @@ public class OtlpSinkConfig {
     @Valid
     private AwsConfig awsConfig;
 
+    @JsonProperty("additional_headers")
+    private Map<String, String> additionalHeaders = Map.of();
+
+    @JsonProperty("service_name")
+    private String serviceName;
+
+    public Map<String, String> getAdditionalHeaders() {
+        return additionalHeaders;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
     /**
-     * Get AWS region from the provided endpoint.
-     *
-     * @return the AWS region
+     * Get AWS region from the aws config block, or fall back to parsing the endpoint.
      */
     public Region getAwsRegion() {
+        if (awsConfig != null && awsConfig.getAwsRegion() != null) {
+            return awsConfig.getAwsRegion();
+        }
+        return parseRegionFromEndpoint();
+    }
+
+    private Region parseRegionFromEndpoint() {
         try {
             final String host = URI.create(this.endpoint).getHost();
             if (host == null) {
@@ -120,5 +146,18 @@ public class OtlpSinkConfig {
     @AssertTrue
     boolean isAwsConfigValid() {
         return awsConfig != null;
+    }
+
+    /**
+     * Validate that additional_headers does not contain protected header names.
+     */
+    @AssertTrue(message = "additional_headers must not override protected headers (Authorization, Host, Content-Type, Content-Encoding, Content-Length, X-Amz-*)")
+    boolean isAdditionalHeadersValid() {
+        if (additionalHeaders.isEmpty()) {
+            return true;
+        }
+        return additionalHeaders.keySet().stream()
+                .map(String::toLowerCase)
+                .noneMatch(h -> PROTECTED_HEADERS.contains(h) || h.startsWith(PROTECTED_HEADER_PREFIX));
     }
 }

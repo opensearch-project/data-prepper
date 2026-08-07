@@ -1,0 +1,55 @@
+{
+  "name": "Amazon Bedrock Nova multimodal model - text embedding",
+  "description": "Built-in connector for Amazon Bedrock Nova multimodal model - text embedding",
+  "version": "1",
+  "protocol": "aws_sigv4",
+  "parameters": {
+    "service_name": "bedrock",
+    "model": "amazon.nova-2-multimodal-embeddings-v1:0",
+    "dimensions": "1024",
+    "normalize": "true",
+    "embeddingTypes": "[\"float\"]",
+    "truncationMode": "END"
+  },
+  "actions": [
+    {
+      "action_type": "PREDICT",
+      "method": "POST",
+      "headers": {
+        "content-type": "application/json",
+        "x-amz-content-sha256": "required"
+      },
+      "url": "https://bedrock-runtime.${parameters.region}.amazonaws.com/model/${parameters.model}/invoke",
+      "request_body": "{\n  \"taskType\": \"SINGLE_EMBEDDING\",\n  \"singleEmbeddingParams\": {\n  \"embeddingPurpose\": \"GENERIC_INDEX\",\n   \"embeddingDimension\": ${parameters.dimensions},\n    \"text\": {\n      \"truncationMode\": \"${parameters.truncationMode}\",\n      \"value\": \"${parameters.inputText}\"\n    }\n  }\n}",
+      "pre_process_function": "connector.pre_process.bedrock.nova.text_embedding",
+      "post_process_function": "connector.post_process.bedrock.nova.embedding"
+    },
+    {
+      "action_type": "BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{ \"inputDataConfig\": ${parameters.inputDataConfig}, \"jobName\": \"${parameters.jobName}\", \"modelId\": \"${parameters.model}\", \"outputDataConfig\": ${parameters.outputDataConfig}, \"roleArn\": \"${parameters.roleArn}\" }"
+    },
+    {
+      "action_type": "BATCH_PREDICT_STATUS",
+      "method": "GET",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{}"
+    },
+    {
+      "action_type": "CANCEL_BATCH_PREDICT",
+      "method": "POST",
+      "url": "https://bedrock.${parameters.region}.amazonaws.com/model-invocation-job/${parameters.jobArn}/stop",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "request_body": "{}"
+    }
+  ]
+}

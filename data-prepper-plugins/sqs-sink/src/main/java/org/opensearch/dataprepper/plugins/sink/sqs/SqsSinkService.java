@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sink.sqs;
@@ -8,6 +12,9 @@ package org.opensearch.dataprepper.plugins.sink.sqs;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
@@ -30,6 +37,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -57,6 +65,10 @@ public class SqsSinkService extends SqsSinkExecutor {
     private final SqsSinkMetrics sinkMetrics;
     private final DlqPushHandler dlqPushHandler;
     private final List<DlqObject> dlqObjects;
+    private HeadlessPipeline dlqPipeline;
+    private final List<Record<Event>> dlqPipelineRecords;
+    private final PluginSetting pluginSetting;
+    private final PipelineDescription pipelineDescription;
 
     public SqsSinkService(final SqsSinkConfig sqsSinkConfig,
                           final SqsClient sqsClient,
@@ -64,9 +76,13 @@ public class SqsSinkService extends SqsSinkExecutor {
                           final OutputCodec codec,
                           final SinkContext sinkContext,
                           final DlqPushHandler dlqPushHandler,
-                          final PluginMetrics pluginMetrics) {
+                          final PluginMetrics pluginMetrics,
+                          final PluginSetting pluginSetting,
+                          final PipelineDescription pipelineDescription
+                          ) {
         batchUrlMap = new HashMap<>();
         dlqObjects = new ArrayList<>();
+        dlqPipelineRecords = new ArrayList<>();
         inMemoryBufferFactory =new InMemoryBufferFactory();
         this.sqsClient = sqsClient;
         this.dlqPushHandler = dlqPushHandler;
@@ -77,7 +93,8 @@ public class SqsSinkService extends SqsSinkExecutor {
         this.sqsSinkConfig = sqsSinkConfig;
         reentrantLock = new ReentrantLock();
         this.sinkMetrics = new SqsSinkMetrics(pluginMetrics);
-
+        this.pluginSetting = pluginSetting;
+        this.pipelineDescription = pipelineDescription;
         queueUrl = sqsSinkConfig.getQueueUrl();
         isDynamicQueueUrl = queueUrl.contains("${");
         if (isDynamicQueueUrl) {
@@ -104,6 +121,10 @@ public class SqsSinkService extends SqsSinkExecutor {
 
     }
 
+    public void setDlqPipeline(HeadlessPipeline pipeline) {
+        this.dlqPipeline = pipeline;
+    }
+
     @Override
     public boolean exceedsMaxEventSizeThreshold(final long estimatedSize) {
         return estimatedSize > MAX_EVENT_SIZE;
@@ -111,6 +132,12 @@ public class SqsSinkService extends SqsSinkExecutor {
 
     @Override
     public void pushDLQList() {
+        if (dlqPipeline != null && !dlqPipelineRecords.isEmpty()) {
+            dlqPipeline.sendEvents(dlqPipelineRecords);
+            dlqPipelineRecords.clear();
+            return;
+        }
+
         // If DLQ push handler is null, dlqObjects list
         // would be empty
         if (dlqObjects.size() == 0) {
@@ -281,10 +308,24 @@ public class SqsSinkService extends SqsSinkExecutor {
     }
 
     private void addBatchEntryToDLQ(final SqsSinkBatchEntry batchEntry, final String errorMessage) {
-        addMessageToDLQ(batchEntry.getBody(), batchEntry.getEventHandles(), errorMessage);
+        addMessageToDLQ(batchEntry.getBody(), batchEntry.getEventHandles(), batchEntry.getEvents(), errorMessage);
     }
 
-    private void addMessageToDLQ(final String message, final List<EventHandle> eventHandles, final String errorMessage) {
+    private void addMessageToDLQ(final String message, final List<EventHandle> eventHandles, List<Event> events, final String errorMessage) {
+        if (dlqPipeline != null) {
+            for (Event event: events) {
+                if (event != null) {
+                   event.updateFailureMetadata()
+                       .withPluginId(pluginSetting.getName())
+                       .withPluginName(pluginSetting.getName())
+                       .withPipelineName(pipelineDescription.getPipelineName())
+                       .withErrorMessage(errorMessage)
+                       .with("sqsSinkQueueUrl", queueUrl);
+                    dlqPipelineRecords.add(new Record<>(event));
+                }
+            }
+            return;
+        }
         if (dlqPushHandler != null) {
             SqsSinkDlqData sqsSinkDlqData = SqsSinkDlqData.createDlqData(message, errorMessage);
             DlqObject dlqObject = DlqObject.createDlqObject(dlqPushHandler.getPluginSetting(), eventHandles, sqsSinkDlqData);
@@ -297,15 +338,16 @@ public class SqsSinkService extends SqsSinkExecutor {
     }
 
     @Override
-    public void recordLatency(double latencyMillis) {
-        sinkMetrics.recordRequestLatency((double)latencyMillis);
+    public void recordLatency(long amount, TimeUnit timeUnit) {
+        sinkMetrics.recordRequestLatency(amount, timeUnit);
     }
 
     @Override
     public void addEventToDLQList(final Event event, Throwable ex) {
         List<EventHandle> eventHandles = new ArrayList<>();
+        List<Event> events = List.of(event);
         eventHandles.add(event.getEventHandle());
-        addMessageToDLQ(event.toJsonString(), eventHandles, ex.getMessage());
+        addMessageToDLQ(event.toJsonString(), eventHandles, events, ex.getMessage());
     }
 
     @Override

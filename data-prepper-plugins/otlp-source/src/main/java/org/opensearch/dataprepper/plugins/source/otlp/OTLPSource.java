@@ -95,7 +95,7 @@ public class OTLPSource implements Source<Record<Object>> {
       final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getMetricsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          metricBuffer, pluginMetrics, "otlp.metrics");
+          metricBuffer, null, pluginMetrics, "otlp.metrics");
 
       final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),

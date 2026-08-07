@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 
+import java.util.Map;
+
 public class AwsConfig implements AwsCredentialsConfig {
 
     public static class AwsMskConfig {
@@ -28,6 +30,7 @@ public class AwsConfig implements AwsCredentialsConfig {
         public MskBrokerConnectionType getBrokerConnectionType() {
             return brokerConnectionType;
         }
+
     }
         
     @JsonProperty("msk")
@@ -42,6 +45,10 @@ public class AwsConfig implements AwsCredentialsConfig {
     @Size(min = 20, max = 2048, message = "sts_role_arn length should be between 20 and 2048 characters")
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
+
+    @JsonProperty("sts_header_overrides")
+    @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
+    private Map<String, String> awsStsHeaderOverrides;
 
     @JsonProperty("role_session_name")
     private String stsRoleSessionName;
@@ -64,11 +71,16 @@ public class AwsConfig implements AwsCredentialsConfig {
         return stsRoleSessionName;
     }
 
+    public Map<String, String> getAwsStsHeaderOverrides() {
+        return awsStsHeaderOverrides;
+    }
+
     @Override
     public AwsCredentialsOptions toCredentialsOptions() {
         return AwsCredentialsOptions.builder()
                 .withRegion(region)
                 .withStsRoleArn(stsRoleArn)
+                .withStsHeaderOverrides(awsStsHeaderOverrides)
                 .build();
     }
 }

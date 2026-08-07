@@ -1,0 +1,372 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-1"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "service1"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "counter1",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-c1",
+                        "value": {
+                          "stringValue": "label-value-c1"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "asInt": "123"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "histogram2",
+              "unit": 1,
+              "histogram": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-h2",
+                        "value": {
+                          "stringValue": "label-value-h2"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "count": "30",
+                    "sum": "100",
+                    "bucket_counts": [3, 5, 15, 6, 1],
+                    "explicit_bounds": [1.0, 2.0, 3.0, 4.0],
+                    "exemplars": []
+                  }
+                ],
+                "aggregationTemporality":"2"
+              }
+            },
+            {
+              "name": "counter3",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-c3",
+                        "value": {
+                          "stringValue": "label-value-c3"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "asInt": "123"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-2"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "service2"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "histogram2",
+              "unit": 1,
+              "histogram": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-h2-2",
+                        "value": {
+                          "stringValue": "label-value-1"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581462773000000789",
+                    "timeUnixNano": "1581472773000000789",
+                    "count": "40",
+                    "sum": "110",
+                    "bucket_counts": [3, 5, 15, 6, 1],
+                    "explicit_bounds": [1.0, 2.0, 3.0, 4.0],
+                    "exemplars": []
+                  }
+                ],
+                "aggregationTemporality":"2"
+              }
+            },
+            {
+              "name": "sum1",
+              "unit": 1,
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-s1",
+                        "value": {
+                          "stringValue": "label-value-s1"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581453773000000789",
+                    "timeUnixNano": "1581454773000000789",
+                    "asInt": "4562"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "counter3",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-c3-2",
+                        "value": {
+                          "stringValue": "label-value-c3-2"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581462773000000789",
+                    "timeUnixNano": "1581482773000000789",
+                    "asInt": "1230"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-3"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "service2"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "sum1",
+              "unit": 1,
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-s1-2",
+                        "value": {
+                          "stringValue": "label-value-s1-2"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1591452773000000789",
+                    "timeUnixNano": "1591552773000000789",
+                    "asInt": "4567"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "counter3",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-c3-3",
+                        "value": {
+                          "stringValue": "label-value-c3-3"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1681452773000000789",
+                    "timeUnixNano": "1681452973000000789",
+                    "asInt": "4123"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-3"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "service1"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "sum1",
+              "unit": 1,
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-s1-3",
+                        "value": {
+                          "stringValue": "label-value-s1-3"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581452773000000789",
+                    "timeUnixNano": "1581452773000000789",
+                    "asInt": "456"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "resource-attr",
+            "value": {
+              "stringValue": "resource-attr-val-3"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "service2"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "counter4",
+              "unit": 1,
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-c4",
+                        "value": {
+                          "stringValue": "label-value-c4"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1481452773000000789",
+                    "timeUnixNano": "1481952773000000789",
+                    "asInt": "555"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "sum1",
+              "unit": 1,
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "label-s1-4",
+                        "value": {
+                          "stringValue": "label-value-s1-4"
+                        }
+                      }
+                    ],
+                    "startTimeUnixNano": "1581453773000000789",
+                    "timeUnixNano": "1581454773000000789",
+                    "asInt": "4560"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+

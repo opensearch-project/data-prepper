@@ -1,0 +1,246 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
+
+/**
+ * IMPORTANT: This test intentionally does NOT use the parent's dataPrepperDockerImage
+ * because it needs to test backward compatibility with a RELEASED version.
+ *
+ * Writer: Uses released opensearchproject/data-prepper:2 (always Docker, all Java versions test with docker)
+ * Reader: Uses locally built :release:docker:docker
+ */
+
+/**
+ * Kafka Buffer Backward Compatibility End-to-End Test
+ *
+ * This test verifies backward compatibility between Data Prepper versions
+ * by writing data with a released version and reading with the current build.
+ */
+
+def RELEASED_VERSION = project.hasProperty('releasedVersion') ?
+    project.getProperty('releasedVersion') : '2'
+def KAFKA_VERSION = '7.8.0'
+def WRITER_PIPELINE_YAML = 'writer-pipeline.yaml'
+def READER_PIPELINE_YAML = 'reader-pipeline.yaml'
+def DATA_PREPPER_CONFIG = 'data-prepper-config.yaml'
+
+// Pull released Data Prepper image
+tasks.register('pullReleasedDataPrepperImage', DockerPullImage) {
+    image = "opensearchproject/data-prepper:${RELEASED_VERSION}"
+}
+
+// Pull Kafka image
+tasks.register('pullKafkaImage', DockerPullImage) {
+    image = "confluentinc/cp-kafka:${KAFKA_VERSION}"
+}
+
+// Create Kafka container
+tasks.register('createKafkaContainer', DockerCreateContainer) {
+    dependsOn pullKafkaImage
+    dependsOn createDataPrepperNetwork
+    containerName = 'kafka-buffer-backward-compatibility'
+    exposePorts('tcp', [9092, 9093])
+    hostConfig.portBindings = ['9092:9092', '9093:9093']
+    hostConfig.network = createDataPrepperNetwork.getNetworkName()
+    networkAliases = ['kafka']
+    targetImageId pullKafkaImage.image
+
+    // Kafka configuration for KRaft mode (no Zookeeper)
+    envVars = [
+        'KAFKA_NODE_ID': '1',
+        'KAFKA_LISTENER_SECURITY_PROTOCOL_MAP': 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT',
+        'KAFKA_ADVERTISED_LISTENERS': 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093',
+        'KAFKA_PROCESS_ROLES': 'broker,controller',
+        'KAFKA_CONTROLLER_QUORUM_VOTERS': '1@localhost:29093',
+        'KAFKA_LISTENERS': 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9093',
+        'KAFKA_INTER_BROKER_LISTENER_NAME': 'PLAINTEXT',
+        'KAFKA_CONTROLLER_LISTENER_NAMES': 'CONTROLLER',
+        'KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR': '1',
+        'KAFKA_TRANSACTION_STATE_LOG_MIN_ISR': '1',
+        'KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR': '1',
+        'KAFKA_LOG_DIRS': '/tmp/kraft-combined-logs',
+        'CLUSTER_ID': 'MkU3OEVBNTcwNTJENDM2Qk'
+    ]
+}
+
+tasks.register('startKafkaContainer', DockerStartContainer) {
+    dependsOn createKafkaContainer
+    targetContainerId createKafkaContainer.getContainerId()
+}
+
+tasks.register('stopKafkaContainer', DockerStopContainer) {
+    targetContainerId createKafkaContainer.getContainerId()
+    onError { /* ignore errors if container doesn't exist */ }
+}
+
+tasks.register('removeKafkaContainer', DockerRemoveContainer) {
+    dependsOn stopKafkaContainer
+    targetContainerId stopKafkaContainer.getContainerId()
+}
+
+
+// Create Released Data Prepper (Writer) container
+tasks.register('createReleasedDataPrepperContainer', DockerCreateContainer) {
+    dependsOn pullReleasedDataPrepperImage
+    dependsOn createDataPrepperNetwork
+    containerName = 'data-prepper-writer'
+    exposePorts('tcp', [2021])
+    hostConfig.portBindings = ['2021:2021']
+    hostConfig.binds = [
+        (project.file("src/integrationTest/resources/${WRITER_PIPELINE_YAML}").toString()): '/usr/share/data-prepper/pipelines/pipelines.yaml',
+        (project.file("src/integrationTest/resources/${DATA_PREPPER_CONFIG}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml'
+    ]
+    hostConfig.network = createDataPrepperNetwork.getNetworkName()
+    targetImageId pullReleasedDataPrepperImage.image
+}
+
+tasks.register('startReleasedDataPrepperContainer', DockerStartContainer) {
+    dependsOn createReleasedDataPrepperContainer
+    dependsOn startKafkaContainer
+    mustRunAfter startKafkaContainer
+    targetContainerId createReleasedDataPrepperContainer.getContainerId()
+}
+
+tasks.register('stopReleasedDataPrepperContainer', DockerStopContainer) {
+    targetContainerId createReleasedDataPrepperContainer.getContainerId()
+    onError { /* ignore errors if container doesn't exist */ }
+}
+
+tasks.register('removeReleasedDataPrepperContainer', DockerRemoveContainer) {
+    dependsOn stopReleasedDataPrepperContainer
+    targetContainerId stopReleasedDataPrepperContainer.getContainerId()
+}
+
+// Create Current Data Prepper (Reader) container
+// Always uses the Docker image from :release:docker:docker (not the parent's e2e-test image)
+tasks.register('createCurrentDataPrepperContainer', DockerCreateContainer) {
+    dependsOn ':release:docker:docker'
+    dependsOn createDataPrepperNetwork
+    containerName = 'data-prepper-reader'
+    exposePorts('tcp', [2022])
+    hostConfig.portBindings = ['2022:2300']
+    hostConfig.binds = [
+        (project.file("src/integrationTest/resources/${READER_PIPELINE_YAML}").toString()): '/usr/share/data-prepper/pipelines/pipelines.yaml',
+        (project.file("src/integrationTest/resources/${DATA_PREPPER_CONFIG}").toString()): '/usr/share/data-prepper/config/data-prepper-config.yaml'
+    ]
+    hostConfig.network = createDataPrepperNetwork.getNetworkName()
+    targetImageId "${project.rootProject.name}:${project.version}"
+}
+
+tasks.register('startCurrentDataPrepperContainer', DockerStartContainer) {
+    dependsOn createCurrentDataPrepperContainer
+    dependsOn startKafkaContainer
+    mustRunAfter startKafkaContainer
+    targetContainerId createCurrentDataPrepperContainer.getContainerId()
+}
+
+tasks.register('stopCurrentDataPrepperContainer', DockerStopContainer) {
+    targetContainerId createCurrentDataPrepperContainer.getContainerId()
+    onError { /* ignore errors if container doesn't exist */ }
+}
+
+tasks.register('removeCurrentDataPrepperContainer', DockerRemoveContainer) {
+    dependsOn stopCurrentDataPrepperContainer
+    targetContainerId stopCurrentDataPrepperContainer.getContainerId()
+}
+
+// Clean up tasks - remove any existing containers/networks before starting
+tasks.register('cleanupKafkaBufferBackwardCompatibilityTest') {
+    group = 'verification'
+    description = 'Cleans up containers and network from previous test runs'
+
+    doLast {
+        // Clean up containers
+        ['kafka-buffer-backward-compatibility', 'data-prepper-writer', 'data-prepper-reader'].each { containerName ->
+            try {
+                exec {
+                    commandLine 'docker', 'stop', containerName
+                    ignoreExitValue = true
+                }
+                exec {
+                    commandLine 'docker', 'rm', containerName
+                    ignoreExitValue = true
+                }
+            } catch (Exception e) {
+                // Ignore errors if container doesn't exist
+            }
+        }
+
+        // Clean up network
+        try {
+            exec {
+                commandLine 'docker', 'network', 'rm', 'data_prepper_network'
+                ignoreExitValue = true
+            }
+        } catch (Exception e) {
+            // Ignore errors if network doesn't exist
+        }
+    }
+}
+
+// Main test task
+tasks.register('kafkaBufferBackwardCompatibilityTest', Test) {
+    useJUnitPlatform()
+
+    dependsOn cleanupKafkaBufferBackwardCompatibilityTest
+    dependsOn build
+    dependsOn startOpenSearchDockerContainer
+    dependsOn startKafkaContainer
+    dependsOn startReleasedDataPrepperContainer
+    dependsOn startCurrentDataPrepperContainer
+    
+    // Wait for all containers to be ready
+    doFirst {
+        sleep(20 * 1000)
+    }
+
+    description = 'Runs Kafka buffer backward compatibility end-to-end test'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching 'org.opensearch.dataprepper.integration.backward.KafkaBufferBackwardCompatibilityTest.*'
+    }
+
+    // Pass version to test
+    if (project.hasProperty('releasedVersion')) {
+        systemProperty 'releasedVersion', project.getProperty('releasedVersion')
+    }
+
+    finalizedBy stopOpenSearchDockerContainer
+
+    // Stop containers first, then remove them, then remove network
+    finalizedBy stopReleasedDataPrepperContainer
+    finalizedBy stopCurrentDataPrepperContainer
+    finalizedBy stopKafkaContainer
+}
+
+// Ensure network is removed AFTER all containers are removed
+removeDataPrepperNetwork.mustRunAfter removeReleasedDataPrepperContainer
+removeDataPrepperNetwork.mustRunAfter removeCurrentDataPrepperContainer
+removeDataPrepperNetwork.mustRunAfter removeKafkaContainer
+
+dependencies {
+    integrationTestImplementation project(':data-prepper-api')
+    integrationTestImplementation project(':data-prepper-plugins:common')
+    integrationTestImplementation project(':data-prepper-plugins:opensearch')
+    integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
+    integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
+    integrationTestImplementation libs.armeria.core
+    integrationTestImplementation libs.opensearch.rhlc
+    integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    integrationTestImplementation 'org.slf4j:slf4j-api:2.0.9'
+}

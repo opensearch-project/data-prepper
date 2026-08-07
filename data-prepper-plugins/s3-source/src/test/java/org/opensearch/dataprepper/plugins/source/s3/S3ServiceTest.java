@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.io.IOException;

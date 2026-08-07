@@ -144,7 +144,8 @@ public class BulkRetryStrategyTests {
                 bulkRequestSupplier,
                 PIPELINE_NAME,
                 PLUGIN_NAME,
-                null);
+                null,
+                false);
     }
 
     public BulkRetryStrategy createObjectUnderTest(
@@ -171,7 +172,8 @@ public class BulkRetryStrategyTests {
                 bulkRequestSupplier,
                 PIPELINE_NAME,
                 PLUGIN_NAME,
-                null);
+                null,
+                false);
     }
 
     public BulkRetryStrategy createObjectUnderTest(
@@ -199,7 +201,35 @@ public class BulkRetryStrategyTests {
                 bulkRequestSupplier,
                 PIPELINE_NAME,
                 PLUGIN_NAME,
-                existingDocumentQueryManager);
+                existingDocumentQueryManager,
+                false);
+    }
+
+    public BulkRetryStrategy createObjectUnderTestWithExternalVersioning(
+            final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+            final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
+            final Supplier<AccumulatingBulkRequest> bulkRequestSupplier
+    ) {
+        return new BulkRetryStrategy(
+                requestFunction,
+                logFailure,
+                (operations) -> {
+                    for (BulkOperationWrapper operation: operations) {
+                        if (operation.getEvent() != null) {
+                            operation.getEvent().getEventHandle().release(true);
+                        }
+                        if (operation.getEventHandle() != null) {
+                            operation.getEventHandle().release(true);
+                        }
+                    }
+                },
+                pluginMetrics,
+                Integer.MAX_VALUE,
+                bulkRequestSupplier,
+                PIPELINE_NAME,
+                PLUGIN_NAME,
+                null,
+                true);
     }
 
     @Test
@@ -629,12 +659,6 @@ public class BulkRetryStrategyTests {
         assertThat(maxRetriesLimitReached, equalTo(true));
         assertEquals(numEventsSucceeded, 2);
         assertEquals(numEventsFailed, 2);
-
-        final List<Measurement> documentVersionConflictMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
-        assertEquals(1, documentVersionConflictMeasurement.size());
-        assertEquals(1.0, documentVersionConflictMeasurement.get(0).getValue(), 0);
     }
 
     @Test
@@ -692,6 +716,128 @@ public class BulkRetryStrategyTests {
                         .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
         assertEquals(1, documentErrorsMeasurements.size());
         assertEquals(3.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testExecute_VersionConflictDoesNotIncrementDocumentErrors() throws Exception {
+        final String testIndex = "version-conflict-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTestWithExternalVersioning(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+        final BulkOperationWrapper wrapper3 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp3).build(), eventHandle3);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+        accumulatingBulkRequest.addOperation(wrapper3);
+
+        // Response: 1 success, 1 version conflict, 1 bad request
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem versionConflictItem = versionConflictErrorItemResponse();
+        final BulkResponseItem badRequestItem = badRequestItemResponse(testIndex);
+        final List<BulkResponseItem> responseItems = Arrays.asList(successItem, versionConflictItem, badRequestItem);
+
+        final BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.errors()).thenReturn(true);
+        when(bulkResponse.items()).thenReturn(responseItems);
+        when(requestFunction.apply(any())).thenReturn(bulkResponse);
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // Version conflict should NOT be counted as a document error
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+        // Version conflict should be counted in its own metric
+        final List<Measurement> versionConflictMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertEquals(1, versionConflictMeasurements.size());
+        assertEquals(1.0, versionConflictMeasurements.get(0).getValue(), 0);
+
+        // Success metric should count the 1 successful document
+        final List<Measurement> successMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, successMeasurements.size());
+        assertEquals(1.0, successMeasurements.get(0).getValue(), 0);
+
+        // Version conflict event handle should be released with true (success)
+        verify(eventHandle2).release(true);
+    }
+
+    @Test
+    public void testExecute_VersionConflictIncrementsDocumentErrors_WhenNotExternalVersioning() throws Exception {
+        final String testIndex = "version-conflict-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        // Use default (non-external versioning)
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+        final BulkOperationWrapper wrapper3 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp3).build(), eventHandle3);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+        accumulatingBulkRequest.addOperation(wrapper3);
+
+        // Response: 1 success, 1 version conflict, 1 bad request
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem versionConflictItem = versionConflictErrorItemResponse();
+        final BulkResponseItem badRequestItem = badRequestItemResponse(testIndex);
+        final List<BulkResponseItem> responseItems = Arrays.asList(successItem, versionConflictItem, badRequestItem);
+
+        final BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.errors()).thenReturn(true);
+        when(bulkResponse.items()).thenReturn(responseItems);
+        when(requestFunction.apply(any())).thenReturn(bulkResponse);
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // Without external versioning, version conflict SHOULD be counted as a document error
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(2.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+        // Version conflict metric should NOT be incremented without external versioning
+        final List<Measurement> versionConflictMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertEquals(1, versionConflictMeasurements.size());
+        assertEquals(0.0, versionConflictMeasurements.get(0).getValue(), 0);
+
+        // Success metric should count the 1 successful document
+        final List<Measurement> successMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, successMeasurements.size());
+        assertEquals(1.0, successMeasurements.get(0).getValue(), 0);
     }
 
     @Test

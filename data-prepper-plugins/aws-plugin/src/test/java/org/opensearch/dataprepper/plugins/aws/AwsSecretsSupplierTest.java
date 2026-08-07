@@ -2,11 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  *
- *
  * The OpenSearch Contributors require contributions made to
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -88,6 +86,7 @@ class AwsSecretsSupplierTest {
     @BeforeEach
     void setUp() throws JsonProcessingException {
         when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
+        when(awsSecretManagerConfiguration.isSkipValidationOnStart()).thenReturn(false); // Default: validate on start
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Map.of(TEST_AWS_SECRET_CONFIGURATION_NAME, awsSecretManagerConfiguration)
         );

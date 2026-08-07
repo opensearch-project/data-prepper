@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.model.acknowledgements;
@@ -26,4 +30,16 @@ public interface AcknowledgementSetManager {
      * @since 2.2
      */
     AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout);
+
+    /**
+     * Creates an acknowledgement set
+     *
+     * @param callback callback function to be invoked
+     * @param timeout expiry timeout
+     * @param invokeCallbackOnExpiry flag indicating if the callback function should be invoked on expiry
+     *
+     * @return AcknowledgementSet returns a new acknowledgement set
+     * @since 2.15
+     */
+    AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout, final boolean invokeCallbackOnExpiry);
 }

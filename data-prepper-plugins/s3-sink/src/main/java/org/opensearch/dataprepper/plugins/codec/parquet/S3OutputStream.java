@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
 
 import org.apache.parquet.io.PositionOutputStream;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +92,8 @@ public class S3OutputStream extends PositionOutputStream {
 
     private final ExecutorService executorService;
 
+    private final ServerSideEncryptionConfig serverSideEncryptionConfig;
+
     /**
      * Creates a new S3 OutputStream
      *
@@ -95,12 +102,14 @@ public class S3OutputStream extends PositionOutputStream {
      * @param keySupplier     path within the bucket
      * @param defaultBucket default bucket
      * @param bucketOwnerProvider bucket owner provider
+     * @param serverSideEncryptionConfig server-side encryption config
      */
     public S3OutputStream(final S3AsyncClient s3Client,
                           final Supplier<String> bucketSupplier,
                           final Supplier<String> keySupplier,
                           final String defaultBucket,
-                          final BucketOwnerProvider bucketOwnerProvider) {
+                          final BucketOwnerProvider bucketOwnerProvider,
+                          final ServerSideEncryptionConfig serverSideEncryptionConfig) {
         this.s3Client = s3Client;
         this.bucket = bucketSupplier.get();
         this.key = keySupplier.get();
@@ -111,6 +120,15 @@ public class S3OutputStream extends PositionOutputStream {
         this.defaultBucket = defaultBucket;
         this.executorService = Executors.newSingleThreadExecutor();
         this.bucketOwnerProvider = bucketOwnerProvider;
+        this.serverSideEncryptionConfig = serverSideEncryptionConfig;
+    }
+
+    public S3OutputStream(final S3AsyncClient s3Client,
+                          final Supplier<String> bucketSupplier,
+                          final Supplier<String> keySupplier,
+                          final String defaultBucket,
+                          final BucketOwnerProvider bucketOwnerProvider) {
+        this(s3Client, bucketSupplier, keySupplier, defaultBucket, bucketOwnerProvider, null);
     }
 
     @Override
@@ -285,12 +303,14 @@ public class S3OutputStream extends PositionOutputStream {
     }
 
     private void createMultipartUpload() {
-        CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
+        CreateMultipartUploadRequest.Builder builder = CreateMultipartUploadRequest.builder()
                 .bucket(bucket)
                 .key(key)
-                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(bucket).orElse(null))
-                .build();
-        CompletableFuture<CreateMultipartUploadResponse> multipartUpload = s3Client.createMultipartUpload(uploadRequest);
+                .expectedBucketOwner(bucketOwnerProvider.getBucketOwner(bucket).orElse(null));
+        if (serverSideEncryptionConfig != null) {
+            serverSideEncryptionConfig.applyTo(builder);
+        }
+        CompletableFuture<CreateMultipartUploadResponse> multipartUpload = s3Client.createMultipartUpload(builder.build());
 
         final CreateMultipartUploadResponse response = multipartUpload.join();
 

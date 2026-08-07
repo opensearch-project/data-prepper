@@ -28,6 +28,10 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("job_sts_role_arn")
+    @Size(min = 20, max = 2048, message = "job_sts_role_arn length should be between 20 and 2048 characters")
+    private String jobStsRoleArn;
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -42,5 +46,9 @@ public class AwsAuthenticationOptions {
 
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public String getJobStsRoleArn() {
+        return jobStsRoleArn;
     }
 }

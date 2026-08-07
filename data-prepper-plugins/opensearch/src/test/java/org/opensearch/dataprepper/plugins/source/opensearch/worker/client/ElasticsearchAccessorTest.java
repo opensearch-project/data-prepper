@@ -46,6 +46,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -67,6 +68,8 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.INDEX_NOT_FOUND_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.PIT_RESOURCE_LIMIT_ERROR_TYPE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 
 @ExtendWith(MockitoExtension.class)
 public class ElasticsearchAccessorTest {
@@ -127,11 +130,15 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
+        when(firstHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
+        when(secondHit.version()).thenReturn(2L);
+        when(secondHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -148,6 +155,16 @@ public class ElasticsearchAccessorTest {
         assertThat(createScrollResponse.getScrollId(), equalTo(scrollId));
         assertThat(createScrollResponse.getDocuments(), notNullValue());
         assertThat(createScrollResponse.getDocuments().size(), equalTo(2));
+        assertThat(createScrollResponse.getDocuments().get(0), notNullValue());
+        assertThat(createScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(createScrollResponse.getDocuments().get(1), notNullValue());
+        assertThat(createScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+        assertThat(createScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(firstHit.routing()));
+        assertThat(createScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(secondHit.routing()));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @Test
@@ -452,12 +469,16 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
+        when(firstHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
         when(secondHit.sort()).thenReturn(searchAfter);
+        when(secondHit.version()).thenReturn(2L);
+        when(secondHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -476,6 +497,16 @@ public class ElasticsearchAccessorTest {
         assertThat(searchWithSearchAfterResults.getDocuments().size(), equalTo(2));
 
         assertThat(searchWithSearchAfterResults.getNextSearchAfter(), equalTo(secondHit.sort()));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(firstHit.routing()));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(secondHit.routing()));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @ParameterizedTest
@@ -502,12 +533,16 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(index);
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
+        when(firstHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(index);
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
         when(secondHit.sort()).thenReturn(searchAfter);
+        when(secondHit.version()).thenReturn(2L);
+        when(secondHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -524,8 +559,18 @@ public class ElasticsearchAccessorTest {
         assertThat(searchWithSearchAfterResults, notNullValue());
         assertThat(searchWithSearchAfterResults.getDocuments(), notNullValue());
         assertThat(searchWithSearchAfterResults.getDocuments().size(), equalTo(2));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(firstHit.routing()));
+        assertThat(searchWithSearchAfterResults.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(secondHit.routing()));
 
         assertThat(searchWithSearchAfterResults.getNextSearchAfter(), equalTo(secondHit.sort()));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest, notNullValue());
+        assertThat(searchRequest.version(), equalTo(true));
     }
 
     @Test
@@ -544,11 +589,15 @@ public class ElasticsearchAccessorTest {
         when(firstHit.id()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.index()).thenReturn(UUID.randomUUID().toString());
         when(firstHit.source()).thenReturn(mock(ObjectNode.class));
+        when(firstHit.version()).thenReturn(1L);
+        when(firstHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         final Hit<ObjectNode> secondHit = mock(Hit.class);
         when(secondHit.id()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.index()).thenReturn(UUID.randomUUID().toString());
         when(secondHit.source()).thenReturn(mock(ObjectNode.class));
+        when(secondHit.version()).thenReturn(2L);
+        when(secondHit.routing()).thenReturn(UUID.randomUUID().toString());
 
         hits.add(firstHit);
         hits.add(secondHit);
@@ -567,5 +616,89 @@ public class ElasticsearchAccessorTest {
         assertThat(searchScrollResponse.getDocuments(), notNullValue());
         assertThat(searchScrollResponse.getDocuments().size(), equalTo(2));
         assertThat(searchScrollResponse.getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollResponse.getDocuments().get(0), notNullValue());
+        assertThat(searchScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(1L));
+        assertThat(searchScrollResponse.getDocuments().get(1), notNullValue());
+        assertThat(searchScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME), equalTo(2L));
+        assertThat(searchScrollResponse.getDocuments().get(0).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(firstHit.routing()));
+        assertThat(searchScrollResponse.getDocuments().get(1).getMetadata().getAttribute(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME), equalTo(secondHit.routing()));
+    }
+
+    @Test
+    void search_with_pit_with_custom_sort_options_uses_configured_sort() throws IOException {
+        final String pitId = UUID.randomUUID().toString();
+        final Integer paginationSize = new Random().nextInt();
+
+        final SortingOptions timestampSort = mock(SortingOptions.class);
+        when(timestampSort.getFieldName()).thenReturn("@timestamp");
+        when(timestampSort.getOrder()).thenReturn("desc");
+
+        final SearchPointInTimeRequest searchPointInTimeRequest = mock(SearchPointInTimeRequest.class);
+        when(searchPointInTimeRequest.getPitId()).thenReturn(pitId);
+        when(searchPointInTimeRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(searchPointInTimeRequest.getSearchAfter()).thenReturn(null);
+        when(searchPointInTimeRequest.getKeepAlive()).thenReturn("5m");
+        when(searchPointInTimeRequest.getSortOptions()).thenReturn(List.of(timestampSort));
+
+        final SearchResponse<ObjectNode> searchResponse = mock(SearchResponse.class);
+        final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
+        final Hit<ObjectNode> hit = mock(Hit.class);
+        when(hit.id()).thenReturn(UUID.randomUUID().toString());
+        when(hit.index()).thenReturn(UUID.randomUUID().toString());
+        when(hit.source()).thenReturn(mock(ObjectNode.class));
+        when(hit.version()).thenReturn(1L);
+        when(hit.sort()).thenReturn(Collections.singletonList("2024-01-01T00:00:00Z"));
+        when(hitsMetadata.hits()).thenReturn(List.of(hit));
+        when(searchResponse.hits()).thenReturn(hitsMetadata);
+
+        final ArgumentCaptor<SearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        when(elasticSearchClient.search(searchRequestArgumentCaptor.capture(), eq(ObjectNode.class))).thenReturn(searchResponse);
+
+        final SearchWithSearchAfterResults results = createObjectUnderTest().searchWithPit(searchPointInTimeRequest);
+
+        assertThat(results, notNullValue());
+        assertThat(results.getDocuments().size(), equalTo(1));
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest.sort().size(), equalTo(1));
+        assertThat(searchRequest.sort().get(0).field().field(), equalTo("@timestamp"));
+    }
+
+    @Test
+    void search_without_search_context_with_custom_sort_options_uses_configured_sort() throws IOException {
+        final Integer paginationSize = new Random().nextInt();
+        final String index = UUID.randomUUID().toString();
+
+        final SortingOptions timestampSort = mock(SortingOptions.class);
+        when(timestampSort.getFieldName()).thenReturn("@timestamp");
+        when(timestampSort.getOrder()).thenReturn("asc");
+
+        final NoSearchContextSearchRequest noSearchContextSearchRequest = mock(NoSearchContextSearchRequest.class);
+        when(noSearchContextSearchRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(noSearchContextSearchRequest.getIndex()).thenReturn(index);
+        when(noSearchContextSearchRequest.getSearchAfter()).thenReturn(null);
+        when(noSearchContextSearchRequest.getSortOptions()).thenReturn(List.of(timestampSort));
+
+        final SearchResponse<ObjectNode> searchResponse = mock(SearchResponse.class);
+        final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
+        final Hit<ObjectNode> hit = mock(Hit.class);
+        when(hit.id()).thenReturn(UUID.randomUUID().toString());
+        when(hit.index()).thenReturn(UUID.randomUUID().toString());
+        when(hit.source()).thenReturn(mock(ObjectNode.class));
+        when(hit.version()).thenReturn(1L);
+        when(hit.sort()).thenReturn(Collections.singletonList("2024-01-01T00:00:00Z"));
+        when(hitsMetadata.hits()).thenReturn(List.of(hit));
+        when(searchResponse.hits()).thenReturn(hitsMetadata);
+
+        final ArgumentCaptor<SearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        when(elasticSearchClient.search(searchRequestArgumentCaptor.capture(), eq(ObjectNode.class))).thenReturn(searchResponse);
+
+        final SearchWithSearchAfterResults results = createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest);
+
+        assertThat(results, notNullValue());
+
+        final SearchRequest searchRequest = searchRequestArgumentCaptor.getValue();
+        assertThat(searchRequest.sort().size(), equalTo(1));
+        assertThat(searchRequest.sort().get(0).field().field(), equalTo("@timestamp"));
     }
 }

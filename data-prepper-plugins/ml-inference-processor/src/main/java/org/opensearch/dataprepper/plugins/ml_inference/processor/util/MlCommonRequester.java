@@ -72,9 +72,10 @@ public class MlCommonRequester {
                 .putHeader("content-type", "application/json")
                 .build();
 
+        final SdkHttpFullRequest signedRequest = signRequest(request, region, awsCredentialsProvider);
         HttpExecuteRequest executeRequest = HttpExecuteRequest.builder()
-                .request(signRequest(request, region, awsCredentialsProvider))
-                .contentStreamProvider(request.contentStreamProvider().orElse(null))
+                .request(signedRequest)
+                .contentStreamProvider(signedRequest.contentStreamProvider().orElse(null))
                 .build();
 
         executeHttpRequest(executeRequest);

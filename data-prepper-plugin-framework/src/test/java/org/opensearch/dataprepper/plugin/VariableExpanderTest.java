@@ -196,6 +196,29 @@ class VariableExpanderTest {
     }
 
     @Test
+    void testImmutablePluginConfigVariable_refresh_does_not_throw() throws IOException {
+        final String testSecretReference = UUID.randomUUID().toString();
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        final Object actualResult = objectUnderTest.translate(jsonParser, PluginConfigVariable.class);
+        PluginConfigVariable pluginConfigVariableInstance = (PluginConfigVariable) actualResult;
+        pluginConfigVariableInstance.refresh();
+        assertThat(pluginConfigVariableInstance.getValue().toString(), equalTo(testSecretReference));
+    }
+
+    @Test
+    void testImmutablePluginConfigVariable_setValue_throws() throws IOException {
+        final String testSecretReference = UUID.randomUUID().toString();
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        final Object actualResult = objectUnderTest.translate(jsonParser, PluginConfigVariable.class);
+        PluginConfigVariable pluginConfigVariableInstance = (PluginConfigVariable) actualResult;
+        assertThrows(UnsupportedOperationException.class, () -> pluginConfigVariableInstance.setValue("new-value"));
+    }
+
+    @Test
     void testTranslateJsonParserWithSPluginConfigVariableValue_translate_failure() throws IOException {
         final String testSecretKey = "testSecretKey";
         final String testTranslatorKey = "test_prefix";

@@ -6,8 +6,10 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.ScoreSort;
+import co.elastic.clients.elasticsearch._types.ShardStatistics;
 import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.Time;
@@ -42,12 +44,15 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchShardStatistics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +60,8 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
 public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory<ElasticsearchClient> {
@@ -63,6 +70,13 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
     static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
+
+    private static final List<SortOptions> DEFAULT_SORT_OPTIONS = List.of(
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSort -> fieldSort.field("_id").order(SortOrder.Asc)))));
+
+    private static final List<SortOptions> DEFAULT_SCROLL_SORT_OPTIONS = List.of(
+            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))));
 
     private final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
             elasticsearchClientRefresher;
@@ -118,10 +132,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                                 .id(searchPointInTimeRequest.getPitId())
                                 .keepAlive(Time.of(time -> time.time(searchPointInTimeRequest.getKeepAlive())))))
                 .size(searchPointInTimeRequest.getPaginationSize())
-                .sort(List.of(
-                        SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
-                        SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
-                )
+                .sort(buildSortOptions(searchPointInTimeRequest.getSortOptions()))
+                .version(true)
                 .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
                 if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
@@ -159,8 +171,9 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             searchResponse = elasticsearchClientRefresher.get()
                     .search(SearchRequest.of(request -> request
                     .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
-                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                    .sort(buildSortOptionsForScroll(createScrollRequest.getSortOptions()))
                     .size(createScrollRequest.getSize())
+                    .version(true)
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final ElasticsearchException e) {
             if (isDueToNoIndexFound(e)) {
@@ -183,6 +196,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                 .withCreationTime(Instant.now().toEpochMilli())
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 
@@ -205,6 +220,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         return SearchScrollResponse.builder()
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
                 .build();
     }
 
@@ -229,10 +245,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             builder
                     .index(noSearchContextSearchRequest.getIndex())
                     .size(noSearchContextSearchRequest.getPaginationSize())
-                    .sort(List.of(
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))),
-                            SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.field(FieldSort.of(fieldSortBuilder -> fieldSortBuilder.field("_id").order(SortOrder.Asc)))))
-                    )
+                    .sort(buildSortOptions(noSearchContextSearchRequest.getSortOptions()))
+                    .version(true)
                     .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery))));
 
             if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
@@ -265,6 +279,8 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             return SearchWithSearchAfterResults.builder()
                     .withDocuments(documents)
                     .withNextSearchAfter(nextSearchAfter)
+                    .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                    .withTotalHits(extractTotalHits(searchResponse))
                     .build();
         } catch (final ElasticsearchException e) {
             if (isDueToNoIndexFound(e)) {
@@ -293,10 +309,61 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
 
     private List<Event> getDocumentsFromResponse(final SearchResponse<ObjectNode> searchResponse) {
         return searchResponse.hits().hits().stream()
-                .map(hit -> JacksonEvent.builder()
-                        .withData(hit.source())
-                        .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
-                        .withEventType(EventType.DOCUMENT.toString()).build())
+                .map(hit -> {
+                    final Map<String, Object> eventMetadataAttributes = new HashMap<>();
+                    eventMetadataAttributes.put(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id());
+                    eventMetadataAttributes.put(INDEX_METADATA_ATTRIBUTE_NAME, hit.index());
+                    eventMetadataAttributes.put(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version());
+                    if (Objects.nonNull(hit.routing())) {
+                        eventMetadataAttributes.put(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME, hit.routing());
+                    }
+                    return JacksonEvent.builder()
+                            .withData(hit.source())
+                            .withEventMetadataAttributes(eventMetadataAttributes)
+                            .withEventType(EventType.DOCUMENT.toString()).build();
+                })
                 .collect(Collectors.toList());
+    }
+
+    private SearchShardStatistics toShardStatistics(final ShardStatistics shards) {
+        if (shards == null) {
+            return SearchShardStatistics.empty();
+        }
+        final List<String[]> failures = shards.failures() == null ? null :
+                shards.failures().stream()
+                        .map(f -> {
+                            final ErrorCause reason = f == null ? null : f.reason();
+                            return new String[]{
+                                    reason != null ? reason.type() : null,
+                                    reason != null ? reason.reason() : null
+                            };
+                        })
+                        .collect(Collectors.toList());
+        return SearchShardStatistics.fromShardCounts(shards.total(), shards.successful(), shards.failed(), shards.skipped(), failures);
+    }
+
+    private Long extractTotalHits(final SearchResponse<ObjectNode> searchResponse) {
+        if (searchResponse == null || searchResponse.hits() == null || searchResponse.hits().total() == null) {
+            return null;
+        }
+        return searchResponse.hits().total().value();
+    }
+
+    private List<SortOptions> buildSortOptions(final List<SortingOptions> sortingOptions) {
+        if (sortingOptions == null || sortingOptions.isEmpty()) {
+            return DEFAULT_SORT_OPTIONS;
+        }
+        return sortingOptions.stream()
+                .map(opt -> SortOptions.of(b -> b.field(
+                        FieldSort.of(f -> f.field(opt.getFieldName())
+                                .order("desc".equalsIgnoreCase(opt.getOrder()) ? SortOrder.Desc : SortOrder.Asc)))))
+                .collect(Collectors.toList());
+    }
+
+    private List<SortOptions> buildSortOptionsForScroll(final List<SortingOptions> sortingOptions) {
+        if (sortingOptions == null || sortingOptions.isEmpty()) {
+            return DEFAULT_SCROLL_SORT_OPTIONS;
+        }
+        return buildSortOptions(sortingOptions);
     }
 }

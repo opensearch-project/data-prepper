@@ -1,0 +1,141 @@
+{
+  "version": 0,
+  "mappings": {
+    "date_detection": false,
+    "dynamic_templates": [
+      {
+        "long_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "long"
+          }
+        }
+      },
+      {
+        "double_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
+          "match_mapping_type": "double",
+          "mapping": {
+            "type": "double"
+          }
+        }
+      },
+      {
+        "string_group_by_attributes": {
+          "path_match": "*.groupByAttributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      },
+      {
+        "long_operation_attributes": {
+          "path_match": "*.attributes.*",
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "long"
+          }
+        }
+      },
+      {
+        "double_operation_attributes": {
+          "path_match": "*.attributes.*",
+          "match_mapping_type": "double",
+          "mapping": {
+            "type": "double"
+          }
+        }
+      },
+      {
+        "string_operation_attributes": {
+          "path_match": "*.attributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      }
+    ],
+    "_source": {
+      "enabled": true
+    },
+    "properties": {
+      "sourceNode": {
+        "properties": {
+          "type": {
+            "type": "keyword"
+          },
+          "keyAttributes": {
+            "properties": {
+              "environment": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          },
+          "groupByAttributes": {
+            "type": "object",
+            "dynamic": "true"
+          }
+        }
+      },
+      "targetNode": {
+        "properties": {
+          "type": {
+            "type": "keyword"
+          },
+          "keyAttributes": {
+            "properties": {
+              "environment": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          },
+          "groupByAttributes": {
+            "type": "object",
+            "dynamic": "true"
+          }
+        }
+      },
+      "sourceOperation": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "attributes": {
+            "type": "object",
+            "dynamic": "true"
+          }
+        }
+      },
+      "targetOperation": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "attributes": {
+            "type": "object",
+            "dynamic": "true"
+          }
+        }
+      },
+      "nodeConnectionHash": {
+        "type": "keyword"
+      },
+      "operationConnectionHash": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}

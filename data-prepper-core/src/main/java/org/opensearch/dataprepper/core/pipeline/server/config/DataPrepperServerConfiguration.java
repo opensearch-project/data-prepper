@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.pipeline.server.config;
@@ -11,6 +15,7 @@ import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
 import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
+import org.opensearch.dataprepper.core.pipeline.server.ReadinessHandler;
 import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -79,5 +84,10 @@ public class DataPrepperServerConfiguration {
     @Bean
     public GetPipelinesHandler GetPipelinesHandler(final PipelinesProvider pipelinesProvider) {
         return new GetPipelinesHandler(pipelinesProvider);
+    }
+
+    @Bean
+    public ReadinessHandler readinessHandler(final PipelinesProvider pipelinesProvider) {
+        return new ReadinessHandler(pipelinesProvider);
     }
 }

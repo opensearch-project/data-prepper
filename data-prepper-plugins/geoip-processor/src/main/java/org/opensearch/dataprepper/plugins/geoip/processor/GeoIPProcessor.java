@@ -148,7 +148,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         //Lookup from DB
         if (ipAddress != null && !ipAddress.isEmpty()) {
           try {
-            final Optional<InetAddress> optionalInetAddress = GeoInetAddress.usableInetFromString(ipAddress);
+            final Optional<InetAddress> optionalInetAddress = GeoInetAddress.usableInetFromString(ipAddress, geoIPProcessorConfig.getLookupPrivateAddresses());
             if (optionalInetAddress.isPresent()) {
                 geoData = geoIPDatabaseReader.getGeoData(optionalInetAddress.get(), fields, databases);
                 if (geoData.isEmpty()) {

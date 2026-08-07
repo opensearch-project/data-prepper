@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.acknowledgements;
@@ -38,12 +42,21 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private final DefaultAcknowledgementSetMetrics metrics;
     private ScheduledFuture<?> progressCheckFuture;
     private boolean completed;
+    private boolean expired;
     private AtomicInteger totalEventsAdded;
+    private final boolean invokeCallbackOnExpiry;
 
     public DefaultAcknowledgementSet(final ScheduledExecutorService scheduledExecutor,
                                      final Consumer<Boolean> callback,
                                      final Duration expiryTime,
                                      final DefaultAcknowledgementSetMetrics metrics) {
+        this(scheduledExecutor, callback, expiryTime, metrics, false);
+    }
+    public DefaultAcknowledgementSet(final ScheduledExecutorService scheduledExecutor,
+                                     final Consumer<Boolean> callback,
+                                     final Duration expiryTime,
+                                     final DefaultAcknowledgementSetMetrics metrics,
+                                     final boolean invokeCallbackOnExpiry) {
         this.callback = callback;
         this.result = true;
         this.totalEventsAdded = new AtomicInteger(0);
@@ -51,6 +64,8 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         this.expiryTime = Instant.now().plusMillis(expiryTime.toMillis());
         this.callbackFuture = null;
         this.metrics = metrics;
+        this.expired = false;
+        this.invokeCallbackOnExpiry = invokeCallbackOnExpiry;
         this.completed = false;
         this.progressCheckCallback = null;
         pendingAcknowledgments = new HashMap<>();
@@ -123,19 +138,26 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         lock.lock();
         try {
             if (callbackFuture != null && callbackFuture.isDone()) {
-                metrics.increment(DefaultAcknowledgementSetMetrics.COMPLETED_METRIC_NAME);
+                if (!expired) {
+                    metrics.increment(DefaultAcknowledgementSetMetrics.COMPLETED_METRIC_NAME);
+                }
                 return true;
             }
-            if (Instant.now().isAfter(expiryTime)) {
+            if (!expired && Instant.now().isAfter(expiryTime)) {
+                expired = true;
                 if (progressCheckFuture != null) {
                     progressCheckFuture.cancel(false);
                 }
-                if (callbackFuture != null) {
+                metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
+                if (invokeCallbackOnExpiry) {
+                    result = false;
+                    callbackFuture = scheduledExecutor.submit(() -> callback.accept(result));
+                    return false;
+                } else if (callbackFuture != null) {
                     callbackFuture.cancel(true);
                     callbackFuture = null;
                     LOG.warn("AcknowledgementSet expired");
                 }
-                metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
                 return true;
             }
         } finally {

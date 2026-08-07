@@ -8,4 +8,6 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model
 public class MetadataKeyAttributes {
     public static final String DOCUMENT_ID_METADATA_ATTRIBUTE_NAME = "opensearch-document_id";
     public static final String INDEX_METADATA_ATTRIBUTE_NAME = "opensearch-index";
+    public static final String DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME = "opensearch_document_version";
+    public static final String DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME = "opensearch-document_routing";
 }

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugin;
@@ -17,6 +21,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.test.TestDISource;
@@ -91,7 +96,8 @@ class DefaultPluginFactoryTest {
         given(pluginConfigurationObservableFactory.createDefaultPluginConfigObservable(
                 eq(pluginConfigurationConverter),
                 any(Class.class),
-                any(PluginSetting.class)
+                any(PluginSetting.class),
+                any(DefaultPluginFactory.class)
         )).willReturn(pluginConfigObservable);
 
         applicationContextToTypedSuppliers = mock(ApplicationContextToTypedSuppliers.class);
@@ -205,7 +211,7 @@ class DefaultPluginFactoryTest {
 
             final TestDISource expectedInstance = mock(TestDISource.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(firstPluginProvider.findPluginClass(Source.class, pluginName))
                     .willReturn(Optional.of(TestDISource.class));
@@ -215,7 +221,7 @@ class DefaultPluginFactoryTest {
             assertThat(createObjectUnderTest().loadPlugin(Source.class, pluginSetting),
                     equalTo(expectedInstance));
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
-                    eq(PluginSetting.class), eq(pluginSetting));
+                    eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class));
             verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{TestDISource.class}, convertedConfiguration, pluginSetting);
         }
 
@@ -224,7 +230,7 @@ class DefaultPluginFactoryTest {
 
             final TestSink expectedInstance = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
@@ -232,8 +238,26 @@ class DefaultPluginFactoryTest {
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
                     equalTo(expectedInstance));
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
-                    eq(PluginSetting.class), eq(pluginSetting));
+                    eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class));
             verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
+        }
+
+        @Test
+        void loadPlugin_should_pass_itself_as_the_plugin_factory_to_convert() {
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
+                    .willReturn(convertedConfiguration);
+
+            final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+            objectUnderTest.loadPlugin(baseClass, pluginSetting);
+
+            final ArgumentCaptor<PluginFactory> pluginFactoryCaptor = ArgumentCaptor.forClass(PluginFactory.class);
+            verify(pluginConfigurationConverter).convert(eq(PluginSetting.class), eq(pluginSetting), pluginFactoryCaptor.capture());
+            assertThat(pluginFactoryCaptor.getValue(), sameInstance(objectUnderTest));
+
+            verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(
+                    eq(pluginConfigurationConverter), eq(PluginSetting.class), eq(pluginSetting), pluginFactoryCaptor.capture());
+            assertThat(pluginFactoryCaptor.getValue(), sameInstance(objectUnderTest));
         }
 
         @Test
@@ -292,7 +316,7 @@ class DefaultPluginFactoryTest {
         void loadPlugins_should_return_a_single_instance_when_the_the_numberOfInstances_is_1() {
             final TestSink expectedInstance = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
@@ -302,7 +326,7 @@ class DefaultPluginFactoryTest {
 
             verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
-                    eq(PluginSetting.class), eq(pluginSetting));
+                    eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
@@ -322,7 +346,7 @@ class DefaultPluginFactoryTest {
             final Object object = new Object();
             final TestSink expectedInstance = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName), eq(object)))
                     .willReturn(expectedInstance);
@@ -331,7 +355,7 @@ class DefaultPluginFactoryTest {
 
             verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
-                    eq(PluginSetting.class), eq(pluginSetting));
+                    eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName), eq(object));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
@@ -369,7 +393,7 @@ class DefaultPluginFactoryTest {
             final TestSink expectedInstance2 = mock(TestSink.class);
             final TestSink expectedInstance3 = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance1)
@@ -410,7 +434,7 @@ class DefaultPluginFactoryTest {
             final String suppliedAdditionalArgument = UUID.randomUUID().toString();
             Map<Class<?>, Supplier<Object>> additionalArgumentsSuppliers = Map.of(String.class, () -> suppliedAdditionalArgument);
             when(applicationContextToTypedSuppliers.getArgumentsSuppliers()).thenReturn(additionalArgumentsSuppliers);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
@@ -453,7 +477,7 @@ class DefaultPluginFactoryTest {
         void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found_with_correct_name_and_deprecated_name() {
             final TestSink expectedInstance = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(TEST_SINK_DEPRECATED_NAME)))
                     .willReturn(expectedInstance);
@@ -482,7 +506,7 @@ class DefaultPluginFactoryTest {
         void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found_with_correct_name_and_alternate_name() {
             final TestSink expectedInstance = mock(TestSink.class);
             final Object convertedConfiguration = mock(Object.class);
-            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+            given(pluginConfigurationConverter.convert(eq(PluginSetting.class), eq(pluginSetting), any(DefaultPluginFactory.class)))
                     .willReturn(convertedConfiguration);
             given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(TEST_SINK_ALTERNATE_NAME)))
                     .willReturn(expectedInstance);

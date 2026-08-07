@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.parser;
@@ -71,6 +75,7 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -146,7 +151,7 @@ class PipelineTransformerTests {
     @AfterEach
     void tearDown() {
         verify(dataPrepperConfiguration).getEventConfiguration();
-        verify(dataPrepperConfiguration).getExperimental();
+        verify(dataPrepperConfiguration, atLeastOnce()).getExperimental();
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {

@@ -1,8 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
+
 package org.opensearch.dataprepper.pipeline.parser.rule;
+
+import org.opensearch.dataprepper.model.annotations.TransformationFunction;
+import org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,8 +30,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
+import java.util.Arrays;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +44,7 @@ public class RuleEvaluator {
     private static final Logger LOG = LoggerFactory.getLogger(RuleEvaluator.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+    private static final String REQUIRED_PACKAGE_SEGMENT = "dataprepper_transformer";
     private final TransformersFactory transformersFactory;
 
 
@@ -61,6 +73,7 @@ public class RuleEvaluator {
                     return RuleEvaluatorResult.builder()
                             .withEvaluatedResult(true)
                             .withPipelineTemplateModel(templateModel)
+                            .withFunctionProviders(ruleFileEvaluation.getFunctionProviders())
                             .withPipelineName(entry.getKey())
                             .build();
                 }
@@ -75,6 +88,7 @@ public class RuleEvaluator {
         return RuleEvaluatorResult.builder()
                 .withEvaluatedResult(false)
                 .withPipelineName(null)
+                .withFunctionProviders(null)
                 .withPipelineTemplateModel(null)
                 .build();
     }
@@ -91,10 +105,23 @@ public class RuleEvaluator {
         try {
             Collection<RuleStream> ruleStreams = transformersFactory.loadRules();
 
-            //walk through all rules and return first valid
+            // Pre-parse all rules and sort by specificity (most conditions first)
+            // so more specific rules like rds-joins match before generic rds
+            List<ParsedRule> parsedRules = new ArrayList<>();
             for (RuleStream ruleStream : ruleStreams) {
                 try {
-                    rulesModel = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
+                    RuleTransformerModel model = yamlMapper.readValue(ruleStream.getRuleStream(), RuleTransformerModel.class);
+                    parsedRules.add(new ParsedRule(model, ruleStream.getName()));
+                } finally {
+                    ruleStream.close();
+                }
+            }
+            parsedRules.sort((a, b) -> Integer.compare(
+                    b.model.getApplyWhen().size(), a.model.getApplyWhen().size()));
+
+            //walk through all rules and return first valid
+            for (ParsedRule parsedRule : parsedRules) {
+                    rulesModel = parsedRule.model;
                     List<String> rules = rulesModel.getApplyWhen();
                     String pluginName = rulesModel.getPluginName();
                     boolean allRulesValid = true;
@@ -107,22 +134,21 @@ public class RuleEvaluator {
                                 break;
                             }
                         } catch (PathNotFoundException e) {
-                            LOG.debug("Json Path not found for {}", ruleStream.getName());
+                            LOG.debug("Json Path not found for {}", parsedRule.fileName);
                             allRulesValid = false;
                             break;
                         }
                     }
 
                     if (allRulesValid) {
+                        validateFunctionProviders(rulesModel.getFunctionProviders(), parsedRule.fileName);
                         return RuleFileEvaluation.builder()
                                 .withPluginName(pluginName)
-                                .withRuleFileName(ruleStream.getName())
+                                .withRuleFileName(parsedRule.fileName)
+                                .withFunctionProviders(rulesModel.getFunctionProviders())
                                 .withResult(true)
                                 .build();
                     }
-                } finally {
-                    ruleStream.close();
-                }
             }
 
         } catch (FileNotFoundException e) {
@@ -143,4 +169,49 @@ public class RuleEvaluator {
                 .build();
     }
 
+    private void validateFunctionProviders(List<String> functionProviders, String ruleFileName) {
+        if (functionProviders == null || functionProviders.isEmpty()) {
+            return;
+        }
+        for (String provider : functionProviders) {
+            if (!provider.contains(REQUIRED_PACKAGE_SEGMENT)) {
+                throw new RuntimeException("Invalid function_provider '" + provider +
+                        "' in rule file '" + ruleFileName +
+                        "'. Package must contain '" + REQUIRED_PACKAGE_SEGMENT + "'");
+            }
+
+            final Class<?> clazz;
+            try {
+                clazz = Class.forName(provider, false, this.getClass().getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("function_provider class '" + provider +
+                        "' in rule file '" + ruleFileName + "' could not be found", e);
+            }
+
+            if (!PipelineTransformFunctionProvider.class.isAssignableFrom(clazz)) {
+                throw new RuntimeException("function_provider class '" + provider +
+                        "' in rule file '" + ruleFileName +
+                        "' does not implement PipelineTransformFunctionProvider");
+            }
+
+            boolean hasAnnotatedMethod = Arrays.stream(clazz.getMethods())
+                    .anyMatch(m -> m.isAnnotationPresent(TransformationFunction.class));
+            if (!hasAnnotatedMethod) {
+                throw new RuntimeException("function_provider class '" + provider +
+                        "' in rule file '" + ruleFileName +
+                        "' has no methods annotated with @TransformationFunction");
+            }
+        }
+    }
+
+
+    private static class ParsedRule {
+        final RuleTransformerModel model;
+        final String fileName;
+
+        ParsedRule(RuleTransformerModel model, String fileName) {
+            this.model = model;
+            this.fileName = fileName;
+        }
+    }
 }

@@ -20,9 +20,12 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 
+
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.BEARER_TOKEN;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.OAUTH2;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +45,9 @@ public class AtlassianAuthFactoryTest {
 
     @Mock
     private PluginConfigVariable refreshTokenPluginConfigVariable;
+
+    @Mock
+    private PluginConfigVariable bearerTokenVariable;
 
     private AtlassianAuthFactory confluenceAuthFactory;
 
@@ -65,6 +71,15 @@ public class AtlassianAuthFactoryTest {
     void testGetObjectBasicAuth() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://example.com");
         assertInstanceOf(AtlassianBasicAuthConfig.class, confluenceAuthFactory.getObject());
+    }
+
+    @Test
+    void testGetObjectBearerToken() {
+        when(sourceConfig.getAuthType()).thenReturn(BEARER_TOKEN);
+        when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
+        assertInstanceOf(AtlassianBearerTokenAuthConfig.class, confluenceAuthFactory.getObject());
     }
 
     @Test

@@ -9,7 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "noop", pluginType = Sink.class)
+@DataPrepperPlugin(name = "noop",
+        alternateNames = { "drop" },
+        pluginType = Sink.class)
 public class NoopSink implements Sink<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(NoopSink.class);
 

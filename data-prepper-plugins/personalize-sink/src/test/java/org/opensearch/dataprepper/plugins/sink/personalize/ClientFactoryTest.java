@@ -61,7 +61,7 @@ class ClientFactoryTest {
     void createPersonalizeEventsClient_provides_correct_inputs_for_null_awsAuthenticationOptions() {
         when(personalizeSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(expectedCredentialsProvider);
 
         final PersonalizeEventsClientBuilder personalizeEventsClientBuilder = mock(PersonalizeEventsClientBuilder.class);
         when(personalizeEventsClientBuilder.region(any())).thenReturn(personalizeEventsClientBuilder);
@@ -104,7 +104,7 @@ class ClientFactoryTest {
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(expectedCredentialsProvider);
 
         final PersonalizeEventsClientBuilder personalizeEventsClientBuilder = mock(PersonalizeEventsClientBuilder.class);
         when(personalizeEventsClientBuilder.region(region)).thenReturn(personalizeEventsClientBuilder);

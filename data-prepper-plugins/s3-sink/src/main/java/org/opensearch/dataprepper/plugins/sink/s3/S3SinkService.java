@@ -248,4 +248,44 @@ public class S3SinkService {
             }
         }
     }
+
+    /**
+     * Force flush all remaining S3 groups to S3. This is called during shutdown
+     * to ensure all buffered data is uploaded before the sink shuts down.
+     */
+    void flushAllRemainingGroups() {
+        if (s3GroupManager.hasNoGroups()) {
+            LOG.debug("No remaining groups to flush during shutdown");
+            return;
+        }
+
+        LOG.info("Shutdown initiated. Flushing {} remaining S3 groups to S3.", s3GroupManager.getNumberOfGroups());
+        reentrantLock.lock();
+        try {
+            final List<CompletableFuture<?>> completableFutures = new ArrayList<>();
+
+            // Force flush all remaining groups
+            for (final S3Group s3Group : s3GroupManager.getS3GroupEntries()) {
+                LOG.info("Force flushing group with key {} containing {} events and {} bytes during shutdown",
+                        s3Group.getBuffer().getKey(), s3Group.getBuffer().getEventCount(), s3Group.getBuffer().getSize());
+                flushToS3IfNeeded(completableFutures, s3Group, true);
+                numberOfObjectsForceFlushed.increment();
+            }
+
+            // Wait for all uploads to complete
+            if (!completableFutures.isEmpty()) {
+                try {
+                    LOG.info("Waiting for {} uploads to complete during shutdown", completableFutures.size());
+                    CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
+                            .thenRun(() -> LOG.info("All {} uploads completed during shutdown", completableFutures.size()))
+                            .join();
+                    LOG.info("All remaining groups have been flushed to S3 during shutdown");
+                } catch (final Exception e) {
+                    LOG.error("Exception occurred while waiting for uploads to complete during shutdown", e);
+                }
+            }
+        } finally {
+            reentrantLock.unlock();
+        }
+    }
 }

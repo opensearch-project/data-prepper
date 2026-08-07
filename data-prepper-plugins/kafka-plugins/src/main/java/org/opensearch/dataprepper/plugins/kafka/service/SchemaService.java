@@ -135,7 +135,7 @@ public class SchemaService {
                 registerSchema(topic, schemaString);
             }
         } catch (Exception e) {
-            throw new RuntimeException("error occured while  schema registeration " + e.getMessage());
+            throw new RuntimeException("error occurred while  schema registeration " + e.getMessage());
         }
     }
 

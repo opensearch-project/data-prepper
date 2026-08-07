@@ -1,18 +1,22 @@
 /*
- *  Copyright OpenSearch Contributors
- *  SPDX-License-Identifier: Apache-2.0
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import lombok.Getter;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalHandler;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalType;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
@@ -30,17 +34,19 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A back-pressure buffer for OTLP sink.
+ * A signal-agnostic back-pressure buffer for OTLP sink.
+ * Uses a signal handler to encode and send events of a specific type.
  */
 public class OtlpSinkBuffer {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpSinkBuffer.class);
     private static final int SAFETY_FACTOR = 10;
     private static final int MIN_QUEUE_CAPACITY = 2000;
 
-    private final BlockingQueue<Record<Span>> queue;
-    private final OTelProtoStandardCodec.OTelProtoEncoder encoder;
+    private final BlockingQueue<Record<Event>> queue;
+    private final OtlpSignalHandler<?> signalHandler;
     private final OtlpHttpSender sender;
     private final OtlpSinkMetrics sinkMetrics;
+    private final OtlpSignalType signalType;
 
     private final int maxEvents;
     private final long maxBatchBytes;
@@ -52,28 +58,24 @@ public class OtlpSinkBuffer {
     private volatile boolean running = true;
 
     /**
-     * Creates a new OTLP sink buffer.
+     * Creates a new signal-specific OTLP sink buffer.
      *
-     * @param awsCredentialsSupplier the AWS credentials supplier
-     * @param config      the OTLP sink configuration
-     * @param sinkMetrics the metrics collector to use
+     * @param config        the OTLP sink configuration
+     * @param sinkMetrics   the metrics collector to use
+     * @param signalHandler the signal handler for encoding and request building
+     * @param sender        the HTTP sender
+     * @param signalType    the signal type this buffer handles
      */
-    public OtlpSinkBuffer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics));
-    }
-
-    /**
-     * Visible for testing only: constructs an OTLP sink buffer with injected encoder and sender.
-     */
-    @VisibleForTesting
-    OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
-                   @Nonnull final OtlpSinkMetrics sinkMetrics,
-                   @Nonnull final OTelProtoStandardCodec.OTelProtoEncoder encoder,
-                   @Nonnull final OtlpHttpSender sender) {
+    public OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
+                          @Nonnull final OtlpSinkMetrics sinkMetrics,
+                          @Nonnull final OtlpSignalHandler<?> signalHandler,
+                          @Nonnull final OtlpHttpSender sender,
+                          @Nonnull final OtlpSignalType signalType) {
 
         this.sinkMetrics = sinkMetrics;
-        this.encoder = encoder;
+        this.signalHandler = signalHandler;
         this.sender = sender;
+        this.signalType = signalType;
 
         this.maxEvents = config.getMaxEvents();
         this.maxBatchBytes = config.getMaxBatchSize();
@@ -120,51 +122,67 @@ public class OtlpSinkBuffer {
     }
 
     /**
-     * Enqueues a span record for later batching and sending.
+     * Enqueues an event record for later batching and sending.
      * <p>
      * This will block if the internal queue is full, guaranteeing
      * lossless delivery during normal operations.
-     * On interruption, the span is still rejected and
+     * On interruption, the event is still rejected and
      * error metrics are incremented.
      *
-     * @param record the span record to enqueue
+     * @param record the event record to enqueue
      */
-    public void add(final Record<Span> record) {
+    public void add(final Record<Event> record) {
         try {
             queue.put(record);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Interrupted while enqueuing span", e);
-            sinkMetrics.incrementFailedSpansCount(1);
+            LOG.error("Interrupted while enqueuing event", e);
+            sinkMetrics.incrementFailedRecordsCount(1);
             sinkMetrics.incrementErrorsCount();
         }
     }
 
     /**
-     * Worker loop that batches spans by count, size, or time and then flushes them.
+     * Worker loop that batches events by count, size, or time and then flushes them.
      * <p>
      * Continues running as long as {@link #running} is true or the queue is not empty.
      * Handles encoding failures, timeout-based flush, and final flush on shutdown.
      */
     private void run() {
-        final List<Pair<ResourceSpans, EventHandle>> batch = new ArrayList<>();
+        runTyped(signalHandler);
+    }
+
+    /**
+     * Type-capture helper that bridges the wildcard {@code OtlpSignalHandler<?>} to a concrete
+     * type parameter, enabling type-safe batch operations without unchecked casts.
+     */
+    private <T> void runTyped(final OtlpSignalHandler<T> handler) {
+        final List<Pair<T, EventHandle>> batch = new ArrayList<>();
         long batchSize = 0;
         long lastFlush = System.currentTimeMillis();
 
         while (true) {
             try {
                 final long now = System.currentTimeMillis();
-                final Record<Span> record = queue.poll(100, TimeUnit.MILLISECONDS);
+                final Record<Event> record = queue.poll(100, TimeUnit.MILLISECONDS);
 
                 if (record != null) {
+                    final Event event = record.getData();
+
                     try {
-                        final ResourceSpans resourceSpans = encoder.convertToResourceSpans(record.getData());
-                        final EventHandle eventHandle = record.getData().getEventHandle();
-                        batch.add(Pair.of(resourceSpans, eventHandle));
-                        batchSize += resourceSpans.getSerializedSize();
+                        final T encodedData = handler.encodeEvent(event);
+                        if (encodedData != null) {
+                            final EventHandle eventHandle = event.getEventHandle();
+                            batch.add(Pair.of(encodedData, eventHandle));
+                            batchSize += handler.getSerializedSize(encodedData);
+                        } else {
+                            event.getEventHandle().release(false);
+                        }
                     } catch (final Exception e) {
-                        LOG.error("Failed to encode span, skipping", e);
-                        sinkMetrics.incrementFailedSpansCount(1);
+                        LOG.error("Failed to encode event, skipping", e);
+                        event.getEventHandle().release(false);
+                        sinkMetrics.incrementFailedRecordsCount(1);
+                        sinkMetrics.incrementFailedSignalCount(signalType.getMetricsLabel(), 1);
                         sinkMetrics.incrementErrorsCount();
                     }
                 }
@@ -173,7 +191,7 @@ public class OtlpSinkBuffer {
                 final boolean flushByTime = !batch.isEmpty() && (now - lastFlush >= flushTimeoutMillis);
 
                 if (flushBySize || flushByTime) {
-                    sender.send(batch);
+                    sender.send(batch, handler, signalType);
                     batch.clear();
                     batchSize = 0;
                     lastFlush = now;
@@ -188,14 +206,12 @@ public class OtlpSinkBuffer {
                     LOG.debug("Worker interrupted while polling, continuing...");
                     sinkMetrics.incrementErrorsCount();
                 }
-
-                // Continue to loop if still running
             }
         }
 
         // Final flush
         if (!batch.isEmpty()) {
-            sender.send(batch);
+            sender.send(batch, handler, signalType);
             batch.clear();
         }
     }

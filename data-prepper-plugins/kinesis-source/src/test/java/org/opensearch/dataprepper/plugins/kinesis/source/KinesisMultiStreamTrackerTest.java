@@ -28,7 +28,10 @@ import software.amazon.kinesis.processor.FormerStreamsLeasesDeletionStrategy;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -188,6 +192,85 @@ public class KinesisMultiStreamTrackerTest {
         assertEquals(expectedIdentifier, resultConfig.streamIdentifier());
         assertEquals(expectedConsumerArn, resultConfig.consumerArn());
         assertEquals("streamName", expectedIdentifier.streamName());
+    }
+
+    @Test
+    void testStreamConfigWithAtTimeStampInitialPositionWithInitialTimestamp() {
+        KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
+        final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
+        when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.AT_TIMESTAMP);
+        when(streamConfig.getInitialTimestamp()).thenReturn(LocalDateTime.of(2024, 1, 15, 10, 30));
+        when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
+
+        StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(Arn.fromString(streamArnString), 100L);
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
+                .thenReturn(expectedIdentifier);
+        final String expectedConsumerArn = UUID.randomUUID().toString();
+        when(kinesisClientAPIHandler.getConsumerArnForStream(streamConfig.getStreamArn(), APPLICATION_NAME))
+                .thenReturn(expectedConsumerArn);
+
+        List<StreamConfig> configs = createObjectUnderTest().streamConfigList();
+
+        assertEquals(1, configs.size());
+        StreamConfig resultConfig = configs.get(0);
+        assertEquals(expectedIdentifier, resultConfig.streamIdentifier());
+        assertEquals(expectedConsumerArn, resultConfig.consumerArn());
+        assertEquals("streamName", expectedIdentifier.streamName());
+        assertEquals(InitialPositionInStreamExtended.newInitialPositionAtTimestamp(Date.from(
+                streamConfig.getInitialTimestamp().atOffset(ZoneOffset.UTC).toInstant())), resultConfig.initialPositionInStreamExtended());
+    }
+
+    @Test
+    void testStreamConfigWithAtTimeStampInitialPositionWithRange() {
+        KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
+        final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
+        when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.AT_TIMESTAMP);
+        when(streamConfig.getRange()).thenReturn(Duration.ofMinutes(30));
+        when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
+
+        StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(Arn.fromString(streamArnString), 100L);
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
+                .thenReturn(expectedIdentifier);
+        final String expectedConsumerArn = UUID.randomUUID().toString();
+        when(kinesisClientAPIHandler.getConsumerArnForStream(streamConfig.getStreamArn(), APPLICATION_NAME))
+                .thenReturn(expectedConsumerArn);
+
+        List<StreamConfig> configs = createObjectUnderTest().streamConfigList();
+
+        assertEquals(1, configs.size());
+        StreamConfig resultConfig = configs.get(0);
+        assertEquals(expectedIdentifier, resultConfig.streamIdentifier());
+        assertEquals(expectedConsumerArn, resultConfig.consumerArn());
+        assertEquals("streamName", expectedIdentifier.streamName());
+        assertEquals(InitialPositionInStream.AT_TIMESTAMP, resultConfig.initialPositionInStreamExtended().getInitialPositionInStream());
+
+        long actualTime = resultConfig.initialPositionInStreamExtended().getTimestamp().getTime();
+        assertTrue(actualTime <= System.currentTimeMillis() - Duration.ofMinutes(30).toMillis());
+    }
+
+    @Test
+    void testStreamConfigWithAtTimeStampInitialPositionWithNoRangeAndNoInitialTimestamp() {
+        KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
+        final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
+        when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.AT_TIMESTAMP);
+        when(streamConfig.getRange()).thenReturn(null);
+        when(streamConfig.getInitialTimestamp()).thenReturn(null);
+        when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
+
+        StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(Arn.fromString(streamArnString), 100L);
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
+                .thenReturn(expectedIdentifier);
+
+        KinesisMultiStreamTracker tracker = createObjectUnderTest();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                tracker::streamConfigList);
+        assertEquals("Either initial_timestamp or range must be " +
+                        "specified when using AT_TIMESTAMP initial_position",
+                exception.getMessage());
     }
 
     @Test

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.http.HttpEntity;
@@ -23,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,11 +63,14 @@ class Office365AuthenticationProviderTest {
     @Mock
     private PluginConfigVariable clientSecretVariable;
 
+    @Mock
+    private VendorAPIMetricsRecorder metricsRecorder;
+
     private Office365AuthenticationProvider authProvider;
 
     @BeforeEach
     void setUp() throws NoSuchFieldException, IllegalAccessException {
-        authProvider = new Office365AuthenticationProvider(config);
+        authProvider = new Office365AuthenticationProvider(config, metricsRecorder);
         ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "restTemplate", restTemplate);
     }
 
@@ -81,6 +86,12 @@ class Office365AuthenticationProviderTest {
             when(clientIdVariable.getValue()).thenReturn("testClientId");
             when(clientSecretVariable.getValue()).thenReturn("testClientSecret");
             when(config.getTenantId()).thenReturn("testTenantId");
+            
+            // Mock the metrics recorder to execute the supplier properly for authentication tests
+            when(metricsRecorder.recordAuthLatency(any(Supplier.class))).thenAnswer(invocation -> {
+                Supplier<Object> supplier = invocation.getArgument(0);
+                return supplier.get();
+            });
         }
 
         @Test
@@ -177,6 +188,52 @@ class Office365AuthenticationProviderTest {
 
             assertEquals("testAccessToken", authProvider.getAccessToken());
             verify(restTemplate, times(2)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
+        }
+
+        @Test
+        void testRenewCredentialsRecordsMetricsOnSuccess() {
+            mockSuccessfulTokenResponse();
+
+            authProvider.renewCredentials();
+
+            // Verify metrics are recorded for successful authentication
+            verify(metricsRecorder, times(1)).recordAuthLatency(any(Supplier.class));
+            verify(metricsRecorder, times(1)).recordAuthSuccess();
+            verify(metricsRecorder, times(0)).recordAuthFailure();
+            verify(metricsRecorder, times(0)).recordError(any());
+        }
+
+        @Test
+        void testRenewCredentialsRecordsMetricsOnFailure() {
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+
+            assertThrows(RuntimeException.class, () -> authProvider.renewCredentials());
+
+            // Verify metrics are recorded for failed authentication
+            verify(metricsRecorder, times(1)).recordAuthLatency(any(Supplier.class));
+            verify(metricsRecorder, times(1)).recordAuthFailure();
+            verify(metricsRecorder, times(1)).recordError(any(HttpClientErrorException.class));
+            verify(metricsRecorder, times(0)).recordAuthSuccess();
+        }
+
+        @Test
+        void testRenewCredentialsRecordsMetricsOnInvalidResponse() {
+            // Mock response without access_token
+            Map<String, Object> tokenResponse = new HashMap<>();
+            tokenResponse.put("expires_in", 3600);
+            ResponseEntity<Map> responseEntity = new ResponseEntity<>(tokenResponse, HttpStatus.OK);
+
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenReturn(responseEntity);
+
+            assertThrows(IllegalStateException.class, () -> authProvider.renewCredentials());
+
+            // Verify metrics are recorded for invalid response
+            verify(metricsRecorder, times(1)).recordAuthLatency(any(Supplier.class));
+            verify(metricsRecorder, times(1)).recordAuthFailure();
+            verify(metricsRecorder, times(1)).recordError(any(IllegalStateException.class));
+            verify(metricsRecorder, times(0)).recordAuthSuccess();
         }
 
         @Test

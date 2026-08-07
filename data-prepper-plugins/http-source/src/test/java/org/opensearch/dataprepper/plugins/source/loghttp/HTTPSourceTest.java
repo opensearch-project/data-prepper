@@ -75,6 +75,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -92,6 +93,7 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -1018,6 +1020,58 @@ class HTTPSourceTest {
         final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
                 payloadSizeSummaryMeasurements, Statistic.MAX);
         assertEquals(testPayloadSize, payloadSizeMax.getValue());
+    }
+
+    @Test
+    public void testHTTPJsonResponse200WithMetadataHeaders() throws JsonProcessingException {
+        final String tenantId = UUID.randomUUID().toString();
+        final String testData = "[{\"log\": \"somelog\"}]";
+
+        when(sourceConfig.getMetadataHeaders()).thenReturn(List.of("X-Tenant-Id"));
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        testBuffer = getBuffer(1, 1);
+        HTTPSourceUnderTest.start(testBuffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.POST)
+                        .path("/log/ingest")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .add("X-Tenant-Id", tenantId)
+                        .build(),
+                HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        assertEquals(1, records.size());
+        assertEquals(tenantId, records.get(0).getData().getMetadata().getAttribute("headers/x-tenant-id"));
+    }
+
+    @Test
+    public void testHTTPJsonResponse200WithNoMetadataHeaders() {
+        final String testData = "[{\"log\": \"somelog\"}]";
+
+        HTTPSourceUnderTest.start(testBuffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.POST)
+                        .path("/log/ingest")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .add("X-Tenant-Id", UUID.randomUUID().toString())
+                        .build(),
+                HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        assertEquals(1, records.size());
+        assertNull(records.get(0).getData().getMetadata().getAttribute("headers/x-tenant-id"));
     }
 
     private void assertCommonFields(Record<Log> record) {

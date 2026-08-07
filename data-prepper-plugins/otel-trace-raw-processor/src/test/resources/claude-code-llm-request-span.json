@@ -1,0 +1,29 @@
+{
+  "traceId": "GENAI_TRACE_ID_1",
+  "spanId": "cc01000000000001",
+  "parentSpanId": "GENAI_ROOT_SPAN_ID",
+  "traceState": "",
+  "name": "claude_code.llm_request",
+  "kind": "SPAN_KIND_INTERNAL",
+  "startTime": "2026-03-09T17:55:04.564Z",
+  "endTime": "2026-03-09T17:55:08.783Z",
+  "durationInNanos": 4219000000,
+  "serviceName": "claude-code",
+  "attributes": {
+    "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "input_tokens": 13,
+    "output_tokens": 156,
+    "cache_read_tokens": 8593,
+    "cache_creation_tokens": 4423,
+    "ttft_ms": 1921,
+    "duration_ms": 4219,
+    "success": true,
+    "speed": "normal",
+    "attempt": 1,
+    "span.type": "llm_request",
+    "session.id": "f9ff4ec4-34fc-473d-9551-cf6e73594c92",
+    "gen_ai.conversation.id": "f9ff4ec4-34fc-473d-9551-cf6e73594c92",
+    "user.id": "937e1c3aa50b2fe2",
+    "terminal.type": "Apple_Terminal"
+  }
+}

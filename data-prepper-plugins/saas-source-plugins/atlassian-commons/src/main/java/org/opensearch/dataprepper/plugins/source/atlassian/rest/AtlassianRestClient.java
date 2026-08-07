@@ -39,17 +39,24 @@ public class AtlassianRestClient {
     final Counter authFailures;
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
+    private final boolean allowLocalAddress;
 
     public AtlassianRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
                                PluginMetrics pluginMetrics) {
+        this(restTemplate, authConfig, pluginMetrics, false);
+    }
+
+    public AtlassianRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                               PluginMetrics pluginMetrics, boolean allowLocalAddress) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
         this.authFailures = pluginMetrics.counter(AUTH_FAILURES_COUNTER);
+        this.allowLocalAddress = allowLocalAddress;
     }
 
 
     protected <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException {
-        AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
+        AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()), allowLocalAddress);
         int retryCount = 0;
         while (retryCount < MAX_RETRIES) {
             try {

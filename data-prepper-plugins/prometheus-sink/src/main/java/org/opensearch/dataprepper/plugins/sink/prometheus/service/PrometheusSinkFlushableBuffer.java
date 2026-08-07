@@ -25,6 +25,7 @@ import com.arpnetworking.metrics.prometheus.Types;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PrometheusSinkFlushableBuffer implements SinkFlushableBuffer {
     List<SinkBufferEntry> buffer;
@@ -39,15 +40,15 @@ public class PrometheusSinkFlushableBuffer implements SinkFlushableBuffer {
 
     @Override
     public SinkFlushResult flush() {
-        if (buffer.size() == 0) {
+        if (buffer.isEmpty()) {
             return null;
         }
 
         PrometheusHttpSender httpSender = sinkFlushContext.getHttpSender();
         final Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
-        List<Types.TimeSeries> allTimeSeries = new ArrayList<>();
+        List<Types.TimeSeries> allTimeSeries = new ArrayList<>(buffer.size() * 2);
 
-        List<Event> events = new ArrayList<>();
+        List<Event> events = new ArrayList<>(buffer.size());
         for (final SinkBufferEntry sinkBufferEntry : buffer) {
             PrometheusSinkBufferEntry bufferEntry = (PrometheusSinkBufferEntry)sinkBufferEntry;
             allTimeSeries.addAll(bufferEntry.getTimeSeries().getTimeSeriesList());
@@ -70,11 +71,9 @@ public class PrometheusSinkFlushableBuffer implements SinkFlushableBuffer {
 
     @Override
     public List<Event> getEvents() {
-        List<Event> result = new ArrayList<>();
-        for (final SinkBufferEntry bufferEntry: buffer) {
-            result.add(bufferEntry.getEvent());
-        }
-        return result;
+        return buffer.stream()
+                .map(SinkBufferEntry::getEvent)
+                .collect(Collectors.toList());
     }
 }
 

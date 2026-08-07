@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -20,12 +21,14 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectPluginMetrics;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.ConfigBucketOwnerProviderFactory;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
@@ -45,6 +48,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final boolean acknowledgementsEnabled;
+    private final ExpressionEvaluator expressionEvaluator;
     private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
 
@@ -54,7 +58,8 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
             final S3SourceConfig s3SourceConfig,
             final PluginFactory pluginFactory,
             final AcknowledgementSetManager acknowledgementSetManager,
-            final AwsCredentialsSupplier awsCredentialsSupplier) {
+            final AwsCredentialsSupplier awsCredentialsSupplier,
+            final ExpressionEvaluator expressionEvaluator) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
@@ -62,6 +67,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
         this.acknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     @Override
@@ -124,7 +130,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
             sqsService.start();
         }
         if(s3ScanScanOptional.isPresent()) {
-            s3ScanService = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3Handler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
+            s3ScanService = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3Handler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics, expressionEvaluator, pluginFactory);
             s3ScanService.start();
         }
     }

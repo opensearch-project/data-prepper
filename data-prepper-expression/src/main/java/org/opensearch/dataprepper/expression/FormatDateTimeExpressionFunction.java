@@ -5,21 +5,20 @@
  * The OpenSearch Contributors require contributions made to
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+
+import javax.inject.Named;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import javax.inject.Named;
-
-import org.opensearch.dataprepper.model.event.Event;
 
 @Named
 public class FormatDateTimeExpressionFunction implements ExpressionFunction {
@@ -37,24 +36,21 @@ public class FormatDateTimeExpressionFunction implements ExpressionFunction {
         if (args.size() > 4) {
             throw new IllegalArgumentException(getFunctionName() + "() takes at most 4 arguments");
         }
-        List<String> argStrings;
-        try {
-            argStrings = args.stream()
-                    .map(String.class::cast)
-                    .map(String::trim)
-                    .collect(Collectors.toUnmodifiableList());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Arguments in " + getFunctionName() + "() function should be of Json Pointer type or String type");
+
+        final Object firstArg = args.get(0);
+        final EventKey eventKey;
+        if (firstArg instanceof EventKey) {
+            eventKey = (EventKey) firstArg;
+        } else {
+            throw new RuntimeException("Unexpected argument type for first argument: " + firstArg.getClass() +
+                    ". Expected EventKey.");
         }
 
-        String eventKey = argStrings.get(0);
-        String pattern = argStrings.get(1);
-        pattern = unquote(pattern);
-
+        final String pattern = getStringArg(args.get(1), "pattern");
 
         ZoneId destinationTimeZone = ZoneOffset.UTC;
-        if (argStrings.size() > 2) {
-            String destinationZoneIdArg = unquote(argStrings.get(2));
+        if (args.size() > 2) {
+            String destinationZoneIdArg = getStringArg(args.get(2), "destination timezone");
             try {
                 destinationTimeZone = ZoneId.of(destinationZoneIdArg);
             } catch (Exception e) {
@@ -63,9 +59,8 @@ public class FormatDateTimeExpressionFunction implements ExpressionFunction {
         }
 
         ZoneId sourceTimeZone = ZoneOffset.UTC;
-
-        if (argStrings.size() > 3) {
-            String sourceTimeZoneArg = unquote(argStrings.get(3));
+        if (args.size() > 3) {
+            String sourceTimeZoneArg = getStringArg(args.get(3), "source timezone");
             try {
                 sourceTimeZone = ZoneId.of(sourceTimeZoneArg);
             } catch (Exception e) {
@@ -90,10 +85,11 @@ public class FormatDateTimeExpressionFunction implements ExpressionFunction {
         throw new IllegalArgumentException("Unsupported type passed as function argument: " + target.getClass());
     }
 
-    static String unquote(String input) {
-        if (input.startsWith("\"") && input.endsWith("\"")) {
-            return input.substring(1, input.length() - 1);
+    private String getStringArg(Object arg, String argName) {
+        if (arg instanceof String) {
+            return ((String) arg).trim();
         }
-        return input;
+        throw new RuntimeException("Unexpected argument type for " + argName + ": " + arg.getClass() +
+                ". Expected String.");
     }
 }

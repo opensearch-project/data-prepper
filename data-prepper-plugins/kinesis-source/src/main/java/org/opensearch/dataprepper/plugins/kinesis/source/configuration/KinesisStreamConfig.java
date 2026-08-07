@@ -11,6 +11,8 @@
 package org.opensearch.dataprepper.plugins.kinesis.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -18,6 +20,7 @@ import software.amazon.awssdk.arns.Arn;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Getter
@@ -43,6 +46,13 @@ public class KinesisStreamConfig {
 
     @JsonProperty("checkpoint_interval")
     private Duration checkPointInterval = MINIMAL_CHECKPOINT_INTERVAL;
+
+    @JsonProperty("range")
+    private Duration range;
+
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonProperty("initial_timestamp")
+    private LocalDateTime initialTimestamp;
 
     public InitialPositionInStream getInitialPosition() {
         return initialPosition.getPositionInStream();

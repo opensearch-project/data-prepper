@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +76,9 @@ public class AggregateActionSynchronizerTest {
     @Mock
     private Counter actionConcludeGroupEventsProcessingErrors;
 
+    @Mock
+    private AggregateProcessorConfig aggregateProcessorConfig;
+
     @BeforeEach
     void setup() {
         doNothing().when(handleEventForGroupLock).lock();
@@ -89,7 +97,7 @@ public class AggregateActionSynchronizerTest {
 
     private AggregateActionSynchronizer createObjectUnderTest() {
         final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider = new AggregateActionSynchronizer.AggregateActionSynchronizerProvider();
-        return aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
+        return aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics, aggregateProcessorConfig);
     }
 
     @Test
@@ -154,7 +162,30 @@ public class AggregateActionSynchronizerTest {
 
         final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationKeysMap, aggregateGroup);
 
-        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, aggregateGroupManager);
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateGroup, aggregateAction, aggregateGroupManager);
+        inOrder.verify(concludeGroupLock).lock();
+        inOrder.verify(concludeGroupLock).unlock();
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateGroup).attachToEventAcknowledgementSet(event);
+        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(aggregateGroupManager).putGroupWithHash(identificationKeysMap, aggregateGroup);
+        inOrder.verify(handleEventForGroupLock).unlock();
+
+        assertThat(handleEventResponse, equalTo(aggregateActionResponse));
+    }
+
+    @Test
+    void handleEventForGroup_calls_expected_functions_and_returns_correct_AggregateActionResponse_with_disable_group_acknowledgments_true() {
+        when(aggregateProcessorConfig.getDisableGroupAcknowledgments()).thenReturn(true);
+
+        final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
+        when(aggregateAction.handleEvent(event, aggregateGroup)).thenReturn(aggregateActionResponse);
+
+        final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationKeysMap, aggregateGroup);
+
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateGroup, aggregateAction, aggregateGroupManager);
+        inOrder.verify(aggregateGroup).getConcludeGroupLock();
+        inOrder.verify(aggregateGroup).getHandleEventForGroupLock();
         inOrder.verify(concludeGroupLock).lock();
         inOrder.verify(concludeGroupLock).unlock();
         inOrder.verify(handleEventForGroupLock).lock();
@@ -162,6 +193,7 @@ public class AggregateActionSynchronizerTest {
         inOrder.verify(aggregateGroupManager).putGroupWithHash(identificationKeysMap, aggregateGroup);
         inOrder.verify(handleEventForGroupLock).unlock();
 
+        verifyNoMoreInteractions(aggregateGroup);
         assertThat(handleEventResponse, equalTo(aggregateActionResponse));
     }
 

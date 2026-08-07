@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 plugins {
@@ -50,6 +54,7 @@ dependencies {
     implementation 'software.amazon.glue:schema-registry-serde:1.1.24'
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'com.github.java-json-tools:json-schema-validator:2.2.14'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
@@ -58,6 +63,7 @@ dependencies {
     testImplementation 'org.yaml:snakeyaml:2.2'
     testImplementation testLibs.spring.test
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation project(':data-prepper-core')
@@ -87,9 +93,9 @@ dependencies {
     constraints {
         implementation('org.mozilla:rhino') {
             version {
-                require '1.7.12'
+                require '1.7.15.1'
             }
-            because 'Fixes SNYK-JAVA-ORGMOZILLA-1314295.'
+            because 'Fixes CVE-2025-66453, SNYK-JAVA-ORGMOZILLA-1314295.'
         }
         implementation('org.bitbucket.b_c:jose4j') {
             version {

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.aws.api;
@@ -22,6 +26,14 @@ public interface AwsCredentialsSupplier {
      * @return An {@link AwsCredentialsProvider} to use.
      */
     AwsCredentialsProvider getProvider(AwsCredentialsOptions options);
+
+    /**
+     * Gets an AWS SDK {@link AwsCredentialsProvider} resolved from a named configuration
+     * defined in the extensions.aws.configurations block.
+     * @param configurationName The name of the configuration (e.g. "ecs_task_role")
+     * @return An {@link AwsCredentialsProvider} to use.
+     */
+    AwsCredentialsProvider getProvider(String configurationName);
 
     /**
      * Gets the default region if it is configured. Otherwise returns null

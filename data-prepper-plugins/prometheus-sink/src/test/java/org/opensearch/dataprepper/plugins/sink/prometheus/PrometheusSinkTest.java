@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSink
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -20,7 +21,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BasicAuthCredentials;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkThresholdConfig;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
@@ -83,7 +86,7 @@ public class PrometheusSinkTest extends BaseDataPrepperPluginStandardTestSuite {
         PluginModel codecConfiguration = new PluginModel("http", new HashMap<>());
         awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("us-west-2")));
         counter = mock(Counter.class);
         summary = mock(DistributionSummary.class);
@@ -132,5 +135,31 @@ public class PrometheusSinkTest extends BaseDataPrepperPluginStandardTestSuite {
         prometheusSink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
         prometheusSink.doOutput(records);
+    }
+
+    @Test
+    void test_http_sink_plugin_initializes_with_basic_auth() {
+        when(prometheusSinkConfiguration.getAwsConfig()).thenReturn(null);
+        when(prometheusSinkConfiguration.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        final AuthenticationOptions authOptions = mock(AuthenticationOptions.class);
+        final BasicAuthCredentials basicCreds = mock(BasicAuthCredentials.class);
+        when(basicCreds.getUsername()).thenReturn("user");
+        when(basicCreds.getPassword()).thenReturn("pass");
+        when(authOptions.getHttpBasic()).thenReturn(basicCreds);
+        when(prometheusSinkConfiguration.getAuthentication()).thenReturn(authOptions);
+        prometheusSink = createObjectUnderTest();
+        Assertions.assertNotNull(prometheusSink);
+        prometheusSink.doInitialize();
+        assertTrue(prometheusSink.isReady(), "prometheus sink should initialize with basic auth config");
+    }
+
+    @Test
+    void test_http_sink_plugin_initializes_without_aws_config() {
+        when(prometheusSinkConfiguration.getAwsConfig()).thenReturn(null);
+        when(prometheusSinkConfiguration.getUrl()).thenReturn("http://localhost:9090/api/v1/write");
+        prometheusSink = createObjectUnderTest();
+        Assertions.assertNotNull(prometheusSink);
+        prometheusSink.doInitialize();
+        assertTrue(prometheusSink.isReady(), "prometheus sink should initialize without AWS config");
     }
 }

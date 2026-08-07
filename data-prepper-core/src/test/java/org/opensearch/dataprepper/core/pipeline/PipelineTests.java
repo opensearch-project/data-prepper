@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.core.pipeline;
@@ -205,6 +209,29 @@ class PipelineTests {
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
         assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+    }
+
+    @Test
+    void testIsSourceStartedIsFalseBeforeExecuteAndTrueAfterSourceStarts() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent),
+                router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        assertFalse("isSourceStarted should be false before execute", testPipeline.isSourceStarted());
+
+        testPipeline.execute();
+
+        await().atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(100))
+                .until(testPipeline::isSourceStarted);
+        assertTrue("isSourceStarted should be true after source starts", testPipeline.isSourceStarted());
+
+        testPipeline.shutdown();
     }
 
     @Test

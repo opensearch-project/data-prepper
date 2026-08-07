@@ -316,4 +316,69 @@ class GenericRecordJsonEncoderTest {
         assertEquals("{\"amount\": null}", json);
     }
 
+    @Test
+    void serialize_WithFixedDecimalLogicalType_UsesScaleFromSchema() {
+        BigDecimal value = new BigDecimal("12.34").setScale(2);
+        byte[] decimalBytes = value.unscaledValue().toByteArray();
+        
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": [\"null\", {\"type\":\"fixed\",\"size\":" + decimalBytes.length +
+                        ",\"name\":\"DecimalFixed\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}]}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+        
+        Schema fixedSchema = decimalSchema.getField("amount").schema().getTypes().get(1);
+        GenericData.Fixed fixedValue = new GenericData.Fixed(fixedSchema, decimalBytes);
+        record.put("amount", fixedValue);
+
+        String json = encoder.serialize(record);
+
+        assertEquals("{\"amount\": 12.34}", json);
+    }
+
+    @Test
+    void serialize_WithNonNullableFixedDecimalLogicalType_UsesScaleFromSchema() {
+        BigDecimal value = new BigDecimal("12.3456").setScale(4);
+        byte[] decimalBytes = value.unscaledValue().toByteArray();
+        
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": {\"type\":\"fixed\",\"size\":" + decimalBytes.length +
+                        ",\"name\":\"DecimalFixed\",\"logicalType\":\"decimal\",\"precision\":6,\"scale\":4}}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+        
+        Schema fixedSchema = decimalSchema.getField("amount").schema();
+        GenericData.Fixed fixedValue = new GenericData.Fixed(fixedSchema, decimalBytes);
+        record.put("amount", fixedValue);
+
+        String json = encoder.serialize(record);
+
+        assertEquals("{\"amount\": 12.3456}", json);
+    }
+
+    @Test
+    void serialize_WithNonDecimalFixedType_ReturnsEscapedString() {
+        byte[] tokenBytes = new byte[] { 34, 92, 13, 10, 9};
+        Schema tokenSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"MyRecord\", \"fields\": [" +
+                        "{\"name\": \"token\", \"type\": {\"type\":\"fixed\",\"name\":\"TokenFixed\",\"size\":5}}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(tokenSchema);
+
+        Schema fixedSchema = tokenSchema.getField("token").schema();
+        GenericData.Fixed fixedValue = new GenericData.Fixed(fixedSchema, tokenBytes);
+        record.put("token", fixedValue);
+
+        String json = encoder.serialize(record);
+
+        assertEquals("{\"token\": {\"bytes\": \"\\\"\\\\\\r\\n\\t\"}}", json);
+    }
 }

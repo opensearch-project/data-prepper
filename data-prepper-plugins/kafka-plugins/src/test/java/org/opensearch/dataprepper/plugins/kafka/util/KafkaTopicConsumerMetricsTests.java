@@ -5,32 +5,40 @@
 
 package org.opensearch.dataprepper.plugins.kafka.util;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doAnswer;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
-import io.micrometer.core.instrument.Counter;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
-import java.util.function.ToDoubleFunction; 
+import java.util.concurrent.TimeUnit;
+import java.util.function.ToDoubleFunction;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics.ACTUAL_POLL_INTERVAL;
 
 @ExtendWith(MockitoExtension.class)
 public class KafkaTopicConsumerMetricsTests {
@@ -80,6 +88,9 @@ public class KafkaTopicConsumerMetricsTests {
     private Counter bytesConsumedCounter;
 
     @Mock
+    private Timer timeBetweenPolls;
+
+    @Mock
     private Counter recordsConsumedCounter;
     private double bytesConsumedCount;
     private double recordsConsumedCount;
@@ -122,14 +133,7 @@ public class KafkaTopicConsumerMetricsTests {
                 return recordsConsumedCounter;
             }
         }).when(pluginMetrics).counter(any(String.class));
-        doAnswer((i) -> {
-            bytesConsumedCount += (double)i.getArgument(0);
-            return null;
-        }).when(bytesConsumedCounter).increment(any(Double.class));
-        doAnswer((i) -> {
-            recordsConsumedCount += (double)i.getArgument(0);
-            return null;
-        }).when(recordsConsumedCounter).increment(any(Double.class));
+        when(pluginMetrics.timer("topic." + topicName + "." + ACTUAL_POLL_INTERVAL)).thenReturn(timeBetweenPolls);
     }
 
     public KafkaTopicConsumerMetrics createObjectUnderTest() {
@@ -205,6 +209,15 @@ public class KafkaTopicConsumerMetricsTests {
     @ValueSource(ints = {1, 5, 10})
     //@ValueSource(ints = {2})
     public void KafkaTopicMetricTest_checkMetricUpdates(int numConsumers) {
+        doAnswer((i) -> {
+            bytesConsumedCount += (double)i.getArgument(0);
+            return null;
+        }).when(bytesConsumedCounter).increment(any(Double.class));
+        doAnswer((i) -> {
+            recordsConsumedCount += (double)i.getArgument(0);
+            return null;
+        }).when(recordsConsumedCounter).increment(any(Double.class));
+
         topicMetrics = createObjectUnderTest();
         for (int i = 0; i < numConsumers; i++) {
             KafkaConsumer kafkaConsumer = mock(KafkaConsumer.class);   
@@ -244,6 +257,139 @@ public class KafkaTopicConsumerMetricsTests {
             }
         });
         
+    }
+
+    @Test
+    public void update_withNaNMetricValue_preservesPreviousValue() {
+        doAnswer((i) -> {
+            bytesConsumedCount += (double)i.getArgument(0);
+            return null;
+        }).when(bytesConsumedCounter).increment(any(Double.class));
+        doAnswer((i) -> {
+            recordsConsumedCount += (double)i.getArgument(0);
+            return null;
+        }).when(recordsConsumedCounter).increment(any(Double.class));
+
+        topicMetrics = createObjectUnderTest();
+        KafkaConsumer kafkaConsumer = mock(KafkaConsumer.class);
+        topicMetrics.register(kafkaConsumer);
+
+        // First update with real values
+        Map<MetricName, KafkaTestMetric> metrics = new HashMap<>();
+        when(kafkaConsumer.metrics()).thenReturn(metrics);
+        double expectedLag = 500.0;
+        double expectedLead = 100.0;
+        Map<String, String> emptyTags = new HashMap<>();
+        Map<String, String> topicTags = new HashMap<>();
+        topicTags.put("topic", topicName);
+        metrics.put(getMetric("records-lag-max", expectedLag, emptyTags).metricName(),
+                getMetric("records-lag-max", expectedLag, emptyTags));
+        metrics.put(getMetric("records-lead-min", expectedLead, emptyTags).metricName(),
+                getMetric("records-lead-min", expectedLead, emptyTags));
+        metrics.put(getMetric("commit-rate", 5.0, emptyTags).metricName(),
+                getMetric("commit-rate", 5.0, emptyTags));
+        metrics.put(getMetric("bytes-consumed-total", 100.0, topicTags).metricName(),
+                getMetric("bytes-consumed-total", 100.0, topicTags));
+        metrics.put(getMetric("records-consumed-total", 10.0, topicTags).metricName(),
+                getMetric("records-consumed-total", 10.0, topicTags));
+        topicMetrics.update(kafkaConsumer);
+
+        // Second update with NaN values (simulating Kafka 3.x idle consumer)
+        Map<MetricName, KafkaTestMetric> nanMetrics = new HashMap<>();
+        when(kafkaConsumer.metrics()).thenReturn(nanMetrics);
+        nanMetrics.put(getMetric("records-lag-max", Double.NaN, emptyTags).metricName(),
+                getMetric("records-lag-max", Double.NaN, emptyTags));
+        nanMetrics.put(getMetric("records-lead-min", Double.NaN, emptyTags).metricName(),
+                getMetric("records-lead-min", Double.NaN, emptyTags));
+        nanMetrics.put(getMetric("commit-rate", Double.NaN, emptyTags).metricName(),
+                getMetric("commit-rate", Double.NaN, emptyTags));
+        nanMetrics.put(getMetric("bytes-consumed-total", Double.NaN, topicTags).metricName(),
+                getMetric("bytes-consumed-total", Double.NaN, topicTags));
+        nanMetrics.put(getMetric("records-consumed-total", Double.NaN, topicTags).metricName(),
+                getMetric("records-consumed-total", Double.NaN, topicTags));
+        topicMetrics.update(kafkaConsumer);
+
+        // Verify gauges still return valid previous values, not NaN
+        Map<KafkaConsumer, Map<String, Double>> metricValuesMap = topicMetrics.getMetricValues();
+        Map<String, Double> consumerMetrics = metricValuesMap.get(kafkaConsumer);
+        assertEquals(expectedLag, consumerMetrics.get("records-lag-max"), 0.01d);
+        assertEquals(expectedLead, consumerMetrics.get("records-lead-min"), 0.01d);
+        assertEquals(5.0, consumerMetrics.get("commit-rate"), 0.01d);
+
+        // Verify gauge callbacks produce valid numbers
+        ToDoubleFunction lagGauge = pluginMetricsMap.get("topic." + topicName + ".recordsLagMax");
+        double lagResult = lagGauge.applyAsDouble(metricValuesMap);
+        assertEquals(expectedLag, lagResult, 0.01d);
+
+        ToDoubleFunction leadGauge = pluginMetricsMap.get("topic." + topicName + ".recordsLeadMin");
+        double leadResult = leadGauge.applyAsDouble(metricValuesMap);
+        assertEquals(expectedLead, leadResult, 0.01d);
+    }
+
+    @Test
+    public void update_withNegativeInfinityMetricValue_preservesPreviousValue() {
+        topicMetrics = createObjectUnderTest();
+        KafkaConsumer kafkaConsumer = mock(KafkaConsumer.class);
+        topicMetrics.register(kafkaConsumer);
+
+        // First update with real values
+        Map<MetricName, KafkaTestMetric> metrics = new HashMap<>();
+        when(kafkaConsumer.metrics()).thenReturn(metrics);
+        double expectedLag = 250.0;
+        Map<String, String> emptyTags = new HashMap<>();
+        metrics.put(getMetric("records-lag-max", expectedLag, emptyTags).metricName(),
+                getMetric("records-lag-max", expectedLag, emptyTags));
+        topicMetrics.update(kafkaConsumer);
+
+        // Second update with -Infinity (Kafka Max SampledStat empty window)
+        Map<MetricName, KafkaTestMetric> infMetrics = new HashMap<>();
+        when(kafkaConsumer.metrics()).thenReturn(infMetrics);
+        infMetrics.put(getMetric("records-lag-max", Double.NEGATIVE_INFINITY, emptyTags).metricName(),
+                getMetric("records-lag-max", Double.NEGATIVE_INFINITY, emptyTags));
+        topicMetrics.update(kafkaConsumer);
+
+        Map<String, Double> consumerMetrics = topicMetrics.getMetricValues().get(kafkaConsumer);
+        assertEquals(expectedLag, consumerMetrics.get("records-lag-max"), 0.01d);
+    }
+
+    @Test
+    public void update_withNaNMetricValue_andNopriorUpdate_preservesInitialZero() {
+        topicMetrics = createObjectUnderTest();
+        KafkaConsumer kafkaConsumer = mock(KafkaConsumer.class);
+        topicMetrics.register(kafkaConsumer);
+
+        // First update is NaN (consumer never received any records)
+        Map<MetricName, KafkaTestMetric> nanMetrics = new HashMap<>();
+        when(kafkaConsumer.metrics()).thenReturn(nanMetrics);
+        Map<String, String> emptyTags = new HashMap<>();
+        nanMetrics.put(getMetric("records-lag-max", Double.NaN, emptyTags).metricName(),
+                getMetric("records-lag-max", Double.NaN, emptyTags));
+        topicMetrics.update(kafkaConsumer);
+
+        // Should preserve the initial 0.0 from register()
+        Map<String, Double> consumerMetrics = topicMetrics.getMetricValues().get(kafkaConsumer);
+        assertEquals(0.0, consumerMetrics.get("records-lag-max"), 0.01d);
+
+        ToDoubleFunction lagGauge = pluginMetricsMap.get("topic." + topicName + ".recordsLagMax");
+        double lagResult = lagGauge.applyAsDouble(topicMetrics.getMetricValues());
+        assertEquals(0.0, lagResult, 0.01d);
+    }
+
+    @Test
+    void recordTimeBetweenPolls_records_metric_correctly() throws InterruptedException {
+        topicMetrics = createObjectUnderTest();
+
+        final ArgumentCaptor<Long> recordedTimeCaptor = ArgumentCaptor.forClass(Long.class);
+
+        doNothing().when(timeBetweenPolls).record(recordedTimeCaptor.capture(), eq(TimeUnit.MILLISECONDS));
+
+        Thread.sleep(100);
+        topicMetrics.recordTimeBetweenPolls();
+
+        final long recordedTime = recordedTimeCaptor.getValue();
+
+        assertThat(recordedTime, greaterThan(0L));
+        assertThat(recordedTime, lessThan(1000L));
     }
 
 }

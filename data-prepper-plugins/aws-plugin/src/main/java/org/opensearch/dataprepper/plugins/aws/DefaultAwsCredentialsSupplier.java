@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -25,6 +29,12 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     @Override
     public AwsCredentialsProvider getProvider(final AwsCredentialsOptions options) {
         return credentialsCache.getOrCreate(options, () -> credentialsProviderFactory.providerFromOptions(options));
+    }
+
+    @Override
+    public AwsCredentialsProvider getProvider(final String configurationName) {
+        final AwsCredentialsOptions options = credentialsProviderFactory.resolveNamedConfiguration(configurationName);
+        return getProvider(options);
     }
 
     @Override

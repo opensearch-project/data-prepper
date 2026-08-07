@@ -19,5 +19,6 @@ public class Constants {
 
     public static final String OAUTH2 = "OAuth2";
     public static final String BASIC = "Basic";
+    public static final String BEARER_TOKEN = "BearerToken";
     public static final String SLASH = "/";
 }

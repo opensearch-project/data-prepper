@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
@@ -24,7 +28,7 @@ class AggregateGroup implements AggregateActionInput {
     private final Lock handleEventForGroupLock;
     private final Map<Object, Object> identificationKeys;
     private Function<Duration, Boolean> customShouldConclude;
-    private EventHandle eventHandle;
+    private EventHandle groupEventHandle;
 
     AggregateGroup(final Map<Object, Object> identificationKeys) {
         this.groupState = new DefaultGroupState();
@@ -32,19 +36,18 @@ class AggregateGroup implements AggregateActionInput {
         this.groupStart = Instant.now();
         this.concludeGroupLock = new ReentrantLock();
         this.handleEventForGroupLock = new ReentrantLock();
-        this.eventHandle = new AggregateEventHandle(Instant.now());
+        this.groupEventHandle = new AggregateEventHandle(Instant.now());
     }
 
     @Override
     public EventHandle getEventHandle() {
-        return eventHandle;
+        return groupEventHandle;
     }
 
-    public void attachToEventAcknowledgementSet(Event event) {
-        InternalEventHandle internalEventHandle;
-        EventHandle handle = event.getEventHandle();
-        internalEventHandle = (InternalEventHandle)(handle);
-        internalEventHandle.addEventHandle(eventHandle);
+    public void attachToEventAcknowledgementSet(final Event event) {
+        final EventHandle handle = event.getEventHandle();
+        final InternalEventHandle internalEventHandle = (InternalEventHandle) (handle);
+        internalEventHandle.addEventHandle(groupEventHandle);
     }
 
     public GroupState getGroupState() {
@@ -82,6 +85,6 @@ class AggregateGroup implements AggregateActionInput {
     void resetGroup() {
         groupStart = Instant.now();
         groupState.clear();
-        this.eventHandle = new AggregateEventHandle(groupStart);
+        this.groupEventHandle = new AggregateEventHandle(groupStart);
     }
 }

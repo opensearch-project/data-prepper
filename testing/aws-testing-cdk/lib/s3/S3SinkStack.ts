@@ -1,9 +1,13 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
-import {Duration, RemovalPolicy, Stack, StackProps} from 'aws-cdk-lib';
+import {CfnOutput, Duration, RemovalPolicy, Stack, StackProps} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import {Role} from 'aws-cdk-lib/aws-iam';
 import {Bucket} from 'aws-cdk-lib/aws-s3';
@@ -13,7 +17,7 @@ export interface S3SinkStackProps extends StackProps {
 }
 
 /**
- * CDK stack that creates a common KMS key.
+ * CDK stack for resources needed by the S3 sink integration tests.
  */
 export class S3SinkStack extends Stack {
   readonly bucket: Bucket;
@@ -30,7 +34,12 @@ export class S3SinkStack extends Stack {
       ]
     });
 
-    this.bucket.grantWrite(props.testingRole)
+    this.bucket.grantReadWrite(props.testingRole)
+
+    new CfnOutput(this, 'BucketName', {
+      value: this.bucket.bucketName,
+      exportName: 'DataPrepperAwsTesting-S3SinkBucketName',
+    });
   }
 }
 

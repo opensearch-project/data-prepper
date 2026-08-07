@@ -47,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
@@ -313,7 +314,7 @@ class GeoIPProcessorTest {
         when(geoIPProcessorConfig.getTagsOnNoValidIp()).thenReturn(testTags);
 
         try (final MockedStatic<GeoInetAddress> ipValidationCheckMockedStatic = mockStatic(GeoInetAddress.class)) {
-            ipValidationCheckMockedStatic.when(() -> GeoInetAddress.usableInetFromString(any())).thenReturn(Optional.empty());
+            ipValidationCheckMockedStatic.when(() -> GeoInetAddress.usableInetFromString(any(), anyBoolean())).thenReturn(Optional.empty());
 
             when(geoIPProcessorConfig.getEntries()).thenReturn(List.of(entry));
             when(entry.getSource()).thenReturn(SOURCE);

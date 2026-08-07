@@ -122,7 +122,7 @@ class OpenSearchClientFactoryTest {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
@@ -152,7 +152,7 @@ class OpenSearchClientFactoryTest {
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
@@ -186,7 +186,7 @@ class OpenSearchClientFactoryTest {
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "template": {
+    "mappings": {
+      "properties": {
+        "series_ref": {
+          "type": "long",
+          "doc_values": false
+        },
+        "labels": {
+          "type": "keyword",
+          "ignore_above": 4096
+        },
+        "value": {
+          "type": "double",
+          "doc_values": false
+        },
+        "timestamp": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "timestamp_range": {
+          "type": "long_range"
+        }
+      }
+    },
+    "settings": {
+      "index.translog.durability": "async",
+      "index.translog.sync_interval": "1s",
+      "refresh_interval": "1s"
+    }
+  }
+}

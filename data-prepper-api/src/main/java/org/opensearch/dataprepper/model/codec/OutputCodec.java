@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.model.codec;
@@ -117,6 +121,7 @@ public interface OutputCodec {
      * this method get called from {@link Sink} to estimate size of event in {@link OutputStream}
      *
      * @param event        event Record event
+     * @param codecContext the output codec context for configuration and metadata
      * @return long        size of the serialized event
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
      */

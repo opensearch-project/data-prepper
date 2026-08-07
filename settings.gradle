@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 pluginManagement {
@@ -30,7 +34,7 @@ dependencyResolutionManagement {
         libs {
             version('slf4j', '2.0.6')
             library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
-            version('armeria', '1.32.5')
+            version('armeria', '1.32.6')
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
@@ -61,6 +65,7 @@ dependencyResolutionManagement {
             library('commons-io', 'commons-io', 'commons-io').version('2.15.1')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
+            library('hibernate-validator', 'org.hibernate.validator', 'hibernate-validator').version('8.0.0.Final')
             version('parquet', '1.15.2')
             library('parquet-common', 'org.apache.parquet', 'parquet-common').versionRef('parquet')
             library('parquet-avro', 'org.apache.parquet', 'parquet-avro').versionRef('parquet')
@@ -72,6 +77,7 @@ dependencyResolutionManagement {
             version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
+            library('lz4', 'org.lz4', 'lz4-java').version('1.8.0')
         }
         testLibs {
             version('junit', '5.8.2')
@@ -116,6 +122,7 @@ include 'data-prepper-plugins:armeria-common'
 include 'data-prepper-plugins:anomaly-detector-processor'
 include 'data-prepper-plugins:detect-format-processor'
 include 'data-prepper-plugins:opensearch'
+include 'data-prepper-plugins:opensearch-pull-kafka'
 include 'data-prepper-plugins:ocsf'
 include 'data-prepper-plugins:service-map-stateful'
 include 'data-prepper-plugins:mapdb-processor-state'
@@ -163,6 +170,7 @@ include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'data-prepper-plugins:failures-common'
 include 'data-prepper-plugins:newline-codecs'
+include 'data-prepper-plugins:multiline-codecs'
 include 'data-prepper-plugins:avro-codecs'
 include 'data-prepper-plugins:kafka-plugins'
 include 'data-prepper-plugins:user-agent-processor'
@@ -177,21 +185,27 @@ include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:sqs-common'
 include 'data-prepper-plugins:cloudwatch-logs'
 include 'data-prepper-plugins:sqs-sink'
-//include 'data-prepper-plugins:http-sink'
+include 'data-prepper-plugins:http-sink'
 //include 'data-prepper-plugins:sns-sink'
 include 'data-prepper-plugins:prometheus-sink'
+include 'data-prepper-plugins:prometheus-source'
 include 'data-prepper-plugins:personalize-sink'
 include 'data-prepper-plugins:dissect-processor'
 include 'data-prepper-plugins:dynamodb-source'
 include 'data-prepper-plugins:decompress-processor'
 include 'data-prepper-plugins:split-event-processor'
+include 'data-prepper-plugins:file-source'
 include 'data-prepper-plugins:flatten-processor'
 include 'data-prepper-plugins:mongodb'
 include 'data-prepper-plugins:rds-source'
+include 'data-prepper-plugins:iceberg-source'
 include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
+include 'data-prepper-plugins:http-client-common'
 include 'data-prepper-plugins:aws-lambda'
 include 'data-prepper-plugins:ml-inference-processor'
+include 'data-prepper-plugins:s3-common'
+include 'data-prepper-plugins:s3-enrich-processor'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'
@@ -205,4 +219,8 @@ include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
 include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
 include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
 include 'data-prepper-plugins:otlp-sink'
+include 'data-prepper-plugins:otel-apm-service-map-processor'
+include 'data-prepper-plugins:rate-limiter-processor'
 
+
+include 'e2e-test:kafka-buffer-backward-compatibility'

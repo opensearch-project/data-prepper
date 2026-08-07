@@ -210,7 +210,7 @@ public class SearchAccessStrategyTest {
     }
 
     @Test
-    void serverless_flag_true_defaults_to_search_context_type_none() {
+    void serverless_flag_true_defaults_to_search_context_type_point_in_time() {
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
         when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
@@ -222,7 +222,7 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
 
         assertThat(searchAccessor, notNullValue());
-        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
         verifyNoInteractions(pluginConfigObservable);
     }
 
@@ -244,7 +244,7 @@ public class SearchAccessStrategyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"NONE"})
+    @ValueSource(strings = {"NONE", "POINT_IN_TIME"})
     void serverless_flag_true_uses_search_context_type_from_config(final String searchContextType) {
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);

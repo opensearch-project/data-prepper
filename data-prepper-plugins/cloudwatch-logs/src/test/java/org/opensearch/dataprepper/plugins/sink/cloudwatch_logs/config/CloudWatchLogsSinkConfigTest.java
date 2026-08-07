@@ -12,6 +12,10 @@ import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import jakarta.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
@@ -26,6 +30,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 class CloudWatchLogsSinkConfigTest {
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
@@ -321,5 +326,71 @@ class CloudWatchLogsSinkConfigTest {
         
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "endpoint", testEndpoint);
         assertThat(cloudWatchLogsSinkConfig.getEndpoint(), equalTo(testEndpoint));
+    }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_create_log_group_called_SHOULD_return_false() {
+        assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroup(), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_create_log_group_set_true_WHEN_get_called_SHOULD_return_true()
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
+                "createLogGroup", true);
+        assertThat(cloudWatchLogsSinkConfig.getCreateLogGroup(), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_create_log_stream_called_SHOULD_return_false() {
+        assertThat(new CloudWatchLogsSinkConfig().getCreateLogStream(), equalTo(false));
+    }
+
+    @Test
+    void GIVEN_create_log_stream_set_true_WHEN_get_called_SHOULD_return_true()
+            throws NoSuchFieldException, IllegalAccessException {
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
+                "createLogStream", true);
+        assertThat(cloudWatchLogsSinkConfig.getCreateLogStream(), equalTo(true));
+    }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_entity_config_called_SHOULD_return_null() {
+        assertThat(new CloudWatchLogsSinkConfig().getEntityConfig(), equalTo(null));
+    }
+
+    @Test
+    void GIVEN_entity_config_set_WHEN_get_entity_config_called_SHOULD_return_configured_value()
+            throws NoSuchFieldException, IllegalAccessException {
+        final EntityConfig entityConfig = new EntityConfig();
+        final Map<String, String> keyAttributes = new HashMap<>();
+        keyAttributes.put("Type", "RemoteService");
+        keyAttributes.put("Name", "okta_auth0");
+        ReflectivelySetField.setField(EntityConfig.class, entityConfig, "keyAttributes", keyAttributes);
+
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "entityConfig", entityConfig);
+
+        assertThat(cloudWatchLogsSinkConfig.getEntityConfig(), equalTo(entityConfig));
+        assertThat(cloudWatchLogsSinkConfig.getEntityConfig().getKeyAttributes(), equalTo(keyAttributes));
+    }
+
+    @Test
+    void GIVEN_invalid_entity_config_WHEN_sink_config_validated_SHOULD_propagate_validation_error()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Validator beanValidator = Validation.byDefaultProvider()
+                .configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory()
+                .getValidator();
+
+        final EntityConfig invalidEntityConfig = new EntityConfig();
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "entityConfig", invalidEntityConfig);
+
+        final Set<ConstraintViolation<CloudWatchLogsSinkConfig>> violations = beanValidator.validate(cloudWatchLogsSinkConfig);
+
+        assertThat(violations.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("entityConfig.keyAttributes")), equalTo(true));
     }
 }

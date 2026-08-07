@@ -7,8 +7,11 @@ package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
+
+import java.util.List;
 
 public class SearchConfiguration {
 
@@ -17,6 +20,10 @@ public class SearchConfiguration {
 
     @JsonProperty("batch_size")
     private Integer batchSize = 1000;
+
+    @JsonProperty("sort")
+    @Valid
+    private List<SortConfig> sort;
 
     @JsonIgnore
     private SearchContextType searchContextTypeValue;
@@ -27,6 +34,10 @@ public class SearchConfiguration {
 
     public Integer getBatchSize() {
         return batchSize;
+    }
+
+    public List<SortConfig> getSort() {
+        return sort;
     }
 
     @AssertTrue(message = "search_context_type must be one of [ 'scroll', 'point_in_time', 'none' ]")

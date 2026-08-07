@@ -12,16 +12,24 @@ public class SearchScrollResponse {
 
     private final String scrollId;
     private final List<Event> documents;
+    private final SearchShardStatistics shardStatistics;
 
     public String getScrollId() {
         return scrollId;
     }
 
-    public List<Event> getDocuments() { return documents; }
+    public List<Event> getDocuments() {
+        return documents;
+    }
+
+    public SearchShardStatistics getShardStatistics() {
+        return shardStatistics == null ? SearchShardStatistics.empty() : shardStatistics;
+    }
 
     private SearchScrollResponse(final SearchScrollResponse.Builder builder) {
         this.scrollId = builder.scrollId;
         this.documents = builder.documents;
+        this.shardStatistics = builder.shardStatistics;
     }
 
     public static SearchScrollResponse.Builder builder() {
@@ -32,6 +40,7 @@ public class SearchScrollResponse {
 
         private String scrollId;
         private List<Event> documents;
+        private SearchShardStatistics shardStatistics;
 
         public Builder() {
 
@@ -44,6 +53,11 @@ public class SearchScrollResponse {
 
         public SearchScrollResponse.Builder withDocuments(final List<Event> documents) {
             this.documents = documents;
+            return this;
+        }
+
+        public SearchScrollResponse.Builder withShardStatistics(final SearchShardStatistics shardStatistics) {
+            this.shardStatistics = shardStatistics;
             return this;
         }
 

@@ -1,0 +1,21 @@
+{
+  "traceId": "GENAI_TRACE_ID_1",
+  "spanId": "000000000000c001",
+  "parentSpanId": "000000000000a001",
+  "traceState": "",
+  "name": "ChatBedrock.chat",
+  "kind": "CLIENT",
+  "startTime": "2026-01-01T00:00:00.000Z",
+  "endTime": "2026-01-01T00:00:01.000Z",
+  "durationInNanos": 1000000000,
+  "status": {},
+  "attributes": {
+    "llm.token_count.prompt": 150,
+    "llm.token_count.completion": 42,
+    "llm.model_name": "claude-3-sonnet",
+    "llm.provider": "anthropic",
+    "openinference.span.kind": "LLM",
+    "agent.name": "weather-agent",
+    "session.id": "sess-123"
+  }
+}

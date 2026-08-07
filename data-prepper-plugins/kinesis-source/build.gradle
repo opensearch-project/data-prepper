@@ -34,7 +34,7 @@ dependencies {
     implementation libs.armeria.core
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'software.amazon.kinesis:amazon-kinesis-client:2.6.0'
+    implementation 'software.amazon.kinesis:amazon-kinesis-client:2.7.2'
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 

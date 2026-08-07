@@ -1,15 +1,20 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 
+import javax.inject.Named;
 import java.util.HashMap;
 import java.util.List;
-import javax.inject.Named;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,31 +35,40 @@ public class JoinExpressionFunction implements  ExpressionFunction {
             throw new IllegalArgumentException(FUNCTION_NAME + "() takes one or two arguments");
         }
 
-        final List<String> argStrings;
-        try {
-            argStrings = args.stream()
-                    .map(arg -> ((String)arg).trim())
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                    "Arguments in " + FUNCTION_NAME + "() function should be of Json Pointer type or String type");
-        }
-
         final String delimiter;
-        final String sourceKey;
-        if (argStrings.size() == 2) {
-            final String trimmedDelimiter = argStrings.get(0).substring(1, argStrings.get(0).length() - 1);
+        final EventKey sourceKey;
 
-            // remove slashes used to escape comma
-            delimiter = trimmedDelimiter.replace("\\\\,", ",");
-            sourceKey = argStrings.get(1);
+        if (args.size() == 2) {
+            final Object delimiterArg = args.get(0);
+            final Object sourceKeyArg = args.get(1);
+
+            if (delimiterArg instanceof String) {
+                // remove slashes used to escape comma
+                delimiter = ((String) delimiterArg).replace("\\\\,", ",");
+            } else {
+                throw new RuntimeException("Unexpected argument type for delimiter: " + delimiterArg.getClass() +
+                        ". Expected String.");
+            }
+
+            if (sourceKeyArg instanceof EventKey) {
+                sourceKey = (EventKey) sourceKeyArg;
+            } else {
+                throw new RuntimeException("Unexpected argument type for source key: " + sourceKeyArg.getClass() +
+                        ". Expected EventKey.");
+            }
         } else {
             delimiter = ",";
-            sourceKey = argStrings.get(0);
+            final Object sourceKeyArg = args.get(0);
+            if (sourceKeyArg instanceof EventKey) {
+                sourceKey = (EventKey) sourceKeyArg;
+            } else {
+                throw new RuntimeException("Unexpected argument type for source key: " + sourceKeyArg.getClass() +
+                        ". Expected EventKey.");
+            }
         }
 
         try {
-            if (event.isValueAList(sourceKey)) {
+            if (event.isValueAList(sourceKey.getKey())) {
                 final List<Object> sourceList = event.get(sourceKey, List.class);
                 return joinList(sourceList, delimiter);
             } else {
@@ -62,7 +76,7 @@ public class JoinExpressionFunction implements  ExpressionFunction {
                 return joinListsInMap(sourceMap, delimiter);
             }
         } catch (Exception ex) {
-            throw new RuntimeException("Unable to perform join function on " + sourceKey, ex);
+            throw new RuntimeException("Unable to perform join function on " + sourceKey.getKey(), ex);
         }
     }
 

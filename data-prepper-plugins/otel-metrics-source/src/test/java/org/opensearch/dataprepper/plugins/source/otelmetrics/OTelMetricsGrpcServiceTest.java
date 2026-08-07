@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import org.apache.commons.lang3.tuple.Pair;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
@@ -44,6 +45,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
@@ -84,6 +86,10 @@ public class OTelMetricsGrpcServiceTest {
     private static final String TEST_RESOURCE_ATTR_VALUE = "testResourceAttrValue";
     private static final int TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT = 11;
     private static final int TEST_SCOPE_DROPPED_ATTRIBUTES_COUNT = 22;
+
+    private static final String SERVICE_NAME_KEY="service.name";
+    private static final String TEST_SERVICE_NAME1="testService1";
+    private static final String TEST_SERVICE_NAME2="testService2";
 
     private static final String IS_SCOPE_NAME="testISScopeName";
     private static final String IS_SCOPE_VERSION="testISScopeVersion";
@@ -168,6 +174,9 @@ public class OTelMetricsGrpcServiceTest {
     private ArgumentCaptor<Collection<Record>> recordCaptor;
 
     @Captor
+    private ArgumentCaptor<byte[]> byteBufferRecordCaptor;
+
+    @Captor
     ArgumentCaptor<byte[]> bytesCaptor;
 
     private OTelMetricsGrpcService sut;
@@ -195,8 +204,12 @@ public class OTelMetricsGrpcServiceTest {
 
     }
 
+    OTelMetricsGrpcService createObjectUnderTestWithKeys(final OTelProtoCodec.OTelProtoDecoder decoder, final Set<String> keys) {
+        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, keys, mockPluginMetrics, null);
+    }
+
     OTelMetricsGrpcService createObjectUnderTest(OTelProtoCodec.OTelProtoDecoder decoder) {
-        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
+        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, null, mockPluginMetrics, null);
     }
 
     @ParameterizedTest
@@ -274,6 +287,43 @@ public class OTelMetricsGrpcServiceTest {
     }
 
     @Test
+    public void test_MetricsSource_output_with_PartitionKeyName() throws Exception {
+        final ExportMetricsServiceRequest METRIC_REQUEST = createMetricsRequest();
+        final OTelProtoStandardCodec.OTelProtoDecoder decoder = new OTelProtoStandardCodec.OTelProtoDecoder();
+        when(buffer.isByteBuffer()).thenReturn(true);
+
+        sut = createObjectUnderTestWithKeys(decoder, Set.of("name"));
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            sut.export(METRIC_REQUEST, responseObserver);
+        }
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_GAUGE_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SUM_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SUMMARY_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_HISTOGRAM_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_EXPONENTIAL_HISTOGRAM_METRIC_NAME), anyInt());
+    }
+
+
+    @Test
+    public void test_MetricsSource_output_with_PartitionKeysNameAndServiceName() throws Exception {
+        final ExportMetricsServiceRequest METRIC_REQUEST = createMetricsRequestWithTwoServices();
+        final OTelProtoStandardCodec.OTelProtoDecoder decoder = new OTelProtoStandardCodec.OTelProtoDecoder();
+        when(buffer.isByteBuffer()).thenReturn(true);
+
+        sut = createObjectUnderTestWithKeys(decoder, Set.of("name", "service_name"));
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            sut.export(METRIC_REQUEST, responseObserver);
+        }
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SERVICE_NAME1+":"+TEST_GAUGE_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SERVICE_NAME1+":"+TEST_SUM_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SERVICE_NAME2+":"+TEST_SUMMARY_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SERVICE_NAME2+":"+TEST_HISTOGRAM_METRIC_NAME), anyInt());
+        verify(buffer, times(1)).writeBytes(byteBufferRecordCaptor.capture(), eq(TEST_SERVICE_NAME2+":"+TEST_EXPONENTIAL_HISTOGRAM_METRIC_NAME), anyInt());
+    }
+
+    @Test
     public void test_MetricsSource_output_with_OpensearchFormat() throws Exception {
         final ExportMetricsServiceRequest METRIC_REQUEST = createMetricsRequest();
 
@@ -336,19 +386,12 @@ public class OTelMetricsGrpcServiceTest {
         );
     }
 
-    private ExportMetricsServiceRequest createMetricsRequest() {
+    private Pair<ScopeMetrics, ScopeMetrics> createScopeMetrics() {
         Instant currentTime = Instant.now();
         startTime = currentTime.toString();
         final long currentUnixTimeNano = ((long)currentTime.getEpochSecond() * 1000_000_000L) + currentTime.getNano();
         final long endUnixTimeNano = currentUnixTimeNano + (TIME_DELTA*1000_000_000L);
         endTime = currentTime.plusSeconds(TIME_DELTA).toString();
-        final Resource resource = Resource.newBuilder()
-                .setDroppedAttributesCount(TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT)
-                .addAttributes(KeyValue.newBuilder()
-                        .setKey(TEST_RESOURCE_ATTR_KEY)
-                        .setValue(AnyValue.newBuilder().setStringValue(TEST_RESOURCE_ATTR_VALUE).build())
-                ).build();
-
         final InstrumentationScope instrumentationScope = InstrumentationScope.newBuilder()
                 .setName(IS_SCOPE_NAME)
                 .setVersion(IS_SCOPE_VERSION)
@@ -357,7 +400,7 @@ public class OTelMetricsGrpcServiceTest {
                         .setKey(IS_SCOPE_ATTR_KEY)
                         .setValue(AnyValue.newBuilder().setStringValue(IS_SCOPE_ATTR_VALUE).build())
                 ).build();
-        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
+        ScopeMetrics scopeMetrics1 = ScopeMetrics.newBuilder()
                 .setScope(instrumentationScope)
                 .setSchemaUrl(TEST_SCHEMA_URL)
                 .addMetrics(io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
@@ -395,6 +438,11 @@ public class OTelMetricsGrpcServiceTest {
                         .setAggregationTemporality(io.opentelemetry.proto.metrics.v1.AggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE)
                         .build())
                     .build())
+                .build();
+
+        ScopeMetrics scopeMetrics2 = ScopeMetrics.newBuilder()
+                .setScope(instrumentationScope)
+                .setSchemaUrl(TEST_SCHEMA_URL)
                 .addMetrics(io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
                     .setName(TEST_EXPONENTIAL_HISTOGRAM_METRIC_NAME)
                     .setDescription(TEST_EXPONENTIAL_HISTOGRAM_DESCRIPTION)
@@ -473,14 +521,63 @@ public class OTelMetricsGrpcServiceTest {
                         .build())
                     .build())
                 .build();
+        return Pair.of(scopeMetrics1, scopeMetrics2);
+    }
 
+    private ExportMetricsServiceRequest createMetricsRequest() {
+        final Resource resource = Resource.newBuilder()
+                .setDroppedAttributesCount(TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT)
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey(TEST_RESOURCE_ATTR_KEY)
+                        .setValue(AnyValue.newBuilder().setStringValue(TEST_RESOURCE_ATTR_VALUE).build())
+                ).build();
+
+        Pair<ScopeMetrics, ScopeMetrics> scopeMetrics = createScopeMetrics();
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addScopeMetrics(scopeMetrics)
+                .addScopeMetrics(scopeMetrics.getLeft())
+                .addScopeMetrics(scopeMetrics.getRight())
                 .build();
 
         return ExportMetricsServiceRequest.newBuilder()
                 .addResourceMetrics(resourceMetrics)
+                .build();
+    }
+
+    private ExportMetricsServiceRequest createMetricsRequestWithTwoServices() {
+        Instant currentTime = Instant.now();
+        startTime = currentTime.toString();
+        final long currentUnixTimeNano = ((long)currentTime.getEpochSecond() * 1000_000_000L) + currentTime.getNano();
+        final long endUnixTimeNano = currentUnixTimeNano + (TIME_DELTA*1000_000_000L);
+        endTime = currentTime.plusSeconds(TIME_DELTA).toString();
+        final Resource resource1 = Resource.newBuilder()
+                .setDroppedAttributesCount(TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT)
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey(SERVICE_NAME_KEY)
+                        .setValue(AnyValue.newBuilder().setStringValue(TEST_SERVICE_NAME1).build())
+                ).build();
+        final Resource resource2 = Resource.newBuilder()
+                .setDroppedAttributesCount(TEST_RESOURCE_DROPPED_ATTRIBUTES_COUNT)
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey(SERVICE_NAME_KEY)
+                        .setValue(AnyValue.newBuilder().setStringValue(TEST_SERVICE_NAME2).build())
+                ).build();
+
+        Pair<ScopeMetrics, ScopeMetrics> scopeMetrics = createScopeMetrics();
+
+        ResourceMetrics resourceMetrics1 = ResourceMetrics.newBuilder()
+                .setResource(resource1)
+                .addScopeMetrics(scopeMetrics.getLeft())
+                .build();
+
+        ResourceMetrics resourceMetrics2 = ResourceMetrics.newBuilder()
+                .setResource(resource2)
+                .addScopeMetrics(scopeMetrics.getRight())
+                .build();
+
+        return ExportMetricsServiceRequest.newBuilder()
+                .addResourceMetrics(resourceMetrics1)
+                .addResourceMetrics(resourceMetrics2)
                 .build();
     }
 }

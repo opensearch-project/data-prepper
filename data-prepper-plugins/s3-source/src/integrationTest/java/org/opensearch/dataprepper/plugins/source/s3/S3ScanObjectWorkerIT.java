@@ -35,11 +35,15 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectPluginMetrics;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
@@ -47,7 +51,6 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScheduli
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectSerializationFormatOption;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemorySourceCoordinationStore;
 import org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator;
 import software.amazon.awssdk.regions.Region;
@@ -223,8 +226,11 @@ public class S3ScanObjectWorkerIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
 
-        return new ScanObjectWorker(s3Client, scanOptions, createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
+        final S3ScanProcessingConditionEvaluator conditionEvaluator =
+                new S3ScanProcessingConditionEvaluator(s3Client, mock(ExpressionEvaluator.class), mock(PluginFactory.class), Collections.emptyList());
+        return new ScanObjectWorker(s3Client, scanOptions, createObjectUnderTest(s3ObjectRequest),
+                bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics,
+                conditionEvaluator, Collections.emptyMap());
     }
 
     @ParameterizedTest

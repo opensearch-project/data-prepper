@@ -1,7 +1,12 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
+
 package org.opensearch.dataprepper.pipeline.parser.rule;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -22,6 +27,9 @@ public class RuleTransformerModel {
     @JsonProperty("plugin_name")
     private String pluginName;
 
+    @JsonProperty("function_providers")
+    private List<String> functionProviders;
+
     public RuleTransformerModel() {
     }
 
@@ -29,6 +37,7 @@ public class RuleTransformerModel {
     public String toString() {
         return "RuleConfiguration{" +
                 "applyWhen=" + applyWhen +
-                "\npluginName="+ pluginName +'}';
+                "\nfunctionProviders=" + functionProviders +
+                "\npluginName=" + pluginName + '}';
     }
 }

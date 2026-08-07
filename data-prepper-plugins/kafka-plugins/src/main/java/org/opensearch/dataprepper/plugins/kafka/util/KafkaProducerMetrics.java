@@ -21,7 +21,11 @@ public final class KafkaProducerMetrics {
             "record-queue-time-avg", "recordQueueTimeAvg",
             "record-queue-time-max", "recordQueueTimeMax",
             "buffer-exhausted-rate", "bufferExhaustedRate",
-            "buffer-available-bytes", "bufferAvailableBytes"
+            "buffer-available-bytes", "bufferAvailableBytes",
+            "request-latency-avg", "requestLatencyAvg",
+            "request-latency-max", "requestLatencyMax",
+            "produce-throttle-time-avg", "produceThrottleTimeAvg",
+            "produce-throttle-time-max", "produceThrottleTimeMax"
     );
 
     private KafkaProducerMetrics() { }

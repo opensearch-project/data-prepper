@@ -1,0 +1,51 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+# Performs a license header check on new files.
+# Results are uploaded as an artifact for the comment workflow.
+
+name: License Header Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  license-header-check:
+    runs-on: ubuntu-latest
+    name: Check License Headers on New Files
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: '3.14'
+
+      - name: Run License Header Check
+        id: license-check
+        run: |
+          python .github/scripts/get-new-files.py | python .github/scripts/check-license-headers.py
+
+      - name: Save PR number
+        if: always()
+        run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: license-check-results
+          path: |
+            pr_number.txt
+            violations.txt

@@ -11,8 +11,6 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +27,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.source_crawler.metrics.VendorAPIMetricsRecorder;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,10 +57,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
-import static org.opensearch.dataprepper.plugins.source.source_crawler.utils.MetricsHelper.REQUEST_ERRORS;
-import static org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365CrawlerClient.NON_RETRYABLE_ERRORS;
-import static org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365CrawlerClient.RETRYABLE_ERRORS;
-
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class Office365CrawlerClientTest {
@@ -82,10 +76,7 @@ class Office365CrawlerClientTest {
     private Office365Service service;
 
     @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
-    private Timer bufferWriteLatencyTimer;
+    private VendorAPIMetricsRecorder metricsRecorder;
 
     @Mock
     private static Logger log;
@@ -98,8 +89,6 @@ class Office365CrawlerClientTest {
 
     @BeforeEach
     void setUp() {
-        when(pluginMetrics.timer(anyString())).thenReturn(bufferWriteLatencyTimer);
-        when(pluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
         when(state.getStartTime()).thenReturn(Instant.now().minus(Duration.ofHours(1)));
         when(state.getEndTime()).thenReturn(Instant.now());
         when(state.getDimensionType()).thenReturn("Exchange");
@@ -107,13 +96,13 @@ class Office365CrawlerClientTest {
 
     @Test
     void testConstructor() {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
         assertNotNull(client);
     }
 
     @Test
     void testExecutePartition() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -131,11 +120,12 @@ class Office365CrawlerClientTest {
         when(service.getAuditLog(anyString()))
                 .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
 
+        // Mock the metrics recorder methods
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
@@ -150,17 +140,17 @@ class Office365CrawlerClientTest {
             assertNotNull(record.getData());
             assertEquals("Exchange", record.getData().getMetadata().getAttribute("contentType"));
         }
+
+        verify(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
+        verify(metricsRecorder).recordBufferWriteAttempt();
+        verify(metricsRecorder).recordBufferWriteSuccess();
     }
 
     @Test
     void testExecutePartitionWithJsonProcessingError() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
         client.injectObjectMapper(mockObjectMapper);
-
-         // Mock the total failures counter
-        Counter mockRequestErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -182,9 +172,9 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
-         SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
+        SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
             () -> client.executePartition(state, buffer, acknowledgementSet));
 
         assertEquals("Error processing audit log: ID1", exception.getMessage());
@@ -192,12 +182,13 @@ class Office365CrawlerClientTest {
         assertTrue(exception.getCause() instanceof SaaSCrawlerException);
         assertEquals("Failed to parse audit log: ID1", exception.getCause().getMessage());
 
-        verify(mockRequestErrorsCounter, never()).increment();
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordNonRetryableError();
     }
 
     @Test
     void testBufferWriteWithAcknowledgements() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -220,18 +211,19 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         client.executePartition(state, buffer, acknowledgementSet);
 
         verify(acknowledgementSet).add(any(Event.class));
         verify(acknowledgementSet).complete();
         verify(buffer).writeAll(any(), anyInt());
+        verify(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
     }
 
     @Test
     void testBufferWriteTimeout() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -253,7 +245,7 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         doThrow(new RuntimeException("Error writing to buffer"))
                 .when(buffer)
@@ -265,15 +257,12 @@ class Office365CrawlerClientTest {
         assertEquals("Error writing to buffer", exception.getMessage());
         assertTrue(exception.isRetryable());
         verify(buffer).writeAll(any(), anyInt());
+        verify(metricsRecorder).recordBufferWriteFailure();
     }
 
     @Test
     void testNonRetryableError() throws Exception {
-        // Mock the non-retryable errors counter
-        Counter mockNonRetryableErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter(NON_RETRYABLE_ERRORS)).thenReturn(mockNonRetryableErrorsCounter);
-
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -293,7 +282,7 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
             () -> client.executePartition(state, buffer, acknowledgementSet));
@@ -304,16 +293,13 @@ class Office365CrawlerClientTest {
         assertEquals("Received null log content for URI: uri1", exception.getCause().getMessage());
 
         verify(buffer, never()).writeAll(argThat(list -> list.isEmpty()), anyInt());
-        verify(mockNonRetryableErrorsCounter).increment();
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordNonRetryableError();
     }
 
     @Test
     void testRetryableErrorCounterIncrement() throws Exception {
-        // Mock the retryable errors counter
-        Counter mockRetryableErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter(RETRYABLE_ERRORS)).thenReturn(mockRetryableErrorsCounter);
-
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -336,20 +322,21 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         // Execute and expect RuntimeException to be thrown due to retryable error
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> client.executePartition(state, buffer, acknowledgementSet));
 
         // Verify retryable error counter was incremented
-        verify(mockRetryableErrorsCounter).increment();
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordRetryableError();
         assertEquals("Error processing audit log: ID1", exception.getMessage());
     }
 
     @Test
     void testMissingWorkloadField() throws Exception {
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         AuditLogsResponse response = new AuditLogsResponse(
                 Arrays.asList(Map.of(
@@ -370,7 +357,7 @@ class Office365CrawlerClientTest {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
             return null;
-        }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
 
         SaaSCrawlerException exception = assertThrows(SaaSCrawlerException.class,
             () -> client.executePartition(state, buffer, acknowledgementSet));
@@ -381,16 +368,13 @@ class Office365CrawlerClientTest {
         assertEquals("Missing Workload field in audit log: ID1", exception.getCause().getMessage());
 
         verify(buffer, never()).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordNonRetryableError();
     }
 
     @Test
     void testExecutePartitionWithSearchAuditLogsError() throws Exception {
-        Counter mockRequestErrorsCounter = mock(Counter.class);
-        Counter mockRetryableErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);
-        when(pluginMetrics.counter(RETRYABLE_ERRORS)).thenReturn(mockRetryableErrorsCounter);
-
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         // Mock searchAuditLogs to throw exception
         when(service.searchAuditLogs(
@@ -407,20 +391,13 @@ class Office365CrawlerClientTest {
         // Verify exception message and counter increment
         assertEquals("Search audit logs failed", exception.getMessage());
         assertTrue(exception.isRetryable());
-        verify(mockRequestErrorsCounter).increment();
-        verify(mockRetryableErrorsCounter).increment();
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordRetryableError();
     }
 
     @Test
     void testExecutePartitionWithNonSaaSCrawlerException() throws Exception {
-        // Create the counter mock before creating the client
-        Counter mockRequestErrorsCounter = mock(Counter.class);
-        Counter mockNonRetryableErrorsCounter = mock(Counter.class);
-        when(pluginMetrics.counter(REQUEST_ERRORS)).thenReturn(mockRequestErrorsCounter);
-        when(pluginMetrics.counter(NON_RETRYABLE_ERRORS)).thenReturn(mockNonRetryableErrorsCounter);
-
-        // Create client after counter is mocked
-        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, pluginMetrics);
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
 
         // Simulate a non-SaaSCrawlerException (like RuntimeException)
         when(service.searchAuditLogs(
@@ -438,7 +415,41 @@ class Office365CrawlerClientTest {
         assertEquals("Failed to process partition", exception.getMessage());
         assertFalse(exception.isRetryable());
         assertTrue(exception.getCause() instanceof RuntimeException);
-        verify(mockRequestErrorsCounter).increment();
-        verify(mockNonRetryableErrorsCounter).increment();
+        verify(metricsRecorder).recordError(any(Exception.class));
+        verify(metricsRecorder).recordNonRetryableError();
+    }
+
+    @Test
+    void testBufferWriteRetrySuccess() throws Exception {
+        Office365CrawlerClient client = new Office365CrawlerClient(service, sourceConfig, metricsRecorder);
+
+        AuditLogsResponse response = new AuditLogsResponse(
+                Arrays.asList(Map.of(
+                        "contentId", "ID1",
+                        "contentUri", "uri1"
+                )), null);
+
+        when(service.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                any()
+        )).thenReturn(response);
+
+        when(service.getAuditLog(anyString()))
+                .thenReturn("{\"Workload\":\"Exchange\",\"Operation\":\"Test\"}");
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(metricsRecorder).recordBufferWriteLatency(any(Runnable.class));
+
+        client.executePartition(state, buffer, acknowledgementSet);
+
+        verify(metricsRecorder).recordBufferWriteAttempt();
+        verify(metricsRecorder).recordBufferWriteSuccess();
+        verify(metricsRecorder, never()).recordBufferWriteRetrySuccess();
+        verify(metricsRecorder, never()).recordBufferWriteFailure();
     }
 }

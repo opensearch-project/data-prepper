@@ -147,6 +147,16 @@ public class OTLPSourceConfig {
   @JsonProperty(RETRY_INFO)
   private RetryInfoConfig retryInfo;
 
+  @JsonProperty("max_connection_age")
+  @DurationMin(seconds = 1)
+  @DurationMax(hours = 24)
+  private Duration maxConnectionAge;
+
+  @JsonProperty("connection_drain_duration")
+  @DurationMin(millis = 0)
+  @DurationMax(hours = 1)
+  private Duration connectionDrainDuration;
+
   @AssertTrue(message = LOGS_PATH + " should start with /")
   boolean isLogsPathValid() {
     return logsPath == null || logsPath.startsWith("/");
@@ -208,6 +218,7 @@ public class OTLPSourceConfig {
    * Validation via @DurationMax ensures this is safe.
    * Casting to int is necessary because ServerConfiguration method signature
    * requires it.
+   * @return the request timeout in milliseconds as an integer
    */
   public int getRequestTimeoutInMillis() {
     return (int) requestTimeout.toMillis();
@@ -319,6 +330,14 @@ public class OTLPSourceConfig {
 
   public RetryInfoConfig getRetryInfo() {
     return retryInfo;
+  }
+
+  public Duration getMaxConnectionAge() {
+    return maxConnectionAge;
+  }
+
+  public Duration getConnectionDrainDuration() {
+    return connectionDrainDuration;
   }
 
 }

@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.s3;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -27,6 +28,7 @@ class S3SourceTest {
     private PluginFactory pluginFactory;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AwsCredentialsSupplier awsCredentialsSupplier;
+    private ExpressionEvaluator expressionEvaluator;
 
 
     @BeforeEach
@@ -36,10 +38,11 @@ class S3SourceTest {
         pluginFactory = mock(PluginFactory.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        expressionEvaluator = mock(ExpressionEvaluator.class);
 
         when(s3SourceConfig.getCodec()).thenReturn(mock(PluginModel.class));
 
-        s3Source = new S3Source(pluginMetrics, s3SourceConfig, pluginFactory, acknowledgementSetManager, awsCredentialsSupplier);
+        s3Source = new S3Source(pluginMetrics, s3SourceConfig, pluginFactory, acknowledgementSetManager, awsCredentialsSupplier, expressionEvaluator);
     }
 
     @Test
