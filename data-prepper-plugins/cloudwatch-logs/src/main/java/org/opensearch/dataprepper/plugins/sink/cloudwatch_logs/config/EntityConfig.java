@@ -13,10 +13,14 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * Configuration for the CloudWatch Logs entity attached to PutLogEvents.
+ */
 public class EntityConfig {
 
     @JsonProperty("key_attributes")
@@ -33,5 +37,32 @@ public class EntityConfig {
 
     public Map<String, String> getAttributes() {
         return Collections.unmodifiableMap(attributes);
+    }
+
+    /**
+     * Dynamic when any {@code key_attributes}/{@code attributes} value is a Data Prepper format
+     * expression carrying a {@code ${...}} field reference or expression; otherwise static (one
+     * constant entity, original behavior).
+     */
+    public boolean isDynamic(final ExpressionEvaluator expressionEvaluator) {
+        return containsTemplate(keyAttributes, expressionEvaluator)
+                || containsTemplate(attributes, expressionEvaluator);
+    }
+
+    private static boolean containsTemplate(final Map<String, String> values,
+                                            final ExpressionEvaluator expressionEvaluator) {
+        if (values == null) {
+            return false;
+        }
+        for (final String value : values.values()) {
+            if (value == null) {
+                continue;
+            }
+            if (!expressionEvaluator.extractDynamicKeysFromFormatExpression(value).isEmpty()
+                    || !expressionEvaluator.extractDynamicExpressionsFromFormatExpression(value).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

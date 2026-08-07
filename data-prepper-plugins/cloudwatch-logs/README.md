@@ -90,6 +90,22 @@ pipeline:
   - `key_attributes` (Required when `entity` is configured) : A `Map<String, String>` of key attributes that uniquely identify the entity (for example `Type`, `Name`).
   - `attributes` (Optional) : A `Map<String, String>` of additional attributes describing the entity. Defaults to an empty map.
 
+  In dynamic mode the number of distinct entities cached and buffered concurrently is capped by an internal memory-safety limit; beyond it, further distinct keys collapse into a shared fallback group carrying no per-resource entity, and the overflow is logged.
+
+  ### Static vs dynamic entities
+
+  The entity is **dynamic** when any `key_attributes` or `attributes` value contains a `${...}` reference (a Data Prepper field reference such as `${/resourceId}`); otherwise it is **static**. No separate mode flag is required.
+
+  - Static: one constant entity is attached to every `PutLogEvents` request, exactly as configured.
+  - Dynamic: each value is interpolated against the event, and the sink partitions buffered events by their resolved key attributes, sending one `PutLogEvents` request per distinct entity. This is how a stream carrying logs for many resources (for example Azure diagnostic logs keyed by `resourceId`) gets one correct entity per resource. An event missing a templated field resolves that reference to an empty string and shares a group with other such events.
+
+  ```yaml
+  entity:
+    key_attributes:
+      Type: "Azure::Resource"
+      Identifier: "${/resourceId}"
+  ```
+
   AWS-owned limits — maximum number of entries, allowed key names (such as `Type`, `ResourceType`, `Identifier`, `Name`, `Environment`), and key/value length caps — are enforced by CloudWatch at request time and are intentionally not mirrored here. Violations are surfaced via the `cloudWatchLogsEntityRejected` metric and a log warning. See the [AWS Entity API docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_Entity.html) for the current contract.
 
 ## Buffer Type Configuration
