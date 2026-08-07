@@ -59,6 +59,35 @@ source:
 This plugin uses pluggable authentication for HTTP servers. To provide custom authentication,
 create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/ArmeriaHttpAuthenticationProvider.java)
 
+#### Mutual TLS (mTLS) Authentication
+
+**Status: Experimental**
+
+The `mutual_tls` authentication plugin requires connecting clients to present a valid TLS certificate signed by a trusted Certificate Authority (CA). The server verifies the client certificate during the TLS handshake and rejects connections that do not present a valid certificate.
+
+This requires `ssl: true` to be configured on the source. If `mutual_tls` is configured without SSL enabled, the source will fail to start with an `IllegalStateException`.
+
+```yaml
+source:
+  opensearch_api:
+    ssl: true
+    ssl_certificate_file: "/path/to/server.crt"
+    ssl_key_file: "/path/to/server.key"
+    authentication:
+      mutual_tls:
+        ssl_trust_certificate_file: "/path/to/ca.crt"
+```
+
+Configuration options:
+
+* `ssl_trust_certificate_file` (Required): Path to the PEM file containing one or more trusted CA certificates used to verify client certificates. Multiple CA certificates can be concatenated in a single PEM file.
+
+Limitations:
+
+* Only file paths are supported (inline PEM content is not supported in this version).
+* CRL/OCSP revocation checking is not yet supported. See [#6940](https://github.com/opensearch-project/data-prepper/issues/6940).
+* Handshake rejection logging/metrics are not yet available. See [#6942](https://github.com/opensearch-project/data-prepper/issues/6942).
+
 
 ### SSL
 
