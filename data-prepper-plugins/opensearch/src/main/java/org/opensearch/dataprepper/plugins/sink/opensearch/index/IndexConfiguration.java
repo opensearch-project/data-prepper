@@ -81,6 +81,7 @@ public class IndexConfiguration {
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
     public static final String DOCUMENT_VERSION_EXPRESSION = "document_version";
+    public static final String DROP_VERSION_CONFLICTS = "drop_version_conflicts";
 
     private IndexType indexType;
     private TemplateType templateType;
@@ -122,6 +123,8 @@ public class IndexConfiguration {
     private final boolean queryOnBulkFailures;
 
     private final Integer queryAsyncDocumentLimit;
+
+    private final boolean dropVersionConflicts;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -192,6 +195,7 @@ public class IndexConfiguration {
         this.queryActionOnFound = builder.actionOnFound;
         this.queryDuration = builder.queryDuration;
         this.queryAsyncDocumentLimit = builder.queryAsyncLimit;
+        this.dropVersionConflicts = builder.dropVersionConflicts;
     }
 
     private void determineIndexType(Builder builder) {
@@ -288,7 +292,8 @@ public class IndexConfiguration {
                 .withNormalizeIndex(openSearchSinkConfig.isNormalizeIndex())
                 .withIsmPolicyFile(openSearchSinkConfig.getIsmPolicyFile())
                 .withDocumentRootKey(openSearchSinkConfig.getDocumentRootKey())
-                .withDistributionVersion(openSearchSinkConfig.getDistributionVersion());
+                .withDistributionVersion(openSearchSinkConfig.getDistributionVersion())
+                .withDropVersionConflicts(openSearchSinkConfig.isDropVersionConflicts());
 
         final AwsAuthenticationConfiguration awsConfig = openSearchSinkConfig.getAwsAuthenticationOptions();
         if (awsConfig != null && awsConfig.getSemanticEnrichmentConfig() != null) {
@@ -455,6 +460,10 @@ public class IndexConfiguration {
 
     public Integer getQueryAsyncDocumentLimit() {return queryAsyncDocumentLimit; }
 
+    public boolean getDropVersionConflicts() {
+        return dropVersionConflicts;
+    }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an
@@ -565,6 +574,7 @@ public class IndexConfiguration {
         private SemanticEnrichmentConfig semanticEnrichmentConfig;
         private Integer queryAsyncLimit;
         private String semanticEnrichmentResourceName;
+        private boolean dropVersionConflicts;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -812,6 +822,11 @@ public class IndexConfiguration {
 
         public Builder withSemanticEnrichmentResourceName(final String resourceName) {
             this.semanticEnrichmentResourceName = resourceName;
+            return this;
+        }
+
+        public Builder withDropVersionConflicts(final boolean dropVersionConflicts) {
+            this.dropVersionConflicts = dropVersionConflicts;
             return this;
         }
 

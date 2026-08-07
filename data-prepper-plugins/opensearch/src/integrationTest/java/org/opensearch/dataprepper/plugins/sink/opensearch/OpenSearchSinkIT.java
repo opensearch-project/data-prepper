@@ -1093,6 +1093,105 @@ class OpenSearchSinkIT {
 
     @Test
     @Timeout(value = 50, unit = TimeUnit.SECONDS)
+    void testOpenSearchBulkActionsCreate_DocumentAlreadyExists_DoesNotSendToDlqOrCountAsError() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-create-conflict-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "duplicate-doc-id";
+
+        final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
+        metadata.put(IndexConfiguration.DROP_VERSION_CONFLICTS, true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+        final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+
+        // First create: should succeed normally
+        final List<Record<Event>> firstCreateRecords = Collections.singletonList(
+                jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "data", "original")));
+        sink.output(firstCreateRecords);
+
+        // Verify document was created
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+
+        // Second create with same ID: should trigger 409 version_conflict_engine_exception
+        // but should NOT be counted as a document error or sent to DLQ (drop_version_conflicts=true)
+        final List<Record<Event>> secondCreateRecords = Collections.singletonList(
+                jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "data", "duplicate")));
+        sink.output(secondCreateRecords);
+
+        // Verify document count hasn't changed (no duplicate was created)
+        final List<Map<String, Object>> retSourcesAfterDuplicate = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSourcesAfterDuplicate.size(), equalTo(1));
+
+        // Verify no document errors were counted - the 409 on create should be treated as success
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertThat(documentErrorsMeasurements.size(), equalTo(1));
+        assertThat(documentErrorsMeasurements.get(0).getValue(), closeTo(0.0, 0));
+
+        // Verify the version conflict metric was incremented
+        final List<Measurement> versionConflictMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertThat(versionConflictMeasurements.size(), equalTo(1));
+        assertThat(versionConflictMeasurements.get(0).getValue(), closeTo(1.0, 0));
+    }
+
+    @Test
+    @Timeout(value = 50, unit = TimeUnit.SECONDS)
+    void testOpenSearchBulkActionsCreate_DocumentAlreadyExists_CountsAsErrorWhenDropVersionConflictsDisabled() throws IOException, InterruptedException {
+        final String testIndexAlias = "test-create-conflict-error-alias";
+        final String testTemplateFile = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+        final String testIdField = "someId";
+        final String testId = "duplicate-doc-id-error";
+
+        final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+        final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
+
+        // First create: should succeed normally
+        final List<Record<Event>> firstCreateRecords = Collections.singletonList(
+                jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "data", "original")));
+        sink.output(firstCreateRecords);
+
+        // Verify document was created
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSources.size(), equalTo(1));
+
+        // Second create with same ID: should trigger 409 version_conflict_engine_exception
+        // Without drop_version_conflicts, this SHOULD be counted as a document error
+        final List<Record<Event>> secondCreateRecords = Collections.singletonList(
+                jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "data", "duplicate")));
+        sink.output(secondCreateRecords);
+
+        // Verify document count hasn't changed
+        final List<Map<String, Object>> retSourcesAfterDuplicate = getSearchResponseDocSources(testIndexAlias);
+        assertThat(retSourcesAfterDuplicate.size(), equalTo(1));
+
+        // Verify the 409 WAS counted as a document error
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertThat(documentErrorsMeasurements.size(), equalTo(1));
+        assertThat(documentErrorsMeasurements.get(0).getValue(), closeTo(1.0, 0));
+
+        // Verify the version conflict metric was NOT incremented (it only increments when conflicts are dropped)
+        final List<Measurement> versionConflictMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_VERSION_CONFLICT_ERRORS).toString());
+        assertThat(versionConflictMeasurements.size(), equalTo(1));
+        assertThat(versionConflictMeasurements.get(0).getValue(), closeTo(0.0, 0));
+    }
+
+    @Test
+    @Timeout(value = 50, unit = TimeUnit.SECONDS)
     void testOpenSearchBulkActionsCreateWithExpression() throws IOException, InterruptedException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
@@ -1835,7 +1934,7 @@ class OpenSearchSinkIT {
         final String templateName = dataStreamName + "-template";
         final File tempDirectory = Files.createTempDirectory("").toFile();
         final String dlqFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
-        
+
         try {
             // Create an index template for the data stream first
             final Request createTemplateRequest = new Request(HttpMethod.PUT, "/_index_template/" + templateName);
@@ -1852,30 +1951,30 @@ class OpenSearchSinkIT {
                     "}";
             createTemplateRequest.setJsonEntity(templateBody);
             client.performRequest(createTemplateRequest);
-            
+
             // Create a data stream
             final Request createDataStreamRequest = new Request(HttpMethod.PUT, "/_data_stream/" + dataStreamName);
             client.performRequest(createDataStreamRequest);
-            
+
             // Initialize sink AFTER creating the data stream so detection works
             Map<String, Object> metadata = initializeConfigurationMetadata(null, dataStreamName, null);
             metadata.put(RetryConfiguration.DLQ_FILE, dlqFile);
             final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
             final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
-            
+
             // Test that the data stream is detected
             final String testIdField = "someId";
             final String testId = "foo";
             final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
-            
+
             sink.output(testRecords);
-            
+
             // Wait for indexing to complete
             Thread.sleep(2000);
-            
+
             // Verify the document was written to the data stream
             final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
-            assertThat("Expected 1 document in data stream " + dataStreamName + " but found " + retSources.size(), 
+            assertThat("Expected 1 document in data stream " + dataStreamName + " but found " + retSources.size(),
                        retSources.size(), equalTo(1));
         } catch (Exception e) {
             throw e;
@@ -1887,7 +1986,7 @@ class OpenSearchSinkIT {
             } catch (IOException e) {
                 // Ignore cleanup errors
             }
-            
+
             // Clean up the index template
             final Request deleteTemplateRequest = new Request(HttpMethod.DELETE, "/_index_template/" + templateName);
             try {
@@ -1895,7 +1994,7 @@ class OpenSearchSinkIT {
             } catch (IOException e) {
                 // Ignore cleanup errors
             }
-            
+
             // Clean up DLQ
             FileUtils.deleteQuietly(tempDirectory);
         }
@@ -2241,7 +2340,7 @@ class OpenSearchSinkIT {
         final String templateName = dataStreamName + "-template";
         final File tempDirectory = Files.createTempDirectory("").toFile();
         final String dlqFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
-        
+
         try {
             // Create an index template for the data stream
             final Request createTemplateRequest = new Request(HttpMethod.PUT, "/_index_template/" + templateName);
@@ -2259,11 +2358,11 @@ class OpenSearchSinkIT {
                     "}";
             createTemplateRequest.setJsonEntity(templateBody);
             client.performRequest(createTemplateRequest);
-            
+
             // Create the data stream
             final Request createDataStreamRequest = new Request(HttpMethod.PUT, "/_data_stream/" + dataStreamName);
             client.performRequest(createDataStreamRequest);
-            
+
             // Initialize sink with document_id configuration
             final String testIdField = "someId";
             final String testId = "duplicate-id";
@@ -2272,32 +2371,32 @@ class OpenSearchSinkIT {
             metadata.put(RetryConfiguration.DLQ_FILE, dlqFile);
             final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
             final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
-            
+
             // Write first document with value "first"
             final String firstDoc = "{\"" + testIdField + "\": \"" + testId + "\", \"value\": \"first\"}";
             final List<Record<Event>> firstRecords = Collections.singletonList(jsonStringToRecord(firstDoc));
             sink.output(firstRecords);
-            
+
             // Wait for indexing
             Thread.sleep(1000);
-            
+
             // Write second document with same ID but value "second"
             final String secondDoc = "{\"" + testIdField + "\": \"" + testId + "\", \"value\": \"second\"}";
             final List<Record<Event>> secondRecords = Collections.singletonList(jsonStringToRecord(secondDoc));
             sink.output(secondRecords);
-            
-            
+
+
             // Wait for indexing to complete
             Thread.sleep(2000);
-            
+
             // Verify only one document exists
             final List<Map<String, Object>> retSources = getSearchResponseDocSources(dataStreamName);
             assertThat("Expected exactly 1 document due to first-write-wins", retSources.size(), equalTo(1));
-            
+
             // Verify the document has the FIRST value (first-write-wins)
             final Map<String, Object> document = retSources.get(0);
             assertThat("Expected first write to win", document.get("value"), equalTo("first"));
-            
+
         } finally {
             // Clean up
             final Request deleteDataStreamRequest = new Request(HttpMethod.DELETE, "/_data_stream/" + dataStreamName);
@@ -2306,14 +2405,14 @@ class OpenSearchSinkIT {
             } catch (IOException e) {
                 // Ignore cleanup errors
             }
-            
+
             final Request deleteTemplateRequest = new Request(HttpMethod.DELETE, "/_index_template/" + templateName);
             try {
                 client.performRequest(deleteTemplateRequest);
             } catch (IOException e) {
                 // Ignore cleanup errors
             }
-            
+
             FileUtils.deleteQuietly(tempDirectory);
         }
     }
