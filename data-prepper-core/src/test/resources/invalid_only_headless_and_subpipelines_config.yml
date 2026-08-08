@@ -1,0 +1,12 @@
+headless-pipeline1:
+  sink:
+    - stdout:
+    - pipeline:
+        name : "sub-pipeline1"
+sub-pipeline1:
+  source:
+    pipeline:
+        name : "headless-pipeline1"
+  sink:
+    - stdout:
+
