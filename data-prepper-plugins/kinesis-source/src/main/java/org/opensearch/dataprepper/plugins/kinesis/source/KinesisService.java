@@ -42,6 +42,8 @@ import software.amazon.kinesis.common.ConfigsBuilder;
 import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.exceptions.KinesisClientLibDependencyException;
 import software.amazon.kinesis.exceptions.ThrottlingException;
+import software.amazon.kinesis.metrics.MetricsConfig;
+import software.amazon.kinesis.metrics.NullMetricsFactory;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
 import software.amazon.kinesis.retrieval.RetrievalConfig;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
@@ -198,6 +200,10 @@ public class KinesisService {
                             kinesisSourceConfig.getPollingConfig().getIdleTimeBetweenReads().toMillis()));
         }
 
+        MetricsConfig metricsConfig = kinesisSourceConfig.isKclMetricsEnabled()
+                ? configsBuilder.metricsConfig()
+                : configsBuilder.metricsConfig().metricsFactory(new NullMetricsFactory());
+
         return new Scheduler(
                 configsBuilder.checkpointConfig(),
                 configsBuilder.coordinatorConfig()
@@ -205,7 +211,7 @@ public class KinesisService {
                         .maxInitializationAttempts(kinesisSourceConfig.getMaxInitializationAttempts()),
                 configsBuilder.leaseManagementConfig().billingMode(BillingMode.PAY_PER_REQUEST),
                 configsBuilder.lifecycleConfig(),
-                configsBuilder.metricsConfig(),
+                metricsConfig,
                 configsBuilder.processorConfig(),
                 retrievalConfig
         );
