@@ -1,0 +1,20 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - translate:
+        mappings:
+          - source:
+              - cities/citi-name
+            targets:
+              - translate_when: "/mapCountry == true"
+                target: country
+                map:
+                  san-francisco: usa
+                  las-angeles: usa
+                  paris: france
+                  london: uk
+                  new-york: usa
+                  las-vegas: usa
+  sink:
+    - unused:

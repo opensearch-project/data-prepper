@@ -22,7 +22,6 @@ import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStanda
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,13 +31,12 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 @DataPrepperPluginTest(pluginName = "translate", pluginType = Processor.class)
-class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTestSuite {
+class TranslateProcessorJsonConfigAbsolutePathTest extends BaseDataPrepperPluginStandardTestSuite {
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -47,6 +45,13 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
 
     private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
+        return new Record<>(JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build());
+    }
 
     @Test
     void test_static_key_translation() throws IOException {
@@ -60,80 +65,7 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
 
 
     @Test
-    void test_dynamic_key_multiple_source_keys(@PluginConfigurationFile("translate_dynamic_key_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
-        Map<String, Object> data = new HashMap<>();
-        String replaceValue = "Administrative";
-        String firstValueToAssert = "Sacramento";
-        String secondValueToAssert = "Salem";
-        data.put("type", replaceValue);
-        Map<String, Object> states = new HashMap<>();
-        states.put("california." + replaceValue + ".capital", "ca" + replaceValue + "Capital");
-        states.put("oregon." + replaceValue + ".capital", "or" + replaceValue + "Capital");
-        states.put("loadCities", true);
-        data.put("states", states);
-        Record<Event> record = buildRecordWithEvent(data);
-
-        List<Record<Event>> translatedRecords = (List<Record<Event>>) objectUnderTest.execute(Collections.singletonList(record));
-        
-        // The majorCapitals should be added to the states object, not the root level
-        Map<String, Object> statesData = (Map<String, Object>) translatedRecords.get(0).getData().get("states", Map.class);
-        assertTrue(statesData.containsKey("majorCapitals"));
-        assertEquals(List.of(firstValueToAssert, secondValueToAssert), statesData.get("majorCapitals"));
-    }
-
-
-    @Test
-    void test_mapping_multiple_source_keys(@PluginConfigurationFile("translate_key_with_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
-        Map<String, Object> data = new HashMap<>();
-        List cities = new ArrayList<>();
-        cities.add(Map.of("citi-name", "las-angeles", "mapCountry", true));
-        cities.add(Map.of("citi-name", "san-francisco", "mapCountry", true));
-        cities.add(Map.of("citi-name", "london"));
-        cities.add(Map.of("citi-name", "paris", "mapCountry", true));
-
-        data.put("cities", cities);
-        Record<Event> record = buildRecordWithEvent(data);
-        List<Record<Event>> translatedRecords = (List<Record<Event>>) objectUnderTest.execute(Collections.singletonList(record));
-        // The majorCapitals should be added to the states object, not the root level
-        List citiesData = translatedRecords.get(0).getData().get("cities", List.class);
-        assertEquals(4, citiesData.size(), "Expected 4 cities to be there");
-        Map<String, Object> laCity = ((Map<String, Object>) citiesData.get(0));
-        assertTrue(laCity.containsKey("country"), "Expected country to be there");
-        assertEquals(List.of("usa"), laCity.get("country"), "Expected usa");
-        Map<String, Object> londonCity = ((Map<String, Object>) citiesData.get(2));
-        assertFalse(londonCity.containsKey("country"), "Expected country not to be there for london");
-        Map<String, Object> parisCity = ((Map<String, Object>) citiesData.get(3));
-        assertTrue(parisCity.containsKey("country"), "Expected country to be there");
-        assertEquals(List.of("france"), parisCity.get("country"), "Expected usa");
-    }
-
-    @Test
-    void test_convert_to_integer_test_with_nested_list(@PluginConfigurationFile("translate_to_integer_type_test_in_nested_list.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
-        Map<String, Object> data = new HashMap<>();
-        List cities = new ArrayList<>();
-        cities.add(Map.of("citi-name", "las-angeles", "mapZipcode", true));
-        cities.add(Map.of("citi-name", "san-francisco", "mapZipcode", true));
-        cities.add(Map.of("citi-name", "london"));
-        cities.add(Map.of("citi-name", "paris", "mapZipcode", true));
-
-        data.put("cities", cities);
-        Record<Event> record = buildRecordWithEvent(data);
-        List<Record<Event>> translatedRecords = (List<Record<Event>>) objectUnderTest.execute(Collections.singletonList(record));
-        // The majorCapitals should be added to the states object, not the root level
-        List citiesData = translatedRecords.get(0).getData().get("cities", List.class);
-        assertEquals(4, citiesData.size(), "Expected 4 cities to be there");
-        Map<String, Object> laCity = ((Map<String, Object>) citiesData.get(0));
-        assertTrue(laCity.containsKey("zip"), "Expected Zipcode to be there");
-        assertEquals(List.of(23456), laCity.get("zip"), "Expected usa");
-        Map<String, Object> londonCity = ((Map<String, Object>) citiesData.get(2));
-        assertFalse(londonCity.containsKey("zip"), "Expected Zipcode not to be there for london");
-        Map<String, Object> parisCity = ((Map<String, Object>) citiesData.get(3));
-        assertTrue(parisCity.containsKey("zip"), "Expected Zipcode to be there");
-        assertEquals(List.of(34567), parisCity.get("zip"), "Expected usa");
-    }
-
-    @Test
-    void test_convert_to_integer_test_with_simple_keys(@PluginConfigurationFile("translate_to_integer_type_test_with_simple_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
+    void test_convert_to_integer_test_with_simple_keys(@PluginConfigurationFile("translate_to_integer_type_test_with_simple_absolute_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
         Map<String, Object> data = new HashMap<>();
         data.put("citi-name", "las-angeles");
         Record<Event> record = buildRecordWithEvent(data);
@@ -208,25 +140,9 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
         assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue2"));
     }
 
-    @Test
-    void test_nested_path_translation() throws IOException {
-        TranslateProcessor processor = createProcessor("translate_nested_path.json");
-        Map<String, Object> testJson = new HashMap<>();
-        testJson.put("collection", new ArrayList<>(List.of(
-                Map.of("sourceField", "key1"),
-                Map.of("sourceField", "key2"))));
-        Record<Event> record = buildRecordWithEvent(testJson);
-
-        List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        List<Map<String, Object>> expected = new ArrayList<>(List.of(
-                Map.of("sourceField", "key1", "targetField", "mappedValue1"),
-                Map.of("sourceField", "key2", "targetField", "mappedValue2")));
-        assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(expected));
-    }
 
     private TranslateProcessorConfig loadConfig(String jsonFile) throws IOException {
-        try (InputStream is = getClass().getResourceAsStream("/configs/" + jsonFile)) {
+        try (InputStream is = getClass().getResourceAsStream("/configs/abs/" + jsonFile)) {
             if (is == null) {
                 throw new IOException("Config file not found: " + jsonFile);
             }
@@ -246,6 +162,12 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
                 expressionEvaluator,
                 eventKeyFactory
         );
+    }
+
+    private Record<Event> getEvent(Object sourceField) {
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("sourceField", sourceField);
+        return buildRecordWithEvent(testData);
     }
 
     @Nested
@@ -286,18 +208,5 @@ class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTest
             assertEquals("mappedValue1", outputRecords.get(0).getData().get("targetField", String.class));
             assertEquals("mappedValue2", outputRecords.get(1).getData().get("targetField", String.class));
         }
-    }
-
-    private Record<Event> getEvent(Object sourceField) {
-        final Map<String, Object> testData = new HashMap<>();
-        testData.put("sourceField", sourceField);
-        return buildRecordWithEvent(testData);
-    }
-
-    private static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
-        return new Record<>(JacksonEvent.builder()
-                .withData(data)
-                .withEventType("event")
-                .build());
     }
 }
