@@ -42,6 +42,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [append](#append)
     * [count](#count)
     * [histogram](#histogram)
+    * [sum](#sum)
     * [rate_limiter](#rate_limiter)
     * [percent_sampler](#percent_sampler)
     * [tail_sampler](#tail_sampler)
@@ -157,6 +158,24 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       If raw output format is used, the following event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
         {"request":"/index.html","aggr._max":0.55,"aggr._min":0.15,"aggr._buckets":[0.0, 0.25, 0.5],"sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._bucket_counts":[0,2,1,1],"aggr._count":4,"aggr._key":"latency","aggr._startTime":"2022-12-14T06:39:06.081Z","aggr._sum":1.15}
+      ```
+
+### <a name="sum"></a>
+* `sum`: Sums the numeric value of a configured `key` for events belonging to the same group and generates a new event with the total. All events that make up the combined Event will be dropped.
+    * It supports the following config options
+       * `key` (Required): name of the numeric field in the events to sum
+       * `metric_name`: metric name to use when the OTel metrics format is used, default name is `sum`
+       * `count_key`: key name to use for storing the number of events that contributed to the sum in `raw` output format, default name is `aggr._count`
+       * `output_format`: `otel_metrics` (default, outputs OTel metrics SUM type with the total as value) or `raw` (JSON with the total and `count_key`)
+    * Given the following three Events with `identification_keys: ["sourceIp", "destination_ip"]` and `key` as `bytes_out`:
+      ```json
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes_out": 1234 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes_out": 4321 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes_out": 100 }
+      ```
+      The following Event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        {"kind":"SUM","name":"sum","value":5655.0,"isMonotonic":false,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
       ```
 
 ### <a name="rate_limiter"></a>
