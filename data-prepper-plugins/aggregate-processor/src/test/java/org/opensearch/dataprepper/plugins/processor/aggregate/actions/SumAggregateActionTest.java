@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +27,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -244,6 +246,15 @@ public class SumAggregateActionTest {
         assertThat(result.get(0).toMap().get("value"), equalTo(expectedSum));
         assertThat(result.get(0).get("startTime", String.class), equalTo(testTime.toString()));
         assertThat(result.get(0).get("time", String.class), equalTo(testTime.plusSeconds(200).toString()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"__exemplar", "aggr._sum", "aggr._start_time", "aggr._end_time"})
+    void testConstructorThrowsWhenCountKeyCollidesWithReservedKey(final String reservedKey) throws NoSuchFieldException, IllegalAccessException {
+        final SumAggregateActionConfig config = createConfig(UUID.randomUUID().toString());
+        setField(SumAggregateActionConfig.class, config, "countKey", reservedKey);
+
+        assertThrows(InvalidPluginConfigurationException.class, () -> new SumAggregateAction(config));
     }
 
     @Test

@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
@@ -34,7 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Set;
 
 /**
  * Sums the numeric value of a configured key for events in the same group and emits the total on concludeGroup.
@@ -46,6 +47,7 @@ public class SumAggregateAction implements AggregateAction {
     private static final String SUM_KEY = "aggr._sum";
     private static final String START_TIME_KEY = "aggr._start_time";
     private static final String END_TIME_KEY = "aggr._end_time";
+    private static final Set<String> RESERVED_GROUP_STATE_KEYS = Set.of(EXEMPLAR_KEY, SUM_KEY, START_TIME_KEY, END_TIME_KEY);
     static final String EVENT_TYPE = "event";
     static final String SUM_METRIC_DESCRIPTION = "Sum of the events";
     static final String SUM_METRIC_UNIT = "1";
@@ -60,6 +62,10 @@ public class SumAggregateAction implements AggregateAction {
         this.countKey = sumAggregateActionConfig.getCountKey();
         this.outputFormat = sumAggregateActionConfig.getOutputFormat();
         this.metricName = sumAggregateActionConfig.getMetricName();
+        if (RESERVED_GROUP_STATE_KEYS.contains(countKey)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("count_key \"%s\" collides with a key reserved internally by the sum action", countKey));
+        }
     }
 
     public Exemplar createExemplar(final Event event, final double value) {
@@ -117,7 +123,6 @@ public class SumAggregateAction implements AggregateAction {
         }
         return AggregateActionResponse.nullEventResponse();
     }
-    
 
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
@@ -132,7 +137,7 @@ public class SumAggregateAction implements AggregateAction {
         final Exemplar exemplar = (Exemplar) groupState.remove(EXEMPLAR_KEY);
         groupState.remove(END_TIME_KEY);
         if (outputFormat == OutputFormat.RAW) {
-            groupState.put(START_TIME_KEY, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
+            groupState.put(START_TIME_KEY, startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
                     .withEventType(EVENT_TYPE)
                     .withData(groupState)
