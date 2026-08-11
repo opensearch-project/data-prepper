@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PrometheusSinkFlushableBufferTest {
@@ -49,9 +50,9 @@ public class PrometheusSinkFlushableBufferTest {
     @BeforeEach
     void setUp() throws Exception {
         JacksonGauge gauge = createGaugeMetric("gauge1");
-        PrometheusSinkBufferEntry bufferEntry1 = new PrometheusSinkBufferEntry(gauge, true);
+        PrometheusSinkBufferEntry bufferEntry1 = new PrometheusSinkBufferEntry(gauge, true, Collections.emptyMap());
         gauge = createGaugeMetric("gauge2");
-        PrometheusSinkBufferEntry bufferEntry2 = new PrometheusSinkBufferEntry(gauge, true);
+        PrometheusSinkBufferEntry bufferEntry2 = new PrometheusSinkBufferEntry(gauge, true, Collections.emptyMap());
         buffer = new ArrayList<>();
         buffer.add((SinkBufferEntry)bufferEntry1);
         buffer.add((SinkBufferEntry)bufferEntry2);

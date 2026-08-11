@@ -35,6 +35,7 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -44,7 +45,7 @@ public class PrometheusSinkBufferEntryTest {
     private PrometheusSinkBufferEntry prometheusSinkBufferEntry;
 
     PrometheusSinkBufferEntry createObjectUnderTest(Event event)throws Exception {
-        return new PrometheusSinkBufferEntry(event, true);
+        return new PrometheusSinkBufferEntry(event, true, Collections.emptyMap());
     }
 
     @ParameterizedTest

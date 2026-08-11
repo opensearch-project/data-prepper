@@ -91,7 +91,56 @@ pipeline:
 | `idle_timeout` | `60s` | Connection idle timeout. Must be between 1s and 600s. |
 | `out_of_order_time_window` | `10s` | Time window for handling out-of-order metric samples. |
 | `sanitize_names` | `true` | Whether to sanitize metric names to be Prometheus-compliant. |
+| `external_labels` | `{}` | Labels added to every time series this sink writes. See [External Labels](#external-labels). |
 | `threshold` | See below | Buffer threshold configuration. See [Threshold Configuration](#threshold-configuration). |
+
+### <a name="external-labels">External Labels</a>
+
+`external_labels` is a map of label names to label values that is added to every time series the sink
+writes. The primary use is to keep the series of each Data Prepper instance distinct when a metric
+pipeline runs on more than one instance.
+
+Labels on a time series come only from the metric's attributes, so every instance running the same
+pipeline produces series with identical labels. Prometheus, AMP, Cortex, and Mimir all deduplicate on
+series plus timestamp, so they keep one instance's sample and drop the rest without reporting an
+error. An `N`-instance deployment then reports roughly `1/N` of the true value.
+
+Give each instance a distinct value for one label to avoid the collision:
+
+```yaml
+pipeline:
+  ...
+  sink:
+    - prometheus:
+        url: "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxxxxxxx-xxxx/api/v1/remote_write"
+        external_labels:
+          dp_instance: "replica-a"
+```
+
+Consumers then aggregate the label away to recover the true value, which is the standard Prometheus
+HA-replica pattern:
+
+```
+sum without (dp_instance) (test_log_count)
+```
+
+Values are literal strings. This sink does not interpret `${...}` in a value, so each instance which
+needs a distinct value needs its own value in configuration. To derive a label value at runtime
+instead, add it as a metric attribute before the sink, since every attribute becomes a label:
+
+```yaml
+processor:
+  - add_entries:
+      entries:
+        - key: /attributes/dp_instance
+          value_expression: "..."
+```
+
+Label names must match `[a-zA-Z_][a-zA-Z0-9_]*`. Names beginning with `__` are reserved by Prometheus,
+and `le`, `ge`, and `quantile` are reserved by the sink for histogram, exponential histogram, and
+summary series, so none of these are permitted. If an external label has the same name as a metric
+attribute, the metric attribute wins and the external label is not added to that series, which
+matches how Prometheus applies its own `external_labels`.
 
 ### <a name="threshold-configuration">Threshold Configuration</a>
 

@@ -15,14 +15,16 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.metric.Metric;
 
+import java.util.Map;
+
 public class PrometheusSinkBufferEntry implements SinkBufferEntry {
 
     final Event event;
     final PrometheusTimeSeries timeSeries;
 
-    public PrometheusSinkBufferEntry(final Event event, final boolean sanitizeNames) throws Exception {
+    public PrometheusSinkBufferEntry(final Event event, final boolean sanitizeNames, final Map<String, String> externalLabels) throws Exception {
         this.event = event;
-        timeSeries = getTimeSeriesForEvent(sanitizeNames);
+        timeSeries = getTimeSeriesForEvent(sanitizeNames, externalLabels);
     }
 
     public PrometheusTimeSeries getTimeSeries() {
@@ -44,9 +46,9 @@ public class PrometheusSinkBufferEntry implements SinkBufferEntry {
         return event;
     }
 
-    private PrometheusTimeSeries getTimeSeriesForEvent(final boolean sanitizeNames) throws Exception {
+    private PrometheusTimeSeries getTimeSeriesForEvent(final boolean sanitizeNames, final Map<String, String> externalLabels) throws Exception {
         if (event.getMetadata().getEventType().equals(EventType.METRIC.toString())) {
-            return new PrometheusTimeSeries((Metric)event, sanitizeNames);
+            return new PrometheusTimeSeries((Metric)event, sanitizeNames, externalLabels);
         }
         throw new RuntimeException("Not metric type");
     }

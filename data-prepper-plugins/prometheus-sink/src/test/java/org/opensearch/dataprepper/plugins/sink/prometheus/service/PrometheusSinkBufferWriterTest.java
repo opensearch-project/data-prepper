@@ -30,6 +30,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.time.Instant;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -60,7 +61,7 @@ public class PrometheusSinkBufferWriterTest {
         when(sinkConfig.getOutOfOrderTimeWindow()).thenReturn(Duration.ofSeconds(0));
         sinkFlushContext = mock(PrometheusSinkFlushContext.class);
         gauge1 = createGaugeMetric("gauge1", Instant.now(), 1.0d);
-        prometheusSinkBufferEntry = new PrometheusSinkBufferEntry(gauge1, true);
+        prometheusSinkBufferEntry = new PrometheusSinkBufferEntry(gauge1, true, Collections.emptyMap());
     }
 
     PrometheusSinkBufferWriter createObjectUnderTest() {
@@ -84,8 +85,8 @@ public class PrometheusSinkBufferWriterTest {
         // Same metric with same name but different value, only most recent one is kept
         Gauge gauge2 = createGaugeMetric("gauge2", t2, 10.0d);
         Gauge gauge3 = createGaugeMetric("gauge2", t2, 20.0d);
-        PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, true);
-        PrometheusSinkBufferEntry entry3 = new PrometheusSinkBufferEntry(gauge3, true);
+        PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, true, Collections.emptyMap());
+        PrometheusSinkBufferEntry entry3 = new PrometheusSinkBufferEntry(gauge3, true, Collections.emptyMap());
         prometheusSinkBufferWriter.writeToBuffer(prometheusSinkBufferEntry);
         prometheusSinkBufferWriter.writeToBuffer(entry2);
         prometheusSinkBufferWriter.writeToBuffer(entry3);
@@ -108,8 +109,8 @@ public class PrometheusSinkBufferWriterTest {
         Gauge gauge2 = createGaugeMetric("gauge1", t2, 10.0d);
         Instant t3 = t2.minusSeconds(150);
         Gauge gauge3 = createGaugeMetric("gauge1", t3, 20.0d);
-        PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, true);
-        PrometheusSinkBufferEntry entry3 = new PrometheusSinkBufferEntry(gauge3, true);
+        PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, true, Collections.emptyMap());
+        PrometheusSinkBufferEntry entry3 = new PrometheusSinkBufferEntry(gauge3, true, Collections.emptyMap());
         prometheusSinkBufferWriter.writeToBuffer(prometheusSinkBufferEntry);
         prometheusSinkBufferWriter.writeToBuffer(entry2);
         prometheusSinkBufferWriter.writeToBuffer(entry3);
@@ -133,8 +134,8 @@ public class PrometheusSinkBufferWriterTest {
         for (int i = 0; i < 5; i++) {
             Gauge gauge1 = createGaugeMetric("gauge_"+i, t1, 20.0d+i);
             Gauge gauge2 = createGaugeMetric("gauge_"+i, t2, 30.0d+i);
-            PrometheusSinkBufferEntry entry1 = new PrometheusSinkBufferEntry(gauge1, false);
-            PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, false);
+            PrometheusSinkBufferEntry entry1 = new PrometheusSinkBufferEntry(gauge1, false, Collections.emptyMap());
+            PrometheusSinkBufferEntry entry2 = new PrometheusSinkBufferEntry(gauge2, false, Collections.emptyMap());
             prometheusSinkBufferWriter.writeToBuffer(entry1);
             prometheusSinkBufferWriter.writeToBuffer(entry2);
         }

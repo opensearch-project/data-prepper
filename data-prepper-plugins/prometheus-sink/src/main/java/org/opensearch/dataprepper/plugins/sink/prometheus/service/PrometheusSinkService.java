@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     static final String PLUGIN_NAME = "prometheus";
@@ -34,6 +35,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     private final PipelineDescription pipelineDescription;
     private final List<Record<Event>> dlqRecords;
     private final boolean sanitizeNames;
+    private final Map<String, String> externalLabels;
     private HeadlessPipeline dlqPipeline;
     private boolean dropIfNoDLQConfigured;
     private String pluginName;
@@ -50,6 +52,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
               new PrometheusSinkFlushContext(httpSender),
               sinkMetrics);
         sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
+        externalLabels = prometheusSinkConfiguration.getExternalLabels();
         this.dropIfNoDLQConfigured = false;
         this.dlqRecords = new ArrayList<>();
         this.httpSender = httpSender;
@@ -63,7 +66,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     }
 
     public SinkBufferEntry getSinkBufferEntry(final Event event) throws Exception {
-        return new PrometheusSinkBufferEntry(event, sanitizeNames);
+        return new PrometheusSinkBufferEntry(event, sanitizeNames, externalLabels);
     }
 
     public void setDlqPipeline(HeadlessPipeline pipeline) {

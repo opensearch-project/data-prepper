@@ -31,8 +31,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
@@ -55,6 +57,12 @@ public class PrometheusTimeSeries {
     private static final String PLUS_INF = "+Inf";
     private static final String RESOURCE_PREFIX = "resource_";
     private static final String SCOPE_PREFIX = "scope_";
+
+    /**
+     * The label names this sink adds to an individual time series. Remote write rejects a series which
+     * carries the same label name twice, so a configured label may not use any of these names.
+     */
+    public static final Set<String> RESERVED_LABEL_NAMES = Set.of(NAME_LABEL, QUANTILE_LABEL, LE_LABEL, GE_LABEL);
 
     private static final Map<String, String> otelToPrometheusUnitsMap = Map.ofEntries(
             Map.entry("d",    "days"),
@@ -91,7 +99,7 @@ public class PrometheusTimeSeries {
     private long baseLabelsSize;
     private int seriesSize;
 
-    public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
+    public PrometheusTimeSeries(final Metric metric, final boolean sanitizeNames, final Map<String, String> externalLabels) throws Exception {
         this.sanitizeNames = sanitizeNames;
         this.metricName = sanitizeNames ? sanitizeMetricName(metric) : metric.getName();
 
@@ -106,6 +114,7 @@ public class PrometheusTimeSeries {
         // Process all attributes in one pass
         baseLabelsSize = processAttributes(metric.getAttributes(), "");
         baseLabelsSize += processResourceAndScopeAttributes(metric);
+        baseLabelsSize += processExternalLabels(externalLabels);
 
         if (metric instanceof Gauge) {
             addGaugeMetric((Gauge)metric);
@@ -164,6 +173,27 @@ public class PrometheusTimeSeries {
             }
         } catch (Exception e) {
             LOG.warn(NOISY, "Failed to get resource/scope attributes", e);
+        }
+        return size;
+    }
+
+    private long processExternalLabels(final Map<String, String> externalLabels) {
+        if (externalLabels == null || externalLabels.isEmpty()) {
+            return 0L;
+        }
+        // Remote write rejects a series with a repeated label name. Seeding with the names this class adds to
+        // individual series keeps that true even for a caller which did not validate the labels it passed in.
+        final Set<String> labelNames = new HashSet<>(RESERVED_LABEL_NAMES);
+        for (final Label label : baseLabels) {
+            labelNames.add(label.getName());
+        }
+        long size = 0L;
+        for (final Map.Entry<String, String> externalLabel : externalLabels.entrySet()) {
+            // A metric attribute wins any conflict.
+            if (!labelNames.add(externalLabel.getKey())) {
+                continue;
+            }
+            size += addLabelSanitized(externalLabel.getKey(), externalLabel.getValue());
         }
         return size;
     }

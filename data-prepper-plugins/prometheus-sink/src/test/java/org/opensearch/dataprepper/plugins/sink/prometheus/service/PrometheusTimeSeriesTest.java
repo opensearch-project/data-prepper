@@ -10,6 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
+import com.arpnetworking.metrics.prometheus.Types.Label;
+import com.arpnetworking.metrics.prometheus.Types.TimeSeries;
+
 import org.apache.commons.lang3.RandomStringUtils;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.not;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
@@ -40,6 +46,8 @@ import org.opensearch.dataprepper.model.metric.Bucket;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -128,7 +136,7 @@ public class PrometheusTimeSeriesTest {
     public void testGaugeMetricKey(String unit, String expectedUnitName) throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Gauge gauge = createGaugeMetric(name, unit);
-        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, Collections.emptyMap());
         final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(gauge);
 
         String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
@@ -141,7 +149,7 @@ public class PrometheusTimeSeriesTest {
     public void testSumMetricKey(String unit, String expectedUnitName) throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Sum sum = createSumMetric(name, unit, true, "AGGREGATION_TEMPORALITY_CUMULATIVE");
-        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true, Collections.emptyMap());
         final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
 
         String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
@@ -154,7 +162,7 @@ public class PrometheusTimeSeriesTest {
     public void testSumMetricNonMonotonicKey(String unit, String expectedUnitName) throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Sum sum = createSumMetric(name, unit, false, "AGGREGATION_TEMPORALITY_DELTA");
-        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(sum, true, Collections.emptyMap());
         final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
 
         String expectedKey1 = "__name__ "+sanitizedName+" "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
@@ -167,7 +175,7 @@ public class PrometheusTimeSeriesTest {
     public void testSummaryMetricKey(String unit, String expectedUnitName) throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Summary summary = createSummaryMetric(name, unit);
-        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(summary, true);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(summary, true, Collections.emptyMap());
         final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(summary);
 
         String expectedKey1 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
@@ -180,7 +188,7 @@ public class PrometheusTimeSeriesTest {
     public void testHistogramMetricKey(String unit, String expectedUnitName) throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         Histogram histogram = createHistogramMetric(name, unit);
-        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true);
+        PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, Collections.emptyMap());
         final String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(histogram);
 
         String expectedKey1 = "__name__ "+sanitizedName+"_count "+TEST_ATTR_MAP_STR1+TEST_RESOURCE_MAP_STR+TEST_SCOPE_MAP_STR;
@@ -218,6 +226,75 @@ public class PrometheusTimeSeriesTest {
         Sum sum = createSumMetric(name, null, true, null);
         String sanitizedName = PrometheusTimeSeries.sanitizeMetricName(sum);
         assertThat(sanitizedName, equalTo(name));
+    }
+
+    @Test
+    public void testExternalLabelsAreAddedToEveryTimeSeries() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final Histogram histogram = createHistogramMetric(name, "s");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, Map.of("dp_instance", "replica-a"));
+
+        assertThat(timeSeries.getTimeSeriesList().size(), greaterThan(1));
+        for (final TimeSeries series : timeSeries.getTimeSeriesList()) {
+            assertThat(getLabels(series).get("dp_instance"), equalTo("replica-a"));
+        }
+    }
+
+    @Test
+    public void testExternalLabelsDoNotOverrideMetricAttributes() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final Gauge gauge = createGaugeMetric(name, "s");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, Map.of("attrKey1", "externalValue"));
+
+        final TimeSeries series = timeSeries.getTimeSeriesList().get(0);
+        assertThat(getLabels(series).get("attrKey1"), equalTo("1"));
+        assertThat(series.getLabelsList().stream().filter(label -> label.getName().equals("attrKey1")).count(), equalTo(1L));
+    }
+
+    @Test
+    public void testExternalLabelsMakeTheMetricKeyUniquePerInstance() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final Gauge gauge = createGaugeMetric(name, "s");
+
+        final PrometheusTimeSeries replicaA = new PrometheusTimeSeries(gauge, true, Map.of("dp_instance", "replica-a"));
+        final PrometheusTimeSeries replicaB = new PrometheusTimeSeries(gauge, true, Map.of("dp_instance", "replica-b"));
+        final PrometheusTimeSeries withoutExternalLabels = new PrometheusTimeSeries(gauge, true, Collections.emptyMap());
+
+        assertThat(replicaA.getMetricKey(), not(equalTo(replicaB.getMetricKey())));
+        assertThat(replicaA.getMetricKey(), not(equalTo(withoutExternalLabels.getMetricKey())));
+    }
+
+    @Test
+    public void testExternalLabelsNeverRepeatALabelNameTheSinkAddsItself() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        // An exponential histogram is the only metric which emits "ge", and it emits "le" and "__name__" too.
+        final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
+        final Map<String, String> reservedNames = PrometheusTimeSeries.RESERVED_LABEL_NAMES.stream()
+                .collect(Collectors.toMap(labelName -> labelName, labelName -> "externalValue"));
+
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, reservedNames);
+
+        assertThat(timeSeries.getTimeSeriesList().size(), greaterThan(1));
+        for (final TimeSeries series : timeSeries.getTimeSeriesList()) {
+            final List<String> labelNames = series.getLabelsList().stream()
+                    .map(Label::getName).collect(Collectors.toList());
+            assertThat(labelNames.size(), equalTo(new HashSet<>(labelNames).size()));
+        }
+    }
+
+    @Test
+    public void testNullExternalLabelsAddNoLabels() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final Gauge gauge = createGaugeMetric(name, "s");
+
+        final PrometheusTimeSeries withNullLabels = new PrometheusTimeSeries(gauge, true, null);
+        final PrometheusTimeSeries withEmptyLabels = new PrometheusTimeSeries(gauge, true, Collections.emptyMap());
+
+        assertThat(withNullLabels.getMetricKey(), equalTo(withEmptyLabels.getMetricKey()));
+    }
+
+    private Map<String, String> getLabels(final TimeSeries series) {
+        return series.getLabelsList().stream().collect(Collectors.toMap(Label::getName, Label::getValue));
     }
 
     private Summary createSummaryMetric(final String name, final String unit) {

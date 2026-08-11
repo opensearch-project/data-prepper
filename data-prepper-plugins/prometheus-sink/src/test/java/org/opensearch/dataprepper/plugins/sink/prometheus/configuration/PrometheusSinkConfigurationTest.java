@@ -16,15 +16,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusTimeSeries;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 
 import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PrometheusSinkConfigurationTest {
@@ -299,5 +305,83 @@ public class PrometheusSinkConfigurationTest {
                     "          sts_role_arn: \"arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role\"\n";
         final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(AWS_HTTP_SINK_YAML, PrometheusSinkConfiguration.class);
         assertFalse(prometheusSinkConfiguration.isValidAwsConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_defaults_to_empty() {
+        final PrometheusSinkConfiguration config = new PrometheusSinkConfiguration();
+        assertThat(config.getExternalLabels(), equalTo(Collections.emptyMap()));
+        assertTrue(config.isValidExternalLabelNames());
+        assertTrue(config.isValidExternalLabelValues());
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_with_literal_values_are_used_as_is() throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml("dp_instance: \"replica-a\"\n   region: \"us-east-2\""), PrometheusSinkConfiguration.class);
+
+        assertThat(config.getExternalLabels(), equalTo(Map.of("dp_instance", "replica-a", "region", "us-east-2")));
+        assertTrue(config.isValidExternalLabelNames());
+        assertTrue(config.isValidExternalLabelValues());
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_are_not_interpreted_as_environment_variable_references()
+            throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml("dp_instance: \"${HOSTNAME}\""), PrometheusSinkConfiguration.class);
+
+        assertThat(config.getExternalLabels(), equalTo(Map.of("dp_instance", "${HOSTNAME}")));
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_are_immutable() throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml("dp_instance: \"replica-a\""), PrometheusSinkConfiguration.class);
+
+        assertThrows(UnsupportedOperationException.class, () -> config.getExternalLabels().put("region", "us-east-2"));
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_with_empty_value_is_invalid() throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml("dp_instance: \"\""), PrometheusSinkConfiguration.class);
+
+        assertFalse(config.isValidExternalLabelValues());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dp_instance", "_dp_instance", "dpInstance0"})
+    void prometheus_sink_config_external_labels_with_valid_name_is_valid(final String labelName) throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml(labelName + ": \"replica-a\""), PrometheusSinkConfiguration.class);
+
+        assertTrue(config.isValidExternalLabelNames());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dp-instance", "0dp_instance", "dp instance", "__name__", "__replica", "le", "ge", "quantile"})
+    void prometheus_sink_config_external_labels_with_invalid_name_is_invalid(final String labelName) throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                externalLabelsYaml("\"" + labelName + "\": \"replica-a\""), PrometheusSinkConfiguration.class);
+
+        assertFalse(config.isValidExternalLabelNames());
+    }
+
+    @Test
+    void prometheus_sink_config_external_labels_rejects_every_label_name_the_sink_adds_itself() throws JsonProcessingException {
+        for (final String reservedName : PrometheusTimeSeries.RESERVED_LABEL_NAMES) {
+            final PrometheusSinkConfiguration config = objectMapper.readValue(
+                    externalLabelsYaml("\"" + reservedName + "\": \"replica-a\""), PrometheusSinkConfiguration.class);
+
+            assertFalse(config.isValidExternalLabelNames(), reservedName + " must not be allowed as an external label");
+        }
+    }
+
+    private String externalLabelsYaml(final String labels) {
+        return " url: \"http://localhost:9090/api/v1/write\"\n" +
+                " insecure: true\n" +
+                " external_labels:\n" +
+                "   " + labels + "\n";
     }
 }

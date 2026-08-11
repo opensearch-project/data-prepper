@@ -17,8 +17,13 @@ import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusTimeSeries;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 
@@ -35,6 +40,9 @@ public class PrometheusSinkConfiguration {
     private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_IDLE_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_OUT_OF_ORDER_TIME_WINDOW = Duration.ofSeconds(10);
+
+    private static final Pattern VALID_LABEL_NAME_PATTERN = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
+    private static final String RESERVED_LABEL_NAME_PREFIX = "__";
 
     @JsonProperty("aws")
     @Valid
@@ -86,6 +94,9 @@ public class PrometheusSinkConfiguration {
 
     @JsonProperty("sanitize_names")
     private boolean sanitizeNames = true;
+
+    @JsonProperty("external_labels")
+    private Map<String, String> externalLabels = Collections.emptyMap();
 
     public boolean isInsecure() {
         return insecure;
@@ -146,6 +157,25 @@ public class PrometheusSinkConfiguration {
         return idleTimeout;
     }
 
+    /**
+     * Returns the labels to add to every time series produced by this sink.
+     *
+     * @return an immutable copy of the external labels, never null
+     */
+    public Map<String, String> getExternalLabels() {
+        if (externalLabels == null || externalLabels.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return Collections.unmodifiableMap(new LinkedHashMap<>(externalLabels));
+    }
+
+    private boolean isValidExternalLabelName(final String name) {
+        return name != null &&
+                VALID_LABEL_NAME_PATTERN.matcher(name).matches() &&
+                !name.startsWith(RESERVED_LABEL_NAME_PREFIX) &&
+                !PrometheusTimeSeries.RESERVED_LABEL_NAMES.contains(name);
+    }
+
     @AssertTrue(message = "url must be https when insecure is not set to true.")
     boolean isHttpsOrInsecure() {
         if (url == null) {
@@ -185,5 +215,22 @@ public class PrometheusSinkConfiguration {
             return false;
         }
         return true;
+    }
+
+    @AssertTrue(message = "external_labels names must match [a-zA-Z_][a-zA-Z0-9_]*, must not begin with \"__\", " +
+            "and must not be a name this sink adds itself (\"le\", \"ge\", or \"quantile\").")
+    boolean isValidExternalLabelNames() {
+        if (externalLabels == null) {
+            return true;
+        }
+        return externalLabels.keySet().stream().allMatch(this::isValidExternalLabelName);
+    }
+
+    @AssertTrue(message = "external_labels values must not be empty.")
+    boolean isValidExternalLabelValues() {
+        if (externalLabels == null) {
+            return true;
+        }
+        return externalLabels.values().stream().allMatch(value -> value != null && !value.isEmpty());
     }
 }
