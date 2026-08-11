@@ -350,7 +350,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             final int columnCount = Math.min(columnNames.size(), row.getKey().length);
             for (int i = 0; i < columnCount; i++) {
                 if (tableMetadata.getPrimaryKeys().contains(columnNames.get(i)) &&
-                        !row.getKey()[i].equals(row.getValue()[i])) {
+                        !Objects.equals(row.getKey()[i], row.getValue()[i])) {
                     LOG.debug("Primary keys were updated");
                     // add delete event for the old row data
                     rows.add(row.getKey());

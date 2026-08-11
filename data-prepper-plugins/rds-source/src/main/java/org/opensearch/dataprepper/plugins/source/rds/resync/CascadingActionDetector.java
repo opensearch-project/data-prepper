@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -96,7 +97,7 @@ public class CascadingActionDetector {
                 // Find out for this row, which columns are changing
                 LOG.debug("Checking for updated columns");
                 final Map<String, Object> updatedColumnsAndValues = IntStream.range(0, row.getKey().length)
-                        .filter(i -> !row.getKey()[i].equals(row.getValue()[i]))
+                        .filter(i -> !Objects.equals(row.getKey()[i], row.getValue()[i]))
                         .mapToObj(i -> tableMetadata.getColumnNames().get(i))
                         .collect(Collectors.toMap(
                                 column -> column,
