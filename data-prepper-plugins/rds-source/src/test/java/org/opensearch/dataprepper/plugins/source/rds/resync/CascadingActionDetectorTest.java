@@ -37,6 +37,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
@@ -142,6 +143,24 @@ class CascadingActionDetectorTest {
         assertThat(progressState.getForeignKeyName(), is("foreign-key1"));
         assertThat(progressState.getUpdatedValue(), nullValue());
         assertThat(progressState.getPrimaryKeys(), is(primaryKeys));
+    }
+
+    @Test
+    void testDetectCascadingUpdates_does_not_throw_when_before_value_is_null() {
+        UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(new Serializable[]{null}, new Serializable[]{"new-value"}));
+        long timestampInMillis = Instant.now().toEpochMilli();
+        List<String> primaryKeys = List.of("primary-key");
+        when(event.getData()).thenReturn(data);
+        when(event.getHeader().getTimestamp()).thenReturn(timestampInMillis);
+        when(tableMetadata.getFullTableName()).thenReturn("test-database.parent-table1");
+        when(data.getRows()).thenReturn(rows);
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("referenced-column"));
+        when(tableMetadata.getPrimaryKeys()).thenReturn(primaryKeys);
+
+        objectUnderTest.detectCascadingUpdates(event, parentTableMap, tableMetadata);
+
+        verify(sourceCoordinator).createPartition(any(ResyncPartition.class));
     }
 
     private CascadingActionDetector createObjectUnderTest() {

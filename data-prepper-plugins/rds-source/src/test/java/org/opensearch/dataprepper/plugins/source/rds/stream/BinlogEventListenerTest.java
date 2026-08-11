@@ -375,6 +375,43 @@ class BinlogEventListenerTest {
         assertThat(bulkActionCaptor.getValue().get(1), is(OpenSearchBulkActions.INDEX));
     }
 
+    @ParameterizedTest
+    @EnumSource(names = {"UPDATE_ROWS", "EXT_UPDATE_ROWS"})
+    void test_handleUpdateEvent_does_not_throw_when_before_value_is_null(EventType eventType) throws NoSuchFieldException, IllegalAccessException {
+        // Nullable column has null in the before-image of an UPDATE event
+        final UpdateRowsEventData data = mock(UpdateRowsEventData.class);
+        final Serializable[] oldData = new Serializable[]{1, null};
+        final Serializable[] newData = new Serializable[]{1, "new-value"};
+        final List<Map.Entry<Serializable[], Serializable[]>> rows = List.of(Map.entry(oldData, newData));
+        final long tableId = 1234L;
+        when(binlogEvent.getHeader().getEventType()).thenReturn(eventType);
+        when(binlogEvent.getData()).thenReturn(data);
+        when(data.getTableId()).thenReturn(tableId);
+        when(objectUnderTest.isValidTableId(tableId)).thenReturn(true);
+        when(data.getRows()).thenReturn(rows);
+
+        final TableMetadata tableMetadata = mock(TableMetadata.class);
+        final Map<Long, TableMetadata> tableMetadataMap = Map.of(tableId, tableMetadata);
+        Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        tableMetadataMapField.set(objectUnderTest, tableMetadataMap);
+        when(tableMetadata.getPrimaryKeys()).thenReturn(List.of("col1"));
+        when(tableMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+
+        objectUnderTest.onEvent(binlogEvent);
+
+        verifyHandlerCallHelper();
+        verify(objectUnderTest).handleUpdateEvent(binlogEvent);
+
+        ArgumentCaptor<List<Serializable[]>> rowListCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionCaptor = ArgumentCaptor.forClass(List.class);
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListCaptor.capture(), bulkActionCaptor.capture(), eq(StreamEventType.UPDATE));
+
+        // No primary key change, only INDEX for the new row
+        assertThat(rowListCaptor.getValue().size(), is(1));
+        assertThat(bulkActionCaptor.getValue().get(0), is(OpenSearchBulkActions.INDEX));
+    }
+
     private BinlogEventListener createObjectUnderTest() {
         return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                 streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,
