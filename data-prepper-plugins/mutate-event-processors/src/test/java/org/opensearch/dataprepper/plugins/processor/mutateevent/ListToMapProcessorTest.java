@@ -27,6 +27,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -353,6 +356,51 @@ class ListToMapProcessorTest {
 
         final Event resultEvent = resultRecord.get(0).getData();
         assertThat(resultEvent.toMap(), equalTo(testRecord.getData().toMap()));
+    }
+
+    @Test
+    public void test_when_deleteSourceFlagEnabled_withSourceKeyAndExtractValueEnabled() {
+        when(mockConfig.isDeleteSourceRequested()).thenReturn(true);
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+        when(mockConfig.getSource()).thenReturn("mylist");
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.toMap().keySet(), hasSize(3));
+        @SuppressWarnings("unchecked")
+        final List<String> nameList = (List<String>) resultEvent.get("name", List.class);
+        assertThat(nameList, containsInAnyOrder("a", "b", "b", "c"));
+        @SuppressWarnings("unchecked")
+        final List<String> valueList = (List<String>) resultEvent.get("value", List.class);
+        assertThat(valueList, containsInAnyOrder("val-a", "val-b1", "val-b2", "val-c"));
+        assertThat(resultEvent.get("nolist", String.class), is("single-value"));
+    }
+
+    @Test
+    public void test_when_deleteSourceFlagDisabled_withSourceKeyAndExtractValueEnabled() {
+        when(mockConfig.isDeleteSourceRequested()).thenReturn(false);
+        when(mockConfig.getUseSourceKey()).thenReturn(true);
+        when(mockConfig.getExtractValue()).thenReturn(true);
+        when(mockConfig.getSource()).thenReturn("mylist");
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.toMap().keySet(), hasSize(4));
+        @SuppressWarnings("unchecked")
+        final List<String> nameList = (List<String>) resultEvent.get("name", List.class);
+        assertThat(nameList, containsInAnyOrder("a", "b", "b", "c"));
+        @SuppressWarnings("unchecked")
+        final List<String> valueList = (List<String>) resultEvent.get("value", List.class);
+        assertThat(valueList, containsInAnyOrder("val-a", "val-b1", "val-b2", "val-c"));
+        assertThat(resultEvent.toMap().keySet(), hasItem("mylist"));
+        assertThat(resultEvent.get("nolist", String.class), is("single-value"));
     }
 
     private ListToMapProcessor createObjectUnderTest() {
