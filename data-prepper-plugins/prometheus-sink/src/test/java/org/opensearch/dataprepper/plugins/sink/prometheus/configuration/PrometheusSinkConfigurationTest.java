@@ -16,10 +16,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusTimeSeries;
 
 import java.time.Duration;
-
 import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -299,5 +301,59 @@ public class PrometheusSinkConfigurationTest {
                     "          sts_role_arn: \"arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role\"\n";
         final PrometheusSinkConfiguration prometheusSinkConfiguration = objectMapper.readValue(AWS_HTTP_SINK_YAML, PrometheusSinkConfiguration.class);
         assertFalse(prometheusSinkConfiguration.isValidAwsConfig());
+    }
+
+    @Test
+    void prometheus_sink_config_instance_label_defaults_to_absent() {
+        final PrometheusSinkConfiguration config = new PrometheusSinkConfiguration();
+
+        assertNull(config.getInstanceLabel());
+        assertTrue(config.isValidInstanceLabel());
+    }
+
+    @Test
+    void prometheus_sink_config_instance_label_is_read() throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                instanceLabelYaml("dp_instance"), PrometheusSinkConfiguration.class);
+
+        assertThat(config.getInstanceLabel(), equalTo("dp_instance"));
+        assertTrue(config.isValidInstanceLabel());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dp-instance", "0dp_instance", "dp instance", "__name__", "__replica", "le", "ge", "quantile"})
+    void prometheus_sink_config_instance_label_with_invalid_name_is_invalid(final String labelName)
+            throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                instanceLabelYaml("\"" + labelName + "\""), PrometheusSinkConfiguration.class);
+
+        assertFalse(config.isValidInstanceLabel());
+    }
+
+    @Test
+    void prometheus_sink_config_instance_label_rejects_every_label_name_the_sink_adds_itself()
+            throws JsonProcessingException {
+        for (final String reservedName : PrometheusTimeSeries.RESERVED_LABEL_NAMES) {
+            final PrometheusSinkConfiguration config = objectMapper.readValue(
+                    instanceLabelYaml("\"" + reservedName + "\""), PrometheusSinkConfiguration.class);
+
+            assertFalse(config.isValidInstanceLabel(), reservedName + " must not be allowed as instance_label");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dp_instance", "_dp_instance", "dpInstance0"})
+    void prometheus_sink_config_instance_label_with_valid_name_is_valid(final String labelName)
+            throws JsonProcessingException {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                instanceLabelYaml(labelName), PrometheusSinkConfiguration.class);
+
+        assertTrue(config.isValidInstanceLabel());
+    }
+
+    private String instanceLabelYaml(final String labelName) {
+        return " url: \"http://localhost:9090/api/v1/write\"\n" +
+                " insecure: true\n" +
+                " instance_label: " + labelName + "\n";
     }
 }

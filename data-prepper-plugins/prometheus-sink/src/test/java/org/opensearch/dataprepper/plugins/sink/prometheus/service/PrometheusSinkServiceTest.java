@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
+import com.arpnetworking.metrics.prometheus.Types.Label;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -35,6 +36,9 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.when;
@@ -206,6 +210,96 @@ public class PrometheusSinkServiceTest {
         final PrometheusSinkService objectUnderTest = createObjectUnderTest(prometheusSinkConfiguration);
         Collection<Record<Event>> records = List.of();
         objectUnderTest.output(records);
+    }
+
+    @Test
+    void instance_label_is_added_to_every_series_with_the_resolved_address() throws Exception {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                "        url: \"http://localhost:9090/api/v1/write\"\n" +
+                        "        insecure: true\n" +
+                        "        instance_label: dp_instance\n", PrometheusSinkConfiguration.class);
+        final PrometheusSinkService objectUnderTest = new PrometheusSinkService(
+                config, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+
+        final PrometheusSinkBufferEntry entry =
+                (PrometheusSinkBufferEntry) objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
+
+        assertThat(labelsOf(entry).get("dp_instance"), equalTo("10.0.1.7"));
+    }
+
+    @Test
+    void the_address_is_resolved_once_rather_than_per_event() throws Exception {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                "        url: \"http://localhost:9090/api/v1/write\"\n" +
+                        "        insecure: true\n" +
+                        "        instance_label: dp_instance\n", PrometheusSinkConfiguration.class);
+        final AtomicInteger resolutions = new AtomicInteger();
+        final PrometheusSinkService objectUnderTest = new PrometheusSinkService(
+                config, sinkMetrics, httpSender, pipelineDescription,
+                () -> {
+                    resolutions.incrementAndGet();
+                    return "10.0.1.7";
+                });
+
+        objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
+        objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge2", null));
+
+        assertThat(resolutions.get(), equalTo(1));
+    }
+
+    @Test
+    void the_address_is_not_resolved_when_no_instance_label_is_configured() throws Exception {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                "        url: \"http://localhost:9090/api/v1/write\"\n" +
+                        "        insecure: true\n", PrometheusSinkConfiguration.class);
+        final AtomicInteger resolutions = new AtomicInteger();
+
+        new PrometheusSinkService(config, sinkMetrics, httpSender, pipelineDescription,
+                () -> {
+                    resolutions.incrementAndGet();
+                    return "10.0.1.7";
+                });
+
+        assertThat(resolutions.get(), equalTo(0));
+    }
+
+    @Test
+    void no_instance_label_is_added_when_it_is_not_configured() throws Exception {
+        final PrometheusSinkConfiguration config = objectMapper.readValue(
+                "        url: \"http://localhost:9090/api/v1/write\"\n" +
+                        "        insecure: true\n", PrometheusSinkConfiguration.class);
+        final PrometheusSinkService objectUnderTest = new PrometheusSinkService(
+                config, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+
+        final PrometheusSinkBufferEntry entry =
+                (PrometheusSinkBufferEntry) objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
+
+        assertThat(labelsOf(entry).containsKey("dp_instance"), equalTo(false));
+    }
+
+    @Test
+    void two_instances_sharing_one_configuration_produce_different_series() throws Exception {
+        final String yaml = "        url: \"http://localhost:9090/api/v1/write\"\n" +
+                "        insecure: true\n" +
+                "        instance_label: dp_instance\n";
+        final PrometheusSinkConfiguration sharedConfig = objectMapper.readValue(yaml, PrometheusSinkConfiguration.class);
+
+        final PrometheusSinkService instanceA = new PrometheusSinkService(
+                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+        final PrometheusSinkService instanceB = new PrometheusSinkService(
+                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.2.9");
+
+        final String seriesA = labelsOf((PrometheusSinkBufferEntry)
+                instanceA.getSinkBufferEntry(createGaugeMetric("gauge1", null))).toString();
+        final String seriesB = labelsOf((PrometheusSinkBufferEntry)
+                instanceB.getSinkBufferEntry(createGaugeMetric("gauge1", null))).toString();
+
+        assertThat(seriesA.equals(seriesB), equalTo(false));
+    }
+
+    private Map<String, String> labelsOf(final PrometheusSinkBufferEntry entry) {
+        return entry.getTimeSeries().getTimeSeriesList().get(0).getLabelsList().stream()
+                .collect(Collectors.toMap(Label::getName, Label::getValue));
     }
 
     private JacksonGauge createGaugeMetric(final String name, Instant t) {

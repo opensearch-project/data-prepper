@@ -91,7 +91,60 @@ pipeline:
 | `idle_timeout` | `60s` | Connection idle timeout. Must be between 1s and 600s. |
 | `out_of_order_time_window` | `10s` | Time window for handling out-of-order metric samples. |
 | `sanitize_names` | `true` | Whether to sanitize metric names to be Prometheus-compliant. |
+| `instance_label` | none | Name of a label whose value is this instance's IP address. See [Distinguishing Instances](#instance-label). |
 | `threshold` | See below | Buffer threshold configuration. See [Threshold Configuration](#threshold-configuration). |
+
+### <a name="instance-label">Distinguishing Instances</a>
+
+Labels on a time series come only from the metric's attributes, so every Data Prepper instance running
+the same pipeline produces series with identical labels. Prometheus, AMP, Cortex, and Mimir all
+deduplicate on series plus timestamp, so they keep one instance's sample and drop the rest without
+reporting an error. An `N`-instance deployment then reports roughly `1/N` of the true value, and
+nothing surfaces the loss.
+
+Set `instance_label` to the name of a label whose value the sink resolves at startup from the IP
+address of this instance, so the series of each instance stop colliding:
+
+```yaml
+pipeline:
+  ...
+  sink:
+    - prometheus:
+        url: "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxxxxxxx-xxxx/api/v1/remote_write"
+        instance_label: dp_instance
+```
+
+Consumers aggregate the label away to recover the true value, which is the standard Prometheus
+HA-replica pattern:
+
+```
+sum without (dp_instance) (test_log_count)
+```
+
+The value is resolved once, at startup, and is the same for every series the instance writes. Because
+it is resolved rather than configured, one configuration shared by every instance is enough. This
+matters for managed deployments such as OpenSearch Ingestion, which runs every OCU of a pipeline from
+a single pipeline definition and so has nowhere to write a per-instance value.
+
+The address is the one the operating system would use to reach `url`, found by a routing lookup which
+sends no traffic. On an instance holding more than one address this is the address the endpoint
+observes, rather than an arbitrary choice among them. Where the lookup cannot answer, such as when the
+endpoint does not resolve at startup, the sink falls back to the addresses assigned to the local
+network interfaces.
+
+The hostname is not used. Hostname resolution depends on the hostname being present in the name
+service, and where it is absent the usual result is one fallback value shared by every instance, which
+is the collision this option exists to prevent. If no address can be resolved the sink fails at startup
+rather than emitting a value which is the same everywhere.
+
+The label name must match `[a-zA-Z_][a-zA-Z0-9_]*`. Names beginning with `__` are reserved by
+Prometheus, and `le`, `ge`, and `quantile` are reserved by the sink for histogram, exponential
+histogram, and summary series, so none of these are permitted; an invalid name fails validation and
+the pipeline does not start. If the name is also a metric attribute, the metric attribute wins and the
+label is not added to that series.
+
+Note that an instance which restarts with a different address starts a new series. This is inherent
+to labelling per instance, and consumers that aggregate the label away are unaffected.
 
 ### <a name="threshold-configuration">Threshold Configuration</a>
 
