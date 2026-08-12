@@ -113,7 +113,7 @@ public class KafkaSecurityConfigurer {
 
     private static AwsCredentialsProvider mskCredentialsProvider;
     private static AwsCredentialsProvider awsGlueCredentialsProvider;
-    private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
+    private static SafeGlueSchemaRegistryKafkaDeserializer glueDeserializer;
 
 
     /*public static void setSaslPlainTextProperties(final KafkaSourceConfig kafkaSourConfig,
@@ -475,7 +475,7 @@ public class KafkaSecurityConfigurer {
         return Objects.nonNull(encryptionConfig) && encryptionConfig.getType() == encryptionType;
     }
 
-    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(
+    public static SafeGlueSchemaRegistryKafkaDeserializer getGlueSerializer(
             final KafkaConsumerConfig kafkaConsumerConfig, final AwsContext awsContext) {
         final AwsConfig awsConfig = kafkaConsumerConfig.getAwsConfig();
         awsGlueCredentialsProvider = awsContext.getOrDefault(awsConfig);
@@ -497,8 +497,7 @@ public class KafkaSecurityConfigurer {
         if (endpointOverride) {
             configs.put(AWSSchemaRegistryConstants.AWS_ENDPOINT, registryUrl);
         }
-        glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(awsGlueCredentialsProvider, configs);
+        glueDeserializer = new SafeGlueSchemaRegistryKafkaDeserializer(awsGlueCredentialsProvider, configs);
         return glueDeserializer;
     }
 }
-

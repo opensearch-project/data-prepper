@@ -343,10 +343,10 @@ public class KafkaSecurityConfigurerTest {
         when(awsContext.getOrDefault(any(AwsCredentialsConfig.class))).thenReturn(stsAssumeRoleCredentialsProvider);
         when(awsContext.getRegionOrDefault(any(AwsCredentialsConfig.class))).thenReturn(Region.US_EAST_1);
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(filename);
-        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+        final SafeGlueSchemaRegistryKafkaDeserializer safeDeserializer = KafkaSecurityConfigurer
                 .getGlueSerializer(kafkaSourceConfig, awsContext);
-        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+        assertThat(safeDeserializer, notNullValue());
+        assertThat(safeDeserializer.getDelegate().getCredentialProvider(),
                 instanceOf(StsAssumeRoleCredentialsProvider.class));
     }
 
@@ -357,12 +357,12 @@ public class KafkaSecurityConfigurerTest {
         final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
         when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
         when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
-        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+        final SafeGlueSchemaRegistryKafkaDeserializer safeDeserializer = KafkaSecurityConfigurer
                 .getGlueSerializer(kafkaSourceConfig, awsContext);
-        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+        assertThat(safeDeserializer, notNullValue());
+        assertThat(safeDeserializer.getDelegate().getCredentialProvider(),
                 instanceOf(DefaultCredentialsProvider.class));
-        assertThat(glueSchemaRegistryKafkaDeserializer
+        assertThat(safeDeserializer.getDelegate()
                 .getGlueSchemaRegistryDeserializationFacade()
                 .getGlueSchemaRegistryConfiguration()
                 .getEndPoint(), is(nullValue()));
@@ -375,12 +375,12 @@ public class KafkaSecurityConfigurerTest {
         final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
         when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
         when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
-        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+        final SafeGlueSchemaRegistryKafkaDeserializer safeDeserializer = KafkaSecurityConfigurer
                 .getGlueSerializer(kafkaSourceConfig, awsContext);
-        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+        assertThat(safeDeserializer, notNullValue());
+        assertThat(safeDeserializer.getDelegate().getCredentialProvider(),
                 instanceOf(DefaultCredentialsProvider.class));
-        assertThat(glueSchemaRegistryKafkaDeserializer
+        assertThat(safeDeserializer.getDelegate()
                 .getGlueSchemaRegistryDeserializationFacade()
                 .getGlueSchemaRegistryConfiguration()
                 .getEndPoint(), is("http://fake-glue-registry"));

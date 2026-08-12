@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
+import org.opensearch.dataprepper.plugins.kafka.util.SafeGlueSchemaRegistryKafkaDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -90,7 +90,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private String schemaType = MessageFormat.PLAINTEXT.toString();
     private final AcknowledgementSetManager acknowledgementSetManager;
     private static CachedSchemaRegistryClient schemaRegistryClient;
-    private GlueSchemaRegistryKafkaDeserializer glueDeserializer;
+    private SafeGlueSchemaRegistryKafkaDeserializer glueDeserializer;
     private StringDeserializer stringDeserializer;
     private final List<ExecutorService> allTopicExecutorServices;
     private final List<KafkaCustomConsumer> allTopicConsumers;
