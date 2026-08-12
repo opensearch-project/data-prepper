@@ -193,6 +193,18 @@ class PostgresSchemaManagerTest {
     }
 
     @Test
+    void test_quoteFullTableName_when_only_the_database_is_mixed_case_then_still_delimits_it() {
+        // A mixed-case DATABASE defeats lower-casing the tables, which is otherwise the
+        // obvious workaround for this bug. Unquoted, "MyDb" folds to "mydb", which no longer
+        // matches the connected database, and PostgreSQL rejects the statement outright with
+        // `cross-database references are not implemented` -- before it ever looks the
+        // relation up. So the database part has to be delimited even when schema and table
+        // need no quoting at all.
+        assertThat(PostgresSchemaManager.quoteFullTableName("MyDb.dbo.my_table"),
+                is("\"MyDb\".\"dbo\".\"my_table\""));
+    }
+
+    @Test
     void test_quoteIdentifier_escapes_embedded_double_quote() {
         assertThat(PostgresSchemaManager.quoteIdentifier("we\"ird"), is("\"we\"\"ird\""));
     }
