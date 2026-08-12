@@ -170,6 +170,12 @@ public class KafkaBufferOTelIT {
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        // Unstubbed getters yield zero-valued Kafka client settings, which break the consumer
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(topicConfig.getFetchMaxBytes()).thenReturn(52428800L);
+        when(topicConfig.getFetchMaxWait()).thenReturn(500);
+        when(topicConfig.getFetchMinBytes()).thenReturn(1L);
+        when(topicConfig.getConnectionsMaxIdle()).thenReturn(Duration.ofMinutes(9));
         when(kafkaBufferConfig.getTopic()).thenReturn(topicConfig);
 
         EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
