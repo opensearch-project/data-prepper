@@ -83,6 +83,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -176,6 +177,9 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
+        when(topicMetrics.getNumberOfCommitFailures()).thenReturn(counter);
+        when(topicMetrics.getNumberOfOffsetResetFailures()).thenReturn(counter);
+        when(topicMetrics.getNumberOfBufferWriteFailures()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -875,10 +879,104 @@ public class KafkaCustomConsumerTest {
         return new ConsumerRecords(records);
     }
 
+    @ParameterizedTest
+    @MethodSource("provideExceptionsFromCommit")
+    public void testCommitOffsets_whenCommitFails_thenIncrementsCommitFailureCounter(final Exception commitException) throws Exception {
+        final Counter commitFailureCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfCommitFailures()).thenReturn(commitFailureCounter);
+
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumerRecords = createPlainTextRecords(topic, 100L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer.consumeRecords();
+
+        doThrow(commitException).when(kafkaConsumer).commitSync(anyMap());
+
+        // onPartitionsRevoked forces a commit of the offsets gathered above
+        consumer.onPartitionsRevoked(List.of(topicPartition));
+
+        verify(commitFailureCounter).increment();
+    }
+
+    @Test
+    public void testResetOffsets_whenSeekFails_thenIncrementsOffsetResetFailureCounter() throws Exception {
+        final Counter offsetResetFailureCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfOffsetResetFailures()).thenReturn(offsetResetFailureCounter);
+
+        final String topic = topicConfig.getName();
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        consumer = createObjectUnderTest("plaintext", true);
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        for (final Record<Event> record : new ArrayList<>(bufferRecords.getKey())) {
+            record.getData().getEventHandle().release(false);
+        }
+        // Negative acknowledgement adds the partition to the set that resetOffsets() seeks
+        await().atMost(delayTime.plusMillis(5000))
+                .until(() -> consumer.getTopicMetrics().getNumberOfNegativeAcknowledgements().count() == 1.0);
+
+        doThrow(new RuntimeException("Failed to look up committed offset"))
+                .when(kafkaConsumer).committed(any(TopicPartition.class));
+
+        consumer.resetOffsets();
+
+        verify(offsetResetFailureCounter).increment();
+    }
+
+    @Test
+    public void testConsumeRecords_whenBufferWriteFails_thenIncrementsBufferWriteFailureCounter() throws Exception {
+        final Counter bufferWriteFailureCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfBufferWriteFailures()).thenReturn(bufferWriteFailureCounter);
+
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+        final String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        doAnswer((i) -> {
+            if (!paused && !resumed) {
+                throw new TimeoutException();
+            }
+            buffer.writeAll(i.getArgument(0), i.getArgument(1));
+            return null;
+        }).when(mockBuffer).writeAll(any(), anyInt());
+        doAnswer((i) -> {
+            if (paused && !resumed) {
+                return List.of();
+            }
+            return consumerRecords;
+        }).when(kafkaConsumer).poll(any(Duration.class));
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+            consumer.consumeRecords();
+        } catch (Exception e) {}
+
+        verify(bufferWriteFailureCounter, atLeastOnce()).increment();
+        // A write timeout is not a size overflow, so the overflow counter must stay untouched
+        assertEquals(0.0, overflowCount);
+    }
+
     private static Stream<Arguments> provideExceptionsFromBufferWrite() {
         return Stream.of(
                 Arguments.of(new SizeOverflowException("size overflow")),
                 Arguments.of(new TimeoutException()));
+    }
+
+    private static Stream<Arguments> provideExceptionsFromCommit() {
+        return Stream.of(
+                Arguments.of(new RebalanceInProgressException("Rebalance in progress")),
+                Arguments.of(new RuntimeException("Generic commit failure")));
     }
 }
 
