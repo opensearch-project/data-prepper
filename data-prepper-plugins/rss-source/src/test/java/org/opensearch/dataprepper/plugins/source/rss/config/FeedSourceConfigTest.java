@@ -22,9 +22,11 @@ import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserialize
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.opensearch.dataprepper.plugins.source.rss.config.FeedSourceConfig.DEFAULT_POLLING_FREQUENCY;
 
@@ -190,5 +192,12 @@ class FeedSourceConfigTest {
         final FeedSourceConfig config = objectMapper.readValue(json, FeedSourceConfig.class);
         final Set<ConstraintViolation<FeedSourceConfig>> violations = validator.validate(config);
         assertThat(violations, hasSize(2));
+        final Set<String> paths = violations.stream()
+                .map(violation -> violation.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+        // Assert the @Valid cascade reached BasicAuthConfig, not just that two violations occurred.
+        assertThat(paths, containsInAnyOrder(
+                "feeds[a].authentication.basic.username",
+                "feeds[a].authentication.basic.password"));
     }
 }

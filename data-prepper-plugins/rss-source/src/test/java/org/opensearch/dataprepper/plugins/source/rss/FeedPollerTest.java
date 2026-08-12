@@ -173,15 +173,15 @@ class FeedPollerTest {
     }
 
     @Test
-    void escalates_to_error_but_keeps_retrying_after_threshold() throws Exception {
-        when(rssReader.read(url)).thenThrow(IOException.class);
-        for (int i = 0; i < FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1; i++) {
-            poller.run();
-        }
-        // Every failing poll still reschedules; escalation changes only the log level, not the retry.
-        verify(pollsFailedCounter, times(FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1)).increment();
-        verify(executor, times(FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1))
-                .schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS));
+    void unexpected_exception_counts_as_failure_and_reschedules_with_backoff() throws Exception {
+        // A non-IO/timeout exception (e.g. a bug in mapping) is still isolated: it
+        // counts as a failure and re-arms with backoff, same control flow as an
+        // expected failure; only the logging differs.
+        when(rssReader.read(url)).thenThrow(new RuntimeException("boom"));
+        poller.run();
+        verify(pollsFailedCounter).increment();
+        verify(executor).schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS));
+        verify(executor, never()).schedule(same(poller), eq(POLLING_INTERVAL_MILLIS), eq(TimeUnit.MILLISECONDS));
     }
 
     @Test
@@ -192,10 +192,27 @@ class FeedPollerTest {
     }
 
     @Test
-    void reschedule_swallows_rejection_during_shutdown() throws Exception {
+    void reschedule_rejection_is_caught_and_not_propagated_onto_pool_thread() throws Exception {
         when(rssReader.read(url)).thenReturn(Stream.empty());
         when(executor.schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS)))
-                .thenThrow(new RejectedExecutionException("shutting down"));
+                .thenThrow(new RejectedExecutionException("rejected"));
         poller.run(); // must not propagate the rejection onto the pool thread
+        // The rejection path was actually exercised (schedule was attempted).
+        verify(executor).schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void interrupt_restores_flag_and_does_not_reschedule_or_count_as_failure() throws Exception {
+        when(rssReader.read(url)).thenReturn(Stream.of(item("a")));
+        doThrow(new InterruptedException("shutting down")).when(buffer).writeAll(anyCollection(), anyInt());
+        try {
+            poller.run();
+            // An interrupt is a shutdown signal, not a feed failure: no reschedule, no failure count.
+            assertThat(Thread.currentThread().isInterrupted(), equalTo(true));
+            verifyNoInteractions(executor, pollsFailedCounter);
+        } finally {
+            // Clear the interrupt flag so it does not leak into other tests on this thread.
+            Thread.interrupted();
+        }
     }
 }

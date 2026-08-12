@@ -71,4 +71,12 @@ class BackoffTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(60), 2.0, -0.1));
     }
+
+    @Test
+    void constructor_rejects_null_durations_with_illegal_argument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(null, Duration.ofSeconds(60), 2.0, 0.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(1), null, 2.0, 0.0));
+    }
 }
