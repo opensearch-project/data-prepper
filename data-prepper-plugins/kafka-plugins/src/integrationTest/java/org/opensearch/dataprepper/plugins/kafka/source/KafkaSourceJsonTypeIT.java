@@ -167,6 +167,12 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        // Unstubbed getters yield zero-valued Kafka client settings, which break the consumer
+        when(jsonTopic.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(jsonTopic.getFetchMaxBytes()).thenReturn(52428800L);
+        when(jsonTopic.getFetchMaxWait()).thenReturn(500);
+        when(jsonTopic.getFetchMinBytes()).thenReturn(1L);
+        when(jsonTopic.getConnectionsMaxIdle()).thenReturn(Duration.ofMinutes(9));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServers);
         when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
@@ -193,6 +199,9 @@ public class KafkaSourceJsonTypeIT {
 
     @AfterEach
     void tearDown() {
+        if (kafkaSource != null) {
+            kafkaSource.stop();
+        }
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean deleted = new AtomicBoolean(false);
