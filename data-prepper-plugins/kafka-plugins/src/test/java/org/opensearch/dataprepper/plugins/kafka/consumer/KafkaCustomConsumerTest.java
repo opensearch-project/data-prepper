@@ -929,7 +929,9 @@ public class KafkaCustomConsumerTest {
         doThrow(new RuntimeException("Failed to look up committed offset"))
                 .when(kafkaConsumer).committed(any(TopicPartition.class));
 
-        consumer.resetOffsets();
+        final java.lang.reflect.Method method = consumer.getClass().getDeclaredMethod("resetOffsets");
+        method.setAccessible(true);
+        method.invoke(consumer);
 
         verify(offsetResetFailureCounter).increment();
     }

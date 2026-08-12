@@ -304,7 +304,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         updateOffsetsToCommit(topicPartition, offsetAndMetadata);
     }
 
-    void resetOffsets() {
+    private void resetOffsets() {
         // resetting offsets is similar to committing acknowledged offsets. Throttle the frequency of resets by
         // checking current time with last commit time. Same "lastCommitTime" and commit interval are used in both cases
         long currentTimeMillis = System.currentTimeMillis();
