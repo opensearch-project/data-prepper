@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -147,5 +149,53 @@ class FeedPollerTest {
         // On failure it re-arms with the backoff delay (< normal interval here), not the interval.
         verify(executor).schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS));
         verify(executor, never()).schedule(same(poller), eq(POLLING_INTERVAL_MILLIS), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void consecutive_failures_advance_backoff_then_reset_after_success() throws Exception {
+        final Backoff backoff = mock(Backoff.class);
+        final FeedPoller failingPoller = new FeedPoller(rssReader, url, "tech", buffer, new RssItemMapper(),
+                new SeenItemTracker(1000), pollsFailedCounter, itemsIngestedCounter, backoff, 500,
+                executor, POLLING_INTERVAL_MILLIS);
+        when(rssReader.read(url))
+                .thenThrow(IOException.class)
+                .thenThrow(IOException.class)
+                .thenReturn(Stream.empty());
+        failingPoller.run();
+        failingPoller.run();
+        // Backoff is driven by the incrementing consecutive-failure count.
+        verify(backoff).nextDelayMillis(1);
+        verify(backoff).nextDelayMillis(2);
+        failingPoller.run(); // success resets the counter
+        // After a success the poller re-arms at the normal interval, not a backoff delay.
+        verify(executor).schedule(same(failingPoller), eq(POLLING_INTERVAL_MILLIS), eq(TimeUnit.MILLISECONDS));
+        verify(backoff, never()).nextDelayMillis(3);
+    }
+
+    @Test
+    void escalates_to_error_but_keeps_retrying_after_threshold() throws Exception {
+        when(rssReader.read(url)).thenThrow(IOException.class);
+        for (int i = 0; i < FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1; i++) {
+            poller.run();
+        }
+        // Every failing poll still reschedules; escalation changes only the log level, not the retry.
+        verify(pollsFailedCounter, times(FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1)).increment();
+        verify(executor, times(FeedPoller.FAILURE_ESCALATION_THRESHOLD + 1))
+                .schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void stopped_poller_neither_polls_nor_reschedules() {
+        poller.stop();
+        poller.run();
+        verifyNoInteractions(rssReader, buffer, executor);
+    }
+
+    @Test
+    void reschedule_swallows_rejection_during_shutdown() throws Exception {
+        when(rssReader.read(url)).thenReturn(Stream.empty());
+        when(executor.schedule(same(poller), anyLong(), eq(TimeUnit.MILLISECONDS)))
+                .thenThrow(new RejectedExecutionException("shutting down"));
+        poller.run(); // must not propagate the rejection onto the pool thread
     }
 }

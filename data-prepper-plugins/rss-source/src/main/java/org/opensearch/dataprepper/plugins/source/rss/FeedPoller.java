@@ -41,6 +41,11 @@ class FeedPoller implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FeedPoller.class);
 
+    // Once failures persist past this many consecutive polls the backoff has
+    // saturated at its maximum, so the feed is treated as a standing problem and
+    // logged at ERROR rather than WARN so it surfaces in alerting.
+    static final int FAILURE_ESCALATION_THRESHOLD = 5;
+
     private final RssReader rssReader;
     private final String url;
     private final String name;
@@ -83,14 +88,22 @@ class FeedPoller implements Runnable {
             return;
         }
         long nextDelayMillis = pollingIntervalMillis;
+        // Catch Exception, not Throwable, so JVM Errors (OutOfMemoryError,
+        // LinkageError, ...) propagate rather than being masked as a feed hiccup.
         try {
             poll();
             consecutiveFailures = 0;
-        } catch (final Throwable t) {
+        } catch (final Exception e) {
             consecutiveFailures++;
             pollsFailedCounter.increment();
-            LOG.warn("Feed poll failed ({} consecutive) for {}: {}",
-                    consecutiveFailures, FeedUrls.redact(url), t.getMessage());
+            // Pass the throwable as the trailing arg so the stack trace is logged.
+            if (consecutiveFailures >= FAILURE_ESCALATION_THRESHOLD) {
+                LOG.error("Feed poll failed {} consecutive times for {}; still retrying with backoff",
+                        consecutiveFailures, FeedUrls.redact(url), e);
+            } else {
+                LOG.warn("Feed poll failed ({} consecutive) for {}",
+                        consecutiveFailures, FeedUrls.redact(url), e);
+            }
             nextDelayMillis = backoff.nextDelayMillis(consecutiveFailures);
         } finally {
             reschedule(nextDelayMillis);
@@ -104,8 +117,8 @@ class FeedPoller implements Runnable {
         final Set<String> batchKeys = new HashSet<>();
         for (final Item item : items) {
             final String key = mapper.dedupKey(item);
-            // Skip items already ingested (persistent tracker) and duplicates
-            // within this same fetch (batchKeys).
+            // Skip items already ingested (the cross-poll seen-item tracker) and
+            // duplicates within this same fetch (batchKeys).
             if (tracker.contains(key) || !batchKeys.add(key)) {
                 continue;
             }
@@ -128,7 +141,13 @@ class FeedPoller implements Runnable {
         try {
             executor.schedule(this, delayMillis, TimeUnit.MILLISECONDS);
         } catch (final RejectedExecutionException e) {
-            // Executor is shutting down; stop rescheduling.
+            // Expected once the executor is shutting down. If we are still running
+            // this is unexpected and means the feed has silently stopped polling.
+            if (running) {
+                LOG.error("Feed {} could not be rescheduled and will stop polling", FeedUrls.redact(url), e);
+            } else {
+                LOG.debug("Not rescheduling feed {}; executor is shutting down", FeedUrls.redact(url));
+            }
         }
     }
 
