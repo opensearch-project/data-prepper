@@ -17,13 +17,17 @@ import java.util.Set;
 
 /**
  * Bounded per-feed deduplication. Tracks recently seen dedup keys, evicting the
- * eldest once capacity is exceeded. Not durable across restarts (v1).
+ * eldest (by insertion order) once capacity is exceeded. Not durable across
+ * restarts (v1). Not thread-safe; assumes single-threaded per-feed access.
  */
 class SeenItemTracker {
 
     private final Set<String> seen;
 
     SeenItemTracker(final int maxSize) {
+        if (maxSize < 1) {
+            throw new IllegalArgumentException("maxSize must be at least 1, but was " + maxSize);
+        }
         final Map<String, Boolean> map = new LinkedHashMap<>(16, 0.75f, false) {
             @Override
             protected boolean removeEldestEntry(final Map.Entry<String, Boolean> eldest) {

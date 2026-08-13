@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SeenItemTrackerTest {
 
@@ -41,5 +42,12 @@ class SeenItemTrackerTest {
         assertThat(tracker.contains("a"), equalTo(false));
         assertThat(tracker.addIfNew("a"), equalTo(true));
         assertThat(tracker.contains("a"), equalTo(true));
+    }
+
+    @Test
+    void constructor_rejects_non_positive_max_size() {
+        // A maxSize < 1 would silently disable dedup (evict on every insert).
+        assertThrows(IllegalArgumentException.class, () -> new SeenItemTracker(0));
+        assertThrows(IllegalArgumentException.class, () -> new SeenItemTracker(-1));
     }
 }

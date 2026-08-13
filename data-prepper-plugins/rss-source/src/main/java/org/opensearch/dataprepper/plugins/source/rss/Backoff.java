@@ -25,8 +25,25 @@ class Backoff {
     private final double jitterFraction;
 
     Backoff(final Duration base, final Duration max, final double rate, final double jitterFraction) {
-        this.baseMillis = base.toMillis();
-        this.maxMillis = max.toMillis();
+        if (base == null || max == null) {
+            throw new IllegalArgumentException("base and max durations must not be null");
+        }
+        final long baseMillis = base.toMillis();
+        final long maxMillis = max.toMillis();
+        if (baseMillis < 0 || maxMillis < 0) {
+            throw new IllegalArgumentException("base and max durations must be non-negative");
+        }
+        if (baseMillis > maxMillis) {
+            throw new IllegalArgumentException("base duration must not exceed max duration");
+        }
+        if (rate < 1) {
+            throw new IllegalArgumentException("rate must be at least 1, but was " + rate);
+        }
+        if (jitterFraction < 0 || jitterFraction > 1) {
+            throw new IllegalArgumentException("jitterFraction must be in [0, 1], but was " + jitterFraction);
+        }
+        this.baseMillis = baseMillis;
+        this.maxMillis = maxMillis;
         this.rate = rate;
         this.jitterFraction = jitterFraction;
     }

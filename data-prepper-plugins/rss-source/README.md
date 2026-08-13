@@ -55,7 +55,7 @@ fields:
 | `link` | Item link |
 | `description` | Item description / summary |
 | `publication_date` | Item publication date |
-| `item_id` | Item GUID, falling back to `link` when absent |
+| `item_id` | Item GUID, falling back to `link`, then to a content hash when both are absent (always non-empty) |
 | `feed_name` | The feed's key from the `feeds` map (always present) |
 | `feed_url` | The configured feed URL with its query string redacted (always present) |
 
@@ -84,7 +84,7 @@ used directly for per-feed routing at the sink. `item_id` is well suited to
 The channel metadata attributes are attached only when the feed provides them,
 so **sink configuration must not depend on an attribute that may be absent** —
 routing and document IDs should key off the always-present `feed_name`,
-`feed_url`, or `guid` body fields.
+`feed_url`, or `item_id` body fields.
 
 ## Configuration Options
 
@@ -98,8 +98,8 @@ Top level:
   value is a feed configuration.
 * `polling_frequency` (Optional): Duration - default polling frequency for feeds
   that do not set their own. Defaults to 5 minutes.
-* `workers` (Optional): Integer - size of the polling thread pool, bounded by the
-  number of feeds. Defaults to 1.
+* `workers` (Optional): Integer in the range 1-1000 - size of the polling thread
+  pool, further bounded by the number of feeds. Defaults to 1.
 * `request_timeout` (Optional): Duration - connection, request, and read timeout
   applied to each feed fetch, so one slow or hung feed cannot block its worker
   thread indefinitely. Defaults to 30 seconds.

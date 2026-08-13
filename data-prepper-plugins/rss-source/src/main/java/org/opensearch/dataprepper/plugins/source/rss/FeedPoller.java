@@ -19,14 +19,18 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 /**
  * Polls a single feed. Each invocation fetches the feed, maps to events, filters
@@ -55,6 +59,10 @@ class FeedPoller implements Runnable {
     private final long pollingIntervalMillis;
 
     private volatile boolean running = true;
+    // Only ever touched inside run(). A plain int is safe despite successive polls
+    // possibly running on different pool threads: ScheduledExecutorService establishes
+    // a happens-before edge between one execution of a task and the next, and this
+    // one-shot self-rescheduling poller never has two executions in flight at once.
     private int consecutiveFailures = 0;
 
     FeedPoller(final RssReader rssReader, final String url, final String name,
@@ -83,17 +91,36 @@ class FeedPoller implements Runnable {
             return;
         }
         long nextDelayMillis = pollingIntervalMillis;
+        // Catch Exception, not Throwable, so JVM Errors (OutOfMemoryError,
+        // LinkageError, ...) propagate rather than being masked as a feed hiccup.
         try {
             poll();
             consecutiveFailures = 0;
-        } catch (final Throwable t) {
+        } catch (final InterruptedException e) {
+            // An interrupt is a shutdown/cancellation signal, not a feed failure:
+            // restore the flag and stop without rescheduling.
+            Thread.currentThread().interrupt();
+            return;
+        } catch (final Exception e) {
             consecutiveFailures++;
             pollsFailedCounter.increment();
-            LOG.warn("Feed poll failed ({} consecutive) for {}: {}",
-                    consecutiveFailures, FeedUrls.redact(url), t.getMessage());
+            logPollFailure(e);
             nextDelayMillis = backoff.nextDelayMillis(consecutiveFailures);
-        } finally {
-            reschedule(nextDelayMillis);
+        }
+        reschedule(nextDelayMillis);
+    }
+
+    private void logPollFailure(final Exception e) {
+        // Expected failures (network/HTTP errors, timeouts, a full buffer) are
+        // operationally routine on a repeating poll, so log them at WARN with the
+        // NOISY marker (operators can suppress the repetition via logger config)
+        // and without a stack trace. Unexpected exceptions are likely code bugs, so
+        // log them at ERROR with the full stack trace.
+        if (e instanceof IOException || e instanceof TimeoutException) {
+            LOG.warn(NOISY, "Feed poll failed ({} consecutive) for {}: {}",
+                    consecutiveFailures, FeedUrls.redact(url), e.getMessage());
+        } else {
+            LOG.error("Unexpected error polling feed {}", FeedUrls.redact(url), e);
         }
     }
 
@@ -104,8 +131,8 @@ class FeedPoller implements Runnable {
         final Set<String> batchKeys = new HashSet<>();
         for (final Item item : items) {
             final String key = mapper.dedupKey(item);
-            // Skip items already ingested (persistent tracker) and duplicates
-            // within this same fetch (batchKeys).
+            // Skip items already ingested (the cross-poll seen-item tracker) and
+            // duplicates within this same fetch (batchKeys).
             if (tracker.contains(key) || !batchKeys.add(key)) {
                 continue;
             }
@@ -128,7 +155,9 @@ class FeedPoller implements Runnable {
         try {
             executor.schedule(this, delayMillis, TimeUnit.MILLISECONDS);
         } catch (final RejectedExecutionException e) {
-            // Executor is shutting down; stop rescheduling.
+            // reschedule() already returned early if we were stopping, so a rejection
+            // here is unexpected: this feed will stop polling.
+            LOG.error("Feed {} could not be rescheduled and will stop polling", FeedUrls.redact(url), e);
         }
     }
 

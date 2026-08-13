@@ -17,6 +17,7 @@ import java.time.Duration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BackoffTest {
 
@@ -43,5 +44,39 @@ class BackoffTest {
             assertThat(delay, greaterThanOrEqualTo(1000L));
             assertThat(delay, lessThanOrEqualTo(1500L));
         }
+    }
+
+    @Test
+    void constructor_rejects_base_exceeding_max() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(60), Duration.ofSeconds(1), 2.0, 0.0));
+    }
+
+    @Test
+    void constructor_rejects_negative_duration() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(-1), Duration.ofSeconds(60), 2.0, 0.0));
+    }
+
+    @Test
+    void constructor_rejects_rate_below_one() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(60), 0.5, 0.0));
+    }
+
+    @Test
+    void constructor_rejects_jitter_fraction_outside_unit_interval() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(60), 2.0, 1.5));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(60), 2.0, -0.1));
+    }
+
+    @Test
+    void constructor_rejects_null_durations_with_illegal_argument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(null, Duration.ofSeconds(60), 2.0, 0.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Backoff(Duration.ofSeconds(1), null, 2.0, 0.0));
     }
 }
