@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
@@ -488,14 +489,13 @@ public class JacksonEventTest {
 
     @Test
     public void testDelete_withJsonPointerEscapedSlash_deletesLiteralKeyName() {
-        // pre-populate the event with a literal "z/y" key via toMap round-trip, then delete it
+        // z~1y is JSON Pointer encoding for the literal key name "z/y"; delete("z~1y") must target that field
         final String value = "some_value";
-        // Use Jackson ObjectNode directly to set a raw field name of "z/y"
-        ((com.fasterxml.jackson.databind.node.ObjectNode) event.getJsonNode()).put("z/y", value);
+        ((ObjectNode) event.getJsonNode()).put("z/y", value);
 
         event.delete("z~1y");
 
-        assertThat("literal key 'z/y' should be deleted", event.get("z~1y", String.class), is(nullValue()));
+        assertThat(event.get("z~1y", String.class), is(nullValue()));
     }
 
     @ParameterizedTest
