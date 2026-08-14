@@ -9,10 +9,9 @@
 
 package org.opensearch.dataprepper.plugins.source.source_crawler.auth;
 
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 
 import java.time.Duration;
 
@@ -46,8 +45,6 @@ public interface AuthenticationInterface {
                 setCredentialsInitialized(true);
                 log.info("Credentials initialized successfully");
                 break;
-            } catch (HttpClientErrorException | HttpServerErrorException | SecurityException ex) {
-                log.error(NOISY, "Failed to initialize credentials, retrying in {} min. Reason for failure: {}", getRetryInterval().toMinutes(), ex.getMessage());
             } catch (Exception ex) {
                 log.error(NOISY, "Failed to initialize credentials due to unexpected error, retrying in {} min. Reason for failure:", getRetryInterval().toMinutes(), ex);
             }
@@ -56,7 +53,7 @@ public interface AuthenticationInterface {
                 Thread.sleep(getRetryInterval().toMillis());
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("Credential initialization interrupted", ie);
+                throw new SaaSCrawlerException("Credential initialization interrupted", ie, true);
             }
         }
     }
