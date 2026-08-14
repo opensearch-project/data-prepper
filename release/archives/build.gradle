@@ -8,7 +8,7 @@
  */
 
 plugins {
-    id 'de.undercouch.download' version '4.1.2' apply false
+    id 'de.undercouch.download' version '5.6.0' apply false
 }
 
 import com.mgd.core.gradle.S3Upload
