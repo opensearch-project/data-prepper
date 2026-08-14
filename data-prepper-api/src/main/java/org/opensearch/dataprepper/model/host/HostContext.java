@@ -22,9 +22,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -37,7 +41,8 @@ import java.util.function.Supplier;
  * hostname through the name service, fails in ordinary containers whose hostname has no entry in
  * {@code /etc/hosts} or DNS. Returning a single shared value in that case is worse than it appears:
  * components which use this as a per-instance discriminator, such as metric labels, silently collide
- * with every other instance rather than reporting an error.
+ * with every other instance rather than reporting an error. A name which resolves but distinguishes
+ * nothing, such as {@code localhost}, counts as unresolved for the same reason.
  */
 public class HostContext {
 
@@ -45,6 +50,10 @@ public class HostContext {
 
     static final String UNKNOWN_HOST = "unknown";
     static final String HOSTNAME_ENVIRONMENT_VARIABLE = "HOSTNAME";
+
+    /** Values every instance would report, so resolution continues past them to a local address. */
+    private static final Set<String> UNUSABLE_IDENTITIES = Collections.unmodifiableSet(new HashSet<>(
+            Arrays.asList("localhost", "localhost.localdomain", "127.0.0.1", "::1")));
 
     /**
      * RFC 5737 TEST-NET-1. Connecting a datagram socket performs a routing lookup without sending a
@@ -59,6 +68,11 @@ public class HostContext {
 
     private static final String HOSTNAME = resolveHostname();
     private static final String STABLE_HOST_ID = computeStableHostId(HOSTNAME);
+
+    static {
+        // So an emitted identifier can be traced back to its host.
+        LOG.info("Resolved the identity of this host as '{}', with stable host id {}.", HOSTNAME, STABLE_HOST_ID);
+    }
 
     @FunctionalInterface
     interface LocalHostSupplier {
@@ -81,19 +95,20 @@ public class HostContext {
     }
 
     /**
-     * Returns the identity of the current Data Prepper host, which is the hostname where one can be
-     * resolved and a local address otherwise.
+     * Returns the identity of the current Data Prepper host: the hostname where one resolves, and a
+     * local interface address otherwise. Callers must not assume the value resolves as a name.
      *
-     * @return the hostname, or {@code "unknown"} when nothing could be resolved
+     * @return the hostname or a local address, or {@code "unknown"} when nothing resolved
      */
     public static String getHostname() {
         return HOSTNAME;
     }
 
     /**
-     * Returns a stable identifier for this host, as a truncated SHA-256 hash of {@link #getHostname()}.
-     * This gives components a value which distinguishes this instance without revealing the hostname
-     * or address in emitted data.
+     * Returns a stable identifier for this host: a truncated SHA-256 hash of {@link #getHostname()}.
+     * It keeps the hostname and address out of emitted data, but the hash is unsalted over a small
+     * input space, so it obscures the identity rather than protecting it. When
+     * {@link #isHostIdentityResolved()} is false it hashes the placeholder, identical on every instance.
      *
      * @return the host identifier, never null
      */
@@ -108,11 +123,11 @@ public class HostContext {
      *
      * @return true when the host identity is a resolved value rather than a shared placeholder
      */
-    public static boolean isHostnameResolved() {
-        return isHostnameResolved(HOSTNAME);
+    public static boolean isHostIdentityResolved() {
+        return isHostIdentityResolved(HOSTNAME);
     }
 
-    static boolean isHostnameResolved(final String hostname) {
+    static boolean isHostIdentityResolved(final String hostname) {
         return !UNKNOWN_HOST.equals(hostname);
     }
 
@@ -176,7 +191,13 @@ public class HostContext {
     }
 
     static String resolveFromEnvironment(final Function<String, String> environment) {
-        return usableOrNull(environment.apply(HOSTNAME_ENVIRONMENT_VARIABLE));
+        try {
+            return usableOrNull(environment.apply(HOSTNAME_ENVIRONMENT_VARIABLE));
+        } catch (final RuntimeException e) {
+            // Resolution runs at class init, where a throw becomes ExceptionInInitializerError.
+            LOG.debug("Unable to read the {} environment variable: {}", HOSTNAME_ENVIRONMENT_VARIABLE, e.getMessage());
+            return null;
+        }
     }
 
     static String resolveFromNetworkInterfaces() {
@@ -264,6 +285,9 @@ public class HostContext {
             return null;
         }
         final String trimmed = hostname.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        if (trimmed.isEmpty() || UNUSABLE_IDENTITIES.contains(trimmed.toLowerCase(Locale.ROOT))) {
+            return null;
+        }
+        return trimmed;
     }
 }

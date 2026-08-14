@@ -21,6 +21,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -35,8 +36,8 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class HostContextTest {
@@ -54,15 +55,16 @@ class HostContextTest {
     }
 
     @Test
-    void isHostnameResolved_agrees_with_the_resolved_hostname() {
-        assertThat(HostContext.isHostnameResolved(),
-                equalTo(HostContext.isHostnameResolved(HostContext.getHostname())));
+    void isHostIdentityResolved_reports_whether_the_hostname_is_the_placeholder() {
+        assertThat(HostContext.isHostIdentityResolved(),
+                equalTo(!"unknown".equals(HostContext.getHostname())));
     }
 
     @Test
-    void isHostnameResolved_is_false_only_for_the_unknown_placeholder() {
-        assertThat(HostContext.isHostnameResolved(HostContext.UNKNOWN_HOST), is(false));
-        assertThat(HostContext.isHostnameResolved("some-host"), is(true));
+    void isHostIdentityResolved_is_false_only_for_the_unknown_placeholder() {
+        assertThat(HostContext.isHostIdentityResolved(HostContext.UNKNOWN_HOST), is(false));
+        assertThat(HostContext.isHostIdentityResolved("some-host"), is(true));
+        assertThat(HostContext.isHostIdentityResolved("10.1.2.3"), is(true));
     }
 
     @Test
@@ -110,9 +112,21 @@ class HostContextTest {
     // Local host.
 
     @Test
-    void resolveFromLocalHost_returns_the_local_hostname() throws UnknownHostException {
-        assertThat(HostContext.resolveFromLocalHost(),
-                equalTo(InetAddress.getLocalHost().getHostName()));
+    void resolveFromLocalHost_returns_the_name_of_the_local_host() throws UnknownHostException {
+        final InetAddress named = InetAddress.getByAddress("host-a", new byte[]{10, 1, 2, 3});
+        assertThat(HostContext.resolveFromLocalHost(() -> named), equalTo("host-a"));
+    }
+
+    @Test
+    void resolveFromLocalHost_rejects_a_name_which_does_not_distinguish_the_host() throws UnknownHostException {
+        final InetAddress named = InetAddress.getByAddress("localhost", new byte[]{127, 0, 0, 1});
+        assertThat(HostContext.resolveFromLocalHost(() -> named), nullValue());
+    }
+
+    @Test
+    void resolveFromLocalHost_reads_the_real_name_service_without_failing() {
+        // What it answers depends on the machine, so assert only that it runs and is stable.
+        assertThat(HostContext.resolveFromLocalHost(), equalTo(HostContext.resolveFromLocalHost()));
     }
 
     @Test
@@ -143,17 +157,27 @@ class HostContextTest {
         assertThat(HostContext.resolveFromEnvironment(name -> value), nullValue());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"localhost", "LocalHost", "localhost.localdomain", "127.0.0.1", "::1", " localhost "})
+    void resolveFromEnvironment_rejects_a_value_which_does_not_distinguish_the_host(final String value) {
+        assertThat(HostContext.resolveFromEnvironment(name -> value), nullValue());
+    }
+
     @Test
     void resolveFromEnvironment_returns_null_when_the_variable_is_absent() {
         assertThat(HostContext.resolveFromEnvironment(name -> null), nullValue());
     }
 
     @Test
-    void resolveFromEnvironment_reads_the_real_environment() {
-        final String fromEnvironment = System.getenv(HostContext.HOSTNAME_ENVIRONMENT_VARIABLE);
-        final String expected = fromEnvironment == null || fromEnvironment.trim().isEmpty()
-                ? null : fromEnvironment.trim();
-        assertThat(HostContext.resolveFromEnvironment(), equalTo(expected));
+    void resolveFromEnvironment_returns_null_when_the_variable_cannot_be_read() {
+        assertThat(HostContext.resolveFromEnvironment(name -> {
+            throw new SecurityException("environment access denied");
+        }), nullValue());
+    }
+
+    @Test
+    void resolveFromEnvironment_reads_the_real_environment_without_failing() {
+        assertThat(HostContext.resolveFromEnvironment(), equalTo(HostContext.resolveFromEnvironment()));
     }
 
     // Network interfaces.
@@ -187,18 +211,56 @@ class HostContextTest {
     }
 
     @Test
-    void resolveFromNetworkInterfaces_walks_the_real_interfaces() throws SocketException {
-        final String address = HostContext.resolveFromNetworkInterfaces(
-                NetworkInterface::getNetworkInterfaces);
-        assumeTrue(address != null, "this machine exposes no usable address on any interface");
+    void resolveFromNetworkInterfaces_returns_an_address_assigned_to_an_interface() throws Exception {
+        final NetworkInterface networkInterface = usableInterface(InetAddress.getByName("10.1.2.30"));
 
-        // Loopback is always present and must never be chosen.
-        assertThat(address, not(equalTo("127.0.0.1")));
-        assertThat(localAddresses().contains(address), is(true));
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(networkInterface)),
+                equalTo("10.1.2.30"));
     }
 
     @Test
-    void resolveFromNetworkInterfaces_returns_the_same_address_on_every_call() {
+    void resolveFromNetworkInterfaces_chooses_the_lowest_address_so_that_a_restart_reports_the_same_one()
+            throws Exception {
+        final NetworkInterface first = usableInterface(InetAddress.getByName("10.1.2.30"));
+        final NetworkInterface second = usableInterface(InetAddress.getByName("10.1.2.20"));
+
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(first, second)),
+                equalTo("10.1.2.20"));
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(second, first)),
+                equalTo("10.1.2.20"));
+    }
+
+    @Test
+    void resolveFromNetworkInterfaces_ignores_addresses_which_cannot_distinguish_a_host() throws Exception {
+        final NetworkInterface networkInterface = usableInterface(
+                InetAddress.getByName("127.0.0.1"),
+                InetAddress.getByName("169.254.1.1"),
+                InetAddress.getByName("0.0.0.0"),
+                InetAddress.getByName("224.0.0.1"));
+
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(networkInterface)), nullValue());
+    }
+
+    @Test
+    void resolveFromNetworkInterfaces_ignores_an_interface_which_is_down() throws Exception {
+        final NetworkInterface down = mock(NetworkInterface.class);
+        when(down.isUp()).thenReturn(false);
+
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(down)), nullValue());
+    }
+
+    @Test
+    void resolveFromNetworkInterfaces_ignores_the_loopback_interface() throws Exception {
+        final NetworkInterface loopback = mock(NetworkInterface.class);
+        when(loopback.isUp()).thenReturn(true);
+        when(loopback.isLoopback()).thenReturn(true);
+
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> enumerationOf(loopback)), nullValue());
+    }
+
+    @Test
+    void resolveFromNetworkInterfaces_walks_the_real_interfaces_without_failing() {
+        // What the interfaces hold depends on the machine, so assert only that it runs and is stable.
         assertThat(HostContext.resolveFromNetworkInterfaces(),
                 equalTo(HostContext.resolveFromNetworkInterfaces()));
     }
@@ -206,11 +268,28 @@ class HostContextTest {
     // Routing lookup.
 
     @Test
-    void resolveFromRouteLookup_returns_an_address_assigned_to_this_machine() throws SocketException {
-        final String address = HostContext.resolveFromRouteLookup();
-        assumeTrue(address != null, "this machine has no route to the lookup address");
+    void resolveFromRouteLookup_returns_the_source_address_the_socket_would_send_from() throws Exception {
+        final DatagramSocket socket = mock(DatagramSocket.class);
+        when(socket.getLocalAddress()).thenReturn(InetAddress.getByName("10.1.2.30"));
 
-        assertThat(localAddresses().contains(address), is(true));
+        assertThat(HostContext.resolveFromRouteLookup(() -> socket), equalTo("10.1.2.30"));
+    }
+
+    @Test
+    void resolveFromRouteLookup_asks_for_the_route_to_the_documentation_address() throws Exception {
+        final DatagramSocket socket = mock(DatagramSocket.class);
+        when(socket.getLocalAddress()).thenReturn(InetAddress.getByName("10.1.2.30"));
+
+        HostContext.resolveFromRouteLookup(() -> socket);
+
+        // Never contacted, so it must stay an address which cannot belong to a real endpoint.
+        verify(socket).connect(InetAddress.getByName(HostContext.ROUTE_LOOKUP_ADDRESS), 9);
+    }
+
+    @Test
+    void resolveFromRouteLookup_performs_a_real_lookup_without_failing() {
+        // Whether a route exists depends on the machine, so assert only that it runs and is stable.
+        assertThat(HostContext.resolveFromRouteLookup(), equalTo(HostContext.resolveFromRouteLookup()));
     }
 
     @Test
@@ -230,9 +309,8 @@ class HostContextTest {
     // Stable host id.
 
     @Test
-    void getStableHostId_is_a_truncated_sha256_of_the_hostname() {
-        assertThat(HostContext.getStableHostId(),
-                equalTo(HostContext.computeStableHostId(HostContext.getHostname())));
+    void getStableHostId_is_a_truncated_sha256_of_the_hostname() throws NoSuchAlgorithmException {
+        assertThat(HostContext.getStableHostId(), equalTo(sha256Prefix(HostContext.getHostname())));
     }
 
     @Test
@@ -241,16 +319,13 @@ class HostContextTest {
     }
 
     @Test
-    void computeStableHostId_matches_a_known_digest() throws NoSuchAlgorithmException {
-        final MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        final byte[] hash = digest.digest("example-host".getBytes(StandardCharsets.UTF_8));
-        final StringBuilder expected = new StringBuilder();
-        for (final byte b : hash) {
-            expected.append(String.format("%02x", b));
-        }
+    void computeStableHostId_matches_a_known_digest() {
+        assertThat(HostContext.computeStableHostId("example-host"), equalTo("8f1f0466fc41bb15"));
+    }
 
-        assertThat(HostContext.computeStableHostId("example-host"),
-                equalTo(expected.substring(0, 16)));
+    @Test
+    void computeStableHostId_matches_the_digest_of_the_unresolved_placeholder() {
+        assertThat(HostContext.computeStableHostId(HostContext.UNKNOWN_HOST), equalTo("b23a6a8439c0dde5"));
     }
 
     @Test
@@ -269,15 +344,26 @@ class HostContextTest {
         assertThat(exception.getMessage(), equalTo("SHA-256 algorithm not available"));
     }
 
-    private static java.util.List<String> localAddresses() throws SocketException {
-        final java.util.List<String> addresses = new java.util.ArrayList<>();
-        final Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-        while (interfaces != null && interfaces.hasMoreElements()) {
-            final Enumeration<InetAddress> onInterface = interfaces.nextElement().getInetAddresses();
-            while (onInterface.hasMoreElements()) {
-                addresses.add(onInterface.nextElement().getHostAddress());
-            }
+    private static NetworkInterface usableInterface(final InetAddress... addresses) throws SocketException {
+        final NetworkInterface networkInterface = mock(NetworkInterface.class);
+        when(networkInterface.isUp()).thenReturn(true);
+        when(networkInterface.isLoopback()).thenReturn(false);
+        // A fresh enumeration per call, so an interface can be walked more than once.
+        when(networkInterface.getInetAddresses())
+                .thenAnswer(invocation -> Collections.enumeration(Arrays.asList(addresses)));
+        return networkInterface;
+    }
+
+    private static Enumeration<NetworkInterface> enumerationOf(final NetworkInterface... interfaces) {
+        return Collections.enumeration(Arrays.asList(interfaces));
+    }
+
+    private static String sha256Prefix(final String value) throws NoSuchAlgorithmException {
+        final byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        final StringBuilder hex = new StringBuilder();
+        for (final byte b : hash) {
+            hex.append(String.format("%02x", b));
         }
-        return addresses;
+        return hex.substring(0, 16);
     }
 }

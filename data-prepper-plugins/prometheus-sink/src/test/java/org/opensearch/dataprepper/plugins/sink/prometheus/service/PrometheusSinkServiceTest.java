@@ -288,7 +288,7 @@ public class PrometheusSinkServiceTest {
     @Test
     void the_instance_label_value_is_the_stable_host_id() {
         try (MockedStatic<HostContext> hostContext = mockStatic(HostContext.class)) {
-            hostContext.when(HostContext::isHostnameResolved).thenReturn(true);
+            hostContext.when(HostContext::isHostIdentityResolved).thenReturn(true);
             hostContext.when(HostContext::getStableHostId).thenReturn(HOST_ID_A);
 
             assertThat(PrometheusSinkService.resolveInstanceId(), equalTo(HOST_ID_A));
@@ -298,12 +298,13 @@ public class PrometheusSinkServiceTest {
     @Test
     void the_pipeline_fails_to_start_when_no_host_identity_can_be_resolved() {
         try (MockedStatic<HostContext> hostContext = mockStatic(HostContext.class)) {
-            hostContext.when(HostContext::isHostnameResolved).thenReturn(false);
+            hostContext.when(HostContext::isHostIdentityResolved).thenReturn(false);
 
             final InvalidPluginConfigurationException exception = assertThrows(
                     InvalidPluginConfigurationException.class, PrometheusSinkService::resolveInstanceId);
 
             assertThat(exception.getMessage(), containsString("instance_label"));
+            assertThat(exception.getMessage(), containsString("HOSTNAME"));
         }
     }
 

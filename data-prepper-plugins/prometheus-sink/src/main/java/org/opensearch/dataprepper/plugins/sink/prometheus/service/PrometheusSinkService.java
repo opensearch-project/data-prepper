@@ -73,12 +73,12 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     }
 
     static String resolveInstanceId() {
-        if (!HostContext.isHostnameResolved()) {
+        if (!HostContext.isHostIdentityResolved()) {
             throw new InvalidPluginConfigurationException(
                     "Unable to resolve an identity for this host, so instance_label cannot produce a value " +
                             "which distinguishes this instance from the others writing to the same endpoint. " +
-                            "Give this instance a resolvable hostname or a routable address, or remove " +
-                            "instance_label to write series without it.");
+                            "Set the HOSTNAME environment variable, give this instance a resolvable hostname " +
+                            "or a routable address, or remove instance_label to write series without it.");
         }
         return HostContext.getStableHostId();
     }

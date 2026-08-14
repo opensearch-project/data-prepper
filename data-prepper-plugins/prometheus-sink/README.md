@@ -126,18 +126,23 @@ it is resolved rather than configured, one configuration shared by every instanc
 matters for managed deployments such as OpenSearch Ingestion, which runs every OCU of a pipeline from
 a single pipeline definition and so has nowhere to write a per-instance value.
 
-The value is an opaque identifier rather than the hostname or address itself, so neither is exposed in
-the metrics the sink writes. It is a truncated SHA-256 hash of the host identity resolved by
-`HostContext`, which tries the local hostname, then the `HOSTNAME` environment variable, then an
-address assigned to a local network interface, then the source address of a routing lookup which sends
-no traffic. The same identifier is used by the `otel_apm_service_map` processor for its
-`service_map_processor_host_id` label, so the two agree for a given instance.
+The value is a truncated SHA-256 hash of the host identity resolved by `HostContext`, which tries the
+local hostname, then the `HOSTNAME` environment variable, then an address assigned to a local network
+interface, then the source address of a routing lookup which sends no traffic. Hashing keeps the
+hostname and address out of the metrics the sink writes, but it is unsalted over a small input space, so
+it obscures them rather than protecting them. The `otel_apm_service_map` processor uses the same
+identifier for its `service_map_processor_host_id` label, so the two agree for a given instance. Data
+Prepper logs the identity and the identifier together at startup, so a series can be traced back to the
+instance which wrote it.
 
-The fallbacks matter because hostname resolution alone is not enough. It depends on the hostname being
-present in the name service, and in an ordinary container it often is not; the usual result is one
-value shared by every instance, which is the collision this option exists to prevent. If no identity
-can be resolved at all, the sink fails at startup rather than emitting a value which is the same
-everywhere.
+The fallbacks matter because the hostname alone is not enough. Resolving it depends on the hostname
+being present in the name service, and in an ordinary container it often is not. A name which resolves
+but distinguishes nothing, such as `localhost`, is rejected for the same reason, so resolution continues
+to an address which does differ. If nothing resolves, the sink fails at startup rather than emitting a
+value which is the same everywhere.
+
+Instances sharing one network namespace share the hostname and every address, so nothing here separates
+them. Give them distinct `HOSTNAME` values.
 
 The label name must match `[a-zA-Z_][a-zA-Z0-9_]*`. Names beginning with `__` are reserved by
 Prometheus, and `le`, `ge`, and `quantile` are reserved by the sink for histogram, exponential
