@@ -91,7 +91,7 @@ pipeline:
 | `idle_timeout` | `60s` | Connection idle timeout. Must be between 1s and 600s. |
 | `out_of_order_time_window` | `10s` | Time window for handling out-of-order metric samples. |
 | `sanitize_names` | `true` | Whether to sanitize metric names to be Prometheus-compliant. |
-| `instance_label` | none | Name of a label whose value is this instance's IP address. See [Distinguishing Instances](#instance-label). |
+| `instance_label` | none | Name of a label whose value identifies this instance. See [Distinguishing Instances](#instance-label). |
 | `threshold` | See below | Buffer threshold configuration. See [Threshold Configuration](#threshold-configuration). |
 
 ### <a name="instance-label">Distinguishing Instances</a>
@@ -102,8 +102,8 @@ deduplicate on series plus timestamp, so they keep one instance's sample and dro
 reporting an error. An `N`-instance deployment then reports roughly `1/N` of the true value, and
 nothing surfaces the loss.
 
-Set `instance_label` to the name of a label whose value the sink resolves at startup from the IP
-address of this instance, so the series of each instance stop colliding:
+Set `instance_label` to the name of a label whose value the sink resolves at startup from the identity
+of this instance, so the series of each instance stop colliding:
 
 ```yaml
 pipeline:
@@ -126,16 +126,18 @@ it is resolved rather than configured, one configuration shared by every instanc
 matters for managed deployments such as OpenSearch Ingestion, which runs every OCU of a pipeline from
 a single pipeline definition and so has nowhere to write a per-instance value.
 
-The address is the one the operating system would use to reach `url`, found by a routing lookup which
-sends no traffic. On an instance holding more than one address this is the address the endpoint
-observes, rather than an arbitrary choice among them. Where the lookup cannot answer, such as when the
-endpoint does not resolve at startup, the sink falls back to the addresses assigned to the local
-network interfaces.
+The value is an opaque identifier rather than the hostname or address itself, so neither is exposed in
+the metrics the sink writes. It is a truncated SHA-256 hash of the host identity resolved by
+`HostContext`, which tries the local hostname, then the `HOSTNAME` environment variable, then an
+address assigned to a local network interface, then the source address of a routing lookup which sends
+no traffic. The same identifier is used by the `otel_apm_service_map` processor for its
+`service_map_processor_host_id` label, so the two agree for a given instance.
 
-The hostname is not used. Hostname resolution depends on the hostname being present in the name
-service, and where it is absent the usual result is one fallback value shared by every instance, which
-is the collision this option exists to prevent. If no address can be resolved the sink fails at startup
-rather than emitting a value which is the same everywhere.
+The fallbacks matter because hostname resolution alone is not enough. It depends on the hostname being
+present in the name service, and in an ordinary container it often is not; the usual result is one
+value shared by every instance, which is the collision this option exists to prevent. If no identity
+can be resolved at all, the sink fails at startup rather than emitting a value which is the same
+everywhere.
 
 The label name must match `[a-zA-Z_][a-zA-Z0-9_]*`. Names beginning with `__` are reserved by
 Prometheus, and `le`, `ge`, and `quantile` are reserved by the sink for histogram, exponential
@@ -143,7 +145,7 @@ histogram, and summary series, so none of these are permitted; an invalid name f
 the pipeline does not start. If the name is also a metric attribute, the metric attribute wins and the
 label is not added to that series.
 
-Note that an instance which restarts with a different address starts a new series. This is inherent
+Note that an instance which restarts with a different identity starts a new series. This is inherent
 to labelling per instance, and consumers that aggregate the label away are unaffected.
 
 ### <a name="threshold-configuration">Threshold Configuration</a>

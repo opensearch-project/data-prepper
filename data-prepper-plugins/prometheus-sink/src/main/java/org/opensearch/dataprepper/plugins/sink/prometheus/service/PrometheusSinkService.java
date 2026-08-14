@@ -16,10 +16,11 @@ import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.common.sink.ReentrantLockStrategy;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.host.HostContext;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.prometheus.InstanceAddressResolver;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
 
 import java.util.ArrayList;
@@ -47,14 +48,14 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
                                  final PrometheusHttpSender httpSender,
                                  final PipelineDescription pipelineDescription) {
         this(prometheusSinkConfiguration, sinkMetrics, httpSender, pipelineDescription,
-                () -> InstanceAddressResolver.resolveLocalIpv4(prometheusSinkConfiguration.getUrl()));
+                PrometheusSinkService::resolveInstanceId);
     }
 
     PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
                           final SinkMetrics sinkMetrics,
                           final PrometheusHttpSender httpSender,
                           final PipelineDescription pipelineDescription,
-                          final Supplier<String> instanceAddressSupplier) {
+                          final Supplier<String> instanceIdSupplier) {
         super(new ReentrantLockStrategy(),
               new PrometheusSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
                   prometheusSinkConfiguration.getThresholdConfig().getMaxRequestSizeBytes(),
@@ -64,11 +65,22 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
               sinkMetrics);
         sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
         instanceLabelName = prometheusSinkConfiguration.getInstanceLabel();
-        instanceLabelValue = instanceLabelName == null ? null : instanceAddressSupplier.get();
+        instanceLabelValue = instanceLabelName == null ? null : instanceIdSupplier.get();
         this.dropIfNoDLQConfigured = false;
         this.dlqRecords = new ArrayList<>();
         this.httpSender = httpSender;
         this.pipelineDescription = pipelineDescription;
+    }
+
+    static String resolveInstanceId() {
+        if (!HostContext.isHostnameResolved()) {
+            throw new InvalidPluginConfigurationException(
+                    "Unable to resolve an identity for this host, so instance_label cannot produce a value " +
+                            "which distinguishes this instance from the others writing to the same endpoint. " +
+                            "Give this instance a resolvable hostname or a routable address, or remove " +
+                            "instance_label to write series without it.");
+        }
+        return HostContext.getStableHostId();
     }
 
     public void addFailedEventsToDLQ(final List<Event> events, final Throwable ex) {

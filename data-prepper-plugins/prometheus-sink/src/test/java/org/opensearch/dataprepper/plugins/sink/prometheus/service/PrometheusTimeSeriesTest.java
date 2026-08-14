@@ -232,11 +232,11 @@ public class PrometheusTimeSeriesTest {
     public void testInstanceLabelIsAddedToEveryTimeSeries() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final Histogram histogram = createHistogramMetric(name, "s");
-        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, "dp_instance", "10.0.0.1");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, "dp_instance", "3f2b1c4d5e6f7a8b");
 
         assertThat(timeSeries.getTimeSeriesList().size(), greaterThan(1));
         for (final TimeSeries series : timeSeries.getTimeSeriesList()) {
-            assertThat(getLabels(series).get("dp_instance"), equalTo("10.0.0.1"));
+            assertThat(getLabels(series).get("dp_instance"), equalTo("3f2b1c4d5e6f7a8b"));
         }
     }
 
@@ -244,7 +244,7 @@ public class PrometheusTimeSeriesTest {
     public void testInstanceLabelDoesNotOverrideAMetricAttribute() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final Gauge gauge = createGaugeMetric(name, "s");
-        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, "attrKey1", "10.0.0.1");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, "attrKey1", "3f2b1c4d5e6f7a8b");
 
         final TimeSeries series = timeSeries.getTimeSeriesList().get(0);
         assertThat(getLabels(series).get("attrKey1"), equalTo("1"));
@@ -257,7 +257,7 @@ public class PrometheusTimeSeriesTest {
         final Gauge gauge = createGaugeMetric(name, "s");
         // The nested attribute attrKey2.attrKey3 reaches the series as attrKey2_attrKey3, so the configured
         // name has to be compared against the name as emitted rather than as it arrived.
-        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, "attrKey2_attrKey3", "10.0.0.1");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(gauge, true, "attrKey2_attrKey3", "3f2b1c4d5e6f7a8b");
 
         final TimeSeries series = timeSeries.getTimeSeriesList().get(0);
         assertThat(series.getLabelsList().stream()
@@ -270,8 +270,8 @@ public class PrometheusTimeSeriesTest {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final Gauge gauge = createGaugeMetric(name, "s");
 
-        final PrometheusTimeSeries instanceA = new PrometheusTimeSeries(gauge, true, "dp_instance", "10.0.0.1");
-        final PrometheusTimeSeries instanceB = new PrometheusTimeSeries(gauge, true, "dp_instance", "10.0.0.2");
+        final PrometheusTimeSeries instanceA = new PrometheusTimeSeries(gauge, true, "dp_instance", "3f2b1c4d5e6f7a8b");
+        final PrometheusTimeSeries instanceB = new PrometheusTimeSeries(gauge, true, "dp_instance", "9c8d7e6f5a4b3c2d");
         final PrometheusTimeSeries withoutInstanceLabel = new PrometheusTimeSeries(gauge, true, null, null);
 
         assertThat(instanceA.getMetricKey(), not(equalTo(instanceB.getMetricKey())));
@@ -285,7 +285,7 @@ public class PrometheusTimeSeriesTest {
         final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
 
         for (final String reservedName : PrometheusTimeSeries.RESERVED_LABEL_NAMES) {
-            final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, reservedName, "10.0.0.1");
+            final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, reservedName, "3f2b1c4d5e6f7a8b");
 
             assertThat(timeSeries.getTimeSeriesList().size(), greaterThan(1));
             for (final TimeSeries series : timeSeries.getTimeSeriesList()) {

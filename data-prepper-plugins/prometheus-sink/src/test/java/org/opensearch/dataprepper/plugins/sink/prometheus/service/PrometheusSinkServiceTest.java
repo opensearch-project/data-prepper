@@ -25,8 +25,11 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.host.HostContext;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
 import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusPushResult;
@@ -41,19 +44,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class PrometheusSinkServiceTest {
 
     private static final String TEST_PIPELINE_NAME = "testPipeline";
+    private static final String HOST_ID_A = "3f2b1c4d5e6f7a8b";
+    private static final String HOST_ID_B = "9c8d7e6f5a4b3c2d";
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     private static final String SINK_YAML =
@@ -213,22 +221,22 @@ public class PrometheusSinkServiceTest {
     }
 
     @Test
-    void instance_label_is_added_to_every_series_with_the_resolved_address() throws Exception {
+    void instance_label_is_added_to_every_series_with_the_resolved_host_id() throws Exception {
         final PrometheusSinkConfiguration config = objectMapper.readValue(
                 "        url: \"http://localhost:9090/api/v1/write\"\n" +
                         "        insecure: true\n" +
                         "        instance_label: dp_instance\n", PrometheusSinkConfiguration.class);
         final PrometheusSinkService objectUnderTest = new PrometheusSinkService(
-                config, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+                config, sinkMetrics, httpSender, pipelineDescription, () -> HOST_ID_A);
 
         final PrometheusSinkBufferEntry entry =
                 (PrometheusSinkBufferEntry) objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
 
-        assertThat(labelsOf(entry).get("dp_instance"), equalTo("10.0.1.7"));
+        assertThat(labelsOf(entry).get("dp_instance"), equalTo(HOST_ID_A));
     }
 
     @Test
-    void the_address_is_resolved_once_rather_than_per_event() throws Exception {
+    void the_host_id_is_resolved_once_rather_than_per_event() throws Exception {
         final PrometheusSinkConfiguration config = objectMapper.readValue(
                 "        url: \"http://localhost:9090/api/v1/write\"\n" +
                         "        insecure: true\n" +
@@ -238,7 +246,7 @@ public class PrometheusSinkServiceTest {
                 config, sinkMetrics, httpSender, pipelineDescription,
                 () -> {
                     resolutions.incrementAndGet();
-                    return "10.0.1.7";
+                    return HOST_ID_A;
                 });
 
         objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
@@ -248,7 +256,7 @@ public class PrometheusSinkServiceTest {
     }
 
     @Test
-    void the_address_is_not_resolved_when_no_instance_label_is_configured() throws Exception {
+    void the_host_id_is_not_resolved_when_no_instance_label_is_configured() throws Exception {
         final PrometheusSinkConfiguration config = objectMapper.readValue(
                 "        url: \"http://localhost:9090/api/v1/write\"\n" +
                         "        insecure: true\n", PrometheusSinkConfiguration.class);
@@ -257,7 +265,7 @@ public class PrometheusSinkServiceTest {
         new PrometheusSinkService(config, sinkMetrics, httpSender, pipelineDescription,
                 () -> {
                     resolutions.incrementAndGet();
-                    return "10.0.1.7";
+                    return HOST_ID_A;
                 });
 
         assertThat(resolutions.get(), equalTo(0));
@@ -269,12 +277,34 @@ public class PrometheusSinkServiceTest {
                 "        url: \"http://localhost:9090/api/v1/write\"\n" +
                         "        insecure: true\n", PrometheusSinkConfiguration.class);
         final PrometheusSinkService objectUnderTest = new PrometheusSinkService(
-                config, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+                config, sinkMetrics, httpSender, pipelineDescription, () -> HOST_ID_A);
 
         final PrometheusSinkBufferEntry entry =
                 (PrometheusSinkBufferEntry) objectUnderTest.getSinkBufferEntry(createGaugeMetric("gauge1", null));
 
         assertThat(labelsOf(entry).containsKey("dp_instance"), equalTo(false));
+    }
+
+    @Test
+    void the_instance_label_value_is_the_stable_host_id() {
+        try (MockedStatic<HostContext> hostContext = mockStatic(HostContext.class)) {
+            hostContext.when(HostContext::isHostnameResolved).thenReturn(true);
+            hostContext.when(HostContext::getStableHostId).thenReturn(HOST_ID_A);
+
+            assertThat(PrometheusSinkService.resolveInstanceId(), equalTo(HOST_ID_A));
+        }
+    }
+
+    @Test
+    void the_pipeline_fails_to_start_when_no_host_identity_can_be_resolved() {
+        try (MockedStatic<HostContext> hostContext = mockStatic(HostContext.class)) {
+            hostContext.when(HostContext::isHostnameResolved).thenReturn(false);
+
+            final InvalidPluginConfigurationException exception = assertThrows(
+                    InvalidPluginConfigurationException.class, PrometheusSinkService::resolveInstanceId);
+
+            assertThat(exception.getMessage(), containsString("instance_label"));
+        }
     }
 
     @Test
@@ -285,9 +315,9 @@ public class PrometheusSinkServiceTest {
         final PrometheusSinkConfiguration sharedConfig = objectMapper.readValue(yaml, PrometheusSinkConfiguration.class);
 
         final PrometheusSinkService instanceA = new PrometheusSinkService(
-                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.1.7");
+                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> HOST_ID_A);
         final PrometheusSinkService instanceB = new PrometheusSinkService(
-                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> "10.0.2.9");
+                sharedConfig, sinkMetrics, httpSender, pipelineDescription, () -> HOST_ID_B);
 
         final String seriesA = labelsOf((PrometheusSinkBufferEntry)
                 instanceA.getSinkBufferEntry(createGaugeMetric("gauge1", null))).toString();
