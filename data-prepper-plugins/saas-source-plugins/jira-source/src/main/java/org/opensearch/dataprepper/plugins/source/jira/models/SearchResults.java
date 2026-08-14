@@ -24,16 +24,16 @@ public class SearchResults {
     @JsonProperty("expand")
     private String expand = null;
 
-    @JsonProperty("startAt")
-    private Integer startAt = null;
-
     @JsonProperty("maxResults")
     private Integer maxResults = null;
 
-    @JsonProperty("total")
-    private Integer total = null;
-
     @JsonProperty("issues")
     private List<IssueBean> issues = null;
+
+    @JsonProperty("nextPageToken")
+    private String nextPageToken  = null;
+
+    @JsonProperty("isLast")
+    private Boolean isLast  = false;
 
 }
