@@ -11,6 +11,7 @@ import org.opensearch.client.opensearch._types.query_dsl.TermsQuery;
 import org.opensearch.client.opensearch._types.query_dsl.TermsQueryField;
 import org.opensearch.client.opensearch.core.MsearchRequest;
 import org.opensearch.client.opensearch.core.MsearchResponse;
+import org.opensearch.client.opensearch.core.msearch.MultiSearchResponseItem;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryManagerBulkOperation;
@@ -127,12 +128,16 @@ public class ExistingDocumentQueryManager implements Runnable {
     void runQueryLoop() {
         if (!bulkOperationsWaitingForQuery.isEmpty() && documentsCurrentlyBeingQueriedGauge.get() > 0) {
 
-            // Query for existing documents
-            final MsearchRequest msearchRequest = buildMultiSearchRequest();
+            // Query for existing documents. Track the index key used for each search request, in request
+            // order, so responses can be correlated back to the correct pending-operations map. We cannot
+            // rely on hit.index() for this: a search against an alias (or datastream) returns the concrete
+            // backing index in the hit, which differs from the configured index/alias key. See #6902.
+            final List<String> searchRequestIndexKeys = new ArrayList<>();
+            final MsearchRequest msearchRequest = buildMultiSearchRequest(searchRequestIndexKeys);
             final MsearchResponse<ObjectNode> msearchResponse = queryForTermValues(msearchRequest);
 
             // Drop and Release Existing Documents
-            dropAndReleaseFoundEvents(msearchResponse);
+            dropAndReleaseFoundEvents(msearchResponse, searchRequestIndexKeys);
 
             // Move non-existing documents past query_duration to bulkOperationsReadyForIndex
             moveBulkRequestsThatHaveReachedQueryDuration();
@@ -183,7 +188,7 @@ public class ExistingDocumentQueryManager implements Runnable {
         }
     }
 
-    private MsearchRequest buildMultiSearchRequest() {
+    private MsearchRequest buildMultiSearchRequest(final List<String> orderedIndexKeys) {
         return MsearchRequest.of(m -> {
             for (final Map.Entry<String, Map<String, QueryManagerBulkOperation>> entry : bulkOperationsWaitingForQuery.entrySet()) {
                 final String index = entry.getKey();
@@ -194,6 +199,10 @@ public class ExistingDocumentQueryManager implements Runnable {
                 for (int i = 0; i < values.size(); i += batchSize) {
                     final List<FieldValue> chunk = values.subList(i, Math.min(i + batchSize, values.size()));
 
+                    // Record the index key for this search request so its response (msearch preserves
+                    // request order) can be mapped back to the correct pending operations, independent
+                    // of the concrete backing index reported by hit.index().
+                    orderedIndexKeys.add(index);
                     m.searches(s -> s
                             .header(h -> h.index(index))
                             .body(b -> b
@@ -257,36 +266,52 @@ public class ExistingDocumentQueryManager implements Runnable {
         }
     }
 
-    private void dropAndReleaseFoundEvents(final MsearchResponse<ObjectNode> msearchResponse) {
-        msearchResponse.responses().forEach(response -> {
+    private void dropAndReleaseFoundEvents(final MsearchResponse<ObjectNode> msearchResponse, final List<String> orderedIndexKeys) {
+        final List<MultiSearchResponseItem<ObjectNode>> responses = msearchResponse.responses();
+        for (int responseIndex = 0; responseIndex < responses.size(); responseIndex++) {
+            final MultiSearchResponseItem<ObjectNode> response = responses.get(responseIndex);
             if (response.isFailure()) {
                 LOG.error("Search response failed, potential for duplicate documents: {}", response.failure().error().toString());
-            } else {
-                response.result().hits().hits().forEach(hit -> {
-                    final String indexForHit = hit.index();
-                    final ObjectNode sourceForHit = hit.source();
-                    final String queryTermValue = sourceForHit.findValue(queryTerm).textValue();
-
-                    lockWaitingForQuery.lock();
-                    try {
-                        final Map<String, QueryManagerBulkOperation> bulkOperationsForIndex = bulkOperationsWaitingForQuery.get(indexForHit);
-                        final QueryManagerBulkOperation bulkOperationToRelease = bulkOperationsForIndex.get(queryTermValue);
-                        if (bulkOperationToRelease == null) {
-                            // Means two documents with the same query term value were found
-                            LOG.warn("Bulk operation for term value {} with id {} is null, potentially a duplicate document", queryTermValue, hit.id());
-                            potentialDuplicatesDeleted.increment();
-                        } else {
-                            LOG.debug("Found document with query term {}, dropping and releasing Event handle", queryTermValue);
-                            bulkOperationToRelease.getBulkOperationWrapper().releaseEventHandle(true);
-                            eventsDroppedAndReleasedCounter.increment();
-                            documentsCurrentlyBeingQueriedGauge.decrementAndGet();
-                            bulkOperationsForIndex.remove(queryTermValue);
-                        }
-                    } finally {
-                        lockWaitingForQuery.unlock();
-                    }
-                });
+                continue;
             }
-        });
+
+            // Correlate this response to the index key of the request that produced it (msearch preserves
+            // request order). hit.index() must not be used here: for aliases/datastreams the hit reports the
+            // concrete backing index, which differs from the configured index/alias key and would never match
+            // the pending-operations map, causing an NPE that wedges the query loop indefinitely. See #6902.
+            final String indexKey = responseIndex < orderedIndexKeys.size() ? orderedIndexKeys.get(responseIndex) : null;
+            final Map<String, QueryManagerBulkOperation> bulkOperationsForIndex =
+                    indexKey == null ? null : bulkOperationsWaitingForQuery.get(indexKey);
+
+            response.result().hits().hits().forEach(hit -> {
+                final ObjectNode sourceForHit = hit.source();
+                final String queryTermValue = sourceForHit.findValue(queryTerm).textValue();
+
+                lockWaitingForQuery.lock();
+                try {
+                    if (bulkOperationsForIndex == null) {
+                        // Defensive: no pending operations tracked for this index key. Skip rather than
+                        // throwing so a single unexpected response can never NPE and block the query loop.
+                        LOG.warn("No pending bulk operations found for index key {} (hit index {}); skipping release for term value {}",
+                                indexKey, hit.index(), queryTermValue);
+                        return;
+                    }
+                    final QueryManagerBulkOperation bulkOperationToRelease = bulkOperationsForIndex.get(queryTermValue);
+                    if (bulkOperationToRelease == null) {
+                        // Means two documents with the same query term value were found
+                        LOG.warn("Bulk operation for term value {} with id {} is null, potentially a duplicate document", queryTermValue, hit.id());
+                        potentialDuplicatesDeleted.increment();
+                    } else {
+                        LOG.debug("Found document with query term {}, dropping and releasing Event handle", queryTermValue);
+                        bulkOperationToRelease.getBulkOperationWrapper().releaseEventHandle(true);
+                        eventsDroppedAndReleasedCounter.increment();
+                        documentsCurrentlyBeingQueriedGauge.decrementAndGet();
+                        bulkOperationsForIndex.remove(queryTermValue);
+                    }
+                } finally {
+                    lockWaitingForQuery.unlock();
+                }
+            });
+        }
     }
 }
