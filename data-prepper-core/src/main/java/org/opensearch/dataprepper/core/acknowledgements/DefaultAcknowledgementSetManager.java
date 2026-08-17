@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
+import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.time.Duration;
@@ -58,6 +59,7 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
         return acknowledgementSet;
     }
 
+    @PreDestroy
     public void shutdown() {
         acknowledgementSetMonitorThread.stop();
     }

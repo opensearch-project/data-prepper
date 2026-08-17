@@ -9,9 +9,14 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 
 class AcknowledgementSetMonitorThread {
+    private static final Logger LOG = LoggerFactory.getLogger(AcknowledgementSetMonitorThread.class);
+    private static final Duration STOP_JOIN_TIMEOUT = Duration.ofSeconds(5);
     private final Thread monitorThread;
     private final AcknowledgementSetMonitor acknowledgementSetMonitor;
     private final Duration delayTime;
@@ -33,6 +38,15 @@ class AcknowledgementSetMonitorThread {
 
     public void stop() {
         isStopped = true;
+        monitorThread.interrupt();
+        try {
+            monitorThread.join(STOP_JOIN_TIMEOUT.toMillis());
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        if (monitorThread.isAlive()) {
+            LOG.warn("The acknowledgement-monitor thread did not stop within {}.", STOP_JOIN_TIMEOUT);
+        }
     }
 
     private class Monitor implements Runnable {
@@ -43,7 +57,8 @@ class AcknowledgementSetMonitorThread {
                 try {
                     Thread.sleep(delayTime.toMillis());
                 } catch (final InterruptedException e) {
-                    throw new RuntimeException(e);
+                    Thread.currentThread().interrupt();
+                    break;
                 }
             }
         }

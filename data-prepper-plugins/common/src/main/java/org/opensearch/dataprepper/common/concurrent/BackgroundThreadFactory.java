@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.common.concurrent;
@@ -12,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A {@link ThreadFactory} that names threads with a prefix and
- * sets as daemon threads so that they do not interrupt shutdown.
+ * sets threads as non-daemon threads.
  * <p>
  * The thread name will be <i>namePrefix</i>-<i>threadNumber</i>.
  */
