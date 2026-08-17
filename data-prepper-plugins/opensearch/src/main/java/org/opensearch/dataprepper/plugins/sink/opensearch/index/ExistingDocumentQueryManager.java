@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -189,33 +190,42 @@ public class ExistingDocumentQueryManager implements Runnable {
     }
 
     private MsearchRequest buildMultiSearchRequest(final List<String> orderedIndexKeys) {
+        // Build the (index key, term-value chunk) pairs deterministically BEFORE constructing the request,
+        // so the order of orderedIndexKeys is guaranteed to align with the order in which searches are
+        // added to the msearch request (and therefore with the response order), independent of how or when
+        // the builder lambda below is invoked. This alignment is what lets dropAndReleaseFoundEvents map a
+        // response back to its configured index/alias key rather than the concrete backing index reported
+        // by hit.index(). See #6902.
+        final List<Map.Entry<String, List<FieldValue>>> searchRequestChunks = new ArrayList<>();
+        for (final Map.Entry<String, Map<String, QueryManagerBulkOperation>> entry : bulkOperationsWaitingForQuery.entrySet()) {
+            final String index = entry.getKey();
+            final List<FieldValue> values = getTermValues(entry.getValue().values());
+            final int batchSize = 1000;
+
+            LOG.info("Creating search requests for {} query term values in batches of {}", values.size(), batchSize);
+            for (int i = 0; i < values.size(); i += batchSize) {
+                final List<FieldValue> chunk = values.subList(i, Math.min(i + batchSize, values.size()));
+                orderedIndexKeys.add(index);
+                searchRequestChunks.add(new AbstractMap.SimpleEntry<>(index, chunk));
+            }
+        }
+
         return MsearchRequest.of(m -> {
-            for (final Map.Entry<String, Map<String, QueryManagerBulkOperation>> entry : bulkOperationsWaitingForQuery.entrySet()) {
-                final String index = entry.getKey();
-                final List<FieldValue> values = getTermValues(entry.getValue().values());
-                final int batchSize = 1000;
-
-                LOG.info("Creating search requests for {} query term values in batches of {}", values.size(), batchSize);
-                for (int i = 0; i < values.size(); i += batchSize) {
-                    final List<FieldValue> chunk = values.subList(i, Math.min(i + batchSize, values.size()));
-
-                    // Record the index key for this search request so its response (msearch preserves
-                    // request order) can be mapped back to the correct pending operations, independent
-                    // of the concrete backing index reported by hit.index().
-                    orderedIndexKeys.add(index);
-                    m.searches(s -> s
-                            .header(h -> h.index(index))
-                            .body(b -> b
-                                    .size(chunk.size() * 2)
-                                    .source(source -> source.filter(f -> f.includes(queryTerm)))
-                                    .query(Query.of(q -> q
-                                            .terms(TermsQuery.of(t -> t
-                                                    .field(queryTerm)
-                                                    .terms(TermsQueryField.of(tf -> tf.value(chunk)))
-                                            ))
-                                    ))
-                            ));
-                }
+            for (final Map.Entry<String, List<FieldValue>> searchRequestChunk : searchRequestChunks) {
+                final String index = searchRequestChunk.getKey();
+                final List<FieldValue> chunk = searchRequestChunk.getValue();
+                m.searches(s -> s
+                        .header(h -> h.index(index))
+                        .body(b -> b
+                                .size(chunk.size() * 2)
+                                .source(source -> source.filter(f -> f.includes(queryTerm)))
+                                .query(Query.of(q -> q
+                                        .terms(TermsQuery.of(t -> t
+                                                .field(queryTerm)
+                                                .terms(TermsQueryField.of(tf -> tf.value(chunk)))
+                                        ))
+                                ))
+                        ));
             }
             return m;
         });
