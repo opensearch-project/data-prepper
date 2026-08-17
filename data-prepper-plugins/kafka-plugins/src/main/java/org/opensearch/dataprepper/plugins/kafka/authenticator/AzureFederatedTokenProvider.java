@@ -36,8 +36,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
-
 public class AzureFederatedTokenProvider {
     private static final Logger LOG = LoggerFactory.getLogger(AzureFederatedTokenProvider.class);
 
@@ -57,6 +55,8 @@ public class AzureFederatedTokenProvider {
     private final String scope;
     private final Supplier<StsClient> stsClientSupplier;
     private final HttpClient httpClient;
+    // Null on paths without a PluginMetrics handle (buffer/admin); metric sites are then no-ops.
+    private final KafkaSourceAuthMetrics authMetrics;
 
     private final ReentrantLock lock = new ReentrantLock();
     private volatile CachedToken cached;
@@ -66,12 +66,21 @@ public class AzureFederatedTokenProvider {
                                        final String clientId, final String scope,
                                        final Map<String, String> stsHeaderOverrides,
                                        final AwsCredentialsSupplier awsCredentialsSupplier) {
+        this(region, stsRoleArn, tokenEndpoint, clientId, scope, stsHeaderOverrides, awsCredentialsSupplier, null);
+    }
+
+    public AzureFederatedTokenProvider(final String region, final String stsRoleArn, final String tokenEndpoint,
+                                       final String clientId, final String scope,
+                                       final Map<String, String> stsHeaderOverrides,
+                                       final AwsCredentialsSupplier awsCredentialsSupplier,
+                                       final KafkaSourceAuthMetrics authMetrics) {
         this(region, stsRoleArn, tokenEndpoint, clientId, scope, stsHeaderOverrides, awsCredentialsSupplier,
                 provider -> StsClient.builder()
                         .region(Region.of(region))
                         .credentialsProvider(provider)
                         .build(),
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                authMetrics);
     }
 
     AzureFederatedTokenProvider(final String region, final String stsRoleArn, final String tokenEndpoint,
@@ -80,6 +89,17 @@ public class AzureFederatedTokenProvider {
                                 final AwsCredentialsSupplier awsCredentialsSupplier,
                                 final Function<AwsCredentialsProvider, StsClient> stsClientFactory,
                                 final HttpClient httpClient) {
+        this(region, stsRoleArn, tokenEndpoint, clientId, scope, stsHeaderOverrides, awsCredentialsSupplier,
+                stsClientFactory, httpClient, null);
+    }
+
+    AzureFederatedTokenProvider(final String region, final String stsRoleArn, final String tokenEndpoint,
+                                final String clientId, final String scope,
+                                final Map<String, String> stsHeaderOverrides,
+                                final AwsCredentialsSupplier awsCredentialsSupplier,
+                                final Function<AwsCredentialsProvider, StsClient> stsClientFactory,
+                                final HttpClient httpClient,
+                                final KafkaSourceAuthMetrics authMetrics) {
         this.region = region;
         this.stsRoleArn = stsRoleArn;
         this.tokenEndpoint = tokenEndpoint;
@@ -88,6 +108,7 @@ public class AzureFederatedTokenProvider {
         this.stsClientSupplier =
                 () -> stsClientFactory.apply(baseCredentials(region, stsRoleArn, stsHeaderOverrides, awsCredentialsSupplier));
         this.httpClient = httpClient;
+        this.authMetrics = authMetrics;
     }
 
     String getRegion() {
@@ -120,8 +141,20 @@ public class AzureFederatedTokenProvider {
             if (cached != null && cached.isValid()) {
                 return cached.newTokenInstance();
             }
-            final AzureFederatedOAuthBearerToken token = exchange();
+            final AzureFederatedOAuthBearerToken token;
+            try {
+                token = exchange();
+            } catch (final RuntimeException e) {
+                if (authMetrics != null) {
+                    authMetrics.recordFailure(classifyFailure(e));
+                }
+                throw e;
+            }
             cached = new CachedToken(token);
+            if (authMetrics != null) {
+                // Headroom to the proactive re-mint deadline (expiry minus skew), not raw expiry.
+                authMetrics.recordRefresh(token.lifetimeMs() - SKEW_BUFFER_MS);
+            }
             return token;
         } finally {
             lock.unlock();
@@ -130,6 +163,33 @@ public class AzureFederatedTokenProvider {
 
     private AzureFederatedOAuthBearerToken exchange() {
         return postToAzure(mintAwsJwt());
+    }
+
+    // Walk the cause chain to a bounded cause tag; anything unmatched is CAUSE_OTHER.
+    private static String classifyFailure(final RuntimeException e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof OutboundWebIdentityFederationDisabledException) {
+                return KafkaSourceAuthMetrics.CAUSE_AWS_OUTBOUND_FEDERATION_DISABLED;
+            }
+            if (t instanceof StsException) {
+                final StsException stsException = (StsException) t;
+                final String errorCode = errorCodeOf(stsException);
+                return errorCode != null && errorCode.contains("AccessDenied")
+                        ? KafkaSourceAuthMetrics.CAUSE_AWS_STS_ACCESS_DENIED
+                        : KafkaSourceAuthMetrics.CAUSE_AWS_STS_ERROR;
+            }
+            if (t instanceof AzureTokenExchangeException) {
+                return KafkaSourceAuthMetrics.CAUSE_AZURE_TOKEN_EXCHANGE_REJECTED;
+            }
+            if (t instanceof IOException || t instanceof InterruptedException) {
+                return KafkaSourceAuthMetrics.CAUSE_NETWORK;
+            }
+        }
+        return KafkaSourceAuthMetrics.CAUSE_OTHER;
+    }
+
+    private static String errorCodeOf(final StsException e) {
+        return e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : null;
     }
 
     private StsClient stsClient() {
@@ -172,24 +232,18 @@ public class AzureFederatedTokenProvider {
                     .durationSeconds(JWT_DURATION_SECONDS));
             return response.webIdentityToken();
         } catch (final OutboundWebIdentityFederationDisabledException e) {
-            LOG.error(SENSITIVE, "AWS Outbound Identity Federation is not enabled for {}", identity());
-            throw new RuntimeException("AWS Outbound Identity Federation is not enabled for "
-                    + identity() + ". Enable it once per account.", e);
+            LOG.error("The outbound web identity federation feature is not enabled for the account.", e);
+            throw new RuntimeException("The outbound web identity federation feature is not enabled for the account.", e);
         } catch (final StsException e) {
-            if (e.statusCode() == 403) {
-                LOG.error(SENSITIVE, "{} lacks sts:GetWebIdentityToken", identity());
-                throw new RuntimeException(identity()
-                        + " lacks sts:GetWebIdentityToken (AccessDenied). Add it to the role policy.", e);
-            }
-            throw new RuntimeException("STS GetWebIdentityToken failed for " + identity(), e);
+            final String errorCode = errorCodeOf(e);
+            LOG.error("STS request failed during azure_federated authentication (HTTP {}, errorCode {}).",
+                    e.statusCode(), errorCode, e);
+            throw new RuntimeException("STS request failed during azure_federated authentication (HTTP "
+                    + e.statusCode() + ", errorCode " + errorCode + ")", e);
         } catch (final Exception e) {
-            throw new RuntimeException("AWS credential resolution failed for " + identity()
-                    + " (verify the AWS credentials/role configuration)", e);
+            LOG.error("Unexpected failure during azure_federated authentication.", e);
+            throw new RuntimeException("Unexpected failure during azure_federated authentication", e);
         }
-    }
-
-    private String identity() {
-        return stsRoleArn != null ? "Role " + stsRoleArn : "the resolved AWS credentials identity";
     }
 
     private AzureFederatedOAuthBearerToken postToAzure(final String awsJwt) {
@@ -207,8 +261,8 @@ public class AzureFederatedTokenProvider {
             final HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 final String aadsts = extractAadstsError(response.body());
-                LOG.error(SENSITIVE, "Azure token exchange failed: HTTP {} {}", response.statusCode(), aadsts);
-                throw new RuntimeException("Azure token exchange failed: HTTP " + response.statusCode() + " " + aadsts);
+                LOG.error("Azure token exchange was rejected (HTTP {}, {}).", response.statusCode(), aadsts);
+                throw new AzureTokenExchangeException(response.statusCode(), aadsts);
             }
             final JsonNode json = OBJECT_MAPPER.readTree(response.body());
             final String accessToken = json.get("access_token").asText();
@@ -235,6 +289,14 @@ public class AzureFederatedTokenProvider {
 
     private static String encode(final String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    // Dedicated type so the failure metric classifies the Azure non-200 path by instanceof rather than
+    // by message text (which is then free to change). The AADSTS code is surfaced, not interpreted.
+    static final class AzureTokenExchangeException extends RuntimeException {
+        AzureTokenExchangeException(final int statusCode, final String aadsts) {
+            super("Azure token exchange was rejected (HTTP " + statusCode + ", " + aadsts + ")");
+        }
     }
 
     private final class CachedToken {
