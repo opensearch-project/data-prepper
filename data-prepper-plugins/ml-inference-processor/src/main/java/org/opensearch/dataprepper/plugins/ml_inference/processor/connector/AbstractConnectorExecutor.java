@@ -26,15 +26,20 @@ public abstract class AbstractConnectorExecutor implements RemoteConnectorExecut
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractConnectorExecutor.class);
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Merges runtime parameters with connector defaults, resolves URL and payload via
-     * template substitution, then calls {@link #sendRequest}.
-     */
     @Override
     public void executeAction(final ConnectorActionType actionType,
                               final Map<String, String> runtimeParameters) {
+        resolveAndSend(actionType, runtimeParameters);
+    }
+
+    @Override
+    public String executeActionAndGetResponse(final ConnectorActionType actionType,
+                                              final Map<String, String> runtimeParameters) {
+        return resolveAndSend(actionType, runtimeParameters);
+    }
+
+    private String resolveAndSend(final ConnectorActionType actionType,
+                                  final Map<String, String> runtimeParameters) {
         final Connector connector = getConnector();
         final String actionName = actionType.name();
 
@@ -50,19 +55,20 @@ public abstract class AbstractConnectorExecutor implements RemoteConnectorExecut
         final String payload = connector.createPayload(actionName, merged);
 
         LOG.debug("Sending {} request to: {}", action.getMethod(), url);
-        sendRequest(action, url, payload, merged);
+        return sendRequest(action, url, payload, merged);
     }
 
     /**
-     * Performs the actual HTTP request after URL and payload have been resolved.
+     * Performs the actual HTTP request and returns the raw response body.
      *
      * @param action  the matching connector action (carries method, headers, etc.)
      * @param url     the fully-resolved request URL
      * @param payload the fully-resolved request body
      * @param merged  the merged parameter map (connector defaults + runtime overrides)
+     * @return the raw HTTP response body string
      */
-    protected abstract void sendRequest(ConnectorAction action,
-                                        String url,
-                                        String payload,
-                                        Map<String, String> merged);
+    protected abstract String sendRequest(ConnectorAction action,
+                                          String url,
+                                          String payload,
+                                          Map<String, String> merged);
 }
