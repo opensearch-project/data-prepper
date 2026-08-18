@@ -5,10 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Blocking;
@@ -55,6 +58,7 @@ public class OpenSearchAPIService implements BaseHttpService {
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAPIService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final MultiLineJsonCodec jsonCodec = new MultiLineJsonCodec();
@@ -120,6 +124,7 @@ public class OpenSearchAPIService implements BaseHttpService {
             throw new IOException("Bad request data format.", e.getCause());
         }
 
+        final long startNanos = System.nanoTime();
         try {
             if (buffer.isByteBuffer()) {
                 buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
@@ -132,7 +137,16 @@ public class OpenSearchAPIService implements BaseHttpService {
             throw e;
         }
         successRequestsCounter.increment();
-        return HttpResponse.of(HttpStatus.OK);
+        final long tookMillis = (System.nanoTime() - startNanos) / 1_000_000;
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON_UTF_8, buildBulkResponse(tookMillis));
+    }
+
+    private String buildBulkResponse(final long tookMillis) {
+        final ObjectNode root = OBJECT_MAPPER.createObjectNode();
+        root.put("took", tookMillis);
+        root.put("errors", false);
+        root.putArray("items");
+        return root.toString();
     }
 
     private boolean isValidBulkAction(Map<String, Object> actionMap) {
