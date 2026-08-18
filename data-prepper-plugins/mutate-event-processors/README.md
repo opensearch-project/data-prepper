@@ -272,10 +272,12 @@ After the processor runs, this will be the output
 
 ___
 
-## ConvertEntryProcessor
+## ConvertTypeProcessor
 A processor that converts the type of value associated with the specified key in a message to the specified type. Basically this is a "casting" processor that changes types of some fields in the event/message.
 Some of the data in the input may need to be converted to different types (ex integer or double) for passing the events through "condition" based processors or to do conditional routing.
 
+> **Note**
+> `convert_entry_type` is deprecated. Use `convert_type` for new pipelines. The deprecated name remains supported for backward compatibility but will be removed in a future major release.
 ### Basic Usage
 
 To get started with type conversion processor using Data Prepper, create the following `pipeline.yaml`.
@@ -290,7 +292,7 @@ type-conv-pipeline:
     - grok:
         match:
           message: ['%{IPORHOST:clientip} \[%{HTTPDATE:timestamp}\] %{NUMBER:response_status}']
-    - convert_entry_type:
+    - convert_type:
         key: "response_status"
         type: "integer"
   sink:
