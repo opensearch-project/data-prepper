@@ -183,6 +183,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * It supports the following config options
        * `events_per_second`: Number of events allowed per second
        * `when_exceeds`: indicates what action to be taken when more number of events than the number of events allowed per second are received. Default value is `block` which means the processor blocks after max number allowed per second are allowed until the next time period. Other option is `drop` which drops the excess events received in the time period.
+       * `events_per_second_by_group`: Optional list of custom per-group rate limits. Each entry has a `key`, which is a map of `identification_keys` to the values identifying the group, and an `events_per_second` value for that group. Groups that do not match any entry are each rate limited at the top-level `events_per_second`.
     * When the following three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` set to `drop`
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
@@ -194,6 +195,51 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
       ```
     * When the three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` is set to `block`, all three events are allowed.
+    * With a single `identification_key`, `events_per_second_by_group` gives each group value its own limit while other values are each limited at the default `events_per_second`.
+      ```yaml
+      processor:
+        - aggregate:
+            identification_keys: ["/organization"]
+            local_mode: true
+            action:
+              rate_limiter:
+                events_per_second: 1000
+                when_exceeds: drop
+                events_per_second_by_group:
+                  - key:
+                      "/organization": "A"
+                    events_per_second: 5000
+                  - key:
+                      "/organization": "B"
+                    events_per_second: 2000
+      ```
+      Here organization `A` is limited to 5000 events per second, `B` to 2000, and every other organization to the default 1000.
+    * With multiple `identification_keys`, each `key` maps every `identification_key` to its value for the group.
+      ```yaml
+      processor:
+        - aggregate:
+            identification_keys: ["/organization", "/region"]
+            local_mode: true
+            action:
+              rate_limiter:
+                events_per_second: 1000
+                when_exceeds: drop
+                events_per_second_by_group:
+                  - key:
+                      "/organization": "A"
+                      "/region": "us-east-1"
+                    events_per_second: 5000
+                  - key:
+                      "/organization": "A"
+                      "/region": "eu-west-1"
+                    events_per_second: 3000
+                  - key:
+                      "/organization": "B"
+                      "/region": "us-east-1"
+                    events_per_second: 2000
+      ```
+      An event with `organization` `A` and `region` `us-east-1` is limited to 5000 events per second, while an event with `organization` `B` and `region` `eu-west-1` (which matches no entry) uses the default 1000.
+
 
 
 ### <a name="percent_sampler"></a>

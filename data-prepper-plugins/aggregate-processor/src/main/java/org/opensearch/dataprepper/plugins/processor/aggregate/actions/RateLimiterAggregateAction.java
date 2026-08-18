@@ -18,25 +18,40 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 
 import com.google.common.util.concurrent.RateLimiter;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * An AggregateAction that combines multiple Events into a single Event. This action 
- * 
+ * An AggregateAction that rate limits the number of events processed per second. Rate limits may be
+ * applied per group by configuring {@code events_per_second_by_group}, keyed by the {@code aggregate}
+ * processor's {@code identification_keys}. Groups without an explicit configuration are each rate
+ * limited at the default {@code events_per_second}.
+ *
  * @since 2.1
  */
 @DataPrepperPlugin(name = "rate_limiter", pluginType = AggregateAction.class, pluginConfigurationType = RateLimiterAggregateActionConfig.class)
 public class RateLimiterAggregateAction implements AggregateAction {
-    private final RateLimiter rateLimiter;
+    private final int defaultEventsPerSecond;
     private final RateLimiterMode rateLimiterMode;
+    private final Map<Map<Object, Object>, RateLimiter> configuredRateLimiterByGroup;
+    private final Map<Map<Object, Object>, RateLimiter> defaultRateLimiterByGroup;
 
     @DataPrepperPluginConstructor
     public RateLimiterAggregateAction(final RateLimiterAggregateActionConfig ratelimiterAggregateActionConfig) {
-        final int eventsPerSecond = ratelimiterAggregateActionConfig.getEventsPerSecond();
+        this.defaultEventsPerSecond = ratelimiterAggregateActionConfig.getEventsPerSecond();
         this.rateLimiterMode = ratelimiterAggregateActionConfig.getWhenExceeds();
-        this.rateLimiter = RateLimiter.create(eventsPerSecond);
+        this.defaultRateLimiterByGroup = new ConcurrentHashMap<>();
+        this.configuredRateLimiterByGroup = new HashMap<>();
+        for (final RateLimiterAggregateActionConfig.GroupRateLimit groupRateLimit : ratelimiterAggregateActionConfig.getEventsPerSecondByGroup()) {
+            configuredRateLimiterByGroup.put(new HashMap<>(groupRateLimit.getKey()), RateLimiter.create(groupRateLimit.getEventsPerSecond()));
+        }
     }
 
     @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+        final RateLimiter rateLimiter = getRateLimiterForGroup(aggregateActionInput.getIdentificationKeys());
         if (rateLimiterMode == RateLimiterMode.DROP) {
             if (!rateLimiter.tryAcquire()) {
                 return AggregateActionResponse.nullEventResponse();
@@ -47,4 +62,9 @@ public class RateLimiterAggregateAction implements AggregateAction {
         return new AggregateActionResponse(event);
     }
 
+    private RateLimiter getRateLimiterForGroup(final Map<Object, Object> identificationKeys) {
+        final RateLimiter configuredRateLimiter = configuredRateLimiterByGroup.get(identificationKeys);
+        return Objects.requireNonNullElseGet(configuredRateLimiter, () ->
+                defaultRateLimiterByGroup.computeIfAbsent(identificationKeys, key -> RateLimiter.create(defaultEventsPerSecond)));
+    }
 }
