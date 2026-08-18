@@ -29,6 +29,9 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectJsonOp
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.ConfigBucketOwnerProviderFactory;
 import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
@@ -38,6 +41,7 @@ import java.util.function.BiConsumer;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
 public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
+    private static final Logger LOG = LoggerFactory.getLogger(S3Source.class);
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
@@ -113,16 +117,30 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
             s3Handler = new S3SelectObjectWorker(s3ObjectRequest);
         } else {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
-            final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-            final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-            final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
-                    .bucketOwnerProvider(bucketOwnerProvider)
-                    .codec(codec)
-                    .eventConsumer(eventMetadataModifier)
-                    .s3Client(s3ClientBuilderFactory.getS3Client())
-                    .compressionOption(s3SourceConfig.getCompression())
-                    .build();
-            s3Handler = new S3ObjectWorker(s3ObjectRequest);
+            if (codecConfiguration != null) {
+                final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+                final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+                final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
+                        .bucketOwnerProvider(bucketOwnerProvider)
+                        .codec(codec)
+                        .eventConsumer(eventMetadataModifier)
+                        .s3Client(s3ClientBuilderFactory.getS3Client())
+                        .compressionOption(s3SourceConfig.getCompression())
+                        .build();
+                s3Handler = new S3ObjectWorker(s3ObjectRequest);
+            } else {
+                // Auto-detect mode: no codec specified, detect format per-object
+                LOG.info("No codec configured — using auto-detect mode");
+                final AutoDetectCodecFactory autoDetectCodecFactory = new AutoDetectCodecFactory(pluginFactory);
+                final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
+                        .bucketOwnerProvider(bucketOwnerProvider)
+                        .codec(null)
+                        .eventConsumer(eventMetadataModifier)
+                        .s3Client(s3ClientBuilderFactory.getS3Client())
+                        .compressionOption(CompressionOption.AUTOMATIC)
+                        .build();
+                s3Handler = new AutoDetectS3ObjectWorker(s3ObjectRequest, autoDetectCodecFactory, pluginMetrics);
+            }
         }
         if(Objects.nonNull(s3SourceConfig.getSqsOptions())) {
             final S3Service s3Service = new S3Service(s3Handler);
