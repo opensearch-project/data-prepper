@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
@@ -444,6 +445,57 @@ public class JacksonEventTest {
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
+    }
+    @Test
+    public void testPut_withJsonPointerEscapedSlash_storesLiteralKeyName() {
+        // z~1y is JSON Pointer encoding for the literal key name "z/y"
+        // put("z~1y", value) must store a single field whose name is "z/y", not nest under "z"
+        final String value = "some_value";
+
+        event.put("z~1y", value);
+
+        final Map<String, Object> map = event.toMap();
+        assertThat("literal key 'z/y' should exist", map.containsKey("z/y"), is(true));
+        assertThat("escaped key 'z~1y' must NOT be stored literally", map.containsKey("z~1y"), is(false));
+        assertThat("must not create a nested object under 'z'", map.containsKey("z"), is(false));
+    }
+
+    @Test
+    public void testPut_withJsonPointerEscapedTilde_storesLiteralKeyName() {
+        // a~0b is JSON Pointer encoding for the literal key name "a~b"
+        final String value = "some_value";
+
+        event.put("a~0b", value);
+
+        final Map<String, Object> map = event.toMap();
+        assertThat("literal key 'a~b' should exist", map.containsKey("a~b"), is(true));
+        assertThat("escaped key 'a~0b' must NOT be stored literally", map.containsKey("a~0b"), is(false));
+    }
+
+    @Test
+    public void testPut_withJsonPointerEscapedSlash_inNestedPath_storesLiteralFieldName() {
+        // parent/z~1y — the intermediate segment "parent" is plain, leaf "z~1y" → "z/y"
+        final String value = "some_value";
+
+        event.put("parent/z~1y", value);
+
+        final Map<String, Object> map = event.toMap();
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> parent = (Map<String, Object>) map.get("parent");
+        assertThat("parent node must exist", parent, is(notNullValue()));
+        assertThat("literal key 'z/y' should exist under parent", parent.containsKey("z/y"), is(true));
+        assertThat("escaped key 'z~1y' must NOT be stored literally", parent.containsKey("z~1y"), is(false));
+    }
+
+    @Test
+    public void testDelete_withJsonPointerEscapedSlash_deletesLiteralKeyName() {
+        // z~1y is JSON Pointer encoding for the literal key name "z/y"; delete("z~1y") must target that field
+        final String value = "some_value";
+        ((ObjectNode) event.getJsonNode()).put("z/y", value);
+
+        event.delete("z~1y");
+
+        assertThat(event.get("z~1y", String.class), is(nullValue()));
     }
 
     @ParameterizedTest
