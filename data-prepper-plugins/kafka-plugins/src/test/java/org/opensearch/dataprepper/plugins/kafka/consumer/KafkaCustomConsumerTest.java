@@ -875,6 +875,57 @@ public class KafkaCustomConsumerTest {
         return new ConsumerRecords(records);
     }
 
+    @Test
+    public void testPauseConsumingCallsPollToMaintainGroupMembership() throws Exception {
+        String topic = topicConfig.getName();
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+
+        when(pauseConsumePredicate.pauseConsuming()).thenReturn(true);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(ConsumerRecords.empty());
+        when(kafkaConsumer.assignment()).thenReturn(java.util.Collections.singleton(new TopicPartition(topic, testPartition)));
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        // Run in a thread and shut down after a short delay
+        Thread consumerThread = new Thread(() -> consumer.run());
+        consumerThread.start();
+        Thread.sleep(100);
+        shutdownInProgress.set(true);
+        consumerThread.join(5000);
+
+        // Verify poll() was called even though consuming was paused
+        verify(kafkaConsumer, org.mockito.Mockito.atLeastOnce()).pause(any());
+        verify(kafkaConsumer, org.mockito.Mockito.atLeastOnce()).poll(any(Duration.class));
+    }
+
+    @Test
+    public void testPauseConsumingResumesAfterPredicateReturnsFalse() throws Exception {
+        String topic = topicConfig.getName();
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+
+        // First call returns true (paused), subsequent calls return false (resumed)
+        when(pauseConsumePredicate.pauseConsuming())
+                .thenReturn(true)
+                .thenReturn(false);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(ConsumerRecords.empty());
+        when(kafkaConsumer.assignment()).thenReturn(java.util.Collections.singleton(new TopicPartition(topic, testPartition)));
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        // Need to wait longer than the 1s sleep in the pause branch for the second iteration
+        Thread consumerThread = new Thread(() -> consumer.run());
+        consumerThread.start();
+        Thread.sleep(2500);
+        shutdownInProgress.set(true);
+        consumerThread.join(5000);
+
+        // Verify that consumer was paused and then resumed
+        verify(kafkaConsumer, org.mockito.Mockito.atLeastOnce()).pause(any());
+        verify(kafkaConsumer, org.mockito.Mockito.atLeastOnce()).resume(any());
+    }
+
     private static Stream<Arguments> provideExceptionsFromBufferWrite() {
         return Stream.of(
                 Arguments.of(new SizeOverflowException("size overflow")),

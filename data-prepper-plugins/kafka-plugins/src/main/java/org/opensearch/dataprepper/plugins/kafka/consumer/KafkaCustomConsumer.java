@@ -425,6 +425,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     LOG.debug("Pause and skip consuming from Kafka topic due to an external condition: {}", pauseConsumePredicate);
                     paused = true;
                     consumer.pause(consumer.assignment());
+                    doPoll();
                     Thread.sleep(1000);
                     continue;
                 } else if(paused) {
