@@ -482,6 +482,23 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testLegacyOverwriteTrue_withNoStrategy_resolvesToOverwriteBehavior() {
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(true);
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(null);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("existing_key", "existing_value");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/key1", Object.class), is("value1"));
+        assertThat(event.get("parsed_message/key2", Object.class), is("value2"));
+        assertThat(event.containsKey("parsed_message/existing_key"), is(false));
+    }
+
+    @Test
     void testSingleRegexFieldDelimiterKvToObjectKeyValueProcessor() {
         when(mockConfig.getFieldDelimiterRegex()).thenReturn(":_*:");
         when(mockConfig.getFieldSplitCharacters()).thenReturn(null);

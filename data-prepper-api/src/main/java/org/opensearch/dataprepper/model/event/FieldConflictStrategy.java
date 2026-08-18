@@ -45,9 +45,15 @@ public enum FieldConflictStrategy {
      * Merge parsed fields into the existing destination map per-field.
      * If a key conflict occurs, overwrite with the new parsed value.
      */
-    MERGE_OVERWRITE_EXISTING_KEYS("merge_overwrite_existing_keys", true);
+    MERGE_OVERWRITE_EXISTING_KEYS("merge_overwrite_existing_keys", true),
+
+    /**
+     * Sentinel for an unrecognized strategy used for testing. It is intentionally NOT user-selectable.
+     */
+    UNKNOWN("unknown", false);
 
     private static final Map<String, FieldConflictStrategy> NAMES_MAP = Arrays.stream(FieldConflictStrategy.values())
+            .filter(value -> !UNKNOWN.equals(value))
             .collect(Collectors.toMap(
                     value -> value.getOptionName().toLowerCase(),
                     value -> value

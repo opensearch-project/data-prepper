@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EventMergeFieldsTest {
@@ -190,5 +191,29 @@ class EventMergeFieldsTest {
         event.mergeFields("dest", values(), settings(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS));
 
         assertThat(event.get("dest", String.class), is("a plain string"));
+    }
+
+    // ---- Per-field write failure is caught and does not abort the merge ----
+
+    @Test
+    void write_toRoot_whenKeyIsInvalid_swallowsExceptionAndWritesRemainingKeys() {
+        final Event event = newEvent();
+        final Map<String, Object> valuesWithInvalidKey = new HashMap<>();
+        valuesWithInvalidKey.put("valid_key", "value1");
+        valuesWithInvalidKey.put("invalid&key", "value2");
+
+        assertDoesNotThrow(() ->
+                event.mergeFields(null, valuesWithInvalidKey, settings(FieldConflictStrategy.OVERWRITE)));
+
+        assertThat(event.get("valid_key", String.class), is("value1"));
+        assertThat(event.toMap().containsKey("invalid&key"), is(false));
+    }
+
+    @Test
+    void write_toDestination_withUnrecognizedStrategy_throwsIllegalState() {
+        final Event event = newEvent(Map.of("dest", Map.of("existing", "keep")));
+
+        assertThrows(IllegalStateException.class,
+                () -> event.mergeFields("dest", values(), settings(FieldConflictStrategy.UNKNOWN)));
     }
 }

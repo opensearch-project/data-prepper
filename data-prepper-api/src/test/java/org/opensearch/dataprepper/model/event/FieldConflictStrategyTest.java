@@ -77,10 +77,16 @@ class FieldConflictStrategyTest {
     }
 
     @ParameterizedTest
-    @EnumSource(FieldConflictStrategy.class)
+    @EnumSource(value = FieldConflictStrategy.class, names = "UNKNOWN", mode = EnumSource.Mode.EXCLUDE)
     void jackson_roundTrip(final FieldConflictStrategy strategy) throws Exception {
         final String json = OBJECT_MAPPER.writeValueAsString(strategy);
         assertThat(OBJECT_MAPPER.readValue(json, FieldConflictStrategy.class), is(strategy));
+    }
+
+    @Test
+    void fromOptionName_unknownSentinel_isNotSelectable() {
+        assertThrows(IllegalArgumentException.class,
+                () -> FieldConflictStrategy.fromOptionName("unknown"));
     }
 
     @Test
