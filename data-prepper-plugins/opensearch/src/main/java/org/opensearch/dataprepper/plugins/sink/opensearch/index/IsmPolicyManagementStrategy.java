@@ -13,7 +13,7 @@ import java.util.Optional;
 
 interface IsmPolicyManagementStrategy {
 
-    Optional<String> checkAndCreatePolicy() throws IOException;
+    Optional<String> checkAndCreatePolicy(final String indexAlias) throws IOException;
 
     List<String> getIndexPatterns(final String indexAlias);
 
