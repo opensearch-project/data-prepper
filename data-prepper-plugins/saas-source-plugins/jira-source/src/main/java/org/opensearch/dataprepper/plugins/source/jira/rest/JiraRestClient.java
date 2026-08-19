@@ -34,10 +34,10 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.
 @Named
 public class JiraRestClient extends AtlassianRestClient {
 
-    public static final String REST_API_SEARCH = "rest/api/3/search";
+    public static final String REST_API_SEARCH = "rest/api/3/search/jql";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
     public static final String FIFTY = "50";
-    public static final String START_AT = "startAt";
+    public static final String NEXT_PAGE_TOKEN = "nextPageToken";
     public static final String MAX_RESULT = "maxResults";
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
@@ -81,20 +81,24 @@ public class JiraRestClient extends AtlassianRestClient {
     /**
      * Method to get Issues.
      *
-     * @param jql     input parameter.
-     * @param startAt the start at
-     * @return InputStream input stream
+     * @param jql           input parameter.
+     * @param nextPageToken the pagination token from previous response, or null for first page
+     * @return SearchResults search results
      */
-    public SearchResults getAllIssues(StringBuilder jql, int startAt) {
+    public SearchResults getAllIssues(StringBuilder jql, String nextPageToken) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
-        URI uri = UriComponentsBuilder.fromHttpUrl(url)
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam(MAX_RESULT, FIFTY)
-                .queryParam(START_AT, startAt)
                 .queryParam(JQL_FIELD, jql)
-                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
-                .buildAndExpand().toUri();
+                .queryParam(EXPAND_FIELD, EXPAND_VALUE);
+
+        if (nextPageToken != null) {
+            builder.queryParam(NEXT_PAGE_TOKEN, nextPageToken);
+        }
+
+        URI uri = builder.buildAndExpand().toUri();
         return searchCallLatencyTimer.record(
                 () -> {
                     try {
