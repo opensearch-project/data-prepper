@@ -52,6 +52,7 @@ class TraceTestConfiguration {
 }
 
 def RAW_SPAN_PIPELINE_YAML = 'raw-span-e2e-pipeline.yml'
+def RAW_SPAN_PEER_FORWARDER_PIPELINE_YAML = 'raw-span-peer-forwarder-e2e-pipeline.yml'
 def DATA_PREPPER_CONFIG_YAML = 'data_prepper.yml'
 def RAW_SPAN_TESTS_PATTERN = 'org.opensearch.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*'
 def DATA_PREPPER_CONFIG_STATIC_YAML = 'data_prepper_static.yml'
@@ -89,11 +90,11 @@ List<TraceTestConfiguration> traceTestConfigurations = [
                 RAW_SPAN_TESTS_PATTERN,
                 [new TraceTestContainerConfiguration(
                         tasks.named('dataPrepperDockerImage'),
-                        RAW_SPAN_PIPELINE_YAML,
+                        RAW_SPAN_PEER_FORWARDER_PIPELINE_YAML,
                         DATA_PREPPER_CONFIG_STATIC_YAML),
                  new TraceTestContainerConfiguration(
                          tasks.named('dataPrepperDockerImage'),
-                         RAW_SPAN_PIPELINE_YAML,
+                         RAW_SPAN_PEER_FORWARDER_PIPELINE_YAML,
                          DATA_PREPPER_CONFIG_STATIC_YAML)],
                 'data-prepper'
         ),
