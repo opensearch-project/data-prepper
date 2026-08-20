@@ -270,6 +270,19 @@ The processor generates time-series metrics as JacksonMetric events:
 
 All metrics use **delta aggregation temporality** (values are cumulative within each window only).
 
+**Host Label:**
+
+Every metric carries a `service_map_processor_host_id` label, so the series written by one instance
+stay distinct from another's. The value is a truncated SHA-256 hash of the host identity resolved by
+`HostContext`, which keeps the hostname itself out of the metrics.
+
+> **Behavior change:** the identity behind this label used to be the local hostname alone, which is
+> unresolvable in an ordinary container. It now falls back to the `HOSTNAME` environment variable, a
+> local interface address, and a routing lookup. An instance which previously reported `localhost` or
+> `unknown` therefore emits a different `service_map_processor_host_id` after upgrading, so queries
+> which group by it see the old series end and a new one begin. Instances which already resolved a
+> hostname are unaffected.
+
 ## Algorithm: NodeOperationDetail Generation
 
 ### OTel Trace Structure

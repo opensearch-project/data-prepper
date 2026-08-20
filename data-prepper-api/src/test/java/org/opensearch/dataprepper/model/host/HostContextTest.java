@@ -55,9 +55,21 @@ class HostContextTest {
     }
 
     @Test
-    void isHostIdentityResolved_reports_whether_the_hostname_is_the_placeholder() {
+    void getHostIdentity_returns_non_null_non_empty_value() {
+        final String identity = HostContext.getHostIdentity();
+        assertThat(identity, notNullValue());
+        assertThat(identity, not(emptyString()));
+    }
+
+    @Test
+    void getHostIdentity_returns_consistent_value() {
+        assertThat(HostContext.getHostIdentity(), equalTo(HostContext.getHostIdentity()));
+    }
+
+    @Test
+    void isHostIdentityResolved_reports_whether_the_identity_is_the_placeholder() {
         assertThat(HostContext.isHostIdentityResolved(),
-                equalTo(!"unknown".equals(HostContext.getHostname())));
+                equalTo(!"unknown".equals(HostContext.getHostIdentity())));
     }
 
     @Test
@@ -72,74 +84,81 @@ class HostContextTest {
         assertThat(new HostContext(), notNullValue());
     }
 
-    // The fallback chain.
+    // The hostname, which reports only what the name service resolves.
 
     @Test
-    void resolveHostname_prefers_the_local_host() {
-        assertThat(HostContext.resolveHostname(() -> "from-local-host", () -> "from-env",
+    void resolveHostname_returns_the_name_of_the_local_host() throws UnknownHostException {
+        final InetAddress named = InetAddress.getByAddress("host-a", new byte[]{10, 1, 2, 3});
+        assertThat(HostContext.resolveHostname(() -> named), equalTo("host-a"));
+    }
+
+    @Test
+    void resolveHostname_returns_a_name_which_does_not_distinguish_the_host() throws UnknownHostException {
+        // Filtering belongs to the identity, so the hostname reports whatever the name service gave.
+        final InetAddress named = InetAddress.getByAddress("localhost", new byte[]{127, 0, 0, 1});
+        assertThat(HostContext.resolveHostname(() -> named), equalTo("localhost"));
+    }
+
+    @Test
+    void resolveHostname_returns_unknown_when_the_lookup_fails() {
+        assertThat(HostContext.resolveHostname(() -> {
+            throw new UnknownHostException("no local host");
+        }), equalTo(HostContext.UNKNOWN_HOST));
+    }
+
+    @Test
+    void resolveHostname_reads_the_real_name_service_without_failing() {
+        // What it answers depends on the machine, so assert only that it runs and is stable.
+        assertThat(HostContext.resolveHostname(), equalTo(HostContext.resolveHostname()));
+    }
+
+    // The identity, and the fallback chain behind it.
+
+    @Test
+    void resolveHostIdentity_prefers_the_hostname() {
+        assertThat(HostContext.resolveHostIdentity("host-a"), equalTo("host-a"));
+    }
+
+    @Test
+    void resolveHostIdentity_falls_past_a_hostname_which_distinguishes_nothing() {
+        assertThat(HostContext.resolveHostIdentity("localhost"), not(equalTo("localhost")));
+    }
+
+    @Test
+    void resolveHostIdentity_falls_past_the_unresolved_placeholder() {
+        // Both are skipped, so they reach the same later strategy on this machine.
+        assertThat(HostContext.resolveHostIdentity(HostContext.UNKNOWN_HOST),
+                equalTo(HostContext.resolveHostIdentity("localhost")));
+    }
+
+    @Test
+    void resolveHostIdentity_prefers_the_local_host() {
+        assertThat(HostContext.resolveHostIdentity(() -> "from-local-host", () -> "from-env",
                 () -> "from-interfaces", () -> "from-route"), equalTo("from-local-host"));
     }
 
     @Test
-    void resolveHostname_falls_back_to_the_environment() {
-        assertThat(HostContext.resolveHostname(() -> null, () -> "from-env",
+    void resolveHostIdentity_falls_back_to_the_environment() {
+        assertThat(HostContext.resolveHostIdentity(() -> null, () -> "from-env",
                 () -> "from-interfaces", () -> "from-route"), equalTo("from-env"));
     }
 
     @Test
-    void resolveHostname_falls_back_to_the_network_interfaces() {
-        assertThat(HostContext.resolveHostname(() -> null, () -> null,
+    void resolveHostIdentity_falls_back_to_the_network_interfaces() {
+        assertThat(HostContext.resolveHostIdentity(() -> null, () -> null,
                 () -> "from-interfaces", () -> "from-route"), equalTo("from-interfaces"));
     }
 
     @Test
-    void resolveHostname_falls_back_to_the_routing_lookup() {
-        assertThat(HostContext.resolveHostname(() -> null, () -> null,
+    void resolveHostIdentity_falls_back_to_the_routing_lookup() {
+        assertThat(HostContext.resolveHostIdentity(() -> null, () -> null,
                 () -> null, () -> "from-route"), equalTo("from-route"));
     }
 
     @Test
-    void resolveHostname_returns_unknown_when_every_strategy_fails() {
-        assertThat(HostContext.resolveHostname(() -> null, () -> null, () -> null, () -> null),
+    void resolveHostIdentity_returns_unknown_when_every_strategy_fails() {
+        assertThat(HostContext.resolveHostIdentity(() -> null, () -> null, () -> null, () -> null),
                 equalTo(HostContext.UNKNOWN_HOST));
-    }
-
-    @Test
-    void resolveHostname_uses_the_real_strategies_and_resolves_something() {
-        assertThat(HostContext.resolveHostname(), notNullValue());
-    }
-
-    // Local host.
-
-    @Test
-    void resolveFromLocalHost_returns_the_name_of_the_local_host() throws UnknownHostException {
-        final InetAddress named = InetAddress.getByAddress("host-a", new byte[]{10, 1, 2, 3});
-        assertThat(HostContext.resolveFromLocalHost(() -> named), equalTo("host-a"));
-    }
-
-    @Test
-    void resolveFromLocalHost_rejects_a_name_which_does_not_distinguish_the_host() throws UnknownHostException {
-        final InetAddress named = InetAddress.getByAddress("localhost", new byte[]{127, 0, 0, 1});
-        assertThat(HostContext.resolveFromLocalHost(() -> named), nullValue());
-    }
-
-    @Test
-    void resolveFromLocalHost_reads_the_real_name_service_without_failing() {
-        // What it answers depends on the machine, so assert only that it runs and is stable.
-        assertThat(HostContext.resolveFromLocalHost(), equalTo(HostContext.resolveFromLocalHost()));
-    }
-
-    @Test
-    void resolveFromLocalHost_returns_null_when_the_lookup_fails() {
-        assertThat(HostContext.resolveFromLocalHost(() -> {
-            throw new UnknownHostException("no local host");
-        }), nullValue());
-    }
-
-    @Test
-    void resolveFromLocalHost_returns_null_for_an_unusable_hostname() throws UnknownHostException {
-        final InetAddress blankNamed = InetAddress.getByAddress("   ", new byte[]{10, 1, 2, 3});
-        assertThat(HostContext.resolveFromLocalHost(() -> blankNamed), nullValue());
     }
 
     // Environment.
@@ -158,7 +177,8 @@ class HostContextTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"localhost", "LocalHost", "localhost.localdomain", "127.0.0.1", "::1", " localhost "})
+    @ValueSource(strings = {"localhost", "LocalHost", "localhost.localdomain", "127.0.0.1", "::1",
+            " localhost ", "unknown"})
     void resolveFromEnvironment_rejects_a_value_which_does_not_distinguish_the_host(final String value) {
         assertThat(HostContext.resolveFromEnvironment(name -> value), nullValue());
     }
@@ -309,8 +329,8 @@ class HostContextTest {
     // Stable host id.
 
     @Test
-    void getStableHostId_is_a_truncated_sha256_of_the_hostname() throws NoSuchAlgorithmException {
-        assertThat(HostContext.getStableHostId(), equalTo(sha256Prefix(HostContext.getHostname())));
+    void getStableHostId_is_a_truncated_sha256_of_the_host_identity() throws NoSuchAlgorithmException {
+        assertThat(HostContext.getStableHostId(), equalTo(sha256Prefix(HostContext.getHostIdentity())));
     }
 
     @Test
@@ -329,7 +349,7 @@ class HostContextTest {
     }
 
     @Test
-    void computeStableHostId_distinguishes_two_hostnames() {
+    void computeStableHostId_distinguishes_two_identities() {
         assertThat(HostContext.computeStableHostId("host-a"),
                 not(equalTo(HostContext.computeStableHostId("host-b"))));
     }

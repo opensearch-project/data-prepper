@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.model.host;
 
-import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,15 +32,16 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * Provides the identity of the current Data Prepper instance.
- * This is intended as a shared utility so that host identity is consistent across all components
+ * Provides the hostname and the identity of the current Data Prepper instance.
+ * This is intended as a shared utility so that both are consistent across all components
  * (processors, sinks, source coordinators, etc.).
  * <p>
- * Resolution falls back through several strategies because the first of them, resolving the local
- * hostname through the name service, fails in ordinary containers whose hostname has no entry in
- * {@code /etc/hosts} or DNS. Returning a single shared value in that case is worse than it appears:
+ * {@link #getHostname()} reports what the name service resolves, which is all a caller wanting a
+ * name should use. {@link #getHostIdentity()} falls back through further strategies, because
+ * resolving the local hostname fails in ordinary containers whose hostname has no entry in
+ * {@code /etc/hosts} or DNS. Returning a single shared value there is worse than it appears:
  * components which use this as a per-instance discriminator, such as metric labels, silently collide
- * with every other instance rather than reporting an error. A name which resolves but distinguishes
+ * with every other instance rather than reporting an error. A value which resolves but distinguishes
  * nothing, such as {@code localhost}, counts as unresolved for the same reason.
  */
 public class HostContext {
@@ -53,7 +53,7 @@ public class HostContext {
 
     /** Values every instance would report, so resolution continues past them to a local address. */
     private static final Set<String> UNUSABLE_IDENTITIES = Collections.unmodifiableSet(new HashSet<>(
-            Arrays.asList("localhost", "localhost.localdomain", "127.0.0.1", "::1")));
+            Arrays.asList(UNKNOWN_HOST, "localhost", "localhost.localdomain", "127.0.0.1", "::1")));
 
     /**
      * RFC 5737 TEST-NET-1. Connecting a datagram socket performs a routing lookup without sending a
@@ -65,13 +65,16 @@ public class HostContext {
 
     private static final int STABLE_HOST_ID_LENGTH = 16;
     private static final String DIGEST_ALGORITHM = "SHA-256";
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
 
     private static final String HOSTNAME = resolveHostname();
-    private static final String STABLE_HOST_ID = computeStableHostId(HOSTNAME);
+    private static final String HOST_IDENTITY = resolveHostIdentity(HOSTNAME);
+    private static final String STABLE_HOST_ID = computeStableHostId(HOST_IDENTITY);
 
     static {
         // So an emitted identifier can be traced back to its host.
-        LOG.info("Resolved the identity of this host as '{}', with stable host id {}.", HOSTNAME, STABLE_HOST_ID);
+        LOG.info("Resolved the identity of this host as '{}', with stable host id {}.",
+                HOST_IDENTITY, STABLE_HOST_ID);
     }
 
     @FunctionalInterface
@@ -95,20 +98,38 @@ public class HostContext {
     }
 
     /**
-     * Returns the identity of the current Data Prepper host: the hostname where one resolves, and a
-     * local interface address otherwise. Callers must not assume the value resolves as a name.
+     * Returns the hostname of the current Data Prepper host, as resolved through the name service.
+     * Use {@link #getHostIdentity()} instead to tell this instance apart from another, since a name
+     * is often unresolvable in a container.
      *
-     * @return the hostname or a local address, or {@code "unknown"} when nothing resolved
+     * @return the hostname, or {@code "unknown"} when it cannot be resolved
      */
     public static String getHostname() {
         return HOSTNAME;
     }
 
     /**
-     * Returns a stable identifier for this host: a truncated SHA-256 hash of {@link #getHostname()}.
-     * It keeps the hostname and address out of emitted data, but the hash is unsalted over a small
-     * input space, so it obscures the identity rather than protecting it. When
-     * {@link #isHostIdentityResolved()} is false it hashes the placeholder, identical on every instance.
+     * Returns a value which distinguishes this host from another: the hostname where the name service
+     * resolves a usable one, and otherwise the {@code HOSTNAME} environment variable, an address
+     * assigned to a local network interface, or the source address of a routing lookup. Unlike
+     * {@link #getHostname()} the result is not necessarily a name.
+     *
+     * @return the host identity, or {@code "unknown"} when no strategy resolved one
+     */
+    public static String getHostIdentity() {
+        return HOST_IDENTITY;
+    }
+
+    /**
+     * Returns a stable identifier for this host: a truncated SHA-256 hash of
+     * {@link #getHostIdentity()}. It keeps the hostname and address out of emitted data, but the hash
+     * is unsalted over a small input space, so it obscures the identity rather than protecting it.
+     * When {@link #isHostIdentityResolved()} is false it hashes the placeholder, identical on every
+     * instance.
+     * <p>
+     * Note for callers which group data by this value: it is derived from the identity rather than
+     * the hostname, so a host which reported {@code localhost} or nothing at all before the identity
+     * fallbacks existed now hashes to a different identifier.
      *
      * @return the host identifier, never null
      */
@@ -124,24 +145,37 @@ public class HostContext {
      * @return true when the host identity is a resolved value rather than a shared placeholder
      */
     public static boolean isHostIdentityResolved() {
-        return isHostIdentityResolved(HOSTNAME);
+        return isHostIdentityResolved(HOST_IDENTITY);
     }
 
-    static boolean isHostIdentityResolved(final String hostname) {
-        return !UNKNOWN_HOST.equals(hostname);
+    static boolean isHostIdentityResolved(final String identity) {
+        return !UNKNOWN_HOST.equals(identity);
     }
 
     static String resolveHostname() {
-        return resolveHostname(HostContext::resolveFromLocalHost,
+        return resolveHostname(InetAddress::getLocalHost);
+    }
+
+    static String resolveHostname(final LocalHostSupplier localHostSupplier) {
+        try {
+            return localHostSupplier.get().getHostName();
+        } catch (final Exception e) {
+            LOG.warn("Failed to resolve hostname, using '{}': {}", UNKNOWN_HOST, e.getMessage());
+            return UNKNOWN_HOST;
+        }
+    }
+
+    static String resolveHostIdentity(final String hostname) {
+        return resolveHostIdentity(() -> usableOrNull(hostname),
                 HostContext::resolveFromEnvironment,
                 HostContext::resolveFromNetworkInterfaces,
                 HostContext::resolveFromRouteLookup);
     }
 
-    static String resolveHostname(final Supplier<String> localHost,
-                                  final Supplier<String> environment,
-                                  final Supplier<String> networkInterfaces,
-                                  final Supplier<String> routeLookup) {
+    static String resolveHostIdentity(final Supplier<String> localHost,
+                                      final Supplier<String> environment,
+                                      final Supplier<String> networkInterfaces,
+                                      final Supplier<String> routeLookup) {
         final String localHostname = localHost.get();
         if (localHostname != null) {
             return localHostname;
@@ -149,7 +183,7 @@ public class HostContext {
 
         final String environmentHostname = environment.get();
         if (environmentHostname != null) {
-            LOG.warn("Unable to resolve the local host; using the {} environment variable as the host identity.",
+            LOG.warn("Unable to resolve a usable hostname; using the {} environment variable as the host identity.",
                     HOSTNAME_ENVIRONMENT_VARIABLE);
             return environmentHostname;
         }
@@ -171,19 +205,6 @@ public class HostContext {
                 "a distinct host identity, such as per-instance metric labels, will collide with other " +
                 "instances in this state.", UNKNOWN_HOST);
         return UNKNOWN_HOST;
-    }
-
-    static String resolveFromLocalHost() {
-        return resolveFromLocalHost(InetAddress::getLocalHost);
-    }
-
-    static String resolveFromLocalHost(final LocalHostSupplier localHostSupplier) {
-        try {
-            return usableOrNull(localHostSupplier.get().getHostName());
-        } catch (final Exception e) {
-            LOG.debug("Unable to resolve the local host: {}", e.getMessage());
-            return null;
-        }
     }
 
     static String resolveFromEnvironment() {
@@ -259,14 +280,18 @@ public class HostContext {
         }
     }
 
-    static String computeStableHostId(final String hostname) {
-        return computeStableHostId(hostname, () -> MessageDigest.getInstance(DIGEST_ALGORITHM));
+    static String computeStableHostId(final String identity) {
+        return computeStableHostId(identity, () -> MessageDigest.getInstance(DIGEST_ALGORITHM));
     }
 
-    static String computeStableHostId(final String hostname, final DigestSupplier digestSupplier) {
+    static String computeStableHostId(final String identity, final DigestSupplier digestSupplier) {
         try {
-            final byte[] hash = digestSupplier.get().digest(hostname.getBytes(StandardCharsets.UTF_8));
-            return Hex.encodeHexString(hash).substring(0, STABLE_HOST_ID_LENGTH);
+            final byte[] hash = digestSupplier.get().digest(identity.getBytes(StandardCharsets.UTF_8));
+            final StringBuilder hex = new StringBuilder(STABLE_HOST_ID_LENGTH);
+            for (int i = 0; i < STABLE_HOST_ID_LENGTH / 2; i++) {
+                hex.append(HEX_DIGITS[(hash[i] >> 4) & 0xF]).append(HEX_DIGITS[hash[i] & 0xF]);
+            }
+            return hex.toString();
         } catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException(DIGEST_ALGORITHM + " algorithm not available", e);
         }
