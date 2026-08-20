@@ -7,13 +7,12 @@ package org.opensearch.dataprepper.plugins.geoip.extension;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
-import org.opensearch.dataprepper.plugins.geoip.extension.databasedownload.DBSourceOptions;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@ValidDatabasePaths
 public class MaxMindDatabaseConfig {
     static final String DEFAULT_CITY_ENDPOINT = "https://geoip.maps.opensearch.org/v1/mmdb/geolite2-city/manifest.json";
     static final String DEFAULT_COUNTRY_ENDPOINT = "https://geoip.maps.opensearch.org/v1/mmdb/geolite2-country/manifest.json";
@@ -40,12 +39,12 @@ public class MaxMindDatabaseConfig {
         return enterpriseDatabase == null || (cityDatabase == null && countryDatabase == null && asnDatabase == null);
     }
 
-    @AssertTrue(message = "database_paths should be S3 URI or HTTP endpoint or local directory")
     public boolean isPathsValid() {
-        final List<String> databasePaths = new ArrayList<>(getDatabasePaths().values());
+        return getDatabasePathValidationErrors().isEmpty();
+    }
 
-        final DBSourceOptions dbSourceOptions = DatabaseSourceIdentification.getDatabasePathType(databasePaths);
-        return dbSourceOptions != null;
+    List<String> getDatabasePathValidationErrors() {
+        return ValidDatabasePathsValidator.getDatabasePathValidationErrors(getDatabasePaths());
     }
 
     public Map<String, String> getDatabasePaths() {
