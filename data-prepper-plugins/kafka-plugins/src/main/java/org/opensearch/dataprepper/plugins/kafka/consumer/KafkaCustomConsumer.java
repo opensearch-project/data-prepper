@@ -326,6 +326,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     final long epoch = getCurrentTimeNanos();
                     ownedPartitionsEpoch.put(partition, epoch);
                 } catch (Exception e) {
+                    topicMetrics.getNumberOfOffsetResetFailures().increment();
                     LOG.error("Failed to seek to last committed offset upon negative acknowledgement {}", partition, e);
                 }
             });
@@ -381,9 +382,11 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 consumer.commitSync(offsetsToCommit);
                 lastCommitTime = currentTimeMillis;
             } catch (final RebalanceInProgressException ex) {
+                topicMetrics.getNumberOfCommitFailures().increment();
                 LOG.error("Failed to commit offsets in topic {} due to rebalance in progress", topicName, ex);
                 return;
             } catch (Exception e) {
+                topicMetrics.getNumberOfCommitFailures().increment();
                 LOG.error("Failed to commit offsets in topic {}", topicName, e);
             }
 
@@ -541,6 +544,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 if (e instanceof SizeOverflowException) {
                     topicMetrics.getNumberOfBufferSizeOverflows().increment();
                 } else {
+                    topicMetrics.getNumberOfBufferWriteFailures().increment();
                     LOG.debug("Error while adding record to buffer, retrying ", e);
                 }
                 try {
