@@ -235,6 +235,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             resetAuthBackoff();
             LOG.debug("Consumed records with count {}", records.count());
             if (Objects.nonNull(records) && !records.isEmpty() && records.count() > 0) {
+                // Time poll() return through buffer handoff, once per non-empty batch.
+                final long processingStartMillis = System.currentTimeMillis();
                 Map<TopicPartition, CommitOffsetRange> offsets = new HashMap<>();
                 AcknowledgementSet acknowledgementSet = null;
                 if (acknowledgementsEnabled) {
@@ -250,6 +252,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     acknowledgementSet.complete();
                     numberOfAcksPending.incrementAndGet();
                 }
+                topicMetrics.recordProcessingLatency(System.currentTimeMillis() - processingStartMillis);
             }
         } catch (AuthenticationException e) {
             authFailureAttempts++;
@@ -620,6 +623,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     }
 
     public void closeConsumer(){
+        topicMetrics.deregister(consumer);
         consumer.close();
     }
 
@@ -629,6 +633,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        // Monotonic count of assignments; unlike joinRate it cannot miss brief events between scrapes.
+        topicMetrics.getNumberOfRebalances().increment();
         synchronized(this) {
             final long epoch = getCurrentTimeNanos();
 
@@ -649,6 +655,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        topicMetrics.getNumberOfPartitionsRevoked().increment(partitions.size());
         synchronized(this) {
             commitOffsets(true);
             for (TopicPartition topicPartition : partitions) {
@@ -659,6 +666,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 LOG.info("Revoked partition {}", topicPartition);
                 ownedPartitionsEpoch.remove(topicPartition);
                 partitionCommitTrackerMap.remove(topicPartition.partition());
+                topicMetrics.clearPartitionLag(topicPartition.partition());
             }
             if (paused) {
                 consumer.pause(consumer.assignment());

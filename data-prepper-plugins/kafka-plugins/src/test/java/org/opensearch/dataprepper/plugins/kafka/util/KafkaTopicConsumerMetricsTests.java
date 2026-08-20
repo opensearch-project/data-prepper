@@ -252,6 +252,11 @@ public class KafkaTopicConsumerMetricsTests {
             } else if (k.contains("numberOfNonConsumers")) {
                 int expectedValue = numConsumers/2;
                 assertThat(result, equalTo((double)expectedValue));
+            } else if (k.contains("numberOfAssignedPartitions") || k.contains("numberOfActiveReaders")
+                    || k.contains("numberOfConfiguredWorkers")) {
+                // New always-on capacity gauges register real doubles; not part of this
+                // rate-oriented assertion set, so just confirm they produce a finite value.
+                assertThat(Double.isNaN(result), equalTo(false));
             } else {
                 assertThat(result, equalTo(k+": Unknown Metric"));
             }
@@ -373,6 +378,36 @@ public class KafkaTopicConsumerMetricsTests {
         ToDoubleFunction lagGauge = pluginMetricsMap.get("topic." + topicName + ".recordsLagMax");
         double lagResult = lagGauge.applyAsDouble(topicMetrics.getMetricValues());
         assertEquals(0.0, lagResult, 0.01d);
+    }
+
+    @Test
+    public void scalingGauges_reportConfiguredWorkersAndAssignmentCounts() {
+        final int configuredWorkers = 4;
+        topicMetrics = new KafkaTopicConsumerMetrics(topicName, pluginMetrics, true, configuredWorkers);
+
+        // Three consumers: two each owning a partition (active readers), one idle (non-consumer).
+        final double[] assignedPerConsumer = {1.0, 1.0, 0.0};
+        for (final double assigned : assignedPerConsumer) {
+            final KafkaConsumer kafkaConsumer = mock(KafkaConsumer.class);
+            topicMetrics.register(kafkaConsumer);
+            final Map<MetricName, KafkaTestMetric> metrics = new HashMap<>();
+            when(kafkaConsumer.metrics()).thenReturn(metrics);
+            final KafkaTestMetric metric = getMetric("assigned-partitions", assigned, new HashMap<>());
+            metrics.put(metric.metricName(), metric);
+            topicMetrics.update(kafkaConsumer);
+        }
+
+        final Map<KafkaConsumer, Map<String, Double>> mv = topicMetrics.getMetricValues();
+        // numberOfConfiguredWorkers only registers when configuredWorkers > 0 (the 4-arg constructor
+        // that KafkaSource now uses); assert it reports the configured count.
+        assertEquals(configuredWorkers,
+                pluginMetricsMap.get("topic." + topicName + ".numberOfConfiguredWorkers").applyAsDouble(mv), 0.01d);
+        assertEquals(2.0,
+                pluginMetricsMap.get("topic." + topicName + ".numberOfAssignedPartitions").applyAsDouble(mv), 0.01d);
+        assertEquals(2.0,
+                pluginMetricsMap.get("topic." + topicName + ".numberOfActiveReaders").applyAsDouble(mv), 0.01d);
+        assertEquals(1.0,
+                pluginMetricsMap.get("topic." + topicName + ".numberOfNonConsumers").applyAsDouble(mv), 0.01d);
     }
 
     @Test

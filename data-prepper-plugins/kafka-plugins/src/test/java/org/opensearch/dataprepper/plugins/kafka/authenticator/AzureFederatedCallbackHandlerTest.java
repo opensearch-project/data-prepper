@@ -11,6 +11,9 @@
 package org.opensearch.dataprepper.plugins.kafka.authenticator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerTokenCallback;
 import org.junit.jupiter.api.AfterEach;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 import javax.security.auth.callback.Callback;
@@ -33,6 +37,9 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -68,6 +75,7 @@ class AzureFederatedCallbackHandlerTest {
     @AfterEach
     void resetSupplier() {
         AwsCredentialsSupplierProvider.getInstance().set(null);
+        KafkaSourceAuthMetricsProvider.getInstance().set(null);
     }
 
     @Test
@@ -99,6 +107,58 @@ class AzureFederatedCallbackHandlerTest {
 
         assertThat(thrown.getCause().getMessage(), containsString("supplier-was-consulted"));
         verify(supplier).getProvider(any(AwsCredentialsOptions.class));
+    }
+
+    @Test
+    void configure_readsAuthMetricsFromSingleton_andProviderEmitsFailureMetric() {
+        // End-to-end wiring: object published on the singleton -> read in configure() -> provider
+        // instruments a failure. Guards the silent-metrics-loss path (handler not reading the object).
+        final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        Metrics.addRegistry(meterRegistry);
+        // Unique pipeline scope: PluginMetrics writes to the static global registry, so a fixed name
+        // could collide with meters registered by other test classes in the same JVM.
+        final String pipelineName = "handler-test-pipeline-" + java.util.UUID.randomUUID();
+        try {
+            final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
+            when(supplier.getProvider(any(AwsCredentialsOptions.class)))
+                    .thenThrow(new RuntimeException("credential resolution failed"));
+            AwsCredentialsSupplierProvider.getInstance().set(supplier);
+            KafkaSourceAuthMetricsProvider.getInstance()
+                    .set(new KafkaSourceAuthMetrics(PluginMetrics.fromNames("kafka", pipelineName)));
+            final AzureFederatedCallbackHandler handler = new AzureFederatedCallbackHandler();
+
+            handler.configure(Map.of(), OAuthBearerLoginModule.OAUTHBEARER_MECHANISM, jaasEntries(jaasOptions()));
+            assertThrows(RuntimeException.class, () -> handler.getTokenProvider().getToken());
+
+            // The credential-resolution failure classifies as CAUSE_OTHER; the point is a tagged
+            // tokenRefreshFailures counter exists, proving the metrics object reached the provider.
+            final Counter failure = meterRegistry.find(pipelineName + ".kafka." + KafkaSourceAuthMetrics.TOKEN_REFRESH_FAILURES)
+                    .tag(KafkaSourceAuthMetrics.ERROR_TYPE_TAG, KafkaSourceAuthMetrics.CAUSE_OTHER).counter();
+            assertThat(failure, notNullValue());
+            assertThat(failure.count(), equalTo(1.0));
+        } finally {
+            Metrics.removeRegistry(meterRegistry);
+            meterRegistry.clear();
+            meterRegistry.close();
+        }
+    }
+
+    @Test
+    void configure_withoutAuthMetricsSet_providerHasNoMetricsAndDoesNotThrow() {
+        // No metrics object published => get() returns null => provider null-guards, no NPE.
+        final AwsCredentialsSupplier supplier = mock(AwsCredentialsSupplier.class);
+        when(supplier.getProvider(any(AwsCredentialsOptions.class)))
+                .thenThrow(new RuntimeException("credential resolution failed"));
+        AwsCredentialsSupplierProvider.getInstance().set(supplier);
+        final AzureFederatedCallbackHandler handler = new AzureFederatedCallbackHandler();
+
+        handler.configure(Map.of(), OAuthBearerLoginModule.OAUTHBEARER_MECHANISM, jaasEntries(jaasOptions()));
+
+        // The original credential-resolution failure must survive; a null-metrics dereference would
+        // also be a RuntimeException, so assertThrows(RuntimeException) alone would miss that regression.
+        final RuntimeException thrown =
+                assertThrows(RuntimeException.class, () -> handler.getTokenProvider().getToken());
+        assertThat(thrown, not(instanceOf(NullPointerException.class)));
     }
 
     @Test

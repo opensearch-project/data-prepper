@@ -44,6 +44,8 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.KafkaSourceAuthMetrics;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.KafkaSourceAuthMetricsProvider;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
@@ -130,10 +132,15 @@ public class KafkaSource implements Source<Record<Event>> {
             setMdc();
             Properties authProperties = new Properties();
             KafkaSecurityConfigurer.setDynamicSaslClientCallbackHandler(authProperties, sourceConfig, pluginConfigObservable);
+            // Hand off the auth metrics before client construction (see KafkaSourceAuthMetricsProvider).
+            // azure_federated only: other mechanisms mint no token, so the meters would stay at zero.
+            if (usesAzureFederatedAuth()) {
+                KafkaSourceAuthMetricsProvider.getInstance().set(new KafkaSourceAuthMetrics(pluginMetrics));
+            }
             KafkaSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, awsCredentialsSupplier, LOG);
             sourceConfig.getTopics().forEach(topic -> {
                 consumerGroupID = topic.getGroupId();
-                KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true);
+                KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true, topic.getWorkers());
                 Properties consumerProperties = getConsumerProperties(topic, authProperties);
                 MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
                 try {
@@ -349,6 +356,13 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void setConsumerTopicProperties(Properties properties, TopicConsumerConfig topicConfig) {
         KafkaCustomConsumerFactory.setConsumerTopicProperties(properties, topicConfig, consumerGroupID);
+    }
+
+    private boolean usesAzureFederatedAuth() {
+        final AuthConfig authConfig = sourceConfig.getAuthConfig();
+        return authConfig != null
+                && authConfig.getSaslAuthConfig() != null
+                && authConfig.getSaslAuthConfig().getAzureFederatedAuthConfig() != null;
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(Properties properties) {

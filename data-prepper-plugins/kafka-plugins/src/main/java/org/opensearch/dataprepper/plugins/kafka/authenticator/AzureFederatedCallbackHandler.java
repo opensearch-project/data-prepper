@@ -56,9 +56,14 @@ public class AzureFederatedCallbackHandler implements AuthenticateCallbackHandle
         final Map<String, String> stsHeaderOverrides = decodeStsHeaderOverrides(options.get(OPT_STS_HEADER_OVERRIDES));
         final AwsCredentialsSupplier awsCredentialsSupplier =
                 AwsCredentialsSupplierProvider.getInstance().getAwsCredentialsSupplier();
+        // Nullable: null when no source published a metrics object (e.g. buffer/admin paths), mirroring
+        // how the AWS credentials supplier is read from its own process-global singleton above.
+        final KafkaSourceAuthMetrics authMetrics =
+                KafkaSourceAuthMetricsProvider.getInstance().getAuthMetrics();
         this.tokenProvider = new AzureFederatedTokenProvider(
                 options.get(OPT_REGION), options.get(OPT_STS_ROLE_ARN), options.get(OPT_TOKEN_ENDPOINT),
-                options.get(OPT_CLIENT_ID), options.get(OPT_SCOPE), stsHeaderOverrides, awsCredentialsSupplier);
+                options.get(OPT_CLIENT_ID), options.get(OPT_SCOPE), stsHeaderOverrides, awsCredentialsSupplier,
+                authMetrics);
     }
 
     private static Map<String, String> decodeStsHeaderOverrides(final String encoded) {
