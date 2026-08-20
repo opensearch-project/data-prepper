@@ -237,7 +237,8 @@ public class BulkIngester implements Ingester {
                 pipeline,
                 PLUGIN_NAME,
                 openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
-                isExternalVersionType(versionType));
+                isExternalVersionType(versionType),
+                openSearchSinkConfig.getIndexConfiguration().getDropVersionConflicts());
 
         final IndexCache indexCache = new IndexCache();
         final DataStreamDetector dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
