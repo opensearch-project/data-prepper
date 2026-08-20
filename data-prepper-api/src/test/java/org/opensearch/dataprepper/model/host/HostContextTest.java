@@ -161,6 +161,14 @@ class HostContextTest {
                 equalTo(HostContext.UNKNOWN_HOST));
     }
 
+    @Test
+    void resolveHostIdentity_returns_unknown_when_a_strategy_throws_something_unforeseen() {
+        // Resolution runs at class initialization, so it must not propagate.
+        assertThat(HostContext.resolveHostIdentity(() -> null, () -> {
+            throw new IllegalStateException("unforeseen");
+        }, () -> "from-interfaces", () -> "from-route"), equalTo(HostContext.UNKNOWN_HOST));
+    }
+
     // Environment.
 
     @Test
@@ -212,6 +220,13 @@ class HostContextTest {
     void resolveFromNetworkInterfaces_returns_null_when_the_interfaces_cannot_be_read() {
         assertThat(HostContext.resolveFromNetworkInterfaces(() -> {
             throw new SocketException("no interfaces");
+        }), nullValue());
+    }
+
+    @Test
+    void resolveFromNetworkInterfaces_returns_null_when_reading_the_interfaces_is_not_permitted() {
+        assertThat(HostContext.resolveFromNetworkInterfaces(() -> {
+            throw new SecurityException("interface access denied");
         }), nullValue());
     }
 
@@ -310,6 +325,13 @@ class HostContextTest {
     void resolveFromRouteLookup_performs_a_real_lookup_without_failing() {
         // Whether a route exists depends on the machine, so assert only that it runs and is stable.
         assertThat(HostContext.resolveFromRouteLookup(), equalTo(HostContext.resolveFromRouteLookup()));
+    }
+
+    @Test
+    void resolveFromRouteLookup_returns_null_when_the_socket_reports_no_address() {
+        final DatagramSocket socket = mock(DatagramSocket.class);
+
+        assertThat(HostContext.resolveFromRouteLookup(() -> socket), nullValue());
     }
 
     @Test

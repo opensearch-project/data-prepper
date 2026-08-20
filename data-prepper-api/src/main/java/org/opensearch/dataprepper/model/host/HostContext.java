@@ -64,6 +64,7 @@ public class HostContext {
     private static final int ROUTE_LOOKUP_PORT = 9;
 
     private static final int STABLE_HOST_ID_LENGTH = 16;
+    private static final int STABLE_HOST_ID_BYTES = STABLE_HOST_ID_LENGTH / 2;
     private static final String DIGEST_ALGORITHM = "SHA-256";
     private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
 
@@ -176,29 +177,36 @@ public class HostContext {
                                       final Supplier<String> environment,
                                       final Supplier<String> networkInterfaces,
                                       final Supplier<String> routeLookup) {
-        final String localHostname = localHost.get();
-        if (localHostname != null) {
-            return localHostname;
-        }
+        try {
+            final String localHostname = localHost.get();
+            if (localHostname != null) {
+                return localHostname;
+            }
 
-        final String environmentHostname = environment.get();
-        if (environmentHostname != null) {
-            LOG.warn("Unable to resolve a usable hostname; using the {} environment variable as the host identity.",
-                    HOSTNAME_ENVIRONMENT_VARIABLE);
-            return environmentHostname;
-        }
+            final String environmentHostname = environment.get();
+            if (environmentHostname != null) {
+                LOG.warn("Unable to resolve a usable hostname; using the {} environment variable as the host identity.",
+                        HOSTNAME_ENVIRONMENT_VARIABLE);
+                return environmentHostname;
+            }
 
-        final String interfaceAddress = networkInterfaces.get();
-        if (interfaceAddress != null) {
-            LOG.warn("Unable to resolve a hostname; using a local interface address as the host identity.");
-            return interfaceAddress;
-        }
+            final String interfaceAddress = networkInterfaces.get();
+            if (interfaceAddress != null) {
+                LOG.warn("Unable to resolve a hostname; using a local interface address as the host identity.");
+                return interfaceAddress;
+            }
 
-        final String routedAddress = routeLookup.get();
-        if (routedAddress != null) {
-            LOG.warn("Unable to resolve a hostname or read the network interfaces; using the routed " +
-                    "source address as the host identity.");
-            return routedAddress;
+            final String routedAddress = routeLookup.get();
+            if (routedAddress != null) {
+                LOG.warn("Unable to resolve a hostname or read the network interfaces; using the routed " +
+                        "source address as the host identity.");
+                return routedAddress;
+            }
+        } catch (final RuntimeException e) {
+            // Each strategy handles its own failures, so reaching here means one of them threw
+            // something unforeseen. Resolution runs at class initialization, where propagating it
+            // becomes an ExceptionInInitializerError and every later call a NoClassDefFoundError.
+            LOG.error("Unable to resolve an identity for this host: {}", e.getMessage(), e);
         }
 
         LOG.error("Unable to resolve any identity for this host; using '{}'. Components which rely on " +
@@ -232,7 +240,7 @@ public class HostContext {
             while (interfaces != null && interfaces.hasMoreElements()) {
                 collectAddresses(interfaces.nextElement(), candidates);
             }
-        } catch (final SocketException e) {
+        } catch (final Exception e) {
             LOG.debug("Unable to read the local network interfaces: {}", e.getMessage());
             return null;
         }
@@ -251,7 +259,7 @@ public class HostContext {
             if (!networkInterface.isUp() || networkInterface.isLoopback()) {
                 return;
             }
-        } catch (final SocketException e) {
+        } catch (final Exception e) {
             LOG.debug("Unable to read the state of a network interface: {}", e.getMessage());
             return;
         }
@@ -288,8 +296,9 @@ public class HostContext {
         try {
             final byte[] hash = digestSupplier.get().digest(identity.getBytes(StandardCharsets.UTF_8));
             final StringBuilder hex = new StringBuilder(STABLE_HOST_ID_LENGTH);
-            for (int i = 0; i < STABLE_HOST_ID_LENGTH / 2; i++) {
-                hex.append(HEX_DIGITS[(hash[i] >> 4) & 0xF]).append(HEX_DIGITS[hash[i] & 0xF]);
+            for (int i = 0; i < STABLE_HOST_ID_BYTES; i++) {
+                final int unsigned = hash[i] & 0xFF;
+                hex.append(HEX_DIGITS[unsigned >>> 4]).append(HEX_DIGITS[unsigned & 0xF]);
             }
             return hex.toString();
         } catch (final NoSuchAlgorithmException e) {
