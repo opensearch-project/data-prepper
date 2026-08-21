@@ -17,6 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -40,6 +41,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -118,7 +120,7 @@ public class JiraRestClientTest {
         SearchResults mockSearchResults = mock(SearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = jiraRestClient.getAllIssues(jql, 0);
+        SearchResults results = jiraRestClient.getAllIssues(jql, null);
         assertNotNull(results);
     }
 
@@ -130,8 +132,22 @@ public class JiraRestClientTest {
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = jiraRestClient.getAllIssues(jql, 0);
+        SearchResults results = jiraRestClient.getAllIssues(jql, null);
         assertNotNull(results);
+    }
+
+    @Test
+    public void testGetAllIssuesWithNextPageToken() {
+        JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
+        SearchResults mockSearchResults = mock(SearchResults.class);
+        doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
+        ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.forClass(URI.class);
+        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(uriCaptor.capture(), any(Class.class));
+
+        SearchResults results = jiraRestClient.getAllIssues(jql, "some-token-value");
+
+        assertNotNull(results);
+        assertTrue(uriCaptor.getValue().toString().contains("nextPageToken=some-token-value"));
     }
 
     @Test

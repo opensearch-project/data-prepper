@@ -97,17 +97,22 @@ public class JiraService {
                                                   Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
-        int total;
-        int startAt = 0;
+        int totalFound = 0;
+        String nextPageToken = null;
+        boolean isLast = false;
         do {
-            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt);
+            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, nextPageToken);
             List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
-            total = searchIssues.getTotal();
-            startAt += searchIssues.getIssues().size();
+            totalFound += issueList.size();
+            nextPageToken = searchIssues.getNextPageToken();
+            isLast = Boolean.TRUE.equals(searchIssues.getIsLast());
             addItemsToQueue(issueList, itemInfoQueue);
-        } while (startAt < total);
-        searchResultsFoundCounter.increment(total);
-        log.info("Number of tickets found in search api call: {}", total);
+        } while (!isLast && nextPageToken != null);
+        if (!isLast && nextPageToken == null) {
+            log.warn("Jira search pagination ended unexpectedly: isLast={} but nextPageToken is null. Some results may be missing.", isLast);
+        }
+        searchResultsFoundCounter.increment(totalFound);
+        log.info("Number of tickets found in search api call: {}", totalFound);
     }
 
     /**
