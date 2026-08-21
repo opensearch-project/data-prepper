@@ -327,16 +327,17 @@ public class AggregateProcessorIT {
                 .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
+        final Collection<Record<Event>> singleGroupBatch = getBatchOfEvents(true);
 
         final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
-        objectUnderTest.doExecute(eventBatch);
+        objectUnderTest.doExecute(singleGroupBatch);
         Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
-                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(singleGroupBatch);
                 for (final Record<Event> record : recordsOut) {
                     final Map<String, Object> map = record.getData().toMap();
                     aggregatedResult.add(map);
