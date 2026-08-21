@@ -488,6 +488,61 @@ public class JacksonEvent implements Event {
     }
 
     @Override
+    public void mergeFields(final String destination, final Map<String, Object> values, final MergeSettings mergeSettings) {
+        Objects.requireNonNull(mergeSettings, "mergeSettings must not be null");
+        final FieldConflictStrategy conflictStrategy = mergeSettings.getConflictStrategy();
+        final boolean replaceInvalidCharacters = mergeSettings.isReplaceInvalidCharacters();
+
+        // No destination. Write keys directly to the event root, merged per-field. At the root
+        // there is no destination key to test, so only the strategy's isOverwrite() flag applies.
+        if (destination == null || destination.isEmpty()) {
+            mergeFieldEntries(values, "", mergeSettings);
+            return;
+        }
+
+        // Destination doesn't exist yet. Put the whole map
+        if (!containsKey(destination)) {
+            put(destination, values, replaceInvalidCharacters);
+            return;
+        }
+
+        switch (conflictStrategy) {
+            case SKIP:
+                return;
+            case OVERWRITE:
+                put(destination, values, replaceInvalidCharacters);
+                return;
+            case MERGE_PRESERVE_EXISTING_KEYS:
+            case MERGE_OVERWRITE_EXISTING_KEYS:
+                if (!(get(destination, Object.class) instanceof Map)) {
+                    // Cannot merge into a non-map value; overwrite or leave as-is
+                    if (conflictStrategy.isOverwrite()) {
+                        put(destination, values, replaceInvalidCharacters);
+                    }
+                    return;
+                }
+                mergeFieldEntries(values, destination + "/", mergeSettings);
+                return;
+            default:
+                throw new IllegalStateException("Unexpected FieldConflictStrategy: " + conflictStrategy);
+        }
+    }
+
+    private void mergeFieldEntries(final Map<String, Object> values, final String pathPrefix, final MergeSettings mergeSettings) {
+        final FieldConflictStrategy conflictStrategy = mergeSettings.getConflictStrategy();
+        for (final Map.Entry<String, Object> entry : values.entrySet()) {
+            final String key = pathPrefix + entry.getKey();
+            if (conflictStrategy.isOverwrite() || !containsKey(key)) {
+                try {
+                    put(key, entry.getValue(), mergeSettings.isReplaceInvalidCharacters());
+                } catch (final IllegalArgumentException e) {
+                    LOG.warn("Failed to put key '{}' into event.", key, e);
+                }
+            }
+        }
+    }
+
+    @Override
     public String toJsonString() {
         return jsonNode.toString();
     }
