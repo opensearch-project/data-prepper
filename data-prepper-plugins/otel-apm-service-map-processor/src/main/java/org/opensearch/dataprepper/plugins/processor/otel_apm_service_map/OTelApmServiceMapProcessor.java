@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import org.opensearch.dataprepper.model.host.HostContext;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -164,7 +162,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                final MetricTimestampGranularity metricTimestampGranularity) {
         super(pluginMetrics);
 
-        this.hostId = resolveHostId();
+        this.hostId = HostContext.getStableHostId();
         this.groupByAttributes = groupByAttributes != null ? Collections.unmodifiableList(groupByAttributes) : Collections.emptyList();
         this.metricTimestampSource = metricTimestampSource != null ? metricTimestampSource : MetricTimestampSource.ARRIVAL_TIME;
         this.metricTimestampGranularity = metricTimestampGranularity != null ? metricTimestampGranularity : MetricTimestampGranularity.SECONDS;
@@ -526,22 +524,6 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         }
 
         return timestamp.truncatedTo(truncationUnit);
-    }
-
-    /**
-     * Resolve a stable host identifier for this Data Prepper instance.
-     * Uses a truncated SHA-256 hash of the hostname (from {@link HostContext})
-     * to ensure uniqueness without revealing the actual hostname in emitted metrics.
-     */
-    private String resolveHostId() {
-        try {
-            final String hostname = HostContext.getHostname();
-            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            final byte[] hash = digest.digest(hostname.getBytes(StandardCharsets.UTF_8));
-            return Hex.encodeHexString(hash).substring(0, 16);
-        } catch (final java.security.NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
     }
 
     /**

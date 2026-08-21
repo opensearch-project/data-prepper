@@ -17,8 +17,10 @@ import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusTimeSeries;
 
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 import static com.linecorp.armeria.common.MediaTypeNames.X_PROTOBUF;
 
@@ -35,6 +37,9 @@ public class PrometheusSinkConfiguration {
     private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_IDLE_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_OUT_OF_ORDER_TIME_WINDOW = Duration.ofSeconds(10);
+
+    private static final Pattern VALID_LABEL_NAME_PATTERN = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
+    private static final String RESERVED_LABEL_NAME_PREFIX = "__";
 
     @JsonProperty("aws")
     @Valid
@@ -86,6 +91,9 @@ public class PrometheusSinkConfiguration {
 
     @JsonProperty("sanitize_names")
     private boolean sanitizeNames = true;
+
+    @JsonProperty("instance_label")
+    private String instanceLabel;
 
     public boolean isInsecure() {
         return insecure;
@@ -146,6 +154,16 @@ public class PrometheusSinkConfiguration {
         return idleTimeout;
     }
 
+    /**
+     * Returns the name of the label which carries this instance's address, or null when the sink should
+     * not add one.
+     *
+     * @return the label name, or null
+     */
+    public String getInstanceLabel() {
+        return instanceLabel;
+    }
+
     @AssertTrue(message = "url must be https when insecure is not set to true.")
     boolean isHttpsOrInsecure() {
         if (url == null) {
@@ -185,5 +203,16 @@ public class PrometheusSinkConfiguration {
             return false;
         }
         return true;
+    }
+
+    @AssertTrue(message = "instance_label must match [a-zA-Z_][a-zA-Z0-9_]*, must not begin with \"__\", " +
+            "and must not be a name this sink adds itself (\"le\", \"ge\", or \"quantile\").")
+    boolean isValidInstanceLabel() {
+        if (instanceLabel == null) {
+            return true;
+        }
+        return VALID_LABEL_NAME_PATTERN.matcher(instanceLabel).matches() &&
+                !instanceLabel.startsWith(RESERVED_LABEL_NAME_PREFIX) &&
+                !PrometheusTimeSeries.RESERVED_LABEL_NAMES.contains(instanceLabel);
     }
 }
