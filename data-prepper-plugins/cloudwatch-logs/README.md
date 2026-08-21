@@ -89,6 +89,24 @@ pipeline:
 
   - `key_attributes` (Required when `entity` is configured) : A `Map<String, String>` of key attributes that uniquely identify the entity (for example `Type`, `Name`).
   - `attributes` (Optional) : A `Map<String, String>` of additional attributes describing the entity. Defaults to an empty map.
+  - `max_cardinality` (Optional) : An integer bounding how many entities are buffered **concurrently** in dynamic mode. Defaults to 1000. (Min = 1). Ignored in static mode, where there is only ever one entity.
+
+  Each concurrently buffered entity holds its own buffer, so `max_cardinality` multiplied by `max_request_size` is the worst-case buffered footprint — that is what to size it against. A group is released once its buffer has been drained and it has been idle past `log_send_interval`, so the bound applies to entities active at one time rather than to how many distinct keys have ever been seen. If the bound is reached anyway, further distinct keys collapse into a shared fallback group carrying no per-resource entity; that is logged once and counted by `cloudWatchLogsEntityOverflowEvents`.
+
+  ### Static vs dynamic entities
+
+  The entity is **dynamic** when any `key_attributes` or `attributes` value contains a `${...}` reference — either a Data Prepper field reference such as `${/resourceId}` or an expression such as `${getMetadata("resourceId")}`; otherwise it is **static**. No separate mode flag is required.
+
+  - Static: one constant entity is attached to every `PutLogEvents` request, exactly as configured.
+  - Dynamic: each value is interpolated against the event, and the sink partitions buffered events by their resolved key attributes, sending one `PutLogEvents` request per distinct entity. This is how a stream carrying logs for many resources (for example Azure diagnostic logs keyed by `resourceId`) gets one correct entity per resource. An event missing a templated field resolves that reference to an empty string and shares a group with other such events.
+
+  ```yaml
+  entity:
+    key_attributes:
+      Type: "Azure::Resource"
+      Identifier: "${/resourceId}"
+    max_cardinality: 2000
+  ```
 
   AWS-owned limits — maximum number of entries, allowed key names (such as `Type`, `ResourceType`, `Identifier`, `Name`, `Environment`), and key/value length caps — are enforced by CloudWatch at request time and are intentionally not mirrored here. Violations are surfaced via the `cloudWatchLogsEntityRejected` metric and a log warning. See the [AWS Entity API docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_Entity.html) for the current contract.
 
@@ -115,6 +133,12 @@ threshold parameters.
 * `cloudWatchLogsThrottled` - The number of `PutLogEvents` attempts that failed due to throttling (HTTP 429). Each retry that receives a throttle response increments this counter independently.
 * `cloudWatchLogsAccessDenied` - The number of requests or resource-creation attempts that failed due to insufficient IAM permissions. Covers both `PutLogEvents` access-denied responses and `CreateLogGroup`/`CreateLogStream` permission failures when `create_log_group` or `create_log_stream` is enabled.
 * `cloudWatchLogsResourceNotFound` - The number of `PutLogEvents` attempts that failed because the target log group or log stream does not exist. Only incremented when `create_log_group` and `create_log_stream` are both disabled — if the sink is configured to create resources, a resource-not-found error is internal control flow rather than an actionable user signal.
+* `cloudWatchLogsEntityGroupsCreated` - The number of buffer groups opened for a distinct resolved entity (dynamic entity mode only). Because idle groups are released and a returning entity opens a new group, this counts group churn over time; use `cloudWatchLogsEntityCardinality` for how many are active now. The shared overflow group is excluded so this stays a count of real entities.
+* `cloudWatchLogsEntityOverflowEvents` - The number of events that could not be given their own entity group because the concurrent-entity limit was already reached, and were sent in the shared fallback group with no entity instead. Any non-zero value means events are losing their per-resource entity attribution; reduce the cardinality of the templated `key_attributes`, or raise `max_cardinality`.
+
+### Gauges
+
+* `cloudWatchLogsEntityCardinality` - The number of entity buffer groups currently held, i.e. the entities being buffered right now (dynamic entity mode only). The shared overflow group is excluded, so this too stays a count of real entities. This rises and falls with live cardinality, and sitting at `max_cardinality` alongside a climbing `cloudWatchLogsEntityOverflowEvents` means events are collapsing into the fallback group.
 
 ## Developer Guide
 

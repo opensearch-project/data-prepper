@@ -3,9 +3,15 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.ToDoubleFunction;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,6 +29,8 @@ class CloudWatchLogsMetricsTest {
     private Counter mockAccessDeniedCounter;
     private Counter mockResourceNotFoundCounter;
     private Counter mockThrottledCounter;
+    private Counter mockEntityGroupsCreatedCounter;
+    private Counter mockEntityOverflowEventsCounter;
 
     @BeforeEach
     void setUp() {
@@ -36,6 +44,8 @@ class CloudWatchLogsMetricsTest {
         mockAccessDeniedCounter = mock(Counter.class);
         mockResourceNotFoundCounter = mock(Counter.class);
         mockThrottledCounter = mock(Counter.class);
+        mockEntityGroupsCreatedCounter = mock(Counter.class);
+        mockEntityOverflowEventsCounter = mock(Counter.class);
 
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_SUCCEEDED)).thenReturn(mockSuccessEventCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED)).thenReturn(mockSuccessRequestCounter);
@@ -46,6 +56,8 @@ class CloudWatchLogsMetricsTest {
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ACCESS_DENIED)).thenReturn(mockAccessDeniedCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND)).thenReturn(mockResourceNotFoundCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_THROTTLED)).thenReturn(mockThrottledCounter);
+        when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED)).thenReturn(mockEntityGroupsCreatedCounter);
+        when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS)).thenReturn(mockEntityOverflowEventsCounter);
 
         testCloudWatchLogsMetrics = new CloudWatchLogsMetrics(mockPluginMetrics);
     }
@@ -107,5 +119,36 @@ class CloudWatchLogsMetricsTest {
     void WHEN_increase_throttled_counter_called_THEN_throttled_counter_increase_method_should_be_called() {
         testCloudWatchLogsMetrics.increaseThrottledCounter(1);
         verify(mockThrottledCounter, times(1)).increment(1);
+    }
+
+    @Test
+    void WHEN_increase_entity_groups_created_counter_called_THEN_entity_groups_created_counter_increase_method_should_be_called() {
+        testCloudWatchLogsMetrics.increaseEntityGroupsCreatedCounter(1);
+        verify(mockEntityGroupsCreatedCounter, times(1)).increment(1);
+    }
+
+    @Test
+    void WHEN_increase_entity_overflow_events_counter_called_THEN_entity_overflow_events_counter_increase_method_should_be_called() {
+        testCloudWatchLogsMetrics.increaseEntityOverflowEventsCounter(1);
+        verify(mockEntityOverflowEventsCounter, times(1)).increment(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void WHEN_register_entity_cardinality_gauge_called_THEN_gauge_is_registered_and_samples_the_supplied_state() {
+        final AtomicInteger liveGroupCount = new AtomicInteger(3);
+
+        testCloudWatchLogsMetrics.registerEntityCardinalityGauge(liveGroupCount, AtomicInteger::get);
+
+        final ArgumentCaptor<ToDoubleFunction<AtomicInteger>> functionCaptor =
+                ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(mockPluginMetrics, times(1)).gauge(eq(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_CARDINALITY),
+                eq(liveGroupCount), functionCaptor.capture());
+
+        // The gauge has to read the state each time it is sampled rather than capture a value at
+        // registration, otherwise it would flatline instead of tracking live cardinality.
+        assertEquals(3.0, functionCaptor.getValue().applyAsDouble(liveGroupCount));
+        liveGroupCount.set(7);
+        assertEquals(7.0, functionCaptor.getValue().applyAsDouble(liveGroupCount));
     }
 }

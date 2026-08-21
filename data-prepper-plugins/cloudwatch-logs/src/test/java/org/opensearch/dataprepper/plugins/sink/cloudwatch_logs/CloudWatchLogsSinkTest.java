@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -66,6 +67,7 @@ class CloudWatchLogsSinkTest {
     private Map<String, String> mockHeaderOverrides;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
     private CloudWatchLogsClient mockClient;
+    private ExpressionEvaluator mockExpressionEvaluator;
     private static final String TEST_LOG_GROUP = "testLogGroup";
     private static final String TEST_LOG_STREAM= "testLogStream";
     private static final String TEST_PLUGIN_NAME = "testPluginName";
@@ -91,6 +93,7 @@ class CloudWatchLogsSinkTest {
         mockHeaderOverrides.put("X-Test-Header", "test-value");
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         mockClient = mock(CloudWatchLogsClient.class);
+        mockExpressionEvaluator = mock(ExpressionEvaluator.class);
         DistributionSummary summary = mock(DistributionSummary.class);
         when(mockPluginMetrics.summary(anyString())).thenReturn(summary);
 
@@ -109,7 +112,7 @@ class CloudWatchLogsSinkTest {
 
     CloudWatchLogsSink getTestCloudWatchSink() {
         return new CloudWatchLogsSink(mockPluginSetting, mockPluginMetrics, mockPluginFactory, mockCloudWatchLogsSinkConfig,
-                mockCredentialSupplier);
+                mockCredentialSupplier, mockExpressionEvaluator);
     }
 
     Collection<Record<Event>> getMockedRecords() {

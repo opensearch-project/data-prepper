@@ -78,14 +78,25 @@ public class CloudWatchLogsDispatcher {
         return logEventList;
     }
 
+    /**
+     * Dispatches using the entity configured on this dispatcher (static entity mode).
+     */
     public void dispatchLogs(List<InputLogEvent> inputLogEvents, List<EventHandle> eventHandles) {
+        dispatchLogs(inputLogEvents, eventHandles, entity);
+    }
+
+    /**
+     * Dispatches using an explicitly supplied entity. Used by dynamic-entity mode where each
+     * buffer group carries its own resolved entity
+     */
+    public void dispatchLogs(List<InputLogEvent> inputLogEvents, List<EventHandle> eventHandles, final Entity requestEntity) {
         final PutLogEventsRequest.Builder requestBuilder = PutLogEventsRequest.builder()
                 .logEvents(inputLogEvents)
                 .logGroupName(logGroup)
                 .logStreamName(logStream);
 
-        if (entity != null) {
-            requestBuilder.entity(entity);
+        if (requestEntity != null) {
+            requestBuilder.entity(requestEntity);
         }
 
         final PutLogEventsRequest putLogEventsRequest = requestBuilder.build();
