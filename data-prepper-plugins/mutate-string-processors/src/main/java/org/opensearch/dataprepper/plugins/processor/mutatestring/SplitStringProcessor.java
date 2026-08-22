@@ -17,7 +17,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
