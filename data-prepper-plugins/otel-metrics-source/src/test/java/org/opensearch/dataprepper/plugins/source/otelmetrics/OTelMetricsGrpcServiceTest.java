@@ -32,6 +32,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
@@ -54,8 +55,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -169,6 +172,8 @@ public class OTelMetricsGrpcServiceTest {
     private Buffer buffer;
     @Mock
     private ServiceRequestContext serviceRequestContext;
+    @Mock
+    private CircuitBreaker circuitBreaker;
 
     @Captor
     private ArgumentCaptor<Collection<Record>> recordCaptor;
@@ -210,6 +215,75 @@ public class OTelMetricsGrpcServiceTest {
 
     OTelMetricsGrpcService createObjectUnderTest(OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, null, mockPluginMetrics, null);
+    }
+
+    OTelMetricsGrpcService createObjectUnderTestWithCircuitBreaker(
+            final OTelProtoCodec.OTelProtoDecoder decoder,
+            final CircuitBreaker circuitBreaker) {
+        return new OTelMetricsGrpcService(
+                bufferWriteTimeoutInMillis, decoder, buffer, circuitBreaker, null, mockPluginMetrics, null);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerOpen_rejectsRequestBeforeBufferWrite(
+            final OTelProtoCodec.OTelProtoDecoder decoder) {
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        sut = createObjectUnderTestWithCircuitBreaker(decoder, circuitBreaker);
+        final BufferWriteException thrown;
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            thrown = assertThrows(BufferWriteException.class, () -> sut.export(METRICS_REQUEST, responseObserver));
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        assertThat(thrown.getMessage(), equalTo("Circuit breaker is open."));
+        assertThat(thrown.getCause(), instanceOf(TimeoutException.class));
+        verifyNoInteractions(buffer);
+        verifyNoInteractions(responseObserver);
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(payloadSize, times(1)).record(anyDouble());
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+        verifyNoInteractions(successRequestsCounter);
+        verifyNoInteractions(createdCounter);
+        verifyNoInteractions(droppedCounter);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerClosed_proceedsNormally(
+            final OTelProtoCodec.OTelProtoDecoder decoder) throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(false);
+        sut = createObjectUnderTestWithCircuitBreaker(decoder, circuitBreaker);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            sut.export(METRICS_REQUEST, responseObserver);
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+        verify(responseObserver, times(1)).onNext(ExportMetricsServiceResponse.newBuilder().build());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(successRequestsCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_nullCircuitBreaker_proceedsNormally(
+            final OTelProtoCodec.OTelProtoDecoder decoder) throws Exception {
+        // Backward compat: the (older) constructor without a breaker passes null.
+        sut = createObjectUnderTestWithCircuitBreaker(decoder, null);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            sut.export(METRICS_REQUEST, responseObserver);
+        }
+
+        verifyNoInteractions(circuitBreaker);
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+        verify(successRequestsCounter, times(1)).increment();
     }
 
     @ParameterizedTest

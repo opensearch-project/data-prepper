@@ -14,12 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.event.EventFactoryApplicationContextMarker;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_CERTIFICATE_FILE_PATH;
 import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 
@@ -61,6 +63,11 @@ class PeerForwarderAppConfigIT {
         @Bean
         YAMLFactory yamlFactory() {
             return new YAMLFactory();
+        }
+
+        @Bean
+        CircuitBreaker circuitBreaker() {
+            return mock(CircuitBreaker.class);
         }
     }
 
