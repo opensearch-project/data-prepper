@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -183,6 +184,13 @@ class KafkaSourceTest {
         kafkaSource = createObjectUnderTest();
         assertTrue(Objects.nonNull(kafkaSource));
         assertTrue(kafkaSource.areAcknowledgementsEnabled());
+    }
+
+    @Test
+    void getConfluentValueDeserializerClass_withProtobuf_returnsProtobufDeserializer() {
+        Assertions.assertEquals(
+                KafkaProtobufDeserializer.class,
+                KafkaSource.getConfluentValueDeserializerClass("PROTOBUF"));
     }
 
     @Test

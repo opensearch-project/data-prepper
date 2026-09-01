@@ -14,6 +14,13 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.Message;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
 import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -575,6 +582,42 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
+    public void testProtobufConsumeRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final MockSchemaRegistryClient schemaRegistryClient = new MockSchemaRegistryClient();
+        final Map<String, Object> serdeConfig = Map.of("schema.registry.url", "mock://protobuf-consumer-test");
+        final KafkaProtobufSerializer<Message> serializer = new KafkaProtobufSerializer<>(schemaRegistryClient);
+        final KafkaProtobufDeserializer<Message> deserializer = new KafkaProtobufDeserializer<>(schemaRegistryClient);
+        serializer.configure(serdeConfig, false);
+        deserializer.configure(serdeConfig, false);
+
+        final byte[] serializedMessage = serializer.serialize(topic, createProtobufMessage());
+        final Message deserializedMessage = deserializer.deserialize(topic, serializedMessage);
+        final ConsumerRecord<String, Message> protobufRecord =
+                new ConsumerRecord<>(topic, testPartition, 100L, testKey1, deserializedMessage);
+        consumerRecords = new ConsumerRecords<>(Map.of(
+                new TopicPartition(topic, testPartition),
+                List.of(protobufRecord)));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        final Event event = bufferRecords.getKey().iterator().next().getData();
+        assertThat(event.get("orderId", String.class), equalTo("order-123"));
+        assertThat(event.get("itemCount", Integer.class), equalTo(3));
+        assertThat(event.get("active", Boolean.class), equalTo(true));
+        assertThat(event.get("tags", List.class), equalTo(List.of("priority", "fragile")));
+        assertThat(event.get("kafka_key", String.class), equalTo(testKey1));
+        assertThat(deserializedMessage, org.hamcrest.Matchers.instanceOf(DynamicMessage.class));
+
+        serializer.close();
+        deserializer.close();
+    }
+
+    @Test
     public void testJsonDeserializationErrorWithAcknowledgements() throws Exception {
         String topic = topicConfig.getName();
         final ObjectMapper mapper = new ObjectMapper();
@@ -915,11 +958,50 @@ public class KafkaCustomConsumerTest {
         return new ConsumerRecords(records);
     }
 
+    private DynamicMessage createProtobufMessage() throws Descriptors.DescriptorValidationException {
+        final DescriptorProtos.DescriptorProto messageDescriptor = DescriptorProtos.DescriptorProto.newBuilder()
+                .setName("OrderEvent")
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("order_id")
+                        .setNumber(1)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("item_count")
+                        .setNumber(2)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_INT32))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("active")
+                        .setNumber(3)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_BOOL))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("tags")
+                        .setNumber(4)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING)
+                        .setLabel(DescriptorProtos.FieldDescriptorProto.Label.LABEL_REPEATED))
+                .build();
+        final DescriptorProtos.FileDescriptorProto fileDescriptor = DescriptorProtos.FileDescriptorProto.newBuilder()
+                .setName("order_event.proto")
+                .setPackage("example.orders")
+                .setSyntax("proto3")
+                .addMessageType(messageDescriptor)
+                .build();
+        final Descriptors.Descriptor descriptor = Descriptors.FileDescriptor
+                .buildFrom(fileDescriptor, new Descriptors.FileDescriptor[0])
+                .findMessageTypeByName("OrderEvent");
+
+        return DynamicMessage.newBuilder(descriptor)
+                .setField(descriptor.findFieldByName("order_id"), "order-123")
+                .setField(descriptor.findFieldByName("item_count"), 3)
+                .setField(descriptor.findFieldByName("active"), true)
+                .addRepeatedField(descriptor.findFieldByName("tags"), "priority")
+                .addRepeatedField(descriptor.findFieldByName("tags"), "fragile")
+                .build();
+    }
+
     private static Stream<Arguments> provideExceptionsFromBufferWrite() {
         return Stream.of(
                 Arguments.of(new SizeOverflowException("size overflow")),
                 Arguments.of(new TimeoutException()));
     }
 }
-
 

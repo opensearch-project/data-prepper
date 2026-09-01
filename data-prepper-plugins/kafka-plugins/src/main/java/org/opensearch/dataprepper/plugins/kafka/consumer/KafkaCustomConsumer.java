@@ -15,6 +15,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.Message;
+import com.google.protobuf.util.JsonFormat;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.Range;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -78,6 +80,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     static final Duration MAX_BACKOFF = Duration.ofMinutes(10);
     private static final int BUFFER_WRITE_TIMEOUT = 2000;
     static final String DEFAULT_KEY = "message";
+    private static final JsonFormat.Printer PROTOBUF_JSON_PRINTER = JsonFormat.printer();
 
     private volatile long lastCommitTime;
     private KafkaConsumer consumer= null;
@@ -471,6 +474,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             if (value instanceof JsonDataWithSchema) {
                 JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
                 value = objectMapper.readValue(j.getPayload(), Map.class);
+            } else if (value instanceof Message) {
+                value = objectMapper.readValue(PROTOBUF_JSON_PRINTER.print((Message) value), Map.class);
             } else if (schema == MessageFormat.AVRO || value instanceof GenericRecord) {
                 final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
                 value = objectMapper.readValue(jsonParser, Map.class);
@@ -481,7 +486,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 value = objectMapper.convertValue(value, Map.class);
             }
         } catch (Exception e){
-            LOG.error("Failed to parse JSON or AVRO record", e);
+            LOG.error("Failed to parse JSON, AVRO, or Protobuf record", e);
             topicMetrics.getNumberOfRecordsFailedToParse().increment();
         }
         if (!plainTextMode) {
