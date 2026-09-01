@@ -7,10 +7,12 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.protobuf.Message;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -80,6 +82,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Event>> {
     private static final String NO_RESOLVABLE_URLS_ERROR_MESSAGE = "No resolvable bootstrap urls given in bootstrap.servers";
+    private static final String PROTOBUF_SCHEMA_TYPE = "PROTOBUF";
     private static final long RETRY_SLEEP_INTERVAL = 30000;
     private static final String MDC_KAFKA_PLUGIN_VALUE = "source";
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
@@ -142,7 +145,6 @@ public class KafkaSource implements Source<Record<Event>> {
                 consumerGroupID = topic.getGroupId();
                 KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, true, topic.getWorkers());
                 Properties consumerProperties = getConsumerProperties(topic, authProperties);
-                MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
                 try {
                     int numWorkers = topic.getWorkers();
                     final ExecutorService executorService = Executors.newFixedThreadPool(
@@ -152,7 +154,7 @@ public class KafkaSource implements Source<Record<Event>> {
                     IntStream.range(0, numWorkers).forEach(index -> {
                         while (true) {
                             try {
-                                kafkaConsumer = createKafkaConsumer(schema, consumerProperties);
+                                kafkaConsumer = createKafkaConsumer(schemaType, consumerProperties);
                                 break;
                             } catch (ConfigException ce) {
                                 if (ce.getMessage().contains(NO_RESOLVABLE_URLS_ERROR_MESSAGE)) {
@@ -192,22 +194,23 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    KafkaConsumer<?, ?> createKafkaConsumer(final MessageFormat schema, final Properties consumerProperties) {
-        switch (schema) {
-            case JSON:
-                return new KafkaConsumer<String, JsonNode>(consumerProperties);
-            case AVRO:
-                return new KafkaConsumer<String, GenericRecord>(consumerProperties);
-            case PLAINTEXT:
-            default:
-                final AwsContext awsContext = new AwsContext(sourceConfig, awsCredentialsSupplier);
-                glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig, awsContext);
-                if (Objects.nonNull(glueDeserializer)) {
-                    return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
-                } else {
-                    return new KafkaConsumer<String, String>(consumerProperties);
-                }
+    KafkaConsumer<?, ?> createKafkaConsumer(final String schemaType, final Properties consumerProperties) {
+        if (MessageFormat.JSON.toString().equalsIgnoreCase(schemaType)) {
+            return new KafkaConsumer<String, JsonNode>(consumerProperties);
         }
+        if (MessageFormat.AVRO.toString().equalsIgnoreCase(schemaType)) {
+            return new KafkaConsumer<String, GenericRecord>(consumerProperties);
+        }
+        if (PROTOBUF_SCHEMA_TYPE.equalsIgnoreCase(schemaType)) {
+            return new KafkaConsumer<String, Message>(consumerProperties);
+        }
+
+        final AwsContext awsContext = new AwsContext(sourceConfig, awsCredentialsSupplier);
+        glueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(sourceConfig, awsContext);
+        if (Objects.nonNull(glueDeserializer)) {
+            return new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
+        }
+        return new KafkaConsumer<String, String>(consumerProperties);
     }
 
     @Override
@@ -343,15 +346,23 @@ public class KafkaSource implements Source<Record<Event>> {
             LOG.error("Failed to connect to the schema registry...");
             throw new RuntimeException(e);
         }
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, getConfluentValueDeserializerClass(schemaType));
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonSchemaDeserializer.class);
-	    properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        } else {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
+            properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
         }
+    }
+
+    static Class<?> getConfluentValueDeserializerClass(final String schemaType) {
+        if (MessageFormat.JSON.toString().equalsIgnoreCase(schemaType)) {
+            return KafkaJsonSchemaDeserializer.class;
+        }
+        if (MessageFormat.AVRO.toString().equalsIgnoreCase(schemaType)) {
+            return KafkaAvroDeserializer.class;
+        }
+        if (PROTOBUF_SCHEMA_TYPE.equalsIgnoreCase(schemaType)) {
+            return KafkaProtobufDeserializer.class;
+        }
+        return StringDeserializer.class;
     }
 
     private void setConsumerTopicProperties(Properties properties, TopicConsumerConfig topicConfig) {

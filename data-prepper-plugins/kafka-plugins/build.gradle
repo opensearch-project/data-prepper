@@ -45,7 +45,9 @@ dependencies {
     implementation libs.commons.lang3
     implementation 'io.confluent:kafka-avro-serializer:7.9.1'
     implementation 'io.confluent:kafka-json-schema-serializer:7.9.1'
+    implementation 'io.confluent:kafka-protobuf-serializer:7.9.1'
     implementation 'io.confluent:kafka-schema-registry-client:7.9.1'
+    implementation libs.protobuf.util
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:kafka'
@@ -77,7 +79,6 @@ dependencies {
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
     testImplementation project(':data-prepper-plugins:otel-proto-common')
     testImplementation libs.opentelemetry.proto
-    testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
