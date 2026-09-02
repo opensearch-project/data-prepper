@@ -56,7 +56,7 @@ class ProtobufMessageConverter {
                 message.getDescriptorForType(), this::createPrinter);
         try {
             return objectMapper.readValue(printer.print(message), Object.class);
-        } catch (final InvalidProtocolBufferException e) {
+        } catch (final InvalidProtocolBufferException | IllegalArgumentException e) {
             return convertMessageFields(message, printer);
         }
     }
@@ -168,7 +168,7 @@ class ProtobufMessageConverter {
     private Object convert(final Message message, final JsonFormat.Printer printer) throws IOException {
         try {
             return objectMapper.readValue(printer.print(message), Object.class);
-        } catch (final InvalidProtocolBufferException e) {
+        } catch (final InvalidProtocolBufferException | IllegalArgumentException e) {
             return convertMessageFields(message, printer);
         }
     }

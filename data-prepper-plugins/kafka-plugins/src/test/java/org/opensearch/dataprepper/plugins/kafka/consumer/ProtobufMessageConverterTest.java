@@ -17,6 +17,7 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.StringValue;
+import com.google.protobuf.Timestamp;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -78,6 +79,21 @@ class ProtobufMessageConverterTest {
         assertThat(convertedMap.get("unsigned32"), equalTo(4_294_967_295L));
         assertThat(convertedMap.get("unsigned64"), equalTo("18446744073709551615"));
         assertThat(convertedMap.get("enumValue"), equalTo(123));
+    }
+
+    @Test
+    void convert_withOutOfRangeTimestamp_fallsBackToFields() throws Exception {
+        final Timestamp timestamp = Timestamp.newBuilder()
+                .setSeconds(1_700_000_000_000L)
+                .setNanos(123)
+                .build();
+
+        final Object convertedValue = objectUnderTest.convert(timestamp);
+
+        assertThat(convertedValue, instanceOf(Map.class));
+        final Map<String, Object> convertedMap = (Map<String, Object>) convertedValue;
+        assertThat(convertedMap.get("seconds"), equalTo("1700000000000"));
+        assertThat(convertedMap.get("nanos"), equalTo(123));
     }
 
     private DynamicMessage createFallbackMessage(final Any knownAny, final Any unknownAny)
