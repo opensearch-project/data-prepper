@@ -207,6 +207,10 @@ public class OpenSearchSinkConfig {
     private DlqConfiguration dlq;
 
     @Getter
+    @JsonProperty("drop_version_conflicts")
+    private boolean dropVersionConflicts = false;
+
+    @Getter
     @JsonProperty("query_lookup")
     private QueryForExistingDocumentConfiguration queryExistingConfiguration;
 
@@ -373,4 +377,3 @@ public class OpenSearchSinkConfig {
         return indexAlias == null || !indexAlias.contains("${");
     }
 }
-
