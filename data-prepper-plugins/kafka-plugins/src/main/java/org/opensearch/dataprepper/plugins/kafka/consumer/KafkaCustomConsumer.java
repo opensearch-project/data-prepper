@@ -596,9 +596,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet,
                                              Map<TopicPartition, CommitOffsetRange> offsets) throws Exception {
-        final List<TopicPartition> topicPartitions = new ArrayList<>(records.partitions());
-        for (int partitionIndex = 0; partitionIndex < topicPartitions.size(); partitionIndex++) {
-            final TopicPartition topicPartition = topicPartitions.get(partitionIndex);
+        for (final TopicPartition topicPartition : records.partitions()) {
             final long partitionEpoch = getPartitionEpoch(topicPartition);
             if (acknowledgementsEnabled && partitionEpoch == 0) {
                 if (errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
@@ -609,7 +607,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             final List<Record<Event>> eventRecords = new ArrayList<>();
-            Long lastProcessedOffset = null;
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 try {
                     if (schema == MessageFormat.BYTES) {
@@ -633,12 +630,9 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                             eventRecords.add(record);
                         }
                     }
-                    lastProcessedOffset = consumerRecord.offset();
                 } catch (final ProtobufMessageConversionException e) {
-                    processPartialPartitionRecords(
-                            records, acknowledgementSet, offsets, topicPartitions, partitionIndex,
-                            partitionRecords.get(0).offset(), lastProcessedOffset, consumerRecord.offset(), partitionEpoch, eventRecords);
-                    return;
+                    LOG.warn("Skipping Protobuf record at topic {} partition {} offset {} after conversion failure",
+                            topicName, topicPartition.partition(), consumerRecord.offset());
                 }
             }
 
@@ -647,34 +641,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
             long firstOffset = partitionRecords.get(0).offset();
             addOffsets(offsets, topicPartition, firstOffset, lastOffset, partitionEpoch);
-        }
-    }
-
-    private <T> void processPartialPartitionRecords(
-            final ConsumerRecords<String, T> records,
-            final AcknowledgementSet acknowledgementSet,
-            final Map<TopicPartition, CommitOffsetRange> offsets,
-            final List<TopicPartition> topicPartitions,
-            final int failedPartitionIndex,
-            final long firstOffset,
-            final Long lastProcessedOffset,
-            final long failedOffset,
-            final long partitionEpoch,
-            final List<Record<Event>> eventRecords) {
-        final TopicPartition failedPartition = topicPartitions.get(failedPartitionIndex);
-        consumer.seek(failedPartition, failedOffset);
-        LOG.warn("Seeking partition {} to offset {} after a Protobuf conversion failure", failedPartition, failedOffset);
-        for (int partitionIndex = failedPartitionIndex + 1; partitionIndex < topicPartitions.size(); partitionIndex++) {
-            final TopicPartition unprocessedPartition = topicPartitions.get(partitionIndex);
-            final List<ConsumerRecord<String, T>> unprocessedRecords = records.records(unprocessedPartition);
-            if (!unprocessedRecords.isEmpty()) {
-                consumer.seek(unprocessedPartition, unprocessedRecords.get(0).offset());
-            }
-        }
-
-        if (!eventRecords.isEmpty()) {
-            processRecords(acknowledgementSet, eventRecords);
-            addOffsets(offsets, failedPartition, firstOffset, lastProcessedOffset, partitionEpoch);
         }
     }
 
