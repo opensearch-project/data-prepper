@@ -89,12 +89,6 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     integrationTestImplementation testLibs.junit.vintage
-    integrationTestImplementation 'io.confluent:kafka-schema-registry:8.0.7'
-    integrationTestImplementation ('io.confluent:kafka-schema-registry:8.0.7:tests') {
-        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
-        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
-        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
-    }
 
     constraints {
         implementation('org.mozilla:rhino') {
