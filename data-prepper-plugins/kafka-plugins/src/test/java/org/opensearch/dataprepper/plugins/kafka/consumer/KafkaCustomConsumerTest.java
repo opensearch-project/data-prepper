@@ -18,6 +18,7 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
+import com.google.protobuf.StringValue;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
@@ -67,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -182,6 +184,7 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfBufferSizeOverflows()).thenReturn(overflowCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
+        when(topicMetrics.getNumberOfRecordsFailedToParse()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfRebalances()).thenReturn(counter);
@@ -618,6 +621,51 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
+    public void testProtobufScalarConsumeRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final ConsumerRecord<String, Message> protobufRecord =
+                new ConsumerRecord<>(topic, testPartition, 100L, null, StringValue.of("test-value"));
+        consumerRecords = new ConsumerRecords<>(Map.of(
+                new TopicPartition(topic, testPartition),
+                List.of(protobufRecord)));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        final Event event = bufferRecords.getKey().iterator().next().getData();
+        assertThat(event.get("message", String.class), equalTo("test-value"));
+        assertThat(consumer.getOffsetsToCommit().get(new TopicPartition(topic, testPartition)).offset(), equalTo(101L));
+    }
+
+    @Test
+    public void testProtobufConversionFailureRewindsUnprocessedRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition firstPartition = new TopicPartition(topic, 0);
+        final TopicPartition secondPartition = new TopicPartition(topic, 1);
+        final Message invalidMessage = mock(Message.class);
+        when(invalidMessage.getDescriptorForType()).thenThrow(new IllegalStateException("invalid descriptor"));
+
+        final Map<TopicPartition, List<ConsumerRecord>> records = new LinkedHashMap<>();
+        records.put(firstPartition, List.of(
+                new ConsumerRecord<>(topic, 0, 100L, null, createProtobufMessage()),
+                new ConsumerRecord<>(topic, 0, 101L, null, invalidMessage),
+                new ConsumerRecord<>(topic, 0, 102L, null, createProtobufMessage())));
+        records.put(secondPartition, List.of(new ConsumerRecord<>(topic, 1, 200L, null, createProtobufMessage())));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        verify(kafkaConsumer).seek(firstPartition, 101L);
+        verify(kafkaConsumer).seek(secondPartition, 200L);
+        assertThat(buffer.read(100).getKey().size(), equalTo(1));
+        assertThat(consumer.getOffsetsToCommit().get(firstPartition).offset(), equalTo(101L));
+    }
+
+    @Test
     public void testJsonDeserializationErrorWithAcknowledgements() throws Exception {
         String topic = topicConfig.getName();
         final ObjectMapper mapper = new ObjectMapper();
@@ -1004,4 +1052,3 @@ public class KafkaCustomConsumerTest {
                 Arguments.of(new TimeoutException()));
     }
 }
-
