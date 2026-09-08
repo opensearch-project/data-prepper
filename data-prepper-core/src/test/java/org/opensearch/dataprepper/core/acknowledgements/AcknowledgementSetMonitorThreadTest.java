@@ -30,14 +30,16 @@ class AcknowledgementSetMonitorThreadTest {
     @Mock
     private AcknowledgementSetMonitor acknowledgementSetMonitor;
     private Duration delayTime;
+    private Duration shutdownTimeout;
 
     @BeforeEach
     void setUp() {
         delayTime = Duration.ofMillis(10);
+        shutdownTimeout = Duration.ofSeconds(5);
     }
 
     private AcknowledgementSetMonitorThread createObjectUnderTest() {
-        return new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, delayTime);
+        return new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, delayTime, shutdownTimeout);
     }
 
     @Test

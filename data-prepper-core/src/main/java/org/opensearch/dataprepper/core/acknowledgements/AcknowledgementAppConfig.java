@@ -9,6 +9,9 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
+import org.opensearch.dataprepper.core.parser.model.AcknowledgementsConfig;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,6 +22,15 @@ import java.util.concurrent.ThreadFactory;
 @Configuration
 class AcknowledgementAppConfig {
     private static final int MAX_THREADS = 12;
+
+    @Bean
+    AcknowledgementsConfig acknowledgementsConfig(@Autowired(required = false) final DataPrepperConfiguration dataPrepperConfiguration) {
+        if (dataPrepperConfiguration != null && dataPrepperConfiguration.getAcknowledgementsConfig() != null) {
+            return dataPrepperConfiguration.getAcknowledgementsConfig();
+        }
+
+        return AcknowledgementsConfig.defaultConfiguration();
+    }
 
     @Bean
     CallbackTheadFactory callbackTheadFactory() {

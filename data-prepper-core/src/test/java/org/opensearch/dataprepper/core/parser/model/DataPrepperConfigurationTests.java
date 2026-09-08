@@ -286,4 +286,28 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getEmfAdditionalProperties(), notNullValue());
         assertThat(dataPrepperConfiguration.getEmfAdditionalProperties().isEmpty(), equalTo(true));
     }
+
+    @Test
+    void testDefaultAcknowledgementsConfig() {
+        final DataPrepperConfiguration dataPrepperConfiguration = new DataPrepperConfiguration();
+        assertThat(dataPrepperConfiguration.getAcknowledgementsConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAcknowledgementsConfig().getShutdownTimeout(),
+                equalTo(Duration.ofSeconds(5)));
+    }
+
+    @Test
+    void testConfigWithAcknowledgements() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                "src/test/resources/valid_data_prepper_config_with_acknowledgements.yaml");
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getAcknowledgementsConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAcknowledgementsConfig().getShutdownTimeout(),
+                equalTo(Duration.ofSeconds(20)));
+    }
+
+    @Test
+    void testConfigWithNonPositiveAcknowledgementsShutdownTimeoutThrows() {
+        assertThrows(JsonMappingException.class, () -> makeConfig(
+                "src/test/resources/invalid_data_prepper_config_with_acknowledgements.yaml"));
+    }
 }

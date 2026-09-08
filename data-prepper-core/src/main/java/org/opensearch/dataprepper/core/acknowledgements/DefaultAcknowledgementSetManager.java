@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
+import org.opensearch.dataprepper.core.parser.model.AcknowledgementsConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -32,14 +33,23 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
 
     @Inject
     public DefaultAcknowledgementSetManager(
-            @Named("acknowledgementCallbackExecutor") final ScheduledExecutorService callbackExecutor) {
+            @Named("acknowledgementCallbackExecutor") final ScheduledExecutorService callbackExecutor,
+            final AcknowledgementsConfig acknowledgementsConfig) {
+        this(callbackExecutor, Duration.ofMillis(DEFAULT_WAIT_TIME_MS), acknowledgementsConfig.getShutdownTimeout());
+    }
+
+    public DefaultAcknowledgementSetManager(final ScheduledExecutorService callbackExecutor) {
         this(callbackExecutor, Duration.ofMillis(DEFAULT_WAIT_TIME_MS));
     }
 
     public DefaultAcknowledgementSetManager(final ScheduledExecutorService callbackExecutor, final Duration waitTime) {
+        this(callbackExecutor, waitTime, AcknowledgementsConfig.defaultConfiguration().getShutdownTimeout());
+    }
+
+    public DefaultAcknowledgementSetManager(final ScheduledExecutorService callbackExecutor, final Duration waitTime, final Duration shutdownTimeout) {
         this.acknowledgementSetMonitor = new AcknowledgementSetMonitor();
         this.scheduledExecutor = Objects.requireNonNull(callbackExecutor);
-        acknowledgementSetMonitorThread = new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, waitTime);
+        acknowledgementSetMonitorThread = new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, waitTime, shutdownTimeout);
         acknowledgementSetMonitorThread.start();
         pluginMetrics = PluginMetrics.fromNames("acknowledgementSetManager", "acknowledgements");
         metrics = new DefaultAcknowledgementSetMetrics(pluginMetrics);
