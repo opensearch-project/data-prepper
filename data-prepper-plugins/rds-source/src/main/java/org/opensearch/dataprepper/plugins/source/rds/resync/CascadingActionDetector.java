@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.source.rds.resync;
@@ -24,8 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
@@ -94,15 +96,15 @@ public class CascadingActionDetector {
             final ParentTable parentTable = parentTableMap.get(tableMetadata.getFullTableName());
 
             for (Map.Entry<Serializable[], Serializable[]> row : data.getRows()) {
-                // Find out for this row, which columns are changing
+                // Find out for this row, which columns are changing.
                 LOG.debug("Checking for updated columns");
-                final Map<String, Object> updatedColumnsAndValues = IntStream.range(0, row.getKey().length)
-                        .filter(i -> !Objects.equals(row.getKey()[i], row.getValue()[i]))
-                        .mapToObj(i -> tableMetadata.getColumnNames().get(i))
-                        .collect(Collectors.toMap(
-                                column -> column,
-                                column -> row.getValue()[tableMetadata.getColumnNames().indexOf(column)]
-                        ));
+                final Map<String, Object> updatedColumnsAndValues = new HashMap<>();
+                final int columnCount = Math.min(tableMetadata.getColumnNames().size(), row.getKey().length);
+                for (int i = 0; i < columnCount; i++) {
+                    if (!Objects.equals(row.getKey()[i], row.getValue()[i])) {
+                        updatedColumnsAndValues.put(tableMetadata.getColumnNames().get(i), row.getValue()[i]);
+                    }
+                }
                 LOG.debug("These columns were updated: {}", updatedColumnsAndValues);
 
                 LOG.debug("Decide whether to create resync partitions");
