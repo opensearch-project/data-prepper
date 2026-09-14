@@ -145,6 +145,10 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
 
                 Object parsedValue = parsedValueOptional.get();
 
+                if (doUsePointer) {
+                    parsedValue = parseUsingPointer(event, parsedValue, pointer, doWriteToRoot);
+                }
+
                 if (!(parsedValue instanceof Map)) {
                     if (doWriteToRoot) {
                         processingFailuresCounter.increment();
@@ -167,11 +171,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     continue;
                 }
 
-                Map<String, Object> parsedMap = (Map<String, Object>) parsedValue;
-
-                if (doUsePointer) {
-                    parsedMap = parseUsingPointer(event, parsedMap, pointer, doWriteToRoot);
-                }
+                final Map<String, Object> parsedMap = (Map<String, Object>) parsedValue;
 
                 if (doWriteToRoot && deleteSourceRequested) {
                     event.delete(this.source);
@@ -215,8 +215,8 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         return this.getClass().getAnnotation(DataPrepperPlugin.class).name();
     }
 
-    private Map<String, Object> parseUsingPointer(final Event event, final Map<String, Object> parsedJson, final String pointer,
-                                                  final boolean doWriteToRoot) {
+    private Object parseUsingPointer(final Event event, final Object parsedJson, final String pointer,
+                                     final boolean doWriteToRoot) {
         final Event temporaryEvent = JacksonEvent.builder().withEventType("event").build();
         final EventKey temporaryPutKey = eventKeyFactory.createEventKey(source.getKey(), EventKeyFactory.EventAction.PUT);
         temporaryEvent.put(temporaryPutKey, parsedJson, normalizeKeys);

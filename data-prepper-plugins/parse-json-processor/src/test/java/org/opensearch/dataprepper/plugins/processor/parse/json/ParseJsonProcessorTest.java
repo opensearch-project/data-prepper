@@ -624,6 +624,26 @@ public class ParseJsonProcessorTest {
     }
 
     @Test
+    void test_when_topLevelArrayWithPointerAndDestination_then_extractsPointerValue() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        when(processorConfig.getPointer()).thenReturn("/0/type");
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String type0 = UUID.randomUUID().toString();
+        final String value0 = UUID.randomUUID().toString();
+        final String serializedMessage = String.format("[{\"type\":\"%s\",\"value\":\"%s\"}]", type0, value0);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination + "/type", String.class), equalTo(type0));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
     void test_when_topLevelStringScalarWithDestination_then_parsesScalarIntoDestination() {
         final String destination = "destination_key";
         when(processorConfig.getDestination()).thenReturn(destination);
