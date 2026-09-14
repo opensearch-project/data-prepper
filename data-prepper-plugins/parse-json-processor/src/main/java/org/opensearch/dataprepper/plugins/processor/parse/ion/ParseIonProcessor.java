@@ -21,7 +21,6 @@ import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -57,14 +56,14 @@ public class ParseIonProcessor extends AbstractParseProcessor {
 
 
     @Override
-    protected Optional<Map<String, Object>> readValue(String message, Event context) {
+    protected Optional<Object> readValue(String message, Event context) {
         try {
             // We need to do a two-step process here, read the value in, then convert away any Ion types like Timestamp
-            final HashMap<String, Object> map = objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<>() {});
-            if (depth == 0) {
-                return Optional.of(map);
+            final Object value = objectMapper.convertValue(objectMapper.readValue(message, new TypeReference<>() {}), new TypeReference<Object>() {});
+            if (depth == 0 || !(value instanceof Map)) {
+                return Optional.of(value);
             }
-            return Optional.of(objectMapper.convertValue(convertNestedObjectToString(map, 1, depth), new TypeReference<>() {}));
+            return Optional.of(objectMapper.convertValue(convertNestedObjectToString((Map<String, Object>) value, 1, depth), new TypeReference<>() {}));
         } catch (JsonProcessingException e) {
             if (handleFailedEventsOption.shouldLog()) {
                 LOG.error(SENSITIVE, "An exception occurred due to invalid Ion while parsing [{}] due to {}", message, e.getMessage());

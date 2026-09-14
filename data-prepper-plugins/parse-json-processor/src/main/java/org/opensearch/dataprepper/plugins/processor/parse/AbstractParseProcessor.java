@@ -88,9 +88,11 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     /**
      * @param message message
      * @param context context
-     * @return Optional HashMap of the parsed value - empty if the message was invalid (be sure to log the error)
+     * @return Optional parsed value - empty if the message was invalid (be sure to log the error). The value is a
+     * {@link Map} when the message parses to an object, or another type such as a {@link List} or scalar when the
+     * message parses to a top-level array or scalar value.
      */
-    protected abstract Optional<Map<String, Object>> readValue(String message, Event context);
+    protected abstract Optional<Object> readValue(String message, Event context);
 
     protected Map<String, Object> convertNestedObjectToString(Map<String, Object> map, int curDepth, int targetDepth) {
         HashMap<String, Object> resultMap = new HashMap<>();
@@ -135,16 +137,40 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                     continue;
                 }
 
-                final Optional<Map<String, Object>> parsedValueOptional = readValue(message, event);
+                final Optional<Object> parsedValueOptional = readValue(message, event);
                 if (parsedValueOptional.isEmpty()) {
                     event.getMetadata().addTags(tagsOnFailure);
                     continue;
                 }
 
-                Map<String, Object> parsedValue = parsedValueOptional.get();
+                Object parsedValue = parsedValueOptional.get();
+
+                if (!(parsedValue instanceof Map)) {
+                    if (doWriteToRoot) {
+                        processingFailuresCounter.increment();
+                        if (handleFailedEventsOption.shouldLog()) {
+                            LOG.error(EVENT, "A non-object value was parsed but cannot be written to the root of the Event. " +
+                                    "A destination must be configured to parse a top-level array or scalar value. Event [{}]", event);
+                        }
+                        event.getMetadata().addTags(tagsOnFailure);
+                        continue;
+                    }
+
+                    if (overwriteIfDestinationExists || !event.containsKey(destination)) {
+                        event.put(destination, parsedValue, normalizeKeys);
+                    }
+
+                    if (deleteSourceRequested) {
+                        event.delete(this.source);
+                    }
+
+                    continue;
+                }
+
+                Map<String, Object> parsedMap = (Map<String, Object>) parsedValue;
 
                 if (doUsePointer) {
-                    parsedValue = parseUsingPointer(event, parsedValue, pointer, doWriteToRoot);
+                    parsedMap = parseUsingPointer(event, parsedMap, pointer, doWriteToRoot);
                 }
 
                 if (doWriteToRoot && deleteSourceRequested) {
@@ -152,9 +178,9 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                 }
 
                 if (doWriteToRoot) {
-                    writeToRoot(event, parsedValue);
+                    writeToRoot(event, parsedMap);
                 } else if (overwriteIfDestinationExists || !event.containsKey(destination)) {
-                    event.put(destination, parsedValue, normalizeKeys);
+                    event.put(destination, parsedMap, normalizeKeys);
                 }
 
                 if (deleteSourceRequested && !doWriteToRoot) {
