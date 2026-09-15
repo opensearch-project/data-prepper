@@ -151,6 +151,23 @@ public class JiraRestClientTest {
     }
 
     @Test
+    public void testGetAllIssuesIncludesFieldsParameter() {
+        JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
+        SearchResults mockSearchResults = mock(SearchResults.class);
+        doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
+        ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.forClass(URI.class);
+        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(uriCaptor.capture(), any(Class.class));
+
+        jiraRestClient.getAllIssues(jql, null);
+
+        String uri = uriCaptor.getValue().toString();
+        assertTrue(uri.contains("fields="), "Search request must include fields parameter for /rest/api/3/search/jql");
+        assertTrue(uri.contains("project"), "fields parameter must include project");
+        assertTrue(uri.contains("created"), "fields parameter must include created");
+        assertTrue(uri.contains("updated"), "fields parameter must include updated");
+    }
+
+    @Test
     public void testRestApiAddressValidation() throws JsonProcessingException {
         when(authConfig.getUrl()).thenReturn("https://224.0.0.1/");
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
