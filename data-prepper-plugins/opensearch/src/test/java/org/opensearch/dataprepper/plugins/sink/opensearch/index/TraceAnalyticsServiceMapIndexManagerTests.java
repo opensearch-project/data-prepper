@@ -169,7 +169,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
     @Test
     void checkAndCreatePolicy() throws IOException {
-        assertEquals(Optional.empty(), traceAnalyticsServiceMapIndexManager.checkAndCreatePolicy());
+        assertEquals(Optional.empty(), traceAnalyticsServiceMapIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }

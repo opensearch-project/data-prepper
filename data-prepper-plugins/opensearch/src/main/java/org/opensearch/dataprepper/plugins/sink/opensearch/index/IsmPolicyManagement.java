@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.client.Request;
 import org.opensearch.client.ResponseException;
@@ -93,10 +94,19 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     @Override
-    public Optional<String> checkAndCreatePolicy() throws IOException {
+    public Optional<String> checkAndCreatePolicy(final String indexAlias) throws IOException {
         final String policyManagementEndpoint = POLICY_MANAGEMENT_ENDPOINT + policyName;
 
         String policyJsonString = retrievePolicyJsonString(policyFile);
+	if(!indexAlias.isEmpty()) {
+                final ObjectMapper mapper = new ObjectMapper();
+                final JsonNode jsonNode = mapper.readTree(policyJsonString);
+                final ArrayNode iparray = mapper.createArrayNode();
+                iparray.add(indexAlias + "*");
+                ((ObjectNode) jsonNode.get("policy").get("ism_template")).put("index_patterns", iparray);
+                policyJsonString = jsonNode.toString();
+        }
+        LOG.debug("Got the policystring as {} and indexAlias as {}", policyJsonString, indexAlias);
         Request request = createPolicyRequestFromFile(policyManagementEndpoint, policyJsonString);
 
         try {
