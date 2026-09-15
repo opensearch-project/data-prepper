@@ -1653,4 +1653,95 @@ public class BulkRetryStrategyTests {
             return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
         }
     }
+
+    @Test
+    public void testExecute_withAdaptiveBackoff_startsAtLastSuccessfulDelay() throws Exception {
+        final AdaptiveBackoffState adaptiveState = new AdaptiveBackoffState(50, 3);
+        adaptiveState.recordRetrySuccess(1600);
+
+        final BulkResponseItem successItem = successItemResponse("test-index");
+        final BulkResponseItem throttledItem = tooManyRequestItemResponse("test-index");
+        final int[] callCount = {0};
+
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                bulkRequest -> {
+                    callCount[0]++;
+                    if (callCount[0] == 1) {
+                        // First attempt: partial failure (throttled)
+                        BulkResponse resp = mock(BulkResponse.class);
+                        when(resp.errors()).thenReturn(true);
+                        when(resp.items()).thenReturn(List.of(throttledItem));
+                        return resp;
+                    }
+                    // Second attempt: success
+                    return new BulkResponse.Builder().items(List.of()).errors(false).took(10).build();
+                },
+                logFailureConsumer,
+                (operations) -> {},
+                pluginMetrics,
+                10,
+                () -> mock(AccumulatingBulkRequest.class),
+                PIPELINE_NAME, PLUGIN_NAME, null, false,
+                50, 30000, 0.0, adaptiveState);
+
+        final BulkOperationWrapper mockOp = mock(BulkOperationWrapper.class);
+        final AccumulatingBulkRequest request = mock(AccumulatingBulkRequest.class);
+        lenient().when(request.getOperationsCount()).thenReturn(1);
+        lenient().when(request.getOperations()).thenReturn(List.of(mockOp));
+        lenient().when(request.getOperationAt(0)).thenReturn(mockOp);
+
+        bulkRetryStrategy.execute(request);
+
+        // After retry, the adaptive state should have recorded the delay
+        assertTrue("Adaptive state should record retry delay > initial",
+                adaptiveState.getStartingDelay() >= 1600);
+    }
+
+    @Test
+    public void testExecute_withAdaptiveBackoff_recordsFirstAttemptSuccess() throws Exception {
+        final AdaptiveBackoffState adaptiveState = new AdaptiveBackoffState(50, 3);
+        adaptiveState.recordRetrySuccess(6400);
+
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                bulkRequest -> new BulkResponse.Builder().items(List.of()).errors(false).took(10).build(),
+                logFailureConsumer,
+                (operations) -> {},
+                pluginMetrics,
+                10,
+                () -> mock(AccumulatingBulkRequest.class),
+                PIPELINE_NAME, PLUGIN_NAME, null, false,
+                50, 30000, 0.0, adaptiveState);
+
+        final AccumulatingBulkRequest request = mock(AccumulatingBulkRequest.class);
+        lenient().when(request.getOperationsCount()).thenReturn(0);
+        lenient().when(request.getOperations()).thenReturn(List.of());
+
+        // 3 first-attempt successes should trigger decay: 6400 -> 3200
+        bulkRetryStrategy.execute(request);
+        bulkRetryStrategy.execute(request);
+        bulkRetryStrategy.execute(request);
+
+        assertEquals(3200, adaptiveState.getStartingDelay());
+    }
+
+    @Test
+    public void testExecute_withoutAdaptiveBackoff_usesConfiguredDelays() throws Exception {
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                bulkRequest -> new BulkResponse.Builder().items(List.of()).errors(false).took(10).build(),
+                logFailureConsumer,
+                (operations) -> {},
+                pluginMetrics,
+                10,
+                () -> mock(AccumulatingBulkRequest.class),
+                PIPELINE_NAME, PLUGIN_NAME, null, false,
+                100, 5000, 0.0, null);
+
+        final AccumulatingBulkRequest request = mock(AccumulatingBulkRequest.class);
+        lenient().when(request.getOperationsCount()).thenReturn(0);
+        lenient().when(request.getOperations()).thenReturn(List.of());
+
+        // Should succeed without error when no adaptive state
+        bulkRetryStrategy.execute(request);
+        // No exception = pass. Non-adaptive mode works without AdaptiveBackoffState.
+    }
 }
