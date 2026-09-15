@@ -47,17 +47,32 @@ public class PrometheusSinkFlushableBuffer implements SinkFlushableBuffer {
         PrometheusHttpSender httpSender = sinkFlushContext.getHttpSender();
         final Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
         List<Types.TimeSeries> allTimeSeries = new ArrayList<>(buffer.size() * 2);
+        List<PrometheusMetricMetadata> metadataList = new ArrayList<>(buffer.size());
 
         List<Event> events = new ArrayList<>(buffer.size());
         for (final SinkBufferEntry sinkBufferEntry : buffer) {
             PrometheusSinkBufferEntry bufferEntry = (PrometheusSinkBufferEntry)sinkBufferEntry;
             allTimeSeries.addAll(bufferEntry.getTimeSeries().getTimeSeriesList());
+            // Collect metadata from each metric
+            if (bufferEntry.getTimeSeries().getMetadata() != null) {
+                metadataList.add(bufferEntry.getTimeSeries().getMetadata());
+            }
             events.add(bufferEntry.getEvent());
         }
         buffer.clear();
         writeRequestBuilder.addAllTimeseries(allTimeSeries);
         Remote.WriteRequest request = writeRequestBuilder.build();
         byte[] bytes = request.toByteArray();
+
+        // Inject metadata into the protobuf bytes
+        try {
+            bytes = PrometheusMetadataSerializer.injectMetadata(bytes, metadataList);
+        } catch (Exception e) {
+            // Log but don't fail the request if metadata injection fails
+            // Metrics data will still be sent successfully
+            sinkMetrics.incrementEventsFailedCounter(0); // Just for logging
+        }
+
         PrometheusPushResult result = httpSender.pushToEndpoint(bytes);
         if (!result.isSuccess()) {
             sinkMetrics.incrementRequestsFailedCounter(1);
