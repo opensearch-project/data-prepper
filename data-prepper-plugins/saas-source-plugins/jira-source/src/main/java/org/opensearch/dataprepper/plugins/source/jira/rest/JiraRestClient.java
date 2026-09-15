@@ -28,6 +28,8 @@ import java.net.URI;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.FIELDS_PARAM;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.FIELDS_VALUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
 
 @Slf4j
@@ -92,7 +94,8 @@ public class JiraRestClient extends AtlassianRestClient {
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam(MAX_RESULT, FIFTY)
                 .queryParam(JQL_FIELD, jql)
-                .queryParam(EXPAND_FIELD, EXPAND_VALUE);
+                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                .queryParam(FIELDS_PARAM, FIELDS_VALUE);
 
         if (nextPageToken != null) {
             builder.queryParam(NEXT_PAGE_TOKEN, nextPageToken);
