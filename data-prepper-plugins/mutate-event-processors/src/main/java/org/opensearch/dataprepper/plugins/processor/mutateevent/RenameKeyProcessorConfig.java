@@ -24,7 +24,7 @@ import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")

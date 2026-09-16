@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.obfuscation.action;
 
 import java.util.List;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;

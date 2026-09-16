@@ -7,9 +7,9 @@ package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.RuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.opensearch.dataprepper.model.pattern.PatternSyntaxException;
 
 import java.util.function.BiPredicate;
-import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

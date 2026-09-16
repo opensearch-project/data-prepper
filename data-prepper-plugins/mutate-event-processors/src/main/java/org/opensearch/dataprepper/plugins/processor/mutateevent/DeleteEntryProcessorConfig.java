@@ -26,8 +26,8 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import org.opensearch.dataprepper.model.pattern.Pattern;
+import org.opensearch.dataprepper.model.pattern.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 @ConditionalRequired(value = {

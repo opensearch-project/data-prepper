@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
