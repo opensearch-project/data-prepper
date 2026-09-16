@@ -50,19 +50,23 @@ public class ConnectionConfigurationTest {
         assertThat(connectionConfiguration.getSocketTimeout(), equalTo(null));
         assertThat(connectionConfiguration.getCertPath(), equalTo(null));
         assertThat(connectionConfiguration.isInsecure(), equalTo(false));
+        assertThat(connectionConfiguration.getProxy(), equalTo(null));
     }
     @Test
     void connection_configuration_values_test() throws JsonProcessingException {
 
-        final String connectionYaml =
+        final String testHttpProxy = "121.121.121.121:80";
+        final String connectionYaml = String.format(
                 "  cert: \"cert\"\n" +
-                "  insecure: true\n";
+                "  insecure: true\n" +
+                "  proxy: \"%s\"\n", testHttpProxy);
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));
         assertThat(connectionConfig.isCertificateValid(), is(true));
+        assertThat(connectionConfig.getProxy(), equalTo(testHttpProxy));
     }
 
     @ParameterizedTest
@@ -72,10 +76,12 @@ public class ConnectionConfigurationTest {
     })
     void connection_configuration_certificate_values_test(final String certificate) throws JsonProcessingException {
 
+        final String testHttpProxy = "http://example.com:4350";
         final String connectionYaml = String.format(
                 "  cert: \"cert\"\n" +
                 "  certificate: \"%s\"\n" +
-                "  insecure: true\n", certificate.replace("\n", "\\n"));
+                "  insecure: true\n" +
+                "  proxy: %s", certificate.replace("\n", "\\n"), testHttpProxy);
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
         assertThat(connectionConfig.getCertificate(),equalTo(certificate));
@@ -84,6 +90,7 @@ public class ConnectionConfigurationTest {
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));
+        assertThat(connectionConfig.getProxy(), equalTo(testHttpProxy));
     }
 
     @Test
@@ -98,5 +105,28 @@ public class ConnectionConfigurationTest {
         assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));
+        assertThat(connectionConfig.getProxy(), equalTo(null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "example.com:888888",
+            "socket://example.com:port",
+            "example.com:port",
+            "example.com"
+    })
+    void connection_configuration_invalid_proxy_value(final String proxy) throws JsonProcessingException {
+
+        final String connectionYaml = String.format(
+                "  cert: \"cert\"\n" +
+                "  insecure: true\n" +
+                "  proxy: \"%s\"\n", proxy);
+        final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
+        assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
+        assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
+        assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
+        assertThat(connectionConfig.isInsecure(),equalTo(true));
+        assertThat(connectionConfig.isCertificateValid(), is(true));
+        assertThat(connectionConfig.getProxy(), equalTo(proxy));
     }
 }
