@@ -248,6 +248,13 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final String fullTableName = databaseName + SEPARATOR + tableName;
 
         if (!isTableOfInterest(fullTableName)) {
+            // The binlog table id is assigned by the server from its table definition cache and is
+            // not stable: the same table id can later refer to a different table, for example after
+            // a server restart or after the table was evicted from and reloaded into the cache.
+            // Drop any mapping we still hold for this table id. Otherwise row events for this
+            // table, which is not of interest, would be decoded with the stale metadata of a table
+            // of interest and produce corrupted records.
+            removeStaleTableMetadata(eventData.getTableId(), fullTableName);
             return;
         }
 
@@ -265,6 +272,15 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                 .withEnumStrValues(getEnumStrValues(eventData))
                 .build();
         tableMetadataMap.put(eventData.getTableId(), tableMetadata);
+    }
+
+    private void removeStaleTableMetadata(final long tableId, final String currentTableName) {
+        final TableMetadata staleTableMetadata = tableMetadataMap.remove(tableId);
+        if (staleTableMetadata != null) {
+            LOG.info("Table id {} now refers to table {}, which is not a table of interest. " +
+                            "Removed the stale metadata of table {} held for this table id.",
+                    tableId, currentTableName, staleTableMetadata.getFullTableName());
+        }
     }
 
     private Map<String, String[]> getSetStrValues(final TableMapEventData eventData) {

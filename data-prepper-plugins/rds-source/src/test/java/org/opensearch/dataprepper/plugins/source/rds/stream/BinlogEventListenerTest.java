@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
@@ -424,5 +426,126 @@ class BinlogEventListenerTest {
 
         Runnable capturedRunnable = runnableArgumentCaptor.getValue();
         capturedRunnable.run();
+    }
+
+    @Test
+    void test_given_TableMap_event_for_table_not_of_interest_then_removes_stale_table_metadata() throws Exception {
+        final long tableId = 1234L;
+        final String databaseName = "test_database";
+        final String tableOfInterest = "table_of_interest";
+        final String tableNotOfInterest = "table_not_of_interest";
+        final String fullTableOfInterest = databaseName + "." + tableOfInterest;
+
+        // Only tableOfInterest is included in the sync set
+        when(dbTableMetadata.getTableColumnDataTypeMap())
+                .thenReturn(Map.of(fullTableOfInterest, Map.of("col1", "int", "col2", "varchar")));
+        final BinlogEventListener objectUnderTest = createObjectUnderTestWithMockedExecutors();
+
+        // The listener is holding a mapping from tableId to the table of interest, which was
+        // built from an earlier TABLE_MAP event.
+        final TableMetadata staleTableMetadata = TableMetadata.builder()
+                .withDatabaseName(databaseName)
+                .withTableName(tableOfInterest)
+                .withColumnNames(List.of("col1", "col2"))
+                .withPrimaryKeys(List.of("col1"))
+                .build();
+        setTableMetadataMap(objectUnderTest, tableId, staleTableMetadata);
+        assertThat(objectUnderTest.isValidTableId(tableId), is(true));
+
+        // MySQL reassigns the same tableId to a table that is not part of the sync set.
+        objectUnderTest.handleTableMapEvent(createTableMapEvent(tableId, databaseName, tableNotOfInterest));
+
+        // The stale mapping must be gone, otherwise row events of tableNotOfInterest would be
+        // decoded with the schema of tableOfInterest.
+        assertThat(getTableMetadataMap(objectUnderTest).containsKey(tableId), is(false));
+        assertThat(objectUnderTest.isValidTableId(tableId), is(false));
+    }
+
+    @Test
+    void test_given_TableMap_event_for_table_not_of_interest_and_no_existing_mapping_then_no_mapping_is_added() throws Exception {
+        final long tableId = 1234L;
+        final String databaseName = "test_database";
+        final String fullTableOfInterest = databaseName + ".table_of_interest";
+
+        when(dbTableMetadata.getTableColumnDataTypeMap())
+                .thenReturn(Map.of(fullTableOfInterest, Map.of("col1", "int")));
+        final BinlogEventListener objectUnderTest = createObjectUnderTestWithMockedExecutors();
+
+        objectUnderTest.handleTableMapEvent(createTableMapEvent(tableId, databaseName, "table_not_of_interest"));
+
+        assertThat(getTableMetadataMap(objectUnderTest).isEmpty(), is(true));
+        assertThat(objectUnderTest.isValidTableId(tableId), is(false));
+    }
+
+    @Test
+    void test_given_TableMap_event_for_table_of_interest_then_overwrites_existing_mapping() throws Exception {
+        final long tableId = 1234L;
+        final String databaseName = "test_database";
+        final String previousTable = "previous_table_of_interest";
+        final String currentTable = "current_table_of_interest";
+
+        when(dbTableMetadata.getTableColumnDataTypeMap()).thenReturn(Map.of(
+                databaseName + "." + previousTable, Map.of("col1", "int"),
+                databaseName + "." + currentTable, Map.of("col1", "int", "col2", "varchar")));
+        final BinlogEventListener objectUnderTest = createObjectUnderTestWithMockedExecutors();
+
+        final TableMetadata staleTableMetadata = TableMetadata.builder()
+                .withDatabaseName(databaseName)
+                .withTableName(previousTable)
+                .withColumnNames(List.of("col1"))
+                .withPrimaryKeys(List.of("col1"))
+                .build();
+        setTableMetadataMap(objectUnderTest, tableId, staleTableMetadata);
+
+        final com.github.shyiko.mysql.binlog.event.Event tableMapEvent =
+                createTableMapEvent(tableId, databaseName, currentTable);
+        final TableMapEventData tableMapEventData = tableMapEvent.getData();
+        final TableMapEventMetadata tableMapEventMetadata = mock(TableMapEventMetadata.class);
+        when(tableMapEventData.getEventMetadata()).thenReturn(tableMapEventMetadata);
+        when(tableMapEventMetadata.getColumnNames()).thenReturn(List.of("col1", "col2"));
+        when(tableMapEventMetadata.getSimplePrimaryKeys()).thenReturn(List.of(0));
+
+        objectUnderTest.handleTableMapEvent(tableMapEvent);
+
+        final TableMetadata updatedTableMetadata = getTableMetadataMap(objectUnderTest).get(tableId);
+        assertThat(updatedTableMetadata.getTableName(), is(currentTable));
+        assertThat(updatedTableMetadata.getColumnNames(), is(List.of("col1", "col2")));
+        assertThat(objectUnderTest.isValidTableId(tableId), is(true));
+    }
+
+    private com.github.shyiko.mysql.binlog.event.Event createTableMapEvent(
+            final long tableId, final String databaseName, final String tableName) {
+        final com.github.shyiko.mysql.binlog.event.Event tableMapEvent =
+                mock(com.github.shyiko.mysql.binlog.event.Event.class);
+        final TableMapEventData tableMapEventData = mock(TableMapEventData.class);
+        when(tableMapEvent.getData()).thenReturn(tableMapEventData);
+        lenient().when(tableMapEventData.getTableId()).thenReturn(tableId);
+        when(tableMapEventData.getDatabase()).thenReturn(databaseName);
+        when(tableMapEventData.getTable()).thenReturn(tableName);
+        return tableMapEvent;
+    }
+
+    private BinlogEventListener createObjectUnderTestWithMockedExecutors() {
+        try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class)))
+                    .thenReturn(eventListnerExecutorService);
+            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
+            return createObjectUnderTest();
+        }
+    }
+
+    private void setTableMetadataMap(final BinlogEventListener binlogEventListener,
+                                     final long tableId,
+                                     final TableMetadata tableMetadata) throws Exception {
+        getTableMetadataMap(binlogEventListener).put(tableId, tableMetadata);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Long, TableMetadata> getTableMetadataMap(final BinlogEventListener binlogEventListener)
+            throws Exception {
+        final Field tableMetadataMapField = BinlogEventListener.class.getDeclaredField("tableMetadataMap");
+        tableMetadataMapField.setAccessible(true);
+        return (Map<Long, TableMetadata>) tableMetadataMapField.get(binlogEventListener);
     }
 }
