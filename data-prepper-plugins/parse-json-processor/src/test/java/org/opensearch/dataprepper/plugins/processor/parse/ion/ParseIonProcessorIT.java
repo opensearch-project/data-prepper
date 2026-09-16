@@ -7,10 +7,10 @@
  * compatible open source license.
  */
 
-package org.opensearch.dataprepper.plugins.processor.parse.json;
+package org.opensearch.dataprepper.plugins.processor.parse.ion;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.ion.IonObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
@@ -34,19 +34,19 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-@DataPrepperPluginTest(pluginName = "parse_json", pluginType = Processor.class)
-class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
-    private ObjectMapper objectMapper;
+@DataPrepperPluginTest(pluginName = "parse_ion", pluginType = Processor.class)
+class ParseIonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
+    private IonObjectMapper objectMapper;
     private Random random;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        objectMapper = new IonObjectMapper();
         random = new Random();
     }
 
     @Test
-    void parse_json_with_default_configuration(
+    void parse_ion_with_default_configuration(
             @PluginConfigurationFile("default.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
             final EventFactory eventFactory) throws JsonProcessingException {
 
@@ -107,7 +107,7 @@ class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
     }
 
     @Test
-    void parse_json_with_destination(
+    void parse_ion_with_destination(
             @PluginConfigurationFile("with-destination.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
             final EventFactory eventFactory) throws JsonProcessingException {
 
@@ -160,12 +160,12 @@ class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
             final Event event = outputEvents.get(i);
             assertThat(event, notNullValue());
             assertThat(event.get("message", String.class), equalTo(messageStrings.get(i)));
-            assertThat(event.get("parsed_json", Map.class), equalTo(messageMaps.get(i)));
+            assertThat(event.get("parsed_ion", Map.class), equalTo(messageMaps.get(i)));
         }
     }
 
     @Test
-    void parse_json_with_destination_parses_top_level_array(
+    void parse_ion_with_destination_parses_top_level_array(
             @PluginConfigurationFile("with-destination.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
             final EventFactory eventFactory) throws JsonProcessingException {
 
@@ -211,12 +211,12 @@ class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
             final Event event = outputEvents.get(i);
             assertThat(event, notNullValue());
             assertThat(event.get("message", String.class), equalTo(messageStrings.get(i)));
-            assertThat(event.get("parsed_json", List.class), equalTo(messageArrays.get(i)));
+            assertThat(event.get("parsed_ion", List.class), equalTo(messageArrays.get(i)));
         }
     }
 
     @Test
-    void parse_json_with_destination_parses_top_level_scalar(
+    void parse_ion_with_destination_parses_top_level_scalar(
             @PluginConfigurationFile("with-destination.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
             final EventFactory eventFactory) throws JsonProcessingException {
 
@@ -258,7 +258,7 @@ class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
             final Event event = outputEvents.get(i);
             assertThat(event, notNullValue());
             assertThat(event.get("message", String.class), equalTo(messageStrings.get(i)));
-            assertThat(event.get("parsed_json", String.class), equalTo(messageScalars.get(i)));
+            assertThat(event.get("parsed_ion", String.class), equalTo(messageScalars.get(i)));
         }
     }
 }
