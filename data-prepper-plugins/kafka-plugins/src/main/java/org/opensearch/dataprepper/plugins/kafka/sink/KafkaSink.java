@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
@@ -73,6 +74,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final SinkContext sinkContext;
 
+    private final SinkForwardRecordsContext sinkForwardRecordsContext;
+
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
@@ -86,6 +89,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         this.expressionEvaluator = expressionEvaluator;
         reentrantLock = new ReentrantLock();
         this.sinkContext = sinkContext;
+        this.sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
 
         SerializationFactory serializationFactory = new CommonSerializationFactory();
         topicServiceFactory = new TopicServiceFactory();
@@ -167,7 +171,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private KafkaCustomProducer createProducer() {
         final DLQSink dlqSink = new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting);
-        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true);
+        return kafkaCustomProducerFactory.createProducer(kafkaSinkConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, true,
+                sinkForwardRecordsContext, getFailurePipeline());
     }
 
 

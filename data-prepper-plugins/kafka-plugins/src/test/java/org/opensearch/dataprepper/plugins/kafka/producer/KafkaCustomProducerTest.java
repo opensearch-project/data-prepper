@@ -26,8 +26,12 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
@@ -38,6 +42,9 @@ import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -206,6 +213,60 @@ public class KafkaCustomProducerTest {
     }
 
     @Test
+    public void producePlainTextRecords_callbackException_sendsToFailurePipeline() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+        when(kafkaTopicProducerMetrics.getNumberOfRecordProcessingErrors()).thenReturn(numberOfRecordProcessingError);
+
+        EventFailureMetadata failureMetadata = mock(EventFailureMetadata.class);
+        when(failureMetadata.withPluginName(any())).thenReturn(failureMetadata);
+        when(failureMetadata.withPipelineName(any())).thenReturn(failureMetadata);
+        when(failureMetadata.withErrorMessage(any())).thenReturn(failureMetadata);
+        when(failureMetadata.with(any(), any())).thenReturn(failureMetadata);
+
+        event = (JacksonEvent) JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        JacksonEvent spyEvent = spy(event);
+        when(spyEvent.updateFailureMetadata()).thenReturn(failureMetadata);
+        record = new Record<>(spyEvent);
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                null, null, failurePipeline);
+        sinkProducer = spy(producer);
+        sinkProducer.produceRecords(record);
+
+        final ArgumentCaptor<Callback> callbackArgumentCaptor = ArgumentCaptor.forClass(Callback.class);
+        verify(kafkaProducer).send(any(ProducerRecord.class), callbackArgumentCaptor.capture());
+        callbackArgumentCaptor.getValue().onCompletion(null, new RuntimeException("kafka error"));
+
+        verify(numberOfRecordProcessingError).increment();
+        verify(failurePipeline).sendEvents(any());
+        verify(failureMetadata).withPluginName("kafka");
+        verify(failureMetadata).with("topic", "test-topic");
+    }
+
+    @Test
+    public void producePlainTextRecords_callbackException_fallsBackToDlq() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        when(kafkaTopicProducerMetrics.getNumberOfRecordProcessingErrors()).thenReturn(numberOfRecordProcessingError);
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                null, null, null);
+        sinkProducer = spy(producer);
+        sinkProducer.produceRecords(record);
+
+        final ArgumentCaptor<Callback> callbackArgumentCaptor = ArgumentCaptor.forClass(Callback.class);
+        verify(kafkaProducer).send(any(ProducerRecord.class), callbackArgumentCaptor.capture());
+        callbackArgumentCaptor.getValue().onCompletion(null, new RuntimeException("kafka error"));
+
+        verify(numberOfRecordProcessingError).increment();
+        verify(dlqSink).perform(any(), any());
+    }
+
+    @Test
     public void produceJsonRecordsTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("JSON");
         KafkaProducer kafkaProducer = mock(KafkaProducer.class);
@@ -276,6 +337,95 @@ public class KafkaCustomProducerTest {
         String jsonSchema = "{\"type\": \"object\",\"properties\": {\"Year\": {\"type\": \"string\"},\"Age\": {\"type\": \"string\"},\"Ethnic\": {\"type\":\"string\",\"default\": null}}}";
         String jsonSchema2 = "{\"type\": \"object\",\"properties\": {\"Year\": {\"type\": \"string\"},\"Age\": {\"type\": \"string\"},\"Ethnic\": {\"type\":\"string\",\"default\": null}}}";
         assertTrue(producer.validateSchema(jsonSchema, jsonSchema2));
+    }
+
+    @Test
+    public void producePlainTextRecords_callbackSuccess_forwardsToForwardPipeline() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        SinkContext sinkContext = mock(SinkContext.class);
+        HeadlessPipeline forwardPipeline = mock(HeadlessPipeline.class);
+        Map<String, HeadlessPipeline> forwardPipelines = new HashMap<>();
+        forwardPipelines.put("forward-pipeline", forwardPipeline);
+        when(sinkContext.getForwardToPipelines()).thenReturn(forwardPipelines);
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                sinkContext, sinkForwardRecordsContext, null);
+        sinkProducer = spy(producer);
+        sinkProducer.produceRecords(record);
+
+        final ArgumentCaptor<Callback> callbackArgumentCaptor = ArgumentCaptor.forClass(Callback.class);
+        verify(kafkaProducer).send(any(ProducerRecord.class), callbackArgumentCaptor.capture());
+        callbackArgumentCaptor.getValue().onCompletion(mock(org.apache.kafka.clients.producer.RecordMetadata.class), null);
+
+        verify(sinkContext).forwardRecords(eq(sinkForwardRecordsContext), eq(null), eq(null));
+    }
+
+    @Test
+    public void producePlainTextRecords_callbackSuccess_releasesHandlesWhenNoForwardPipelines() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        SinkContext sinkContext = mock(SinkContext.class);
+        when(sinkContext.getForwardToPipelines()).thenReturn(Collections.emptyMap());
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                sinkContext, null, null);
+        sinkProducer = spy(producer);
+        sinkProducer.produceRecords(record);
+
+        final ArgumentCaptor<Callback> callbackArgumentCaptor = ArgumentCaptor.forClass(Callback.class);
+        verify(kafkaProducer).send(any(ProducerRecord.class), callbackArgumentCaptor.capture());
+        callbackArgumentCaptor.getValue().onCompletion(mock(org.apache.kafka.clients.producer.RecordMetadata.class), null);
+
+        verify(sinkContext, org.mockito.Mockito.never()).forwardRecords(any(), any(), any());
+    }
+
+    @Test
+    public void produceRecords_sendError_sendsToFailurePipeline() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+        when(kafkaTopicProducerMetrics.getNumberOfRecordSendErrors()).thenReturn(numberOfRecordSendErrors);
+        when(kafkaProducer.send(any(ProducerRecord.class), any(Callback.class))).thenThrow(new KafkaException("test error"));
+
+        EventFailureMetadata failureMetadata = mock(EventFailureMetadata.class);
+        when(failureMetadata.withPluginName(any())).thenReturn(failureMetadata);
+        when(failureMetadata.withPipelineName(any())).thenReturn(failureMetadata);
+        when(failureMetadata.withErrorMessage(any())).thenReturn(failureMetadata);
+        when(failureMetadata.with(any(), any())).thenReturn(failureMetadata);
+
+        event = (JacksonEvent) JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        JacksonEvent spyEvent = spy(event);
+        when(spyEvent.updateFailureMetadata()).thenReturn(failureMetadata);
+        record = new Record<>(spyEvent);
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                null, null, failurePipeline);
+        producer.produceRecords(record);
+
+        verify(failurePipeline).sendEvents(any());
+        verify(failureMetadata).withPluginName("kafka");
+        verify(failureMetadata).with("topic", "test-topic");
+        verifyNoInteractions(dlqSink);
+    }
+
+    @Test
+    public void produceRecords_sendError_fallsBackToDlqWhenNoFailurePipeline() throws Exception {
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
+        KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        when(kafkaTopicProducerMetrics.getNumberOfRecordSendErrors()).thenReturn(numberOfRecordSendErrors);
+        when(kafkaProducer.send(any(ProducerRecord.class), any(Callback.class))).thenThrow(new KafkaException("test error"));
+
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService, null,
+                null, null, null);
+        producer.produceRecords(record);
+
+        verify(dlqSink).perform(any(), any());
     }
 }
 
