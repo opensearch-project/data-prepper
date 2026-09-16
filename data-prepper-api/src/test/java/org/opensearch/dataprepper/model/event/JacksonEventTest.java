@@ -17,6 +17,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.exc.StreamConstraintsException;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
@@ -1446,5 +1448,55 @@ public class JacksonEventTest {
                 Arguments.of("1.2345E+6"),
                 Arguments.of("1.000")
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {32, 64})
+    void build_withData_containing_a_string_value_within_the_raised_limit_succeeds(final int valueSizeInMB) {
+        final String largeValue = buildStringOfSize(valueSizeInMB * 1024 * 1024);
+        final String jsonString = "{\"largeField\":\"" + largeValue + "\"}";
+
+        final Event event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .build();
+
+        assertThat(event.get("largeField", String.class), is(equalTo(largeValue)));
+    }
+
+    @Test
+    void build_withData_containing_a_string_value_exceeding_the_raised_limit_throws_with_preserved_cause() {
+        final String tooLargeValue = buildStringOfSize(65 * 1024 * 1024);
+        final String jsonString = "{\"largeField\":\"" + tooLargeValue + "\"}";
+
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> JacksonEvent.builder()
+                        .withEventType(eventType)
+                        .withData(jsonString)
+                        .build());
+
+        assertThat(exception.getCause(), is(instanceOf(StreamConstraintsException.class)));
+    }
+
+    @Test
+    void build_withData_that_is_not_valid_json_throws_IllegalArgumentException_that_preserves_the_cause() {
+        final String invalidJson = "{\"key\": not-valid}";
+
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> JacksonEvent.builder()
+                        .withEventType(eventType)
+                        .withData(invalidJson)
+                        .build());
+
+        assertThat(exception.getCause(), is(notNullValue()));
+        assertThat(exception.getCause(), is(instanceOf(JsonProcessingException.class)));
+    }
+
+    private static String buildStringOfSize(final int length) {
+        final StringBuilder builder = new StringBuilder(length);
+        while (builder.length() < length) {
+            builder.append('a');
+        }
+        return builder.toString();
     }
 }
