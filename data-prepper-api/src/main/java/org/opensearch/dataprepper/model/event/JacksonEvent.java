@@ -9,8 +9,10 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -99,7 +101,15 @@ public class JacksonEvent implements Event {
 
     private static final String SEPARATOR = "/";
 
-    private static final ObjectMapper mapper = JsonMapper.builder()
+    private static final int MAX_JSON_STRING_LENGTH = 64 * 1024 * 1024;
+
+    private static final JsonFactory JSON_FACTORY = JsonFactory.builder()
+            .streamReadConstraints(StreamReadConstraints.builder()
+                    .maxStringLength(MAX_JSON_STRING_LENGTH)
+                    .build())
+            .build();
+
+    private static final ObjectMapper mapper = JsonMapper.builder(JSON_FACTORY)
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build()
             .registerModule(new JavaTimeModule())
@@ -165,7 +175,7 @@ public class JacksonEvent implements Event {
             try {
                 return mapper.readTree((String) data);
             } catch (final JsonProcessingException e) {
-                throw new IllegalArgumentException("Unable to convert data into an event");
+                throw new IllegalArgumentException("Unable to convert data into an event", e);
             }
         }
         return mapper.valueToTree(data);
