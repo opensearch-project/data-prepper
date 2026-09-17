@@ -48,7 +48,7 @@ dependencyResolutionManagement {
             version('protobuf', '3.25.5')
             library('protobuf-core', 'com.google.protobuf', 'protobuf-java').versionRef('protobuf')
             library('protobuf-util', 'com.google.protobuf', 'protobuf-java-util').versionRef('protobuf')
-            version('opentelemetry', '1.3.2-alpha')
+            version('opentelemetry', '1.11.0-alpha')
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
             version('opensearchJava', '2.20.0')
             library('opensearch-java', 'org.opensearch.client', 'opensearch-java').versionRef('opensearchJava')
