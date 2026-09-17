@@ -66,7 +66,7 @@ public class BaseHttpServerConfig implements HttpServerConfig {
     private int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
 
     @JsonProperty(SSL)
-    private boolean ssl;
+    private boolean ssl = getDefaultSsl();
 
     @JsonProperty(SSL_CERTIFICATE_FILE)
     private String sslCertificateFile;
