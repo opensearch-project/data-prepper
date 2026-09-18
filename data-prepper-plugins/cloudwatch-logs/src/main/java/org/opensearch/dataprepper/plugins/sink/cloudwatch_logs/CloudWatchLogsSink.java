@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConf
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.exception.InvalidBufferTypeException;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsSinkUtils;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
@@ -40,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -67,6 +70,18 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         ThresholdConfig thresholdConfig = cloudWatchLogsSinkConfig.getThresholdConfig();
         Map<String, String> headerOverrides = cloudWatchLogsSinkConfig.getHeaderOverrides();
 
+        // Literal headers are applied once at client build; templated headers are resolved per request and
+        // must be kept off the client, or they would be sent verbatim.
+        final Map<String, String> staticHeaders = new HashMap<>();
+        final Map<String, String> dynamicHeaderTemplates = new LinkedHashMap<>();
+        for (final Map.Entry<String, String> header : headerOverrides.entrySet()) {
+            if (CloudWatchLogsSinkUtils.isDynamicExpression(header.getValue(), expressionEvaluator)) {
+                dynamicHeaderTemplates.put(header.getKey(), header.getValue());
+            } else {
+                staticHeaders.put(header.getKey(), header.getValue());
+            }
+        }
+
         // Log custom headers configuration during plugin startup
         logCustomHeadersConfiguration(headerOverrides);
 
@@ -78,7 +93,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
         }
-        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, headerOverrides, cloudWatchLogsSinkConfig.getEndpoint());
+        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, staticHeaders, cloudWatchLogsSinkConfig.getEndpoint());
         if (cloudWatchLogsClient == null) {
             throw new RuntimeException("cloudWatchLogsClient is null");
         }
@@ -109,6 +124,9 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
 
         final EntityConfig entityConfig = cloudWatchLogsSinkConfig.getEntityConfig();
         final boolean dynamicEntity = entityConfig != null && entityConfig.isDynamic(expressionEvaluator);
+        final boolean dynamicHeaders = !dynamicHeaderTemplates.isEmpty();
+        // Events are partitioned into per-group requests whenever the entity or the headers vary per event.
+        final boolean grouped = dynamicEntity || dynamicHeaders;
 
         final Entity staticEntity = (entityConfig == null || dynamicEntity) ? null : Entity.builder()
                 .keyAttributes(entityConfig.getKeyAttributes())
@@ -116,11 +134,19 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .build();
 
         // The same evaluator that classified this config as dynamic has to do the interpolating, or
-        // expression-valued attributes would resolve to an empty string instead of being evaluated.
-        final EntityResolver entityResolver = dynamicEntity
-                ? new EntityResolver(entityConfig.getKeyAttributes(), entityConfig.getAttributes(),
+        // expression-valued attributes would resolve to an empty string instead of being evaluated. Key and
+        // attribute templates are only supplied when the entity itself is dynamic; otherwise the resolver
+        // partitions purely by the dynamic headers and uses staticEntity for every group.
+        final EntityResolver entityResolver = grouped
+                ? new EntityResolver(
+                        dynamicEntity ? entityConfig.getKeyAttributes() : Map.of(),
+                        dynamicEntity ? entityConfig.getAttributes() : Map.of(),
+                        dynamicHeaderTemplates,
                         expressionEvaluator)
                 : null;
+        final int maxEntityCardinality = entityConfig != null
+                ? entityConfig.getMaxCardinality()
+                : EntityConfig.DEFAULT_MAX_CARDINALITY;
 
         CloudWatchLogsDispatcher cloudWatchLogsDispatcher = CloudWatchLogsDispatcher.builder()
                 .cloudWatchLogsClient(cloudWatchLogsClient)
@@ -133,14 +159,16 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .executor(executor)
                 .createLogGroup(cloudWatchLogsSinkConfig.getCreateLogGroup())
                 .createLogStream(cloudWatchLogsSinkConfig.getCreateLogStream())
-                .entity(staticEntity)
+                // In grouped mode the per-group entity is the sole source of truth; the dispatcher's frozen
+                // entity is only used by the non-grouped static path.
+                .entity(grouped ? null : staticEntity)
                 .build();
 
-        if (dynamicEntity) {
+        if (grouped) {
             cloudWatchLogsService = new CloudWatchLogsService(bufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
                     cloudWatchLogsDispatcher, dlqPushHandler, true, entityResolver,
-                    entityConfig.getMaxCardinality());
-            // Gauged on the service: the group count is the number of entities actually being buffered
+                    maxEntityCardinality, staticEntity);
+            // Gauged on the service: the group count is the number of groups actually being buffered
             // right now, and it falls again as groups go idle rather than only ever climbing.
             cloudWatchLogsMetrics.registerEntityCardinalityGauge(cloudWatchLogsService,
                     CloudWatchLogsService::activeEntityGroupCount);

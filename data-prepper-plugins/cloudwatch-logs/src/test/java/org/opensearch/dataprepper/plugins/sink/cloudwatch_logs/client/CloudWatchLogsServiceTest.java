@@ -555,6 +555,65 @@ class CloudWatchLogsServiceTest {
             // these events would have sat in the buffer for as long as the pipeline kept delivering records.
             verify(mockDispatcher, times(eventCount)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
         }
+
+        private EntityResolver headerResolver() {
+            final Map<String, String> keyAttributes = new LinkedHashMap<>();
+            keyAttributes.put("Name", "${resourceId}");
+            return new EntityResolver(keyAttributes, Map.of(), Map.of("x-source-type", "${category}"),
+                    mock(ExpressionEvaluator.class));
+        }
+
+        private Collection<Record<Event>> recordsWith(final String resourceId, final String category, final int count) {
+            final ArrayList<Record<Event>> records = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                final Event event = JacksonLog.builder()
+                        .withData(Map.of("resourceId", resourceId, "category", category, "seq", i))
+                        .withEventHandle(mock(EventHandle.class))
+                        .build();
+                records.add(new Record<>(event));
+            }
+            return records;
+        }
+
+        @Test
+        void GIVEN_dynamic_headers_WHEN_events_processed_THEN_dispatch_carries_the_resolved_headers() {
+            service = dynamicService(headerResolver());
+
+            service.processLogEvents(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+
+            final ArgumentCaptor<Map> headerCaptor = ArgumentCaptor.forClass(Map.class);
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), any(), headerCaptor.capture());
+            assertThat(headerCaptor.getValue().get("x-source-type"), equalTo("cat-1"));
+        }
+
+        @Test
+        void GIVEN_dynamic_headers_WHEN_events_differ_only_by_header_value_THEN_each_value_opens_its_own_group() {
+            service = dynamicService(headerResolver());
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWith("res-A", "cat-2", thresholdConfig.getBatchSize()));
+
+            service.processLogEvents(combined);
+
+            // Same resolved key attributes but distinct header values, so the groups do not collapse.
+            verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
+        }
+
+        @Test
+        void GIVEN_dynamic_headers_and_static_entity_WHEN_events_processed_THEN_each_group_uses_the_static_entity() {
+            final Entity staticEntity = Entity.builder().keyAttributes(Map.of("Identifier", "fixed")).build();
+            final EntityResolver resolver = new EntityResolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}"),
+                    mock(ExpressionEvaluator.class));
+            service = new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
+                    mockDispatcher, null, true, resolver, EntityConfig.DEFAULT_MAX_CARDINALITY, staticEntity);
+
+            service.processLogEvents(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+
+            final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture(), any(Map.class));
+            assertThat(entityCaptor.getValue().keyAttributes().get("Identifier"), equalTo("fixed"));
+        }
     }
 
      private Record<Event> getLargeRecord(long size) {

@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsSinkUtils;
 
 import java.util.Collections;
 import java.util.Map;
@@ -75,15 +76,7 @@ public class EntityConfig {
         if (values == null) {
             return false;
         }
-        for (final String value : values.values()) {
-            if (value == null) {
-                continue;
-            }
-            if (!expressionEvaluator.extractDynamicKeysFromFormatExpression(value).isEmpty()
-                    || !expressionEvaluator.extractDynamicExpressionsFromFormatExpression(value).isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return values.values().stream()
+                .anyMatch(value -> CloudWatchLogsSinkUtils.isDynamicExpression(value, expressionEvaluator));
     }
 }

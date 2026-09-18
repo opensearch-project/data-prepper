@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -34,22 +35,42 @@ public class EntityResolver {
 
     private final Map<String, String> keyAttributeTemplates;
     private final Map<String, String> attributeTemplates;
+    private final Map<String, String> headerTemplates;
     private final ExpressionEvaluator expressionEvaluator;
 
     public EntityResolver(final Map<String, String> keyAttributeTemplates,
                           final Map<String, String> attributeTemplates,
                           final ExpressionEvaluator expressionEvaluator) {
+        this(keyAttributeTemplates, attributeTemplates, Collections.emptyMap(), expressionEvaluator);
+    }
+
+    public EntityResolver(final Map<String, String> keyAttributeTemplates,
+                          final Map<String, String> attributeTemplates,
+                          final Map<String, String> headerTemplates,
+                          final ExpressionEvaluator expressionEvaluator) {
         this.keyAttributeTemplates = keyAttributeTemplates;
         this.attributeTemplates = attributeTemplates;
+        this.headerTemplates = headerTemplates;
         this.expressionEvaluator = expressionEvaluator;
     }
 
     /**
-     * Resolves the grouping key for an event from the {@code key_attributes} templates. Runs for every
-     * event, so it interpolates only what the key needs.
+     * Resolves the grouping key for an event from the {@code key_attributes} and dynamic-header templates.
+     * Runs for every event, so it interpolates only what the key needs. Headers are part of the key so that
+     * events differing only by a resolved header value land in separate groups, and so separate requests.
      */
     public ResolvedKey resolveKey(final Event event) {
-        return new ResolvedKey(resolveTemplates(keyAttributeTemplates, event));
+        return new ResolvedKey(resolveTemplates(keyAttributeTemplates, event),
+                resolveTemplates(headerTemplates, event));
+    }
+
+    /**
+     * Whether this resolver builds a per-group entity from templates. False when there are no key-attribute
+     * templates, i.e. the group is being partitioned purely by dynamic headers and the entity, if any, is a
+     * fixed one supplied by the caller.
+     */
+    public boolean buildsEntity() {
+        return !keyAttributeTemplates.isEmpty();
     }
 
     /**
@@ -75,9 +96,15 @@ public class EntityResolver {
      */
     public static final class ResolvedKey {
         private final Map<String, String> keyAttributes;
+        private final Map<String, String> headers;
 
-        ResolvedKey(final Map<String, String> keyAttributes) {
+        ResolvedKey(final Map<String, String> keyAttributes, final Map<String, String> headers) {
             this.keyAttributes = keyAttributes;
+            this.headers = headers;
+        }
+
+        Map<String, String> getHeaders() {
+            return headers;
         }
 
         @Override
@@ -88,17 +115,18 @@ public class EntityResolver {
             if (!(other instanceof ResolvedKey)) {
                 return false;
             }
-            return keyAttributes.equals(((ResolvedKey) other).keyAttributes);
+            final ResolvedKey that = (ResolvedKey) other;
+            return keyAttributes.equals(that.keyAttributes) && headers.equals(that.headers);
         }
 
         @Override
         public int hashCode() {
-            return keyAttributes.hashCode();
+            return 31 * keyAttributes.hashCode() + headers.hashCode();
         }
 
         @Override
         public String toString() {
-            return keyAttributes.toString();
+            return headers.isEmpty() ? keyAttributes.toString() : keyAttributes + " " + headers;
         }
     }
 

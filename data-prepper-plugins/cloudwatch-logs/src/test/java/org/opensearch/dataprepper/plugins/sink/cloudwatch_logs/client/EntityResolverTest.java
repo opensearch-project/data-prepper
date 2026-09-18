@@ -55,6 +55,11 @@ class EntityResolverTest {
         return new EntityResolver(keyAttributes, attributes, expressionEvaluator);
     }
 
+    private EntityResolver resolver(final Map<String, String> keyAttributes, final Map<String, String> attributes,
+                                    final Map<String, String> headers) {
+        return new EntityResolver(keyAttributes, attributes, headers, expressionEvaluator);
+    }
+
     private Entity resolveEntity(final EntityResolver resolver, final Event event) {
         return resolver.buildEntity(resolver.resolveKey(event), event);
     }
@@ -213,6 +218,65 @@ class EntityResolverTest {
 
         // attributes are interpolated on the buildEntity path, so they need the evaluator too.
         assertThat(entity.attributes().get("AWS.ServiceNameSource"), equalTo("UserConfiguration"));
+    }
+
+    @Test
+    void resolveKey_resolvesHeaderTemplatesFromEvent() {
+        final Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("x-source-name", "${resourceId}");
+        headers.put("x-source-type", "${category}");
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), headers);
+
+        final EntityResolver.ResolvedKey key = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
+
+        assertThat(key.getHeaders().get("x-source-name"), equalTo("res-a"));
+        assertThat(key.getHeaders().get("x-source-type"), equalTo("cat-1"));
+    }
+
+    @Test
+    void resolveKey_eventsDifferingOnlyByHeaderValueGroupSeparately() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), Map.of("x-source-type", "${category}"));
+
+        final EntityResolver.ResolvedKey catOne = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
+        final EntityResolver.ResolvedKey catTwo = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-2")));
+
+        assertThat(catTwo, not(equalTo(catOne)));
+    }
+
+    @Test
+    void resolveKey_sameKeyAttributesAndHeadersCollapseToOneGroup() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), Map.of("x-source-type", "${category}"));
+
+        final EntityResolver.ResolvedKey first = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
+        final EntityResolver.ResolvedKey second = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
+
+        assertThat(second, equalTo(first));
+        assertThat(second.hashCode(), equalTo(first.hashCode()));
+        assertThat(new HashMap<>(Map.of(first, "group")).get(second), equalTo("group"));
+    }
+
+    @Test
+    void resolveKey_evaluatesExpressionValuedHeaderThroughTheEvaluator() {
+        final String expression = "getMetadata(\"resourceId\")";
+        final Map<String, String> headers = Map.of("x-source-name", "${" + expression + "}");
+        when(expressionEvaluator.isValidExpressionStatement(eq(expression))).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(expression), any(Event.class))).thenReturn("res-from-metadata");
+
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), headers);
+        final EntityResolver.ResolvedKey key = resolver.resolveKey(eventWith(Map.of("unrelated", "value")));
+
+        assertThat(key.getHeaders().get("x-source-name"), equalTo("res-from-metadata"));
+    }
+
+    @Test
+    void buildsEntity_isFalseWithoutKeyAttributeTemplatesAndTrueWithThem() {
+        assertThat(resolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}")).buildsEntity(), equalTo(false));
+        assertThat(resolver(keyAttrTemplates(), Map.of()).buildsEntity(), equalTo(true));
     }
 
     @Test

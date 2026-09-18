@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import com.linecorp.armeria.client.retry.Backoff;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -90,6 +92,17 @@ public class CloudWatchLogsDispatcher {
      * buffer group carries its own resolved entity
      */
     public void dispatchLogs(List<InputLogEvent> inputLogEvents, List<EventHandle> eventHandles, final Entity requestEntity) {
+        dispatchLogs(inputLogEvents, eventHandles, requestEntity, null);
+    }
+
+    /**
+     * Dispatches with an explicit entity and a set of resolved per-request headers. Used by dynamic-header
+     * mode, where each buffer group carries the headers resolved from the events it holds. The headers are
+     * attached as a per-request {@link AwsRequestOverrideConfiguration}, so different groups can send
+     * different header values on the same client.
+     */
+    public void dispatchLogs(List<InputLogEvent> inputLogEvents, List<EventHandle> eventHandles,
+                             final Entity requestEntity, final Map<String, String> requestHeaders) {
         final PutLogEventsRequest.Builder requestBuilder = PutLogEventsRequest.builder()
                 .logEvents(inputLogEvents)
                 .logGroupName(logGroup)
@@ -97,6 +110,12 @@ public class CloudWatchLogsDispatcher {
 
         if (requestEntity != null) {
             requestBuilder.entity(requestEntity);
+        }
+
+        if (requestHeaders != null && !requestHeaders.isEmpty()) {
+            final AwsRequestOverrideConfiguration.Builder overrideBuilder = AwsRequestOverrideConfiguration.builder();
+            requestHeaders.forEach(overrideBuilder::putHeader);
+            requestBuilder.overrideConfiguration(overrideBuilder.build());
         }
 
         final PutLogEventsRequest putLogEventsRequest = requestBuilder.build();
