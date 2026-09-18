@@ -32,16 +32,24 @@ import java.util.stream.Collectors;
 
 @ConditionalRequired(value = {
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "entries", value = "null"), @SchemaProperty(field = "with_keys_regex", value = "null")},
+                ifFulfilled = {@SchemaProperty(field = "entries", value = "null"), @SchemaProperty(field = "with_keys_regex", value = "null"),
+                        @SchemaProperty(field = "delete_all_except", value = "null")},
                 thenExpect = {@SchemaProperty(field = "with_keys")}
         ),
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "entries", value = "null"), @SchemaProperty(field = "with_keys", value = "null")},
+                ifFulfilled = {@SchemaProperty(field = "entries", value = "null"), @SchemaProperty(field = "with_keys", value = "null"),
+                        @SchemaProperty(field = "delete_all_except", value = "null")},
                 thenExpect = {@SchemaProperty(field = "with_keys_regex")}
         ),
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "with_keys", value = "null"), @SchemaProperty(field = "with_keys_regex", value = "null")},
+                ifFulfilled = {@SchemaProperty(field = "with_keys", value = "null"), @SchemaProperty(field = "with_keys_regex", value = "null"),
+                        @SchemaProperty(field = "delete_all_except", value = "null")},
                 thenExpect = {@SchemaProperty(field = "entries")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "entries", value = "null"), @SchemaProperty(field = "with_keys", value = "null"),
+                        @SchemaProperty(field = "with_keys_regex", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delete_all_except")}
         )
 })
 @JsonPropertyOrder
@@ -165,6 +173,11 @@ public class DeleteEntryProcessorConfig {
     @JsonPropertyDescription("A list of regex patterns that match keys to be deleted from an event. May not be used with entries.")
     private List<String> withKeysRegex;
 
+    @JsonProperty("delete_all_except")
+    @EventKeyConfiguration(EventKeyFactory.EventAction.GET)
+    @JsonPropertyDescription("A list of keys to keep in an event. All other keys are deleted. May not be used with entries, with_keys, or with_keys_regex.")
+    private List<@NotNull @NotEmpty EventKey> deleteAllExcept;
+
     @JsonProperty("exclude_from_delete")
     @JsonPropertyDescription("A list of keys to exclude from deletion when using with_keys_regex.")
     private Set<EventKey> excludeFromDelete;
@@ -178,17 +191,18 @@ public class DeleteEntryProcessorConfig {
     @JsonPropertyDescription("A list of entries to delete from the event.")
     private List<Entry> entries;
 
-    @AssertTrue(message = "One of the following must be provided: 'entries', 'with_keys', or 'with_keys_regex'. None of these are configured.")
+    @AssertTrue(message = "One of the following must be provided: 'entries', 'with_keys', 'with_keys_regex', or 'delete_all_except'. None of these are configured.")
     boolean isConfigurationPresent() {
-        return entries != null || withKeys != null || withKeysRegex != null;
+        return entries != null || withKeys != null || withKeysRegex != null || deleteAllExcept != null;
     }
 
-    @AssertTrue(message = "You can only use one of the following at a time: 'entries', 'with_keys', or 'with_keys_regex'")
+    @AssertTrue(message = "You can only use one of the following at a time: 'entries', 'with_keys', 'with_keys_regex', or 'delete_all_except'")
     boolean hasOnlyOneConfiguration() {
         int count = 0;
         if (entries != null) count++;
         if (withKeys != null) count++;
         if (withKeysRegex != null) count++;
+        if (deleteAllExcept != null) count++;
         return count == 1;
     }
 
@@ -233,6 +247,10 @@ public class DeleteEntryProcessorConfig {
 
     public List<String> getWithKeysRegex() {
         return withKeysRegex != null ? withKeysRegex : Collections.emptyList();
+    }
+
+    public List<EventKey> getDeleteAllExcept() {
+        return deleteAllExcept != null ? deleteAllExcept : Collections.emptyList();
     }
 
     public List<Pattern> getWithKeysRegexPattern() {
