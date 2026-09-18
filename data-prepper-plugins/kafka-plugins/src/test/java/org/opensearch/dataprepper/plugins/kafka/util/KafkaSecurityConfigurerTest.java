@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.AwsCredentialsSupplierProvider;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.MskIamAuthCredentialsCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
@@ -191,6 +192,21 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
         assertThat(props.get("sasl.client.callback.handler.class"),
                 is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+    }
+
+    @Test
+    public void testSetAuthPropertiesBootstrapServersWithSaslIAMRoleAndStsHeaderOverrides() throws IOException {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig =
+                createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-role-with-headers.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, LOG);
+        assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
+        assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("sasl.jaas.config"),
+                is("software.amazon.msk.auth.iam.IAMLoginModule required;"));
+        assertThat(props.get("sasl.client.callback.handler.class"),
+                is(MskIamAuthCredentialsCallbackHandler.class.getName()));
     }
 
     @Test
