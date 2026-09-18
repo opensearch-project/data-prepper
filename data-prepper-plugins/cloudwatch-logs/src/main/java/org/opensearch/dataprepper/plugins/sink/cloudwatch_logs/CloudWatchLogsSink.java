@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -105,7 +106,8 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, cloudWatchLogsSinkConfig.getDlq(), region, role, "cloudWatchLogs");
         }
 
-        Executor executor = Executors.newFixedThreadPool(cloudWatchLogsSinkConfig.getWorkers());
+        Executor executor = Executors.newFixedThreadPool(cloudWatchLogsSinkConfig.getWorkers(),
+                BackgroundThreadFactory.defaultExecutorThreadFactory("cloudwatch-logs-sink"));
 
         final EntityConfig entityConfig = cloudWatchLogsSinkConfig.getEntityConfig();
         final boolean dynamicEntity = entityConfig != null && entityConfig.isDynamic(expressionEvaluator);

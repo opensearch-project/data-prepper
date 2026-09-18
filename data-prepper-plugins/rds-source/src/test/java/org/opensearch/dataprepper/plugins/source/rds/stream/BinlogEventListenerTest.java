@@ -136,7 +136,8 @@ class BinlogEventListenerTest {
         when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
-            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(() -> Executors.newSingleThreadExecutor(any(ThreadFactory.class)))
+                    .thenReturn(checkpointManagerExecutorService);
             executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
             objectUnderTest = spy(createObjectUnderTest());
         }
@@ -285,7 +286,8 @@ class BinlogEventListenerTest {
         BinlogEventListener listenerWithNullDlq;
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
-            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
+            executorsMockedStatic.when(() -> Executors.newSingleThreadExecutor(any(ThreadFactory.class)))
+                    .thenReturn(checkpointManagerExecutorService);
             executorsMockedStatic.when(Executors::defaultThreadFactory).thenReturn(threadFactory);
             listenerWithNullDlq = BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                     streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector,

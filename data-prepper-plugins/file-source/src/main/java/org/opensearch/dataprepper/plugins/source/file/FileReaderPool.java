@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +51,8 @@ public final class FileReaderPool {
                               final Duration closeInactive,
                               final FileReaderContext readerContext) {
         this(checkpointRegistry, metrics, maxActiveFiles, closeInactive, readerContext,
-                () -> Executors.newFixedThreadPool(readerThreads, r -> {
-                    final Thread thread = new Thread(r, "file-reader");
-                    thread.setDaemon(true);
-                    return thread;
-                }));
+                () -> Executors.newFixedThreadPool(readerThreads,
+                        BackgroundThreadFactory.defaultExecutorThreadFactory("file-reader")));
     }
 
     FileReaderPool(final CheckpointRegistry checkpointRegistry,
@@ -72,11 +70,8 @@ public final class FileReaderPool {
         this.pendingIdentities = ConcurrentHashMap.newKeySet();
         this.pendingQueue = new ConcurrentLinkedQueue<>();
         this.executorService = executorServiceSupplier.get();
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "file-reader-scheduler");
-            thread.setDaemon(true);
-            return thread;
-        });
+        this.scheduler = Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("file-reader-scheduler"));
     }
 
     public synchronized void addFile(final FileIdentity fileIdentity, final Path path) {

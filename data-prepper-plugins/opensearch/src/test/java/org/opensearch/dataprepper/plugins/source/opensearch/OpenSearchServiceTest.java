@@ -35,11 +35,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -95,7 +97,9 @@ public class OpenSearchServiceTest {
              final MockedConstruction<OpenSearchIndexPartitionCreationSupplier> mockedConstruction = mockConstruction(OpenSearchIndexPartitionCreationSupplier.class, (mock, context) -> {
                  openSearchIndexPartitionCreationSupplier = mock;
              })) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(scheduledExecutorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
+                    .thenReturn(scheduledExecutorService);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             return OpenSearchService.createOpenSearchService(openSearchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager, openSearchSourcePluginMetrics);
         }

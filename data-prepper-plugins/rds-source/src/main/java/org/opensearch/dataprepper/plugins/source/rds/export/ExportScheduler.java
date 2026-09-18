@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -79,7 +80,8 @@ public class ExportScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.sourceCoordinator = sourceCoordinator;
         this.s3Client = s3Client;
-        this.executor = Executors.newCachedThreadPool();
+        this.executor = Executors.newCachedThreadPool(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-export"));
         this.snapshotManager = snapshotManager;
         this.exportTaskManager = exportTaskManager;
 

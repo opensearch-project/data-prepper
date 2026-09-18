@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -126,7 +127,8 @@ class RdsServiceTest {
         doReturn(schemaManager).when(spyRdsService).getSchemaManager(any(), any());
 
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(executor);
             spyRdsService.start(buffer);
         }
 
@@ -165,7 +167,8 @@ class RdsServiceTest {
              final MockedConstruction<LeaderScheduler> leaderSchedulerMockedConstruction = mockConstruction(LeaderScheduler.class,
                      (mock, context) -> s3PrefixArray[0] = (String) context.arguments().get(2));
              final MockedStatic<BackgroundThreadFactory> backgroundThreadFactoryMockedStatic = mockStatic(BackgroundThreadFactory.class)) {
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(executor);
             backgroundThreadFactoryMockedStatic.when(() -> BackgroundThreadFactory.defaultExecutorThreadFactory(any())).thenReturn(threadFactory);
             spyRdsService.start(buffer);
         }
@@ -187,7 +190,8 @@ class RdsServiceTest {
 
         doReturn(schemaManager).when(spyRdsService).getSchemaManager(any(), any());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(executor);
             spyRdsService.start(buffer);
         }
         spyRdsService.shutdown();

@@ -11,6 +11,7 @@ import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -94,7 +95,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                          final GrokProcessorConfig grokProcessorConfig,
                          final ExpressionEvaluator expressionEvaluator) {
         this(pluginMetrics, grokProcessorConfig, GrokCompiler.newInstance(),
-                Executors.newSingleThreadExecutor(), expressionEvaluator);
+                Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("grok-processor")),
+                expressionEvaluator);
     }
 
     GrokProcessor(final PluginMetrics pluginMetrics,

@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
+import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
@@ -110,7 +111,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private void doInitializeInternal() {
-        executorService = Executors.newFixedThreadPool(totalWorkers);
+        executorService = Executors.newFixedThreadPool(totalWorkers,
+                KafkaPluginThreadFactory.defaultExecutorThreadFactory("sink"));
         sinkInitialized = Boolean.TRUE;
     }
 

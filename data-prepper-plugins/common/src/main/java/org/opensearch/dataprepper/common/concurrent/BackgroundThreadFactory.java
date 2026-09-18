@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A {@link ThreadFactory} that names threads with a prefix and
- * sets threads as non-daemon threads.
+ * sets threads as daemon threads so that they do not prevent JVM shutdown.
  * <p>
  * The thread name will be <i>namePrefix</i>-<i>threadNumber</i>.
  */
@@ -48,7 +48,7 @@ public class BackgroundThreadFactory implements ThreadFactory {
     public Thread newThread(final Runnable runnable) {
         final Thread thread = delegateThreadFactory.newThread(runnable);
         thread.setName(namePrefix + "-" + threadNumber.getAndIncrement());
-        thread.setDaemon(false);
+        thread.setDaemon(true);
 
         return thread;
     }
