@@ -37,7 +37,8 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
     public static final int OPEN_METRIC_VALUE = 1;
     public static final int CLOSED_METRIC_VALUE = 0;
     private final MemoryMXBean memoryMXBean;
-    private final long usageBytes;
+    private final long maxBytesToUse;
+    private final long closeThresholdBytes;
     private final Duration resetPeriod;
     private final Lock lock;
     private final AtomicInteger openGauge;
@@ -53,9 +54,21 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
         Objects.requireNonNull(circuitBreakerConfig);
         Objects.requireNonNull(circuitBreakerConfig.getUsage());
 
-        usageBytes = circuitBreakerConfig.getUsage().getBytes();
-        if(usageBytes <= 0)
+        maxBytesToUse = circuitBreakerConfig.getUsage().getBytes();
+        if(maxBytesToUse <= 0)
             throw new IllegalArgumentException("Bytes usage must be positive.");
+
+        if (circuitBreakerConfig.getCloseUsage() != null) {
+            closeThresholdBytes = circuitBreakerConfig.getCloseUsage().getBytes();
+            if (closeThresholdBytes > maxBytesToUse) {
+                throw new IllegalArgumentException("close_usage must be less than or equal to usage.");
+            }
+            if (closeThresholdBytes <= 0) {
+                throw new IllegalArgumentException("close_usage must be positive.");
+            }
+        } else {
+            closeThresholdBytes = maxBytesToUse;
+        }
 
         resetPeriod = Objects.requireNonNull(circuitBreakerConfig.getReset());
         this.memoryMXBean = memoryMXBean;
@@ -68,10 +81,9 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
 
         final Duration checkInterval = Objects.requireNonNull(circuitBreakerConfig.getCheckInterval());
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        scheduledExecutorService
-                        .scheduleAtFixedRate(this::checkMemory, 0L, checkInterval.toMillis(), TimeUnit.MILLISECONDS);
+        scheduledExecutorService.scheduleAtFixedRate(this::checkMemory, 0L, checkInterval.toMillis(), TimeUnit.MILLISECONDS);
 
-        LOG.info("Circuit breaker heap limit is set to {} bytes.", usageBytes);
+        LOG.info("Circuit breaker heap open threshold is {} bytes, close threshold is {} bytes.", maxBytesToUse, closeThresholdBytes);
     }
 
     @Override
@@ -86,20 +98,21 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
             return;
         }
 
-        final long usedMemoryBytes = getUsedMemoryBytes();
-        if(usedMemoryBytes >  usageBytes) {
+        final long bytesInUse = getUsedMemoryBytes();
+        if(bytesInUse > maxBytesToUse) {
             open = true;
             if(!previousOpen) {
                 System.gc();
                 resetTime = Instant.now().plus(resetPeriod);
                 openGauge.set(OPEN_METRIC_VALUE);
-                LOG.info("Circuit breaker tripped and open. {} used memory bytes > {} configured", usedMemoryBytes, usageBytes);
+                LOG.info("Circuit breaker tripped and open. {} used memory bytes > {} configured", bytesInUse, maxBytesToUse);
             }
-        } else {
+        } else if (bytesInUse <= closeThresholdBytes) {
+            // Only close when usage falls below the (potentially lower) close threshold
             open = false;
             if(previousOpen) {
                 openGauge.set(CLOSED_METRIC_VALUE);
-                LOG.info("Circuit breaker closed. {} used memory bytes <= {} configured", usedMemoryBytes, usageBytes);
+                LOG.info("Circuit breaker closed. {} used memory bytes <= {} configured close threshold", bytesInUse, closeThresholdBytes);
             }
         }
     }
