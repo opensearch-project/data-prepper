@@ -1,0 +1,14 @@
+test-pipeline:
+  source:
+    file:
+      path: "/tmp/file-source.tmp"
+
+  sink:
+    - file:
+        path: "/tmp/file-sink.tmp"
+        
+dlq_pipeline:
+  sink:
+    - file:
+        path: "/tmp/file-sink-dlq.tmp"
+

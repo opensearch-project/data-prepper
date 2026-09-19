@@ -1,0 +1,6 @@
+headless-pipeline1:
+  sink:
+    - stdout:
+headless-pipeline2:
+  sink:
+    - stdout:
