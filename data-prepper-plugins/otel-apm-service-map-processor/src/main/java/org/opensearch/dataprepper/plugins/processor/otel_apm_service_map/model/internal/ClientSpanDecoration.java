@@ -27,16 +27,30 @@ public class ClientSpanDecoration implements Serializable {
     private final String remoteService;
     private final String remoteOperation;
     private final Map<String, String> remoteGroupByAttributes;
+    // Target node type: "service" for a traced downstream service, or "database"/"external" when the
+    // target was synthesized from CLIENT-span attributes (no downstream SERVER span).
+    private final String remoteNodeType;
 
     public ClientSpanDecoration(final String parentServerOperationName,
                                final String remoteEnvironment,
                                final String remoteService,
                                final String remoteOperation,
                                final Map<String, String> remoteGroupByAttributes) {
+        this(parentServerOperationName, remoteEnvironment, remoteService, remoteOperation,
+                remoteGroupByAttributes, "service");
+    }
+
+    public ClientSpanDecoration(final String parentServerOperationName,
+                               final String remoteEnvironment,
+                               final String remoteService,
+                               final String remoteOperation,
+                               final Map<String, String> remoteGroupByAttributes,
+                               final String remoteNodeType) {
         this.parentServerOperationName = parentServerOperationName;
         this.remoteEnvironment = remoteEnvironment;
         this.remoteService = remoteService;
         this.remoteOperation = remoteOperation;
         this.remoteGroupByAttributes = remoteGroupByAttributes != null ? remoteGroupByAttributes : Collections.emptyMap();
+        this.remoteNodeType = remoteNodeType != null ? remoteNodeType : "service";
     }
 }
