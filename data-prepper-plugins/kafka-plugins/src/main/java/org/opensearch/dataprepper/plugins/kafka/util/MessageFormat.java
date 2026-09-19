@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +34,7 @@ public enum MessageFormat {
 
     @JsonCreator
     public static MessageFormat getByMessageFormatByName(final String name) {
-        return MESSAGE_FORMAT_MAP.get(name.toLowerCase());
+        return Optional.ofNullable(MESSAGE_FORMAT_MAP.get(name.toLowerCase())).orElseThrow(
+                () -> new IllegalArgumentException("Unsupported message format in kafka plugin: " + name));
     }
 }
