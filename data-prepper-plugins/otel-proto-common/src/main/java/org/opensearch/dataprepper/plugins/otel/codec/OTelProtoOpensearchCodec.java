@@ -322,6 +322,7 @@ public class OTelProtoOpensearchCodec {
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
                             .withBody(convertAnyValue(log.getBody()))
+                            .withEventName(log.getEventName().isEmpty() ? null : log.getEventName())
                             .withTimeReceived(timeReceived)
                             .build())
                     .collect(Collectors.toList());
