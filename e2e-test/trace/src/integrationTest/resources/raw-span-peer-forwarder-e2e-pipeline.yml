@@ -1,0 +1,37 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+
+entry-pipeline:
+  source:
+    otel_trace_source:
+      ssl: false
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - otel_traces:
+        # Long enough that a peer-forwarded root span arrives before its
+        # buffered child spans are garbage-collected with a null trace group.
+        # See https://github.com/opensearch-project/data-prepper/issues/6721
+        trace_flush_interval: 30
+    - otel_trace_group:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        insecure: true
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        insecure: true
+        index_type: trace-analytics-raw
+        flush_timeout: 5000
