@@ -51,6 +51,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private ByteDecoder byteDecoder;
     private final InputCodec codec;
+    private final boolean acceptSingleObject;
     private final List<String> metadataHeaders;
     private final HttpHeaderExtractor httpHeaderExtractor;
 
@@ -88,6 +89,7 @@ public class HTTPSource implements Source<Record<Log>> {
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
         }
+        this.acceptSingleObject = sourceConfig.getAcceptSingleObject();
         httpHeaderExtractor = new HttpHeaderExtractor(metadataHeaders);
     }
 
@@ -99,7 +101,7 @@ public class HTTPSource implements Source<Record<Log>> {
         if (server == null) {
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
             CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics, codec, httpHeaderExtractor);
+            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics, codec, acceptSingleObject, httpHeaderExtractor);
             server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
