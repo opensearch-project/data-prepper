@@ -701,6 +701,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 String remoteEnvironment = "generic:default"; // Default environment string
                 Map<String, String> remoteGroupByAttributes = Collections.emptyMap();
                 String remoteNodeType = NODE_TYPE_SERVICE;
+                Map<String, String> remoteDependencyAttributes = Collections.emptyMap();
 
                 if (!childServerSpans.isEmpty()) {
                     final SpanStateData childServerSpan = childServerSpans.iterator().next();
@@ -720,6 +721,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     remoteEnvironment = "generic:default";
                     remoteGroupByAttributes = Collections.emptyMap();
                     remoteNodeType = clientSpan.getDerivedNodeType();
+                    remoteDependencyAttributes = clientSpan.getDependencyAttributes();
                 }
 
                 final ClientSpanDecoration decoration = new ClientSpanDecoration(
@@ -728,7 +730,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         remoteService,
                         remoteOperation,
                         remoteGroupByAttributes,
-                        remoteNodeType
+                        remoteNodeType,
+                        remoteDependencyAttributes
                 );
                 traceData.getDecorations().setClientDecoration(clientSpanId, decoration);
             }
@@ -760,7 +763,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                 existingDecoration.getRemoteService(),
                                 existingDecoration.getRemoteOperation(),
                                 existingDecoration.getRemoteGroupByAttributes(),
-                                existingDecoration.getRemoteNodeType()
+                                existingDecoration.getRemoteNodeType(),
+                                existingDecoration.getRemoteDependencyAttributes()
                         );
                         traceData.getDecorations().setClientDecoration(clientSpanId, updatedDecoration);
                     } else {
@@ -816,7 +820,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     final Node targetNode = new Node(
                             decoration.getRemoteNodeType() != null ? decoration.getRemoteNodeType() : NODE_TYPE_SERVICE,
                             new Node.KeyAttributes(decoration.getRemoteEnvironment(), decoration.getRemoteService()),
-                            decoration.getRemoteGroupByAttributes()
+                            decoration.getRemoteGroupByAttributes(),
+                            decoration.getRemoteDependencyAttributes()
                     );
 
                     final Operation sourceOp = decoration.getParentServerOperationName() != null
@@ -838,10 +843,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                 anchor, hostId);
                     } else if (decoration.getRemoteNodeType() != null
                             && !NODE_TYPE_SERVICE.equals(decoration.getRemoteNodeType())) {
-                        // Orphaned dependency call: the caller has no parent SERVER span (e.g. a Kafka
-                        // CONSUMER service that then hits a database). Still emit RED metrics for the
-                        // dependency, using the client span's own operation as the operation label so
-                        // there is no operation=null label pollution.
+                        // Dependency call with no parent SERVER span (e.g. a Kafka consumer that then
+                        // hits a DB): still emit RED metrics, using the client span's own operation.
                         final ClientSpanDecoration dependencyDecoration = new ClientSpanDecoration(
                                 clientSpan.getOperationName(),
                                 decoration.getRemoteEnvironment(),
@@ -907,7 +910,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 final Node brokerNode = new Node(
                         NODE_TYPE_MESSAGING,
                         new Node.KeyAttributes("generic:default", brokerName),
-                        Collections.emptyMap()
+                        Collections.emptyMap(),
+                        messagingSpan.getDependencyAttributes()
                 );
 
                 final Operation serviceOp = new Operation(messagingSpan.getOperationName());
@@ -924,10 +928,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
                 dedupedNodeDetails.add(messagingDetail);
 
-                // Emit client-side RED metrics for the messaging edge, labeled by the broker
-                // (remoteService = "{system}:{destination}") so the messaging node/edge shows
-                // throughput / latency / errors. Reuses the CLIENT-span metric path via a
-                // synthetic decoration.
+                // RED metrics for the messaging edge, labeled by the broker (remoteService =
+                // "{system}:{destination}"), reusing the CLIENT-span metric path.
                 final ClientSpanDecoration messagingDecoration = new ClientSpanDecoration(
                         messagingSpan.getOperationName(),
                         "generic:default",

@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
@@ -27,16 +28,28 @@ public class Node {
     @JsonProperty("groupByAttributes")
     private final Map<String, String> groupByAttributes;
 
+    // Exact peer identity for synthesized dependency nodes, so callers can filter the
+    // dependency's spans/logs precisely rather than parse the node name. Empty for service nodes.
+    @JsonProperty("dependencyAttributes")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final Map<String, String> dependencyAttributes;
+
     public Node(final String type, final KeyAttributes keyAttributes) {
-        this.type = type;
-        this.keyAttributes = keyAttributes;
-        this.groupByAttributes = Collections.emptyMap();
+        this(type, keyAttributes, Collections.emptyMap(), Collections.emptyMap());
     }
 
     public Node(final String type, final KeyAttributes keyAttributes, final Map<String, String> groupByAttributes) {
+        this(type, keyAttributes, groupByAttributes, Collections.emptyMap());
+    }
+
+    public Node(final String type,
+                final KeyAttributes keyAttributes,
+                final Map<String, String> groupByAttributes,
+                final Map<String, String> dependencyAttributes) {
         this.type = type;
         this.keyAttributes = keyAttributes;
         this.groupByAttributes = groupByAttributes != null ? groupByAttributes : Collections.emptyMap();
+        this.dependencyAttributes = dependencyAttributes != null ? dependencyAttributes : Collections.emptyMap();
     }
 
     public String getType() {
@@ -51,18 +64,23 @@ public class Node {
         return groupByAttributes;
     }
 
+    public Map<String, String> getDependencyAttributes() {
+        return dependencyAttributes;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Node node = (Node) o;
         return Objects.equals(type, node.type) &&
                 Objects.equals(keyAttributes, node.keyAttributes) &&
-                Objects.equals(groupByAttributes, node.groupByAttributes);
+                Objects.equals(groupByAttributes, node.groupByAttributes) &&
+                Objects.equals(dependencyAttributes, node.dependencyAttributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, keyAttributes, groupByAttributes);
+        return Objects.hash(type, keyAttributes, groupByAttributes, dependencyAttributes);
     }
 
     @Override
@@ -71,6 +89,7 @@ public class Node {
                 "type='" + type + '\'' +
                 ", keyAttributes=" + keyAttributes +
                 ", groupByAttributes=" + groupByAttributes +
+                ", dependencyAttributes=" + dependencyAttributes +
                 '}';
     }
 

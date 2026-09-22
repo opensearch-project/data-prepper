@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.opensearch.dataprepper.plugins.otel.common.RemoteOperationAndService;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -53,6 +54,9 @@ public class SpanStateData implements Serializable {
     private String messagingSystem;
     private String messagingDestination;
     private String messagingOperation;
+    // Canonical (OTel-keyed) identity attributes for the synthesized dependency node, so consumers
+    // can filter its spans/logs on exact peer identity. Empty for spans targeting a traced service.
+    private Map<String, String> dependencyAttributes = Collections.emptyMap();
 
     public SpanStateData(final String serviceName,
                          final String spanId,
@@ -86,9 +90,8 @@ public class SpanStateData implements Serializable {
 
         this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes);
 
-        // Derive remote-dependency identity (database / external / messaging) from span attributes.
-        // The service-map processor uses these to synthesize typed target nodes for CLIENT spans that
-        // have no downstream SERVER span, and for PRODUCER/CONSUMER spans that reference a broker.
+        // Derived remote-dependency identity, used to synthesize typed target nodes for CLIENT spans
+        // with no downstream SERVER span and for PRODUCER/CONSUMER spans that reference a broker.
         this.derivedNodeType = computeNodeType(spanAttributes);
 
         if (spanAttributes != null && !spanAttributes.isEmpty()) {
@@ -113,6 +116,51 @@ public class SpanStateData implements Serializable {
             this.messagingSystem = stringAttr(spanAttributes, "messaging.system");
             this.messagingDestination = stringAttr(spanAttributes, "messaging.destination.name");
             this.messagingOperation = stringAttr(spanAttributes, "messaging.operation");
+
+            this.dependencyAttributes = computeDependencyAttributes(derivedNodeType, spanAttributes);
+        }
+    }
+
+    /**
+     * Collect the identity attributes for a synthesized dependency node, under canonical OTel keys,
+     * so consumers can filter the dependency's spans/logs on exact peer identity rather than parsing
+     * the node name. Only non-empty values are included; returns an empty map for service targets.
+     *
+     * @param nodeType       The derived node type (database / messaging / external), or null
+     * @param spanAttributes The span attributes
+     * @return An ordered map of canonical identity attributes (possibly empty)
+     */
+    private static Map<String, String> computeDependencyAttributes(final String nodeType,
+                                                                    final Map<String, Object> spanAttributes) {
+        if (nodeType == null || spanAttributes == null || spanAttributes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        final Map<String, String> attrs = new LinkedHashMap<>();
+        final String host = firstAttr(spanAttributes, "server.address", "net.peer.name", "network.peer.address");
+        final String port = firstAttr(spanAttributes, "server.port", "net.peer.port", "network.peer.port");
+        if (NODE_TYPE_DATABASE.equals(nodeType)) {
+            putIfPresent(attrs, "db.system.name",
+                    firstAttr(spanAttributes, "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name"));
+            putIfPresent(attrs, "db.namespace", firstAttr(spanAttributes, "db.namespace", "db.name"));
+            putIfPresent(attrs, "server.address", host);
+            putIfPresent(attrs, "server.port", port);
+        } else if (NODE_TYPE_MESSAGING.equals(nodeType)) {
+            putIfPresent(attrs, "messaging.system", stringAttr(spanAttributes, "messaging.system"));
+            putIfPresent(attrs, "messaging.destination.name", stringAttr(spanAttributes, "messaging.destination.name"));
+            putIfPresent(attrs, "messaging.operation", stringAttr(spanAttributes, "messaging.operation"));
+        } else if (NODE_TYPE_EXTERNAL.equals(nodeType)) {
+            putIfPresent(attrs, "peer.service", stringAttr(spanAttributes, "peer.service"));
+            putIfPresent(attrs, "server.address", host);
+            putIfPresent(attrs, "server.port", port);
+            putIfPresent(attrs, "url.full", firstAttr(spanAttributes, "url.full", "http.url"));
+            putIfPresent(attrs, "rpc.system", stringAttr(spanAttributes, "rpc.system"));
+        }
+        return attrs.isEmpty() ? Collections.emptyMap() : attrs;
+    }
+
+    private static void putIfPresent(final Map<String, String> target, final String key, final String value) {
+        if (value != null && !value.isEmpty()) {
+            target.put(key, value);
         }
     }
 

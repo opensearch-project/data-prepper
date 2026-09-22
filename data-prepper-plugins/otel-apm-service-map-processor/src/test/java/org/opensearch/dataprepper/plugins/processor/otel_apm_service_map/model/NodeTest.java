@@ -97,6 +97,43 @@ class NodeTest {
         assertTrue(result.contains("service"));
     }
 
+    @Test
+    void testDependencyAttributesDefaultsEmpty() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("prod", "test-service");
+
+        assertTrue(new Node("service", keyAttributes).getDependencyAttributes().isEmpty());
+        assertTrue(new Node("service", keyAttributes, Map.of("k", "v")).getDependencyAttributes().isEmpty());
+    }
+
+    @Test
+    void testConstructorWithDependencyAttributes() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Map<String, String> dependencyAttributes =
+                Map.of("db.system.name", "postgresql", "server.address", "db-host", "server.port", "5432");
+        Node node = new Node("database", keyAttributes, Map.of(), dependencyAttributes);
+
+        assertEquals("database", node.getType());
+        assertEquals(dependencyAttributes, node.getDependencyAttributes());
+    }
+
+    @Test
+    void testConstructorWithNullDependencyAttributes() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Node node = new Node("database", keyAttributes, null, null);
+
+        assertTrue(node.getDependencyAttributes().isEmpty());
+    }
+
+    @Test
+    void testNotEquals_differentDependencyAttributes() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Node node1 = new Node("database", keyAttributes, Map.of(), Map.of("server.port", "5432"));
+        Node node2 = new Node("database", keyAttributes, Map.of(), Map.of("server.port", "5433"));
+
+        assertNotEquals(node1, node2);
+        assertNotEquals(node1.hashCode(), node2.hashCode());
+    }
+
     static class KeyAttributesTest {
 
         @Test

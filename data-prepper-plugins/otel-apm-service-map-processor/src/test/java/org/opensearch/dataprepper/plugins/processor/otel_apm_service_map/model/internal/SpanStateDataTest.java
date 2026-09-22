@@ -15,8 +15,75 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.codec.binary.Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpanStateDataTest {
+
+    private static SpanStateData spanWithAttributes(final String spanKind,
+                                                    final Map<String, Object> attributes) {
+        return new SpanStateData(
+            "service", Hex.encodeHexString(new byte[]{1}), null, Hex.encodeHexString(new byte[]{2}), spanKind,
+            "span", "op", 1000L, "OK", "2023-01-01", null, attributes
+        );
+    }
+
+    @Test
+    void dependencyAttributes_forDatabase_capturesCanonicalIdentity() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system.name", "postgresql");
+        attributes.put("db.namespace", "orders");
+        attributes.put("server.address", "db-host");
+        attributes.put("server.port", 5432);
+
+        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+
+        assertEquals("postgresql", deps.get("db.system.name"));
+        assertEquals("orders", deps.get("db.namespace"));
+        assertEquals("db-host", deps.get("server.address"));
+        assertEquals("5432", deps.get("server.port"));
+    }
+
+    @Test
+    void dependencyAttributes_forDatabase_recoversFlattenedSystemKey() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db_system_name", "mysql");
+        attributes.put("db.statement", "SELECT 1");
+
+        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+
+        assertEquals("mysql", deps.get("db.system.name"));
+    }
+
+    @Test
+    void dependencyAttributes_forMessaging_capturesSystemAndDestination() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "kafka");
+        attributes.put("messaging.destination.name", "orders");
+        attributes.put("messaging.operation", "publish");
+
+        Map<String, String> deps = spanWithAttributes("PRODUCER", attributes).getDependencyAttributes();
+
+        assertEquals("kafka", deps.get("messaging.system"));
+        assertEquals("orders", deps.get("messaging.destination.name"));
+        assertEquals("publish", deps.get("messaging.operation"));
+    }
+
+    @Test
+    void dependencyAttributes_forExternal_capturesPeerIdentity() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("server.address", "api.openai.com");
+        attributes.put("server.port", 443);
+
+        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+
+        assertEquals("api.openai.com", deps.get("server.address"));
+        assertEquals("443", deps.get("server.port"));
+    }
+
+    @Test
+    void dependencyAttributes_forService_isEmpty() {
+        assertTrue(spanWithAttributes("SERVER", null).getDependencyAttributes().isEmpty());
+    }
 
     @Test
     void constructor_withValidData_createsInstance() {
