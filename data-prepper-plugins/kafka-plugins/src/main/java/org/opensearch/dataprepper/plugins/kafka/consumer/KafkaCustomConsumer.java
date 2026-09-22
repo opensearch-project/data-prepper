@@ -537,7 +537,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             wrappedValue.put(DEFAULT_KEY, convertedValue);
             return wrappedValue;
         } catch (final Exception e) {
-            LOG.error("Failed to parse Protobuf record", e);
             topicMetrics.getNumberOfRecordsFailedToParse().increment();
             throw new ProtobufMessageConversionException(e);
         }
@@ -631,8 +630,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         }
                     }
                 } catch (final ProtobufMessageConversionException e) {
-                    LOG.warn("Skipping Protobuf record at topic {} partition {} offset {} after conversion failure",
-                            topicName, topicPartition.partition(), consumerRecord.offset());
+                    LOG.error("Dropping unconvertible Protobuf record from topic {} partition {} offset {}",
+                            topicName, topicPartition.partition(), consumerRecord.offset(), e);
                 }
             }
 

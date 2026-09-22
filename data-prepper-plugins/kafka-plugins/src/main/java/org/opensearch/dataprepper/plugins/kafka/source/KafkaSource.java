@@ -9,6 +9,7 @@ import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKaf
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.protobuf.Message;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
@@ -333,6 +334,13 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put("auto.register.schemas", false);
         schemaRegistryClient = new CachedSchemaRegistryClient(getSchemaRegistryUrl(),
                 100, propertyMap);
+        configureConfluentValueDeserializer(properties, topic, schemaRegistryClient);
+    }
+
+    void configureConfluentValueDeserializer(
+            final Properties properties,
+            final TopicConfig topic,
+            final SchemaRegistryClient schemaRegistryClient) {
         final SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
         try {
             final String subject = topic.getName() + "-value";
