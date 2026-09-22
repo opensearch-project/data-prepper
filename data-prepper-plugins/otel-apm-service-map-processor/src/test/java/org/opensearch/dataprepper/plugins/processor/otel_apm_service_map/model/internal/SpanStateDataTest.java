@@ -86,6 +86,41 @@ class SpanStateDataTest {
     }
 
     @Test
+    void derivedNodeType_classifiesMessagingFirst() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "kafka");
+        // db + http attributes present too — messaging must win.
+        attributes.put("db.system.name", "postgresql");
+        attributes.put("http.request.method", "POST");
+
+        assertEquals("messaging", spanWithAttributes("PRODUCER", attributes).getDerivedNodeType());
+    }
+
+    @Test
+    void derivedNodeType_classifiesDatabase() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system.name", "postgresql");
+
+        assertEquals("database", spanWithAttributes("CLIENT", attributes).getDerivedNodeType());
+    }
+
+    @Test
+    void derivedNodeType_classifiesExternal() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("server.address", "api.openai.com");
+
+        assertEquals("external", spanWithAttributes("CLIENT", attributes).getDerivedNodeType());
+    }
+
+    @Test
+    void derivedNodeType_isNullForPlainService() {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("thread.id", 7);
+
+        assertEquals(null, spanWithAttributes("SERVER", attributes).getDerivedNodeType());
+    }
+
+    @Test
     void constructor_withValidData_createsInstance() {
         byte[] spanId = {1, 2, 3};
         byte[] traceId = {4, 5, 6};

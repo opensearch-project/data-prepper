@@ -247,6 +247,40 @@ Represents a service with no outgoing calls:
 }
 ```
 
+### External Dependency Nodes
+
+Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — are synthesized as typed nodes so they appear in the service map instead of being dropped. A node's `type` is one of:
+
+| `type` | Synthesized from | Example name |
+|--------|------------------|--------------|
+| `service` | An instrumented service (has a `SERVER` span) | `checkout` |
+| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql:5432` |
+| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443` |
+| `messaging` | A `PRODUCER`/`CONSUMER` span; the broker links producer → broker → consumer | `kafka:orders` |
+
+Dependency nodes also carry a `dependencyAttributes` map with the exact peer identity under canonical OpenTelemetry keys, so consumers can filter the dependency's spans/logs precisely rather than parsing the node name. The field is omitted for `service` nodes.
+
+- **database**: `db.system.name`, `db.namespace`, `server.address`, `server.port`
+- **messaging**: `messaging.system`, `messaging.destination.name`, `messaging.operation`
+- **external**: `peer.service`, `server.address`, `server.port`, `url.full`, `rpc.system`
+
+Unresolved (`UnknownRemoteService`) and raw-IP peers are suppressed so the topology only shows named dependencies.
+
+```json
+{
+  "targetNode": {
+    "type": "database",
+    "keyAttributes": { "environment": "generic:default", "name": "postgresql:5432" },
+    "dependencyAttributes": {
+      "db.system.name": "postgresql",
+      "db.namespace": "orders",
+      "server.address": "postgresql",
+      "server.port": "5432"
+    }
+  }
+}
+```
+
 ### Dual Hash Fields
 
 NodeOperationDetail uses two hash fields for different query patterns:
