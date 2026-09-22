@@ -14,12 +14,17 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ClientOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
+import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.services.s3.LegacyMd5Plugin;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
+
+import java.net.URI;
 
 public final class ClientFactory {
     private ClientFactory() { }
@@ -28,11 +33,25 @@ public final class ClientFactory {
         final AwsCredentialsOptions awsCredentialsOptions = convertToCredentialsOptions(s3SinkConfig.getAwsAuthenticationOptions());
         final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
 
+        final String endpoint = s3SinkConfig.getEndpoint();
+        final boolean hasCustomEndpoint = endpoint != null && !endpoint.trim().isEmpty();
+
         final S3AsyncClientBuilder s3AsyncClientBuilder = S3AsyncClient.builder()
                 .region(s3SinkConfig.getAwsAuthenticationOptions().getAwsRegion())
-                .crossRegionAccessEnabled(true)
+                .crossRegionAccessEnabled(!hasCustomEndpoint)
+                .forcePathStyle(s3SinkConfig.getForcePathStyle())
                 .credentialsProvider(awsCredentialsProvider)
                 .overrideConfiguration(createOverrideConfiguration(s3SinkConfig));
+
+        if (hasCustomEndpoint) {
+            s3AsyncClientBuilder.endpointOverride(URI.create(endpoint));
+        }
+
+        if (s3SinkConfig.getLegacyMd5Checksum()) {
+            s3AsyncClientBuilder.requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+                    .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+                    .addPlugin(LegacyMd5Plugin.create());
+        }
 
         if (s3SinkConfig.getClientOptions() != null) {
             final ClientOptions clientOptions = s3SinkConfig.getClientOptions();

@@ -64,7 +64,9 @@ import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
@@ -75,6 +77,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -157,8 +160,16 @@ class S3SinkServiceIT {
     public void setUp() {
         s3region = System.getProperty("tests.s3sink.region");
 
-        s3Client = S3Client.builder().region(Region.of(s3region)).build();
-        s3AsyncClient = S3AsyncClient.builder().region(Region.of(s3region)).build();
+        final String endpoint = System.getProperty("tests.s3sink.endpoint");
+        final boolean forcePathStyle = Boolean.getBoolean("tests.s3sink.force_path_style");
+        final S3ClientBuilder s3ClientBuilder = S3Client.builder().region(Region.of(s3region));
+        final S3AsyncClientBuilder s3AsyncClientBuilder = S3AsyncClient.builder().region(Region.of(s3region));
+        if (endpoint != null) {
+            s3ClientBuilder.endpointOverride(URI.create(endpoint)).forcePathStyle(forcePathStyle);
+            s3AsyncClientBuilder.endpointOverride(URI.create(endpoint)).forcePathStyle(forcePathStyle);
+        }
+        s3Client = s3ClientBuilder.build();
+        s3AsyncClient = s3AsyncClientBuilder.build();
         bucketName = System.getProperty("tests.s3sink.bucket");
         bufferFactory = new InMemoryBufferFactory();
 

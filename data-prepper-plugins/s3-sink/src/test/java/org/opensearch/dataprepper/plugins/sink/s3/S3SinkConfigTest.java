@@ -39,6 +39,43 @@ class S3SinkConfigTest {
     }
 
     @Test
+    void default_endpoint_test() {
+        assertNull(new S3SinkConfig().getEndpoint());
+    }
+
+    @Test
+    void default_force_path_style_test() {
+        assertThat(new S3SinkConfig().getForcePathStyle(), equalTo(false));
+    }
+
+    @Test
+    void default_legacy_md5_checksum_test() {
+        assertThat(new S3SinkConfig().getLegacyMd5Checksum(), equalTo(false));
+    }
+
+    @Test
+    void get_endpoint_test() throws NoSuchFieldException, IllegalAccessException {
+        final String endpoint = "http://localhost:9000";
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.getEndpoint(), equalTo(endpoint));
+    }
+
+    @Test
+    void get_force_path_style_test() throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "forcePathStyle", true);
+        assertThat(objectUnderTest.getForcePathStyle(), equalTo(true));
+    }
+
+    @Test
+    void get_legacy_md5_checksum_test() throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "legacyMd5Checksum", true);
+        assertThat(objectUnderTest.getLegacyMd5Checksum(), equalTo(true));
+    }
+
+    @Test
     void get_bucket_name_test() throws NoSuchFieldException, IllegalAccessException {
         final String bucketName = UUID.randomUUID().toString();
         final S3SinkConfig objectUnderTest = new S3SinkConfig();
