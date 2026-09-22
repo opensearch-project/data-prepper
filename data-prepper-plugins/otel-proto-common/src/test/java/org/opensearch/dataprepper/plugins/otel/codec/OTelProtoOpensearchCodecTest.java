@@ -656,6 +656,230 @@ public class OTelProtoOpensearchCodecTest {
             assertThat(mergedAttributes.get(OTelProtoOpensearchCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
+        // Regression tests for issue #7151: duplicate attribute keys must not drop the whole request.
+
+        @Test
+        public void testGetSpanAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("first-value").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("second-value").build()).build();
+
+            final Map<String, Object> actual = decoderUnderTest.getSpanAttributes(
+                    io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                            .addAllAttributes(Arrays.asList(attr1, attr2)).build());
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("compute.expression")),
+                    equalTo("second-value"));
+        }
+
+        @Test
+        public void testGetResourceAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("service.name")
+                    .setValue(AnyValue.newBuilder().setStringValue("ServiceA").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("service.name")
+                    .setValue(AnyValue.newBuilder().setStringValue("ServiceB").build()).build();
+
+            final Map<String, Object> actual = decoderUnderTest.getResourceAttributes(
+                    Resource.newBuilder().addAllAttributes(Arrays.asList(attr1, attr2)).build());
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")),
+                    equalTo("ServiceB"));
+        }
+
+        @Test
+        public void testGetLinkAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("link.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("link.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = decoderUnderTest.getLinkAttributes(
+                    io.opentelemetry.proto.trace.v1.Span.Link.newBuilder()
+                            .addAllAttributes(Arrays.asList(attr1, attr2)).build());
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.REPLACE_DOT_WITH_AT.apply("link.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testGetEventAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("event.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("event.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = decoderUnderTest.getEventAttributes(
+                    io.opentelemetry.proto.trace.v1.Span.Event.newBuilder()
+                            .addAllAttributes(Arrays.asList(attr1, attr2)).build());
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.REPLACE_DOT_WITH_AT.apply("event.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testParseExportTraceServiceRequest_whenSpanHasDuplicateAttributeKeys_parsesSuccessfully() {
+            final KeyValue duplicatedAttr1 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("esql://routine/#MyCompute.Main").build()).build();
+            final KeyValue duplicatedAttr2 = KeyValue.newBuilder().setKey("compute.mode")
+                    .setValue(AnyValue.newBuilder().setStringValue("message").build()).build();
+
+            final io.opentelemetry.proto.trace.v1.Span spanWithDuplicates =
+                    io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                            .setTraceId(ByteString.copyFrom(getRandomBytes(16)))
+                            .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
+                            .setName("MyApp.MyFlow.logMessageEvent")
+                            .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER)
+                            .addAttributes(duplicatedAttr1)
+                            .addAttributes(duplicatedAttr2)
+                            .addAttributes(duplicatedAttr1)
+                            .addAttributes(duplicatedAttr2)
+                            .build();
+
+            final io.opentelemetry.proto.trace.v1.Span validSpan =
+                    io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                            .setTraceId(ByteString.copyFrom(getRandomBytes(16)))
+                            .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
+                            .setName("root-span")
+                            .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER)
+                            .build();
+
+            final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
+                    .addResourceSpans(ResourceSpans.newBuilder()
+                            .setResource(Resource.newBuilder().build())
+                            .addScopeSpans(ScopeSpans.newBuilder()
+                                    .setScope(InstrumentationScope.newBuilder().setName("test-scope").build())
+                                    .addSpans(spanWithDuplicates)
+                                    .addSpans(validSpan)
+                                    .build())
+                            .build())
+                    .build();
+
+            final List<Span> result = decoderUnderTest.parseExportTraceServiceRequest(request, Instant.now());
+
+            assertThat(result.size(), equalTo(2));
+            final Span parsedSpanWithDuplicates = result.stream()
+                    .filter(s -> "MyApp.MyFlow.logMessageEvent".equals(s.getName()))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(
+                    parsedSpanWithDuplicates.getAttributes()
+                            .get(OTelProtoOpensearchCodec.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("compute.expression")),
+                    equalTo("esql://routine/#MyCompute.Main"));
+        }
+
+        @Test
+        public void testUnpackKeyValueListLog_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("log.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("log.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.unpackKeyValueListLog(Arrays.asList(attr1, attr2));
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("log.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testUnpackKeyValueListMetric_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("metric.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("metric.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.unpackKeyValueListMetric(Arrays.asList(attr1, attr2));
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("metric.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testUnpackKeyValueList_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("some.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("some.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.unpackKeyValueList(Arrays.asList(attr1, attr2));
+
+            assertThat(actual.get("." + "some.attr".replace(".", "@")), equalTo("second"));
+        }
+
+        @Test
+        public void testConvertKeysOfDataPointAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("metric.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("metric.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+            final NumberDataPoint dataPoint = NumberDataPoint.newBuilder()
+                    .addAttributes(attr1).addAttributes(attr2).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.convertKeysOfDataPointAttributes(dataPoint);
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("metric.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testUnpackExemplarValueList_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("exemplar.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("first").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("exemplar.attr")
+                    .setValue(AnyValue.newBuilder().setStringValue("second").build()).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.unpackExemplarValueList(Arrays.asList(attr1, attr2));
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("exemplar.attr")),
+                    equalTo("second"));
+        }
+
+        @Test
+        public void testGetResourceAttributesStatic_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("service.name")
+                    .setValue(AnyValue.newBuilder().setStringValue("ServiceA").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("service.name")
+                    .setValue(AnyValue.newBuilder().setStringValue("ServiceB").build()).build();
+
+            final Map<String, Object> actual = OTelProtoOpensearchCodec.getResourceAttributes(
+                    Resource.newBuilder().addAttributes(attr1).addAttributes(attr2).build());
+
+            assertThat(actual.get(OTelProtoOpensearchCodec.PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")),
+                    equalTo("ServiceB"));
+        }
+
+        @Test
+        public void testParseExportLogsServiceRequest_whenLogHasDuplicateAttributeKeys_parsesSuccessfully() {
+            final KeyValue duplicatedAttr = KeyValue.newBuilder().setKey("log.level")
+                    .setValue(AnyValue.newBuilder().setStringValue("INFO").build()).build();
+            final KeyValue duplicatedAttrOverride = KeyValue.newBuilder().setKey("log.level")
+                    .setValue(AnyValue.newBuilder().setStringValue("DEBUG").build()).build();
+
+            final io.opentelemetry.proto.logs.v1.LogRecord logWithDuplicates =
+                    io.opentelemetry.proto.logs.v1.LogRecord.newBuilder()
+                            .addAttributes(duplicatedAttr)
+                            .addAttributes(duplicatedAttrOverride)
+                            .build();
+
+            final io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest request =
+                    io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest.newBuilder()
+                            .addResourceLogs(io.opentelemetry.proto.logs.v1.ResourceLogs.newBuilder()
+                                    .setResource(Resource.newBuilder().build())
+                                    .addScopeLogs(io.opentelemetry.proto.logs.v1.ScopeLogs.newBuilder()
+                                            .setScope(InstrumentationScope.newBuilder().setName("test-scope").build())
+                                            .addLogRecords(logWithDuplicates)
+                                            .build())
+                                    .build())
+                            .build();
+
+            final List<OpenTelemetryLog> result = decoderUnderTest.parseExportLogsServiceRequest(request, Instant.now());
+
+            assertThat(result.size(), equalTo(1));
+            assertThat(
+                    result.get(0).getAttributes()
+                            .get(OTelProtoOpensearchCodec.PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("log.level")),
+                    equalTo("DEBUG"));
+        }
 
     }
 

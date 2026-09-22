@@ -226,8 +226,8 @@ public class OTelProtoStandardCodec {
         }
 
         protected Map<String, Object> convertKeyValueToAttributes(List<KeyValue> attributesList) {
-             return attributesList.stream()
-                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            return attributesList.stream()
+                    .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
@@ -382,7 +382,7 @@ public class OTelProtoStandardCodec {
                         .collect(Collectors.toList());
                 case KVLIST_VALUE:
                     return value.getKvlistValue().getValuesList().stream()
-                            .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+                            .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
                 default:
                     throw new OTelDecodingException("Unknown case");
             }
@@ -408,11 +408,13 @@ public class OTelProtoStandardCodec {
         }
 
         protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
-            return span.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            return span.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected Map<String, Object> getResourceAttributes(final Resource resource, final String schemaUrl) {
-            Map<String, Object> attributes = resource.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            final Map<String, Object> attributes = resource.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
             return Map.of(ATTRIBUTES_KEY, attributes, DROPPED_ATTRIBUTES_COUNT_KEY, resource.getDroppedAttributesCount(), SCHEMA_URL_KEY, schemaUrl);
         }
 
@@ -772,7 +774,8 @@ public class OTelProtoStandardCodec {
         }
 
         protected Map<String, Object> convertKeyValueToAttributes(List<KeyValue> keyValues) {
-            return keyValues.stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            return keyValues.stream()
+                    .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected List<KeyValue> convertAttributesToKeyValue(final Map<String, Object> attributes) throws UnsupportedEncodingException {
@@ -1434,7 +1437,7 @@ public class OTelProtoStandardCodec {
                     .collect(Collectors.toList());
             case KVLIST_VALUE:
                 return value.getKvlistValue().getValuesList().stream()
-                        .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+                        .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
             default:
                 throw new RuntimeException(String.format("Can not convert AnyValue of type %s", value.getValueCase()));
         }
@@ -1580,8 +1583,8 @@ public class OTelProtoStandardCodec {
     }
 
     static Map<String, Object> convertKeyValueToAttributes(List<KeyValue> attributesList) {
-         return attributesList.stream()
-            .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+        return attributesList.stream()
+                .collect(HashMap::new, (m, i) -> m.put(i.getKey(), convertAnyValue(i.getValue())), Map::putAll);
     }
 
     /**

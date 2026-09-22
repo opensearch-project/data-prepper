@@ -385,8 +385,7 @@ public class OTelProtoOpensearchCodec {
                 case KVLIST_VALUE:
                     try {
                         return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
-                                .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()),
-                                        i ->convertAnyValue(i.getValue()))));
+                                .collect(HashMap::new, (m, i) -> m.put(REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll));
                     } catch (JsonProcessingException e) {
                         throw new OTelDecodingException(e);
                     }
@@ -421,19 +420,23 @@ public class OTelProtoOpensearchCodec {
         }
 
         protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
-            return span.getAttributesList().stream().collect(Collectors.toMap(i -> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+            return span.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected Map<String, Object> getResourceAttributes(final Resource resource) {
-            return resource.getAttributesList().stream().collect(Collectors.toMap(i -> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+            return resource.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected Map<String, Object> getLinkAttributes(final io.opentelemetry.proto.trace.v1.Span.Link link) {
-            return link.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+            return link.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         protected Map<String, Object> getEventAttributes(final io.opentelemetry.proto.trace.v1.Span.Event event) {
-            return event.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+            return event.getAttributesList().stream()
+                    .collect(HashMap::new, (m, i) -> m.put(REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
         }
 
         /**
@@ -991,7 +994,7 @@ public class OTelProtoOpensearchCodec {
             case KVLIST_VALUE:
                 try {
                     return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
-                            .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()))));
+                            .collect(HashMap::new, (m, i) -> m.put(REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll));
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
@@ -1009,7 +1012,7 @@ public class OTelProtoOpensearchCodec {
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
         return numberDataPoint.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
     }
 
     /**
@@ -1022,12 +1025,12 @@ public class OTelProtoOpensearchCodec {
      */
     public static Map<String, Object> unpackKeyValueListMetric(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
     }
 
     public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> DOT+(i.getKey()).replace(DOT, AT), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(DOT + (i.getKey()).replace(DOT, AT), convertAnyValue(i.getValue())), Map::putAll);
     }
 
     /**
@@ -1040,7 +1043,7 @@ public class OTelProtoOpensearchCodec {
      */
     public static Map<String, Object> unpackKeyValueListLog(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
     }
 
 
@@ -1054,7 +1057,7 @@ public class OTelProtoOpensearchCodec {
      */
     public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
     }
 
 
@@ -1096,7 +1099,7 @@ public class OTelProtoOpensearchCodec {
 
     public static Map<String, Object> getResourceAttributes(final Resource resource) {
         return resource.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(HashMap::new, (m, i) -> m.put(PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), convertAnyValue(i.getValue())), Map::putAll);
     }
 
     /**
