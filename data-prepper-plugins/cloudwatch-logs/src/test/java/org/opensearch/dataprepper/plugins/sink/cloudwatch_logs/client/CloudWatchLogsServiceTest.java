@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchL
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -224,6 +225,64 @@ class CloudWatchLogsServiceTest {
         cloudWatchLogsService = getSampleService();
         cloudWatchLogsService.processLogEvents(getSampleRecordsOfLargerSize());
         verify(buffer, atLeast(1)).writeEvent(any(EventHandle.class), any(byte[].class));
+    }
+
+    @Test
+    void GIVEN_non_ascii_event_WHEN_utf8_bytes_exceed_request_limit_THEN_dispatch_existing_buffer() {
+        setUpRealBuffer();
+        final Event firstEvent = JacksonLog.builder()
+                .withData(Map.of("message", "ascii"))
+                .withEventHandle(mock(EventHandle.class))
+                .build();
+        final Event nonAsciiEvent = JacksonLog.builder()
+                .withData(Map.of("message", "\u4E2D".repeat(20)))
+                .withEventHandle(mock(EventHandle.class))
+                .build();
+        final String firstLogString = firstEvent.toJsonString();
+        final String nonAsciiLogString = nonAsciiEvent.toJsonString();
+        final byte[] nonAsciiLogBytes = nonAsciiLogString.getBytes(StandardCharsets.UTF_8);
+        final int eventCount = 2;
+        final long requestLimitBasedOnCharacterCount = firstLogString.getBytes(StandardCharsets.UTF_8).length
+                + nonAsciiLogString.length()
+                + eventCount * CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
+        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, 1_000_000,
+                requestLimitBasedOnCharacterCount, thresholdConfig.getFlushInterval());
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, mockDispatcher, null, true);
+
+        cloudWatchLogsService.processLogEvents(List.of(new Record<>(firstEvent), new Record<>(nonAsciiEvent)));
+
+        verify(mockDispatcher, times(1)).dispatchLogs(any(List.class), any(List.class));
+        verify(cloudWatchLogsMetrics).recordLogSize(nonAsciiLogBytes.length);
+        assertThat(buffer.getEventCount(), equalTo(1));
+        assertThat(buffer.getBufferSize(), equalTo(nonAsciiLogBytes.length));
+        assertThat(buffer.getBufferedData().get(0), equalTo(nonAsciiLogBytes));
+    }
+
+    @Test
+    void GIVEN_non_ascii_event_WHEN_utf8_bytes_exceed_event_limit_THEN_drop_event() {
+        setUpRealBuffer();
+        final EventHandle nonAsciiEventHandle = mock(EventHandle.class);
+        final Event nonAsciiEvent = JacksonLog.builder()
+                .withData(Map.of("message", "\u4E2D".repeat(20)))
+                .withEventHandle(nonAsciiEventHandle)
+                .build();
+        final String nonAsciiLogString = nonAsciiEvent.toJsonString();
+        final byte[] nonAsciiLogBytes = nonAsciiLogString.getBytes(StandardCharsets.UTF_8);
+        final long eventLimitBasedOnCharacterCount = nonAsciiLogString.length()
+                + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
+        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, eventLimitBasedOnCharacterCount,
+                1_000_000, thresholdConfig.getFlushInterval());
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, mockDispatcher, null, true);
+
+        cloudWatchLogsService.processLogEvents(List.of(new Record<>(nonAsciiEvent)));
+
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
+        verify(cloudWatchLogsMetrics).recordLogSize(nonAsciiLogBytes.length);
+        verify(cloudWatchLogsMetrics).increaseLogLargeEventsDroppedCounter(1);
+        verify(nonAsciiEventHandle).release(true);
+        assertThat(buffer.getEventCount(), equalTo(0));
     }
 
     //Multithreaded tests:
