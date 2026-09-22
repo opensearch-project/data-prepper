@@ -165,8 +165,9 @@ public class CloudWatchLogsService {
         final List<DlqObject> dlqObjects = new ArrayList<>();
         for (Record<Event> log : logs) {
             final Event event = log.getData();
-            String logString = event.toJsonString();
-            int logLength = logString.length();
+            final String logString = event.toJsonString();
+            final byte[] logBytes = logString.getBytes(StandardCharsets.UTF_8);
+            final int logLength = logBytes.length;
 
             cloudWatchLogsMetrics.recordLogSize(logLength);
             if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
@@ -191,7 +192,7 @@ public class CloudWatchLogsService {
                 if (cloudWatchLogsLimits.maxRequestSizeLimitExceeds(logLength + bufferSize, bufferEventCount + 1)) {
                     stageLogEvents(group);
                 }
-                addToBuffer(buffer, event.getEventHandle(), logString);
+                addToBuffer(buffer, event.getEventHandle(), logBytes);
                 bufferEventCount = buffer.getEventCount();
                 // The time limit is checked here, not only on an empty poll, because a group that keeps
                 // receiving events but never reaches the count or size threshold would otherwise sit
@@ -328,8 +329,8 @@ public class CloudWatchLogsService {
         buffer.resetBuffer();
     }
 
-    private void addToBuffer(final Buffer buffer, final EventHandle logEventHandle, final String logString) {
-        buffer.writeEvent(logEventHandle, logString.getBytes(StandardCharsets.UTF_8));
+    private void addToBuffer(final Buffer buffer, final EventHandle logEventHandle, final byte[] logBytes) {
+        buffer.writeEvent(logEventHandle, logBytes);
     }
 
     /**
