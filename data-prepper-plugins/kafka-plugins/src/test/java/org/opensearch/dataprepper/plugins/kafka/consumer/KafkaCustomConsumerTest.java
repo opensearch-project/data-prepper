@@ -586,7 +586,7 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testProtobufConsumeRecords() throws Exception {
+    public void testConfluentFramedProtobufConsumeRecords() throws Exception {
         final String topic = topicConfig.getName();
         final MockSchemaRegistryClient schemaRegistryClient = new MockSchemaRegistryClient();
         final Map<String, Object> serdeConfig = Map.of("schema.registry.url", "mock://protobuf-consumer-test");
@@ -596,7 +596,9 @@ public class KafkaCustomConsumerTest {
         deserializer.configure(serdeConfig, false);
 
         final byte[] serializedMessage = serializer.serialize(topic, createProtobufMessage());
+        assertThat(serializedMessage[0], equalTo((byte) 0));
         final Message deserializedMessage = deserializer.deserialize(topic, serializedMessage);
+        assertThat(schemaRegistryClient.getLatestSchemaMetadata(topic + "-value").getSchemaType(), equalTo("PROTOBUF"));
         final ConsumerRecord<String, Message> protobufRecord =
                 new ConsumerRecord<>(topic, testPartition, 100L, testKey1, deserializedMessage);
         consumerRecords = new ConsumerRecords<>(Map.of(
