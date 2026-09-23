@@ -640,6 +640,54 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
+    void GIVEN_headers_supplied_WHEN_dispatch_logs_called_SHOULD_set_them_as_request_override_headers() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final Map<String, String> headers = new HashMap<>();
+        headers.put("x-source-name", "some-name");
+        headers.put("x-source-type", "some-type");
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles, null, headers);
+
+        executeDispatcherRunnable();
+
+        final ArgumentCaptor<PutLogEventsRequest> requestCaptor = ArgumentCaptor.forClass(PutLogEventsRequest.class);
+        verify(mockCloudWatchLogsClient).putLogEvents(requestCaptor.capture());
+        final PutLogEventsRequest captured = requestCaptor.getValue();
+
+        assertThat(captured.overrideConfiguration().isPresent(), equalTo(true));
+        final Map<String, List<String>> requestHeaders = captured.overrideConfiguration().get().headers();
+        assertThat(requestHeaders.get("x-source-name"), equalTo(List.of("some-name")));
+        assertThat(requestHeaders.get("x-source-type"), equalTo(List.of("some-type")));
+    }
+
+    @Test
+    void GIVEN_no_headers_WHEN_dispatch_logs_called_SHOULD_not_set_request_override_configuration() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final PutLogEventsResponse response = mock(PutLogEventsResponse.class);
+        when(response.rejectedLogEventsInfo()).thenReturn(null);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(response);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles, null, new HashMap<>());
+
+        executeDispatcherRunnable();
+
+        final ArgumentCaptor<PutLogEventsRequest> requestCaptor = ArgumentCaptor.forClass(PutLogEventsRequest.class);
+        verify(mockCloudWatchLogsClient).putLogEvents(requestCaptor.capture());
+
+        assertThat(requestCaptor.getValue().overrideConfiguration().isPresent(), equalTo(false));
+    }
+
+    @Test
     void GIVEN_entity_not_configured_WHEN_dispatch_logs_called_SHOULD_not_set_entity_on_put_log_events_request() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 

@@ -70,6 +70,12 @@ public class CloudWatchLogsService {
     private final int maxEntityCardinality;
 
     /**
+     * A fixed entity applied to every group when the resolver does not build one per group, i.e. when events
+     * are partitioned by dynamic headers but the entity itself is static (or absent, in which case null).
+     */
+    private final Entity staticEntity;
+
+    /**
      * The per-entity buffer groups, keyed by resolved entity. Empty in static mode.
      *
      * <p>Mutated only while holding {@link #processLock}. Concurrent so that
@@ -140,6 +146,25 @@ public class CloudWatchLogsService {
                                  final boolean dropIfDlqNotConfigured,
                                  final EntityResolver entityResolver,
                                  final int maxEntityCardinality) {
+        this(bufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits, cloudWatchLogsDispatcher,
+                dlqPushHandler, dropIfDlqNotConfigured, entityResolver, maxEntityCardinality, null);
+    }
+
+    /**
+     * Dynamic-entity constructor that also accepts a static entity, applied to every group when the resolver
+     * partitions purely by dynamic headers rather than building an entity per group.
+     *
+     * @param staticEntity the entity applied to each group when {@code entityResolver} does not build one, or null
+     */
+    public CloudWatchLogsService(final BufferFactory bufferFactory,
+                                 final CloudWatchLogsMetrics cloudWatchLogsMetrics,
+                                 final CloudWatchLogsLimits cloudWatchLogsLimits,
+                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher,
+                                 final DlqPushHandler dlqPushHandler,
+                                 final boolean dropIfDlqNotConfigured,
+                                 final EntityResolver entityResolver,
+                                 final int maxEntityCardinality,
+                                 final Entity staticEntity) {
         this.bufferFactory = bufferFactory;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
@@ -150,6 +175,7 @@ public class CloudWatchLogsService {
         this.entityResolver = entityResolver;
         this.dynamic = entityResolver != null;
         this.maxEntityCardinality = maxEntityCardinality;
+        this.staticEntity = staticEntity;
     }
 
     /**
@@ -241,16 +267,20 @@ public class CloudWatchLogsService {
             cloudWatchLogsMetrics.increaseEntityOverflowEventsCounter(1);
             if (!overflowLogged) {
                 overflowLogged = true;
-                LOG.warn("Entity cardinality bound of {} reached; events are being routed to a shared "
-                        + "fallback group with no entity until an existing group goes idle. Reduce the "
-                        + "cardinality of the templated entity key attributes, or raise the entity "
-                        + "max_cardinality.", maxEntityCardinality);
+                LOG.warn("Cardinality bound of {} reached; events are being routed to a shared fallback "
+                        + "group with no per-resource entity or headers until an existing group goes idle. "
+                        + "Reduce the cardinality of the templated entity key attributes or headers, or raise "
+                        + "the entity max_cardinality.", maxEntityCardinality);
             }
             return sharedGroup();
         }
 
-        // The only place an entity is built: once per group, not once per event.
-        group = new LogGroupBuffer(bufferFactory.getBuffer(), entityResolver.buildEntity(resolvedKey, event),
+        // Built once per group, not once per event. When the resolver partitions purely by dynamic headers,
+        // there is no per-group entity to build and the fixed staticEntity (possibly null) is used instead.
+        final Entity entity = entityResolver.buildsEntity()
+                ? entityResolver.buildEntity(resolvedKey, event)
+                : staticEntity;
+        group = new LogGroupBuffer(bufferFactory.getBuffer(), entity, resolvedKey.getHeaders(),
                 new SinkStopWatch());
         groups.put(resolvedKey, group);
         cloudWatchLogsMetrics.increaseEntityGroupsCreatedCounter(1);
@@ -263,7 +293,10 @@ public class CloudWatchLogsService {
      */
     private LogGroupBuffer sharedGroup() {
         if (sharedGroup == null) {
-            sharedGroup = new LogGroupBuffer(bufferFactory.getBuffer(), null, new SinkStopWatch());
+            // A constant static entity is not high-cardinality, so it still applies to overflow events; only
+            // a per-group resolved entity (and the per-request headers) are dropped when attribution is lost.
+            final Entity sharedEntity = (entityResolver != null && !entityResolver.buildsEntity()) ? staticEntity : null;
+            sharedGroup = new LogGroupBuffer(bufferFactory.getBuffer(), sharedEntity, null, new SinkStopWatch());
         }
         return sharedGroup;
     }
@@ -318,8 +351,14 @@ public class CloudWatchLogsService {
 
         List<InputLogEvent> inputLogEvents = cloudWatchLogsDispatcher.prepareInputLogEvents(buffer.getBufferedData());
         if (dynamic) {
-            // Dynamic mode supplies the group's resolved entity explicitly, one entity per request.
-            cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles(), group.entity);
+            // Dynamic mode supplies the group's resolved entity explicitly, one entity per request. Resolved
+            // headers, when present, ride along as a per-request override; when absent, the 3-arg path keeps
+            // the request free of any override configuration.
+            if (group.headers == null || group.headers.isEmpty()) {
+                cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles(), group.entity);
+            } else {
+                cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles(), group.entity, group.headers);
+            }
         } else {
             // Static mode defers to the dispatcher's frozen entity so it is not overridden by null.
             cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles());
@@ -340,11 +379,14 @@ public class CloudWatchLogsService {
     private static final class LogGroupBuffer {
         private final Buffer buffer;
         private final Entity entity;
+        private final Map<String, String> headers;
         private final SinkStopWatch stopWatch;
 
-        private LogGroupBuffer(final Buffer buffer, final Entity entity, final SinkStopWatch stopWatch) {
+        private LogGroupBuffer(final Buffer buffer, final Entity entity, final Map<String, String> headers,
+                               final SinkStopWatch stopWatch) {
             this.buffer = buffer;
             this.entity = entity;
+            this.headers = headers;
             this.stopWatch = stopWatch;
         }
     }
