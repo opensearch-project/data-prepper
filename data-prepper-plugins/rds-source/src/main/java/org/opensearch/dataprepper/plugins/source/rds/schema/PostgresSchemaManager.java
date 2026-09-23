@@ -52,7 +52,7 @@ public class PostgresSchemaManager implements SchemaManager {
                 .append(publicationName)
                 .append(" FOR TABLE ");
         for (int i = 0; i < tableNames.size(); i++) {
-            createPublicationStatementBuilder.append(tableNames.get(i));
+            createPublicationStatementBuilder.append(quoteFullTableName(tableNames.get(i)));
             if (i < tableNames.size() - 1) {
                 createPublicationStatementBuilder.append(", ");
             }
@@ -291,6 +291,39 @@ public class PostgresSchemaManager implements SchemaManager {
         }
         throw new SqlMetadataException(String.format("Failed to get enum columns for database %s schema %s table %s after ",
                 database, schema, table));
+    }
+
+    /**
+     * Converts a dot-separated fully qualified table name into a form that is safe to embed in generated DDL by
+     * delimiting each part of the name. PostgreSQL folds undelimited identifiers to lower case and rejects those
+     * containing characters such as hyphens, so names that are mixed case, hyphenated, or reserved words can only be
+     * referenced when quoted.
+     *
+     * @param fullTableName the fully qualified table name, in {@code database.schema.table} form
+     * @return the same name with every part delimited, e.g. {@code "My-Db-1"."dbo"."MyTable"}
+     */
+    // Visible for testing
+    static String quoteFullTableName(final String fullTableName) {
+        final String[] splits = fullTableName.split("\\.");
+        final StringBuilder quotedName = new StringBuilder();
+        for (int i = 0; i < splits.length; i++) {
+            if (i > 0) {
+                quotedName.append(".");
+            }
+            quotedName.append(quoteIdentifier(splits[i]));
+        }
+        return quotedName.toString();
+    }
+
+    /**
+     * Delimits a single PostgreSQL identifier, escaping any double quote it contains by doubling it.
+     *
+     * @param identifier the identifier to delimit
+     * @return the delimited identifier
+     */
+    // Visible for testing
+    static String quoteIdentifier(final String identifier) {
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     private void applyBackoff() {
