@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.Message;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.Range;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -110,6 +111,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
     private final boolean invokeCallbackOnExpiry;
+    private final ProtobufMessageConverter protobufMessageConverter;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -152,6 +154,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.exponentialBackoff = new ExponentialBackoff(INITIAL_BACKOFF.toMillis(), 2, MAX_BACKOFF.toMillis(), 0);
         this.authFailureAttempts = 0;
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
+        this.protobufMessageConverter = new ProtobufMessageConverter(objectMapper);
     }
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
@@ -467,22 +470,26 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         String key = (String)consumerRecord.key();
         KafkaKeyMode kafkaKeyMode = topicConfig.getKafkaKeyMode();
         boolean plainTextMode = false;
-        try {
-            if (value instanceof JsonDataWithSchema) {
-                JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
-                value = objectMapper.readValue(j.getPayload(), Map.class);
-            } else if (schema == MessageFormat.AVRO || value instanceof GenericRecord) {
-                final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
-                value = objectMapper.readValue(jsonParser, Map.class);
-            } else if (schema == MessageFormat.PLAINTEXT) {
-                value = (String)consumerRecord.value();
-                plainTextMode = true;
-            } else if (schema == MessageFormat.JSON) {
-                value = objectMapper.convertValue(value, Map.class);
+        if (value instanceof Message) {
+            value = convertProtobufMessage((Message) value);
+        } else {
+            try {
+                if (value instanceof JsonDataWithSchema) {
+                    JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
+                    value = objectMapper.readValue(j.getPayload(), Map.class);
+                } else if (schema == MessageFormat.AVRO || value instanceof GenericRecord) {
+                    final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
+                    value = objectMapper.readValue(jsonParser, Map.class);
+                } else if (schema == MessageFormat.PLAINTEXT) {
+                    value = (String)consumerRecord.value();
+                    plainTextMode = true;
+                } else if (schema == MessageFormat.JSON) {
+                    value = objectMapper.convertValue(value, Map.class);
+                }
+            } catch (Exception e){
+                LOG.error("Failed to parse JSON or AVRO record", e);
+                topicMetrics.getNumberOfRecordsFailedToParse().increment();
             }
-        } catch (Exception e){
-            LOG.error("Failed to parse JSON or AVRO record", e);
-            topicMetrics.getNumberOfRecordsFailedToParse().increment();
         }
         if (!plainTextMode) {
             if (!(value instanceof Map)) {
@@ -518,6 +525,21 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         event.getEventHandle().setExternalOriginationTime(Instant.ofEpochMilli(receivedTimeStamp));
 
         return new Record<Event>(event);
+    }
+
+    private Object convertProtobufMessage(final Message message) {
+        try {
+            final Object convertedValue = protobufMessageConverter.convert(message);
+            if (convertedValue instanceof Map) {
+                return convertedValue;
+            }
+            final Map<String, Object> wrappedValue = new HashMap<>();
+            wrappedValue.put(DEFAULT_KEY, convertedValue);
+            return wrappedValue;
+        } catch (final Exception e) {
+            topicMetrics.getNumberOfRecordsFailedToParse().increment();
+            throw new ProtobufMessageConversionException(e);
+        }
     }
 
     private void processRecords(final AcknowledgementSet acknowledgementSet, final List<Record<Event>> eventRecords) {
@@ -573,7 +595,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet,
                                              Map<TopicPartition, CommitOffsetRange> offsets) throws Exception {
-        for (TopicPartition topicPartition : records.partitions()) {
+        for (final TopicPartition topicPartition : records.partitions()) {
             final long partitionEpoch = getPartitionEpoch(topicPartition);
             if (acknowledgementsEnabled && partitionEpoch == 0) {
                 if (errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
@@ -585,26 +607,31 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             final List<Record<Event>> eventRecords = new ArrayList<>();
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
-                if (schema == MessageFormat.BYTES) {
-                    InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-                    InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
+                try {
+                    if (schema == MessageFormat.BYTES) {
+                        InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
+                        InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
 
-                    if(byteDecoder != null) {
-                        final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
+                        if(byteDecoder != null) {
+                            final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), eventRecords::add);
+                            byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), eventRecords::add);
+                        } else {
+                            JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
+
+                            Event event = JacksonLog.builder().withData(jsonNode).build();
+                            Record<Event> record = new Record<>(event);
+                            eventRecords.add(record);
+                        }
                     } else {
-                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
-
-                        Event event = JacksonLog.builder().withData(jsonNode).build();
-                        Record<Event> record = new Record<>(event);
-                        eventRecords.add(record);
+                        Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
+                        if (record != null) {
+                            eventRecords.add(record);
+                        }
                     }
-                } else {
-                    Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
-                    if (record != null) {
-                        eventRecords.add(record);
-                    }
+                } catch (final ProtobufMessageConversionException e) {
+                    LOG.error("Dropping unconvertible Protobuf record from topic {} partition {} offset {}",
+                            topicName, topicPartition.partition(), consumerRecord.offset(), e);
                 }
             }
 
@@ -612,13 +639,27 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
             long firstOffset = partitionRecords.get(0).offset();
-            Range<Long> offsetRange = Range.between(firstOffset, lastOffset);
-            offsets.put(topicPartition, new CommitOffsetRange(offsetRange, partitionEpoch));
+            addOffsets(offsets, topicPartition, firstOffset, lastOffset, partitionEpoch);
+        }
+    }
 
-            if (acknowledgementsEnabled && !partitionCommitTrackerMap.containsKey(topicPartition.partition())) {
-                partitionCommitTrackerMap.put(topicPartition.partition(),
-                        new TopicPartitionCommitTracker(topicPartition, firstOffset));
-            }
+    private void addOffsets(
+            final Map<TopicPartition, CommitOffsetRange> offsets,
+            final TopicPartition topicPartition,
+            final long firstOffset,
+            final long lastOffset,
+            final long partitionEpoch) {
+        offsets.put(topicPartition, new CommitOffsetRange(Range.between(firstOffset, lastOffset), partitionEpoch));
+        if (acknowledgementsEnabled && !partitionCommitTrackerMap.containsKey(topicPartition.partition())) {
+            partitionCommitTrackerMap.put(
+                    topicPartition.partition(),
+                    new TopicPartitionCommitTracker(topicPartition, firstOffset));
+        }
+    }
+
+    private static class ProtobufMessageConversionException extends RuntimeException {
+        private ProtobufMessageConversionException(final Throwable cause) {
+            super(cause);
         }
     }
 

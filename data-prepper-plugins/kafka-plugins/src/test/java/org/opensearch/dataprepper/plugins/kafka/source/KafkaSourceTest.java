@@ -9,6 +9,12 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -44,9 +50,12 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
@@ -186,6 +195,32 @@ class KafkaSourceTest {
     }
 
     @Test
+    void getConfluentValueDeserializerClass_withProtobuf_returnsProtobufDeserializer() {
+        Assertions.assertEquals(
+                KafkaProtobufDeserializer.class,
+                KafkaSource.getConfluentValueDeserializerClass("PROTOBUF"));
+    }
+
+    @Test
+    void configureConfluentValueDeserializer_withProtobufMetadata_setsProtobufDeserializer() throws Exception {
+        final String topicName = "topic1";
+        final String subject = topicName + "-value";
+        final MockSchemaRegistryClient schemaRegistryClient = new MockSchemaRegistryClient();
+        final ProtobufSchema protobufSchema = new ProtobufSchema(createProtobufDescriptor());
+        schemaRegistryClient.register(subject, protobufSchema);
+        when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
+        when(schemaConfig.getVersion()).thenReturn(null);
+        when(topic1.getName()).thenReturn(topicName);
+        final Properties properties = new Properties();
+
+        createObjectUnderTest().configureConfluentValueDeserializer(properties, topic1, schemaRegistryClient);
+
+        assertThat(schemaRegistryClient.getLatestSchemaMetadata(subject).getSchemaType(), equalTo("PROTOBUF"));
+        assertThat(properties.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG),
+                equalTo(KafkaProtobufDeserializer.class));
+    }
+
+    @Test
     void test_kafkaSource_basicFunctionalityWithClientIdNull() {
         when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
@@ -255,6 +290,25 @@ class KafkaSourceTest {
         verify(sourceConfig, never()).setAuthConfig(any());
         verify(sourceConfig, never()).setAwsConfig(any());
         verify(sourceConfig, never()).setEncryptionConfig(any());
+    }
+
+    private Descriptors.Descriptor createProtobufDescriptor() throws Descriptors.DescriptorValidationException {
+        final DescriptorProtos.DescriptorProto messageDescriptor = DescriptorProtos.DescriptorProto.newBuilder()
+                .setName("SourceEvent")
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("message")
+                        .setNumber(1)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING))
+                .build();
+        final DescriptorProtos.FileDescriptorProto fileDescriptor = DescriptorProtos.FileDescriptorProto.newBuilder()
+                .setName("source_event.proto")
+                .setPackage("example")
+                .setSyntax("proto3")
+                .addMessageType(messageDescriptor)
+                .build();
+        return Descriptors.FileDescriptor
+                .buildFrom(fileDescriptor, new Descriptors.FileDescriptor[0])
+                .findMessageTypeByName("SourceEvent");
     }
 
     @Nested
