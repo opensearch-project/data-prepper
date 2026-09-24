@@ -90,16 +90,25 @@ public class SpanStateData implements Serializable {
 
         this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes);
 
-        // Derived remote-dependency identity, used to synthesize typed target nodes for CLIENT spans
-        // with no downstream SERVER span and for PRODUCER/CONSUMER spans that reference a broker.
-        this.derivedNodeType = computeNodeType(spanAttributes);
-
-        if (spanAttributes != null && !spanAttributes.isEmpty()) {
-            final RemoteOperationAndService remote =
-                    OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
-            if (remote != null) {
-                this.derivedRemoteService = remote.getService();
-                this.derivedRemoteOperation = remote.getOperation();
+        // Derived remote-dependency identity is computed only for the span kinds that can target an
+        // external dependency: CLIENT calls and messaging PRODUCER/CONSUMER spans. SERVER/INTERNAL
+        // spans describe the service itself (their server.address/http.method is the service's own
+        // listener), so leaving these null avoids persisting misleading data across the windows.
+        if (isDependencyCandidateKind(spanKind) && spanAttributes != null && !spanAttributes.isEmpty()) {
+            this.derivedNodeType = computeNodeType(spanAttributes);
+            try {
+                final RemoteOperationAndService remote =
+                        OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+                if (remote != null) {
+                    this.derivedRemoteService = remote.getService();
+                    this.derivedRemoteOperation = remote.getOperation();
+                }
+            } catch (final RuntimeException e) {
+                // A malformed URL/authority can throw inside the shared extractor. A failed
+                // dependency derivation must not drop the whole span (its service->service
+                // contribution still counts); leave the derived fields unset instead.
+                this.derivedRemoteService = null;
+                this.derivedRemoteOperation = null;
             }
             // The shared extractor only recognizes dotted db keys (db.system[.name]);
             // many instrumentations emit flattened variants (db_system, db_system_name),
@@ -119,6 +128,17 @@ public class SpanStateData implements Serializable {
 
             this.dependencyAttributes = computeDependencyAttributes(derivedNodeType, spanAttributes);
         }
+    }
+
+    /**
+     * Whether a span kind can target an external dependency (client calls, messaging producers and
+     * consumers). Matches both bare ({@code CLIENT}) and prefixed ({@code SPAN_KIND_CLIENT}) forms.
+     */
+    private static boolean isDependencyCandidateKind(final String spanKind) {
+        if (spanKind == null) {
+            return false;
+        }
+        return spanKind.contains("CLIENT") || spanKind.contains("PRODUCER") || spanKind.contains("CONSUMER");
     }
 
     /**
@@ -145,14 +165,17 @@ public class SpanStateData implements Serializable {
             putIfPresent(attrs, "server.address", host);
             putIfPresent(attrs, "server.port", port);
         } else if (NODE_TYPE_MESSAGING.equals(nodeType)) {
+            // messaging.operation (publish/receive) is per-direction, not identity — it would split
+            // the shared broker node between producer and consumer, so it is deliberately omitted.
             putIfPresent(attrs, "messaging.system", stringAttr(spanAttributes, "messaging.system"));
             putIfPresent(attrs, "messaging.destination.name", stringAttr(spanAttributes, "messaging.destination.name"));
-            putIfPresent(attrs, "messaging.operation", stringAttr(spanAttributes, "messaging.operation"));
         } else if (NODE_TYPE_EXTERNAL.equals(nodeType)) {
+            // url.full is deliberately excluded: it carries the per-request path + query string
+            // (ids, tokens, PII) and would otherwise land in the service-map index. The bounded
+            // peer identity below is what distinguishes an external dependency.
             putIfPresent(attrs, "peer.service", stringAttr(spanAttributes, "peer.service"));
             putIfPresent(attrs, "server.address", host);
             putIfPresent(attrs, "server.port", port);
-            putIfPresent(attrs, "url.full", firstAttr(spanAttributes, "url.full", "http.url"));
             putIfPresent(attrs, "rpc.system", stringAttr(spanAttributes, "rpc.system"));
         }
         return attrs.isEmpty() ? Collections.emptyMap() : attrs;

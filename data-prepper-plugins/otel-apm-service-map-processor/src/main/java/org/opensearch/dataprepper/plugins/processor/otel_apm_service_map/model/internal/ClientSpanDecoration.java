@@ -33,25 +33,17 @@ public class ClientSpanDecoration implements Serializable {
     // Identity attributes for a synthesized dependency target, carried onto the target Node.
     private final Map<String, String> remoteDependencyAttributes;
 
+    /** Service-to-service decoration (the common case): a traced downstream, no dependency identity. */
     public ClientSpanDecoration(final String parentServerOperationName,
                                final String remoteEnvironment,
                                final String remoteService,
                                final String remoteOperation,
                                final Map<String, String> remoteGroupByAttributes) {
         this(parentServerOperationName, remoteEnvironment, remoteService, remoteOperation,
-                remoteGroupByAttributes, "service", Collections.emptyMap());
+                remoteGroupByAttributes, SpanStateData.NODE_TYPE_SERVICE, Collections.emptyMap());
     }
 
-    public ClientSpanDecoration(final String parentServerOperationName,
-                               final String remoteEnvironment,
-                               final String remoteService,
-                               final String remoteOperation,
-                               final Map<String, String> remoteGroupByAttributes,
-                               final String remoteNodeType) {
-        this(parentServerOperationName, remoteEnvironment, remoteService, remoteOperation,
-                remoteGroupByAttributes, remoteNodeType, Collections.emptyMap());
-    }
-
+    /** Full decoration, including the target node type and (for dependencies) its identity attributes. */
     public ClientSpanDecoration(final String parentServerOperationName,
                                final String remoteEnvironment,
                                final String remoteService,
@@ -64,7 +56,7 @@ public class ClientSpanDecoration implements Serializable {
         this.remoteService = remoteService;
         this.remoteOperation = remoteOperation;
         this.remoteGroupByAttributes = remoteGroupByAttributes != null ? remoteGroupByAttributes : Collections.emptyMap();
-        this.remoteNodeType = remoteNodeType != null ? remoteNodeType : "service";
+        this.remoteNodeType = remoteNodeType != null ? remoteNodeType : SpanStateData.NODE_TYPE_SERVICE;
         this.remoteDependencyAttributes = remoteDependencyAttributes != null ? remoteDependencyAttributes : Collections.emptyMap();
     }
 }

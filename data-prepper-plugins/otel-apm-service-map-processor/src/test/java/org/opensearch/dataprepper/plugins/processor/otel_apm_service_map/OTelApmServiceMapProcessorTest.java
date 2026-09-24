@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -1487,6 +1488,64 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
 
             assertTrue(serviceMap.stream()
                     .noneMatch(e -> "external".equals(e.get("targetNode/type", String.class))));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void clientWithChildServerYieldsServiceTargetAndNoDependencyAttributes() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("svc-edge-");
+        try {
+            // CLIENT to an instrumented service (child SERVER span present). Even with external-ish
+            // attributes on the client, the target must be the traced service, with NO
+            // dependencyAttributes — the regression guard against classifying a real service as external.
+            final Span client = createMockSpanWithIds("frontend", "GET /cart", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("http.request.method", "GET");
+            attrs.put("server.address", "cart");
+            when(client.getAttributes()).thenReturn(attrs);
+            final Span server = createMockSpanWithIds("cart", "GET /cart", "SPAN_KIND_SERVER",
+                    "2222222222222222", "1111111111111111", "aaaaaaaaaaaaaaaa");
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Arrays.asList(new Record<>(client), new Record<>(server)));
+
+            final Event edge = serviceMap.stream()
+                    .filter(e -> "cart".equals(e.get("targetNode/keyAttributes/name", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a frontend -> cart service edge"));
+            assertThat(edge.get("targetNode/type", String.class), equalTo("service"));
+            // @JsonInclude(NON_EMPTY): a service node must not carry dependencyAttributes at all.
+            assertNull(edge.get("targetNode/dependencyAttributes", Map.class));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void synthesizesConsumerBrokerToServiceEdge() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("consumer-");
+        try {
+            final Span consumer = createMockSpanWithIds("shipping", "receive orders", "SPAN_KIND_CONSUMER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("messaging.system", "kafka");
+            attrs.put("messaging.destination.name", "orders");
+            attrs.put("messaging.operation", "receive");
+            when(consumer.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(consumer)));
+
+            // CONSUMER emits broker -> service: source is the broker, target is the service.
+            final Event edge = serviceMap.stream()
+                    .filter(e -> "kafka:orders".equals(e.get("sourceNode/keyAttributes/name", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a kafka:orders -> shipping edge"));
+            assertThat(edge.get("sourceNode/type", String.class), equalTo("messaging"));
+            assertThat(edge.get("targetNode/keyAttributes/name", String.class), equalTo("shipping"));
         } finally {
             proc.shutdown();
         }

@@ -40,6 +40,18 @@ public class OTelSpanDerivationUtil {
     private static final Logger LOG = LoggerFactory.getLogger(OTelSpanDerivationUtil.class);
     private static final String SERVICE_MAPPINGS_FILE = "service_mappings";
 
+    // These providers read and parse classpath resources in their constructors. They are immutable
+    // and stateless, so they are built once here rather than per computeRemoteOperationAndService
+    // call (which runs on the ingest hot path). This also surfaces a failed resource load at class
+    // load time instead of per span.
+    private static final Map<String, String> AWS_SERVICE_MAPPINGS =
+            new AwsServiceMappingsProvider().getServiceMappings();
+    private static final RemoteOperationAndServiceProviders REMOTE_OPERATION_AND_SERVICE_PROVIDERS =
+            new RemoteOperationAndServiceProviders();
+    private static final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys>
+            ADDRESS_PORT_ATTRIBUTE_KEYS =
+            new ServiceAddressPortAttributesProvider().getAddressPortAttributeKeysList();
+
     /**
      * Derives fault, error, operation, and environment attributes for SERVER spans in the provided list.
      * Only SERVER spans (kind == SERVER) will be decorated with derived attributes.
@@ -222,6 +234,11 @@ public class OTelSpanDerivationUtil {
     private static String extractFirstPathFromUrl(final String url) {
         int colonDoubleSlash = url.indexOf("://");
         int firstSlash = url.indexOf("/", colonDoubleSlash+3);
+        // No path after the authority (e.g. "https://api.example.com"): return root instead of
+        // indexing with firstSlash == -1, which would throw StringIndexOutOfBoundsException.
+        if (firstSlash < 0) {
+            return "/";
+        }
         int secondSlash = url.indexOf("/", firstSlash+1);
         String result= (secondSlash > 0) ? url.substring(firstSlash, secondSlash) : url.substring(firstSlash);
         return result;
@@ -271,11 +288,9 @@ public class OTelSpanDerivationUtil {
     }
 
     public static RemoteOperationAndService computeRemoteOperationAndService(final Map<String, Object> spanAttributes) {
-        OTelSpanDerivationUtil oTelSpanDerivationUtil = new OTelSpanDerivationUtil();
-        Map<String, String> awsServiceMappings = (new AwsServiceMappingsProvider()).getServiceMappings();
-        RemoteOperationAndServiceProviders remoteOperationAndServiceProviders = new RemoteOperationAndServiceProviders();
-        ServiceAddressPortAttributesProvider serviceAddressPortAttributesProvider = new ServiceAddressPortAttributesProvider();
-        List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList = serviceAddressPortAttributesProvider.getAddressPortAttributeKeysList();
+        final Map<String, String> awsServiceMappings = AWS_SERVICE_MAPPINGS;
+        final RemoteOperationAndServiceProviders remoteOperationAndServiceProviders = REMOTE_OPERATION_AND_SERVICE_PROVIDERS;
+        final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList = ADDRESS_PORT_ATTRIBUTE_KEYS;
 
         RemoteOperationAndService remoteOperationAndService = new RemoteOperationAndService(null, null);
         if (remoteOperationAndServiceProviders.AwsRpcRemoteOperationServiceExtractor.appliesToSpan(spanAttributes)) {

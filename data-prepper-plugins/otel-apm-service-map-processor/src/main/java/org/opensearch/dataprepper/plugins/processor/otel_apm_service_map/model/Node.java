@@ -68,19 +68,23 @@ public class Node {
         return dependencyAttributes;
     }
 
+    // dependencyAttributes is descriptive metadata, NOT identity: it is deliberately excluded from
+    // equals/hashCode. Including it would (a) shift every existing nodeConnectionHash on upgrade
+    // (appending a field changes Objects.hash), and (b) split one logical node into several when a
+    // descriptive value varies per call (e.g. producer vs consumer messaging.operation, or per-host
+    // db attributes) — the opposite of the "shared node" this feature intends.
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Node node = (Node) o;
         return Objects.equals(type, node.type) &&
                 Objects.equals(keyAttributes, node.keyAttributes) &&
-                Objects.equals(groupByAttributes, node.groupByAttributes) &&
-                Objects.equals(dependencyAttributes, node.dependencyAttributes);
+                Objects.equals(groupByAttributes, node.groupByAttributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, keyAttributes, groupByAttributes, dependencyAttributes);
+        return Objects.hash(type, keyAttributes, groupByAttributes);
     }
 
     @Override

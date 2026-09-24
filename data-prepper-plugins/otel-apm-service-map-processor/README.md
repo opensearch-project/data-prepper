@@ -254,32 +254,41 @@ Downstream targets that do not emit their own `SERVER` span — databases, messa
 | `type` | Synthesized from | Example name |
 |--------|------------------|--------------|
 | `service` | An instrumented service (has a `SERVER` span) | `checkout` |
-| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql:5432` |
+| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql` |
 | `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443` |
 | `messaging` | A `PRODUCER`/`CONSUMER` span; the broker links producer → broker → consumer | `kafka:orders` |
 
-Dependency nodes also carry a `dependencyAttributes` map with the exact peer identity under canonical OpenTelemetry keys, so consumers can filter the dependency's spans/logs precisely rather than parsing the node name. The field is omitted for `service` nodes.
+The node **name** is the peer identity derived by `OTelSpanDerivationUtil` and is best-effort: databases usually resolve to the DB system (e.g. `postgresql`), HTTP/RPC peers to `host:port`, and brokers to `{system}:{destination}`. The name is for display and grouping; it is deliberately not treated as a precise instance key. The `dependencyAttributes` map is the reliable identity — the exact peer attributes under canonical OpenTelemetry keys — so consumers filter the dependency's spans/logs on those rather than parsing the name. The field is omitted for `service` nodes and is **not** part of node identity (see below).
 
 - **database**: `db.system.name`, `db.namespace`, `server.address`, `server.port`
-- **messaging**: `messaging.system`, `messaging.destination.name`, `messaging.operation`
-- **external**: `peer.service`, `server.address`, `server.port`, `url.full`, `rpc.system`
+- **messaging**: `messaging.system`, `messaging.destination.name` (the directional `messaging.operation` is emitted as the edge's operation, not here)
+- **external**: `peer.service`, `server.address`, `server.port`, `rpc.system` (`url.full` is intentionally excluded — it carries per-request paths, query strings, and PII)
 
 Unresolved (`UnknownRemoteService`) and raw-IP peers are suppressed so the topology only shows named dependencies.
+
+`dependencyAttributes` is **descriptive metadata, not identity**: it is excluded from a node's `equals`/`hashCode`, so it never affects `nodeConnectionHash`. This keeps existing service-node hashes byte-stable across an upgrade and keeps one logical dependency a single shared node even when a descriptive value (e.g. per-host DB attributes) varies between callers.
 
 ```json
 {
   "targetNode": {
     "type": "database",
-    "keyAttributes": { "environment": "generic:default", "name": "postgresql:5432" },
+    "keyAttributes": { "environment": "eks:prod", "name": "postgresql" },
     "dependencyAttributes": {
       "db.system.name": "postgresql",
       "db.namespace": "orders",
-      "server.address": "postgresql",
+      "server.address": "orders-db.internal",
       "server.port": "5432"
     }
   }
 }
 ```
+
+#### Known limitations
+
+- **Window-boundary over-classification.** A `CLIENT` call to an instrumented service is normally resolved to that service via its child `SERVER` span. If the two spans fall in different processing windows (late arrival, retry, sampling, clock skew), the child is not seen and the target is classified as `external` (`host:port`) for those spans. Server/internal spans are not classified (only `CLIENT`/`PRODUCER`/`CONSUMER` derive a type), which bounds the effect.
+- **HTTP operation cardinality.** When an HTTP client span has a URL but no `http.request.method`, the derived operation falls back to the URL string, which can produce a high-cardinality metric label. A bounded `METHOD /path` is used whenever a method is present.
+- **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker node and metric label.
+- **AWS SDK messaging.** Producers instrumented only with `rpc.system=aws-api` (no `messaging.system`) are not yet synthesized as messaging edges.
 
 ### Dual Hash Fields
 

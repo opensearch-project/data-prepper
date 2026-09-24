@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.codec.binary.Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpanStateDataTest {
@@ -35,7 +36,7 @@ class SpanStateDataTest {
         attributes.put("server.address", "db-host");
         attributes.put("server.port", 5432);
 
-        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+        Map<String, String> deps = spanWithAttributes("SPAN_KIND_CLIENT", attributes).getDependencyAttributes();
 
         assertEquals("postgresql", deps.get("db.system.name"));
         assertEquals("orders", deps.get("db.namespace"));
@@ -49,7 +50,7 @@ class SpanStateDataTest {
         attributes.put("db_system_name", "mysql");
         attributes.put("db.statement", "SELECT 1");
 
-        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+        Map<String, String> deps = spanWithAttributes("SPAN_KIND_CLIENT", attributes).getDependencyAttributes();
 
         assertEquals("mysql", deps.get("db.system.name"));
     }
@@ -61,11 +62,12 @@ class SpanStateDataTest {
         attributes.put("messaging.destination.name", "orders");
         attributes.put("messaging.operation", "publish");
 
-        Map<String, String> deps = spanWithAttributes("PRODUCER", attributes).getDependencyAttributes();
+        Map<String, String> deps = spanWithAttributes("SPAN_KIND_PRODUCER", attributes).getDependencyAttributes();
 
         assertEquals("kafka", deps.get("messaging.system"));
         assertEquals("orders", deps.get("messaging.destination.name"));
-        assertEquals("publish", deps.get("messaging.operation"));
+        // messaging.operation is per-direction, not identity — it must NOT be in the broker's attrs.
+        assertNull(deps.get("messaging.operation"));
     }
 
     @Test
@@ -74,7 +76,7 @@ class SpanStateDataTest {
         attributes.put("server.address", "api.openai.com");
         attributes.put("server.port", 443);
 
-        Map<String, String> deps = spanWithAttributes("CLIENT", attributes).getDependencyAttributes();
+        Map<String, String> deps = spanWithAttributes("SPAN_KIND_CLIENT", attributes).getDependencyAttributes();
 
         assertEquals("api.openai.com", deps.get("server.address"));
         assertEquals("443", deps.get("server.port"));
@@ -82,7 +84,7 @@ class SpanStateDataTest {
 
     @Test
     void dependencyAttributes_forService_isEmpty() {
-        assertTrue(spanWithAttributes("SERVER", null).getDependencyAttributes().isEmpty());
+        assertTrue(spanWithAttributes("SPAN_KIND_SERVER", null).getDependencyAttributes().isEmpty());
     }
 
     @Test
@@ -93,7 +95,7 @@ class SpanStateDataTest {
         attributes.put("db.system.name", "postgresql");
         attributes.put("http.request.method", "POST");
 
-        assertEquals("messaging", spanWithAttributes("PRODUCER", attributes).getDerivedNodeType());
+        assertEquals("messaging", spanWithAttributes("SPAN_KIND_PRODUCER", attributes).getDerivedNodeType());
     }
 
     @Test
@@ -101,7 +103,7 @@ class SpanStateDataTest {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("db.system.name", "postgresql");
 
-        assertEquals("database", spanWithAttributes("CLIENT", attributes).getDerivedNodeType());
+        assertEquals("database", spanWithAttributes("SPAN_KIND_CLIENT", attributes).getDerivedNodeType());
     }
 
     @Test
@@ -109,7 +111,7 @@ class SpanStateDataTest {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("server.address", "api.openai.com");
 
-        assertEquals("external", spanWithAttributes("CLIENT", attributes).getDerivedNodeType());
+        assertEquals("external", spanWithAttributes("SPAN_KIND_CLIENT", attributes).getDerivedNodeType());
     }
 
     @Test
@@ -117,7 +119,7 @@ class SpanStateDataTest {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("thread.id", 7);
 
-        assertEquals(null, spanWithAttributes("SERVER", attributes).getDerivedNodeType());
+        assertNull(spanWithAttributes("SPAN_KIND_SERVER", attributes).getDerivedNodeType());
     }
 
     @Test

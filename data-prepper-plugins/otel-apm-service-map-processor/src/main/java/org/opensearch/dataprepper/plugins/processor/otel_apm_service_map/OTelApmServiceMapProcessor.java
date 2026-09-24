@@ -84,8 +84,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
     private static final String SPAN_KIND_PRODUCER = "SPAN_KIND_PRODUCER";
     private static final String SPAN_KIND_CONSUMER = "SPAN_KIND_CONSUMER";
-    private static final String NODE_TYPE_SERVICE = "service";
-    private static final String NODE_TYPE_MESSAGING = "messaging";
+    // Single source of truth for node-type strings lives in SpanStateData.
+    private static final String NODE_TYPE_SERVICE = SpanStateData.NODE_TYPE_SERVICE;
+    private static final String NODE_TYPE_MESSAGING = SpanStateData.NODE_TYPE_MESSAGING;
     private static final String UNKNOWN_REMOTE_SERVICE = "UnknownRemoteService";
     private static final Pattern IPV4_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
 
@@ -746,7 +747,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     remoteOperation = clientSpan.getDerivedRemoteOperation() != null
                             ? clientSpan.getDerivedRemoteOperation()
                             : clientSpan.getOperationName();
-                    remoteEnvironment = "generic:default";
+                    // Inherit the caller's environment so a prod dependency and a staging one with
+                    // the same name stay distinct nodes rather than merging under generic:default.
+                    remoteEnvironment = clientSpan.getEnvironment();
                     remoteGroupByAttributes = Collections.emptyMap();
                     remoteNodeType = clientSpan.getDerivedNodeType();
                     remoteDependencyAttributes = clientSpan.getDependencyAttributes();
@@ -879,7 +882,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                 decoration.getRemoteService(),
                                 decoration.getRemoteOperation(),
                                 decoration.getRemoteGroupByAttributes(),
-                                decoration.getRemoteNodeType());
+                                decoration.getRemoteNodeType(),
+                                decoration.getRemoteDependencyAttributes());
                         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
                                 clientSpan, dependencyDecoration, currentTime, sumStateByKey,
                                 histogramStateByKey, anchor, hostId);
@@ -924,11 +928,16 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             final String spanKind = messagingSpan.getSpanKind();
             final boolean isProducer = SPAN_KIND_PRODUCER.equals(spanKind);
             final boolean isConsumer = SPAN_KIND_CONSUMER.equals(spanKind);
-            if ((isProducer || isConsumer) && messagingSpan.getMessagingSystem() != null) {
-                final String destination = messagingSpan.getMessagingDestination() != null
-                        ? messagingSpan.getMessagingDestination()
-                        : "unknown";
-                final String brokerName = messagingSpan.getMessagingSystem() + ":" + destination;
+            // Require both a system and a destination, and pass the same noise filter as the CLIENT
+            // path, so a missing destination never mints a "{system}:unknown" node.
+            if ((isProducer || isConsumer)
+                    && messagingSpan.getMessagingSystem() != null
+                    && messagingSpan.getMessagingDestination() != null) {
+                final String brokerName =
+                        messagingSpan.getMessagingSystem() + ":" + messagingSpan.getMessagingDestination();
+                if (!isPublishableDependencyName(brokerName)) {
+                    continue;
+                }
 
                 final Node serviceNode = new Node(
                         NODE_TYPE_SERVICE,
@@ -937,7 +946,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 );
                 final Node brokerNode = new Node(
                         NODE_TYPE_MESSAGING,
-                        new Node.KeyAttributes("generic:default", brokerName),
+                        new Node.KeyAttributes(messagingSpan.getEnvironment(), brokerName),
                         Collections.emptyMap(),
                         messagingSpan.getDependencyAttributes()
                 );
@@ -960,13 +969,14 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 // "{system}:{destination}"), reusing the CLIENT-span metric path.
                 final ClientSpanDecoration messagingDecoration = new ClientSpanDecoration(
                         messagingSpan.getOperationName(),
-                        "generic:default",
+                        messagingSpan.getEnvironment(),
                         brokerName,
                         messagingSpan.getMessagingOperation() != null
                                 ? messagingSpan.getMessagingOperation()
                                 : messagingSpan.getOperationName(),
                         messagingSpan.getGroupByAttributes(),
-                        NODE_TYPE_MESSAGING);
+                        NODE_TYPE_MESSAGING,
+                        Collections.emptyMap());
                 ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
                         messagingSpan, messagingDecoration, currentTime, sumStateByKey,
                         histogramStateByKey, anchor, hostId);
