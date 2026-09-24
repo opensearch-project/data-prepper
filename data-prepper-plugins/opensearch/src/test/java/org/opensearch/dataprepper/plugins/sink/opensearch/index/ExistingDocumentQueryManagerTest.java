@@ -34,6 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -107,7 +108,7 @@ public class ExistingDocumentQueryManagerTest {
         final MultiSearchItem<ObjectNode> multiSearchItem = mock(MultiSearchItem.class);
         final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
         final Hit<ObjectNode> hit = mock(Hit.class);
-        when(hit.index()).thenReturn(index);
+        lenient().when(hit.index()).thenReturn(index);
 
         final ObjectNode objectNode = mock(ObjectNode.class);
         final JsonNode jsonNode = mock(JsonNode.class);
@@ -142,6 +143,61 @@ public class ExistingDocumentQueryManagerTest {
     }
 
     @Test
+    void add_bulk_operation_and_found_in_query_when_hit_index_differs_from_configured_index_drops_and_releases_event() throws IOException {
+        // Regression test for #6902: when the sink writes to an alias (or datastream), the search hit reports
+        // the concrete backing index (e.g. "my-alias-000001"), which differs from the configured index/alias
+        // key ("my-alias"). Previously dropAndReleaseFoundEvents looked up the pending operations by
+        // hit.index(), which returned null and threw a NullPointerException, wedging the query loop and
+        // leaving the affected documents permanently stuck (never indexed, dropped, or sent to the DLQ).
+        final BulkOperationWrapper bulkOperationWrapper = mock(BulkOperationWrapper.class);
+        final String configuredIndex = UUID.randomUUID().toString();
+        final String concreteBackingIndex = configuredIndex + "-000001";
+        final String termValue = UUID.randomUUID().toString();
+        when(bulkOperationWrapper.getTermValue()).thenReturn(termValue);
+        when(bulkOperationWrapper.getIndex()).thenReturn(configuredIndex);
+
+        final MsearchResponse<ObjectNode> msearchResponse = mock(MsearchResponse.class);
+        final MultiSearchResponseItem<ObjectNode> responseItem = mock(MultiSearchResponseItem.class);
+        when(responseItem.isFailure()).thenReturn(false);
+
+        final MultiSearchItem<ObjectNode> multiSearchItem = mock(MultiSearchItem.class);
+        final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
+        final Hit<ObjectNode> hit = mock(Hit.class);
+        // The hit carries the concrete backing index, not the configured alias key.
+        lenient().when(hit.index()).thenReturn(concreteBackingIndex);
+
+        final ObjectNode objectNode = mock(ObjectNode.class);
+        final JsonNode jsonNode = mock(JsonNode.class);
+        when(jsonNode.textValue()).thenReturn(termValue);
+        when(objectNode.findValue(queryTerm)).thenReturn(jsonNode);
+        when(hit.source()).thenReturn(objectNode);
+
+        when(multiSearchItem.hits()).thenReturn(hitsMetadata);
+        when(hitsMetadata.hits()).thenReturn(List.of(hit));
+
+        when(responseItem.result()).thenReturn(multiSearchItem);
+
+        when(msearchResponse.responses()).thenReturn(List.of(responseItem));
+
+        when(openSearchClient.msearch(any(MsearchRequest.class), eq(ObjectNode.class)))
+                .thenReturn(msearchResponse);
+
+        final ExistingDocumentQueryManager objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.addBulkOperation(bulkOperationWrapper);
+        when(documentsCurrentlyQueried.get()).thenReturn(1);
+
+        // Must not throw NullPointerException, and must drop + release the found duplicate.
+        objectUnderTest.runQueryLoop();
+
+        verify(eventsDroppedAndReleased).increment();
+        verify(eventsAddedForQuerying).increment();
+        verify(documentsCurrentlyQueried).incrementAndGet();
+        verify(documentsCurrentlyQueried).decrementAndGet();
+        verify(bulkOperationWrapper).releaseEventHandle(true);
+    }
+
+    @Test
     void add_bulk_operation_and_not_found_in_query_returns_as_ready_to_ingest() throws IOException, InterruptedException, NoSuchFieldException, IllegalAccessException {
         when(indexConfiguration.getQueryDuration()).thenReturn(Duration.ofMillis(1));
 
@@ -158,7 +214,7 @@ public class ExistingDocumentQueryManagerTest {
         final MultiSearchItem<ObjectNode> multiSearchItem = mock(MultiSearchItem.class);
         final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
         final Hit<ObjectNode> hit = mock(Hit.class);
-        when(hit.index()).thenReturn(index);
+        lenient().when(hit.index()).thenReturn(index);
 
         final ObjectNode objectNode = mock(ObjectNode.class);
         final JsonNode jsonNode = mock(JsonNode.class);
@@ -261,7 +317,7 @@ public class ExistingDocumentQueryManagerTest {
         final MultiSearchItem<ObjectNode> multiSearchItem = mock(MultiSearchItem.class);
         final HitsMetadata<ObjectNode> hitsMetadata = mock(HitsMetadata.class);
         final Hit<ObjectNode> hit = mock(Hit.class);
-        when(hit.index()).thenReturn(index);
+        lenient().when(hit.index()).thenReturn(index);
 
         final ObjectNode objectNode = mock(ObjectNode.class);
         final JsonNode jsonNode = mock(JsonNode.class);
@@ -270,7 +326,7 @@ public class ExistingDocumentQueryManagerTest {
         when(hit.source()).thenReturn(objectNode);
 
         final Hit<ObjectNode> duplicateHit = mock(Hit.class);
-        when(duplicateHit.index()).thenReturn(index);
+        lenient().when(duplicateHit.index()).thenReturn(index);
         when(duplicateHit.id()).thenReturn(UUID.randomUUID().toString());
 
         when(jsonNode.textValue()).thenReturn(termValue);
