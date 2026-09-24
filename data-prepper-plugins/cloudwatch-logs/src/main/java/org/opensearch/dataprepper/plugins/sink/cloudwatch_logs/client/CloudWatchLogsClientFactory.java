@@ -12,11 +12,14 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
 import java.net.URI;
+import java.time.Duration;
 
 import java.util.Map;
 
@@ -25,6 +28,8 @@ import java.util.Map;
  * client for interfacing with CloudWatchLogs services.
  */
 public final class CloudWatchLogsClientFactory {
+    static final Duration BASE_BACKOFF = Duration.ofMillis(100);
+    static final Duration MAX_BACKOFF = Duration.ofSeconds(20);
 
     private CloudWatchLogsClientFactory() {
     }
@@ -65,8 +70,15 @@ public final class CloudWatchLogsClientFactory {
     }
 
     private static ClientOverrideConfiguration createOverrideConfiguration(final Map<String, String> customHeaders) {
+        final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
+                .baseDelay(BASE_BACKOFF)
+                .maxBackoffTime(MAX_BACKOFF)
+                .build();
         final RetryPolicy retryPolicy = RetryPolicy.builder()
                 .numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS)
+                .retryCondition(new CloudWatchLogsRetryCondition())
+                .backoffStrategy(backoffStrategy)
+                .throttlingBackoffStrategy(backoffStrategy)
                 .build();
 
         final ClientOverrideConfiguration.Builder configBuilder = ClientOverrideConfiguration.builder()

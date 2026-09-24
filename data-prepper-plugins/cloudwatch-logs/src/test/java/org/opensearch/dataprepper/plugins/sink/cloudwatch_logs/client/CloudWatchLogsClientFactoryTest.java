@@ -16,6 +16,8 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -32,6 +34,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -154,6 +157,11 @@ class CloudWatchLogsClientFactoryTest {
             // Verify that headers are configured
             assertThat(actualConfig.headers().get("X-Custom-Header"), equalTo(List.of("custom-value")));
             assertThat(actualConfig.headers().get("X-Request-ID"), equalTo(List.of("request-123")));
+            assertThat(actualConfig.retryPolicy().isPresent(), equalTo(true));
+            final RetryPolicy retryPolicy = actualConfig.retryPolicy().get();
+            assertThat(retryPolicy.retryCondition().getClass(), equalTo(CloudWatchLogsRetryCondition.class));
+            assertThat(retryPolicy.backoffStrategy(), instanceOf(EqualJitterBackoffStrategy.class));
+            assertThat(retryPolicy.throttlingBackoffStrategy(), equalTo(retryPolicy.backoffStrategy()));
         }
     }
 
