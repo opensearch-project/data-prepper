@@ -95,10 +95,10 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
      * {@code connector.parameters.service_name}, then executes it synchronously.
      */
     @Override
-    protected void sendRequest(final ConnectorAction action,
-                               final String url,
-                               final String payload,
-                               final Map<String, String> merged) {
+    protected String sendRequest(final ConnectorAction action,
+                                 final String url,
+                                 final String payload,
+                                 final Map<String, String> merged) {
         final SdkHttpMethod method = SdkHttpMethod.fromValue(action.getMethod());
 
         final SdkHttpFullRequest.Builder requestBuilder = SdkHttpFullRequest.builder()
@@ -125,7 +125,7 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
                 .contentStreamProvider(signedRequest.contentStreamProvider().orElse(null))
                 .build();
 
-        executeHttpRequest(executeRequest, action.getActionType());
+        return executeHttpRequest(executeRequest, action.getActionType());
     }
 
     private SdkHttpFullRequest signRequest(final SdkHttpFullRequest request,
@@ -148,7 +148,7 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
         }
     }
 
-    private void executeHttpRequest(final HttpExecuteRequest executeRequest, final String action) {
+    private String executeHttpRequest(final HttpExecuteRequest executeRequest, final String action) {
         final HttpExecuteResponse response;
         try {
             response = httpClientExecutor.execute(executeRequest);
@@ -161,10 +161,10 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
             throw new MLBatchJobException(HttpURLConnection.HTTP_INTERNAL_ERROR,
                     "Unexpected error executing " + action + " request: " + e.getMessage());
         }
-        handleHttpResponse(response, action);
+        return handleHttpResponse(response, action);
     }
 
-    private void handleHttpResponse(final HttpExecuteResponse response, final String action) {
+    private String handleHttpResponse(final HttpExecuteResponse response, final String action) {
         final int statusCode = response.httpResponse().statusCode();
         final String responseBody = response.responseBody().map(this::readStream).orElse("No response");
 
@@ -186,7 +186,8 @@ public class AwsConnectorExecutor extends AbstractConnectorExecutor {
                     "Unexpected status code " + statusCode + " on " + action);
         }
 
-        LOG.info("{} request succeeded: {}", action, responseBody);
+        LOG.info("{} request succeeded", action);
+        return responseBody;
     }
 
     private String readStream(final AbortableInputStream stream) {

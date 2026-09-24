@@ -33,4 +33,14 @@ public interface RemoteConnectorExecutor {
      * @param runtimeParameters per-request parameter overrides merged with connector defaults
      */
     void executeAction(ConnectorActionType actionType, Map<String, String> runtimeParameters);
+
+    /**
+     * Executes the named action and returns the raw response body string.
+     * Used by synchronous actions (e.g. PREDICT) where the caller needs the model output.
+     *
+     * @param actionType        the action to execute (e.g. PREDICT)
+     * @param runtimeParameters per-request parameter overrides merged with connector defaults
+     * @return the raw HTTP response body
+     */
+    String executeActionAndGetResponse(ConnectorActionType actionType, Map<String, String> runtimeParameters);
 }
