@@ -103,6 +103,10 @@ public class AvroInputCodec implements InputCodec {
                 value = new String(utf8Bytes, "UTF-8");
             }
 
+            else if(value instanceof GenericData.Fixed){
+                value = ((GenericData.Fixed) value).bytes();
+            }
+
             eventData.put(field.name(), value);
         }
         return eventData;
