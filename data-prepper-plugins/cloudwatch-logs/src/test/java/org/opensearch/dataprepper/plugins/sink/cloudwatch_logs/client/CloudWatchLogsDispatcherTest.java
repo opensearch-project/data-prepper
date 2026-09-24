@@ -228,48 +228,59 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_client_exception_SHOULD_retry() {
+    void GIVEN_client_exception_SHOULD_not_retry() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-            .thenThrow(SdkClientException.create("Test exception"))
-            .thenReturn(mock(PutLogEventsResponse.class));
+            .thenThrow(SdkClientException.create("Test exception"));
 
         List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
 
         executeDispatcherRunnable();
 
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
-        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
+        verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
     @Test
-    void GIVEN_cloudwatch_exception_SHOULD_retry_forever() {
+    void GIVEN_server_error_SHOULD_retry_to_configured_limit() {
         final int TEST_RETRY_COUNT = CloudWatchLogsDispatcher.Uploader.MULTIPLE_FAILURES_METRIC_COUNT+1;
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(TEST_RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException serverException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("Internal server error")
+                .statusCode(500)
+                .build();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-            .thenThrow(CloudWatchLogsException.class);
+            .thenThrow(serverException);
         List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
 
         executeDispatcherRunnable();
 
+        verify(mockCloudWatchLogsClient, times(TEST_RETRY_COUNT)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(TEST_RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, times(0)).increaseRequestSuccessCounter(1);
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestMultiFailCounter(1);
     }
 
     @Test
-    void GIVEN_cloudwatch_exception_SHOULD_retry() {
+    void GIVEN_server_error_followed_by_success_SHOULD_retry() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException serverException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("Internal server error")
+                .statusCode(500)
+                .build();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-            .thenThrow(CloudWatchLogsException.class)
+            .thenThrow(serverException)
             .thenReturn(mock(PutLogEventsResponse.class));
 
         List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
@@ -277,6 +288,7 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
+        verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestSuccessCounter(1);
     }
@@ -286,8 +298,12 @@ class CloudWatchLogsDispatcherTest {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException serverException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("Internal server error")
+                .statusCode(500)
+                .build();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-            .thenThrow(CloudWatchLogsException.class);
+            .thenThrow(serverException);
 
         List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
@@ -298,13 +314,13 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
 
         // Pin the contract that the catch-all in run() does NOT fire on the normal
-        // CloudWatchLogsException retry-exhaustion path. Without this, a future refactor that
+        // 5XX retry-exhaustion path. Without this, a future refactor that
         // accidentally routes a normal exception through the catch-all (e.g. by removing the
         // inner catch (Exception e)) would silently double-fire metrics — every retry-exhaustion
         // would increment both eventsFailed AND unhandledError, and this test would still pass.
         verify(mockCloudWatchLogsMetrics, never()).increaseUnhandledErrorCounter(anyInt());
 
-        // No events should be released after max retries
+        // Exhausted failures are accounted before events are dropped without a DLQ.
         eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
@@ -336,12 +352,12 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_resource_not_found_and_create_flag_false_WHEN_upload_SHOULD_follow_normal_retry_logic() {
+    void GIVEN_resource_not_found_and_create_flag_false_WHEN_upload_SHOULD_not_retry() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, false, false);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+                .thenThrow(ResourceNotFoundException.builder().message("missing").statusCode(400).build());
 
         final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
@@ -349,11 +365,14 @@ class CloudWatchLogsDispatcherTest {
         executeDispatcherRunnable();
 
         // No creation attempted when the flag is false.
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsClient, never()).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, never()).createLogStream(any(CreateLogStreamRequest.class));
-        // ResourceNotFoundException flows to the normal retry/DLQ path: fail counter incremented for every retry.
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        // ResourceNotFoundException is a terminal 4XX error after the first failed request.
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseResourceNotFoundCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
     @Test
@@ -548,12 +567,12 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_create_flag_true_AND_creation_succeeds_BUT_put_log_events_still_throws_resource_not_found_SHOULD_only_create_once_and_FAIL_RETRIES() {
+    void GIVEN_create_flag_true_AND_creation_succeeds_BUT_put_log_events_still_throws_resource_not_found_SHOULD_stop_after_recovery_attempt() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcherWithCreateFlag(RETRY_COUNT, true, true);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
-                .thenThrow(ResourceNotFoundException.builder().message("missing").build());
+                .thenThrow(ResourceNotFoundException.builder().message("missing").statusCode(400).build());
         when(mockCloudWatchLogsClient.createLogGroup(any(CreateLogGroupRequest.class)))
                 .thenReturn(mock(CreateLogGroupResponse.class));
         when(mockCloudWatchLogsClient.createLogStream(any(CreateLogStreamRequest.class)))
@@ -567,11 +586,13 @@ class CloudWatchLogsDispatcherTest {
         // Creation attempted exactly once.
         verify(mockCloudWatchLogsClient, times(1)).createLogGroup(any(CreateLogGroupRequest.class));
         verify(mockCloudWatchLogsClient, times(1)).createLogStream(any(CreateLogStreamRequest.class));
-        // Subsequent ResourceNotFoundExceptions flow to the normal retry/DLQ path: fail counter incremented for every retry.
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        // The second ResourceNotFoundException follows the terminal DLQ or drop path.
+        verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
-        // When create flags are on, RNF after failed creation is internal control flow — not actionable by the user.
+        // When create flags are on, RNF after failed creation is internal control flow, not actionable by the user.
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
     @Test
@@ -828,7 +849,7 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void GIVEN_access_denied_exception_WHEN_put_log_events_SHOULD_increment_access_denied_counter_and_request_fail_counter() {
+    void GIVEN_access_denied_exception_WHEN_put_log_events_SHOULD_not_retry_and_increment_metrics() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
@@ -849,25 +870,34 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseAccessDeniedCounter(1);
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
+
+        final org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(mockCloudWatchLogsMetrics, eventHandles.get(0));
+        inOrder.verify(mockCloudWatchLogsMetrics).increaseAccessDeniedCounter(1);
+        inOrder.verify(mockCloudWatchLogsMetrics).increaseRequestFailCounter(1);
+        inOrder.verify(mockCloudWatchLogsMetrics).increaseLogEventFailCounter(eventHandles.size());
+        inOrder.verify(eventHandles.get(0)).release(true);
     }
 
     @Test
-    void GIVEN_throttling_exception_WHEN_put_log_events_SHOULD_increment_throttled_counter_and_request_fail_counter() {
+    void GIVEN_throttling_exception_WHEN_put_log_events_SHOULD_retry_and_increment_metrics() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
 
         final List<EventHandle> eventHandles = getSampleEventHandles();
         final CloudWatchLogsException throttledException = (CloudWatchLogsException) CloudWatchLogsException.builder()
                 .awsErrorDetails(AwsErrorDetails.builder()
-                        .errorCode("Throttling")
+                        .errorCode("ThrottlingException")
                         .errorMessage("Rate exceeded")
-                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(429).build())
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(400).build())
                         .build())
                 .message("Rate exceeded")
-                .statusCode(429)
+                .statusCode(400)
                 .build();
         when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
                 .thenThrow(throttledException);
@@ -877,10 +907,14 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
+        verify(mockCloudWatchLogsClient, times(RETRY_COUNT)).putLogEvents(any(PutLogEventsRequest.class));
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseThrottledCounter(1);
         verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestMultiFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
         verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 
     @Test
@@ -896,8 +930,9 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseResourceNotFoundCounter(1);
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseResourceNotFoundCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
     }
@@ -937,7 +972,8 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
@@ -959,7 +995,8 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
@@ -987,8 +1024,9 @@ class CloudWatchLogsDispatcherTest {
 
         executeDispatcherRunnable();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseAccessDeniedCounter(1);
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseAccessDeniedCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
     }
 
@@ -1070,7 +1108,8 @@ class CloudWatchLogsDispatcherTest {
 
         // User delegated creation to the sink — RNF is internal, not actionable.
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
     }
 
     @Test
@@ -1090,6 +1129,43 @@ class CloudWatchLogsDispatcherTest {
 
         // User delegated creation to the sink — RNF is internal, not actionable.
         verify(mockCloudWatchLogsMetrics, never()).increaseResourceNotFoundCounter(anyInt());
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsClient, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void GIVEN_validation_exception_WHEN_put_log_events_SHOULD_record_generic_metrics_before_drop_without_retry() {
+        cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher(RETRY_COUNT);
+
+        final List<EventHandle> eventHandles = getSampleEventHandles();
+        final CloudWatchLogsException validationException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("ValidationException")
+                        .errorMessage("Request failed validation")
+                        .sdkHttpResponse(SdkHttpResponse.builder().statusCode(400).build())
+                        .build())
+                .message("Request failed validation")
+                .statusCode(400)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(validationException);
+
+        final List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, eventHandles);
+
+        executeDispatcherRunnable();
+
+        verify(mockCloudWatchLogsClient, times(1)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseLogEventFailCounter(eventHandles.size());
+        verify(mockCloudWatchLogsMetrics, never()).increaseLogLargeEventsDroppedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(mockCloudWatchLogsMetrics, never()).increaseThrottledCounter(anyInt());
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
+
+        final org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(mockCloudWatchLogsMetrics, eventHandles.get(0));
+        inOrder.verify(mockCloudWatchLogsMetrics).increaseRequestFailCounter(1);
+        inOrder.verify(mockCloudWatchLogsMetrics).increaseLogEventFailCounter(eventHandles.size());
+        inOrder.verify(eventHandles.get(0)).release(true);
     }
 }
