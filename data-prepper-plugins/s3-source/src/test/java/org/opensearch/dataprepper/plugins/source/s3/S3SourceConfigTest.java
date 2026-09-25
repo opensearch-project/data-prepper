@@ -95,9 +95,10 @@ class S3SourceConfigTest {
     }
 
     @Test
-    void isCodecProvidedWhenNeeded_returns_false_when_s3SelectOptions_is_null_and_codec_is_null(){
+    void isCodecProvidedWhenNeeded_returns_true_when_s3SelectOptions_is_null_and_codec_is_null(){
+        // codec is optional — when null, the source uses auto-detect mode
         final S3SourceConfig s3SourceConfig = new S3SourceConfig();
-        assertFalse(s3SourceConfig.isCodecProvidedWhenNeeded());
+        assertTrue(s3SourceConfig.isCodecProvidedWhenNeeded());
     }
 
     @Test

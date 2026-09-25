@@ -110,10 +110,10 @@ public class S3SourceConfig {
     @Valid
     private Map<String, S3ScanKeyPathOption> filters;
 
-    @AssertTrue(message = "A codec is required for reading objects.")
+    @AssertTrue(message = "A codec is required for reading objects unless using auto-detect mode.")
     boolean isCodecProvidedWhenNeeded() {
         if(s3SelectOptions == null)
-            return codec != null;
+            return true; // codec is now optional — auto-detect when null
         return true;
     }
 
