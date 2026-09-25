@@ -45,6 +45,9 @@ public class KafkaTopicConsumerMetrics {
     static final String NUMBER_OF_PARTITIONS_REVOKED = "numberOfPartitionsRevoked";
     static final String RECORDS_LAG_PER_PARTITION = "recordsLagPerPartition";
     static final String RECORDS_PROCESSING_LATENCY = "recordsProcessingLatency";
+    static final String NUMBER_OF_COMMIT_FAILURES = "numberOfCommitFailures";
+    static final String NUMBER_OF_SEEK_FAILURES = "numberOfSeekFailures";
+    static final String NUMBER_OF_BUFFER_WRITE_FAILURES = "numberOfBufferWriteFailures";
     // kafka-clients metric key; stored raw, inverted at read time (see update()).
     private static final String ASSIGNED_PARTITIONS = "assigned-partitions";
 
@@ -68,6 +71,9 @@ public class KafkaTopicConsumerMetrics {
 
     private final Counter numberOfRebalances;
     private final Counter numberOfPartitionsRevoked;
+    private final Counter numberOfCommitFailures;
+    private final Counter numberOfSeekFailures;
+    private final Counter numberOfBufferWriteFailures;
     private final Timer recordsProcessingLatency;
     private final int configuredWorkers;
 
@@ -104,6 +110,9 @@ public class KafkaTopicConsumerMetrics {
         this.numberOfRebalances = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_REBALANCES, topicNameInMetrics));
         this.numberOfPartitionsRevoked = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_PARTITIONS_REVOKED, topicNameInMetrics));
         this.recordsProcessingLatency = pluginMetrics.timer(getTopicMetricName(RECORDS_PROCESSING_LATENCY, topicNameInMetrics));
+        this.numberOfCommitFailures = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_COMMIT_FAILURES, topicNameInMetrics));
+        this.numberOfSeekFailures = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_SEEK_FAILURES, topicNameInMetrics));
+        this.numberOfBufferWriteFailures = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BUFFER_WRITE_FAILURES, topicNameInMetrics));
         registerScalingGauges(topicNameInMetrics);
         lastPollTime = Instant.now();
     }
@@ -244,6 +253,18 @@ public class KafkaTopicConsumerMetrics {
 
     public Counter getNumberOfPartitionsRevoked() {
         return numberOfPartitionsRevoked;
+    }
+
+    public Counter getNumberOfCommitFailures() {
+        return numberOfCommitFailures;
+    }
+
+    public Counter getNumberOfSeekFailures() {
+        return numberOfSeekFailures;
+    }
+
+    public Counter getNumberOfBufferWriteFailures() {
+        return numberOfBufferWriteFailures;
     }
 
     public void recordProcessingLatency(final long durationMillis) {
