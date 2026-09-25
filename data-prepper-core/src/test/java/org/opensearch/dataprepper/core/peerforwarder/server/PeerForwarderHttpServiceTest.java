@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.core.peerforwarder.exception.NoPeerForwarderTa
 import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -51,7 +52,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService.RECORDS_RECEIVED_FROM_PEERS;
@@ -98,6 +101,9 @@ class PeerForwarderHttpServiceTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private CircuitBreaker circuitBreaker;
+
     private Timer serverRequestProcessingLatencyTimer;
 
     @BeforeEach
@@ -107,8 +113,8 @@ class PeerForwarderHttpServiceTest {
         lenient().when(peerForwardingEvents.getEvents()).thenReturn(events);
         lenient().when(peerForwardingEvents.getDestinationPluginId()).thenReturn(PLUGIN_ID);
         lenient().when(peerForwardingEvents.getDestinationPipelineName()).thenReturn(PIPELINE_NAME);
-        when(aggregatedHttpRequest.content()).thenReturn(httpData);
-        when(httpData.array()).thenReturn(new byte[10]);
+        lenient().when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        lenient().when(httpData.array()).thenReturn(new byte[10]);
         serverRequestProcessingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY)).thenReturn(serverRequestProcessingLatencyTimer);
         when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
@@ -122,6 +128,11 @@ class PeerForwarderHttpServiceTest {
     private PeerForwarderHttpService createObjectUnderTest() {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
                 peerForwarderCodec, acknowledgementSetManager, pluginMetrics);
+    }
+
+    private PeerForwarderHttpService createObjectUnderTestWithCircuitBreaker(final CircuitBreaker circuitBreaker) {
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics, circuitBreaker);
     }
 
     @Test
@@ -195,6 +206,56 @@ class PeerForwarderHttpServiceTest {
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
 
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void doPost_circuitBreakerOpen_rejectsRequestBeforeParsing() throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(true);
+
+        final PeerForwarderHttpService objectUnderTest = createObjectUnderTestWithCircuitBreaker(circuitBreaker);
+
+        final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
+
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
+
+        verify(circuitBreaker, times(1)).isOpen();
+
+        verifyNoInteractions(peerForwarderCodec);
+        verifyNoInteractions(peerForwarderProvider);
+        verifyNoInteractions(responseHandler);
+    }
+
+    @Test
+    void doPost_circuitBreakerClosed_proceedsAndReturnsOK() throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(false);
+        final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
+        pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
+
+        final PeerForwarderHttpService objectUnderTest = createObjectUnderTestWithCircuitBreaker(circuitBreaker);
+
+        final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
+
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
+
+        verify(circuitBreaker, times(1)).isOpen();
+        verify(recordsReceivedFromPeersCounter).increment(1);
+    }
+
+    @Test
+    void doPost_nullCircuitBreaker_proceedsAndReturnsOK() throws Exception {
+        final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
+        pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
+
+        final PeerForwarderHttpService objectUnderTest = createObjectUnderTestWithCircuitBreaker(null);
+
+        final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
+
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
+
+        verifyNoInteractions(circuitBreaker);
+        verify(recordsReceivedFromPeersCounter).increment(1);
     }
 
     private List<Event> generateEvents(final int numEvents) {
