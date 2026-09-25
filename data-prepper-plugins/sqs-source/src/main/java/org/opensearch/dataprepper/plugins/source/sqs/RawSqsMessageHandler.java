@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SafeExceptionSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -51,7 +52,8 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
             buffer.writeAll(records, bufferTimeoutMillis);
 
         } catch (Exception e) {
-            LOG.error("Error processing SQS message: {}", e.getMessage(), e);
+            LOG.error("Error processing SQS message: {}", SafeExceptionSummary.summarize(e));
+            LOG.debug("Full exception trace for SQS message processing failure:", e);
             throw new RuntimeException(e);
         }
     }
