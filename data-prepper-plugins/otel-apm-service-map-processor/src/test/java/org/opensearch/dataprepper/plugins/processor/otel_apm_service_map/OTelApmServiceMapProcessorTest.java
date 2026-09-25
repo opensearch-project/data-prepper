@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
@@ -44,6 +45,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -1394,6 +1396,290 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         } finally {
             isolatedProcessor.shutdown();
         }
+    }
+
+    // ---- External-dependency synthesis (databases / messaging / external) ----
+
+    @Test
+    void synthesizesAwsSdkDependencyNode() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("aws-dep-");
+        try {
+            final Span awsClient = createMockSpanWithIds("checkout", "DynamoDB.GetItem", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("rpc.system", "aws-api");
+            attrs.put("rpc.service", "DynamoDb");
+            attrs.put("rpc.method", "GetItem");
+            when(awsClient.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(awsClient)));
+
+            final Event awsNode = serviceMap.stream()
+                    .filter(e -> "external".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected an AWS SDK dependency node"));
+            assertThat(awsNode.get("targetNode/keyAttributes/name", String.class), equalTo("AWS::DynamoDB"));
+            assertThat(awsNode.get("targetOperation/name", String.class), equalTo("GetItem"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void synthesizesMessagingBrokerNodeForArnDestination() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("arn-dep-");
+        try {
+            final Span producer = createMockSpanWithIds("checkout", "orders publish", "SPAN_KIND_PRODUCER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("messaging.system", "aws_sns");
+            attrs.put("messaging.destination.name", "arn:aws:sns:us-east-1:123456789012:orders");
+            when(producer.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(producer)));
+
+            final Event brokerNode = serviceMap.stream()
+                    .filter(e -> "messaging".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected an SNS broker node"));
+            assertThat(brokerNode.get("targetNode/keyAttributes/name", String.class),
+                    equalTo("aws_sns:arn:aws:sns:us-east-1:123456789012:orders"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyClientWithoutParentServer_emitsRequestMetricOnceAcrossAllWindows() {
+        final Instant[] now = {testTime};
+        when(clock.instant()).thenAnswer(a -> now[0]);
+        final OTelApmServiceMapProcessor proc = newProcessorCapturingEvents("once-");
+        try {
+            final Span dbClient = createMockSpanWithIds("product-catalog", "query", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("db.system.name", "postgresql");
+            when(dbClient.getAttributes()).thenReturn(attrs);
+            final Span producer = createMockSpanWithIds("product-catalog", "orders publish", "SPAN_KIND_PRODUCER",
+                    "2222222222222222", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> producerAttrs = new HashMap<>();
+            producerAttrs.put("messaging.system", "kafka");
+            producerAttrs.put("messaging.destination.name", "orders");
+            when(producer.getAttributes()).thenReturn(producerAttrs);
+
+            // A later span of the same trace lands one window behind, so the trace is processed in two
+            // consecutive cycles and the dependency spans are visible (as lookup spans) in both.
+            final Span lateSpan = createMockSpanWithIds("product-catalog", "late", "SPAN_KIND_SERVER",
+                    "3333333333333333", "", "aaaaaaaaaaaaaaaa");
+
+            // Drive the spans through next -> current -> previous and out, flushing every window.
+            final List<Record<Event>> emitted = new ArrayList<>(
+                    proc.doExecute(Arrays.asList(new Record<>(dbClient), new Record<>(producer))));
+            for (int window = 1; window <= 4; window++) {
+                now[0] = testTime.plusSeconds(65L * window);
+                emitted.addAll(proc.doExecute(window == 1
+                        ? Collections.singletonList(new Record<>(lateSpan))
+                        : Collections.emptyList()));
+            }
+
+            assertThat(sumOfRequestMetrics(emitted, "postgresql"), equalTo(1.0));
+            assertThat(sumOfRequestMetrics(emitted, "kafka:orders"), equalTo(1.0));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    private static double sumOfRequestMetrics(final Collection<Record<Event>> records, final String remoteService) {
+        return records.stream()
+                .map(Record::getData)
+                .filter(e -> e instanceof JacksonSum)
+                .map(e -> (JacksonSum) e)
+                .filter(m -> "request".equals(m.getName())
+                        && remoteService.equals(m.getAttributes().get("remoteService")))
+                .mapToDouble(JacksonSum::getValue)
+                .sum();
+    }
+
+    @Test
+    void synthesizesDatabaseDependencyNodeWithIdentityAttributes() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("db-dep-");
+        try {
+            final Span dbClient = createMockSpanWithIds("product-catalog", "query", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("db.system.name", "postgresql");
+            attrs.put("db.namespace", "otel");
+            attrs.put("server.address", "postgresql");
+            attrs.put("server.port", 5432);
+            when(dbClient.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(dbClient)));
+
+            final Event dbNode = serviceMap.stream()
+                    .filter(e -> "database".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a database dependency node"));
+            final Map depAttrs = dbNode.get("targetNode/dependencyAttributes", Map.class);
+            assertThat(depAttrs.get("db.system.name"), equalTo("postgresql"));
+            assertThat(depAttrs.get("server.port"), equalTo("5432"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void synthesizesMessagingBrokerNodeWithIdentityAttributes() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("msg-dep-");
+        try {
+            final Span producer = createMockSpanWithIds("checkout", "publish orders", "SPAN_KIND_PRODUCER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("messaging.system", "kafka");
+            attrs.put("messaging.destination.name", "orders");
+            attrs.put("messaging.operation", "publish");
+            when(producer.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(producer)));
+
+            final Event brokerNode = serviceMap.stream()
+                    .filter(e -> "messaging".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a messaging broker node"));
+            assertThat(brokerNode.get("targetNode/keyAttributes/name", String.class), equalTo("kafka:orders"));
+            final Map depAttrs = brokerNode.get("targetNode/dependencyAttributes", Map.class);
+            assertThat(depAttrs.get("messaging.system"), equalTo("kafka"));
+            assertThat(depAttrs.get("messaging.destination.name"), equalTo("orders"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void suppressesUnresolvedExternalDependency() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("supp-dep-");
+        try {
+            // http.request.method classifies the target as external, but with no identifiable peer
+            // the derived name resolves to UnknownRemoteService and must not produce a node.
+            final Span client = createMockSpanWithIds("frontend", "GET", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("http.request.method", "GET");
+            when(client.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(client)));
+
+            assertTrue(serviceMap.stream()
+                    .noneMatch(e -> "external".equals(e.get("targetNode/type", String.class))));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void clientWithChildServerYieldsServiceTargetAndNoDependencyAttributes() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("svc-edge-");
+        try {
+            // CLIENT to an instrumented service (child SERVER span present). Even with external-ish
+            // attributes on the client, the target must be the traced service, with NO
+            // dependencyAttributes — the regression guard against classifying a real service as external.
+            final Span client = createMockSpanWithIds("frontend", "GET /cart", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("http.request.method", "GET");
+            attrs.put("server.address", "cart");
+            when(client.getAttributes()).thenReturn(attrs);
+            final Span server = createMockSpanWithIds("cart", "GET /cart", "SPAN_KIND_SERVER",
+                    "2222222222222222", "1111111111111111", "aaaaaaaaaaaaaaaa");
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Arrays.asList(new Record<>(client), new Record<>(server)));
+
+            final Event edge = serviceMap.stream()
+                    .filter(e -> "cart".equals(e.get("targetNode/keyAttributes/name", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a frontend -> cart service edge"));
+            assertThat(edge.get("targetNode/type", String.class), equalTo("service"));
+            // @JsonInclude(NON_EMPTY): a service node must not carry dependencyAttributes at all.
+            assertNull(edge.get("targetNode/dependencyAttributes", Map.class));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void synthesizesConsumerBrokerToServiceEdge() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("consumer-");
+        try {
+            final Span consumer = createMockSpanWithIds("shipping", "receive orders", "SPAN_KIND_CONSUMER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa");
+            final Map<String, Object> attrs = new HashMap<>();
+            attrs.put("messaging.system", "kafka");
+            attrs.put("messaging.destination.name", "orders");
+            attrs.put("messaging.operation", "receive");
+            when(consumer.getAttributes()).thenReturn(attrs);
+
+            final List<Event> serviceMap = flushServiceMapEvents(proc,
+                    Collections.singletonList(new Record<>(consumer)));
+
+            // CONSUMER emits broker -> service: source is the broker, target is the service.
+            final Event edge = serviceMap.stream()
+                    .filter(e -> "kafka:orders".equals(e.get("sourceNode/keyAttributes/name", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a kafka:orders -> shipping edge"));
+            assertThat(edge.get("sourceNode/type", String.class), equalTo("messaging"));
+            assertThat(edge.get("targetNode/keyAttributes/name", String.class), equalTo("shipping"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    // Builds a processor whose emitted events are real JacksonEvents (so NodeOperationDetail fields
+    // are queryable via event.get(...)), with a clock wired for the three-call window flush.
+    private OTelApmServiceMapProcessor newFlushingProcessor(final String dirPrefix) {
+        when(clock.instant())
+                .thenReturn(testTime).thenReturn(testTime)
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130));
+        return newProcessorCapturingEvents(dirPrefix);
+    }
+
+    // Builds a processor whose emitted events are real JacksonEvents; the caller stubs the clock.
+    private OTelApmServiceMapProcessor newProcessorCapturingEvents(final String dirPrefix) {
+        final BaseEventBuilder<Event> eventBuilder = mock(EventBuilder.class, RETURNS_DEEP_STUBS);
+        when(eventFactory.eventBuilder(any())).thenReturn(eventBuilder);
+        doAnswer(a -> {
+            eventMetadata = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withEventMetadata(any());
+        doAnswer(a -> {
+            eventData = a.getArgument(0);
+            return eventBuilder;
+        }).when(eventBuilder).withData(any());
+        doAnswer(a -> JacksonEvent.builder().withEventMetadata(eventMetadata).withData(eventData).build())
+                .when(eventBuilder).build();
+        final File dir = new File(tempDir, dirPrefix + System.nanoTime());
+        dir.mkdirs();
+        return new OTelApmServiceMapProcessor(Duration.ofSeconds(60), dir, clock, 1, eventFactory, pluginMetrics);
+    }
+
+    // Runs the three-call flush and returns the emitted SERVICE_MAP node events.
+    private List<Event> flushServiceMapEvents(final OTelApmServiceMapProcessor proc,
+                                              final List<Record<Event>> firstBatch) {
+        proc.doExecute(firstBatch);
+        proc.doExecute(Collections.emptyList());
+        final Collection<Record<Event>> result = proc.doExecute(Collections.emptyList());
+        return result.stream()
+                .filter(r -> r.getData().getMetadata() != null
+                        && "SERVICE_MAP".equals(r.getData().getMetadata().getEventType()))
+                .map(Record::getData)
+                .collect(Collectors.toList());
     }
 
     // Helper method to create mock spans

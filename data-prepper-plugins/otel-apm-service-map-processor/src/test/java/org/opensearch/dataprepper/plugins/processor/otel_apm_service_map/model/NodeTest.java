@@ -97,6 +97,57 @@ class NodeTest {
         assertTrue(result.contains("service"));
     }
 
+    @Test
+    void testDependencyAttributesDefaultsEmpty() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("prod", "test-service");
+
+        assertTrue(new Node("service", keyAttributes).getDependencyAttributes().isEmpty());
+        assertTrue(new Node("service", keyAttributes, Map.of("k", "v")).getDependencyAttributes().isEmpty());
+    }
+
+    @Test
+    void testConstructorWithDependencyAttributes() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Map<String, String> dependencyAttributes =
+                Map.of("db.system.name", "postgresql", "server.address", "db-host", "server.port", "5432");
+        Node node = new Node("database", keyAttributes, Map.of(), dependencyAttributes);
+
+        assertEquals("database", node.getType());
+        assertEquals(dependencyAttributes, node.getDependencyAttributes());
+    }
+
+    @Test
+    void testConstructorWithNullDependencyAttributes() {
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Node node = new Node("database", keyAttributes, null, null);
+
+        assertTrue(node.getDependencyAttributes().isEmpty());
+    }
+
+    @Test
+    void testEquals_ignoresDependencyAttributes() {
+        // dependencyAttributes is descriptive metadata, not identity: nodes differing only in it are
+        // equal and hash equally, keeping the topology node shared and connection hashes stable.
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("generic:default", "postgresql");
+        Node node1 = new Node("database", keyAttributes, Map.of(), Map.of("server.port", "5432"));
+        Node node2 = new Node("database", keyAttributes, Map.of(), Map.of("server.port", "5433"));
+
+        assertEquals(node1, node2);
+        assertEquals(node1.hashCode(), node2.hashCode());
+    }
+
+    @Test
+    void testHashCode_unchangedByEmptyDependencyAttributes() {
+        // Guards the upgrade path: appending an (empty) dependencyAttributes must not shift the hash
+        // of an existing service node, or every nodeConnectionHash would change on rollout.
+        Node.KeyAttributes keyAttributes = new Node.KeyAttributes("prod", "checkout");
+        Node threeArg = new Node("service", keyAttributes, Map.of());
+        Node fourArg = new Node("service", keyAttributes, Map.of(), Map.of());
+
+        assertEquals(threeArg.hashCode(), fourArg.hashCode());
+        assertEquals(threeArg, fourArg);
+    }
+
     static class KeyAttributesTest {
 
         @Test

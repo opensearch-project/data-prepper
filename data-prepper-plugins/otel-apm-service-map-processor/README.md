@@ -247,6 +247,49 @@ Represents a service with no outgoing calls:
 }
 ```
 
+### External Dependency Nodes
+
+Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — are synthesized as typed nodes so they appear in the service map instead of being dropped. A node's `type` is one of:
+
+| `type` | Synthesized from | Example name |
+|--------|------------------|--------------|
+| `service` | An instrumented service (has a `SERVER` span) | `checkout` |
+| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql` |
+| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443`, `AWS::DynamoDB` |
+| `messaging` | A `PRODUCER`/`CONSUMER` span; the broker links producer → broker → consumer | `kafka:orders` |
+
+The node **name** is the peer identity derived by `OTelSpanDerivationUtil` and is best-effort: databases usually resolve to the DB system (e.g. `postgresql`), HTTP/RPC peers to `host:port`, and brokers to `{system}:{destination}`. The name is for display and grouping; it is deliberately not treated as a precise instance key. The `dependencyAttributes` map is the reliable identity — the exact peer attributes under canonical OpenTelemetry keys — so consumers filter the dependency's spans/logs on those rather than parsing the name. The field is omitted for `service` nodes and is **not** part of node identity (see below).
+
+- **database**: `db.system.name`, `db.namespace`, `server.address`, `server.port`
+- **messaging**: `messaging.system`, `messaging.destination.name` (the directional `messaging.operation` is emitted as the edge's operation, not here)
+- **external**: `peer.service`, `server.address`, `server.port`, `rpc.system` (`url.full` is intentionally excluded — it carries per-request paths, query strings, and PII)
+
+Unresolved (`UnknownRemoteService`) and raw-IP peers (IPv4 or IPv6 literals, with or without a port) are suppressed so the topology only shows named dependencies. Names that merely contain several colons, such as `AWS::DynamoDB` or an SNS topic ARN destination, are kept.
+
+`dependencyAttributes` is **descriptive metadata, not identity**: it is excluded from a node's `equals`/`hashCode`, so it never affects `nodeConnectionHash`. This keeps existing service-node hashes byte-stable across an upgrade and keeps one logical dependency a single shared node even when a descriptive value (e.g. per-host DB attributes) varies between callers.
+
+```json
+{
+  "targetNode": {
+    "type": "database",
+    "keyAttributes": { "environment": "eks:prod", "name": "postgresql" },
+    "dependencyAttributes": {
+      "db.system.name": "postgresql",
+      "db.namespace": "orders",
+      "server.address": "orders-db.internal",
+      "server.port": "5432"
+    }
+  }
+}
+```
+
+#### Known limitations
+
+- **Window-boundary over-classification.** A `CLIENT` call to an instrumented service is normally resolved to that service via its child `SERVER` span. If the two spans fall in different processing windows (late arrival, retry, sampling, clock skew), the child is not seen and the target is classified as `external` (`host:port`) for those spans. Server/internal spans are not classified (only `CLIENT`/`PRODUCER`/`CONSUMER` derive a type), which bounds the effect.
+- **HTTP operation cardinality.** When an HTTP client span has a URL but no `http.request.method`, the derived operation falls back to the URL string, which can produce a high-cardinality metric label. A bounded `METHOD /path` is used whenever a method is present.
+- **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker node and metric label.
+- **AWS SDK messaging.** Producers instrumented only with `rpc.system=aws-api` (no `messaging.system`) are not yet synthesized as messaging edges.
+
 ### Dual Hash Fields
 
 NodeOperationDetail uses two hash fields for different query patterns:

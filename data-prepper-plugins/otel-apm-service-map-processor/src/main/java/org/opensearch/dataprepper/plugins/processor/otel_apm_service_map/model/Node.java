@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
@@ -27,16 +28,28 @@ public class Node {
     @JsonProperty("groupByAttributes")
     private final Map<String, String> groupByAttributes;
 
+    // Exact peer identity for synthesized dependency nodes, so callers can filter the
+    // dependency's spans/logs precisely rather than parse the node name. Empty for service nodes.
+    @JsonProperty("dependencyAttributes")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final Map<String, String> dependencyAttributes;
+
     public Node(final String type, final KeyAttributes keyAttributes) {
-        this.type = type;
-        this.keyAttributes = keyAttributes;
-        this.groupByAttributes = Collections.emptyMap();
+        this(type, keyAttributes, Collections.emptyMap(), Collections.emptyMap());
     }
 
     public Node(final String type, final KeyAttributes keyAttributes, final Map<String, String> groupByAttributes) {
+        this(type, keyAttributes, groupByAttributes, Collections.emptyMap());
+    }
+
+    public Node(final String type,
+                final KeyAttributes keyAttributes,
+                final Map<String, String> groupByAttributes,
+                final Map<String, String> dependencyAttributes) {
         this.type = type;
         this.keyAttributes = keyAttributes;
         this.groupByAttributes = groupByAttributes != null ? groupByAttributes : Collections.emptyMap();
+        this.dependencyAttributes = dependencyAttributes != null ? dependencyAttributes : Collections.emptyMap();
     }
 
     public String getType() {
@@ -51,6 +64,15 @@ public class Node {
         return groupByAttributes;
     }
 
+    public Map<String, String> getDependencyAttributes() {
+        return dependencyAttributes;
+    }
+
+    // dependencyAttributes is descriptive metadata, NOT identity: it is deliberately excluded from
+    // equals/hashCode. Including it would (a) shift every existing nodeConnectionHash on upgrade
+    // (appending a field changes Objects.hash), and (b) split one logical node into several when a
+    // descriptive value varies per call (e.g. producer vs consumer messaging.operation, or per-host
+    // db attributes) — the opposite of the "shared node" this feature intends.
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -71,6 +93,7 @@ public class Node {
                 "type='" + type + '\'' +
                 ", keyAttributes=" + keyAttributes +
                 ", groupByAttributes=" + groupByAttributes +
+                ", dependencyAttributes=" + dependencyAttributes +
                 '}';
     }
 
