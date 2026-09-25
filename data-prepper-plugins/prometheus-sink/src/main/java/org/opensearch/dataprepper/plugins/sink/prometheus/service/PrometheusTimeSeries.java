@@ -10,20 +10,16 @@
 
 package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-
 import com.arpnetworking.metrics.prometheus.Types.Label;
 import com.arpnetworking.metrics.prometheus.Types.Sample;
 import com.arpnetworking.metrics.prometheus.Types.TimeSeries;
-
-import org.opensearch.dataprepper.model.metric.Quantile;
 import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.Gauge;
-import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Quantile;
 import org.opensearch.dataprepper.model.metric.Sum;
 import org.opensearch.dataprepper.model.metric.Summary;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +30,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
@@ -97,6 +95,7 @@ public class PrometheusTimeSeries {
     private List<Label> baseLabels;
     private long baseLabelsSize;
     private int seriesSize;
+    private final PrometheusMetricMetadata metadata;
 
     public PrometheusTimeSeries(final Metric metric, final boolean sanitizeNames,
                                 final String instanceLabelName, final String instanceLabelValue) throws Exception {
@@ -115,6 +114,9 @@ public class PrometheusTimeSeries {
         baseLabelsSize = processAttributes(metric.getAttributes(), "");
         baseLabelsSize += processResourceAndScopeAttributes(metric);
         baseLabelsSize += processInstanceLabel(instanceLabelName, instanceLabelValue);
+
+        // Generate metadata for this metric
+        this.metadata = PrometheusMetricMetadata.fromMetric(metric, this.metricName);
 
         if (metric instanceof Gauge) {
             addGaugeMetric((Gauge)metric);
@@ -237,6 +239,10 @@ public class PrometheusTimeSeries {
     public List<TimeSeries> getTimeSeriesList() { return timeSeriesList; }
     public long getTimestamp() { return timestamp; }
     public int getSize() { return seriesSize; }
+
+    public PrometheusMetricMetadata getMetadata() {
+        return metadata;
+    }
 
     public void addSumMetric(Sum sum) {
         addTimeSeries(NAME_LABEL, metricName, sum.getValue());
