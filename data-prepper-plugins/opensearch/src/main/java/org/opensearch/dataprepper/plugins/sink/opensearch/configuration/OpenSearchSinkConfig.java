@@ -118,6 +118,10 @@ public class OpenSearchSinkConfig {
     private String templateContent = null;
 
     @Getter
+    @JsonProperty("component_templates")
+    private List<String> componentTemplates = null;
+
+    @Getter
     @JsonProperty("number_of_shards")
     private Integer numShards = 0;
 
