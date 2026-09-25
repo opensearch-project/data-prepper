@@ -179,6 +179,17 @@ Default is null.
 `"template"` key in the json content of OpenSearch [Index templates API](https://opensearch.org/docs/latest/opensearch/index-templates/),
 e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
+- <a name="component_templates"></a>`component_templates`(optional): A list of [component template](https://opensearch.org/docs/latest/im-plugin/index-templates/#composable-index-templates) names to add to the `composed_of` list of the index template this sink creates. This works with the built-in templates of `index_type`s such as `trace-analytics-plain-raw`, and with a custom `template_file` or `template_content`. Use it to add index settings or mappings on top of a template without copying it, for example:
+
+  ```
+  sink:
+    - opensearch:
+        index_type: trace-analytics-plain-raw
+        template_type: index-template
+        component_templates: ["my-index-settings"]
+  ```
+  Requires `template_type` to be `index-template`, and cannot be used with `index_type` `management_disabled`. The component templates must already exist on the cluster. They are applied in the listed order, after any in the template's own `composed_of`. Settings and mappings in the index template itself take precedence over the component templates. Like other template changes, adding this to an existing pipeline only takes effect once the index template is updated, which happens when its `version` increases.
+
 - `number_of_shards` (optional): The number of primary shards that an index should have on the destination OpenSearch server. This parameter is effective only when `template_file` is either explicitly provided in Sink configuration or built-in. If this parameter is set, it would override the value in index template file. OpenSearch documentation has [more about this parameter](https://opensearch.org/docs/latest/opensearch/rest-api/index-apis/create-index/).
 
 - `number_of_replicas` (optional): The number of replica shards each primary shard should have on the destination OpenSearch server. For example, if you have 4 primary shards and set number_of_replicas to 3, the index has 12 replica shards. This parameter is effective only when `template_file` is either explicitly provided in Sink configuration or built-in. If this parameter is set, it would override the value in index template file. OpenSearch documentation has [more about this parameter](https://opensearch.org/docs/latest/opensearch/rest-api/index-apis/create-index/).

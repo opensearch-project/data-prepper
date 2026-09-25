@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -62,6 +63,8 @@ public class IndexConfiguration {
     public static final String TEMPLATE_TYPE = "template_type";
     public static final String TEMPLATE_FILE = "template_file";
     public static final String TEMPLATE_CONTENT = "template_content";
+    public static final String COMPONENT_TEMPLATES = "component_templates";
+    static final String COMPOSED_OF = "composed_of";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
@@ -145,6 +148,7 @@ public class IndexConfiguration {
         determineTemplateType(builder);
 
         this.indexTemplate = builder.templateContent != null ? readTemplateContent(builder.templateContent) : readIndexTemplate(builder.templateFile, indexType, templateType);
+        addComponentTemplates(builder.componentTemplates);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -207,6 +211,37 @@ public class IndexConfiguration {
         }
     }
 
+    /**
+     * Adds the configured component templates to the {@code composed_of} list of the index template,
+     * after any the template already declares. OpenSearch applies them in order, and the index
+     * template's own {@code template} block still takes precedence over all of them.
+     */
+    @SuppressWarnings("unchecked")
+    private void addComponentTemplates(final List<String> componentTemplates) {
+        if (componentTemplates == null || componentTemplates.isEmpty()) {
+            return;
+        }
+        if (templateType != TemplateType.INDEX_TEMPLATE) {
+            throw new InvalidPluginConfigurationException(String.format(
+                    "%s requires %s to be %s", COMPONENT_TEMPLATES, TEMPLATE_TYPE, TemplateType.INDEX_TEMPLATE.getTypeName()));
+        }
+        if (indexType == IndexType.MANAGEMENT_DISABLED) {
+            throw new InvalidPluginConfigurationException(String.format(
+                    "%s cannot be used with %s %s", COMPONENT_TEMPLATES, INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue()));
+        }
+        final List<String> composedOf = new ArrayList<>();
+        final Object existing = indexTemplate.get(COMPOSED_OF);
+        if (existing instanceof List) {
+            composedOf.addAll((List<String>) existing);
+        }
+        for (final String componentTemplate : componentTemplates) {
+            if (!composedOf.contains(componentTemplate)) {
+                composedOf.add(componentTemplate);
+            }
+        }
+        indexTemplate.put(COMPOSED_OF, composedOf);
+    }
+
     private void determineTemplateType(Builder builder) {
         if (builder.serverless) {
             templateType = TemplateType.INDEX_TEMPLATE;
@@ -244,6 +279,10 @@ public class IndexConfiguration {
         }
         if (templateContent != null && templateFile != null) {
             LOG.warn("Both template_content and template_file are configured. Only template_content will be used");
+        }
+        final List<String> componentTemplates = openSearchSinkConfig.getComponentTemplates();
+        if (componentTemplates != null) {
+            builder = builder.withComponentTemplates(componentTemplates);
         }
 
         final String documentIdField = openSearchSinkConfig.getDocumentIdField();
@@ -530,6 +569,7 @@ public class IndexConfiguration {
         private TemplateType templateType;
         private String templateFile;
         private String templateContent;
+        private List<String> componentTemplates;
         private int numShards;
         private int numReplicas;
         private String routingField;
@@ -638,6 +678,14 @@ public class IndexConfiguration {
 
         public Builder withFlushTimeout(final long flushTimeout) {
             this.flushTimeout = flushTimeout;
+            return this;
+        }
+
+        public Builder withComponentTemplates(final List<String> componentTemplates) {
+            checkArgument(componentTemplates != null, "componentTemplates cannot be null.");
+            checkArgument(componentTemplates.stream().allMatch(name -> name != null && !name.isEmpty()),
+                    "componentTemplates cannot contain null or empty names.");
+            this.componentTemplates = componentTemplates;
             return this;
         }
 
