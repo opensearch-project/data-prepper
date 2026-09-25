@@ -30,11 +30,18 @@ public class HTTPSourceConfig extends BaseHttpServerConfig {
     @JsonProperty("codec")
     private PluginModel codec;
 
+    @JsonProperty("accept_single_object")
+    private boolean acceptSingleObject = false;
+
     @JsonProperty("metadata_headers")
     private List<String> metadataHeaders = Collections.emptyList();
 
     public PluginModel getCodec() {
         return codec;
+    }
+
+    public boolean getAcceptSingleObject() {
+        return acceptSingleObject;
     }
 
     public List<String> getMetadataHeaders() {
