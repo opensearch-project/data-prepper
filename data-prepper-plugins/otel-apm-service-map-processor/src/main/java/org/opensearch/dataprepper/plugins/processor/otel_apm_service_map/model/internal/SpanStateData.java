@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.net.InetAddresses;
 import lombok.Getter;
 
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
@@ -20,6 +21,11 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil.UNKNOWN_REMOTE_OPERATION;
+import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil.UNKNOWN_REMOTE_SERVICE;
 
 @Getter
 public class SpanStateData implements Serializable {
@@ -28,6 +34,13 @@ public class SpanStateData implements Serializable {
     public static final String NODE_TYPE_DATABASE = "database";
     public static final String NODE_TYPE_MESSAGING = "messaging";
     public static final String NODE_TYPE_EXTERNAL = "external";
+
+    private static final Set<String> DEPENDENCY_CANDIDATE_KINDS = Set.of(
+            "CLIENT", "SPAN_KIND_CLIENT", "PRODUCER", "SPAN_KIND_PRODUCER", "CONSUMER", "SPAN_KIND_CONSUMER");
+    // Loose dotted quad (also zero-padded forms such as 010.000.000.005, which InetAddresses rejects).
+    private static final Pattern IPV4_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
+    // URL.getPort() yields -1 for schemes without a default port.
+    private static final Pattern PORT_PATTERN = Pattern.compile("^(\\d{1,5}|-1)$");
 
     private String serviceName;
     private String spanId;
@@ -101,7 +114,9 @@ public class SpanStateData implements Serializable {
                         OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
                 if (remote != null) {
                     this.derivedRemoteService = remote.getService();
-                    this.derivedRemoteOperation = remote.getOperation();
+                    // Leave the operation unset when unresolved so callers fall back to the span's own.
+                    this.derivedRemoteOperation = UNKNOWN_REMOTE_OPERATION.equals(remote.getOperation())
+                            ? null : remote.getOperation();
                 }
             } catch (final RuntimeException e) {
                 // A malformed URL/authority can throw inside the shared extractor. A failed
@@ -116,7 +131,7 @@ public class SpanStateData implements Serializable {
             // name from those variants so the dependency isn't lost.
             if (NODE_TYPE_DATABASE.equals(derivedNodeType)
                     && (derivedRemoteService == null
-                        || "UnknownRemoteService".equals(derivedRemoteService))) {
+                        || UNKNOWN_REMOTE_SERVICE.equals(derivedRemoteService))) {
                 final String dbName = computeDatabaseName(spanAttributes);
                 if (dbName != null) {
                     this.derivedRemoteService = dbName;
@@ -125,6 +140,10 @@ public class SpanStateData implements Serializable {
             this.messagingSystem = stringAttr(spanAttributes, "messaging.system");
             this.messagingDestination = stringAttr(spanAttributes, "messaging.destination.name");
             this.messagingOperation = stringAttr(spanAttributes, "messaging.operation");
+            // Name a CLIENT-kind messaging call (e.g. settle/ack) like the PRODUCER/CONSUMER broker node.
+            if (NODE_TYPE_MESSAGING.equals(derivedNodeType) && messagingSystem != null && messagingDestination != null) {
+                this.derivedRemoteService = messagingSystem + ":" + messagingDestination;
+            }
 
             this.dependencyAttributes = computeDependencyAttributes(derivedNodeType, spanAttributes);
         }
@@ -138,7 +157,7 @@ public class SpanStateData implements Serializable {
         if (spanKind == null) {
             return false;
         }
-        return spanKind.contains("CLIENT") || spanKind.contains("PRODUCER") || spanKind.contains("CONSUMER");
+        return DEPENDENCY_CANDIDATE_KINDS.contains(spanKind);
     }
 
     /**
@@ -204,7 +223,7 @@ public class SpanStateData implements Serializable {
         }
         // Database detection covers current and legacy OTel keys plus flattened variants
         // (db_system, db_system_name) emitted by several instrumentations.
-        if (hasAny(spanAttributes, "db.system.name", "db.system", "db_system", "db_system_name",
+        if (hasAny(spanAttributes, "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name",
                 "db.statement", "db.query.text", "db.name", "db.namespace")) {
             return NODE_TYPE_DATABASE;
         }
@@ -242,8 +261,8 @@ public class SpanStateData implements Serializable {
 
     /**
      * Build a database dependency name from whatever identity attributes are present:
-     * the DB system (dotted or flattened variants), optionally suffixed with the
-     * server host:port. Falls back to "database" when only a query/statement is present.
+     * the DB system (dotted or flattened variants) when known, otherwise the server
+     * host[:port]. Falls back to "database" when only a query/statement is present.
      *
      * @param attrs The span attributes
      * @return A database node name, or null if nothing identifying is present
@@ -261,6 +280,41 @@ public class SpanStateData implements Serializable {
         }
         // A statement/query was present (which is why we reached here) but no identity.
         return "database";
+    }
+
+    /**
+     * Whether a derived dependency name is worth synthesizing a node for. Suppresses unresolved
+     * ({@code UnknownRemoteService}) and raw-IP peers (which otherwise explode the map into a node
+     * per address) at the source, so the topology only shows named dependencies.
+     *
+     * @param name The derived dependency name, e.g. {@code postgresql}, {@code host:port} or {@code kafka:orders}
+     * @return true if a node should be synthesized for this name
+     */
+    public static boolean isPublishableDependencyName(final String name) {
+        if (name == null || name.isEmpty() || UNKNOWN_REMOTE_SERVICE.equals(name)) {
+            return false;
+        }
+        // An empty host or destination (":80", "kafka:") names nothing.
+        if (name.startsWith(":") || name.endsWith(":")) {
+            return false;
+        }
+        // A bracketed form ("[::1]", "[::1]:6379") only ever wraps an IPv6 literal.
+        if (name.startsWith("[")) {
+            return false;
+        }
+        if (isIpLiteral(name)) {
+            return false;
+        }
+        // address + ":" + port, including an unbracketed IPv6 address. Names such as "AWS::DynamoDB",
+        // "kafka:orders" or an SNS topic ARN are not IP literals and are kept.
+        final int lastColon = name.lastIndexOf(':');
+        return !(lastColon > 0
+                && PORT_PATTERN.matcher(name.substring(lastColon + 1)).matches()
+                && isIpLiteral(name.substring(0, lastColon)));
+    }
+
+    private static boolean isIpLiteral(final String host) {
+        return IPV4_PATTERN.matcher(host).matches() || InetAddresses.isInetAddress(host);
     }
 
     /**

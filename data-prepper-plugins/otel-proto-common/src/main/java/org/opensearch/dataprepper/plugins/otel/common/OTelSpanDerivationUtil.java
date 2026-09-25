@@ -37,6 +37,10 @@ public class OTelSpanDerivationUtil {
     public static final String DERIVED_OPERATION_ATTRIBUTE = "derived.operation";
     public static final String DERIVED_ENVIRONMENT_ATTRIBUTE = "derived.environment";
     public static final String DERIVED_REMOTE_SERVICE_ATTRIBUTE = "derived.remote_service";
+    /** Remote service returned by {@link #computeRemoteOperationAndService} when none can be derived. */
+    public static final String UNKNOWN_REMOTE_SERVICE = "UnknownRemoteService";
+    /** Remote operation returned by {@link #computeRemoteOperationAndService} when none can be derived. */
+    public static final String UNKNOWN_REMOTE_OPERATION = "UnknownRemoteOperation";
     private static final Logger LOG = LoggerFactory.getLogger(OTelSpanDerivationUtil.class);
     private static final String SERVICE_MAPPINGS_FILE = "service_mappings";
 
@@ -231,16 +235,36 @@ public class OTelSpanDerivationUtil {
 
     }
 
-    private static String extractFirstPathFromUrl(final String url) {
-        int colonDoubleSlash = url.indexOf("://");
-        int firstSlash = url.indexOf("/", colonDoubleSlash+3);
+    private static String stripQueryAndFragment(final String url) {
+        int end = url.length();
+        final int query = url.indexOf('?');
+        if (query >= 0) {
+            end = query;
+        }
+        final int fragment = url.indexOf('#');
+        if (fragment >= 0 && fragment < end) {
+            end = fragment;
+        }
+        return url.substring(0, end);
+    }
+
+    private static String extractFirstPathFromUrl(final String fullUrl) {
+        // Query and fragment never belong in the operation: they carry ids/secrets and a "://" of their own.
+        final String url = stripQueryAndFragment(fullUrl);
+        final int schemeSeparator = url.indexOf("://");
+        // A "://" after the first slash is inside the path (e.g. "/proxy/https://..."), not a scheme.
+        final int colonDoubleSlash = schemeSeparator >= 0 && url.indexOf('/') > schemeSeparator ? schemeSeparator : -1;
+        // Skip the authority after "scheme://" or a protocol-relative "//"; otherwise the path starts
+        // at the first slash (e.g. "/v1/charges" or "host/v1/charges").
+        final int pathSearchStart = colonDoubleSlash >= 0 ? colonDoubleSlash+3 : (url.startsWith("//") ? 2 : 0);
+        final int firstSlash = url.indexOf("/", pathSearchStart);
         // No path after the authority (e.g. "https://api.example.com"): return root instead of
         // indexing with firstSlash == -1, which would throw StringIndexOutOfBoundsException.
         if (firstSlash < 0) {
             return "/";
         }
-        int secondSlash = url.indexOf("/", firstSlash+1);
-        String result= (secondSlash > 0) ? url.substring(firstSlash, secondSlash) : url.substring(firstSlash);
+        final int secondSlash = url.indexOf("/", firstSlash+1);
+        final String result= (secondSlash > 0) ? url.substring(firstSlash, secondSlash) : url.substring(firstSlash);
         return result;
     }
 
@@ -337,12 +361,17 @@ public class OTelSpanDerivationUtil {
             final String httpMethod = getStringAttribute(spanAttributes, "http.request.method") != null
                     ? getStringAttribute(spanAttributes, "http.request.method")
                     : getStringAttribute(spanAttributes, "http.method");
-            remoteOperation = httpMethod != null ? httpMethod + " " + extractFirstPathFromUrl(urlString) : urlString;
+            final String urlWithoutQuery = stripQueryAndFragment(urlString);
+            if (httpMethod != null) {
+                remoteOperation = httpMethod + " " + extractFirstPathFromUrl(urlString);
+            } else if (!urlWithoutQuery.isEmpty()) {
+                remoteOperation = urlWithoutQuery;
+            }
         }
 
         return new RemoteOperationAndService(
-                remoteOperation != null ? remoteOperation : "UnknownRemoteOperation",
-                remoteService != null ? remoteService : "UnknownRemoteService");
+                remoteOperation != null ? remoteOperation : UNKNOWN_REMOTE_OPERATION,
+                remoteService != null ? remoteService : UNKNOWN_REMOTE_SERVICE);
     }
 
     private static String deriveServiceFromNetwork(final Map<String, Object> spanAttributes, final String urlString, final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys> addressPortAttributeKeysList) {

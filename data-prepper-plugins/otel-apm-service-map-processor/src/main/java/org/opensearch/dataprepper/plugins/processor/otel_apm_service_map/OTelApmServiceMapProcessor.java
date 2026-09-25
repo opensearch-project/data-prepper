@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -66,8 +65,9 @@ import java.util.TreeMap;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData.isPublishableDependencyName;
 
 @SingleThread
 @DataPrepperPlugin(name = "otel_apm_service_map", pluginType = Processor.class,
@@ -87,31 +87,6 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     // Single source of truth for node-type strings lives in SpanStateData.
     private static final String NODE_TYPE_SERVICE = SpanStateData.NODE_TYPE_SERVICE;
     private static final String NODE_TYPE_MESSAGING = SpanStateData.NODE_TYPE_MESSAGING;
-    private static final String UNKNOWN_REMOTE_SERVICE = "UnknownRemoteService";
-    private static final Pattern IPV4_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
-
-    /**
-     * Whether a derived dependency name is worth synthesizing a node for. Suppresses unresolved
-     * ({@code UnknownRemoteService}) and raw-IP peers (which otherwise explode the map into a node
-     * per address) at the source, so the topology only shows named dependencies.
-     */
-    @VisibleForTesting
-    static boolean isPublishableDependencyName(final String name) {
-        if (name == null || name.isEmpty() || UNKNOWN_REMOTE_SERVICE.equals(name)) {
-            return false;
-        }
-        // Strip a trailing :port (single-colon host:port form) before the IP check.
-        String host = name;
-        final int lastColon = name.lastIndexOf(':');
-        if (lastColon > 0 && name.indexOf(':') == lastColon) {
-            host = name.substring(0, lastColon);
-        }
-        if (IPV4_PATTERN.matcher(host).matches()) {
-            return false;
-        }
-        // Bracketed or bare IPv6 literal (a hostname never carries multiple colons).
-        return !(host.startsWith("[") || host.chars().filter(c -> c == ':').count() >= 2);
-    }
 
     // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger processorsCreated = new AtomicInteger(0);
@@ -933,8 +908,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             if ((isProducer || isConsumer)
                     && messagingSpan.getMessagingSystem() != null
                     && messagingSpan.getMessagingDestination() != null) {
-                final String brokerName =
-                        messagingSpan.getMessagingSystem() + ":" + messagingSpan.getMessagingDestination();
+                // "{system}:{destination}", derived once in SpanStateData so CLIENT-kind messaging
+                // calls resolve to the same broker node.
+                final String brokerName = messagingSpan.getDerivedRemoteService();
                 if (!isPublishableDependencyName(brokerName)) {
                     continue;
                 }

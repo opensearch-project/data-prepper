@@ -14,9 +14,13 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.codec.binary.Hex;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData.isPublishableDependencyName;
 
 class SpanStateDataTest {
 
@@ -115,11 +119,110 @@ class SpanStateDataTest {
     }
 
     @Test
+    void derivedNodeType_derivesOnlyForExactDependencyKinds() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("server.address", "api.openai.com");
+
+        for (final String kind : new String[]{"CLIENT", "SPAN_KIND_CLIENT", "PRODUCER", "SPAN_KIND_PRODUCER",
+                "CONSUMER", "SPAN_KIND_CONSUMER"}) {
+            assertThat(kind, spanWithAttributes(kind, attributes).getDerivedNodeType(), equalTo("external"));
+        }
+        // Substring matches of a dependency kind are not dependency kinds.
+        for (final String kind : new String[]{"SPAN_KIND_CLIENT_STREAMING", "NOT_A_PRODUCER", "client"}) {
+            assertThat(kind, spanWithAttributes(kind, attributes).getDerivedNodeType(), nullValue());
+        }
+    }
+
+    @Test
+    void derivedNodeType_classifiesDatabaseFromUnderscoredSystemNameKey() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system_name", "mysql");
+        attributes.put("server.address", "orders-db");
+
+        final SpanStateData data = spanWithAttributes("SPAN_KIND_CLIENT", attributes);
+
+        assertThat(data.getDerivedNodeType(), equalTo("database"));
+        assertThat(data.getDependencyAttributes().get("db.system.name"), equalTo("mysql"));
+    }
+
+    @Test
+    void derivedRemoteService_forClientMessagingSpan_matchesBrokerName() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "kafka");
+        attributes.put("messaging.destination.name", "orders");
+        attributes.put("messaging.operation", "settle");
+
+        final SpanStateData data = spanWithAttributes("SPAN_KIND_CLIENT", attributes);
+
+        assertThat(data.getDerivedNodeType(), equalTo("messaging"));
+        assertThat(data.getDerivedRemoteService(), equalTo("kafka:orders"));
+    }
+
+    @Test
+    void derivedRemoteOperation_isNullWhenExtractorCannotResolveOne() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("peer.service", "stripe");
+
+        final SpanStateData data = spanWithAttributes("SPAN_KIND_CLIENT", attributes);
+
+        assertThat(data.getDerivedRemoteService(), equalTo("stripe"));
+        assertThat(data.getDerivedRemoteOperation(), nullValue());
+    }
+
+    @Test
     void derivedNodeType_isNullForPlainService() {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("thread.id", 7);
 
         assertNull(spanWithAttributes("SPAN_KIND_SERVER", attributes).getDerivedNodeType());
+    }
+
+    @Test
+    void isPublishableDependencyName_filtersUnresolvedAndRawIpPeers() {
+        // Named dependencies are published.
+        assertThat(isPublishableDependencyName("postgresql"), equalTo(true));
+        assertThat(isPublishableDependencyName("postgresql:5432"), equalTo(true));
+        assertThat(isPublishableDependencyName("api.openai.com:443"), equalTo(true));
+        // Unresolved / empty are suppressed.
+        assertThat(isPublishableDependencyName(null), equalTo(false));
+        assertThat(isPublishableDependencyName(""), equalTo(false));
+        assertThat(isPublishableDependencyName("UnknownRemoteService"), equalTo(false));
+        // An empty host or destination on either side of the colon names nothing.
+        assertThat(isPublishableDependencyName(":80"), equalTo(false));
+        assertThat(isPublishableDependencyName("kafka:"), equalTo(false));
+        assertThat(isPublishableDependencyName(":orders"), equalTo(false));
+        // Raw-IP peers are redacted.
+        assertThat(isPublishableDependencyName("10.0.0.5"), equalTo(false));
+        assertThat(isPublishableDependencyName("10.0.0.5:5432"), equalTo(false));
+        // URL schemes without a default port yield ":-1" from URL.getPort().
+        assertThat(isPublishableDependencyName("10.0.0.5:-1"), equalTo(false));
+        assertThat(isPublishableDependencyName("[::1]:6379"), equalTo(false));
+    }
+
+    @Test
+    void isPublishableDependencyName_publishesMultiColonNamesThatAreNotIpv6Literals() {
+        // AWS SDK targets and ARN-shaped messaging destinations carry several colons but are names.
+        assertThat(isPublishableDependencyName("AWS::DynamoDB"), equalTo(true));
+        assertThat(isPublishableDependencyName(
+                "aws_sns:arn:aws:sns:us-east-1:123456789012:orders"), equalTo(true));
+        assertThat(isPublishableDependencyName(
+                "aws_sqs:https://sqs.us-east-1.amazonaws.com/123456789012/orders"), equalTo(true));
+        // IPv6 literals in every form are still suppressed.
+        assertThat(isPublishableDependencyName("::1"), equalTo(false));
+        assertThat(isPublishableDependencyName("2001:db8::1"), equalTo(false));
+        assertThat(isPublishableDependencyName("fe80::1%eth0"), equalTo(false));
+        assertThat(isPublishableDependencyName("::ffff:10.0.0.5"), equalTo(false));
+        assertThat(isPublishableDependencyName("[2001:db8::1]"), equalTo(false));
+        assertThat(isPublishableDependencyName("[2001:db8::1]:6379"), equalTo(false));
+        // Unbracketed IPv6 with an appended port, as deriveServiceFromNetwork builds address + ":" + port.
+        assertThat(isPublishableDependencyName("2600:1f18:61c:c901:3d4f:8e2a:9b1c:7d05:443"), equalTo(false));
+        assertThat(isPublishableDependencyName("::ffff:10.0.0.5:5432"), equalTo(false));
+        // Zero-padded dotted quads are still raw IPv4 peers.
+        assertThat(isPublishableDependencyName("010.000.000.005:5432"), equalTo(false));
+        // Any bracketed form is an IPv6 literal (or malformed); never publish it.
+        assertThat(isPublishableDependencyName("[]"), equalTo(false));
+        assertThat(isPublishableDependencyName("[]:443"), equalTo(false));
+        assertThat(isPublishableDependencyName("[foo"), equalTo(false));
     }
 
     @Test

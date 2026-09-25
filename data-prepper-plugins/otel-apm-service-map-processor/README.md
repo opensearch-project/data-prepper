@@ -255,7 +255,7 @@ Downstream targets that do not emit their own `SERVER` span — databases, messa
 |--------|------------------|--------------|
 | `service` | An instrumented service (has a `SERVER` span) | `checkout` |
 | `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql` |
-| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443` |
+| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443`, `AWS::DynamoDB` |
 | `messaging` | A `PRODUCER`/`CONSUMER` span; the broker links producer → broker → consumer | `kafka:orders` |
 
 The node **name** is the peer identity derived by `OTelSpanDerivationUtil` and is best-effort: databases usually resolve to the DB system (e.g. `postgresql`), HTTP/RPC peers to `host:port`, and brokers to `{system}:{destination}`. The name is for display and grouping; it is deliberately not treated as a precise instance key. The `dependencyAttributes` map is the reliable identity — the exact peer attributes under canonical OpenTelemetry keys — so consumers filter the dependency's spans/logs on those rather than parsing the name. The field is omitted for `service` nodes and is **not** part of node identity (see below).
@@ -264,7 +264,7 @@ The node **name** is the peer identity derived by `OTelSpanDerivationUtil` and i
 - **messaging**: `messaging.system`, `messaging.destination.name` (the directional `messaging.operation` is emitted as the edge's operation, not here)
 - **external**: `peer.service`, `server.address`, `server.port`, `rpc.system` (`url.full` is intentionally excluded — it carries per-request paths, query strings, and PII)
 
-Unresolved (`UnknownRemoteService`) and raw-IP peers are suppressed so the topology only shows named dependencies.
+Unresolved (`UnknownRemoteService`) and raw-IP peers (IPv4 or IPv6 literals, with or without a port) are suppressed so the topology only shows named dependencies. Names that merely contain several colons, such as `AWS::DynamoDB` or an SNS topic ARN destination, are kept.
 
 `dependencyAttributes` is **descriptive metadata, not identity**: it is excluded from a node's `equals`/`hashCode`, so it never affects `nodeConnectionHash`. This keeps existing service-node hashes byte-stable across an upgrade and keeps one logical dependency a single shared node even when a descriptive value (e.g. per-host DB attributes) varies between callers.
 
