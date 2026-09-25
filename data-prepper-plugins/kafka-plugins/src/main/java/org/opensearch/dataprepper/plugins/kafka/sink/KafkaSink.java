@@ -61,6 +61,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private ExecutorService executorService;
 
+    private KafkaCustomProducer producer;
+
     private final PluginFactory pluginFactory;
 
     private final PluginSetting pluginSetting;
@@ -111,6 +113,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private void doInitializeInternal() {
         executorService = Executors.newFixedThreadPool(totalWorkers);
+        producer = createProducer();
         sinkInitialized = Boolean.TRUE;
     }
 
@@ -124,7 +127,6 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             // TODO: Looks like this call to prepareTopicAndSchema is unnecessary as it is 
             // done in createProducer().
             prepareTopicAndSchema();
-            final KafkaCustomProducer producer = createProducer();
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 executorService.submit(producerWorker);
@@ -185,6 +187,9 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
                 executorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+        }
+        if (producer != null) {
+            producer.close();
         }
         super.shutdown();
         LOG.info("Producer shutdown successfully...");
