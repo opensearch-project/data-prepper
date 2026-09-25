@@ -1,0 +1,17 @@
+{
+  "use_absolute_paths": true,
+  "mappings": [
+    {
+      "source": "user.${type}.id",
+      "targets": [
+        {
+          "target": "targetField",
+          "map": {
+            "admin": "mappedValue1",
+            "user": "mappedValue2"
+          }
+        }
+      ]
+    }
+  ]
+}
