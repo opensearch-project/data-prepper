@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.source.opensearchapi;
@@ -47,7 +51,10 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -135,12 +142,12 @@ class OpenSearchAPIServiceTest {
         }
 
         // Then
-        assertEquals(HttpStatus.OK, postResponse.status());
+        assertThat(postResponse.status(), equalTo(HttpStatus.OK));
         verify(requestsReceivedCounter, times(1)).increment();
         verify(successRequestsCounter, times(1)).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(Math.round(payloadLengthCaptor.getValue()), equalTo((long) testRequest.content().length()));
         verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
@@ -173,12 +180,12 @@ class OpenSearchAPIServiceTest {
         }
 
         // Then
-        assertEquals(HttpStatus.OK, postResponse.status());
+        assertThat(postResponse.status(), equalTo(HttpStatus.OK));
         verify(requestsReceivedCounter, times(1)).increment();
         verify(successRequestsCounter, times(1)).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(Math.round(payloadLengthCaptor.getValue()), equalTo((long) testRequest.content().length()));
         verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
@@ -323,7 +330,7 @@ class OpenSearchAPIServiceTest {
         verify(successRequestsCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(testTooLargeRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(Math.round(payloadLengthCaptor.getValue()), equalTo((long) testTooLargeRequest.content().length()));
         verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
@@ -336,7 +343,7 @@ class OpenSearchAPIServiceTest {
 
         AggregatedHttpResponse response = openSearchAPIService.doPostBulkIndex(serviceRequestContext, populateDataRequest, null,
                 null, null).aggregate().get();
-        assertEquals(HttpStatus.REQUEST_TIMEOUT, response.status());
+        assertThat(response.status(), equalTo(HttpStatus.REQUEST_TIMEOUT));
 
         // Then
         verify(requestsReceivedCounter, times(1)).increment();
@@ -350,7 +357,7 @@ class OpenSearchAPIServiceTest {
         lenient().when(serviceRequestContext.isTimedOut()).thenReturn(true);
         AggregatedHttpResponse response = openSearchAPIService.doPostBulk(serviceRequestContext, populateDataRequest, null,
                 null).aggregate().get();
-        assertEquals(HttpStatus.REQUEST_TIMEOUT, response.status());
+        assertThat(response.status(), equalTo(HttpStatus.REQUEST_TIMEOUT));
 
         // Then
         verify(requestsReceivedCounter, times(1)).increment();
@@ -380,7 +387,7 @@ class OpenSearchAPIServiceTest {
         verify(successRequestsCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(Math.round(payloadLengthCaptor.getValue()), equalTo((long) testBadRequest.content().length()));
         verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
@@ -439,4 +446,36 @@ class OpenSearchAPIServiceTest {
         HttpData httpData = HttpData.ofUtf8(String.join("\n", jsonList));
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
     }
+
+    @Test
+    public void testBulkRequestAPIResponseContainsValidBulkJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequest(3);
+        AggregatedHttpResponse postResponse = openSearchAPIService.doPostBulk(
+                serviceRequestContext, testRequest, null, null).aggregate().get();
+
+        assertThat(postResponse.status(), equalTo(HttpStatus.OK));
+        String body = postResponse.contentUtf8();
+        Map<String, Object> bulkResponse = new ObjectMapper().readValue(body, Map.class);
+        assertThat(bulkResponse.get("errors"), equalTo(false));
+        assertThat((int) bulkResponse.get("took"), is(org.hamcrest.Matchers.greaterThanOrEqualTo(0)));
+        List<?> items = (List<?>) bulkResponse.get("items");
+        assertThat(items, is(notNullValue()));
+        assertThat(items.size(), equalTo(0));
+    }
+
+    @Test
+    public void testBulkRequestAPIResponseWithIndexInPathContainsValidBulkJson() throws Exception {
+        AggregatedHttpRequest testRequest = generateRandomValidBulkRequestWithNoIndexInBody(2);
+        AggregatedHttpResponse postResponse = openSearchAPIService.doPostBulkIndex(
+                serviceRequestContext, testRequest, "my-index", null, null).aggregate().get();
+
+        assertThat(postResponse.status(), equalTo(HttpStatus.OK));
+        String body = postResponse.contentUtf8();
+        Map<String, Object> bulkResponse = new ObjectMapper().readValue(body, Map.class);
+        assertThat(bulkResponse.get("errors"), equalTo(false));
+        List<?> items = (List<?>) bulkResponse.get("items");
+        assertThat(items, is(notNullValue()));
+        assertThat(items.size(), equalTo(0));
+    }
+
 }
