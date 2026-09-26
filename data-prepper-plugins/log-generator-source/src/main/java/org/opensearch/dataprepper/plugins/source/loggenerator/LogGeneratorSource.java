@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loggenerator;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -36,7 +37,8 @@ public class LogGeneratorSource implements Source<Record<Event>> {
     public LogGeneratorSource(final LogGeneratorSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
         this.sourceConfig = sourceConfig;
         this.logTypeGenerator = loadLogTypeGenerator(pluginFactory);
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("log-generator-source"));
     }
 
     private LogTypeGenerator loadLogTypeGenerator(final PluginFactory pluginFactory) {

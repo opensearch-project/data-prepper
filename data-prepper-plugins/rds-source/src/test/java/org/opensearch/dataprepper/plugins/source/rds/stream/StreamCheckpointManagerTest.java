@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,7 +63,9 @@ class StreamCheckpointManagerTest {
     void test_start() {
         final ExecutorService executorService = mock(ExecutorService.class);
         try (MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(executorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadExecutor(any(ThreadFactory.class)))
+                    .thenReturn(executorService);
 
             final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
             streamCheckpointManager.start();
@@ -74,7 +77,9 @@ class StreamCheckpointManagerTest {
     void test_shutdown() {
         final ExecutorService executorService = mock(ExecutorService.class);
         try (MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(executorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadExecutor(any(ThreadFactory.class)))
+                    .thenReturn(executorService);
 
             final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
             streamCheckpointManager.start();

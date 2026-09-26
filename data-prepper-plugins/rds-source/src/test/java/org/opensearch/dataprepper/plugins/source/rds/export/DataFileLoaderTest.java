@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -271,7 +272,9 @@ class DataFileLoaderTest {
              MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
 
             ScheduledExecutorService mockScheduler = mock(ScheduledExecutorService.class);
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(mockScheduler);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
+                    .thenReturn(mockScheduler);
 
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(any(Buffer.class), anyInt(), any(Duration.class))).thenReturn(bufferAccumulator);

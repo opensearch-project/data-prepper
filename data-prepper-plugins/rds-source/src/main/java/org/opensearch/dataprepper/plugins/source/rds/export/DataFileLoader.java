@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -135,7 +136,8 @@ public class DataFileLoader implements Runnable {
     public void run() {
         LOG.info(SENSITIVE, "Start loading s3://{}/{}", bucket, objectKey);
 
-        final ScheduledExecutorService leaseRenewalScheduler = Executors.newSingleThreadScheduledExecutor();
+        final ScheduledExecutorService leaseRenewalScheduler = Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-lease-renewal"));
         leaseRenewalScheduler.scheduleAtFixedRate(() -> {
             try {
                 sourceCoordinator.saveProgressStateForPartition(dataFilePartition, LEASE_RENEWAL_DURATION);

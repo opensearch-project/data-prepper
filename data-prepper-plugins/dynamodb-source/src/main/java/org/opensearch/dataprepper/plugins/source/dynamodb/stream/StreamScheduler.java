@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -69,7 +70,8 @@ public class StreamScheduler implements Runnable {
         this.shardAcknowledgementManager = dynamoDBSourceConfig.isAcknowledgmentsEnabled() ? 
             new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig, coordinator::giveUpPartition) : null;
 
-        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
+        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-source-stream"));
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
         shardsInProcessing = pluginMetrics.gauge(SHARDS_IN_PROCESSING, new AtomicLong());
     }

@@ -46,12 +46,14 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -201,7 +203,7 @@ public class KafkaSinkTest {
 
     @Test
     public void doInitializeNullPointerExceptionTest() {
-        when(Executors.newFixedThreadPool(totalWorkers)).thenThrow(NullPointerException.class);
+        when(Executors.newFixedThreadPool(eq(totalWorkers), any(ThreadFactory.class))).thenThrow(NullPointerException.class);
         final KafkaSink objectUnderTest = createObjectUnderTest();
         assertThrows(NullPointerException.class, () -> objectUnderTest.doInitialize());
     }

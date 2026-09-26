@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -59,7 +60,8 @@ public class StreamCheckpointManager {
         this.acknowledgmentTimeout = acknowledgmentTimeout;
         this.engineType = engineType;
         this.pluginMetrics = pluginMetrics;
-        executorService = Executors.newSingleThreadExecutor();
+        executorService = Executors.newSingleThreadExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-checkpoint"));
 
         this.positiveAcknowledgementSets = pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
         this.negativeAcknowledgementSets = pluginMetrics.counter(NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);

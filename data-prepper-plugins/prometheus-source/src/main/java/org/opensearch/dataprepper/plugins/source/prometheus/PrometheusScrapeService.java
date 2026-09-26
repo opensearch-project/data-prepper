@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.prometheus;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -59,11 +60,8 @@ public class PrometheusScrapeService {
         this.bufferWriteTimeoutMs = bufferWriteTimeoutMs;
         this.scraper = new ScrapeTargetScraper(config);
         this.parser = new TextExpositionParser(config.isFlattenLabels());
-        this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread t = new Thread(r, "prometheus-scrape");
-            t.setDaemon(true);
-            return t;
-        });
+        this.executor = Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("prometheus-scrape"));
         this.scrapeRequestsCounter = pluginMetrics.counter(SCRAPE_REQUESTS_METRIC);
         this.scrapeSuccessCounter = pluginMetrics.counter(SCRAPE_SUCCESS_METRIC);
         this.scrapeFailureCounter = pluginMetrics.counter(SCRAPE_FAILURE_METRIC);

@@ -83,9 +83,9 @@ class BackgroundThreadFactoryTest {
         }
 
         @Test
-        void newThread_sets_daemon_to_false() {
+        void newThread_sets_daemon_to_true() {
             createObjectUnderTest().newThread(runnable);
-            verify(threadFromDelegate).setDaemon(false);
+            verify(threadFromDelegate).setDaemon(true);
         }
     }
 

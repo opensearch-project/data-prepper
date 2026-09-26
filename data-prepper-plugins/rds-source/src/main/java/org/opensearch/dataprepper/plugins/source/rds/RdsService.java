@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds;
 
 import com.github.shyiko.mysql.binlog.network.SSLMode;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -161,7 +162,8 @@ public class RdsService {
             }
         }
 
-        executor = Executors.newFixedThreadPool(runnableList.size());
+        executor = Executors.newFixedThreadPool(runnableList.size(),
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source"));
         runnableList.forEach(executor::submit);
     }
 
