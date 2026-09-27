@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "mappings": {
     "date_detection": false,
     "dynamic_templates": [
@@ -35,7 +35,12 @@
           "path_match": "*.dependencyAttributes.*",
           "match_mapping_type": "string",
           "mapping": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },

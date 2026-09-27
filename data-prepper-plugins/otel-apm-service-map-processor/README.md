@@ -307,7 +307,7 @@ Synthesis also skips calls that are already represented or are not dependencies:
 
 **Cardinality.** Per window, each source service (environment + name) may emit at most `max_dependencies_per_service` distinct dependency names and `max_remote_operations_per_service` distinct (dependency, remote operation) pairs. The first values seen in the window are admitted; later ones become `OtherRemoteService` / `OtherRemoteOperation` in both the topology and the metrics, and `dependencyAttributes` is dropped for the overflow node. The cumulative gauges `dependencyNodesOverflowed` and `dependencyRemoteOperationsOverflowed` count collapsed calls. Service-to-service edges are not capped. Each Data Prepper node applies the caps independently.
 
-**Index mapping.** The `otel-v2-apm-service-map` index template (version 1) maps `*.dependencyAttributes.*` strings as `keyword`, so exact `term` filters and aggregations work without `.keyword`. Existing indices keep their mapping until the next rollover.
+**Index mapping.** The `otel-v2-apm-service-map` index template (version 2) maps `*.dependencyAttributes.*` strings as `keyword` with a `keyword` sub-field. Existing indices keep their mapping until the next rollover; indices created before the template use dynamic `text` with a `.keyword` sub-field. For exact `term` filters and aggregations, use `<attr>.keyword` (for example `targetNode.dependencyAttributes.server.address.keyword`): that path works on indices created before and after the template, so one query covers both behind the alias.
 
 `dependencyAttributes` is **descriptive metadata, not identity**: it is excluded from a node's `equals`/`hashCode`, so it never affects `nodeConnectionHash`. This keeps existing service-node hashes byte-stable across an upgrade and keeps one logical dependency a single shared node even when a descriptive value (e.g. per-host DB attributes) varies between callers.
 
@@ -334,6 +334,7 @@ Synthesis also skips calls that are already represented or are not dependencies:
 - **Path cardinality.** Without `url.template`/`http.route`, the first path segment is used, so versioned APIs collapse to `GET /v1` and ID segments produce one operation per ID up to the cap.
 - **Cap admission order.** Which values are admitted before a cap is reached depends on processing order, so an overflowed dependency can differ between windows.
 - **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker name until the cap is reached.
+- **Host-less database spans.** Instrumentations that omit `server.address` (e.g. Go `XSAM/otelsql` without `otelsql.AttributesFromDSN`) produce a host-less `{db.system}` node (or `{db.system}:{db.namespace}` when a namespace is present) that is separate from the `{db.system}:{host}` node other callers of the same database produce. Emit the DSN attributes (`otelsql.AttributesFromDSN`) or set the same `peer.service` on every caller's spans, to merge them.
 - **AWS SDK messaging.** Producers instrumented only with `rpc.system=aws-api` (no `messaging.system`) are not yet synthesized as messaging edges.
 
 ### Dual Hash Fields

@@ -356,6 +356,20 @@ class SpanStateDataTest {
     }
 
     @Test
+    void derivedRemoteService_forFlattenedSystemWithoutHost_isSystemAndServerAddressAddsHost() {
+        final Map<String, Object> hostless = new HashMap<>();
+        hostless.put("db_system_name", "postgresql");
+        hostless.put("db.query.text", "SELECT id FROM products");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", hostless), equalTo("postgresql"));
+
+        final Map<String, Object> withHost = new HashMap<>(hostless);
+        withHost.put("server.address", "postgresql");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", withHost), equalTo("postgresql:postgresql"));
+    }
+
+    @Test
     void derivedRemoteService_forDatabaseWithIpOrDeniedHost_fallsBackToNamespaceOrSystem() {
         final Map<String, Object> ipHost = new HashMap<>();
         ipHost.put("db.system.name", "postgresql");
