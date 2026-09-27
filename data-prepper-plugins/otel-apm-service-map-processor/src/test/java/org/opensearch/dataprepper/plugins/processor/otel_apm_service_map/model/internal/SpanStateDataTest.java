@@ -317,4 +317,240 @@ class SpanStateDataTest {
         assertEquals(data1, data2);
         assertEquals(data1.hashCode(), data2.hashCode());
     }
+
+    // ---- Review round 2: database identity, host filtering, port normalization, messaging keys ----
+
+    private static String derivedName(final String spanKind, final Map<String, Object> attributes) {
+        return spanWithAttributes(spanKind, attributes).getDerivedRemoteService();
+    }
+
+    @Test
+    void derivedRemoteService_forDatabase_isSystemAndHost() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system.name", "postgresql");
+        attributes.put("db.namespace", "orders");
+        attributes.put("server.address", "orders-db.internal");
+        attributes.put("server.port", 5432);
+
+        final SpanStateData span = spanWithAttributes("SPAN_KIND_CLIENT", attributes);
+
+        assertThat(span.getDerivedRemoteService(), equalTo("postgresql:orders-db.internal"));
+        assertThat(span.getDependencyAttributes().get("db.system.name"), equalTo("postgresql"));
+    }
+
+    @Test
+    void derivedRemoteService_forDatabaseWithoutHost_isSystemAndNamespace() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system", "postgresql");
+        attributes.put("db.name", "billing");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", attributes), equalTo("postgresql:billing"));
+    }
+
+    @Test
+    void derivedRemoteService_forDatabaseWithOnlySystem_isSystem() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system.name", "redis");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", attributes), equalTo("redis"));
+    }
+
+    @Test
+    void derivedRemoteService_forDatabaseWithIpOrDeniedHost_fallsBackToNamespaceOrSystem() {
+        final Map<String, Object> ipHost = new HashMap<>();
+        ipHost.put("db.system.name", "postgresql");
+        ipHost.put("db.namespace", "orders");
+        ipHost.put("server.address", "10.0.0.5");
+        final Map<String, Object> deniedHost = new HashMap<>();
+        deniedHost.put("db.system.name", "mysql");
+        deniedHost.put("server.address", "ip-10-0-0-5.ec2.internal");
+        final Map<String, Object> loopbackHost = new HashMap<>();
+        loopbackHost.put("db.system.name", "redis");
+        loopbackHost.put("server.address", "localhost");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", ipHost), equalTo("postgresql:orders"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", deniedHost), equalTo("mysql"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", loopbackHost), equalTo("redis"));
+    }
+
+    @Test
+    void derivedRemoteService_forFlattenedDbSystemWithNetworkAddress_usesSystemNaming() {
+        final Map<String, Object> ipAddress = new HashMap<>();
+        ipAddress.put("db_system", "postgresql");
+        ipAddress.put("server.address", "10.0.0.5");
+        ipAddress.put("server.port", 5432);
+        final Map<String, Object> flattened = new HashMap<>();
+        flattened.put("db_system", "postgresql");
+        flattened.put("server.address", "pg-host");
+        flattened.put("server.port", 5432);
+        final Map<String, Object> dotted = new HashMap<>();
+        dotted.put("db.system", "postgresql");
+        dotted.put("server.address", "pg-host");
+        dotted.put("server.port", 5432);
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", ipAddress), equalTo("postgresql"));
+        assertTrue(isPublishableDependencyName(derivedName("SPAN_KIND_CLIENT", ipAddress)));
+        assertThat(derivedName("SPAN_KIND_CLIENT", flattened), equalTo("postgresql:pg-host"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", dotted), equalTo(derivedName("SPAN_KIND_CLIENT", flattened)));
+    }
+
+    @Test
+    void derivedRemoteService_forAwsSdkDatabaseCall_keepsAwsServiceName() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("rpc.system", "aws-api");
+        attributes.put("rpc.service", "DynamoDb");
+        attributes.put("rpc.method", "GetItem");
+        attributes.put("db.system", "dynamodb");
+        attributes.put("server.address", "dynamodb.us-east-1.amazonaws.com");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", attributes), equalTo("AWS::DynamoDB"));
+    }
+
+    @Test
+    void derivedRemoteService_forExternal_dropsSchemeDefaultPorts() {
+        final Map<String, Object> fromUrl = new HashMap<>();
+        fromUrl.put("http.request.method", "GET");
+        fromUrl.put("url.full", "https://api.example.com/v1/charges");
+        final Map<String, Object> explicitPort = new HashMap<>();
+        explicitPort.put("http.request.method", "GET");
+        explicitPort.put("server.address", "api.example.com");
+        explicitPort.put("server.port", 443);
+        final Map<String, Object> noPort = new HashMap<>();
+        noPort.put("http.request.method", "GET");
+        noPort.put("server.address", "api.example.com");
+        final Map<String, Object> httpPort = new HashMap<>();
+        httpPort.put("http.method", "GET");
+        httpPort.put("http.url", "http://api.example.com/v1");
+        final Map<String, Object> customPort = new HashMap<>();
+        customPort.put("http.request.method", "GET");
+        customPort.put("server.address", "api.example.com");
+        customPort.put("server.port", 8443);
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", fromUrl), equalTo("api.example.com"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", explicitPort), equalTo("api.example.com"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", noPort), equalTo("api.example.com"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", httpPort), equalTo("api.example.com"));
+        assertThat(derivedName("SPAN_KIND_CLIENT", customPort), equalTo("api.example.com:8443"));
+    }
+
+    @Test
+    void derivedRemoteService_forExternalWithIpDerivedHostName_isNotPublishable() {
+        for (final String host : new String[]{"ip-10-0-0-5.ec2.internal", "10-0-0-5.ns.pod.cluster.local",
+                "ec2-1-2-3-4.compute-1.amazonaws.com"}) {
+            final Map<String, Object> attributes = new HashMap<>();
+            attributes.put("http.request.method", "GET");
+            attributes.put("server.address", host);
+            attributes.put("server.port", 8080);
+
+            assertTrue(!isPublishableDependencyName(derivedName("SPAN_KIND_CLIENT", attributes)), host);
+        }
+    }
+
+    @Test
+    void derivedRemoteService_withCustomDenylist_suppressesMatchingHost() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("http.request.method", "GET");
+        attributes.put("server.address", "egress-proxy");
+        attributes.put("server.port", 3128);
+        final SpanStateData span = new SpanStateData("service", "01", null, "02", "SPAN_KIND_CLIENT", "span", "op",
+                1000L, "OK", "2023-01-01", null, attributes,
+                new DependencyNamingPolicy(java.util.List.of("^egress-proxy$")));
+
+        assertTrue(!isPublishableDependencyName(span.getDerivedRemoteService()));
+    }
+
+    @Test
+    void isPublishableDependencyName_rejectsLoopbackNames() {
+        assertTrue(!isPublishableDependencyName("localhost"));
+        assertTrue(!isPublishableDependencyName("localhost:3500"));
+        assertTrue(!isPublishableDependencyName("LOCALHOST:3500"));
+        assertTrue(!isPublishableDependencyName("localhost.localdomain:80"));
+        assertTrue(!isPublishableDependencyName("app.localhost:8080"));
+        assertTrue(isPublishableDependencyName("localhost-api.example.com"));
+    }
+
+    @Test
+    void messagingDestination_fallsBackToLegacyKey() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "rabbitmq");
+        attributes.put("messaging.destination", "invoices");
+
+        final SpanStateData span = spanWithAttributes("SPAN_KIND_PRODUCER", attributes);
+
+        assertThat(span.getMessagingDestination(), equalTo("invoices"));
+        assertThat(span.getDerivedRemoteService(), equalTo("rabbitmq:invoices"));
+        assertThat(span.getDependencyAttributes().get("messaging.destination.name"), equalTo("invoices"));
+    }
+
+    @Test
+    void messagingOperation_fallsBackToOperationType() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "kafka");
+        attributes.put("messaging.destination.name", "orders");
+        attributes.put("messaging.operation.type", "process");
+
+        assertThat(spanWithAttributes("SPAN_KIND_CONSUMER", attributes).getMessagingOperation(), equalTo("process"));
+    }
+
+    @Test
+    void nullNamingPolicy_skipsDependencyDerivation() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("db.system.name", "postgresql");
+        attributes.put("messaging.system", "kafka");
+        attributes.put("messaging.destination.name", "orders");
+
+        final SpanStateData span = new SpanStateData("service", "01", null, "02", "SPAN_KIND_PRODUCER", "span", "op",
+                1000L, "OK", "2023-01-01", null, attributes, null);
+
+        assertNull(span.getDerivedNodeType());
+        assertNull(span.getDerivedRemoteService());
+        assertNull(span.getMessagingSystem());
+        assertTrue(span.getDependencyAttributes().isEmpty());
+    }
+
+    @Test
+    void dependencyAttributes_omitHostsThatCannotNameANode() {
+        final Map<String, Object> ipHost = new HashMap<>();
+        ipHost.put("db.system.name", "postgresql");
+        ipHost.put("db.namespace", "orders");
+        ipHost.put("server.address", "10.0.0.5");
+        ipHost.put("server.port", 5432);
+        final Map<String, Object> namedHost = new HashMap<>(ipHost);
+        namedHost.put("server.address", "orders-db.internal");
+
+        final Map<String, String> ipDeps = spanWithAttributes("SPAN_KIND_CLIENT", ipHost).getDependencyAttributes();
+        final Map<String, String> namedDeps = spanWithAttributes("SPAN_KIND_CLIENT", namedHost).getDependencyAttributes();
+
+        assertNull(ipDeps.get("server.address"));
+        assertNull(ipDeps.get("server.port"));
+        assertThat(ipDeps.get("db.namespace"), equalTo("orders"));
+        assertThat(namedDeps.get("server.address"), equalTo("orders-db.internal"));
+    }
+
+    @Test
+    void derivedRemoteService_forExternalUrlWithoutDefaultPort_dropsTheUnknownPortMarker() {
+        final Map<String, Object> attributes = new HashMap<>();
+        // java.net.URL knows "file" but gives it no default port, so the shared extractor names it "inventory:-1".
+        attributes.put("http.request.method", "GET");
+        attributes.put("url.full", "file://inventory/share/stock.csv");
+
+        assertThat(derivedName("SPAN_KIND_CLIENT", attributes), equalTo("inventory"));
+    }
+
+    @Test
+    void derivedRemoteService_forClientMessagingSpanWithoutDestination_isNotPublishable() {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("messaging.system", "kafka");
+        attributes.put("messaging.operation", "settle");
+
+        assertTrue(!isPublishableDependencyName(derivedName("SPAN_KIND_CLIENT", attributes)));
+    }
+
+    @Test
+    void hostWithoutPort_stripsNumericAndUnknownPorts() {
+        assertThat(SpanStateData.hostWithoutPort("api.example.com:443"), equalTo("api.example.com"));
+        assertThat(SpanStateData.hostWithoutPort("inventory:-1"), equalTo("inventory"));
+        assertThat(SpanStateData.hostWithoutPort("kafka:orders"), equalTo("kafka:orders"));
+        assertThat(SpanStateData.hostWithoutPort("AWS::DynamoDB"), equalTo("AWS::DynamoDB"));
+    }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 0,
+  "version": 1,
   "template": {
     "mappings": {
       "date_detection": false,
@@ -25,6 +25,15 @@
         {
           "string_group_by_attributes": {
             "path_match": "*.groupByAttributes.*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        },
+        {
+          "string_dependency_attributes": {
+            "path_match": "*.dependencyAttributes.*",
             "match_mapping_type": "string",
             "mapping": {
               "type": "keyword"
@@ -81,6 +90,10 @@
             "groupByAttributes": {
               "type": "object",
               "dynamic": "true"
+            },
+            "dependencyAttributes": {
+              "type": "object",
+              "dynamic": "true"
             }
           }
         },
@@ -100,6 +113,10 @@
               }
             },
             "groupByAttributes": {
+              "type": "object",
+              "dynamic": "true"
+            },
+            "dependencyAttributes": {
               "type": "object",
               "dynamic": "true"
             }

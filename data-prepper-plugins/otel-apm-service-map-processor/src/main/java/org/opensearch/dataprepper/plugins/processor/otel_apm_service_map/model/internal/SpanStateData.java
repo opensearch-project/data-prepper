@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.otel.common.RemoteOperationAndService;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -41,6 +42,16 @@ public class SpanStateData implements Serializable {
     private static final Pattern IPV4_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
     // URL.getPort() yields -1 for schemes without a default port.
     private static final Pattern PORT_PATTERN = Pattern.compile("^(\\d{1,5}|-1)$");
+    private static final Set<String> DROPPED_PORTS = Set.of("80", "443", "-1");
+    private static final Set<String> LOOPBACK_NAMES = Set.of(
+            "localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback");
+    private static final String AWS_API_RPC_SYSTEM = "aws-api";
+    private static final String[] DB_SYSTEM_KEYS = {
+            "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name"};
+    private static final String[] HOST_KEYS = {"server.address", "net.peer.name", "network.peer.address"};
+    private static final String[] PORT_KEYS = {"server.port", "net.peer.port", "network.peer.port"};
+    // messaging.destination is the pre-1.17 semantic-convention key for the destination name.
+    private static final String[] MESSAGING_DESTINATION_KEYS = {"messaging.destination.name", "messaging.destination"};
 
     private String serviceName;
     private String spanId;
@@ -83,6 +94,27 @@ public class SpanStateData implements Serializable {
                          final String endTime,
                          final Map<String, String> groupByAttributes,
                          final Map<String, Object> spanAttributes) {
+        this(serviceName, spanId, parentSpanId, traceId, spanKind, spanName, operation, durationInNanos, status,
+                endTime, groupByAttributes, spanAttributes, DependencyNamingPolicy.DEFAULT);
+    }
+
+    /**
+     * @param namingPolicy Policy for naming synthesized dependency targets, or null to skip dependency
+     *                     derivation entirely (dependency nodes disabled)
+     */
+    public SpanStateData(final String serviceName,
+                         final String spanId,
+                         final String parentSpanId,
+                         final String traceId,
+                         final String spanKind,
+                         final String spanName,
+                         final String operation,
+                         final Long durationInNanos,
+                         final String status,
+                         final String endTime,
+                         final Map<String, String> groupByAttributes,
+                         final Map<String, Object> spanAttributes,
+                         final DependencyNamingPolicy namingPolicy) {
         this.serviceName = serviceName;
         this.spanId = spanId;
         this.parentSpanId = parentSpanId;
@@ -107,7 +139,8 @@ public class SpanStateData implements Serializable {
         // external dependency: CLIENT calls and messaging PRODUCER/CONSUMER spans. SERVER/INTERNAL
         // spans describe the service itself (their server.address/http.method is the service's own
         // listener), so leaving these null avoids persisting misleading data across the windows.
-        if (isDependencyCandidateKind(spanKind) && spanAttributes != null && !spanAttributes.isEmpty()) {
+        if (namingPolicy != null && isDependencyCandidateKind(spanKind)
+                && spanAttributes != null && !spanAttributes.isEmpty()) {
             this.derivedNodeType = computeNodeType(spanAttributes);
             try {
                 final RemoteOperationAndService remote =
@@ -125,27 +158,29 @@ public class SpanStateData implements Serializable {
                 this.derivedRemoteService = null;
                 this.derivedRemoteOperation = null;
             }
-            // The shared extractor only recognizes dotted db keys (db.system[.name]);
-            // many instrumentations emit flattened variants (db_system, db_system_name),
-            // which otherwise fall through to "UnknownRemoteService". Recover a database
-            // name from those variants so the dependency isn't lost.
+            // Databases are named from the system plus the instance so that distinct databases of one
+            // engine stay distinct nodes. The shared extractor only knows dotted db.system keys and names
+            // a database by its system alone (or host:port when only flattened keys are present), so the
+            // name is rebuilt here unless the caller named the peer (peer.service) or it is an AWS SDK call.
             if (NODE_TYPE_DATABASE.equals(derivedNodeType)
-                    && (derivedRemoteService == null
-                        || UNKNOWN_REMOTE_SERVICE.equals(derivedRemoteService))) {
-                final String dbName = computeDatabaseName(spanAttributes);
-                if (dbName != null) {
-                    this.derivedRemoteService = dbName;
-                }
+                    && !hasAny(spanAttributes, "peer.service")
+                    && !AWS_API_RPC_SYSTEM.equals(stringAttr(spanAttributes, "rpc.system"))) {
+                this.derivedRemoteService = computeDatabaseName(spanAttributes, namingPolicy);
+            } else if (NODE_TYPE_EXTERNAL.equals(derivedNodeType) && derivedRemoteService != null) {
+                this.derivedRemoteService = normalizeExternalName(derivedRemoteService, namingPolicy);
             }
             this.messagingSystem = stringAttr(spanAttributes, "messaging.system");
-            this.messagingDestination = stringAttr(spanAttributes, "messaging.destination.name");
-            this.messagingOperation = stringAttr(spanAttributes, "messaging.operation");
+            this.messagingDestination = firstAttr(spanAttributes, MESSAGING_DESTINATION_KEYS);
+            this.messagingOperation = firstAttr(spanAttributes, "messaging.operation", "messaging.operation.type");
             // Name a CLIENT-kind messaging call (e.g. settle/ack) like the PRODUCER/CONSUMER broker node.
-            if (NODE_TYPE_MESSAGING.equals(derivedNodeType) && messagingSystem != null && messagingDestination != null) {
-                this.derivedRemoteService = messagingSystem + ":" + messagingDestination;
+            // A messaging call without a destination (metadata fetch, ack) names no broker node, as on the
+            // PRODUCER/CONSUMER path.
+            if (NODE_TYPE_MESSAGING.equals(derivedNodeType)) {
+                this.derivedRemoteService = messagingSystem != null && messagingDestination != null
+                        ? messagingSystem + ":" + messagingDestination : null;
             }
 
-            this.dependencyAttributes = computeDependencyAttributes(derivedNodeType, spanAttributes);
+            this.dependencyAttributes = computeDependencyAttributes(derivedNodeType, spanAttributes, namingPolicy);
         }
     }
 
@@ -167,19 +202,23 @@ public class SpanStateData implements Serializable {
      *
      * @param nodeType       The derived node type (database / messaging / external), or null
      * @param spanAttributes The span attributes
+     * @param namingPolicy   The host naming policy
      * @return An ordered map of canonical identity attributes (possibly empty)
      */
     private static Map<String, String> computeDependencyAttributes(final String nodeType,
-                                                                    final Map<String, Object> spanAttributes) {
+                                                                    final Map<String, Object> spanAttributes,
+                                                                    final DependencyNamingPolicy namingPolicy) {
         if (nodeType == null || spanAttributes == null || spanAttributes.isEmpty()) {
             return Collections.emptyMap();
         }
         final Map<String, String> attrs = new LinkedHashMap<>();
-        final String host = firstAttr(spanAttributes, "server.address", "net.peer.name", "network.peer.address");
-        final String port = firstAttr(spanAttributes, "server.port", "net.peer.port", "network.peer.port");
+        // A host that cannot name a node (IP literal, loopback, denylisted) is per-instance noise; it is
+        // left out rather than stored as whichever instance's address was seen first.
+        final String rawHost = firstAttr(spanAttributes, HOST_KEYS);
+        final String host = rawHost != null && isNameableHost(rawHost, namingPolicy) ? rawHost : null;
+        final String port = host != null ? firstAttr(spanAttributes, PORT_KEYS) : null;
         if (NODE_TYPE_DATABASE.equals(nodeType)) {
-            putIfPresent(attrs, "db.system.name",
-                    firstAttr(spanAttributes, "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name"));
+            putIfPresent(attrs, "db.system.name", firstAttr(spanAttributes, DB_SYSTEM_KEYS));
             putIfPresent(attrs, "db.namespace", firstAttr(spanAttributes, "db.namespace", "db.name"));
             putIfPresent(attrs, "server.address", host);
             putIfPresent(attrs, "server.port", port);
@@ -187,7 +226,7 @@ public class SpanStateData implements Serializable {
             // messaging.operation (publish/receive) is per-direction, not identity — it would split
             // the shared broker node between producer and consumer, so it is deliberately omitted.
             putIfPresent(attrs, "messaging.system", stringAttr(spanAttributes, "messaging.system"));
-            putIfPresent(attrs, "messaging.destination.name", stringAttr(spanAttributes, "messaging.destination.name"));
+            putIfPresent(attrs, "messaging.destination.name", firstAttr(spanAttributes, MESSAGING_DESTINATION_KEYS));
         } else if (NODE_TYPE_EXTERNAL.equals(nodeType)) {
             // url.full is deliberately excluded: it carries the per-request path + query string
             // (ids, tokens, PII) and would otherwise land in the service-map index. The bounded
@@ -223,8 +262,8 @@ public class SpanStateData implements Serializable {
         }
         // Database detection covers current and legacy OTel keys plus flattened variants
         // (db_system, db_system_name) emitted by several instrumentations.
-        if (hasAny(spanAttributes, "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name",
-                "db.statement", "db.query.text", "db.name", "db.namespace")) {
+        if (hasAny(spanAttributes, DB_SYSTEM_KEYS)
+                || hasAny(spanAttributes, "db.statement", "db.query.text", "db.name", "db.namespace")) {
             return NODE_TYPE_DATABASE;
         }
         // External HTTP / RPC / generic peer endpoints.
@@ -260,26 +299,60 @@ public class SpanStateData implements Serializable {
     }
 
     /**
-     * Build a database dependency name from whatever identity attributes are present:
-     * the DB system (dotted or flattened variants) when known, otherwise the server
-     * host[:port]. Falls back to "database" when only a query/statement is present.
+     * Build a database dependency name: {@code {system}:{host}}, else {@code {system}:{namespace}},
+     * else {@code {system}}. Without a system, the host[:port] or namespace is used, falling back to
+     * "database" when only a query/statement is present. IP-literal, loopback and denied hosts are
+     * skipped so they never mint a node per address.
      *
-     * @param attrs The span attributes
-     * @return A database node name, or null if nothing identifying is present
+     * @param attrs        The span attributes
+     * @param namingPolicy The host naming policy
+     * @return A database node name
      */
-    private static String computeDatabaseName(final Map<String, Object> attrs) {
-        final String system = firstAttr(attrs, "db.system.name", "db.system", "db_system",
-                "db_system_name", "db.system_name");
-        final String host = firstAttr(attrs, "server.address", "net.peer.name", "network.peer.address");
-        final String port = firstAttr(attrs, "server.port", "net.peer.port", "network.peer.port");
+    private static String computeDatabaseName(final Map<String, Object> attrs, final DependencyNamingPolicy namingPolicy) {
+        final String system = firstAttr(attrs, DB_SYSTEM_KEYS);
+        final String rawHost = firstAttr(attrs, HOST_KEYS);
+        final String host = rawHost != null && isNameableHost(rawHost, namingPolicy) ? rawHost : null;
+        final String namespace = firstAttr(attrs, "db.namespace", "db.name");
         if (system != null) {
-            return system;
+            if (host != null) {
+                return system + ":" + host;
+            }
+            return namespace != null ? system + ":" + namespace : system;
         }
         if (host != null) {
+            final String port = firstAttr(attrs, PORT_KEYS);
             return port != null ? host + ":" + port : host;
         }
         // A statement/query was present (which is why we reached here) but no identity.
-        return "database";
+        return namespace != null ? namespace : "database";
+    }
+
+    /**
+     * Drop a scheme-default port (80/443) or the unknown-port marker (-1) so a peer reached with and without an explicit default port
+     * is one node, and suppress hosts that are loopback names or match the denylist.
+     *
+     * @return The normalized name, or null when the host must not name a node
+     */
+    private static String normalizeExternalName(final String name, final DependencyNamingPolicy namingPolicy) {
+        final String host = hostWithoutPort(name);
+        if (isLoopbackName(host) || namingPolicy.isDeniedHost(host)) {
+            return null;
+        }
+        // host:-1 is how the shared extractor renders a URL scheme without a default port.
+        final String port = host.length() < name.length() ? name.substring(host.length() + 1) : null;
+        if (port != null && DROPPED_PORTS.contains(port) && !host.contains(":")) {
+            return host;
+        }
+        return name;
+    }
+
+    private static boolean isNameableHost(final String host, final DependencyNamingPolicy namingPolicy) {
+        return !host.startsWith("[") && !isIpLiteral(host) && !isLoopbackName(host) && !namingPolicy.isDeniedHost(host);
+    }
+
+    private static boolean isLoopbackName(final String host) {
+        final String lower = host.toLowerCase(Locale.ROOT);
+        return LOOPBACK_NAMES.contains(lower) || lower.endsWith(".localhost");
     }
 
     /**
@@ -306,11 +379,20 @@ public class SpanStateData implements Serializable {
             return false;
         }
         // address + ":" + port, including an unbracketed IPv6 address. Names such as "AWS::DynamoDB",
-        // "kafka:orders" or an SNS topic ARN are not IP literals and are kept.
+        // "kafka:orders" or an SNS topic ARN are not IP literals and are kept. Loopback names
+        // ("localhost:3500") point at a sidecar or local proxy, not a dependency.
+        final String host = hostWithoutPort(name);
+        return !(isLoopbackName(host) || (host.length() < name.length() && isIpLiteral(host)));
+    }
+
+    /**
+     * @param name A dependency name such as {@code host:port}
+     * @return The name without a trailing numeric (or {@code -1}) port
+     */
+    public static String hostWithoutPort(final String name) {
         final int lastColon = name.lastIndexOf(':');
-        return !(lastColon > 0
-                && PORT_PATTERN.matcher(name.substring(lastColon + 1)).matches()
-                && isIpLiteral(name.substring(0, lastColon)));
+        return lastColon > 0 && PORT_PATTERN.matcher(name.substring(lastColon + 1)).matches()
+                ? name.substring(0, lastColon) : name;
     }
 
     private static boolean isIpLiteral(final String host) {

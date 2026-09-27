@@ -36,6 +36,10 @@ processor:
 | `group_by_attributes` | List\<String\> | `[]` | OpenTelemetry resource attributes to include in service grouping |
 | `metric_timestamp_source` | String | `"arrival_time"` | Timestamp source for emitted metrics. `"arrival_time"` uses processing time at window evaluation (avoids late-span data loss in Prometheus/AMP). `"span_end_time"` uses the span's `endTime` field. |
 | `metric_timestamp_granularity` | String | `"seconds"` | Truncation granularity for metric and service map timestamps. `"seconds"` truncates to second boundaries (1s collision window). `"minutes"` truncates to minute boundaries (60s collision window). |
+| `dependency_nodes.enabled` | Boolean | `false` | Synthesize typed `database`, `external` and `messaging` nodes, broker edges and their RED metrics. See [External Dependency Nodes](#external-dependency-nodes). |
+| `dependency_nodes.max_dependencies_per_service` | Integer | `100` | Distinct dependency names per source service per window; further dependencies collapse into `OtherRemoteService`. |
+| `dependency_nodes.max_remote_operations_per_service` | Integer | `100` | Distinct dependency remote operations per source service per window; further operations collapse into `OtherRemoteOperation`. |
+| `dependency_nodes.hostname_denylist_patterns` | List\<String\> | IP-derived host names | Regular expressions (case-insensitive, full match) for peer host names that must not create a node. |
 
 ### Advanced Configuration
 
@@ -249,22 +253,61 @@ Represents a service with no outgoing calls:
 
 ### External Dependency Nodes
 
-Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — are synthesized as typed nodes so they appear in the service map instead of being dropped. A node's `type` is one of:
+Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — can be synthesized as typed nodes so they appear in the service map instead of being dropped. This is **disabled by default**; with the option absent the processor output is unchanged from earlier releases.
+
+```yaml
+processor:
+  - otel_apm_service_map:
+      dependency_nodes:
+        enabled: true
+        max_dependencies_per_service: 100        # default
+        max_remote_operations_per_service: 100   # default
+        # hostname_denylist_patterns replaces the default list when set
+        hostname_denylist_patterns:
+          - '^ip-\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}(\..*)?$'
+          - '^egress-proxy$'
+```
+
+**Rollout.** Enable `dependency_nodes` once OpenSearch Dashboards includes the dependency-aware APM UI ([dashboards-observability#2898](https://github.com/opensearch-project/dashboards-observability/pull/2898) / [OpenSearch-Dashboards#12771](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/12771)). Older Dashboards build the services list from `sourceNode`/`targetNode` without filtering on `type`, so they would list databases, brokers and external endpoints as services.
+
+When enabled, a node's `type` is one of:
 
 | `type` | Synthesized from | Example name |
 |--------|------------------|--------------|
 | `service` | An instrumented service (has a `SERVER` span) | `checkout` |
-| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql` |
-| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com:443`, `AWS::DynamoDB` |
+| `database` | A `CLIENT` span with `db.*` attributes and no child `SERVER` span | `postgresql:orders-db.internal` |
+| `external` | A `CLIENT` span with HTTP/RPC/peer attributes and no child `SERVER` span | `api.example.com`, `AWS::DynamoDB` |
 | `messaging` | A `PRODUCER`/`CONSUMER` span; the broker links producer → broker → consumer | `kafka:orders` |
 
-The node **name** is the peer identity derived by `OTelSpanDerivationUtil` and is best-effort: databases usually resolve to the DB system (e.g. `postgresql`), HTTP/RPC peers to `host:port`, and brokers to `{system}:{destination}`. The name is for display and grouping; it is deliberately not treated as a precise instance key. The `dependencyAttributes` map is the reliable identity — the exact peer attributes under canonical OpenTelemetry keys — so consumers filter the dependency's spans/logs on those rather than parsing the name. The field is omitted for `service` nodes and is **not** part of node identity (see below).
+The node **name** is best-effort peer identity:
+
+- **database**: `{db.system}:{host}` (host from `server.address` / `net.peer.name` / `network.peer.address`), else `{db.system}:{db.namespace}`, else `{db.system}`. Flattened system keys (`db_system`, `db_system_name`, `db.system_name`) name the node the same way as dotted ones. IP-literal, loopback and denylisted hosts are skipped in favor of the next form. A span with `peer.service`, or an AWS SDK call (`rpc.system=aws-api`), keeps that name (e.g. `AWS::DynamoDB`). The plain system stays available as `dependencyAttributes["db.system.name"]`.
+- **external**: `host:port` as derived by `OTelSpanDerivationUtil`, with the scheme-default ports `80` and `443` dropped so `api.example.com` and `api.example.com:443` are one node.
+- **messaging**: `{messaging.system}:{messaging.destination.name}` (or the legacy `messaging.destination`).
+
+The name is for display and grouping; it is deliberately not treated as a precise instance key. The `dependencyAttributes` map is the reliable identity — the exact peer attributes under canonical OpenTelemetry keys — so consumers filter the dependency's spans/logs on those rather than parsing the name. The field is omitted for `service` nodes and is **not** part of node identity (see below).
 
 - **database**: `db.system.name`, `db.namespace`, `server.address`, `server.port`
 - **messaging**: `messaging.system`, `messaging.destination.name` (the directional `messaging.operation` is emitted as the edge's operation, not here)
 - **external**: `peer.service`, `server.address`, `server.port`, `rpc.system` (`url.full` is intentionally excluded — it carries per-request paths, query strings, and PII)
 
-Unresolved (`UnknownRemoteService`) and raw-IP peers (IPv4 or IPv6 literals, with or without a port) are suppressed so the topology only shows named dependencies. Names that merely contain several colons, such as `AWS::DynamoDB` or an SNS topic ARN destination, are kept.
+Unresolved (`UnknownRemoteService`), raw-IP (IPv4 or IPv6 literals, with or without a port), loopback (`localhost`, `*.localhost`) and denylisted peers are suppressed so the topology only shows named dependencies. The default denylist matches IP-derived host names: EC2 (`ip-10-0-0-5.ec2.internal`, `ec2-1-2-3-4.compute-1.amazonaws.com`) and Kubernetes pod DNS (`10-0-0-5.ns.pod.cluster.local`). Names that merely contain several colons, such as `AWS::DynamoDB` or an SNS topic ARN destination, are kept.
+
+Synthesis also skips calls that are already represented or are not dependencies:
+
+- **Instrumented peers.** An `external` peer whose `peer.service`, `server.address` or host (or the first label of a `*.svc` Kubernetes name) matches a service seen with a `SERVER` span in the three windows is not synthesized; it is that service with its `SERVER` span missing from the trace.
+- **Nested `CLIENT` spans.** When an SDK span wraps a transport span in the same service (for example botocore over urllib3), only the outermost is synthesized. When an inner `CLIENT` span reaches a traced service, the outer one is not synthesized.
+- **Repeated `CONSUMER` spans.** For one message, a `CONSUMER` span nested under a `CONSUMER` span for the same destination is skipped, and a non-`process` span (e.g. `receive`) is skipped when the trace has a `process` span for the same service and destination.
+
+**Operations.** A dependency edge's source operation is the parent `SERVER` operation, else the nearest `CONSUMER` ancestor's operation, else the span's own operation; the same value is used in the topology and in the metric `operation` label. A `PRODUCER` edge uses the same rule. The remote operation of an HTTP call is `METHOD {url.template | http.route | first path segment}`, and just the path part when the method is missing. The full URL is never used.
+
+**Brokers are shared.** A broker node always uses the environment `generic:default`, so producers and consumers in different environments connect through one node. Broker metrics use `remoteEnvironment=generic:default`.
+
+**Consumer metrics.** `CONSUMER` spans emit client-style series keyed `service=<consumer>`, `remoteService=<broker>`, `remoteOperation=<messaging.operation>`, even though the topology edge is `broker -> consumer`. To chart a `broker -> consumer` edge, query the consumer's series filtered by `remoteService=<broker>`.
+
+**Cardinality.** Per window, each source service (environment + name) may emit at most `max_dependencies_per_service` distinct dependency names and `max_remote_operations_per_service` distinct (dependency, remote operation) pairs. The first values seen in the window are admitted; later ones become `OtherRemoteService` / `OtherRemoteOperation` in both the topology and the metrics, and `dependencyAttributes` is dropped for the overflow node. The cumulative gauges `dependencyNodesOverflowed` and `dependencyRemoteOperationsOverflowed` count collapsed calls. Service-to-service edges are not capped. Each Data Prepper node applies the caps independently.
+
+**Index mapping.** The `otel-v2-apm-service-map` index template (version 1) maps `*.dependencyAttributes.*` strings as `keyword`, so exact `term` filters and aggregations work without `.keyword`. Existing indices keep their mapping until the next rollover.
 
 `dependencyAttributes` is **descriptive metadata, not identity**: it is excluded from a node's `equals`/`hashCode`, so it never affects `nodeConnectionHash`. This keeps existing service-node hashes byte-stable across an upgrade and keeps one logical dependency a single shared node even when a descriptive value (e.g. per-host DB attributes) varies between callers.
 
@@ -272,7 +315,7 @@ Unresolved (`UnknownRemoteService`) and raw-IP peers (IPv4 or IPv6 literals, wit
 {
   "targetNode": {
     "type": "database",
-    "keyAttributes": { "environment": "eks:prod", "name": "postgresql" },
+    "keyAttributes": { "environment": "eks:prod", "name": "postgresql:orders-db.internal" },
     "dependencyAttributes": {
       "db.system.name": "postgresql",
       "db.namespace": "orders",
@@ -285,9 +328,12 @@ Unresolved (`UnknownRemoteService`) and raw-IP peers (IPv4 or IPv6 literals, wit
 
 #### Known limitations
 
-- **Window-boundary over-classification.** A `CLIENT` call to an instrumented service is normally resolved to that service via its child `SERVER` span. If the two spans fall in different processing windows (late arrival, retry, sampling, clock skew), the child is not seen and the target is classified as `external` (`host:port`) for those spans. Server/internal spans are not classified (only `CLIENT`/`PRODUCER`/`CONSUMER` derive a type), which bounds the effect.
-- **HTTP operation cardinality.** When an HTTP client span has a URL but no `http.request.method`, the derived operation falls back to the URL string, which can produce a high-cardinality metric label. A bounded `METHOD /path` is used whenever a method is present.
-- **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker node and metric label.
+- **Window-boundary over-classification.** A `CLIENT` call to an instrumented service is normally resolved to that service via its child `SERVER` span. When the child is missing and the peer name does not match the service name (for example `checkout-svc` vs `checkout`), the target is still classified as `external` for those spans.
+- **External nodes per caller environment.** An `external` or `database` node inherits the caller's environment, so a shared SaaS API called from several environments appears once per environment.
+- **Proxies and sidecars.** Calls through an egress proxy or sidecar resolve to the proxy. Loopback names are suppressed; add other proxy host names to `hostname_denylist_patterns`.
+- **Path cardinality.** Without `url.template`/`http.route`, the first path segment is used, so versioned APIs collapse to `GET /v1` and ID segments produce one operation per ID up to the cap.
+- **Cap admission order.** Which values are admitted before a cap is reached depends on processing order, so an overflowed dependency can differ between windows.
+- **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker name until the cap is reached.
 - **AWS SDK messaging.** Producers instrumented only with `rpc.system=aws-api` (no `messaging.system`) are not yet synthesized as messaging edges.
 
 ### Dual Hash Fields

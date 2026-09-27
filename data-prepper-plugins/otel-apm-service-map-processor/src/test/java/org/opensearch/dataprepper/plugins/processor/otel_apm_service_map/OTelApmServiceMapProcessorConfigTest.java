@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyNamingPolicy;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import org.junit.jupiter.api.Test;
@@ -80,5 +82,39 @@ public class OTelApmServiceMapProcessorConfigTest {
         ReflectivelySetField.setField(OTelApmServiceMapProcessorConfig.class, otelApmServiceMapProcessorConfig,
                 "metricTimestampGranularity", MetricTimestampGranularity.MINUTES);
         assertThat(otelApmServiceMapProcessorConfig.getMetricTimestampGranularity(), equalTo(MetricTimestampGranularity.MINUTES));
+    }
+
+    @Test
+    public void dependencyNodes_defaults_areDisabledWithCaps() {
+        final DependencyNodesConfig dependencyNodes = createObjectUnderTest().getDependencyNodes();
+
+        assertThat(dependencyNodes.isEnabled(), equalTo(false));
+        assertThat(dependencyNodes.getMaxDependenciesPerService(), equalTo(DependencyNodesConfig.DEFAULT_MAX_DEPENDENCIES_PER_SERVICE));
+        assertThat(dependencyNodes.getMaxRemoteOperationsPerService(),
+                equalTo(DependencyNodesConfig.DEFAULT_MAX_REMOTE_OPERATIONS_PER_SERVICE));
+        assertThat(dependencyNodes.getHostnameDenylistPatterns(),
+                equalTo(DependencyNamingPolicy.DEFAULT_HOSTNAME_DENYLIST_PATTERNS));
+    }
+
+    @Test
+    public void dependencyNodes_absentFromConfig_isDisabled() throws Exception {
+        final OTelApmServiceMapProcessorConfig config = new ObjectMapper()
+                .readValue("{\"db_path\": \"data/\"}", OTelApmServiceMapProcessorConfig.class);
+
+        assertThat(config.getDependencyNodes().isEnabled(), equalTo(false));
+    }
+
+    @Test
+    public void dependencyNodes_enabledInConfig_readsAllOptions() throws Exception {
+        final OTelApmServiceMapProcessorConfig config = new ObjectMapper().readValue(
+                "{\"dependency_nodes\": {\"enabled\": true, \"max_dependencies_per_service\": 20, " +
+                "\"max_remote_operations_per_service\": 30, \"hostname_denylist_patterns\": [\"^proxy$\"]}}",
+                OTelApmServiceMapProcessorConfig.class);
+
+        final DependencyNodesConfig dependencyNodes = config.getDependencyNodes();
+        assertThat(dependencyNodes.isEnabled(), equalTo(true));
+        assertThat(dependencyNodes.getMaxDependenciesPerService(), equalTo(20));
+        assertThat(dependencyNodes.getMaxRemoteOperationsPerService(), equalTo(30));
+        assertThat(dependencyNodes.getHostnameDenylistPatterns(), equalTo(List.of("^proxy$")));
     }
 }

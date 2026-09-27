@@ -33,6 +33,8 @@ import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.N
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Operation;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ClientSpanDecoration;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyNamingPolicy;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ServerSpanDecoration;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ThreeWindowTraceData;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.ThreeWindowTraceDataWithDecorations;
@@ -58,15 +60,19 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_REMOTE_SERVICE;
 import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.SpanStateData.isPublishableDependencyName;
 
 @SingleThread
@@ -76,6 +82,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
     private static final String SPANS_DB_SIZE = "spansDbSize";
     private static final String SPANS_DB_COUNT = "spansDbCount";
+    static final String DEPENDENCY_OVERFLOW_METRIC = "dependencyNodesOverflowed";
+    static final String REMOTE_OPERATION_OVERFLOW_METRIC = "dependencyRemoteOperationsOverflowed";
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelApmServiceMapProcessor.class);
     private static final String EVENT_TYPE_OTEL_APM_SERVICE_MAP = "SERVICE_MAP";
@@ -87,6 +95,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     // Single source of truth for node-type strings lives in SpanStateData.
     private static final String NODE_TYPE_SERVICE = SpanStateData.NODE_TYPE_SERVICE;
     private static final String NODE_TYPE_MESSAGING = SpanStateData.NODE_TYPE_MESSAGING;
+    private static final String NODE_TYPE_EXTERNAL = SpanStateData.NODE_TYPE_EXTERNAL;
+    // Brokers are shared infrastructure: producers and consumers in different environments must reach
+    // the same broker node, so broker nodes use one fixed environment instead of the span's.
+    static final String MESSAGING_BROKER_ENVIRONMENT = "generic:default";
+    private static final String MESSAGING_OPERATION_PROCESS = "process";
 
     // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger processorsCreated = new AtomicInteger(0);
@@ -106,6 +119,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private final MetricTimestampSource metricTimestampSource;
     private final MetricTimestampGranularity metricTimestampGranularity;
     private final EventFactory eventFactory;
+    private final boolean dependencyNodesEnabled;
+    // Null when dependency nodes are disabled, so spans skip dependency derivation entirely.
+    private final DependencyNamingPolicy dependencyNamingPolicy;
+    private final int maxDependenciesPerService;
+    private final int maxRemoteOperationsPerService;
+    private final AtomicLong dependencyOverflowTotal = new AtomicLong();
+    private final AtomicLong remoteOperationOverflowTotal = new AtomicLong();
 
     @DataPrepperPluginConstructor
     public OTelApmServiceMapProcessor(
@@ -121,7 +141,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 pluginMetrics,
                 config.getGroupByAttributes(),
                 config.getMetricTimestampSource(),
-                config.getMetricTimestampGranularity());
+                config.getMetricTimestampGranularity(),
+                config.getDependencyNodes());
     }
 
     OTelApmServiceMapProcessor(final Duration windowDuration,
@@ -166,6 +187,20 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                final List<String> groupByAttributes,
                                final MetricTimestampSource metricTimestampSource,
                                final MetricTimestampGranularity metricTimestampGranularity) {
+        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics,
+                groupByAttributes, metricTimestampSource, metricTimestampGranularity, new DependencyNodesConfig());
+    }
+
+    OTelApmServiceMapProcessor(final Duration windowDuration,
+                               final File databasePath,
+                               final Clock clock,
+                               final int processWorkers,
+                               final EventFactory eventFactory,
+                               final PluginMetrics pluginMetrics,
+                               final List<String> groupByAttributes,
+                               final MetricTimestampSource metricTimestampSource,
+                               final MetricTimestampGranularity metricTimestampGranularity,
+                               final DependencyNodesConfig dependencyNodesConfig) {
         super(pluginMetrics);
 
         this.hostId = HostContext.getStableHostId();
@@ -174,6 +209,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         this.metricTimestampGranularity = metricTimestampGranularity != null ? metricTimestampGranularity : MetricTimestampGranularity.SECONDS;
 
         this.eventFactory = eventFactory;
+        final DependencyNodesConfig dependencyNodes = dependencyNodesConfig != null
+                ? dependencyNodesConfig : new DependencyNodesConfig();
+        this.dependencyNodesEnabled = dependencyNodes.isEnabled();
+        this.dependencyNamingPolicy = dependencyNodesEnabled
+                ? new DependencyNamingPolicy(dependencyNodes.getHostnameDenylistPatterns()) : null;
+        this.maxDependenciesPerService = dependencyNodes.getMaxDependenciesPerService();
+        this.maxRemoteOperationsPerService = dependencyNodes.getMaxRemoteOperationsPerService();
         OTelApmServiceMapProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
 
@@ -191,6 +233,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
         pluginMetrics.gauge(SPANS_DB_SIZE, this, processor -> processor.getSpansDbSize());
         pluginMetrics.gauge(SPANS_DB_COUNT, this, processor -> processor.getSpansDbCount());
+        if (dependencyNodesEnabled) {
+            // Cumulative totals of dependency calls collapsed by the cardinality caps.
+            pluginMetrics.gauge(DEPENDENCY_OVERFLOW_METRIC, dependencyOverflowTotal);
+            pluginMetrics.gauge(REMOTE_OPERATION_OVERFLOW_METRIC, remoteOperationOverflowTotal);
+        }
     }
 
     /**
@@ -308,7 +355,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         status,
                         endTime,
                         groupByAttrs,
-                        spanAttributes);
+                        spanAttributes,
+                        dependencyNamingPolicy);
 
                 Collection<SpanStateData> spansForTrace = batchStateData.computeIfAbsent(Hex.decodeHex(traceId),
                         k -> new HashSet<>());
@@ -426,16 +474,25 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         final Map<String, Collection<SpanStateData>> currentSpansByTraceId = buildSpansByTraceIdMap(currentWindow);
         final Map<String, Collection<SpanStateData>> nextSpansByTraceId = buildSpansByTraceIdMap(nextWindow);
 
+        final Set<String> knownServerServices = dependencyNodesEnabled
+                ? collectServerServiceNames(previousSpansByTraceId, currentSpansByTraceId, nextSpansByTraceId)
+                : Collections.emptySet();
+        final DependencyCardinalityLimiter dependencyLimiter =
+                new DependencyCardinalityLimiter(maxDependenciesPerService, maxRemoteOperationsPerService);
+
         for (String traceId : currentSpansByTraceId.keySet()) {
             final ThreeWindowTraceDataWithDecorations traceData = buildThreeWindowTraceDataWithDecorations(
                     traceId, previousSpansByTraceId, currentSpansByTraceId, nextSpansByTraceId, ephemeralDecorations);
 
             if (!traceData.getProcessingSpans().isEmpty()) {
-                decorateSpansInTraceWithEphemeralStorage(traceData);
+                decorateSpansInTraceWithEphemeralStorage(traceData, knownServerServices);
 
-                generateNodeOperationDetailEvents(traceData, currentTime, sumStateByKey, histogramStateByKey, dedupedNodeDetails);
+                generateNodeOperationDetailEvents(traceData, currentTime, sumStateByKey, histogramStateByKey,
+                        dedupedNodeDetails, dependencyLimiter);
             }
         }
+        dependencyOverflowTotal.addAndGet(dependencyLimiter.getDependencyOverflowCount());
+        remoteOperationOverflowTotal.addAndGet(dependencyLimiter.getRemoteOperationOverflowCount());
 
         // Convert deduped NodeOperationDetails to events
         for (NodeOperationDetail detail : dedupedNodeDetails) {
@@ -679,8 +736,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      *
      * @param traceData Three-window trace data with ephemeral decorations containing spans and indexes
      */
-    private void decorateSpansInTraceWithEphemeralStorage(final ThreeWindowTraceDataWithDecorations traceData) {
-        decorateClientSpansFirstPassWithEphemeralStorage(traceData);
+    private void decorateSpansInTraceWithEphemeralStorage(final ThreeWindowTraceDataWithDecorations traceData,
+                                                          final Set<String> knownServerServices) {
+        decorateClientSpansFirstPassWithEphemeralStorage(traceData, knownServerServices);
         decorateServerSpansSecondPassWithEphemeralStorage(traceData);
     }
 
@@ -689,8 +747,10 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      * Traverse ALL CLIENT spans in the trace and find their child SERVER spans (remote servers)
      *
      * @param traceData Three-window trace data with ephemeral decorations containing spans and indexes
+     * @param knownServerServices Lower-cased names of services seen with a SERVER span in the three windows
      */
-    private void decorateClientSpansFirstPassWithEphemeralStorage(final ThreeWindowTraceDataWithDecorations traceData) {
+    private void decorateClientSpansFirstPassWithEphemeralStorage(final ThreeWindowTraceDataWithDecorations traceData,
+                                                                  final Set<String> knownServerServices) {
         for (SpanStateData clientSpan : traceData.getLookupSpans()) {
             if (SPAN_KIND_CLIENT.equals(clientSpan.getSpanKind())) {
                 final String clientSpanId = clientSpan.getSpanId();
@@ -712,8 +772,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     remoteOperation = childServerSpan.getOperationName();
                     remoteEnvironment = childServerSpan.getEnvironment();
                     remoteGroupByAttributes = childServerSpan.getGroupByAttributes();
-                } else if (clientSpan.getDerivedNodeType() != null
-                        && isPublishableDependencyName(clientSpan.getDerivedRemoteService())) {
+                } else if (dependencyNodesEnabled
+                        && isSynthesizedDependencyTarget(clientSpan, traceData, knownServerServices)) {
                     // No downstream SERVER span: this CLIENT call targets an external dependency
                     // (database or external endpoint). Synthesize a typed target node from the
                     // span's own attributes instead of dropping the edge as "unknown". Unresolved
@@ -722,11 +782,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     remoteOperation = clientSpan.getDerivedRemoteOperation() != null
                             ? clientSpan.getDerivedRemoteOperation()
                             : clientSpan.getOperationName();
+                    remoteNodeType = clientSpan.getDerivedNodeType();
                     // Inherit the caller's environment so a prod dependency and a staging one with
                     // the same name stay distinct nodes rather than merging under generic:default.
-                    remoteEnvironment = clientSpan.getEnvironment();
+                    // Brokers are the exception: they are shared by producers and consumers.
+                    remoteEnvironment = NODE_TYPE_MESSAGING.equals(remoteNodeType)
+                            ? MESSAGING_BROKER_ENVIRONMENT : clientSpan.getEnvironment();
                     remoteGroupByAttributes = Collections.emptyMap();
-                    remoteNodeType = clientSpan.getDerivedNodeType();
                     remoteDependencyAttributes = clientSpan.getDependencyAttributes();
                 }
 
@@ -810,13 +872,17 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                                     final Instant currentTime,
                                                     final Map<MetricKey, MetricAggregationState> sumStateByKey,
                                                     final Map<MetricKey, MetricAggregationState> histogramStateByKey,
-                                                    final Set<NodeOperationDetail> dedupedNodeDetails) {
+                                                    final Set<NodeOperationDetail> dedupedNodeDetails,
+                                                    final DependencyCardinalityLimiter dependencyLimiter) {
         // Step 1: CLIENT spans — primary emission path
         for (SpanStateData clientSpan : traceData.getProcessingSpans()) {
             if (SPAN_KIND_CLIENT.equals(clientSpan.getSpanKind())) {
-                final ClientSpanDecoration decoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
+                final ClientSpanDecoration serviceDecoration = traceData.getDecorations().getClientDecoration(clientSpan.getSpanId());
 
-                if (decoration != null && !"unknown".equals(decoration.getRemoteService())) {
+                if (serviceDecoration != null && !"unknown".equals(serviceDecoration.getRemoteService())) {
+                    final ClientSpanDecoration decoration = NODE_TYPE_SERVICE.equals(serviceDecoration.getRemoteNodeType())
+                            ? serviceDecoration
+                            : limitDependencyDecoration(clientSpan, serviceDecoration, traceData, dependencyLimiter);
                     final Node sourceNode = new Node(
                             NODE_TYPE_SERVICE,
                             new Node.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
@@ -843,25 +909,12 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
                     dedupedNodeDetails.add(nodeOperationDetail);
 
+                    // Dependency decorations always carry a source operation (see limitDependencyDecoration),
+                    // so their topology edge and metrics use the same operation.
                     if (decoration.getParentServerOperationName() != null) {
                         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
                                 clientSpan, decoration, currentTime, sumStateByKey, histogramStateByKey,
                                 anchor, hostId);
-                    } else if (decoration.getRemoteNodeType() != null
-                            && !NODE_TYPE_SERVICE.equals(decoration.getRemoteNodeType())) {
-                        // Dependency call with no parent SERVER span (e.g. a Kafka consumer that then
-                        // hits a DB): still emit RED metrics, using the client span's own operation.
-                        final ClientSpanDecoration dependencyDecoration = new ClientSpanDecoration(
-                                clientSpan.getOperationName(),
-                                decoration.getRemoteEnvironment(),
-                                decoration.getRemoteService(),
-                                decoration.getRemoteOperation(),
-                                decoration.getRemoteGroupByAttributes(),
-                                decoration.getRemoteNodeType(),
-                                decoration.getRemoteDependencyAttributes());
-                        ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
-                                clientSpan, dependencyDecoration, currentTime, sumStateByKey,
-                                histogramStateByKey, anchor, hostId);
                     }
                 }
             }
@@ -899,6 +952,10 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         // broker node so async (Kafka, RabbitMQ, SQS/SNS) relationships appear in the service map.
         // A PRODUCER emits service -> broker; a CONSUMER emits broker -> service. The broker node
         // (type "messaging", named "{system}:{destination}") is the shared link between them.
+        if (!dependencyNodesEnabled) {
+            return;
+        }
+        final Set<String> processedMessageKeys = collectProcessedMessageKeys(traceData);
         for (SpanStateData messagingSpan : traceData.getProcessingSpans()) {
             final String spanKind = messagingSpan.getSpanKind();
             final boolean isProducer = SPAN_KIND_PRODUCER.equals(spanKind);
@@ -910,10 +967,17 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                     && messagingSpan.getMessagingDestination() != null) {
                 // "{system}:{destination}", derived once in SpanStateData so CLIENT-kind messaging
                 // calls resolve to the same broker node.
-                final String brokerName = messagingSpan.getDerivedRemoteService();
-                if (!isPublishableDependencyName(brokerName)) {
+                if (!isPublishableDependencyName(messagingSpan.getDerivedRemoteService())
+                        || (isConsumer && isRedundantConsumer(messagingSpan, traceData, processedMessageKeys))) {
                     continue;
                 }
+
+                final String sourceKey = cardinalitySourceKey(messagingSpan);
+                final String brokerName = dependencyLimiter.limitDependency(sourceKey, messagingSpan.getDerivedRemoteService());
+                final String remoteOperationName = dependencyLimiter.limitRemoteOperation(sourceKey, brokerName,
+                        messagingSpan.getMessagingOperation() != null
+                                ? messagingSpan.getMessagingOperation()
+                                : messagingSpan.getOperationName());
 
                 final Node serviceNode = new Node(
                         NODE_TYPE_SERVICE,
@@ -922,15 +986,19 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 );
                 final Node brokerNode = new Node(
                         NODE_TYPE_MESSAGING,
-                        new Node.KeyAttributes(messagingSpan.getEnvironment(), brokerName),
+                        new Node.KeyAttributes(MESSAGING_BROKER_ENVIRONMENT, brokerName),
                         Collections.emptyMap(),
-                        messagingSpan.getDependencyAttributes()
+                        OTHER_REMOTE_SERVICE.equals(brokerName)
+                                ? Collections.emptyMap() : messagingSpan.getDependencyAttributes()
                 );
 
-                final Operation serviceOp = new Operation(messagingSpan.getOperationName());
-                final Operation brokerOp = messagingSpan.getMessagingOperation() != null
-                        ? new Operation(messagingSpan.getMessagingOperation())
-                        : null;
+                // A producer publishes on behalf of the operation that is handling the request, as the
+                // CLIENT path does; a consumer's own span is the operation that handles the message.
+                final String serviceOperationName = isProducer
+                        ? findEntryOperationName(messagingSpan, traceData)
+                        : messagingSpan.getOperationName();
+                final Operation serviceOp = new Operation(serviceOperationName);
+                final Operation brokerOp = new Operation(remoteOperationName);
 
                 final Instant anchor = getAnchorTimestampFromSpan(messagingSpan, currentTime,
                         metricTimestampGranularity.getChronoUnit());
@@ -942,14 +1010,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 dedupedNodeDetails.add(messagingDetail);
 
                 // RED metrics for the messaging edge, labeled by the broker (remoteService =
-                // "{system}:{destination}"), reusing the CLIENT-span metric path.
+                // "{system}:{destination}"), reusing the CLIENT-span metric path. For a CONSUMER the
+                // series is still keyed service=<consumer>, remoteService=<broker> (see README).
                 final ClientSpanDecoration messagingDecoration = new ClientSpanDecoration(
-                        messagingSpan.getOperationName(),
-                        messagingSpan.getEnvironment(),
+                        serviceOperationName,
+                        MESSAGING_BROKER_ENVIRONMENT,
                         brokerName,
-                        messagingSpan.getMessagingOperation() != null
-                                ? messagingSpan.getMessagingOperation()
-                                : messagingSpan.getOperationName(),
+                        remoteOperationName,
                         messagingSpan.getGroupByAttributes(),
                         NODE_TYPE_MESSAGING,
                         Collections.emptyMap());
@@ -958,6 +1025,207 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         histogramStateByKey, anchor, hostId);
             }
         }
+    }
+
+    /**
+     * Apply the per-service cardinality caps to a synthesized dependency decoration and give it a source
+     * operation: the parent SERVER operation when known, otherwise the nearest entry operation.
+     */
+    private ClientSpanDecoration limitDependencyDecoration(final SpanStateData clientSpan,
+                                                           final ClientSpanDecoration decoration,
+                                                           final ThreeWindowTraceData traceData,
+                                                           final DependencyCardinalityLimiter dependencyLimiter) {
+        final String sourceKey = cardinalitySourceKey(clientSpan);
+        final String remoteService = dependencyLimiter.limitDependency(sourceKey, decoration.getRemoteService());
+        final String remoteOperation = dependencyLimiter.limitRemoteOperation(sourceKey, remoteService,
+                decoration.getRemoteOperation());
+        final String sourceOperationName = decoration.getParentServerOperationName() != null
+                ? decoration.getParentServerOperationName()
+                : findEntryOperationName(clientSpan, traceData);
+        return new ClientSpanDecoration(
+                sourceOperationName,
+                decoration.getRemoteEnvironment(),
+                remoteService,
+                remoteOperation,
+                decoration.getRemoteGroupByAttributes(),
+                decoration.getRemoteNodeType(),
+                OTHER_REMOTE_SERVICE.equals(remoteService)
+                        ? Collections.emptyMap() : decoration.getRemoteDependencyAttributes());
+    }
+
+    private static String cardinalitySourceKey(final SpanStateData span) {
+        return span.getEnvironment() + "\u0000" + span.getServiceName();
+    }
+
+    /**
+     * Whether a CLIENT span without a child SERVER span should become a synthesized dependency target.
+     */
+    private boolean isSynthesizedDependencyTarget(final SpanStateData clientSpan,
+                                                  final ThreeWindowTraceData traceData,
+                                                  final Set<String> knownServerServices) {
+        if (!isDependencyCandidate(clientSpan)) {
+            return false;
+        }
+        // Nested CLIENT spans in one service (an SDK span over its HTTP transport span) describe one call;
+        // only the outermost is synthesized, so the call is not counted twice.
+        final SpanStateData parent = clientSpan.getParentSpanId() != null
+                ? traceData.getSpansBySpanId().get(clientSpan.getParentSpanId()) : null;
+        if (parent != null && clientSpan.getServiceName().equals(parent.getServiceName())
+                && (SPAN_KIND_CLIENT.equals(parent.getSpanKind()) && isDependencyCandidate(parent)
+                    || isMessagingTransportParent(parent))) {
+            return false;
+        }
+        // An inner CLIENT span of the same call reached a traced service, which already gets the edge.
+        if (hasClientDescendantWithServerChild(clientSpan, traceData)) {
+            return false;
+        }
+        // A peer named like an instrumented service is that service with its SERVER span missing from
+        // this trace (late arrival, sampling), not an external dependency.
+        return !(NODE_TYPE_EXTERNAL.equals(clientSpan.getDerivedNodeType())
+                && namesKnownServerService(clientSpan, knownServerServices));
+    }
+
+    // A PRODUCER span, or a CONSUMER span that only receives, is the messaging call itself; a CLIENT span
+    // under it is the transport of that call (e.g. the HTTP request of an SNS publish or SQS receive).
+    // A CONSUMER span that processes a message is business logic, so CLIENT calls under it are kept.
+    private static boolean isMessagingTransportParent(final SpanStateData parent) {
+        if (parent.getMessagingSystem() == null) {
+            return false;
+        }
+        return SPAN_KIND_PRODUCER.equals(parent.getSpanKind())
+                || (SPAN_KIND_CONSUMER.equals(parent.getSpanKind()) && !isProcessOperation(parent));
+    }
+
+    private static boolean isDependencyCandidate(final SpanStateData span) {
+        return span.getDerivedNodeType() != null && isPublishableDependencyName(span.getDerivedRemoteService());
+    }
+
+    private boolean hasClientDescendantWithServerChild(final SpanStateData clientSpan, final ThreeWindowTraceData traceData) {
+        final Set<String> visited = new HashSet<>();
+        final java.util.Deque<SpanStateData> pending = new java.util.ArrayDeque<>();
+        pending.push(clientSpan);
+        visited.add(clientSpan.getSpanId());
+        while (!pending.isEmpty()) {
+            final SpanStateData current = pending.pop();
+            for (SpanStateData child : traceData.getChildrenByParentId().getOrDefault(current.getSpanId(), Collections.emptyList())) {
+                if (current != clientSpan && SPAN_KIND_SERVER.equals(child.getSpanKind())) {
+                    return true;
+                }
+                if (SPAN_KIND_CLIENT.equals(child.getSpanKind())
+                        && clientSpan.getServiceName().equals(child.getServiceName())
+                        && visited.add(child.getSpanId())) {
+                    pending.push(child);
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean namesKnownServerService(final SpanStateData clientSpan, final Set<String> knownServerServices) {
+        if (knownServerServices.isEmpty()) {
+            return false;
+        }
+        final Map<String, String> dependencyAttributes = clientSpan.getDependencyAttributes();
+        for (final String candidate : new String[]{
+                dependencyAttributes.get("peer.service"),
+                dependencyAttributes.get("server.address"),
+                SpanStateData.hostWithoutPort(clientSpan.getDerivedRemoteService())}) {
+            if (candidate == null) {
+                continue;
+            }
+            final String name = candidate.toLowerCase(Locale.ROOT);
+            if (knownServerServices.contains(name)) {
+                return true;
+            }
+            // Kubernetes service DNS: "checkout.shop.svc.cluster.local" is the "checkout" service.
+            final int firstDot = name.indexOf('.');
+            if (firstDot > 0 && (name.endsWith(".svc") || name.contains(".svc."))
+                    && knownServerServices.contains(name.substring(0, firstDot))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Set<String> collectServerServiceNames(final Map<String, Collection<SpanStateData>> previousSpansByTraceId,
+                                                         final Map<String, Collection<SpanStateData>> currentSpansByTraceId,
+                                                         final Map<String, Collection<SpanStateData>> nextSpansByTraceId) {
+        final Set<String> serviceNames = new HashSet<>();
+        for (final Map<String, Collection<SpanStateData>> window : List.of(
+                previousSpansByTraceId, currentSpansByTraceId, nextSpansByTraceId)) {
+            for (final Collection<SpanStateData> spans : window.values()) {
+                for (final SpanStateData span : spans) {
+                    if (SPAN_KIND_SERVER.equals(span.getSpanKind()) && span.getServiceName() != null) {
+                        serviceNames.add(span.getServiceName().toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+        }
+        return serviceNames;
+    }
+
+    /**
+     * The operation a span runs under: the nearest SERVER or CONSUMER ancestor in the same service,
+     * or the span's own operation when it has none.
+     */
+    private String findEntryOperationName(final SpanStateData span, final ThreeWindowTraceData traceData) {
+        final Set<String> visited = new HashSet<>();
+        SpanStateData current = span;
+        while (current.getParentSpanId() != null && visited.add(current.getSpanId())) {
+            final SpanStateData parent = traceData.getSpansBySpanId().get(current.getParentSpanId());
+            if (parent == null || !span.getServiceName().equals(parent.getServiceName())) {
+                break;
+            }
+            if (SPAN_KIND_SERVER.equals(parent.getSpanKind()) || SPAN_KIND_CONSUMER.equals(parent.getSpanKind())) {
+                return parent.getOperationName();
+            }
+            current = parent;
+        }
+        return span.getOperationName();
+    }
+
+    /**
+     * One message can produce several CONSUMER spans in one service (receive + process, or a process
+     * span nested under a receive span). Only one of them is counted: a nested CONSUMER span for the same
+     * destination is skipped, and a non-process span is skipped when a process span exists for the same
+     * message, i.e. the same service, destination and parent (producer) span.
+     */
+    private boolean isRedundantConsumer(final SpanStateData consumerSpan, final ThreeWindowTraceData traceData,
+                                        final Set<String> processedMessageKeys) {
+        if (isNestedConsumer(consumerSpan, traceData)) {
+            return true;
+        }
+        return !isProcessOperation(consumerSpan) && consumerSpan.getParentSpanId() != null
+                && processedMessageKeys.contains(messageKey(consumerSpan));
+    }
+
+    private static Set<String> collectProcessedMessageKeys(final ThreeWindowTraceData traceData) {
+        final Set<String> keys = new HashSet<>();
+        for (SpanStateData span : traceData.getLookupSpans()) {
+            if (SPAN_KIND_CONSUMER.equals(span.getSpanKind()) && isProcessOperation(span)
+                    && span.getParentSpanId() != null && !isNestedConsumer(span, traceData)) {
+                keys.add(messageKey(span));
+            }
+        }
+        return keys;
+    }
+
+    private static String messageKey(final SpanStateData consumerSpan) {
+        return consumerSpan.getServiceName() + "\u0000" + consumerSpan.getDerivedRemoteService()
+                + "\u0000" + consumerSpan.getParentSpanId();
+    }
+
+    private static boolean isNestedConsumer(final SpanStateData consumerSpan, final ThreeWindowTraceData traceData) {
+        final SpanStateData parent = consumerSpan.getParentSpanId() != null
+                ? traceData.getSpansBySpanId().get(consumerSpan.getParentSpanId()) : null;
+        return parent != null
+                && SPAN_KIND_CONSUMER.equals(parent.getSpanKind())
+                && consumerSpan.getServiceName().equals(parent.getServiceName())
+                && Objects.equals(consumerSpan.getDerivedRemoteService(), parent.getDerivedRemoteService());
+    }
+
+    private static boolean isProcessOperation(final SpanStateData span) {
+        return MESSAGING_OPERATION_PROCESS.equalsIgnoreCase(span.getMessagingOperation());
     }
 
     /**

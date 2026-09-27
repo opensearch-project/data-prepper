@@ -561,12 +561,50 @@ class OTelSpanDerivationUtilTest {
     }
 
     @Test
-    void computeRemoteOperationAndService_urlWithoutMethod_dropsQueryAndFragmentFromOperation() {
+    void computeRemoteOperationAndService_urlWithoutMethod_usesFirstPathSegment() {
         final Map<String, Object> spanAttributes = new HashMap<>();
         spanAttributes.put("url.full", "https://api.example.com/v1/charges?api_key=SECRET#top");
 
         assertThat(OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes).getOperation(),
-                equalTo("https://api.example.com/v1/charges"));
+                equalTo("/v1"));
+    }
+
+    @Test
+    void computeRemoteOperationAndService_urlWithUserinfoWithoutMethod_neverReturnsCredentialsOrFullPath() {
+        final Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("url.full", "https://user:pass@api.example.com/users/alice@example.com/orders");
+
+        final RemoteOperationAndService result = OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes);
+
+        assertThat(result.getOperation(), equalTo("/users"));
+        assertThat(result.getService(), equalTo("api.example.com:443"));
+    }
+
+    @Test
+    void computeRemoteOperationAndService_urlTemplate_isPreferredOverFirstPathSegment() {
+        final Map<String, Object> spanAttributes = new HashMap<>();
+        spanAttributes.put("url.full", "https://api.example.com/v1/charges/ch_123");
+        spanAttributes.put("url.template", "/v1/charges/{id}");
+        spanAttributes.put("http.request.method", "GET");
+
+        assertThat(OTelSpanDerivationUtil.computeRemoteOperationAndService(spanAttributes).getOperation(),
+                equalTo("GET /v1/charges/{id}"));
+    }
+
+    @Test
+    void computeRemoteOperationAndService_httpRoute_isUsedWhenNoUrlTemplate() {
+        final Map<String, Object> withUrl = new HashMap<>();
+        withUrl.put("http.url", "https://api.example.com/v1/users/42");
+        withUrl.put("http.route", "/v1/users/:id");
+        withUrl.put("http.method", "DELETE");
+        final Map<String, Object> routeOnly = new HashMap<>();
+        routeOnly.put("http.route", "/v1/users/:id");
+        routeOnly.put("server.address", "api.example.com");
+
+        assertThat(OTelSpanDerivationUtil.computeRemoteOperationAndService(withUrl).getOperation(),
+                equalTo("DELETE /v1/users/:id"));
+        assertThat(OTelSpanDerivationUtil.computeRemoteOperationAndService(routeOnly).getOperation(),
+                equalTo("/v1/users/:id"));
     }
 
     @Test

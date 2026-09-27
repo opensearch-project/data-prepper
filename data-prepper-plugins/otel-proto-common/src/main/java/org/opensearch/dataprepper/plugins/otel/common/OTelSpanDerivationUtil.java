@@ -357,15 +357,20 @@ public class OTelSpanDerivationUtil {
             remoteService = deriveServiceFromNetwork(spanAttributes, urlString, addressPortAttributeKeysList);
         }
 
-        if (remoteOperation == null && urlString != null) {
+        if (remoteOperation == null) {
             final String httpMethod = getStringAttribute(spanAttributes, "http.request.method") != null
                     ? getStringAttribute(spanAttributes, "http.request.method")
                     : getStringAttribute(spanAttributes, "http.method");
-            final String urlWithoutQuery = stripQueryAndFragment(urlString);
-            if (httpMethod != null) {
-                remoteOperation = httpMethod + " " + extractFirstPathFromUrl(urlString);
-            } else if (!urlWithoutQuery.isEmpty()) {
-                remoteOperation = urlWithoutQuery;
+            // A route template is bounded by construction, so it is preferred over the first path segment.
+            // The full URL is never used: it carries userinfo, ids and PII.
+            String path = getStringAttribute(spanAttributes, "url.template") != null
+                    ? getStringAttribute(spanAttributes, "url.template")
+                    : getStringAttribute(spanAttributes, "http.route");
+            if (path == null && urlString != null && !stripQueryAndFragment(urlString).isEmpty()) {
+                path = extractFirstPathFromUrl(urlString);
+            }
+            if (path != null && !path.isEmpty()) {
+                remoteOperation = httpMethod != null ? httpMethod + " " + path : path;
             }
         }
 
