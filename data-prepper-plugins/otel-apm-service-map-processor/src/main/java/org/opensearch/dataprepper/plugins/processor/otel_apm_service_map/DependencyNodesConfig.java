@@ -28,9 +28,10 @@ public class DependencyNodesConfig {
 
     @JsonProperty("enabled")
     @JsonPropertyDescription("When true, CLIENT calls without a downstream SERVER span and PRODUCER/CONSUMER spans are " +
-            "emitted as typed database, external and messaging nodes with RED metrics. Defaults to false. Enable it once " +
-            "OpenSearch Dashboards includes the dependency-aware APM UI.")
-    private boolean enabled = false;
+            "emitted as typed database, external and messaging nodes with RED metrics. Defaults to true. Set it to false " +
+            "if your OpenSearch Dashboards version predates the dependency-aware APM UI, which would otherwise list " +
+            "dependencies as services.")
+    private boolean enabled = true;
 
     @Min(1)
     @JsonProperty("max_dependencies_per_service")

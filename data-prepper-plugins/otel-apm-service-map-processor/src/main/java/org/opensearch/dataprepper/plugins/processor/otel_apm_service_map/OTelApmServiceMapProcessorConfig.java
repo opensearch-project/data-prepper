@@ -57,7 +57,7 @@ public class OTelApmServiceMapProcessorConfig {
     @Valid
     @JsonProperty("dependency_nodes")
     @JsonPropertyDescription("Controls synthesis of typed database, external and messaging dependency nodes. " +
-            "Disabled by default.")
+            "Enabled by default.")
     private DependencyNodesConfig dependencyNodes = new DependencyNodesConfig();
 
     public Duration getWindowDuration() {

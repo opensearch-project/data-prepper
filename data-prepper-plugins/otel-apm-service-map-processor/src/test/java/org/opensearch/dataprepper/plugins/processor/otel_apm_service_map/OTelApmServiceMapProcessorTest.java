@@ -1731,12 +1731,28 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     }
 
     @Test
-    void dependencyNodes_disabledByDefault_emitsNoDependencyNodesOrMetrics() {
-        final OTelApmServiceMapProcessor proc = newFlushingProcessor("gate-off-", new DependencyNodesConfig());
+    void dependencyNodes_enabledByDefault_emitsDependencyNodes() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("gate-default-", new DependencyNodesConfig());
         try {
             final Collection<Record<Event>> emitted = flushAll(proc, dependencyTraceBatch());
 
-            // Same as main: CLIENT/PRODUCER spans without a downstream SERVER span produce nothing.
+            assertThat(targetNamesOfType(serviceMapEvents(emitted), "database"), equalTo(Set.of("postgresql:orders-db")));
+            assertThat(requestCount(emitted, "checkout", "kafka:orders"), equalTo(1.0));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyNodes_explicitlyDisabled_emitsNoDependencyNodesOrMetrics() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("gate-off-",
+                new DependencyNodesConfig(false, DependencyNodesConfig.DEFAULT_MAX_DEPENDENCIES_PER_SERVICE,
+                        DependencyNodesConfig.DEFAULT_MAX_REMOTE_OPERATIONS_PER_SERVICE, Collections.emptyList()));
+        try {
+            final Collection<Record<Event>> emitted = flushAll(proc, dependencyTraceBatch());
+
+            // With the option off, output matches the previous release: CLIENT/PRODUCER spans without a
+            // downstream SERVER span produce nothing.
             assertThat(serviceMapEvents(emitted).size(), equalTo(0));
             assertThat(requestMetrics(emitted).size(), equalTo(0));
         } finally {
@@ -1753,8 +1769,21 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     }
 
     @Test
-    void dependencyNodes_pluginConstructorWithoutDependencyNodesConfig_isDisabled() {
+    void dependencyNodes_pluginConstructorWithoutDependencyNodesConfig_isEnabled() {
         final OTelApmServiceMapProcessor proc = newPluginConstructedProcessor(null);
+        try {
+            verify(pluginMetrics).counter(OTelApmServiceMapProcessor.DEPENDENCY_CALLS_OVERFLOWED_METRIC);
+            verify(pluginMetrics).counter(OTelApmServiceMapProcessor.REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC);
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyNodes_pluginConstructorExplicitlyDisabled_registersNoOverflowCounters() {
+        final OTelApmServiceMapProcessor proc = newPluginConstructedProcessor(
+                new DependencyNodesConfig(false, DependencyNodesConfig.DEFAULT_MAX_DEPENDENCIES_PER_SERVICE,
+                        DependencyNodesConfig.DEFAULT_MAX_REMOTE_OPERATIONS_PER_SERVICE, Collections.emptyList()));
         try {
             verify(pluginMetrics, never()).counter(OTelApmServiceMapProcessor.DEPENDENCY_CALLS_OVERFLOWED_METRIC);
             verify(pluginMetrics, never()).counter(OTelApmServiceMapProcessor.REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC);

@@ -36,7 +36,7 @@ processor:
 | `group_by_attributes` | List\<String\> | `[]` | OpenTelemetry resource attributes to include in service grouping |
 | `metric_timestamp_source` | String | `"arrival_time"` | Timestamp source for emitted metrics. `"arrival_time"` uses processing time at window evaluation (avoids late-span data loss in Prometheus/AMP). `"span_end_time"` uses the span's `endTime` field. |
 | `metric_timestamp_granularity` | String | `"seconds"` | Truncation granularity for metric and service map timestamps. `"seconds"` truncates to second boundaries (1s collision window). `"minutes"` truncates to minute boundaries (60s collision window). |
-| `dependency_nodes.enabled` | Boolean | `false` | Synthesize typed `database`, `external` and `messaging` nodes, broker edges and their RED metrics. See [External Dependency Nodes](#external-dependency-nodes). |
+| `dependency_nodes.enabled` | Boolean | `true` | Synthesize typed `database`, `external` and `messaging` nodes, broker edges and their RED metrics. See [External Dependency Nodes](#external-dependency-nodes). |
 | `dependency_nodes.max_dependencies_per_service` | Integer | `100` | Distinct dependency names per source service per window; further dependencies collapse into `OtherRemoteService`. |
 | `dependency_nodes.max_remote_operations_per_service` | Integer | `100` | Distinct dependency remote operations per source service per window; further operations collapse into `OtherRemoteOperation`. |
 | `dependency_nodes.hostname_denylist_patterns` | List\<String\> | IP-derived host names | Regular expressions (case-insensitive, full match) for peer host names that must not create a node. |
@@ -253,13 +253,13 @@ Represents a service with no outgoing calls:
 
 ### External Dependency Nodes
 
-Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — can be synthesized as typed nodes so they appear in the service map instead of being dropped. This is **disabled by default**; with the option absent the processor output is unchanged from earlier releases.
+Downstream targets that do not emit their own `SERVER` span — databases, message brokers, and external services — are synthesized as typed nodes so they appear in the service map instead of being dropped. This is **enabled by default**, matching how common APM tools show uninstrumented dependencies. Set `enabled: false` to keep the output of earlier releases.
 
 ```yaml
 processor:
   - otel_apm_service_map:
       dependency_nodes:
-        enabled: true
+        enabled: true                            # default
         max_dependencies_per_service: 100        # default
         max_remote_operations_per_service: 100   # default
         # hostname_denylist_patterns replaces the default list when set
@@ -268,7 +268,7 @@ processor:
           - '^egress-proxy$'
 ```
 
-**Rollout.** Enable `dependency_nodes` once OpenSearch Dashboards includes the dependency-aware APM UI ([dashboards-observability#2898](https://github.com/opensearch-project/dashboards-observability/pull/2898) / [OpenSearch-Dashboards#12771](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/12771)). Older Dashboards build the services list from `sourceNode`/`targetNode` without filtering on `type`, so they would list databases, brokers and external endpoints as services.
+**Rollout.** Use an OpenSearch Dashboards version that includes the dependency-aware APM UI ([dashboards-observability#2898](https://github.com/opensearch-project/dashboards-observability/pull/2898) / [OpenSearch-Dashboards#12771](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/12771)). Older Dashboards build the services list from `sourceNode`/`targetNode` without filtering on `type`, so they list databases, brokers and external endpoints as services; with an older Dashboards version, set `dependency_nodes.enabled: false`.
 
 When enabled, a node's `type` is one of:
 
@@ -604,8 +604,8 @@ The processor exposes the following metrics for monitoring:
 
 - `spansDbSize`: Total size of span databases in bytes
 - `spansDbCount`: Total number of spans stored across all databases
-- `dependencyCallsOverflowed` (counter): Dependency calls, including consumed messages, collapsed into `OtherRemoteService` by `max_dependencies_per_service` (only when `dependency_nodes.enabled`)
-- `dependencyRemoteOperationCallsOverflowed` (counter): Calls to an admitted dependency collapsed into `OtherRemoteOperation` by `max_remote_operations_per_service` (only when `dependency_nodes.enabled`)
+- `dependencyCallsOverflowed` (counter): Dependency calls, including consumed messages, collapsed into `OtherRemoteService` by `max_dependencies_per_service` (not registered when `dependency_nodes.enabled` is false)
+- `dependencyRemoteOperationCallsOverflowed` (counter): Calls to an admitted dependency collapsed into `OtherRemoteOperation` by `max_remote_operations_per_service` (not registered when `dependency_nodes.enabled` is false)
 
 ## Related Documentation
 

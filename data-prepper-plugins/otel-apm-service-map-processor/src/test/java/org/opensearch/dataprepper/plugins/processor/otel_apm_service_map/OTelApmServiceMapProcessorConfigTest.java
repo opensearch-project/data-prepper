@@ -85,10 +85,10 @@ public class OTelApmServiceMapProcessorConfigTest {
     }
 
     @Test
-    public void dependencyNodes_defaults_areDisabledWithCaps() {
+    public void dependencyNodes_defaults_areEnabledWithCaps() {
         final DependencyNodesConfig dependencyNodes = createObjectUnderTest().getDependencyNodes();
 
-        assertThat(dependencyNodes.isEnabled(), equalTo(false));
+        assertThat(dependencyNodes.isEnabled(), equalTo(true));
         assertThat(dependencyNodes.getMaxDependenciesPerService(), equalTo(DependencyNodesConfig.DEFAULT_MAX_DEPENDENCIES_PER_SERVICE));
         assertThat(dependencyNodes.getMaxRemoteOperationsPerService(),
                 equalTo(DependencyNodesConfig.DEFAULT_MAX_REMOTE_OPERATIONS_PER_SERVICE));
@@ -97,9 +97,17 @@ public class OTelApmServiceMapProcessorConfigTest {
     }
 
     @Test
-    public void dependencyNodes_absentFromConfig_isDisabled() throws Exception {
+    public void dependencyNodes_absentFromConfig_isEnabled() throws Exception {
         final OTelApmServiceMapProcessorConfig config = new ObjectMapper()
                 .readValue("{\"db_path\": \"data/\"}", OTelApmServiceMapProcessorConfig.class);
+
+        assertThat(config.getDependencyNodes().isEnabled(), equalTo(true));
+    }
+
+    @Test
+    public void dependencyNodes_explicitlyDisabledInConfig_isDisabled() throws Exception {
+        final OTelApmServiceMapProcessorConfig config = new ObjectMapper()
+                .readValue("{\"dependency_nodes\": {\"enabled\": false}}", OTelApmServiceMapProcessorConfig.class);
 
         assertThat(config.getDependencyNodes().isEnabled(), equalTo(false));
     }
