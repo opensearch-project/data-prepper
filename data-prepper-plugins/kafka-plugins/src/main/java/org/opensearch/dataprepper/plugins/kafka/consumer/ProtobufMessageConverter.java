@@ -26,12 +26,12 @@ import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 class ProtobufMessageConverter {
     private static final List<Descriptors.FileDescriptor> WELL_KNOWN_TYPE_FILES = List.of(
@@ -48,7 +48,7 @@ class ProtobufMessageConverter {
 
     ProtobufMessageConverter(final ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.printerCache = new HashMap<>();
+        this.printerCache = new ConcurrentHashMap<>();
     }
 
     Object convert(final Message message) throws IOException {
