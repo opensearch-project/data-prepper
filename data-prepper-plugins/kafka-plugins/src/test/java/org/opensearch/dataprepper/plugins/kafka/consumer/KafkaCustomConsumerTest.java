@@ -20,8 +20,10 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -589,7 +591,9 @@ public class KafkaCustomConsumerTest {
     public void testConfluentFramedProtobufConsumeRecords() throws Exception {
         final String topic = topicConfig.getName();
         final MockSchemaRegistryClient schemaRegistryClient = new MockSchemaRegistryClient();
-        final Map<String, Object> serdeConfig = Map.of("schema.registry.url", "mock://protobuf-consumer-test");
+        final Map<String, Object> serdeConfig = Map.of(
+                "schema.registry.url", "mock://protobuf-consumer-test",
+                AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
         final KafkaProtobufSerializer<Message> serializer = new KafkaProtobufSerializer<>(schemaRegistryClient);
         final KafkaProtobufDeserializer<Message> deserializer = new KafkaProtobufDeserializer<>(schemaRegistryClient);
         serializer.configure(serdeConfig, false);

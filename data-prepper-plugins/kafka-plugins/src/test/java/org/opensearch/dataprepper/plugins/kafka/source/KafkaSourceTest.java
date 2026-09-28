@@ -13,7 +13,9 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.AfterEach;
@@ -218,6 +220,8 @@ class KafkaSourceTest {
         assertThat(schemaRegistryClient.getLatestSchemaMetadata(subject).getSchemaType(), equalTo("PROTOBUF"));
         assertThat(properties.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG),
                 equalTo(KafkaProtobufDeserializer.class));
+        assertThat(properties.get(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY),
+                equalTo(TopicNameStrategy.class.getName()));
     }
 
     @Test

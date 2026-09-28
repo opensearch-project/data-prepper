@@ -11,9 +11,11 @@ import com.google.protobuf.Message;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -341,6 +343,7 @@ public class KafkaSource implements Source<Record<Event>> {
             final Properties properties,
             final TopicConfig topic,
             final SchemaRegistryClient schemaRegistryClient) {
+        properties.put(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
         final SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
         try {
             final String subject = topic.getName() + "-value";
