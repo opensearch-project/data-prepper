@@ -10,11 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -60,6 +61,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -83,6 +85,9 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
 
     @TempDir
     File tempDir;
+
+    private Counter dependencyCallsOverflowedCounter;
+    private Counter remoteOperationCallsOverflowedCounter;
 
     private EventMetadata eventMetadata;
     private Object eventData;
@@ -125,6 +130,12 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
         
         // Setup plugin metrics mocks
         lenient().when(pluginMetrics.gauge(anyString(), any(), any())).thenReturn(null);
+        dependencyCallsOverflowedCounter = mock(Counter.class);
+        remoteOperationCallsOverflowedCounter = mock(Counter.class);
+        lenient().when(pluginMetrics.counter(OTelApmServiceMapProcessor.DEPENDENCY_CALLS_OVERFLOWED_METRIC))
+                .thenReturn(dependencyCallsOverflowedCounter);
+        lenient().when(pluginMetrics.counter(OTelApmServiceMapProcessor.REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC))
+                .thenReturn(remoteOperationCallsOverflowedCounter);
     }
 
     @AfterEach
@@ -1734,7 +1745,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     }
 
     // The plugin constructor runs on the system clock, so its wiring is checked through the overflow
-    // gauges, which are registered only when dependency nodes are enabled.
+    // counters, which are registered only when dependency nodes are enabled.
     private OTelApmServiceMapProcessor newPluginConstructedProcessor(final DependencyNodesConfig dependencyNodesConfig) {
         when(config.getDbPath()).thenReturn(new File(tempDir, "gate-plugin-" + System.nanoTime()).getAbsolutePath());
         when(config.getDependencyNodes()).thenReturn(dependencyNodesConfig);
@@ -1745,17 +1756,23 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     void dependencyNodes_pluginConstructorWithoutDependencyNodesConfig_isDisabled() {
         final OTelApmServiceMapProcessor proc = newPluginConstructedProcessor(null);
         try {
-            verify(pluginMetrics, never()).gauge(eq(OTelApmServiceMapProcessor.DEPENDENCY_OVERFLOW_METRIC), any(AtomicLong.class));
+            verify(pluginMetrics, never()).counter(OTelApmServiceMapProcessor.DEPENDENCY_CALLS_OVERFLOWED_METRIC);
+            verify(pluginMetrics, never()).counter(OTelApmServiceMapProcessor.REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC);
         } finally {
             proc.shutdown();
         }
     }
 
     @Test
-    void dependencyNodes_pluginConstructorWithEnabledConfig_isEnabled() {
+    void dependencyNodes_enabled_registersOverflowCountersNamedForCollapsedCalls() {
         final OTelApmServiceMapProcessor proc = newPluginConstructedProcessor(enabledDependencyNodes());
         try {
-            verify(pluginMetrics).gauge(eq(OTelApmServiceMapProcessor.DEPENDENCY_OVERFLOW_METRIC), any(AtomicLong.class));
+            verify(pluginMetrics).counter("dependencyCallsOverflowed");
+            verify(pluginMetrics).counter("dependencyRemoteOperationCallsOverflowed");
+            verify(pluginMetrics, never()).gauge(eq("dependencyCallsOverflowed"), any(AtomicLong.class));
+            verify(pluginMetrics, never()).gauge(eq("dependencyRemoteOperationCallsOverflowed"), any(AtomicLong.class));
+            verify(pluginMetrics, never()).gauge(eq("dependencyCallsOverflowed"), any(), any());
+            verify(pluginMetrics, never()).gauge(eq("dependencyRemoteOperationCallsOverflowed"), any(), any());
         } finally {
             proc.shutdown();
         }
@@ -1793,9 +1810,150 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
             assertThat(names.size(), equalTo(2));
             assertTrue(names.contains("OtherRemoteService"));
             assertThat(requestCount(emitted, "checkout", "OtherRemoteService"), equalTo(1.0));
-            final ArgumentCaptor<AtomicLong> overflowTotal = ArgumentCaptor.forClass(AtomicLong.class);
-            verify(pluginMetrics).gauge(eq(OTelApmServiceMapProcessor.DEPENDENCY_OVERFLOW_METRIC), overflowTotal.capture());
-            assertThat(overflowTotal.getValue().get(), equalTo(1L));
+            verify(dependencyCallsOverflowedCounter, times(1)).increment();
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyCap_admitsTheSameDependenciesWhateverTheTraceOrder() {
+        final List<String> hosts = List.of("a-db", "a-db", "a-db", "b-db", "b-db", "c-db");
+        for (int rotation = 0; rotation < hosts.size(); rotation++) {
+            final OTelApmServiceMapProcessor proc = newFlushingProcessor("cap-order-" + rotation + "-",
+                    new DependencyNodesConfig(true, 2, 100, Collections.emptyList()));
+            try {
+                final List<Record<Event>> batch = new ArrayList<>();
+                for (int i = 0; i < hosts.size(); i++) {
+                    final String traceId = String.format("1%015x", (i + rotation) % hosts.size());
+                    batch.add(new Record<>(withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
+                            String.format("%016x", i + 1), "", traceId), dbAttributes("postgresql", hosts.get(i)))));
+                }
+
+                final Collection<Record<Event>> emitted = flushAll(proc, batch);
+
+                assertThat("rotation " + rotation, targetNamesOfType(serviceMapEvents(emitted), "database"),
+                        equalTo(Set.of("postgresql:a-db", "postgresql:b-db", "OtherRemoteService")));
+                assertThat("rotation " + rotation, requestCount(emitted, "checkout", "OtherRemoteService"), equalTo(1.0));
+            } finally {
+                proc.shutdown();
+            }
+        }
+    }
+
+    @Test
+    void dependencyCap_overflowedDependencyOperationsDoNotConsumeTheOperationBudget() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("cap-overflow-ops-",
+                new DependencyNodesConfig(true, 1, 1, Collections.emptyList()));
+        try {
+            final List<Record<Event>> batch = new ArrayList<>();
+            final List<String> hosts = List.of("a-db", "a-db", "b-db");
+            final List<String> operations = List.of("SELECT", "SELECT", "INSERT");
+            for (int i = 0; i < hosts.size(); i++) {
+                final Map<String, Object> attributes = dbAttributes("postgresql", hosts.get(i));
+                attributes.put("db.operation.name", operations.get(i));
+                batch.add(new Record<>(withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
+                        String.format("%016x", i + 1), "", String.format("1%015x", i)), attributes)));
+            }
+
+            final Set<String> edges = serviceMapEvents(flushAll(proc, batch)).stream()
+                    .filter(e -> "database".equals(e.get("targetNode/type", String.class)))
+                    .map(e -> e.get("targetNode/keyAttributes/name", String.class) + " " + e.get("targetOperation/name", String.class))
+                    .collect(Collectors.toSet());
+
+            assertThat(edges, equalTo(Set.of("postgresql:a-db SELECT", "OtherRemoteService OtherRemoteOperation")));
+            verify(remoteOperationCallsOverflowedCounter, never()).increment();
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyCap_messagingDestinationsPastTheCap_collapseIntoOverflowBroker() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("cap-brokers-",
+                new DependencyNodesConfig(true, 1, 100, Collections.emptyList()));
+        try {
+            final List<String> destinations = List.of("payments", "orders", "orders");
+            final List<Record<Event>> batch = new ArrayList<>();
+            for (int i = 0; i < destinations.size(); i++) {
+                final Map<String, Object> attributes = kafkaAttributes("receive");
+                attributes.put("messaging.destination.name", destinations.get(i));
+                batch.add(new Record<>(withAttributes(createMockSpanWithIds("shipping", "receive", "SPAN_KIND_CONSUMER",
+                        String.format("%016x", i + 1), "", String.format("1%015x", i)), attributes)));
+            }
+
+            final Collection<Record<Event>> emitted = flushAll(proc, batch);
+            final Set<String> edges = serviceMapEvents(emitted).stream()
+                    .filter(e -> "messaging".equals(e.get("sourceNode/type", String.class)))
+                    .map(e -> e.get("sourceNode/keyAttributes/name", String.class) + " " + e.get("sourceOperation/name", String.class))
+                    .collect(Collectors.toSet());
+
+            assertThat(edges, equalTo(Set.of("kafka:orders receive", "OtherRemoteService OtherRemoteOperation")));
+            verify(dependencyCallsOverflowedCounter, times(1)).increment();
+            verify(remoteOperationCallsOverflowedCounter, never()).increment();
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyCap_realDependencyNamedLikeTheOverflowBucket_doesNotCountOverflowedCallsAsOperationOverflows() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("cap-literal-other-",
+                new DependencyNodesConfig(true, 1, 1, Collections.emptyList()));
+        try {
+            final List<Record<Event>> batch = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                final Map<String, Object> attributes = dbAttributes("postgresql", i < 2 ? "a-db" : "b-db");
+                attributes.put("db.operation.name", i < 2 ? "SELECT" : "INSERT");
+                if (i < 2) {
+                    attributes.put("peer.service", "OtherRemoteService");
+                }
+                batch.add(new Record<>(withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
+                        String.format("%016x", i + 1), "", String.format("1%015x", i)), attributes)));
+            }
+
+            final List<Event> databaseEdges = serviceMapEvents(flushAll(proc, batch)).stream()
+                    .filter(e -> "database".equals(e.get("targetNode/type", String.class)))
+                    .collect(Collectors.toList());
+            final Set<String> edges = databaseEdges.stream()
+                    .map(e -> e.get("targetNode/keyAttributes/name", String.class) + " " + e.get("targetOperation/name", String.class))
+                    .collect(Collectors.toSet());
+
+            assertThat(edges, equalTo(Set.of("OtherRemoteService query", "OtherRemoteService OtherRemoteOperation")));
+            final Event admittedEdge = databaseEdges.stream()
+                    .filter(e -> "query".equals(e.get("targetOperation/name", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected the admitted OtherRemoteService edge"));
+            assertThat(admittedEdge.get("targetNode/dependencyAttributes/db.system.name", String.class), equalTo("postgresql"));
+            verify(dependencyCallsOverflowedCounter, times(1)).increment();
+            verify(remoteOperationCallsOverflowedCounter, never()).increment();
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void dependencyCap_overflowsInSuccessiveWindows_accumulateOnTheCounter() {
+        final AtomicReference<Instant> now = new AtomicReference<>(testTime);
+        when(clock.instant()).thenAnswer(invocation -> now.get());
+        final OTelApmServiceMapProcessor proc = newProcessorCapturingEvents("cap-windows-",
+                new DependencyNodesConfig(true, 1, 100, Collections.emptyList()));
+        try {
+            for (int window = 0; window < 4; window++) {
+                final List<Record<Event>> batch = new ArrayList<>();
+                if (window < 2) {
+                    for (int i = 0; i < 3; i++) {
+                        batch.add(new Record<>(withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
+                                String.format("%016x", window * 10 + i + 1), "", String.format("1%015x", window * 10 + i)),
+                                dbAttributes("postgresql", i < 2 ? "a-db" : "b-db"))));
+                    }
+                }
+                proc.doExecute(batch);
+                now.set(now.get().plusSeconds(65));
+            }
+
+            verify(dependencyCallsOverflowedCounter, times(2)).increment();
+            verify(remoteOperationCallsOverflowedCounter, never()).increment();
         } finally {
             proc.shutdown();
         }
@@ -1824,10 +1982,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
 
             assertThat(operations.size(), equalTo(2));
             assertTrue(operations.contains("OtherRemoteOperation"));
-            final ArgumentCaptor<AtomicLong> overflowTotal = ArgumentCaptor.forClass(AtomicLong.class);
-            verify(pluginMetrics).gauge(eq(OTelApmServiceMapProcessor.REMOTE_OPERATION_OVERFLOW_METRIC),
-                    overflowTotal.capture());
-            assertThat(overflowTotal.getValue().get(), equalTo(1L));
+            verify(remoteOperationCallsOverflowedCounter, times(1)).increment();
         } finally {
             proc.shutdown();
         }
@@ -2010,6 +2165,24 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                     .filter(e -> "messaging".equals(e.get("sourceNode/type", String.class)))
                     .count();
             assertThat(consumerEdges, equalTo(1L));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void rootConsumerSpansWithEmptyParentSpanId_areNotMergedAsOneMessage() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("root-consumers-");
+        try {
+            final Span receive = withAttributes(createMockSpanWithIds("shipping", "orders receive", "SPAN_KIND_CONSUMER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), kafkaAttributes("receive"));
+            final Span process = withAttributes(createMockSpanWithIds("shipping", "orders process", "SPAN_KIND_CONSUMER",
+                    "2222222222222222", "", "aaaaaaaaaaaaaaaa"), kafkaAttributes("process"));
+
+            final Collection<Record<Event>> emitted = flushAll(proc, Arrays.asList(new Record<>(receive), new Record<>(process)));
+
+            // Root spans carry no parent, so they cannot be matched as one message and both are counted.
+            assertThat(requestCount(emitted, "shipping", "kafka:orders"), equalTo(2.0));
         } finally {
             proc.shutdown();
         }

@@ -16,6 +16,9 @@ import lombok.Getter;
 
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.opensearch.dataprepper.plugins.otel.common.RemoteOperationAndService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -30,6 +33,8 @@ import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationU
 
 @Getter
 public class SpanStateData implements Serializable {
+    private static final Logger LOG = LoggerFactory.getLogger(SpanStateData.class);
+
     // Node type classifications for synthesized (non-service) dependency targets.
     public static final String NODE_TYPE_SERVICE = "service";
     public static final String NODE_TYPE_DATABASE = "database";
@@ -155,6 +160,7 @@ public class SpanStateData implements Serializable {
                 // A malformed URL/authority can throw inside the shared extractor. A failed
                 // dependency derivation must not drop the whole span (its service->service
                 // contribution still counts); leave the derived fields unset instead.
+                LOG.debug("Could not derive the remote dependency of span {} in trace {}: {}", spanId, traceId, e.getMessage());
                 this.derivedRemoteService = null;
                 this.derivedRemoteOperation = null;
             }
