@@ -35,17 +35,20 @@ import static org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationU
 public class SpanStateData implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(SpanStateData.class);
 
-    // Node type classifications for synthesized (non-service) dependency targets.
+    /** Node type of an instrumented service (one that emits SERVER spans). */
     public static final String NODE_TYPE_SERVICE = "service";
+    /** Node type of a synthesized database dependency. */
     public static final String NODE_TYPE_DATABASE = "database";
+    /** Node type of a synthesized message broker dependency. */
     public static final String NODE_TYPE_MESSAGING = "messaging";
+    /** Node type of a synthesized external (HTTP/RPC/peer) dependency. */
     public static final String NODE_TYPE_EXTERNAL = "external";
 
     private static final Set<String> DEPENDENCY_CANDIDATE_KINDS = Set.of(
             "CLIENT", "SPAN_KIND_CLIENT", "PRODUCER", "SPAN_KIND_PRODUCER", "CONSUMER", "SPAN_KIND_CONSUMER");
-    // Loose dotted quad (also zero-padded forms such as 010.000.000.005, which InetAddresses rejects).
+    /** Loose dotted quad (also zero-padded forms such as 010.000.000.005, which InetAddresses rejects). */
     private static final Pattern IPV4_PATTERN = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
-    // URL.getPort() yields -1 for schemes without a default port.
+    /** A numeric port, or -1, which URL.getPort() yields for schemes without a default port. */
     private static final Pattern PORT_PATTERN = Pattern.compile("^(\\d{1,5}|-1)$");
     private static final Set<String> DROPPED_PORTS = Set.of("80", "443", "-1");
     private static final Set<String> LOOPBACK_NAMES = Set.of(
@@ -55,7 +58,7 @@ public class SpanStateData implements Serializable {
             "db.system.name", "db.system", "db_system", "db_system_name", "db.system_name"};
     private static final String[] HOST_KEYS = {"server.address", "net.peer.name", "network.peer.address"};
     private static final String[] PORT_KEYS = {"server.port", "net.peer.port", "network.peer.port"};
-    // messaging.destination is the pre-1.17 semantic-convention key for the destination name.
+    /** Destination-name keys; messaging.destination is the pre-1.17 semantic-convention key. */
     private static final String[] MESSAGING_DESTINATION_KEYS = {"messaging.destination.name", "messaging.destination"};
 
     private String serviceName;
@@ -74,17 +77,22 @@ public class SpanStateData implements Serializable {
     private String environment;
     private Map<String, String> groupByAttributes;
 
-    // Derived remote-dependency fields for spans whose downstream is not a traced service
-    // (databases, message brokers, external endpoints). Computed once from span attributes.
+    /** Name of the dependency this span calls when it is not a traced service, or null. */
     private String derivedRemoteService;
+    /** Operation invoked on the derived dependency, or null when it cannot be derived. */
     private String derivedRemoteOperation;
+    /** Dependency node type (database, messaging or external), or null when the span targets a traced service. */
     private String derivedNodeType;
-    // Messaging (PRODUCER/CONSUMER) attributes for broker-node synthesis.
+    /** The messaging.system attribute, used to synthesize broker nodes. */
     private String messagingSystem;
+    /** The messaging destination name, used to synthesize broker nodes. */
     private String messagingDestination;
+    /** The messaging operation (for example publish, receive or process). */
     private String messagingOperation;
-    // Canonical (OTel-keyed) identity attributes for the synthesized dependency node, so consumers
-    // can filter its spans/logs on exact peer identity. Empty for spans targeting a traced service.
+    /**
+     * Canonical (OTel-keyed) identity attributes for the synthesized dependency node, so consumers
+     * can filter its spans/logs on exact peer identity. Empty for spans targeting a traced service.
+     */
     private Map<String, String> dependencyAttributes = Collections.emptyMap();
 
     public SpanStateData(final String serviceName,

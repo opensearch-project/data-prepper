@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 1,
   "template": {
     "mappings": {
       "date_detection": false,

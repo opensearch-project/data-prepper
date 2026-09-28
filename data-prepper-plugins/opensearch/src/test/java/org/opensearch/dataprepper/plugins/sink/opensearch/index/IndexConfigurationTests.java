@@ -151,7 +151,7 @@ public class IndexConfigurationTests {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
                 IndexType.OTEL_APM_SERVICE_MAP.getValue()).build();
         final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
-        assertThat(indexTemplate.get("version"), equalTo(2));
+        assertThat(indexTemplate.get("version"), equalTo(1));
         assertDependencyAttributesMapping((Map<String, Object>) indexTemplate.get("mappings"));
     }
 
@@ -162,7 +162,7 @@ public class IndexConfigurationTests {
                 .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
                 .build();
         final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
-        assertThat(indexTemplate.get("version"), equalTo(2));
+        assertThat(indexTemplate.get("version"), equalTo(1));
         final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
         assertDependencyAttributesMapping((Map<String, Object>) template.get("mappings"));
     }

@@ -28,8 +28,10 @@ public class Node {
     @JsonProperty("groupByAttributes")
     private final Map<String, String> groupByAttributes;
 
-    // Exact peer identity for synthesized dependency nodes, so callers can filter the
-    // dependency's spans/logs precisely rather than parse the node name. Empty for service nodes.
+    /**
+     * Exact peer identity for synthesized dependency nodes, so callers can filter the dependency's
+     * spans/logs precisely rather than parse the node name. Empty for service nodes.
+     */
     @JsonProperty("dependencyAttributes")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private final Map<String, String> dependencyAttributes;

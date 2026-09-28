@@ -90,12 +90,14 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final String SPAN_KIND_CLIENT = "SPAN_KIND_CLIENT";
     private static final String SPAN_KIND_PRODUCER = "SPAN_KIND_PRODUCER";
     private static final String SPAN_KIND_CONSUMER = "SPAN_KIND_CONSUMER";
-    // Single source of truth for node-type strings lives in SpanStateData.
+    /** Node-type strings are defined once, in {@link SpanStateData}. */
     private static final String NODE_TYPE_SERVICE = SpanStateData.NODE_TYPE_SERVICE;
     private static final String NODE_TYPE_MESSAGING = SpanStateData.NODE_TYPE_MESSAGING;
     private static final String NODE_TYPE_EXTERNAL = SpanStateData.NODE_TYPE_EXTERNAL;
-    // Brokers are shared infrastructure: producers and consumers in different environments must reach
-    // the same broker node, so broker nodes use one fixed environment instead of the span's.
+    /**
+     * Brokers are shared infrastructure: producers and consumers in different environments must reach
+     * the same broker node, so broker nodes use one fixed environment instead of the span's.
+     */
     static final String MESSAGING_BROKER_ENVIRONMENT = "generic:default";
     private static final String MESSAGING_OPERATION_PROCESS = "process";
 
@@ -118,12 +120,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private final MetricTimestampGranularity metricTimestampGranularity;
     private final EventFactory eventFactory;
     private final boolean dependencyNodesEnabled;
-    // Null when dependency nodes are disabled, so spans skip dependency derivation entirely.
+    /** Null when dependency nodes are disabled, so spans skip dependency derivation entirely. */
     private final DependencyNamingPolicy dependencyNamingPolicy;
     private final int maxDependenciesPerService;
     private final int maxRemoteOperationsPerService;
-    // Increment the overflow counters; no-ops when dependency nodes (and so the caps) are disabled.
+    /** Increments the dependency overflow counter; a no-op when dependency nodes (and so the caps) are disabled. */
     private final Runnable onDependencyCallOverflowed;
+    /** Increments the remote-operation overflow counter; a no-op when dependency nodes are disabled. */
     private final Runnable onRemoteOperationCallOverflowed;
 
     @DataPrepperPluginConstructor

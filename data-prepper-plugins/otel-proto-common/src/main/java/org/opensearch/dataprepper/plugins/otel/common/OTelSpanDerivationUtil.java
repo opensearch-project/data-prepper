@@ -44,14 +44,18 @@ public class OTelSpanDerivationUtil {
     private static final Logger LOG = LoggerFactory.getLogger(OTelSpanDerivationUtil.class);
     private static final String SERVICE_MAPPINGS_FILE = "service_mappings";
 
-    // These providers read and parse classpath resources in their constructors. They are immutable
-    // and stateless, so they are built once here rather than per computeRemoteOperationAndService
-    // call (which runs on the ingest hot path). This also surfaces a failed resource load at class
-    // load time instead of per span.
+    /**
+     * AWS SDK service-name mappings. This and the providers below read and parse classpath resources in
+     * their constructors; they are immutable and stateless, so they are built once rather than per
+     * {@link #computeRemoteOperationAndService} call (which runs on the ingest hot path). This also
+     * surfaces a failed resource load at class load time instead of per span.
+     */
     private static final Map<String, String> AWS_SERVICE_MAPPINGS =
             new AwsServiceMappingsProvider().getServiceMappings();
+    /** Remote operation/service extractors, built once (see {@link #AWS_SERVICE_MAPPINGS}). */
     private static final RemoteOperationAndServiceProviders REMOTE_OPERATION_AND_SERVICE_PROVIDERS =
             new RemoteOperationAndServiceProviders();
+    /** Ordered address/port attribute key pairs, loaded once (see {@link #AWS_SERVICE_MAPPINGS}). */
     private static final List<ServiceAddressPortAttributesProvider.AddressPortAttributeKeys>
             ADDRESS_PORT_ATTRIBUTE_KEYS =
             new ServiceAddressPortAttributesProvider().getAddressPortAttributeKeysList();
