@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.exc.StreamConstraintsException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -488,5 +493,43 @@ class JsonInputCodecTest {
             }
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {32, 64})
+    void parse_with_string_value_within_the_raised_limit_returns_event(final int valueSizeInMB) throws IOException {
+        // Jackson's default maximum string length is 20 MB; the codec raises it to 64 MB.
+        // String values up to that limit must parse successfully.
+        final String key = UUID.randomUUID().toString();
+        final String largeValue = buildStringOfSize(valueSizeInMB * 1024 * 1024);
+        final InputStream inputStream = createInputStream(
+                Map.of("events", List.of(Map.of(key, largeValue))));
+
+        createObjectUnderTest().parse(inputStream, eventConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(eventConsumer).accept(recordArgumentCaptor.capture());
+        assertThat(recordArgumentCaptor.getValue().getData().get(key, String.class), equalTo(largeValue));
+    }
+
+    @Test
+    void parse_with_string_value_exceeding_the_raised_limit_throws() throws IOException {
+        // A string value larger than the 64 MB limit must still be rejected.
+        final String key = UUID.randomUUID().toString();
+        final String tooLargeValue = buildStringOfSize(65 * 1024 * 1024);
+        final InputStream inputStream = createInputStream(
+                Map.of("events", List.of(Map.of(key, tooLargeValue))));
+
+        assertThrows(StreamConstraintsException.class,
+                () -> createObjectUnderTest().parse(inputStream, eventConsumer));
+        verifyNoInteractions(eventConsumer);
+    }
+
+    private static String buildStringOfSize(final int length) {
+        final StringBuilder builder = new StringBuilder(length);
+        while (builder.length() < length) {
+            builder.append('a');
+        }
+        return builder.toString();
     }
 }

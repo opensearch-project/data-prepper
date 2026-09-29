@@ -28,6 +28,11 @@ dependencies {
 }
 
 
+test {
+    // Tests verifying the raised maximum string length build strings larger than 64 MB.
+    maxHeapSize = '2g'
+}
+
 tasks.named('validateCompatibility') {
     methodExcludes.add('org.opensearch.dataprepper.model.annotations.Experimental#message()')
     methodExcludes.add('org.opensearch.dataprepper.model.annotations.Experimental#groups()')
