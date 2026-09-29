@@ -71,6 +71,7 @@ subprojects {
     spotless {
         java {
             targetExclude 'build/generated-src/antlr/**'
+            targetExclude 'build/generated/source/proto/**'
             // TODO: enrich format rules
             removeUnusedImports()
         }

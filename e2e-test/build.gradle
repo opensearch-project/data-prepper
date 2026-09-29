@@ -29,7 +29,6 @@ subprojects {
     ext {
         dataPrepperJarImageFilepath = 'bin/data-prepper/'
         targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : 'docker'
-        targetOpenTelemetryVersion = project.hasProperty('openTelemetryVersion') ? project.getProperty('openTelemetryVersion') : "${libs.versions.opentelemetry.get()}"
         dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre"
         dataPrepperDefinedDockerImage =
                 project.hasProperty('endToEndDataPrepperImage') && project.hasProperty('endToEndDataPrepperTag') ?
