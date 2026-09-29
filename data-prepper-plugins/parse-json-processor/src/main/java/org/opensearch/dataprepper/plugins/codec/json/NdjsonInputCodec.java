@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec.json;
@@ -14,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.LogEventBuilder;
@@ -33,7 +38,7 @@ import java.util.function.Consumer;
 @DataPrepperPlugin(name = "ndjson", pluginType = InputCodec.class, pluginConfigurationType = NdjsonInputConfig.class)
 public class NdjsonInputCodec implements InputCodec {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final NdjsonInputConfig ndjsonInputConfig;
     private final EventFactory eventFactory;
     private final JsonFactory jsonFactory;
@@ -42,7 +47,8 @@ public class NdjsonInputCodec implements InputCodec {
     public NdjsonInputCodec(final NdjsonInputConfig ndjsonInputConfig, final EventFactory eventFactory) {
         this.ndjsonInputConfig = ndjsonInputConfig;
         this.eventFactory = eventFactory;
-        jsonFactory = new JsonFactory();
+        jsonFactory = JsonFactories.defaultJsonFactory();
+        objectMapper = new ObjectMapper(jsonFactory);
     }
 
     @Override

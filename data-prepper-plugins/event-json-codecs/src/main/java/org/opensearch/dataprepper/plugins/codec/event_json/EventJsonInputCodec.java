@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.codec.event_json;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -20,6 +19,7 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -45,16 +45,7 @@ import java.util.Objects;
 public class EventJsonInputCodec implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
 
-    // Events may hold individual string values larger than Jackson's default maximum string
-    // length of 20 MB. Use the same 64 MB limit as JacksonEvent so that any event which was
-    // written by the EventJsonOutputCodec can be read back.
-    static final int MAX_JSON_STRING_LENGTH = 64 * 1024 * 1024;
-
-    private final JsonFactory jsonFactory = JsonFactory.builder()
-            .streamReadConstraints(StreamReadConstraints.builder()
-                    .maxStringLength(MAX_JSON_STRING_LENGTH)
-                    .build())
-            .build();
+    private final JsonFactory jsonFactory = JsonFactories.defaultJsonFactory();
     private final ObjectMapper objectMapper = new ObjectMapper(jsonFactory).registerModule(new JavaTimeModule());
     private final Boolean overrideTimeReceived;
 

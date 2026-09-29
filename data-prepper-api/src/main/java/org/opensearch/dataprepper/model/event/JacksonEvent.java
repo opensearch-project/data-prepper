@@ -9,10 +9,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +24,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,15 +100,7 @@ public class JacksonEvent implements Event {
 
     private static final String SEPARATOR = "/";
 
-    private static final int MAX_JSON_STRING_LENGTH = 64 * 1024 * 1024;
-
-    private static final JsonFactory JSON_FACTORY = JsonFactory.builder()
-            .streamReadConstraints(StreamReadConstraints.builder()
-                    .maxStringLength(MAX_JSON_STRING_LENGTH)
-                    .build())
-            .build();
-
-    private static final ObjectMapper mapper = JsonMapper.builder(JSON_FACTORY)
+    private static final ObjectMapper mapper = JsonMapper.builder(JsonFactories.defaultJsonFactory())
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build()
             .registerModule(new JavaTimeModule())

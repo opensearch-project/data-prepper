@@ -1,11 +1,16 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.exc.StreamConstraintsException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,6 +46,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -417,5 +424,49 @@ class NdjsonInputCodecTest {
         jsonObject.put(UUID.randomUUID().toString(), Arrays.asList(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 
         return jsonObject;
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {32, 64})
+    void parse_with_string_value_within_the_raised_limit_returns_event(final int valueSizeInMB) throws IOException {
+        // Jackson's default maximum string length is 20 MB; the codec raises it to 64 MB.
+        // String values up to that limit must parse successfully.
+        final String key = UUID.randomUUID().toString();
+        final String largeValue = buildStringOfSize(valueSizeInMB * 1024 * 1024);
+        final String ndjsonLine = OBJECT_MAPPER.writeValueAsString(Map.of(key, largeValue)) + "\n";
+        final InputStream inputStream = new ByteArrayInputStream(ndjsonLine.getBytes());
+
+        createObjectUnderTest().parse(inputStream, eventConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(eventConsumer).accept(recordArgumentCaptor.capture());
+        assertThat(recordArgumentCaptor.getValue().getData().get(key, String.class), equalTo(largeValue));
+    }
+
+    @Test
+    void parse_with_string_value_exceeding_the_raised_limit_throws() throws IOException {
+        // A string value larger than the 64 MB limit must still be rejected. The codec's
+        // MappingIterator wraps the underlying StreamConstraintsException in a RuntimeException.
+        final String key = UUID.randomUUID().toString();
+        final String tooLargeValue = buildStringOfSize(65 * 1024 * 1024);
+        final String ndjsonLine = OBJECT_MAPPER.writeValueAsString(Map.of(key, tooLargeValue)) + "\n";
+        final InputStream inputStream = new ByteArrayInputStream(ndjsonLine.getBytes());
+
+        final Exception exception = assertThrows(Exception.class,
+                () -> createObjectUnderTest().parse(inputStream, eventConsumer));
+        Throwable rootCause = exception;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        assertThat(rootCause, instanceOf(StreamConstraintsException.class));
+        verifyNoInteractions(eventConsumer);
+    }
+
+    private static String buildStringOfSize(final int length) {
+        final StringBuilder builder = new StringBuilder(length);
+        while (builder.length() < length) {
+            builder.append('a');
+        }
+        return builder.toString();
     }
 }
