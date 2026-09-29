@@ -35,14 +35,15 @@ public class DependencyNodesConfig {
 
     @Min(1)
     @JsonProperty("max_dependencies_per_service")
-    @JsonPropertyDescription("Maximum distinct dependency names per source service per window. Further dependencies are " +
-            "collapsed into a single OtherRemoteService node.")
+    @JsonPropertyDescription("Maximum distinct dependency names a source service may hold. Admission is sticky across " +
+            "windows; a name idle for more than 10 windows releases its slot. Further dependencies are collapsed into a " +
+            "per-type overflow node: OtherDatabase, OtherExternal or OtherMessaging.")
     private int maxDependenciesPerService = DEFAULT_MAX_DEPENDENCIES_PER_SERVICE;
 
     @Min(1)
     @JsonProperty("max_remote_operations_per_service")
-    @JsonPropertyDescription("Maximum distinct dependency remote operations per source service per window. Further " +
-            "operations are collapsed into OtherRemoteOperation.")
+    @JsonPropertyDescription("Maximum distinct dependency remote operations a source service may hold (sticky, like " +
+            "max_dependencies_per_service). Further operations are collapsed into OtherRemoteOperation.")
     private int maxRemoteOperationsPerService = DEFAULT_MAX_REMOTE_OPERATIONS_PER_SERVICE;
 
     @JsonProperty("hostname_denylist_patterns")

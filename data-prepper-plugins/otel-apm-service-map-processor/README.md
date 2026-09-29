@@ -37,8 +37,8 @@ processor:
 | `metric_timestamp_source` | String | `"arrival_time"` | Timestamp source for emitted metrics. `"arrival_time"` uses processing time at window evaluation (avoids late-span data loss in Prometheus/AMP). `"span_end_time"` uses the span's `endTime` field. |
 | `metric_timestamp_granularity` | String | `"seconds"` | Truncation granularity for metric and service map timestamps. `"seconds"` truncates to second boundaries (1s collision window). `"minutes"` truncates to minute boundaries (60s collision window). |
 | `dependency_nodes.enabled` | Boolean | `true` | Synthesize typed `database`, `external` and `messaging` nodes, broker edges and their RED metrics. See [External Dependency Nodes](#external-dependency-nodes). |
-| `dependency_nodes.max_dependencies_per_service` | Integer | `100` | Distinct dependency names per source service per window; further dependencies collapse into `OtherRemoteService`. |
-| `dependency_nodes.max_remote_operations_per_service` | Integer | `100` | Distinct dependency remote operations per source service per window; further operations collapse into `OtherRemoteOperation`. |
+| `dependency_nodes.max_dependencies_per_service` | Integer | `100` | Distinct dependency names a source service may hold (admission is sticky across windows; see [Cardinality](#external-dependency-nodes)). Further dependencies collapse into `OtherDatabase` / `OtherExternal` / `OtherMessaging`. |
+| `dependency_nodes.max_remote_operations_per_service` | Integer | `100` | Distinct dependency remote operations a source service may hold (sticky, like the dependency cap). Further operations collapse into `OtherRemoteOperation`. |
 | `dependency_nodes.hostname_denylist_patterns` | List\<String\> | IP-derived host names | Regular expressions (case-insensitive, full match) for peer host names that must not create a node. |
 
 ### Advanced Configuration
@@ -268,7 +268,7 @@ processor:
           - '^egress-proxy$'
 ```
 
-**Rollout.** Use an OpenSearch Dashboards version that includes the dependency-aware APM UI ([dashboards-observability#2898](https://github.com/opensearch-project/dashboards-observability/pull/2898) / [OpenSearch-Dashboards#12771](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/12771)). Older Dashboards build the services list from `sourceNode`/`targetNode` without filtering on `type`, so they list databases, brokers and external endpoints as services; with an older Dashboards version, set `dependency_nodes.enabled: false`.
+**Rollout.** Dependency nodes are on by default and ship together with the dependency-aware APM UI in OpenSearch Dashboards ([dashboards-observability#2898](https://github.com/opensearch-project/dashboards-observability/pull/2898) and [OpenSearch-Dashboards#12771](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/12771)). **On OpenSearch Dashboards older than the release that includes dashboards-observability#2898, set `dependency_nodes.enabled: false`.** Older Dashboards build the services list and the map from `sourceNode`/`targetNode` without reading `type`, so they would list databases, brokers and external endpoints as services with empty RED metrics.
 
 When enabled, a node's `type` is one of:
 
@@ -303,9 +303,15 @@ Synthesis also skips calls that are already represented or are not dependencies:
 
 **Brokers are shared.** A broker node always uses the environment `generic:default`, so producers and consumers in different environments connect through one node. Broker metrics use `remoteEnvironment=generic:default`.
 
-**Consumer metrics.** `CONSUMER` spans emit client-style series keyed `service=<consumer>`, `remoteService=<broker>`, `remoteOperation=<messaging.operation>`, even though the topology edge is `broker -> consumer`. To chart a `broker -> consumer` edge, query the consumer's series filtered by `remoteService=<broker>`.
+**Messaging metrics.** `PRODUCER` and `CONSUMER` spans emit client-style series keyed `service=<producer or consumer>`, `remoteService=<broker>`, `remoteOperation=<messaging.operation>`, plus a direction label `spanKind="PRODUCER"` or `spanKind="CONSUMER"` (only on messaging series; other series are unchanged). The topology edge is `service -> broker` for a producer and `broker -> service` for a consumer. Filter on `spanKind` to count messages once (`PRODUCER` for publishes), to separate publish latency from consumer processing latency, and to list producers and consumers separately. Selecting only on `remoteService=<broker>` sums both directions.
 
-**Cardinality.** Per window, each source service (environment + name) may emit at most `max_dependencies_per_service` distinct dependency names and `max_remote_operations_per_service` distinct (dependency, remote operation) pairs. The values with the most calls in the window are admitted, ties broken by name, so the admitted set does not depend on the order traces are processed in. The rest become `OtherRemoteService` / `OtherRemoteOperation` in both the topology and the metrics, and `dependencyAttributes` is dropped for the overflow node. Calls collapsed into `OtherRemoteService` always use `OtherRemoteOperation` and do not count against the operation cap. `OtherRemoteService` is a reserved name: a real dependency with that exact name (for example from `peer.service`) keeps its own operations and attributes, but shares the overflow node in the topology. Two counters count collapsed calls, not nodes, with one increment per collapsed call: `dependencyCallsOverflowed` counts calls (including consumed messages) collapsed into `OtherRemoteService`, and `dependencyRemoteOperationCallsOverflowed` counts calls to an admitted dependency collapsed into `OtherRemoteOperation`. Service-to-service edges are not capped. Each Data Prepper node applies the caps independently.
+**Cardinality.** Each source service (environment + name) may hold at most `max_dependencies_per_service` distinct dependency names and `max_remote_operations_per_service` distinct (dependency, remote operation) pairs.
+- **Sticky admission.** A dependency (or operation) the service already holds stays admitted in later windows, so it does not switch between its real name and an overflow name from one window to the next. Free slots go to the new values with the most calls in the window, ties broken by name, so the result does not depend on the order traces are processed in.
+- **Idle eviction.** A held value that is not seen for more than 10 consecutive windows is released, and its slot can go to another value.
+- **Overflow names are per type:** `OtherDatabase`, `OtherExternal` and `OtherMessaging` (and `OtherRemoteOperation` for operations), in both the topology and the metrics, so overflow nodes of different types never share a name. `dependencyAttributes` is dropped for an overflow node. Calls collapsed into an overflow node always use `OtherRemoteOperation` and do not count against the operation cap. These names are reserved: a real dependency with that exact name (for example from `peer.service`) keeps its own operations and attributes, but shares the overflow node in the topology.
+- **What the cap bounds.** The cap bounds how many names a service holds at a time. Over a long retention period, a service whose dependencies keep changing (for example per-tenant hosts that go idle and are replaced) can still produce more distinct names in total, as held values are released and replaced.
+- **Counters.** `dependencyCallsOverflowed` counts calls (including consumed messages) collapsed into an overflow node, and `dependencyRemoteOperationCallsOverflowed` counts calls to an admitted dependency collapsed into `OtherRemoteOperation`, one increment per collapsed call.
+- Service-to-service edges are not capped. Each Data Prepper node applies the caps independently.
 
 **Index mapping.** The `otel-v2-apm-service-map` index template (version 1) maps `*.dependencyAttributes.*` strings as `keyword` with a `keyword` sub-field. Existing indices keep their mapping until the next rollover; indices created before the template use dynamic `text` with a `.keyword` sub-field. For exact `term` filters and aggregations, use `<attr>.keyword` (for example `targetNode.dependencyAttributes.server.address.keyword`): that path works on indices created before and after the template, so one query covers both behind the alias.
 
@@ -326,13 +332,34 @@ Synthesis also skips calls that are already represented or are not dependencies:
 }
 ```
 
+#### Dependency naming specification
+
+Dependency nodes are named by these rules; `OTelSpanDerivationUtil.computeRemoteOperationAndService` (otel-proto-common) plus `SpanStateData` are the reference implementation. UIs that name dependencies on their own (for example per-trace views that work from raw spans) should follow the same rules, and test against them, so their names match the service map.
+
+1. **Span kinds.** Only `CLIENT`, `PRODUCER` and `CONSUMER` spans can name a dependency. A `CLIENT` span names one only when no child `SERVER` span resolves it to a traced service.
+2. **Type**, first match wins: `messaging` if `messaging.system` is set; `database` if a DB system key (`db.system.name`, `db.system`, `db_system`, `db_system_name`, `db.system_name`) or `db.statement` / `db.query.text` / `db.name` / `db.namespace` is set; `external` if `url.full`, `http.url`, `http.request.method`, `http.method`, `peer.service`, `rpc.system`, `server.address` or `net.peer.name` is set.
+3. **Messaging:** `{messaging.system}:{destination}`, where the destination is `messaging.destination.name`, else the legacy `messaging.destination`. Without a destination no node is created. Brokers use the environment `generic:default`.
+4. **Database:** `peer.service` if set; an AWS SDK call (`rpc.system=aws-api`) is named `AWS::{service}`. Otherwise `{system}:{host}`, else `{system}:{namespace}`, else `{system}` (without a system: `{host}[:{port}]`, else the namespace, else `database`). The host is the first of `server.address`, `net.peer.name`, `network.peer.address` that is nameable (not an IP literal, loopback name or denylisted host).
+5. **External:** `peer.service` if set; an AWS SDK call (`rpc.system=aws-api`) is named `AWS::{service}` (from the service mappings); FaaS and GraphQL calls can be named by `faas.invoked_name` / `graphql`; otherwise the first address/port pair present (`server.address`/`server.port`, `net.peer.name`/`net.peer.port`, `network.peer.address`/`network.peer.port`, `net.sock.peer.addr`/`net.sock.peer.port`) as `{host}[:{port}]`, else the host and port of `url.full` / `http.url`. The scheme-default ports 80 and 443 are dropped.
+6. **Suppression:** no node is created for `UnknownRemoteService`, IP literals (with or without a port), loopback names, hosts matching `hostname_denylist_patterns`, or an `external` peer whose name matches a service seen with a `SERVER` span in the windows.
+7. **Environment:** database and external nodes inherit the calling span's environment; brokers always use `generic:default`.
+8. **Overflow:** past the caps, names become `OtherDatabase`, `OtherExternal` or `OtherMessaging` (see Cardinality).
+
+#### Data contract
+
+The fields and values consumed by the dependency-aware APM UI are considered stable. Changes to any of them are called out on dashboards-observability#2898 (and its successors):
+- node `type`: `service` / `database` / `messaging` / `external` (a sibling of `keyAttributes`);
+- `dependencyAttributes` keys: `db.system.name`, `db.namespace`, `server.address`, `server.port`, `messaging.system`, `messaging.destination.name`, `peer.service`, `rpc.system`;
+- node naming (above), overflow names `OtherDatabase` / `OtherExternal` / `OtherMessaging` / `OtherRemoteOperation`, and the broker environment `generic:default`;
+- metric labels: dependency series are client-style (`service`, `remoteService`, `remoteEnvironment`, `remoteOperation`); messaging series add `spanKind="PRODUCER"|"CONSUMER"`.
+
 #### Known limitations
 
 - **Window-boundary over-classification.** A `CLIENT` call to an instrumented service is normally resolved to that service via its child `SERVER` span. When the child is missing and the peer name does not match the service name (for example `checkout-svc` vs `checkout`), the target is still classified as `external` for those spans.
 - **External nodes per caller environment.** An `external` or `database` node inherits the caller's environment, so a shared SaaS API called from several environments appears once per environment.
 - **Proxies and sidecars.** Calls through an egress proxy or sidecar resolve to the proxy. Loopback names are suppressed; add other proxy host names to `hostname_denylist_patterns`.
 - **Path cardinality.** Without `url.template`/`http.route`, the first path segment is used, so versioned APIs collapse to `GET /v1` and ID segments produce one operation per ID up to the cap.
-- **Cap stability across windows.** Each window is admitted on its own, with no memory of earlier windows. A dependency whose call count ranks near the cap can therefore show its name in one window and `OtherRemoteService` in the next. Ties are broken by case-sensitive name order, so whenever call counts tie at the cap, the names that sort later are the ones collapsed.
+- **Multiple workers.** With more than one process worker, only one key-range segment of each window is currently evaluated (pre-existing, [#7164](https://github.com/opensearch-project/data-prepper/issues/7164)), so the caps and the known-service check only see that segment until #7164 is fixed.
 - **Database port.** When the database system is known, a database node is named without the port, so that one database reached with and without an explicit default port stays one node. Two instances on one host (`db1:5432` and `db1:5433`) of the same system therefore merge into one node. `dependencyAttributes["server.port"]` shows the port of only one of the merged calls, or none if that call had no port.
 - **External peers named like a service.** An `external` peer whose `peer.service`, `server.address` or host equals the name of a traced service (for example a third-party host `payments` next to a traced `payments` service) is assumed to be that service with its `SERVER` span missing. No dependency node is synthesized, so the call is left out of the map and of the client metrics. A different `peer.service` alone does not help while the host still matches. Call the peer by a fully qualified host name (for example `api.payments.example.com`), which is not matched.
 - **Ephemeral messaging destinations.** Per-connection or per-request destinations (e.g. RabbitMQ `amq.gen-*` reply queues) each mint a distinct broker name until the cap is reached.
@@ -604,7 +631,7 @@ The processor exposes the following metrics for monitoring:
 
 - `spansDbSize`: Total size of span databases in bytes
 - `spansDbCount`: Total number of spans stored across all databases
-- `dependencyCallsOverflowed` (counter): Dependency calls, including consumed messages, collapsed into `OtherRemoteService` by `max_dependencies_per_service` (not registered when `dependency_nodes.enabled` is false)
+- `dependencyCallsOverflowed` (counter): Dependency calls, including consumed messages, collapsed into an overflow node (`OtherDatabase` / `OtherExternal` / `OtherMessaging`) by `max_dependencies_per_service` (not registered when `dependency_nodes.enabled` is false)
 - `dependencyRemoteOperationCallsOverflowed` (counter): Calls to an admitted dependency collapsed into `OtherRemoteOperation` by `max_remote_operations_per_service` (not registered when `dependency_nodes.enabled` is false)
 
 ## Related Documentation

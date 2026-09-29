@@ -24,6 +24,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_REMOTE_OPERATION;
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_DATABASE;
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_EXTERNAL;
+import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_MESSAGING;
 import static org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.DependencyCardinalityLimiter.OTHER_REMOTE_SERVICE;
 
 class DependencyCardinalityLimiterTest {
@@ -207,5 +210,71 @@ class DependencyCardinalityLimiterTest {
         final DependencyCardinalityLimiter limiter = admitted(1, 1, "a");
 
         assertThrows(IllegalStateException.class, () -> limiter.record("checkout", "b", null));
+    }
+
+    private static void window(final DependencyCardinalityLimiter limiter, final String... dependencyCalls) {
+        limiter.beginWindow();
+        for (final String call : dependencyCalls) {
+            final String[] parts = call.split(" ", 2);
+            limiter.record("checkout", parts[0], parts.length > 1 ? parts[1] : null);
+        }
+        limiter.admit();
+    }
+
+    @Test
+    void admission_isStickyAcrossWindows_soAnAdmittedDependencyDoesNotFlapToOverflow() {
+        final DependencyCardinalityLimiter limiter = newLimiter(2, 10);
+        window(limiter, "a", "b");
+        // Next window a newcomer is called far more often; the held dependencies keep their slots.
+        window(limiter, "a", "b", "c", "c", "c", "c");
+
+        assertThat(limiter.limitDependency("checkout", "a"), equalTo("a"));
+        assertThat(limiter.limitDependency("checkout", "b"), equalTo("b"));
+        assertThat(limiter.limitDependency("checkout", "c"), equalTo(OTHER_REMOTE_SERVICE));
+    }
+
+    @Test
+    void admission_keepsASlotForADependencyThatPausesBrieflyAndEvictsItOnceIdle() {
+        final DependencyCardinalityLimiter limiter = new DependencyCardinalityLimiter(1, 10, 2,
+                dependencyOverflows::incrementAndGet, operationOverflows::incrementAndGet);
+        window(limiter, "a");
+        window(limiter, "b");
+        window(limiter, "b");
+        // "a" was last seen two windows ago: still within the idle allowance, so "b" still overflows.
+        assertThat(limiter.limitDependency("checkout", "b"), equalTo(OTHER_REMOTE_SERVICE));
+
+        window(limiter, "b");
+        // "a" has now been idle for more than two windows, so its slot goes to "b".
+        assertThat(limiter.limitDependency("checkout", "b"), equalTo("b"));
+        assertThat(limiter.admittedDependencyCount("checkout"), equalTo(1));
+    }
+
+    @Test
+    void admission_stickyRemoteOperationsKeepTheirSlots() {
+        final DependencyCardinalityLimiter limiter = newLimiter(10, 1);
+        window(limiter, "db SELECT");
+        window(limiter, "db SELECT", "db INSERT", "db INSERT", "db INSERT");
+
+        assertThat(limiter.limitRemoteOperation("checkout", "db", "SELECT"), equalTo("SELECT"));
+        assertThat(limiter.limitRemoteOperation("checkout", "db", "INSERT"), equalTo(OTHER_REMOTE_OPERATION));
+    }
+
+    @Test
+    void overflowName_isSpecificToTheNodeType() {
+        final DependencyCardinalityLimiter limiter = admitted(1, 10, "kept", "x");
+
+        assertThat(limiter.limitDependency("checkout", "x", "database"), equalTo(OTHER_DATABASE));
+        assertThat(limiter.limitDependency("checkout", "x", "external"), equalTo(OTHER_EXTERNAL));
+        assertThat(limiter.limitDependency("checkout", "x", "messaging"), equalTo(OTHER_MESSAGING));
+        assertThat(limiter.limitDependency("checkout", "x", null), equalTo(OTHER_REMOTE_SERVICE));
+    }
+
+    @Test
+    void record_afterAdmit_requiresANewWindow() {
+        final DependencyCardinalityLimiter limiter = admitted(1, 10, "a");
+
+        assertThrows(IllegalStateException.class, () -> limiter.record("checkout", "b", null));
+        limiter.beginWindow();
+        limiter.record("checkout", "b", null);
     }
 }

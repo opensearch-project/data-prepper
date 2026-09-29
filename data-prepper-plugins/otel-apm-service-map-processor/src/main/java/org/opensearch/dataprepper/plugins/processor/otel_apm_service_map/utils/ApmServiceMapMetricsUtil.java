@@ -41,6 +41,13 @@ import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils
  */
 public final class ApmServiceMapMetricsUtil {
 
+    /** Label marking the direction of a messaging series: {@link #SPAN_KIND_PRODUCER} or {@link #SPAN_KIND_CONSUMER}. */
+    public static final String SPAN_KIND_LABEL = "spanKind";
+    /** {@link #SPAN_KIND_LABEL} value for a producer's (publish) series. */
+    public static final String SPAN_KIND_PRODUCER = "PRODUCER";
+    /** {@link #SPAN_KIND_LABEL} value for a consumer's (receive / process) series. */
+    public static final String SPAN_KIND_CONSUMER = "CONSUMER";
+
     private static final Logger LOG = LoggerFactory.getLogger(ApmServiceMapMetricsUtil.class);
     private static final String HOST_ID_LABEL = "service_map_processor_host_id";
     // Standard latency buckets in seconds
@@ -65,6 +72,24 @@ public final class ApmServiceMapMetricsUtil {
                                                    final Map<MetricKey, MetricAggregationState> histogramStateByKey,
                                                    final Instant anchorTimestamp,
                                                    final String hostId) {
+        generateMetricsForClientSpan(clientSpan, decoration, currentTime, sumStateByKey, histogramStateByKey,
+                anchorTimestamp, hostId, Collections.emptyMap());
+    }
+
+    /**
+     * Generate metrics for a CLIENT-style span with additional labels.
+     *
+     * @param extraLabels Labels added to the series (e.g. {@link #SPAN_KIND_LABEL} on messaging series); they
+     *                    are applied last, so they win over group-by attributes of the same name
+     */
+    public static void generateMetricsForClientSpan(final SpanStateData clientSpan,
+                                                   final ClientSpanDecoration decoration,
+                                                   final Instant currentTime,
+                                                   final Map<MetricKey, MetricAggregationState> sumStateByKey,
+                                                   final Map<MetricKey, MetricAggregationState> histogramStateByKey,
+                                                   final Instant anchorTimestamp,
+                                                   final String hostId,
+                                                   final Map<String, String> extraLabels) {
         // Build CLIENT-side metric labels using decorated relationship data
         final Map<String, Object> labels = new HashMap<>();
         putCommonLabels(labels, clientSpan.getEnvironment(), clientSpan.getServiceName(),
@@ -73,6 +98,7 @@ public final class ApmServiceMapMetricsUtil {
         labels.put("remoteService", decoration.getRemoteService());
         labels.put("remoteOperation", decoration.getRemoteOperation());
         labels.putAll(clientSpan.getGroupByAttributes());
+        labels.putAll(extraLabels);
 
         // Sum metrics (request, error, fault)
         final MetricKey sumKey = new MetricKey(labels, anchorTimestamp);

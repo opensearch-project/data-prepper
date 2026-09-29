@@ -13,23 +13,35 @@ package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Bounds, for one evaluation window, the distinct dependency names and dependency remote operations
- * each source service may emit. Values past a cap collapse into a fixed overflow bucket.
+ * Bounds the distinct dependency names and dependency remote operations each source service may emit.
+ * Values past a cap collapse into a fixed overflow bucket.
  * <p>
- * Every call of the window is first recorded, then {@link #admit()} admits, per source service, the
- * values with the most calls (ties broken by name). The admitted set therefore depends only on the
- * window's calls, not on the order they are processed in. Windows are independent.
+ * Admission is sticky across windows. Every call of a window is first recorded, then {@link #admit()}
+ * keeps the values the source already holds (so an admitted dependency does not switch to an overflow
+ * name in the next window) and fills any free slots with the most-called new values (ties broken by
+ * name, so the result does not depend on processing order). A value not seen for more than
+ * {@code idleWindowsBeforeEviction} windows is evicted, freeing its slot. Call {@link #beginWindow()}
+ * before recording each window.
  */
 public class DependencyCardinalityLimiter {
+    /** Fallback overflow name for a dependency whose node type is unknown. */
     public static final String OTHER_REMOTE_SERVICE = "OtherRemoteService";
+    /** Overflow name for database dependencies. */
+    public static final String OTHER_DATABASE = "OtherDatabase";
+    /** Overflow name for external dependencies. */
+    public static final String OTHER_EXTERNAL = "OtherExternal";
+    /** Overflow name for messaging (broker) dependencies. */
+    public static final String OTHER_MESSAGING = "OtherMessaging";
+    /** Overflow name for remote operations. */
     public static final String OTHER_REMOTE_OPERATION = "OtherRemoteOperation";
+    /** Windows a value may go unseen before its slot is released. */
+    public static final int DEFAULT_IDLE_WINDOWS_BEFORE_EVICTION = 10;
 
     private static final Comparator<String> NAME_ORDER = Comparator.nullsFirst(Comparator.naturalOrder());
     private static final Comparator<OperationKey> OPERATION_KEY_ORDER = Comparator
@@ -38,25 +50,76 @@ public class DependencyCardinalityLimiter {
 
     private final int maxDependenciesPerService;
     private final int maxRemoteOperationsPerService;
-    private final Map<String, Map<String, Integer>> dependencyCallsBySource = new HashMap<>();
-    private final Map<String, Map<OperationKey, Integer>> remoteOperationCallsBySource = new HashMap<>();
-    private final Map<String, Set<String>> dependenciesBySource = new HashMap<>();
-    private final Map<String, Set<OperationKey>> remoteOperationsBySource = new HashMap<>();
+    private final int idleWindowsBeforeEviction;
     private final Runnable onDependencyOverflow;
     private final Runnable onRemoteOperationOverflow;
+
+    /** Sticky state: per source, each admitted dependency and the last window it was seen in. */
+    private final Map<String, Map<String, Long>> admittedDependenciesBySource = new HashMap<>();
+    /** Sticky state: per source, each admitted remote operation and the last window it was seen in. */
+    private final Map<String, Map<OperationKey, Long>> admittedOperationsBySource = new HashMap<>();
+    /** Calls recorded in the current window, per source and dependency. */
+    private final Map<String, Map<String, Integer>> dependencyCallsBySource = new HashMap<>();
+    /** Calls recorded in the current window, per source and (dependency, remote operation). */
+    private final Map<String, Map<OperationKey, Integer>> remoteOperationCallsBySource = new HashMap<>();
+    /** Index of the current window, used for idle eviction. */
+    private long window;
+    /** Whether {@link #admit()} has run for the current window. */
     private boolean admitted;
 
     /**
-     * @param onDependencyOverflow      Run once for each call collapsed into {@link #OTHER_REMOTE_SERVICE}
+     * @param onDependencyOverflow      Run once for each call collapsed into a dependency overflow name
      * @param onRemoteOperationOverflow Run once for each call of an admitted dependency collapsed into
      *                                  {@link #OTHER_REMOTE_OPERATION}
      */
     public DependencyCardinalityLimiter(final int maxDependenciesPerService, final int maxRemoteOperationsPerService,
                                         final Runnable onDependencyOverflow, final Runnable onRemoteOperationOverflow) {
+        this(maxDependenciesPerService, maxRemoteOperationsPerService, DEFAULT_IDLE_WINDOWS_BEFORE_EVICTION,
+                onDependencyOverflow, onRemoteOperationOverflow);
+    }
+
+    /**
+     * @param idleWindowsBeforeEviction Windows a value may go unseen before its slot is released
+     * @param onDependencyOverflow      Run once for each call collapsed into a dependency overflow name
+     * @param onRemoteOperationOverflow Run once for each call of an admitted dependency collapsed into
+     *                                  {@link #OTHER_REMOTE_OPERATION}
+     */
+    public DependencyCardinalityLimiter(final int maxDependenciesPerService, final int maxRemoteOperationsPerService,
+                                        final int idleWindowsBeforeEviction,
+                                        final Runnable onDependencyOverflow, final Runnable onRemoteOperationOverflow) {
         this.maxDependenciesPerService = maxDependenciesPerService;
         this.maxRemoteOperationsPerService = maxRemoteOperationsPerService;
+        this.idleWindowsBeforeEviction = idleWindowsBeforeEviction;
         this.onDependencyOverflow = onDependencyOverflow;
         this.onRemoteOperationOverflow = onRemoteOperationOverflow;
+    }
+
+    /**
+     * @param nodeType The dependency node type (database / external / messaging), may be null
+     * @return The overflow name for that type, so overflow nodes of different types never share a name
+     */
+    public static String overflowNameFor(final String nodeType) {
+        if (SpanStateData.NODE_TYPE_DATABASE.equals(nodeType)) {
+            return OTHER_DATABASE;
+        }
+        if (SpanStateData.NODE_TYPE_EXTERNAL.equals(nodeType)) {
+            return OTHER_EXTERNAL;
+        }
+        if (SpanStateData.NODE_TYPE_MESSAGING.equals(nodeType)) {
+            return OTHER_MESSAGING;
+        }
+        return OTHER_REMOTE_SERVICE;
+    }
+
+    /**
+     * Starts a new window: clears the previous window's recorded calls and advances the window counter
+     * used for idle eviction. Admitted values carry over.
+     */
+    public void beginWindow() {
+        dependencyCallsBySource.clear();
+        remoteOperationCallsBySource.clear();
+        window++;
+        admitted = false;
     }
 
     /**
@@ -68,7 +131,7 @@ public class DependencyCardinalityLimiter {
      */
     public void record(final String sourceKey, final String dependencyName, final String remoteOperation) {
         if (admitted) {
-            throw new IllegalStateException("Calls cannot be recorded after admission");
+            throw new IllegalStateException("Calls cannot be recorded after admission; call beginWindow() first");
         }
         dependencyCallsBySource.computeIfAbsent(sourceKey, k -> new HashMap<>()).merge(dependencyName, 1, Integer::sum);
         if (remoteOperation != null) {
@@ -78,20 +141,27 @@ public class DependencyCardinalityLimiter {
     }
 
     /**
-     * Admits, per source service, the most-called dependencies and then the most-called remote operations
-     * of those admitted dependencies. Operations of an overflowed dependency never use the operation budget.
+     * Admits, per source service, the dependencies it already holds plus the most-called new ones up to the
+     * cap, then the remote operations of the admitted dependencies the same way. Operations of an
+     * overflowed dependency never use the operation budget. Idle values are evicted first.
      */
     public void admit() {
-        dependencyCallsBySource.forEach((sourceKey, calls) ->
-                dependenciesBySource.put(sourceKey, mostCalled(calls, NAME_ORDER, maxDependenciesPerService)));
+        evictIdle(admittedDependenciesBySource);
+        evictIdle(admittedOperationsBySource);
+        dependencyCallsBySource.forEach((sourceKey, calls) -> admitSticky(
+                admittedDependenciesBySource.computeIfAbsent(sourceKey, k -> new HashMap<>()),
+                calls, NAME_ORDER, maxDependenciesPerService));
         remoteOperationCallsBySource.forEach((sourceKey, calls) -> {
-            final Set<String> admittedDependencies = dependenciesBySource.getOrDefault(sourceKey, Collections.emptySet());
+            final Map<String, Long> admittedDependencies =
+                    admittedDependenciesBySource.getOrDefault(sourceKey, Collections.emptyMap());
             final Map<OperationKey, Integer> admittedDependencyCalls = calls.entrySet().stream()
-                    .filter(entry -> admittedDependencies.contains(entry.getKey().dependencyName))
+                    .filter(entry -> admittedDependencies.containsKey(entry.getKey().dependencyName))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            remoteOperationsBySource.put(sourceKey,
-                    mostCalled(admittedDependencyCalls, OPERATION_KEY_ORDER, maxRemoteOperationsPerService));
+            admitSticky(admittedOperationsBySource.computeIfAbsent(sourceKey, k -> new HashMap<>()),
+                    admittedDependencyCalls, OPERATION_KEY_ORDER, maxRemoteOperationsPerService);
         });
+        admittedDependenciesBySource.values().removeIf(Map::isEmpty);
+        admittedOperationsBySource.values().removeIf(Map::isEmpty);
         admitted = true;
     }
 
@@ -101,51 +171,89 @@ public class DependencyCardinalityLimiter {
      * @return The dependency name, or {@link #OTHER_REMOTE_SERVICE} when it was not admitted
      */
     public String limitDependency(final String sourceKey, final String dependencyName) {
-        if (isAdmitted(dependenciesBySource, sourceKey, dependencyName)) {
+        return limitDependency(sourceKey, dependencyName, null);
+    }
+
+    /**
+     * @param sourceKey      Identity of the calling service (environment and name)
+     * @param dependencyName The dependency name
+     * @param nodeType       The dependency node type, which selects the overflow name
+     * @return The dependency name, or the type's overflow name (see {@link #overflowNameFor}) when it was
+     * not admitted
+     */
+    public String limitDependency(final String sourceKey, final String dependencyName, final String nodeType) {
+        if (isAdmitted(admittedDependenciesBySource, sourceKey, dependencyName)) {
             return dependencyName;
         }
         onDependencyOverflow.run();
-        return OTHER_REMOTE_SERVICE;
+        return overflowNameFor(nodeType);
     }
 
     /**
      * @param sourceKey       Identity of the calling service (environment and name)
      * @param dependencyName  The dependency name as recorded, before {@link #limitDependency} is applied, so an
-     *                        overflowed call is never mistaken for a dependency that is really named
-     *                        {@link #OTHER_REMOTE_SERVICE}
+     *                        overflowed call is never mistaken for a dependency that is really named like an
+     *                        overflow bucket
      * @param remoteOperation The remote operation, may be null
      * @return The remote operation (null when it is null and the dependency was admitted), or
      * {@link #OTHER_REMOTE_OPERATION} when it was not admitted or its dependency overflowed. Only the
      * former counts as a remote operation overflow; the latter is already counted as a dependency overflow.
      */
     public String limitRemoteOperation(final String sourceKey, final String dependencyName, final String remoteOperation) {
-        if (!isAdmitted(dependenciesBySource, sourceKey, dependencyName)) {
+        if (!isAdmitted(admittedDependenciesBySource, sourceKey, dependencyName)) {
             return OTHER_REMOTE_OPERATION;
         }
         if (remoteOperation == null) {
             return null;
         }
-        if (isAdmitted(remoteOperationsBySource, sourceKey, new OperationKey(dependencyName, remoteOperation))) {
+        if (isAdmitted(admittedOperationsBySource, sourceKey, new OperationKey(dependencyName, remoteOperation))) {
             return remoteOperation;
         }
         onRemoteOperationOverflow.run();
         return OTHER_REMOTE_OPERATION;
     }
 
-    private <T> boolean isAdmitted(final Map<String, Set<T>> admittedBySource, final String sourceKey, final T value) {
+    /**
+     * @param sourceKey Identity of the calling service (environment and name)
+     * @return The number of dependencies currently held for the source
+     */
+    int admittedDependencyCount(final String sourceKey) {
+        return admittedDependenciesBySource.getOrDefault(sourceKey, Collections.emptyMap()).size();
+    }
+
+    private <T> void admitSticky(final Map<T, Long> held, final Map<T, Integer> calls,
+                                 final Comparator<T> tieBreak, final int cap) {
+        // Values already held stay admitted; refresh the ones seen in this window.
+        calls.keySet().forEach(value -> held.computeIfPresent(value, (k, lastSeen) -> window));
+        final int free = cap - held.size();
+        if (free <= 0) {
+            return;
+        }
+        calls.entrySet().stream()
+                .filter(entry -> !held.containsKey(entry.getKey()))
+                .sorted(Map.Entry.<T, Integer>comparingByValue(Comparator.reverseOrder())
+                        .thenComparing(Map.Entry.comparingByKey(tieBreak)))
+                .limit(free)
+                .forEach(entry -> held.put(entry.getKey(), window));
+    }
+
+    private <T> void evictIdle(final Map<String, Map<T, Long>> heldBySource) {
+        for (final Map<T, Long> held : heldBySource.values()) {
+            final Iterator<Map.Entry<T, Long>> it = held.entrySet().iterator();
+            while (it.hasNext()) {
+                if (window - it.next().getValue() > idleWindowsBeforeEviction) {
+                    it.remove();
+                }
+            }
+        }
+        heldBySource.values().removeIf(Map::isEmpty);
+    }
+
+    private <T> boolean isAdmitted(final Map<String, Map<T, Long>> heldBySource, final String sourceKey, final T value) {
         if (!admitted) {
             throw new IllegalStateException("Calls must be admitted before they are limited");
         }
-        return admittedBySource.getOrDefault(sourceKey, Collections.emptySet()).contains(value);
-    }
-
-    private <T> Set<T> mostCalled(final Map<T, Integer> calls, final Comparator<T> tieBreak, final int cap) {
-        return calls.entrySet().stream()
-                .sorted(Map.Entry.<T, Integer>comparingByValue(Comparator.reverseOrder())
-                        .thenComparing(Map.Entry.comparingByKey(tieBreak)))
-                .limit(cap)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toCollection(HashSet::new));
+        return heldBySource.getOrDefault(sourceKey, Collections.emptyMap()).containsKey(value);
     }
 
     private static final class OperationKey {

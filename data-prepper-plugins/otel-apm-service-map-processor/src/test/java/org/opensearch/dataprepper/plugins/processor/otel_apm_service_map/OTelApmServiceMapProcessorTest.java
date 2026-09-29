@@ -1824,6 +1824,42 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
     }
 
     @Test
+    void messagingSeries_carryASpanKindLabelSoProducersAndConsumersCanBeSplit() {
+        final OTelApmServiceMapProcessor proc = newFlushingProcessor("span-kind-label-",
+                new DependencyNodesConfig(true, 100, 100, Collections.emptyList()));
+        try {
+            final Span producer = withAttributes(createMockSpanWithIds("checkout", "orders publish", "SPAN_KIND_PRODUCER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), kafkaAttributes("publish"));
+            final Span consumer = withAttributes(createMockSpanWithIds("shipping", "orders receive", "SPAN_KIND_CONSUMER",
+                    "2222222222222222", "1111111111111111", "aaaaaaaaaaaaaaaa"), kafkaAttributes("receive"));
+            final Span dbCall = withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
+                    "3333333333333333", "", "bbbbbbbbbbbbbbbb"), dbAttributes("postgresql", "orders-db"));
+
+            final List<JacksonSum> requests = requestMetrics(
+                    flushAll(proc, Arrays.asList(new Record<>(producer), new Record<>(consumer), new Record<>(dbCall))));
+
+            final Map<String, Object> producerLabels = requests.stream()
+                    .filter(m -> "checkout".equals(m.getAttributes().get("service"))
+                            && "kafka:orders".equals(m.getAttributes().get("remoteService")))
+                    .findFirst().orElseThrow(() -> new AssertionError("Expected the producer series")).getAttributes();
+            final Map<String, Object> consumerLabels = requests.stream()
+                    .filter(m -> "shipping".equals(m.getAttributes().get("service"))
+                            && "kafka:orders".equals(m.getAttributes().get("remoteService")))
+                    .findFirst().orElseThrow(() -> new AssertionError("Expected the consumer series")).getAttributes();
+            final Map<String, Object> dbLabels = requests.stream()
+                    .filter(m -> "postgresql:orders-db".equals(m.getAttributes().get("remoteService")))
+                    .findFirst().orElseThrow(() -> new AssertionError("Expected the database series")).getAttributes();
+
+            assertThat(producerLabels.get("spanKind"), equalTo("PRODUCER"));
+            assertThat(consumerLabels.get("spanKind"), equalTo("CONSUMER"));
+            // CLIENT series keep their previous label set.
+            assertTrue(!dbLabels.containsKey("spanKind"));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
     void dependencyCap_collapsesDependenciesPastTheCapIntoOverflowNode() {
         final OTelApmServiceMapProcessor proc = newFlushingProcessor("cap-deps-",
                 new DependencyNodesConfig(true, 1, 100, Collections.emptyList()));
@@ -1837,8 +1873,8 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
             final Set<String> names = targetNamesOfType(serviceMapEvents(emitted), "database");
 
             assertThat(names.size(), equalTo(2));
-            assertTrue(names.contains("OtherRemoteService"));
-            assertThat(requestCount(emitted, "checkout", "OtherRemoteService"), equalTo(1.0));
+            assertTrue(names.contains("OtherDatabase"));
+            assertThat(requestCount(emitted, "checkout", "OtherDatabase"), equalTo(1.0));
             verify(dependencyCallsOverflowedCounter, times(1)).increment();
         } finally {
             proc.shutdown();
@@ -1862,8 +1898,8 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                 final Collection<Record<Event>> emitted = flushAll(proc, batch);
 
                 assertThat("rotation " + rotation, targetNamesOfType(serviceMapEvents(emitted), "database"),
-                        equalTo(Set.of("postgresql:a-db", "postgresql:b-db", "OtherRemoteService")));
-                assertThat("rotation " + rotation, requestCount(emitted, "checkout", "OtherRemoteService"), equalTo(1.0));
+                        equalTo(Set.of("postgresql:a-db", "postgresql:b-db", "OtherDatabase")));
+                assertThat("rotation " + rotation, requestCount(emitted, "checkout", "OtherDatabase"), equalTo(1.0));
             } finally {
                 proc.shutdown();
             }
@@ -1890,7 +1926,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                     .map(e -> e.get("targetNode/keyAttributes/name", String.class) + " " + e.get("targetOperation/name", String.class))
                     .collect(Collectors.toSet());
 
-            assertThat(edges, equalTo(Set.of("postgresql:a-db SELECT", "OtherRemoteService OtherRemoteOperation")));
+            assertThat(edges, equalTo(Set.of("postgresql:a-db SELECT", "OtherDatabase OtherRemoteOperation")));
             verify(remoteOperationCallsOverflowedCounter, never()).increment();
         } finally {
             proc.shutdown();
@@ -1917,7 +1953,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                     .map(e -> e.get("sourceNode/keyAttributes/name", String.class) + " " + e.get("sourceOperation/name", String.class))
                     .collect(Collectors.toSet());
 
-            assertThat(edges, equalTo(Set.of("kafka:orders receive", "OtherRemoteService OtherRemoteOperation")));
+            assertThat(edges, equalTo(Set.of("kafka:orders receive", "OtherMessaging OtherRemoteOperation")));
             verify(dependencyCallsOverflowedCounter, times(1)).increment();
             verify(remoteOperationCallsOverflowedCounter, never()).increment();
         } finally {
@@ -1935,7 +1971,7 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                 final Map<String, Object> attributes = dbAttributes("postgresql", i < 2 ? "a-db" : "b-db");
                 attributes.put("db.operation.name", i < 2 ? "SELECT" : "INSERT");
                 if (i < 2) {
-                    attributes.put("peer.service", "OtherRemoteService");
+                    attributes.put("peer.service", "OtherDatabase");
                 }
                 batch.add(new Record<>(withAttributes(createMockSpanWithIds("checkout", "query", "SPAN_KIND_CLIENT",
                         String.format("%016x", i + 1), "", String.format("1%015x", i)), attributes)));
@@ -1948,11 +1984,11 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                     .map(e -> e.get("targetNode/keyAttributes/name", String.class) + " " + e.get("targetOperation/name", String.class))
                     .collect(Collectors.toSet());
 
-            assertThat(edges, equalTo(Set.of("OtherRemoteService query", "OtherRemoteService OtherRemoteOperation")));
+            assertThat(edges, equalTo(Set.of("OtherDatabase query", "OtherDatabase OtherRemoteOperation")));
             final Event admittedEdge = databaseEdges.stream()
                     .filter(e -> "query".equals(e.get("targetOperation/name", String.class)))
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("Expected the admitted OtherRemoteService edge"));
+                    .orElseThrow(() -> new AssertionError("Expected the admitted OtherDatabase edge"));
             assertThat(admittedEdge.get("targetNode/dependencyAttributes/db.system.name", String.class), equalTo("postgresql"));
             verify(dependencyCallsOverflowedCounter, times(1)).increment();
             verify(remoteOperationCallsOverflowedCounter, never()).increment();

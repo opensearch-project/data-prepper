@@ -128,6 +128,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private final Runnable onDependencyCallOverflowed;
     /** Increments the remote-operation overflow counter; a no-op when dependency nodes are disabled. */
     private final Runnable onRemoteOperationCallOverflowed;
+    /**
+     * Per-service dependency cardinality caps. Long-lived so admission is sticky across windows: an admitted
+     * dependency keeps its name instead of switching to an overflow name from one window to the next.
+     */
+    private final DependencyCardinalityLimiter dependencyLimiter;
 
     @DataPrepperPluginConstructor
     public OTelApmServiceMapProcessor(
@@ -240,6 +245,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 ? pluginMetrics.counter(DEPENDENCY_CALLS_OVERFLOWED_METRIC)::increment : () -> { };
         this.onRemoteOperationCallOverflowed = dependencyNodesEnabled
                 ? pluginMetrics.counter(REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC)::increment : () -> { };
+        this.dependencyLimiter = new DependencyCardinalityLimiter(maxDependenciesPerService,
+                maxRemoteOperationsPerService, onDependencyCallOverflowed, onRemoteOperationCallOverflowed);
     }
 
     /**
@@ -479,8 +486,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         final Set<String> knownServerServices = dependencyNodesEnabled
                 ? collectServerServiceNames(previousSpansByTraceId, currentSpansByTraceId, nextSpansByTraceId)
                 : Collections.emptySet();
-        final DependencyCardinalityLimiter dependencyLimiter = new DependencyCardinalityLimiter(maxDependenciesPerService,
-                maxRemoteOperationsPerService, onDependencyCallOverflowed, onRemoteOperationCallOverflowed);
+        dependencyLimiter.beginWindow();
         // Dependency calls are emitted once the whole window is recorded, so the cardinality caps admit the
         // same dependencies whatever order the traces are processed in.
         final List<Runnable> deferredDependencyEmissions = new ArrayList<>();
@@ -967,7 +973,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         : messagingSpan.getOperationName();
                 dependencyLimiter.record(sourceKey, brokerName, remoteOperationName);
                 deferredDependencyEmissions.add(() -> {
-                    final String limitedBrokerName = dependencyLimiter.limitDependency(sourceKey, brokerName);
+                    final String limitedBrokerName =
+                            dependencyLimiter.limitDependency(sourceKey, brokerName, NODE_TYPE_MESSAGING);
                     emitMessagingEdge(messagingSpan, isProducer, serviceOperationName, limitedBrokerName,
                             !brokerName.equals(limitedBrokerName),
                             dependencyLimiter.limitRemoteOperation(sourceKey, brokerName, remoteOperationName),
@@ -1063,9 +1070,13 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 messagingSpan.getGroupByAttributes(),
                 NODE_TYPE_MESSAGING,
                 Collections.emptyMap());
+        // Producer and consumer series of one broker otherwise carry identical labels; the direction label
+        // lets consumers split publishes from consumes (and their latencies).
         ApmServiceMapMetricsUtil.generateMetricsForClientSpan(
                 messagingSpan, messagingDecoration, currentTime, sumStateByKey,
-                histogramStateByKey, anchor, hostId);
+                histogramStateByKey, anchor, hostId,
+                Collections.singletonMap(ApmServiceMapMetricsUtil.SPAN_KIND_LABEL,
+                        isProducer ? ApmServiceMapMetricsUtil.SPAN_KIND_PRODUCER : ApmServiceMapMetricsUtil.SPAN_KIND_CONSUMER));
     }
 
     /**
@@ -1094,7 +1105,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private ClientSpanDecoration limitDependencyDecoration(final String sourceKey,
                                                            final ClientSpanDecoration decoration,
                                                            final DependencyCardinalityLimiter dependencyLimiter) {
-        final String remoteService = dependencyLimiter.limitDependency(sourceKey, decoration.getRemoteService());
+        final String remoteService = dependencyLimiter.limitDependency(sourceKey, decoration.getRemoteService(),
+                decoration.getRemoteNodeType());
         final String remoteOperation = dependencyLimiter.limitRemoteOperation(sourceKey, decoration.getRemoteService(),
                 decoration.getRemoteOperation());
         return new ClientSpanDecoration(
