@@ -62,7 +62,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
@@ -641,7 +640,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * Build a map of traceId -> spans from a window
+     * Build a map of traceId -> spans from a window.
+     * <p>
+     * Only the master instance evaluates the windows (see {@link #evaluateApmEvents()}), so it must read
+     * every trace in the window. Reading a per-instance key-range segment here would leave the other
+     * workers' segments unevaluated when the processor runs with more than one worker.
      *
      * @param window The window to extract spans from
      * @return Map of traceId to collection of spans
@@ -650,17 +653,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         final Map<String, Collection<SpanStateData>> spansByTraceId = new HashMap<>();
 
         if (window != null && window.getAll() != null && window.size() > 0) {
-            try {
-                window.getIterator(processorsCreated.get(), thisProcessorId).forEachRemaining(entry -> {
-                    final String traceId = Hex.encodeHexString(entry.getKey());
-                    final Collection<SpanStateData> spans = entry.getValue();
-                    if (spans != null && !spans.isEmpty()) {
-                        spansByTraceId.put(traceId, spans);
-                    }
-                });
-            } catch (NoSuchElementException e) {
-                LOG.debug("Window is empty, skipping iteration: {}", e.getMessage());
-            }
+            window.getAll().forEach((traceIdBytes, spans) -> {
+                if (spans != null && !spans.isEmpty()) {
+                    spansByTraceId.put(Hex.encodeHexString(traceIdBytes), spans);
+                }
+            });
         }
 
         return spansByTraceId;
