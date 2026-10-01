@@ -14,6 +14,7 @@ public class CollectionConfig {
     private static final int DEFAULT_STREAM_BATCH_SIZE = 1000;
     private static final int DEFAULT_PARTITION_COUNT = 100;
     private static final int DEFAULT_EXPORT_BATCH_SIZE = 10_000;
+    private static final String DEFAULT_S3_SCAN_MODE = "idle_optimized";
     @JsonProperty("collection")
     @Pattern(regexp = ".+?\\..+", message = "Should be of pattern <database>.<collection>")
     private @NotNull String collection;
@@ -38,12 +39,16 @@ public class CollectionConfig {
     @Max(1_000_000)
     private int streamBatchSize;
 
+    @JsonProperty("s3_scan_mode")
+    private String s3ScanMode;
+
     public CollectionConfig() {
         this.export = true;
         this.stream = true;
         this.streamBatchSize = DEFAULT_STREAM_BATCH_SIZE;
         this.partitionCount = DEFAULT_PARTITION_COUNT;
         this.exportBatchSize = DEFAULT_EXPORT_BATCH_SIZE;
+        this.s3ScanMode = DEFAULT_S3_SCAN_MODE;
     }
 
     public String getCollection() {
@@ -76,5 +81,9 @@ public class CollectionConfig {
 
     public int getStreamBatchSize() {
         return this.streamBatchSize;
+    }
+
+    public String getS3ScanMode() {
+        return this.s3ScanMode;
     }
 }

@@ -30,6 +30,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     private final Counter recordsInCounter;
     private final SinkLatencyMetrics latencyMetrics;
     private final Timer timeElapsedTimer;
+    private final Timer sinkThreadPoolQueueWaitTimer;
     private Thread retryThread;
     private int maxRetries;
     private int waitTimeMs;
@@ -40,6 +41,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
+        sinkThreadPoolQueueWaitTimer = pluginMetrics.timer("sinkThreadPoolQueueWait");
         this.latencyMetrics = new SinkLatencyMetrics(pluginMetrics);
         retryThread = null;
         this.maxRetries = numRetries;
@@ -109,6 +111,11 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
                 });
             }
         }
+    }
+
+    @Override
+    public void recordQueueWaitTime(final long queueWaitNanos) {
+        sinkThreadPoolQueueWaitTimer.record(queueWaitNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
     }
 
     Thread.State getRetryThreadState() {

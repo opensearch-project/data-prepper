@@ -415,12 +415,15 @@ public class Pipeline implements HeadlessPipeline {
                                 acknowledgementSetManager :
                                 InactiveAcknowledgementSetManager.getInstance(),
                         sinks);
-        router.route(records, sinks, getRecordStrategy, (sink, events) ->
+        router.route(records, sinks, getRecordStrategy, (sink, events) -> {
+                final long submitTime = System.nanoTime();
                 sinkFutures.add(sinkExecutorService.submit(() -> {
+                    final long queueWaitNanos = System.nanoTime() - submitTime;
+                    sink.recordQueueWaitTime(queueWaitNanos);
                     sink.updateLatencyMetrics(events);
                     sink.output(events);
-                }, null))
-        );
+                }, null));
+        });
         return sinkFutures;
     }
 

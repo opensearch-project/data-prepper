@@ -60,6 +60,8 @@ import java.util.function.Function;
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class, pluginConfigurationType = OpenSearchSinkConfig.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
+  public static final String BULKREQUEST_HTTP_LATENCY = "bulkRequestHttpLatency";
+  public static final String BULKREQUEST_SERIALIZATION_LATENCY = "bulkRequestSerializationLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
   public static final String INVALID_ACTION_ERRORS = "invalidActionErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";

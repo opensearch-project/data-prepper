@@ -73,6 +73,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -113,6 +114,8 @@ public class BulkIngester implements Ingester {
     private final FailedBulkOperationConverter failedBulkOperationConverter;
 
     private final Timer bulkRequestTimer;
+    private final Timer bulkRequestHttpTimer;
+    private final Timer bulkRequestSerializationTimer;
     private final Counter bulkRequestErrorsCounter;
     private final Counter invalidActionErrorsCounter;
     private final Counter dynamicIndexDroppedEvents;
@@ -180,6 +183,8 @@ public class BulkIngester implements Ingester {
         this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME);
 
         this.bulkRequestTimer = pluginMetrics.timer(OpenSearchSink.BULKREQUEST_LATENCY);
+        this.bulkRequestHttpTimer = pluginMetrics.timer(OpenSearchSink.BULKREQUEST_HTTP_LATENCY);
+        this.bulkRequestSerializationTimer = pluginMetrics.timer(OpenSearchSink.BULKREQUEST_SERIALIZATION_LATENCY);
         this.bulkRequestErrorsCounter = pluginMetrics.counter(OpenSearchSink.BULKREQUEST_ERRORS);
         this.invalidActionErrorsCounter = pluginMetrics.counter(OpenSearchSink.INVALID_ACTION_ERRORS);
         this.dynamicIndexDroppedEvents = pluginMetrics.counter(OpenSearchSink.DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -228,7 +233,17 @@ public class BulkIngester implements Ingester {
         }
 
         bulkRetryStrategy = new BulkRetryStrategy(
-                bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
+                bulkRequest -> {
+                    final long serializationStart = System.nanoTime();
+                    final org.opensearch.client.opensearch.core.BulkRequest request = bulkRequest.getRequest();
+                    bulkRequestSerializationTimer.record(System.nanoTime() - serializationStart, TimeUnit.NANOSECONDS);
+                    final long httpStart = System.nanoTime();
+                    try {
+                        return bulkApiWrapper.bulk(request);
+                    } finally {
+                        bulkRequestHttpTimer.record(System.nanoTime() - httpStart, TimeUnit.NANOSECONDS);
+                    }
+                },
                 this::logFailureForBulkRequests,
                 this::successfulOperationsHandler,
                 pluginMetrics,

@@ -66,6 +66,9 @@ public class MongoDBSourceConfig {
     @JsonProperty("id_key")
     private String idKey;
 
+    @JsonProperty("s3_scan_mode")
+    private String s3ScanMode = "idle_optimized";
+
     public MongoDBSourceConfig() {
         this.readPreference = DEFAULT_READ_PREFERENCE;
         this.collections = new ArrayList<>();
@@ -145,6 +148,10 @@ public class MongoDBSourceConfig {
 
     public AwsConfig getAwsConfig() {
         return this.awsConfig;
+    }
+
+    public String getS3ScanMode() {
+        return this.s3ScanMode;
     }
 
     public static class AuthenticationConfig {

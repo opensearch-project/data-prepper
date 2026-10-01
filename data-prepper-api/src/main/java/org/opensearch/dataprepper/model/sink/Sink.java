@@ -54,6 +54,16 @@ public interface Sink<T extends Record<?>> {
     }
 
     /**
+     * Records the time this sink's task spent waiting in the thread-pool queue
+     * before a worker thread picked it up for execution.
+     *
+     * @param queueWaitNanos queue wait time in nanoseconds
+     * @since 2.12
+     */
+    default void recordQueueWaitTime(final long queueWaitNanos) {
+    }
+
+    /**
      * Sets default failure pipeline of a source
 
      * @param failurePipeline failure pipeline
