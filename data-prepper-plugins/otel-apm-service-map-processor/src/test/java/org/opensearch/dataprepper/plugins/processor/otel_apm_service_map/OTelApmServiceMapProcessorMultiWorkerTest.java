@@ -11,6 +11,10 @@
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -63,6 +67,11 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
     private volatile EventMetadata eventMetadata;
     private volatile Object eventData;
 
+    @BeforeEach
+    void resetSharedState() {
+        OTelApmServiceMapProcessor.resetSharedStateForTesting();
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 4})
     void everyTraceIsEvaluatedWhateverTheWorkerCount(final int workers) throws Exception {
@@ -70,7 +79,10 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
         final EventFactory eventFactory = jacksonEventFactory();
         // Dependency nodes are on by default, so the processor registers its overflow counters.
         final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         when(pluginMetrics.counter(any())).thenReturn(mock(Counter.class));
+        when(pluginMetrics.timer(any())).thenAnswer(a -> meterRegistry.timer(a.getArgument(0)));
+        when(pluginMetrics.summary(any())).thenAnswer(a -> meterRegistry.summary(a.getArgument(0)));
         final List<OTelApmServiceMapProcessor> processors = new ArrayList<>();
         for (int i = 0; i < workers; i++) {
             processors.add(new OTelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, workers,
@@ -105,6 +117,16 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
                 }
             }
             assertThat("workers=" + workers, evaluatedServices.size(), equalTo(TRACES));
+
+            // One evaluation per window, timed, and the evaluation that emitted them saw every trace.
+            final Timer evaluationTime = meterRegistry.timer(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TIME_METRIC);
+            final DistributionSummary evaluatedTraces =
+                    meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TRACES_METRIC);
+            final DistributionSummary evaluatedSpans =
+                    meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_SPANS_METRIC);
+            assertThat(evaluationTime.count(), equalTo(2L));
+            assertThat(evaluatedTraces.max(), equalTo((double) TRACES));
+            assertThat(evaluatedSpans.max(), equalTo((double) TRACES));
         } finally {
             processors.get(0).shutdown();
         }
@@ -130,6 +152,7 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
         threads.forEach(Thread::start);
         for (final Thread thread : threads) {
             thread.join(30_000);
+            assertThat("worker still running after 30s (barrier hang?)", thread.isAlive(), equalTo(false));
         }
         if (failure.get() != null) {
             throw new AssertionError(failure.get());
