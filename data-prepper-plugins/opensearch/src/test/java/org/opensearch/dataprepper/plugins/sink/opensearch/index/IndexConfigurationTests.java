@@ -219,6 +219,42 @@ public class IndexConfigurationTests {
     }
 
     @Test
+    public void testOTelAPMServiceMap_dependencyAttributesMappedAsKeywordWithKeywordSubField() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
+                IndexType.OTEL_APM_SERVICE_MAP.getValue()).build();
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        assertDependencyAttributesMapping((Map<String, Object>) indexTemplate.get("mappings"));
+    }
+
+    @Test
+    public void testOTelAPMServiceMapWithIndexTemplates_dependencyAttributesMappedAsKeywordWithKeywordSubField() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.OTEL_APM_SERVICE_MAP.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
+        assertDependencyAttributesMapping((Map<String, Object>) template.get("mappings"));
+    }
+
+    private void assertDependencyAttributesMapping(final Map<String, Object> mappings) {
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        final Map<String, Object> dependencyAttributesTemplate = dynamicTemplates.stream()
+                .filter(dynamicTemplate -> dynamicTemplate.containsKey("string_dependency_attributes"))
+                .map(dynamicTemplate -> (Map<String, Object>) dynamicTemplate.get("string_dependency_attributes"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(dependencyAttributesTemplate.get("path_match"), equalTo("*.dependencyAttributes.*"));
+        assertThat(dependencyAttributesTemplate.get("match_mapping_type"), equalTo("string"));
+        final Map<String, Object> mapping = (Map<String, Object>) dependencyAttributesTemplate.get("mapping");
+        assertThat(mapping.get("type"), equalTo("keyword"));
+        final Map<String, Object> fields = (Map<String, Object>) mapping.get("fields");
+        assertThat(fields, equalTo(Map.of("keyword", Map.of("type", "keyword"))));
+    }
+
+    @Test
     public void testValidCustom() throws MalformedURLException {
         final String defaultTemplateFilePath = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();

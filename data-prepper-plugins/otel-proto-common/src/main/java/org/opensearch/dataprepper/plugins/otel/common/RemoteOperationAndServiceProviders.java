@@ -82,7 +82,7 @@ class RemoteOperationAndServiceProviders {
 
     public static class DbRemoteOperationServiceExtractor implements RemoteOperationServiceExtractor {
         public boolean appliesToSpan(Map<String, Object> spanAttributes) {
-            return RemoteOperationAndServiceProviders.appliesToSpan(spanAttributes, "db.system", "db.operation", "db.statment");
+            return RemoteOperationAndServiceProviders.appliesToSpan(spanAttributes, "db.system", "db.operation", "db.statement");
         }
 
         public RemoteOperationAndService getRemoteOperationAndService(Map<String, Object> spanAttributes, Object optionalArg) {
