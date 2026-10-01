@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.IdleScanMode;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
@@ -347,6 +348,11 @@ public class ScanObjectWorker implements Runnable {
         if (objectsToProcess.isEmpty()) {
             folderPartitionNoObjectsFound.increment();
             partitionKeys.remove(folderPartition.getPartitionKey());
+            if (isContinuousScanMode()) {
+                LOG.debug("No objects to process in continuous scan mode, giving up partition for immediate re-acquisition");
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), 0);
+                return;
+            }
             if (shouldDeleteFolderPartition(folderPartition)) {
                 LOG.info("Deleting folder partition {} as no objects have been found from this folder for {} minutes", folderPartition.getPartitionKey(), NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMinutes());
                 sourceCoordinator.deletePartition(folderPartition.getPartitionKey());
@@ -486,5 +492,10 @@ public class ScanObjectWorker implements Runnable {
                     }
                 },
                 CHECKPOINT_OWNERSHIP_INTERVAL);
+    }
+
+    private boolean isContinuousScanMode() {
+        return folderPartitioningOptions != null &&
+                folderPartitioningOptions.getIdleScanMode() == IdleScanMode.CONTINUOUS;
     }
 }
