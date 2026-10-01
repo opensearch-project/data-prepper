@@ -49,6 +49,7 @@ public class TestConfigurationProvider {
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_ROUTE_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-route-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SUBPIPELINES_ROUTES_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-subpipelines-routes-userconfig.yaml";
     public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_FUNCTION_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-function-userconfig.yaml";
+    public static final String USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SCAN_MODE_CONFIG_FILE = "src/test/resources/transformation/userConfig/documentdb-scan-mode-userconfig.yaml";
 
     public static final String RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb1-rule.yaml";
     public static final String RULES_TRANSFORMATION_DOCUMENTDB_CONFIG_FILE = "src/test/resources/transformation/rules/documentdb-rule.yaml";

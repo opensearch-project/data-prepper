@@ -24,4 +24,8 @@ public class FolderPartitioningOptions {
     public IdleScanMode getIdleScanMode() {
         return idleScanMode != null ? idleScanMode : IdleScanMode.IDLE_OPTIMIZED;
     }
+
+    public boolean isContinuousScanMode() {
+        return getIdleScanMode() == IdleScanMode.CONTINUOUS;
+    }
 }

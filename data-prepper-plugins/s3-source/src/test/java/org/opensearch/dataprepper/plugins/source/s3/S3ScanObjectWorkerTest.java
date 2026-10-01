@@ -27,7 +27,6 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.s3.common.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.s3.common.source.S3ObjectReference;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
-import org.opensearch.dataprepper.plugins.source.s3.configuration.IdleScanMode;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
@@ -560,7 +559,7 @@ class S3ScanObjectWorkerTest {
     void processing_with_folder_partitions_continuous_mode_with_no_objects_gives_up_with_zero_retries() {
 
         final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
-        when(folderPartitioningOptions.getIdleScanMode()).thenReturn(IdleScanMode.CONTINUOUS);
+        when(folderPartitioningOptions.isContinuousScanMode()).thenReturn(true);
         when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
 
         final String folder = UUID.randomUUID().toString();

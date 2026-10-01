@@ -66,8 +66,8 @@ public class MongoDBSourceConfig {
     @JsonProperty("id_key")
     private String idKey;
 
-    @JsonProperty("s3_scan_mode")
-    private S3ScanMode s3ScanMode = S3ScanMode.IDLE_OPTIMIZED;
+    @JsonProperty("scan_mode")
+    private ScanMode scanMode = ScanMode.IDLE_OPTIMIZED;
 
     public MongoDBSourceConfig() {
         this.readPreference = DEFAULT_READ_PREFERENCE;
@@ -150,8 +150,8 @@ public class MongoDBSourceConfig {
         return this.awsConfig;
     }
 
-    public S3ScanMode getS3ScanMode() {
-        return this.s3ScanMode;
+    public ScanMode getScanMode() {
+        return this.scanMode;
     }
 
     public static class AuthenticationConfig {
