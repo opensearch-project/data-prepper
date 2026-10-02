@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MongoDBSourceConfig {
     private static final int DEFAULT_PORT = 27017;
@@ -162,5 +163,19 @@ public class MongoDBSourceConfig {
             return password;
         }
 
+    }
+
+    public void validateAwsConfigWithUsernameAndPassword() {
+        final boolean hasUsernamePassword = Objects.nonNull(authenticationConfig) &&
+                (Objects.nonNull(authenticationConfig.getUsername()) || Objects.nonNull(authenticationConfig.getPassword()));
+        final boolean hasAwsAuth = Objects.nonNull(awsConfig) && Objects.nonNull(awsConfig.getAwsStsRoleArn());
+
+        if (hasUsernamePassword && hasAwsAuth) {
+            throw new IllegalArgumentException("Either username and password, or aws sts_role_arn must be specified. Both cannot be set at once.");
+        }
+
+        if (!hasUsernamePassword && !hasAwsAuth) {
+            throw new IllegalArgumentException("Either username and password, or aws sts_role_arn must be specified.");
+        }
     }
 }
