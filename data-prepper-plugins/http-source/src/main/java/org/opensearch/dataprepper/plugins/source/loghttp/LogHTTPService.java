@@ -50,7 +50,8 @@ public class LogHTTPService {
     private static final Logger LOG = LoggerFactory.getLogger(LogHTTPService.class);
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
-    private final JsonCodec jsonCodec = new JsonCodec();
+    private final JsonCodec jsonCodec;
+    private final boolean acceptSingleObject;
     private final Buffer<Record<Log>> buffer;
     private final InputCodec codec;
     private final int bufferWriteTimeoutInMillis;
@@ -68,11 +69,14 @@ public class LogHTTPService {
                           final Buffer<Record<Log>> buffer,
                           final PluginMetrics pluginMetrics,
                           final InputCodec codec,
+                          final boolean acceptSingleObject,
                           final HttpHeaderExtractor httpHeaderExtractor) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.bufferMaxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
         this.bufferOptimalRequestLength = buffer.getOptimalRequestSize().isPresent() ? buffer.getOptimalRequestSize().get(): null;
+        this.acceptSingleObject = acceptSingleObject;
+        this.jsonCodec = new JsonCodec(acceptSingleObject);
         this.codec = codec;
         this.httpHeaderExtractor = httpHeaderExtractor;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -81,6 +85,14 @@ public class LogHTTPService {
         requestsOverMaximumSizeCounter = pluginMetrics.counter(REQUESTS_OVER_MAXIMUM_SIZE);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+    }
+
+    public LogHTTPService(final int bufferWriteTimeoutInMillis,
+                          final Buffer<Record<Log>> buffer,
+                          final PluginMetrics pluginMetrics,
+                          final InputCodec codec,
+                          final HttpHeaderExtractor httpHeaderExtractor) {
+        this(bufferWriteTimeoutInMillis, buffer, pluginMetrics, codec, false, httpHeaderExtractor);
     }
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
@@ -114,7 +126,8 @@ public class LogHTTPService {
                     jsonCodec.validate(content);
                 } catch (IOException e) {
                     LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
-                    throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+                    String messageEnd = (acceptSingleObject) ? "array or object." : "array.";
+                    throw new IOException("Bad request data format. Needs to be json " + messageEnd, e.getCause());
                 }
 
                 try {
@@ -143,7 +156,8 @@ public class LogHTTPService {
                     jsonList = jsonCodec.parse(content);
                 } catch (IOException e) {
                     LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
-                    throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+                    String messageEnd = (acceptSingleObject) ? "array or object." : "array.";
+                    throw new IOException("Bad request data format. Needs to be json " + messageEnd, e.getCause());
                 }
 
                 records.addAll(
