@@ -34,7 +34,7 @@ class NoIsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     @Override
-    public Optional<String> checkAndCreatePolicy() throws IOException {
+    public Optional<String> checkAndCreatePolicy(final String indexAlias) throws IOException {
         return Optional.empty();
     }
 
