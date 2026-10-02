@@ -87,6 +87,14 @@ class KafkaSinkConfigTest {
     }
 
     @Test
+    void getThreadWaitTime_whenNotConfigured_returnsDefault() {
+        final KafkaSinkConfig unconfigured = new KafkaSinkConfig();
+        assertThat(unconfigured.getThreadWaitTime(), notNullValue());
+        assertThat(unconfigured.getThreadWaitTime(),
+                equalTo(KafkaSinkConfig.DEFAULT_THREAD_WAIT_TIME_MS));
+    }
+
+    @Test
     public void testDLQConfiguration() {
         final Map<String, Object> fakePlugin = new LinkedHashMap<>();
         final Map<String, Object> lowLevelPluginSettings = new HashMap<>();
