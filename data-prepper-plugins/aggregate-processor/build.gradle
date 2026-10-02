@@ -21,7 +21,6 @@ dependencies {
     testImplementation project(':data-prepper-core')
     implementation libs.guava.core
     implementation libs.commons.lang3
-    implementation libs.opentelemetry.proto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
 }
