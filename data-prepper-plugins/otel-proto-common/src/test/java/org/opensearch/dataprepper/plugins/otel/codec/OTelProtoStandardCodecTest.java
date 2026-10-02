@@ -766,6 +766,57 @@ public class OTelProtoStandardCodecTest {
             assertThat(metadata.get("metadataKey3"), equalTo("metadataValue3"));
         }
 
+        // Regression tests for issue #7151: duplicate attribute keys must not drop the whole request.
+
+        @Test
+        public void testConvertKeyValueToAttributes_whenDuplicateKey_usesLastValue() {
+            final KeyValue attr1 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("first-value").build()).build();
+            final KeyValue attr2 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("second-value").build()).build();
+
+            final Map<String, Object> actual = decoderUnderTest.convertKeyValueToAttributes(Arrays.asList(attr1, attr2));
+
+            assertThat(actual.get("compute.expression"), equalTo("second-value"));
+        }
+
+        @Test
+        public void testParseExportTraceServiceRequest_whenSpanHasDuplicateAttributeKeys_parsesSuccessfully() {
+            final KeyValue duplicatedAttr1 = KeyValue.newBuilder().setKey("compute.expression")
+                    .setValue(AnyValue.newBuilder().setStringValue("esql://routine/#MyCompute.Main").build()).build();
+            final KeyValue duplicatedAttr2 = KeyValue.newBuilder().setKey("compute.mode")
+                    .setValue(AnyValue.newBuilder().setStringValue("message").build()).build();
+
+            final io.opentelemetry.proto.trace.v1.Span spanWithDuplicates =
+                    io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                            .setTraceId(ByteString.copyFrom(getRandomBytes(16)))
+                            .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
+                            .setName("MyApp.MyFlow.logMessageEvent")
+                            .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER)
+                            .addAttributes(duplicatedAttr1)
+                            .addAttributes(duplicatedAttr2)
+                            .addAttributes(duplicatedAttr1)
+                            .addAttributes(duplicatedAttr2)
+                            .build();
+
+            final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
+                    .addResourceSpans(ResourceSpans.newBuilder()
+                            .setResource(Resource.newBuilder().build())
+                            .addScopeSpans(ScopeSpans.newBuilder()
+                                    .setScope(InstrumentationScope.newBuilder().setName("test-scope").build())
+                                    .addSpans(spanWithDuplicates)
+                                    .build())
+                            .build())
+                    .build();
+
+            final List<Span> result = decoderUnderTest.parseExportTraceServiceRequest(request, Instant.now());
+
+            assertThat(result.size(), equalTo(1));
+            assertThat(
+                    result.get(0).getAttributes().get("compute.expression"),
+                    equalTo("esql://routine/#MyCompute.Main"));
+        }
+
 
     }
 
