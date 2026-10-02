@@ -13,10 +13,15 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.BindableService;
@@ -54,6 +59,7 @@ import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvi
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -80,6 +86,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
@@ -198,6 +205,55 @@ class OTelLogsSourceGrpcTest {
 
     private void setupLogsSource(OTelLogsSourceConfig config) {
         SOURCE = new OTelLogsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
+    }
+
+    /**
+     * Verifies that when a non-null {@link CircuitBreaker} is provided to {@link OTelLogsSource},
+     * a server-level circuit-breaker decorator is installed on the shared {@link ServerBuilder}.
+     *
+     * <p>Like the trace source, the logs source registers BOTH a gRPC service and an optional
+     * additional HTTP service on the same builder, so a server-level decorator gates both paths.
+     * The test captures the function passed to {@code serverBuilder.decorator(...)} and exercises
+     * it end-to-end with an open breaker, proving (a) the wiring happens exactly once and
+     * (b) the wired function is the circuit-breaker decorator: it returns HTTP 503 without
+     * invoking the inner service.</p>
+     *
+     * <p>The complementary "null CircuitBreaker -> no decorator registered" case is implicitly
+     * covered by every other test in this class — none of them set up auth, none of them set
+     * {@code http_path}, and none of them pass a CircuitBreaker, so {@code serverBuilder.decorator}
+     * is never called (and Mockito would fail strict-stubbing assertions if it were).</p>
+     */
+    @Test
+    void circuit_breaker_provided_registers_HTTP_decorator_that_rejects_open_breaker_requests() throws Exception {
+        when(server.stop()).thenReturn(completableFuture);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final OTelLogsSource source = new OTelLogsSource(
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        final ArgumentCaptor<Function> decoratorCaptor = ArgumentCaptor.forClass(Function.class);
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            source.start(buffer);
+        }
+        verify(serverBuilder, times(1)).decorator(decoratorCaptor.capture());
+        verify(serverBuilder).service(isA(GrpcService.class));
+        final HttpService innerService = (ctx, req) -> HttpResponse.of(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        final HttpService decoratedService = (HttpService) decoratorCaptor.getValue().apply(innerService);
+        final HttpRequest request = HttpRequest.of(HttpMethod.POST, "/opentelemetry.proto.collector.logs.v1.LogsService/Export");
+        final ServiceRequestContext ctx = ServiceRequestContext.of(request);
+
+        final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
+
+        assertThat(response.status(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
+        source.stop();
     }
 
     @Test

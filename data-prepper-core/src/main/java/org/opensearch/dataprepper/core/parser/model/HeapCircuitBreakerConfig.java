@@ -31,6 +31,9 @@ public class HeapCircuitBreakerConfig {
     @JsonProperty("check_interval")
     private Duration checkInterval = DEFAULT_CHECK_INTERVAL;
 
+    @JsonProperty("close_usage")
+    private ByteCount closeUsage;
+
     /**
      * Gets the usage as a {@link ByteCount}. If the current Java heap usage
      * exceeds this value then the circuit breaker will be open.
@@ -61,5 +64,17 @@ public class HeapCircuitBreakerConfig {
      */
     public Duration getCheckInterval() {
         return checkInterval;
+    }
+
+    /**
+     * Gets the optional close threshold. When heap usage falls at or below this value
+     * the circuit breaker will close. If {@code null} the open threshold ({@link #getUsage()})
+     * is used for both opening and closing (no hysteresis).
+     *
+     * @return The close usage threshold, or {@code null} if not configured
+     * @since 2.13
+     */
+    public ByteCount getCloseUsage() {
+        return closeUsage;
     }
 }

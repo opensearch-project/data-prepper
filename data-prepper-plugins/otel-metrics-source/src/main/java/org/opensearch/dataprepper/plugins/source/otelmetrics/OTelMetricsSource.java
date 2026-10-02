@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvi
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -50,24 +51,52 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private Server server;
+    private final CircuitBreaker circuitBreaker;
     private final ByteDecoder byteDecoder;
+    private Server server;
 
     @DataPrepperPluginConstructor
-    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
-                             final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
-        this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelMetricsSourceConfig), pipelineDescription);
+    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig,
+                             final PluginMetrics pluginMetrics,
+                             final PluginFactory pluginFactory,
+                             final PipelineDescription pipelineDescription,
+                             final CircuitBreaker circuitBreaker) {
+        this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory,
+                new CertificateProviderFactory(oTelMetricsSourceConfig), pipelineDescription, circuitBreaker);
+    }
+
+    // Legacy public constructor kept for backwards compatibility with existing unit tests.
+    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig,
+                             final PluginMetrics pluginMetrics,
+                             final PluginFactory pluginFactory,
+                             final PipelineDescription pipelineDescription) {
+        this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory,
+                new CertificateProviderFactory(oTelMetricsSourceConfig), pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test
-    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                      final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
+    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig,
+                      final PluginMetrics pluginMetrics,
+                      final PluginFactory pluginFactory,
+                      final CertificateProviderFactory certificateProviderFactory,
+                      final PipelineDescription pipelineDescription) {
+        this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
+    }
+
+    // accessible only in the same package for unit test - allows passing a CircuitBreaker
+    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig,
+                      final PluginMetrics pluginMetrics,
+                      final PluginFactory pluginFactory,
+                      final CertificateProviderFactory certificateProviderFactory,
+                      final PipelineDescription pipelineDescription,
+                      final CircuitBreaker circuitBreaker) {
         oTelMetricsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelMetricsSourceConfig = oTelMetricsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.circuitBreaker = circuitBreaker;
         this.byteDecoder = new OTelMetricDecoder(oTelMetricsSourceConfig.getOutputFormat());
     }
 
@@ -85,8 +114,11 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         if (server == null) {
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
+                    oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH
+                            ? new OTelProtoOpensearchCodec.OTelProtoDecoder()
+                            : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
+                    circuitBreaker,
                     oTelMetricsSourceConfig.getBufferPartitionKeys(),
                     pluginMetrics,
                     null
@@ -99,7 +131,11 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
-            server = createServer.createGRPCServer(authenticationProvider, oTelMetricsGrpcService, certificateProvider, methodDescriptor);
+            // Pass the circuit breaker so an Armeria HTTP-level decorator is installed as the
+            // outermost server-level decorator. When the breaker is open, requests are rejected
+            // with HTTP 503 before any body is read, decompressed, or parsed into protobuf.
+            // The service-level isOpen() check in OTelMetricsGrpcService remains as defense-in-depth.
+            server = createServer.createGRPCServer(authenticationProvider, oTelMetricsGrpcService, certificateProvider, methodDescriptor, circuitBreaker);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
@@ -136,7 +172,6 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         }
         LOG.info("Stopped otel_metrics_source.");
     }
-
 
     private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
         final PluginModel authenticationConfiguration = oTelMetricsSourceConfig.getAuthentication();
