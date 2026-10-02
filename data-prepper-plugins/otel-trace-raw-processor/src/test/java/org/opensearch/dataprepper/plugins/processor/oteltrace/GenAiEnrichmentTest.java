@@ -206,6 +206,37 @@ class GenAiEnrichmentTest {
         assertEquals(42L, ((Number) root.getAttributes().get("gen_ai.usage.output_tokens")).longValue());
     }
 
+    @Test
+    void testConversationIdNormalizedOnSourceSpanOnly() {
+        // OpenInference session.id is normalized to gen_ai.conversation.id on the span that
+        // carries it. It is not copied to the root: the conversation id groups traces into
+        // sessions, and OTel GenAI semconv defines no root-span or propagation rule for it.
+        final Collection<Record<Span>> result = processor.doExecute(records(
+                "genai-root-span.json", "openinference-child-span.json"));
+
+        assertEquals("sess-123", findChild(result).getAttributes().get("gen_ai.conversation.id"));
+        assertNull(findRoot(result).getAttributes().get("gen_ai.conversation.id"));
+    }
+
+    @Test
+    void testTraceloopAssociationSessionIdNormalized() {
+        final Collection<Record<Span>> result = processor.doExecute(records(
+                "genai-root-span.json", "openllmetry-session-child-span.json"));
+
+        final Span child = findChild(result);
+        assertEquals("traceloop-sess-42", child.getAttributes().get("gen_ai.conversation.id"));
+        // Original preserved
+        assertEquals("traceloop-sess-42",
+                child.getAttributes().get("traceloop.association.properties.session_id"));
+        assertNull(findRoot(result).getAttributes().get("gen_ai.conversation.id"));
+    }
+
+    private static Span findChild(final Collection<Record<Span>> result) {
+        return result.stream().map(Record::getData)
+                .filter(s -> s.getParentSpanId() != null && !s.getParentSpanId().isEmpty())
+                .findFirst().orElseThrow();
+    }
+
     private List<Record<Span>> records(final String... files) {
         return Stream.of(files)
                 .map(GenAiEnrichmentTest::buildSpanFromJsonFile)

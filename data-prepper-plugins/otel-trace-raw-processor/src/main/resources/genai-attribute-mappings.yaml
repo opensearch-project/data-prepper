@@ -88,6 +88,15 @@ openllmetry:
     to: gen_ai.input.messages
   - from: traceloop.entity.output
     to: gen_ai.output.messages
+  # Session/conversation ids set via Traceloop association properties
+  # (traceloop.association.properties.<key>). Newer Traceloop SDKs also write
+  # gen_ai.conversation.id directly; normalization skips when it is already present.
+  - from: traceloop.association.properties.session_id
+    to: gen_ai.conversation.id
+  - from: traceloop.association.properties.conversation_id
+    to: gen_ai.conversation.id
+  - from: traceloop.association.properties.thread_id
+    to: gen_ai.conversation.id
 
 # Value mappings for gen_ai.operation.name.
 

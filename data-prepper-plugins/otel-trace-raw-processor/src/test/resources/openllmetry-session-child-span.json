@@ -1,0 +1,17 @@
+{
+  "traceId": "GENAI_TRACE_ID_1",
+  "spanId": "000000000000c003",
+  "parentSpanId": "GENAI_ROOT_SPAN_ID",
+  "traceState": "",
+  "name": "openai.chat",
+  "kind": "CLIENT",
+  "startTime": "2026-01-01T00:00:00.000Z",
+  "endTime": "2026-01-01T00:00:01.000Z",
+  "durationInNanos": 1000000000,
+  "status": {},
+  "attributes": {
+    "llm.request.type": "chat",
+    "llm.request.model": "gpt-4o",
+    "traceloop.association.properties.session_id": "traceloop-sess-42"
+  }
+}
