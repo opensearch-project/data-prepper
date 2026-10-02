@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.plugins.kafka.authenticator.AwsCredentialsSupp
 import org.opensearch.dataprepper.plugins.kafka.authenticator.AzureFederatedCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
+import org.opensearch.dataprepper.plugins.kafka.authenticator.MskIamAuthCredentialsCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
@@ -114,6 +115,10 @@ public class KafkaSecurityConfigurer {
     private static AwsCredentialsProvider mskCredentialsProvider;
     private static AwsCredentialsProvider awsGlueCredentialsProvider;
     private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
+
+    public static AwsCredentialsProvider getMskCredentialsProvider() {
+        return mskCredentialsProvider;
+    }
 
 
     /*public static void setSaslPlainTextProperties(final KafkaSourceConfig kafkaSourConfig,
@@ -245,18 +250,24 @@ public class KafkaSecurityConfigurer {
             if (Objects.isNull(awsConfig)) {
                 throw new RuntimeException("AWS Config needs to be specified when sasl/aws_msk_iam is set to \"role\"");
             }
-            String baseIamAuthConfig = "software.amazon.msk.auth.iam.IAMLoginModule required " +
-                "awsRoleArn=\"%s\" " +
-                "awsStsRegion=\"%s\"";
+            final Map<String, String> stsHeaderOverrides = awsConfig.getAwsStsHeaderOverrides();
+            if (Objects.nonNull(stsHeaderOverrides) && !stsHeaderOverrides.isEmpty()) {
+                properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, MskIamAuthCredentialsCallbackHandler.class.getName());
+                properties.put(SASL_JAAS_CONFIG, "software.amazon.msk.auth.iam.IAMLoginModule required;");
+            } else {
+                String baseIamAuthConfig = "software.amazon.msk.auth.iam.IAMLoginModule required " +
+                    "awsRoleArn=\"%s\" " +
+                    "awsStsRegion=\"%s\"";
 
-            baseIamAuthConfig = String.format(baseIamAuthConfig, awsConfig.getStsRoleArn(), awsConfig.getRegion());
+                baseIamAuthConfig = String.format(baseIamAuthConfig, awsConfig.getStsRoleArn(), awsConfig.getRegion());
 
-            if (Objects.nonNull(awsConfig.getStsRoleSessionName())) {
-                baseIamAuthConfig += String.format(" awsRoleSessionName=\"%s\"", awsConfig.getStsRoleSessionName());
+                if (Objects.nonNull(awsConfig.getStsRoleSessionName())) {
+                    baseIamAuthConfig += String.format(" awsRoleSessionName=\"%s\"", awsConfig.getStsRoleSessionName());
+                }
+
+                baseIamAuthConfig += ";";
+                properties.put(SASL_JAAS_CONFIG, baseIamAuthConfig);
             }
-
-            baseIamAuthConfig += ";";
-            properties.put(SASL_JAAS_CONFIG, baseIamAuthConfig);
         } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
             properties.put(SASL_JAAS_CONFIG,
                     "software.amazon.msk.auth.iam.IAMLoginModule required;");
