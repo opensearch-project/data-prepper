@@ -581,4 +581,51 @@ class DynamicConfigTransformerTest {
             return input;
         }
     }
+
+    @Test
+    void test_transformation_with_scan_mode_continuous_propagates_idle_scan_mode() throws IOException {
+        // Use the REAL documentdb template from the mongodb plugin, not a test copy
+        String userConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_SCAN_MODE_CONFIG_FILE;
+        String realTemplatePath = "../data-prepper-plugins/mongodb/src/main/resources/org/opensearch/dataprepper/transforms/templates/documentdb-template.yaml";
+        String ruleFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+        String pluginName = "documentdb";
+
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(userConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+
+        InputStream ruleStream = new FileInputStream(ruleFilePath);
+        InputStream templateStream = new FileInputStream(realTemplatePath);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        // Parse the transformed YAML and verify idle_scan_mode is "continuous" in the s3 sub-pipeline
+        Map<String, Object> transformedMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        // The s3 sub-pipeline should be named "documentdb-pipeline-s3"
+        Map<String, Object> s3Pipeline = (Map<String, Object>) transformedMap.get("documentdb-pipeline-s3");
+        assertThat(s3Pipeline).as("s3 sub-pipeline should exist").isNotNull();
+
+        Map<String, Object> source = (Map<String, Object>) s3Pipeline.get("source");
+        Map<String, Object> s3Source = (Map<String, Object>) source.get("s3");
+        Map<String, Object> scan = (Map<String, Object>) s3Source.get("scan");
+        Map<String, Object> folderPartitions = (Map<String, Object>) scan.get("folder_partitions");
+
+        assertThat(folderPartitions).as("folder_partitions should exist").isNotNull();
+        assertThat(folderPartitions.get("idle_scan_mode"))
+                .as("idle_scan_mode should be 'continuous' when scan_mode is set to continuous")
+                .isEqualTo("continuous");
+    }
 }
