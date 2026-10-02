@@ -113,6 +113,15 @@ public class S3SinkConfig {
     @JsonProperty("client")
     private ClientOptions clientOptions;
 
+    @JsonProperty("endpoint")
+    private String endpoint;
+
+    @JsonProperty("force_path_style")
+    private boolean forcePathStyle = false;
+
+    @JsonProperty("legacy_md5_checksum")
+    private boolean legacyMd5Checksum = false;
+
     @JsonProperty("server_side_encryption")
     @Valid
     private ServerSideEncryptionConfig serverSideEncryptionConfig;
@@ -221,6 +230,18 @@ public class S3SinkConfig {
 
     public ClientOptions getClientOptions() {
         return clientOptions;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public boolean getForcePathStyle() {
+        return forcePathStyle;
+    }
+
+    public boolean getLegacyMd5Checksum() {
+        return legacyMd5Checksum;
     }
 
     public ServerSideEncryptionConfig getServerSideEncryptionConfig() {
