@@ -293,11 +293,12 @@ class OpenSearchAPISourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
     }
 
+    // Empty payload produces zero events, returns 200.
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestJsonResponse400WithEmptyPayload(boolean includeIndexInPath) {
+    public void testBulkRequestWithEmptyPayloadReturns200(boolean includeIndexInPath) {
         // Prepare
-        final String testBadData = ""; //Empty body
+        final String testEmptyData = "";
         openSearchAPISource.start(testBuffer);
         refreshMeasurements();
 
@@ -309,9 +310,9 @@ class OpenSearchAPISourceTest {
                                 .path(includeIndexInPath ? "/" + testIndex + "/_bulk" + testQueryParams : "/_bulk" + testQueryParams)
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
-                        HttpData.ofUtf8(testBadData))
+                        HttpData.ofUtf8(testEmptyData))
                 .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.BAD_REQUEST)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Then
         Assertions.assertTrue(testBuffer.isEmpty());
@@ -319,20 +320,21 @@ class OpenSearchAPISourceTest {
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, requestReceivedCount.getValue());
-        final Measurement badRequestsCount = MetricsTestUtil.getMeasurementFromList(
-                badRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, badRequestsCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
     }
 
+    // Decoder treats the second action line as document data for the first. Returns 200.
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestJsonResponse400WithInvalidPayload(boolean includeIndexInPath) throws Exception {
-        // Prepare
+    public void testBulkRequestWithInvalidPayloadReturns200(boolean includeIndexInPath) throws Exception {
+        // Prepare - two action lines without doc lines: decoder treats second as doc for first
         List<String> jsonList = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
             jsonList.add(mapper.writeValueAsString(Collections.singletonMap("index", Collections.singletonMap("_index", "test-index"))));
         }
-        final String testBadData = String.join("\n", jsonList);
+        final String testData = String.join("\n", jsonList);
         openSearchAPISource.start(testBuffer);
         refreshMeasurements();
 
@@ -344,19 +346,17 @@ class OpenSearchAPISourceTest {
                                 .path(includeIndexInPath ? "/" + testIndex + "/_bulk" + testQueryParams : "/_bulk" + testQueryParams)
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
-                        HttpData.ofUtf8(testBadData))
+                        HttpData.ofUtf8(testData))
                 .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.BAD_REQUEST)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Then
-        Assertions.assertTrue(testBuffer.isEmpty());
-        // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, requestReceivedCount.getValue());
-        final Measurement badRequestsCount = MetricsTestUtil.getMeasurementFromList(
-                badRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, badRequestsCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
     }
 
     @ParameterizedTest

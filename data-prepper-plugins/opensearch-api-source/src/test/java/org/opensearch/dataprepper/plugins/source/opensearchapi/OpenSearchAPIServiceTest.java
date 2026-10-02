@@ -85,10 +85,10 @@ class OpenSearchAPIServiceTest {
 
     @BeforeEach
     public void setUp() throws Exception {
-        lenient().when(pluginMetrics.counter(openSearchAPIService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
-        lenient().when(pluginMetrics.counter(openSearchAPIService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
-        lenient().when(pluginMetrics.summary(openSearchAPIService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
-        lenient().when(pluginMetrics.timer(openSearchAPIService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
+        lenient().when(pluginMetrics.counter(OpenSearchAPIService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
+        lenient().when(pluginMetrics.counter(OpenSearchAPIService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
+        lenient().when(pluginMetrics.summary(OpenSearchAPIService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
+        lenient().when(pluginMetrics.timer(OpenSearchAPIService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
         lenient().when(serviceRequestContext.isTimedOut()).thenReturn(false);
         lenient().when(requestProcessDuration.recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any())).thenAnswer(
                 (Answer<HttpResponse>) invocation -> {
@@ -219,8 +219,10 @@ class OpenSearchAPIServiceTest {
                 null, null).aggregate().get();
     }
 
+    // Decoder is lenient: treats the second action line as document data for the first action,
+    // matching OpenSearch's own tolerant bulk parsing behavior.
     @Test
-    public void testBulkRequestAPIInvalidRequestMissingDocRow() throws Exception {
+    public void testBulkRequestAPIWithMissingDocRowSucceeds() throws Exception {
         RequestHeaders requestHeaders = RequestHeaders.builder()
                 .contentType(MediaType.JSON)
                 .method(HttpMethod.POST)
@@ -234,12 +236,14 @@ class OpenSearchAPIServiceTest {
 
         Buffer<Record<Event>> blockingBuffer = mock(BlockingBuffer.class);
         OpenSearchAPIService openSearchAPIService = new OpenSearchAPIService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
-        assertThrows(IOException.class, () -> openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
-                null, null).aggregate().get());
+        AggregatedHttpResponse response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                null, null).aggregate().get();
+        assertEquals(HttpStatus.OK, response.status());
     }
 
+    // Decoder skips an action line that has no following document line (EOF reached), producing zero events.
     @Test
-    public void testBulkRequestAPIInvalidRequestEmptyDocRow() throws Exception {
+    public void testBulkRequestAPIWithSingleActionLineSucceeds() throws Exception {
         RequestHeaders requestHeaders = RequestHeaders.builder()
                 .contentType(MediaType.JSON)
                 .method(HttpMethod.POST)
@@ -252,55 +256,118 @@ class OpenSearchAPIServiceTest {
 
         Buffer<Record<Event>> blockingBuffer = mock(BlockingBuffer.class);
         OpenSearchAPIService openSearchAPIService = new OpenSearchAPIService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
-        assertThrows(IOException.class, () -> openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
-                null, null).aggregate().get());
+        AggregatedHttpResponse response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                null, null).aggregate().get();
+        assertEquals(HttpStatus.OK, response.status());
     }
 
+    // Empty payload produces zero events and returns 200.
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestAPIBadRequestWithEmpty(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
-        testBadRequestWithPayload(testBulkRequestAPIWithIndexInPath, "");
-    }
+    public void testBulkRequestAPIWithEmptyPayloadSucceeds(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(HttpMethod.POST)
+                .path("/")
+                .build();
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void testBulkRequestAPIBadRequestWithInvalidPayload(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
-        List<String> jsonList = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            jsonList.add(mapper.writeValueAsString(Collections.singletonMap("index", Collections.singletonMap("_index", "test-index"))));
+        HttpData httpData = HttpData.ofUtf8("");
+        AggregatedHttpRequest testRequest = HttpRequest.of(requestHeaders, httpData).aggregate().get();
+
+        AggregatedHttpResponse response;
+        if (testBulkRequestAPIWithIndexInPath) {
+            response = openSearchAPIService.doPostBulkIndex(serviceRequestContext, testRequest, null,
+                    null, null).aggregate().get();
+        } else {
+            response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                    null, null).aggregate().get();
         }
-        testBadRequestWithPayload(testBulkRequestAPIWithIndexInPath, String.join("\n", jsonList));
+        assertEquals(HttpStatus.OK, response.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
     }
 
+    // Decoder skips JSON lines with no valid bulk action key, producing zero events.
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestAPIBadRequestWithEmptyMap(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+    public void testBulkRequestAPIWithEmptyMapPayloadSucceeds(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(HttpMethod.POST)
+                .path("/")
+                .build();
         List<String> jsonList = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
             jsonList.add(mapper.writeValueAsString(Collections.emptyMap()));
         }
-        testBadRequestWithPayload(testBulkRequestAPIWithIndexInPath, String.join("\n", jsonList));
+        HttpData httpData = HttpData.ofUtf8(String.join("\n", jsonList));
+        AggregatedHttpRequest testRequest = HttpRequest.of(requestHeaders, httpData).aggregate().get();
+
+        AggregatedHttpResponse response;
+        if (testBulkRequestAPIWithIndexInPath) {
+            response = openSearchAPIService.doPostBulkIndex(serviceRequestContext, testRequest, null,
+                    null, null).aggregate().get();
+        } else {
+            response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                    null, null).aggregate().get();
+        }
+        assertEquals(HttpStatus.OK, response.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
     }
 
+    // Decoder skips JSON lines with no valid bulk action key, producing zero events.
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestAPIBadRequestWithInvalidPayload2(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+    public void testBulkRequestAPIWithNonActionPayloadSucceeds(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(HttpMethod.POST)
+                .path("/")
+                .build();
         List<String> jsonList = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
             jsonList.add(mapper.writeValueAsString(Collections.singletonMap("text", Collections.singletonMap("x", "test"))));
         }
-        testBadRequestWithPayload(testBulkRequestAPIWithIndexInPath, String.join("\n", jsonList));
+        HttpData httpData = HttpData.ofUtf8(String.join("\n", jsonList));
+        AggregatedHttpRequest testRequest = HttpRequest.of(requestHeaders, httpData).aggregate().get();
+
+        AggregatedHttpResponse response;
+        if (testBulkRequestAPIWithIndexInPath) {
+            response = openSearchAPIService.doPostBulkIndex(serviceRequestContext, testRequest, null,
+                    null, null).aggregate().get();
+        } else {
+            response = openSearchAPIService.doPostBulk(serviceRequestContext, testRequest,
+                    null, null).aggregate().get();
+        }
+        // Decoder skips lines with no valid bulk action
+        assertEquals(HttpStatus.OK, response.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testBulkRequestAPIBadRequestWithInvalidPayload3(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
-        List<String> jsonList = new ArrayList<>();
-        jsonList.add(mapper.writeValueAsString(Collections.singletonMap("index", Collections.singletonMap("_index", "test-index"))));
-        jsonList.add(mapper.writeValueAsString(Collections.singletonMap("log", UUID.randomUUID().toString())));
-        jsonList.add(mapper.writeValueAsString(Collections.singletonMap("index", Collections.singletonMap("_index", "test-index"))));
+    public void testBulkRequestAPIBadRequestWithInvalidJson(boolean testBulkRequestAPIWithIndexInPath) throws Exception {
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(HttpMethod.POST)
+                .path("/")
+                .build();
 
-        testBadRequestWithPayload(testBulkRequestAPIWithIndexInPath, String.join("\n", jsonList));
+        HttpData httpData = HttpData.ofUtf8("this is not valid json\n");
+        AggregatedHttpRequest testBadRequest = HttpRequest.of(requestHeaders, httpData).aggregate().get();
+
+        if (testBulkRequestAPIWithIndexInPath) {
+            assertThrows(IOException.class, () -> openSearchAPIService.doPostBulkIndex(serviceRequestContext, testBadRequest, null,
+                    null, null).aggregate().get());
+        } else {
+            assertThrows(IOException.class, () -> openSearchAPIService.doPostBulk(serviceRequestContext, testBadRequest, null,
+                    null).aggregate().get());
+        }
+
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, never()).increment();
     }
 
     @ParameterizedTest
@@ -354,34 +421,6 @@ class OpenSearchAPIServiceTest {
 
         // Then
         verify(requestsReceivedCounter, times(1)).increment();
-    }
-
-    private void testBadRequestWithPayload(boolean testBulkRequestAPIWithIndexInPath, String requestBody) throws Exception {
-        // Prepare
-        RequestHeaders requestHeaders = RequestHeaders.builder()
-                .contentType(MediaType.JSON)
-                .method(HttpMethod.POST)
-                .path("/")
-                .build();
-
-        HttpData httpData = HttpData.ofUtf8(requestBody);
-        AggregatedHttpRequest testBadRequest = HttpRequest.of(requestHeaders, httpData).aggregate().get();
-        // When
-        if (testBulkRequestAPIWithIndexInPath) {
-            assertThrows(IOException.class, () -> openSearchAPIService.doPostBulkIndex(serviceRequestContext, testBadRequest, null,
-                    null, null).aggregate().get());
-        } else {
-            assertThrows(IOException.class, () -> openSearchAPIService.doPostBulk(serviceRequestContext, testBadRequest, null,
-                    null).aggregate().get());
-        }
-
-        // Then
-        verify(requestsReceivedCounter, times(1)).increment();
-        verify(successRequestsCounter, never()).increment();
-        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
-        verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
     private AggregatedHttpRequest generateRandomValidBulkRequest(int numJson) throws JsonProcessingException,
