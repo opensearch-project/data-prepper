@@ -6,9 +6,10 @@
 package org.opensearch.dataprepper.plugins.ml_inference.processor;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -19,26 +20,31 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.ml_inference.processor.common.MLBatchJobCreator;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.common.BatchActionExecutor;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.common.MLActionExecutor;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.common.ModelSyncInferenceExecutor;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.common.PredictActionExecutor;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ActionType;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,130 +54,233 @@ import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProces
 
 @ExtendWith(MockitoExtension.class)
 public class MLProcessorTest {
-    @Mock
-    private MLProcessorConfig mlProcessorConfig;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
+    @Mock private MLProcessorConfig mlProcessorConfig;
+    @Mock private PluginMetrics pluginMetrics;
+    @Mock private AwsCredentialsSupplier awsCredentialsSupplier;
+    @Mock private ExpressionEvaluator expressionEvaluator;
+    @Mock private Counter successCounter;
+    @Mock private Counter failureCounter;
+    @Mock private AwsAuthenticationOptions awsAuthenticationOptions;
+    @Mock private AwsCredentialsProvider awsCredentialsProvider;
+    @Mock private PluginFactory pluginFactory;
+    @Mock private PluginSetting pluginSetting;
 
-    @Mock
-    private AwsCredentialsSupplier awsCredentialsSupplier;
-
-    @Mock
-    private ExpressionEvaluator expressionEvaluator;
-
-    @Mock
-    private MLBatchJobCreator mlBatchJobCreator;
-
-    @Mock
-    private Counter successCounter;
-
-    @Mock
-    private Counter failureCounter;
-
-    @Mock
-    private MLProcessor mlProcessor;
-
-    @Mock
-    private AwsAuthenticationOptions awsAuthenticationOptions;
-
-    @Mock
-    private AwsCredentialsProvider awsCredentialsProvider;
-
-    @Mock
-    private PluginFactory pluginFactory;
-
-    @Mock
-    private PluginSetting pluginSetting;
-
-    @BeforeEach
-    void setUp() throws NoSuchFieldException, IllegalAccessException {
+    private void setupCommonMocks() {
         MockitoAnnotations.openMocks(this);
-        when(mlProcessorConfig.getWhenCondition()).thenReturn("condition");
-        lenient().when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(true);
-        lenient().when(mlProcessorConfig.getServiceName()).thenReturn(ServiceName.SAGEMAKER);
         lenient().when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
         lenient().when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         lenient().when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         lenient().when(mlProcessorConfig.getDlqPluginSetting()).thenReturn(null);
         lenient().when(pluginMetrics.counter(NUMBER_OF_ML_PROCESSOR_SUCCESS)).thenReturn(successCounter);
         lenient().when(pluginMetrics.counter(NUMBER_OF_ML_PROCESSOR_FAILED)).thenReturn(failureCounter);
+        lenient().when(pluginMetrics.counter(ModelSyncInferenceExecutor.NUMBER_OF_SYNC_INFERENCE_RECORDS_SUCCESS)).thenReturn(mock(io.micrometer.core.instrument.Counter.class));
+        lenient().when(pluginMetrics.counter(ModelSyncInferenceExecutor.NUMBER_OF_SYNC_INFERENCE_RECORDS_FAILED)).thenReturn(mock(io.micrometer.core.instrument.Counter.class));
+    }
 
-        mlProcessor = new MLProcessor(mlProcessorConfig, pluginMetrics, pluginFactory, pluginSetting, awsCredentialsSupplier, expressionEvaluator);
-        // Inject the mocked mlBatchJobCreator using reflection
-        Field field = MLProcessor.class.getDeclaredField("mlBatchJobCreator");
+    private MLProcessor buildProcessor(final ActionType actionType) throws Exception {
+        setupCommonMocks();
+        when(mlProcessorConfig.getWhenCondition()).thenReturn("condition");
+        lenient().when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(true);
+        lenient().when(mlProcessorConfig.getActionType()).thenReturn(actionType);
+
+        if (ActionType.PREDICT.equals(actionType)) {
+            lenient().when(mlProcessorConfig.getModelId()).thenReturn("amazon.titan-embed-text-v2:0");
+            lenient().when(mlProcessorConfig.getTagsOnFailure()).thenReturn(Collections.emptyList());
+        } else {
+            lenient().when(mlProcessorConfig.getServiceName()).thenReturn(ServiceName.SAGEMAKER);
+        }
+        return new MLProcessor(mlProcessorConfig, pluginMetrics, pluginFactory, pluginSetting, awsCredentialsSupplier, expressionEvaluator);
+    }
+
+    private void injectExecutor(final MLProcessor processor, final MLActionExecutor executor) throws Exception {
+        final Field field = MLProcessor.class.getDeclaredField("actionExecutor");
         field.setAccessible(true);
-        field.set(mlProcessor, mlBatchJobCreator);
+        field.set(processor, executor);
     }
 
-    @Test
-    void testDoExecute_WithValidRecords() throws Exception {
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+    @Nested
+    class BatchPredictMode {
 
-        Collection<Record<Event>> result = mlProcessor.doExecute(records);
+        private MLProcessor mlProcessor;
+        private BatchActionExecutor batchActionExecutor;
 
-        verify(mlBatchJobCreator, times(1)).addProcessedBatchRecordsToResults(new ArrayList<>());
-        verify(mlBatchJobCreator, times(1)).createMLBatchJob(records, new ArrayList<>());
-        verify(successCounter, times(1)).increment();
+        @BeforeEach
+        void setUp() throws Exception {
+            batchActionExecutor = mock(BatchActionExecutor.class);
+            mlProcessor = buildProcessor(ActionType.BATCH_PREDICT);
+            injectExecutor(mlProcessor, batchActionExecutor);
+        }
+
+        @Test
+        void testDoExecute_WithValidRecords() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+
+            mlProcessor.doExecute(records);
+
+            verify(batchActionExecutor, times(1)).prepareExecution(any());
+            verify(batchActionExecutor, times(1)).execute(eq(records), any());
+            verify(successCounter, times(1)).increment();
+        }
+
+        @Test
+        void testDoExecute_WithNoRecords() {
+            final Collection<Record<Event>> result = mlProcessor.doExecute(Collections.emptyList());
+
+            verify(batchActionExecutor, times(1)).prepareExecution(any());
+            verify(batchActionExecutor, never()).execute(any(), any());
+            verifyNoInteractions(successCounter, failureCounter);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        void testDoExecute_WithConditionNotMet() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+            when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(false);
+
+            final Collection<Record<Event>> result = mlProcessor.doExecute(records);
+
+            verify(batchActionExecutor, times(1)).prepareExecution(any());
+            verify(batchActionExecutor, never()).execute(any(), any());
+            verifyNoInteractions(successCounter, failureCounter);
+            assertEquals(records, result);
+        }
+
+        @Test
+        void testDoExecute_WithException() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+            doThrow(new RuntimeException("Test Exception")).when(batchActionExecutor).execute(any(), any());
+
+            mlProcessor.doExecute(records);
+
+            verify(failureCounter, times(1)).increment();
+        }
+
+        @Test
+        void testShutdownMethods() {
+            when(batchActionExecutor.isReadyForShutdown()).thenReturn(true);
+
+            assertTrue(mlProcessor.isReadyForShutdown());
+            mlProcessor.prepareForShutdown();
+            mlProcessor.shutdown();
+
+            verify(batchActionExecutor).isReadyForShutdown();
+            verify(batchActionExecutor).prepareForShutdown();
+            verify(batchActionExecutor).shutdown();
+        }
     }
 
-    @Test
-    void testDoExecute_WithNoRecords() {
-        Collection<Record<Event>> result = mlProcessor.doExecute(Collections.emptyList());
+    @Nested
+    class PredictMode {
 
-        verifyNoInteractions(successCounter, failureCounter);
-        assertTrue(result.isEmpty());
-    }
+        private MLProcessor mlProcessor;
+        private PredictActionExecutor predictActionExecutor;
 
-    @Test
-    void testDoExecute_WithConditionNotMet() {
-        // Mock event and record
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+        @BeforeEach
+        void setUp() throws Exception {
+            predictActionExecutor = mock(PredictActionExecutor.class);
+            mlProcessor = buildProcessor(ActionType.PREDICT);
+            injectExecutor(mlProcessor, predictActionExecutor);
+        }
 
-        // Mock the expression evaluator
-        when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(false);
+        @Test
+        @SuppressWarnings("unchecked")
+        void testDoExecute_WithValidRecords_delegatesToExecutor() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+            doAnswer(invocation -> {
+                final List<Record<Event>> result = invocation.getArgument(1);
+                result.addAll(records);
+                return result;
+            }).when(predictActionExecutor).execute(eq(records), any());
 
-        // Ensure no interaction with mlBatchJobCreator
-        Collection<Record<Event>> result = mlProcessor.doExecute(records);
+            final Collection<Record<Event>> result = mlProcessor.doExecute(records);
 
-        // Verify no interactions with mlBatchJobCreator, successCounter, or failureCounter
-        verify(mlBatchJobCreator, times(1)).addProcessedBatchRecordsToResults(records);
-        verify(mlBatchJobCreator, times(1)).checkAndProcessBatch();
-        verifyNoInteractions(successCounter, failureCounter);
+            verify(predictActionExecutor, times(1)).execute(eq(records), any());
+            verify(successCounter, times(1)).increment();
+            assertEquals(records, new java.util.ArrayList<>(result));
+        }
 
-        // Assert that the input records are returned as output
-        assertEquals(records, result);
-    }
+        @Test
+        void testDoExecute_WithNoRecords_returnsEmpty() {
+            final Collection<Record<Event>> result = mlProcessor.doExecute(Collections.emptyList());
 
-    @Test
-    void testDoExecute_WithException() throws Exception {
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+            verify(predictActionExecutor, never()).execute(any(), any());
+            verifyNoInteractions(successCounter, failureCounter);
+            assertTrue(result.isEmpty());
+        }
 
-        doThrow(new RuntimeException("Test Exception")).when(mlBatchJobCreator).createMLBatchJob(records, new ArrayList<>());
+        @Test
+        void testDoExecute_WithConditionNotMet_skipsExecutor() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+            when(expressionEvaluator.evaluateConditional(eq("condition"), any())).thenReturn(false);
 
-        Collection<Record<Event>> result = mlProcessor.doExecute(records);
+            final Collection<Record<Event>> result = mlProcessor.doExecute(records);
 
-        verify(failureCounter, times(1)).increment();
-    }
+            verify(predictActionExecutor, never()).execute(any(), any());
+            verifyNoInteractions(successCounter, failureCounter);
+            assertEquals(records, result);
+        }
 
-    @Test
-    void testShutdownMethods() {
-        when(mlBatchJobCreator.isReadyForShutdown()).thenReturn(true);
+        @Test
+        void testDoExecute_WithConditionMet_passesFilteredRecordsToExecutor() {
+            final Event matchedEvent = mock(Event.class);
+            final Event skippedEvent = mock(Event.class);
+            final Record<Event> matchedRecord = new Record<>(matchedEvent);
+            final Record<Event> skippedRecord = new Record<>(skippedEvent);
+            final List<Record<Event>> records = List.of(matchedRecord, skippedRecord);
 
-        assertTrue(mlProcessor.isReadyForShutdown());
-        mlProcessor.prepareForShutdown();
-        mlProcessor.shutdown();
+            when(expressionEvaluator.evaluateConditional(eq("condition"), eq(matchedEvent))).thenReturn(true);
+            when(expressionEvaluator.evaluateConditional(eq("condition"), eq(skippedEvent))).thenReturn(false);
 
-        // Verify that these methods were called on the batch job creator
-        verify(mlBatchJobCreator).isReadyForShutdown();
-        verify(mlBatchJobCreator).prepareForShutdown();
-        verify(mlBatchJobCreator).shutdown();
+            final List<Record<Event>> filteredRecords = Collections.singletonList(matchedRecord);
+            doAnswer(invocation -> {
+                final List<Record<Event>> result = invocation.getArgument(1);
+                result.addAll(filteredRecords);
+                return result;
+            }).when(predictActionExecutor).execute(eq(filteredRecords), any());
 
+            final Collection<Record<Event>> result = mlProcessor.doExecute(records);
+
+            verify(predictActionExecutor, times(1)).execute(eq(filteredRecords), any());
+            assertTrue(result.contains(matchedRecord));
+            assertTrue(result.contains(skippedRecord));
+            assertEquals(2, result.size());
+        }
+
+        @Test
+        void testDoExecute_ExecutorThrows_incrementsFailureCounter() {
+            final Event event = mock(Event.class);
+            final Record<Event> record = new Record<>(event);
+            final List<Record<Event>> records = Collections.singletonList(record);
+            doThrow(new RuntimeException("predict failed")).when(predictActionExecutor).execute(any(), any());
+
+            mlProcessor.doExecute(records);
+
+            verify(failureCounter, times(1)).increment();
+            verifyNoInteractions(successCounter);
+        }
+
+        @Test
+        void testShutdownMethods_areNoOps() {
+            when(predictActionExecutor.isReadyForShutdown()).thenReturn(true);
+
+            assertTrue(mlProcessor.isReadyForShutdown());
+            mlProcessor.prepareForShutdown();
+            mlProcessor.shutdown();
+
+            verify(predictActionExecutor).isReadyForShutdown();
+            verify(predictActionExecutor).prepareForShutdown();
+            verify(predictActionExecutor).shutdown();
+        }
     }
 }
