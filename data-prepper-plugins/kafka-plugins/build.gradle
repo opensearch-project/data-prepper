@@ -36,16 +36,23 @@ dependencies {
     implementation project(':data-prepper-plugins:encryption-plugin')
     // bump io.confluent:* dependencies correspondingly when bumping org.apache.kafka.*
     // https://docs.confluent.io/platform/current/release-notes/index.html
-    implementation 'org.apache.kafka:kafka-clients:3.9.1'
+    implementation('org.apache.kafka:kafka-clients') {
+        version {
+            strictly '3.9.1'
+        }
+    }
     implementation 'org.apache.kafka:connect-json:3.9.1'
     implementation project(':data-prepper-plugins:http-common')
     implementation libs.avro.core
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
-    implementation 'io.confluent:kafka-avro-serializer:7.9.1'
-    implementation 'io.confluent:kafka-json-schema-serializer:7.9.1'
-    implementation 'io.confluent:kafka-schema-registry-client:7.9.1'
+    // Confluent 8.x is required for compatibility with the Protobuf 4.x runtime in the full distribution.
+    implementation 'io.confluent:kafka-avro-serializer:8.0.7'
+    implementation 'io.confluent:kafka-json-schema-serializer:8.0.7'
+    implementation 'io.confluent:kafka-protobuf-serializer:8.0.7'
+    implementation 'io.confluent:kafka-schema-registry-client:8.0.7'
+    implementation libs.protobuf.util
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:kafka'
@@ -77,18 +84,11 @@ dependencies {
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
     testImplementation project(':data-prepper-plugins:otel-proto-common')
     testImplementation libs.opentelemetry.proto
-    testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     integrationTestImplementation testLibs.junit.vintage
-    integrationTestImplementation 'io.confluent:kafka-schema-registry:7.9.1'
-    integrationTestImplementation ('io.confluent:kafka-schema-registry:7.9.1:tests') {
-        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
-        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
-        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
-    }
 
     constraints {
         implementation('org.mozilla:rhino') {
