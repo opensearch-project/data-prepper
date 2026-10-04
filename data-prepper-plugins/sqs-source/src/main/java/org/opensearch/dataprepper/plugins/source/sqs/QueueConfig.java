@@ -30,6 +30,7 @@ public class QueueConfig {
     private static final Duration DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT = Duration.ofHours(2);
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = null;
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
+    private static final Duration DEFAULT_MAXIMUM_BACKOFF = Duration.ofMinutes(5);
     static final int DEFAULT_NUMBER_OF_WORKERS = 1;
 
     @JsonProperty("url")
@@ -75,6 +76,11 @@ public class QueueConfig {
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
 
+    // Must be at least SqsBackoff's initial delay (20s) or Armeria rejects the backoff at startup.
+    @JsonProperty("maximum_backoff")
+    @DurationMin(seconds = 20)
+    private Duration maximumBackoff = DEFAULT_MAXIMUM_BACKOFF;
+
     public String getUrl() {
         return url;
     }
@@ -111,6 +117,10 @@ public class QueueConfig {
 
     public OnErrorOption getOnErrorOption() {
         return onErrorOption;
+    }
+
+    public Duration getMaximumBackoff() {
+        return maximumBackoff;
     }
 }
 
