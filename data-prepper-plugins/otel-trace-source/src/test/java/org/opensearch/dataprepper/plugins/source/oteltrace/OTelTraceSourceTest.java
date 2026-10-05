@@ -700,7 +700,7 @@ class OTelTraceSourceTest {
 
         final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
 
-        assertThat(response.status(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
         verify(circuitBreaker, times(1)).isOpen();
         source.stop();
     }

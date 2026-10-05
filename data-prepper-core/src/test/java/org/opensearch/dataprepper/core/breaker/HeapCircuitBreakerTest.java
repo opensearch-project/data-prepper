@@ -106,6 +106,31 @@ class HeapCircuitBreakerTest {
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
+    @Test
+    void constructor_throws_if_closeUsage_is_greater_than_usage() {
+        final ByteCount usageByteCount = mock(ByteCount.class);
+        when(usageByteCount.getBytes()).thenReturn(1024L);
+        when(config.getUsage()).thenReturn(usageByteCount);
+        final ByteCount closeUsageByteCount = mock(ByteCount.class);
+        when(closeUsageByteCount.getBytes()).thenReturn(1025L);
+        when(config.getCloseUsage()).thenReturn(closeUsageByteCount);
+
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    void constructor_throws_if_closeUsage_is_non_positive(final long bytes) {
+        final ByteCount usageByteCount = mock(ByteCount.class);
+        when(usageByteCount.getBytes()).thenReturn(1024L);
+        when(config.getUsage()).thenReturn(usageByteCount);
+        final ByteCount closeUsageByteCount = mock(ByteCount.class);
+        when(closeUsageByteCount.getBytes()).thenReturn(bytes);
+        when(config.getCloseUsage()).thenReturn(closeUsageByteCount);
+
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
+    }
+
     @Nested
     class ValidConfig {
         @BeforeEach
@@ -239,6 +264,85 @@ class HeapCircuitBreakerTest {
             Thread.sleep(SLEEP_MILLIS);
 
             assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        @Test
+        void isOpen_stays_true_while_used_bytes_are_above_closeUsage() throws InterruptedException {
+            final long closeUsage = byteUsage - 1024;
+            givenCloseUsage(closeUsage);
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(closeUsage + 1);
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
+            }
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+        }
+
+        @ParameterizedTest
+        @ValueSource(longs = {0, 1, 1024})
+        void isOpen_transition_from_true_to_false_when_used_bytes_are_at_or_below_closeUsage(final long bytesBelowCloseUsage)
+                throws InterruptedException {
+            final long closeUsage = byteUsage - 1024;
+            givenCloseUsage(closeUsage);
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(closeUsage - bytesBelowCloseUsage);
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
+            }
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        @Test
+        void isOpen_returns_false_if_used_bytes_are_between_closeUsage_and_usage_without_tripping() throws InterruptedException {
+            final long closeUsage = byteUsage - 1024;
+            givenCloseUsage(closeUsage);
+            when(memoryUsage.getUsed()).thenReturn(closeUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        @Test
+        void isOpen_transition_from_true_to_false_when_closeUsage_equals_usage() throws InterruptedException {
+            givenCloseUsage(byteUsage);
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage);
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
+            }
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        private void givenCloseUsage(final long closeUsageBytes) {
+            final ByteCount closeUsageByteCount = mock(ByteCount.class);
+            when(closeUsageByteCount.getBytes()).thenReturn(closeUsageBytes);
+            when(config.getCloseUsage()).thenReturn(closeUsageByteCount);
         }
     }
 }

@@ -124,10 +124,11 @@ public class CreateServer {
     /**
      * Creates a GRPC server with multiple services and an optional circuit breaker.
      *
-     * <p>When {@code circuitBreaker} is non-null, a server-level decorator is installed as the
-     * outermost decorator so it runs before authentication, decompression, and the gRPC handler.
-     * When the circuit breaker is open, incoming requests are rejected with HTTP 503 before any
-     * request body is read or parsed.</p>
+     * <p>When {@code circuitBreaker} is non-null, a server-level decorator is installed. It runs after
+     * HTTP authentication and before decompression and the gRPC handler.
+     * When the circuit breaker is open, incoming requests are rejected before any request body is
+     * read or parsed: gRPC requests with RESOURCE_EXHAUSTED, other requests with HTTP 429, both with
+     * a retry delay from the server's retry info.</p>
      *
      * @param authenticationProvider Provider for authentication
      * @param grpcServiceConfigs List of service configurations
@@ -189,13 +190,17 @@ public class CreateServer {
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        // Install the circuit-breaker decorator FIRST so it becomes the outermost server-level
-        // decorator and runs before authentication, decompression, and the gRPC handler.
-        // When the breaker is open, requests are rejected with HTTP 503 before any request body
-        // is read, decompressed, or parsed into protobuf / domain objects.
+        // Armeria runs server-level decorators in reverse order of registration, so the
+        // authentication decorator registered below runs before this one. Both run before
+        // decompression and the gRPC handler. When the breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or HTTP 429,
+        // both with a retry delay) before any request body is read, decompressed, or parsed.
         if (circuitBreaker != null) {
             LOG.info("Installing circuit-breaker HTTP decorator for {}", sourceName);
-            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker));
+            final RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
+                    ? serverConfiguration.getRetryInfo()
+                    : DEFAULT_RETRY_INFO;
+            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                    circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
         }
 
         if(serverConfiguration.getAuthentication() != null) {

@@ -252,7 +252,7 @@ class OTelLogsSourceGrpcTest {
 
         final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
 
-        assertThat(response.status(), equalTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
         source.stop();
     }
 

@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpService;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,26 +62,39 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
-    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                           final PipelineDescription pipelineDescription, final CircuitBreaker circuitBreaker) {
-        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig), pipelineDescription, circuitBreaker);
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final PluginFactory pluginFactory,
+                           final PipelineDescription pipelineDescription,
+                           final CircuitBreaker circuitBreaker) {
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig),
+                pipelineDescription, circuitBreaker);
     }
 
     // Legacy public constructor kept for backwards compatibility with existing unit tests.
-    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final PluginFactory pluginFactory,
                            final PipelineDescription pipelineDescription) {
-        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig), pipelineDescription, null);
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig),
+                pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test
-    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                    final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                    final PluginMetrics pluginMetrics,
+                    final PluginFactory pluginFactory,
+                    final CertificateProviderFactory certificateProviderFactory,
+                    final PipelineDescription pipelineDescription) {
         this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test - allows passing a CircuitBreaker
-    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                    final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription,
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                    final PluginMetrics pluginMetrics,
+                    final PluginFactory pluginFactory,
+                    final CertificateProviderFactory certificateProviderFactory,
+                    final PipelineDescription pipelineDescription,
                     final CircuitBreaker circuitBreaker) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
@@ -111,8 +125,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
             configureTaskExecutor(serverBuilder);
             // Server-level decorator installed before services are registered so it gates BOTH
             // the gRPC service and the additional HTTP service registered on the same builder.
-            // When the circuit breaker is open, requests are rejected with HTTP 503 before any
-            // request body is read, decompressed, or parsed into protobuf / domain objects.
+            // When the circuit breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or
+            // HTTP 429) before any request body is read, decompressed, or parsed.
             configureCircuitBreaker(serverBuilder);
 
             final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = (oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
@@ -211,9 +225,13 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
         LOG.info("Installing circuit-breaker HTTP decorator for otel_trace_source");
         // Server-level decorator: wraps every service registered on this ServerBuilder
-        // (gRPC service + optional HTTP service), and runs before authentication,
-        // decompression, and the gRPC / HTTP handler logic.
-        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker));
+        // (gRPC service + optional HTTP service). The authentication decorator is registered
+        // later and therefore runs first; both run before decompression and the handlers.
+        final RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
+                ? oTelTraceSourceConfig.getRetryInfo()
+                : new RetryInfoConfig();
+        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
     }
 
     @Override

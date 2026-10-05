@@ -42,6 +42,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -62,6 +63,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -131,6 +133,8 @@ public class OTelLogsGrpcServiceTest {
     PluginMetrics mockPluginMetrics;
     @Mock
     private ServiceRequestContext serviceRequestContext;
+    @Mock
+    private CircuitBreaker circuitBreaker;
 
     @Captor
     ArgumentCaptor<Record> recordCaptor;
@@ -396,9 +400,55 @@ public class OTelLogsGrpcServiceTest {
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
     }
 
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerOpen_rejectsRequestBeforeConversion(final OTelProtoCodec.OTelProtoDecoder decoder) {
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        objectUnderTest = generateOTelLogsGrpcService(decoder, circuitBreaker);
+        final BufferWriteException thrown;
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            thrown = assertThrows(BufferWriteException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        assertThat(thrown.getMessage(), equalTo("Circuit breaker is open."));
+        assertThat(thrown.getCause(), instanceOf(TimeoutException.class));
+        verifyNoInteractions(buffer);
+        verifyNoInteractions(responseObserver);
+        verifyNoInteractions(requestParsingDuration);
+        verify(requestsReceivedCounter, times(1)).increment();
+        verifyNoInteractions(successRequestsCounter);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerClosed_writesToBuffer(final OTelProtoCodec.OTelProtoDecoder decoder) throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(false);
+        objectUnderTest = generateOTelLogsGrpcService(decoder, circuitBreaker);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            objectUnderTest.export(LOGS_REQUEST, responseObserver);
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+        verify(responseObserver, times(1)).onNext(ExportLogsServiceResponse.newBuilder().build());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(successRequestsCounter, times(1)).increment();
+    }
+
     private OTelLogsGrpcService generateOTelLogsGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelLogsGrpcService(
                 bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
+    }
+
+    private OTelLogsGrpcService generateOTelLogsGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder,
+                                                            final CircuitBreaker circuitBreaker) {
+        return new OTelLogsGrpcService(
+                bufferWriteTimeoutInMillis, decoder, buffer, circuitBreaker, mockPluginMetrics, null);
     }
 
     private static Stream<Arguments> getDecoderArguments() {

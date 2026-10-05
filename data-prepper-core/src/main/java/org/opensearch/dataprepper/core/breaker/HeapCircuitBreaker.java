@@ -19,6 +19,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,6 +37,7 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(HeapCircuitBreaker.class);
     public static final int OPEN_METRIC_VALUE = 1;
     public static final int CLOSED_METRIC_VALUE = 0;
+    private static final double BYTES_PER_MEBIBYTE = 1024.0 * 1024.0;
     private final MemoryMXBean memoryMXBean;
     private final long maxBytesToUse;
     private final long closeThresholdBytes;
@@ -83,7 +85,9 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
         scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         scheduledExecutorService.scheduleAtFixedRate(this::checkMemory, 0L, checkInterval.toMillis(), TimeUnit.MILLISECONDS);
 
-        LOG.info("Circuit breaker heap open threshold is {} bytes, close threshold is {} bytes.", maxBytesToUse, closeThresholdBytes);
+        LOG.info("Circuit breaker heap open threshold is {}, close threshold is {}.",
+                toReadableSize(maxBytesToUse),
+                toReadableSize(closeThresholdBytes));
     }
 
     @Override
@@ -105,16 +109,24 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
                 System.gc();
                 resetTime = Instant.now().plus(resetPeriod);
                 openGauge.set(OPEN_METRIC_VALUE);
-                LOG.info("Circuit breaker tripped and open. {} used memory bytes > {} configured", bytesInUse, maxBytesToUse);
+                LOG.info("Circuit breaker tripped and open. {} used > {} configured",
+                        toReadableSize(bytesInUse),
+                        toReadableSize(maxBytesToUse));
             }
         } else if (bytesInUse <= closeThresholdBytes) {
-            // Only close when usage falls below the (potentially lower) close threshold
+            // Only close when usage is at or below the (potentially lower) close threshold
             open = false;
             if(previousOpen) {
                 openGauge.set(CLOSED_METRIC_VALUE);
-                LOG.info("Circuit breaker closed. {} used memory bytes <= {} configured close threshold", bytesInUse, closeThresholdBytes);
+                LOG.info("Circuit breaker closed. {} used <= {} configured close threshold",
+                        toReadableSize(bytesInUse),
+                        toReadableSize(closeThresholdBytes));
             }
         }
+    }
+
+    private String toReadableSize(final long bytes) {
+        return String.format(Locale.ROOT, "%.1f MiB (%d bytes)", bytes / BYTES_PER_MEBIBYTE, bytes);
     }
 
     private long getUsedMemoryBytes() {

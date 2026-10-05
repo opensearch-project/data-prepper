@@ -106,21 +106,21 @@ class PeerForwarderAppConfig {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final PeerForwarderCodec peerForwarderCodec,
             final AcknowledgementSetManager acknowledgementSetManager,
-            final CircuitBreaker circuitBreaker,
             @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
-                peerForwarderCodec, acknowledgementSetManager, pluginMetrics, circuitBreaker);
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics);
     }
 
     @Bean
     public PeerForwarderHttpServerProvider peerForwarderHttpServerProvider(
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
-            final PeerForwarderHttpService peerForwarderHttpService
+            final PeerForwarderHttpService peerForwarderHttpService,
+            final CircuitBreaker circuitBreaker
     ) {
         return new PeerForwarderHttpServerProvider(peerForwarderConfiguration,
-                certificateProviderFactory, peerForwarderHttpService);
+                certificateProviderFactory, peerForwarderHttpService, circuitBreaker);
     }
 
     @Bean

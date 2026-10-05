@@ -3,8 +3,16 @@ package org.opensearch.dataprepper.plugins.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.rpc.RetryInfo;
+import com.google.rpc.Status;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpHeaderNames;
+import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServiceRequestContext;
@@ -21,6 +29,7 @@ import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticati
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.metric.Metric;
@@ -39,6 +48,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +56,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
@@ -85,6 +97,9 @@ public class CreateServerTest {
 
     @Mock
     private Certificate certificate;
+
+    @Mock
+    private CircuitBreaker circuitBreaker;
 
     @Test
     void createGrpcServerTest() throws JsonProcessingException {
@@ -167,6 +182,52 @@ public class CreateServerTest {
     }
 
     @Test
+    void createGRPCServer_with_open_circuit_breaker_rejects_grpc_requests_with_retry_delay_from_retry_info()
+            throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final Server server = createGrpcServerWithCircuitBreaker();
+
+        server.start().join();
+        try {
+            final RequestHeaders headers = RequestHeaders.builder(HttpMethod.POST, "/" + MetricsServiceGrpc.SERVICE_NAME + "/Export")
+                    .contentType(MediaType.parse("application/grpc"))
+                    .build();
+            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .execute(HttpRequest.of(headers))
+                    .aggregate()
+                    .join();
+
+            assertThat(response.headers().get("grpc-status"), equalTo("8"));
+            final Status status = Status.parseFrom(Base64.getDecoder().decode(response.headers().get("grpc-status-details-bin")));
+            assertThat(status.getDetails(0).unpack(RetryInfo.class).getRetryDelay().getSeconds(), equalTo(3L));
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
+    void createGRPCServer_with_open_circuit_breaker_rejects_http_requests_with_429_and_retry_after_from_retry_info()
+            throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final Server server = createGrpcServerWithCircuitBreaker();
+
+        server.start().join();
+        try {
+            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .post("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export", "{}")
+                    .aggregate()
+                    .join();
+
+            assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+            assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo("3"));
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
     void createHttpServerTest() throws IOException {
         final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
         final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
@@ -189,6 +250,24 @@ public class CreateServerTest {
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
         assertDoesNotThrow(() -> server.stop());
+    }
+
+    private Server createGrpcServerWithCircuitBreaker() throws JsonProcessingException {
+        final Map<String, Object> metadata = createGrpcMetadata(0, false, 10000, 10, 5, CompressionOption.NONE,
+                null);
+        metadata.put("retryInfo", Map.of(
+                "min_delay", "PT3S",
+                "max_delay", "PT5S"));
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME,
+                TEST_PIPELINE_NAME);
+        final Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
+        return createServer.createGRPCServer(
+                authenticationProvider,
+                getTestService(buffer),
+                certificateProvider,
+                MetricsServiceGrpc.getExportMethod(),
+                circuitBreaker);
     }
 
     private Map<String, Object> createGrpcMetadata(Integer port, Boolean ssl, Integer reqeustTimeoutInMillis,

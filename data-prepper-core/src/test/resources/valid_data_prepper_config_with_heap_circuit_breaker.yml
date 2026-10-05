@@ -4,3 +4,4 @@ ssl: true
 circuit_breakers:
   heap:
     usage: 2.5gb
+    close_usage: 2gb

@@ -89,7 +89,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
                           final PluginFactory pluginFactory,
                           final PipelineDescription pipelineDescription,
                           final CircuitBreaker circuitBreaker) {
-        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig), pipelineDescription, circuitBreaker);
+        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig),
+                pipelineDescription, circuitBreaker);
     }
 
     // Legacy public constructor kept for backwards compatibility with existing unit tests.
@@ -97,18 +98,25 @@ public class OTelLogsSource implements Source<Record<Object>> {
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
                           final PipelineDescription pipelineDescription) {
-        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig), pipelineDescription, null);
+        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig),
+                pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test
-    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                   final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
+    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
+                   final PluginMetrics pluginMetrics,
+                   final PluginFactory pluginFactory,
+                   final CertificateProviderFactory certificateProviderFactory,
+                   final PipelineDescription pipelineDescription) {
         this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test - allows passing a CircuitBreaker
-    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                   final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription,
+    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
+                   final PluginMetrics pluginMetrics,
+                   final PluginFactory pluginFactory,
+                   final CertificateProviderFactory certificateProviderFactory,
+                   final PipelineDescription pipelineDescription,
                    final CircuitBreaker circuitBreaker) {
         oTelLogsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelLogsSourceConfig = oTelLogsSourceConfig;
@@ -174,9 +182,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
             }
         }, true);
 
-        // Server-level decorator installed BEFORE auth so it becomes the outermost
-        // decorator and runs first. It wraps every service on the builder, so it
-        // gates BOTH the gRPC LogsService and the optional additional HTTP service.
+        // Server-level decorator: it wraps every service on the builder, so it gates both the
+        // gRPC LogsService and the optional HTTP service. Armeria runs server-level decorators
+        // in reverse order of registration, so the authentication decorator registered below
+        // runs before it; both run before decompression and the service handlers.
         configureCircuitBreaker(serverBuilder);
 
         final GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
@@ -294,7 +303,11 @@ public class OTelLogsSource implements Source<Record<Object>> {
             return;
         }
         LOG.info("Installing circuit-breaker HTTP decorator for otel_logs_source");
-        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker));
+        final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
+                ? oTelLogsSourceConfig.getRetryInfo()
+                : new RetryInfoConfig();
+        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
     }
 
     @Override

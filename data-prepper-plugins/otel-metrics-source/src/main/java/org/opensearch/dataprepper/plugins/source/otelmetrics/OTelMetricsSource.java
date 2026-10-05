@@ -131,11 +131,12 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
-            // Pass the circuit breaker so an Armeria HTTP-level decorator is installed as the
-            // outermost server-level decorator. When the breaker is open, requests are rejected
-            // with HTTP 503 before any body is read, decompressed, or parsed into protobuf.
-            // The service-level isOpen() check in OTelMetricsGrpcService remains as defense-in-depth.
-            server = createServer.createGRPCServer(authenticationProvider, oTelMetricsGrpcService, certificateProvider, methodDescriptor, circuitBreaker);
+            // Pass the circuit breaker so CreateServer installs a server-level Armeria decorator.
+            // When the breaker is open, requests are rejected with RESOURCE_EXHAUSTED before any
+            // body is read, decompressed, or parsed into protobuf. The service-level isOpen() check
+            // in OTelMetricsGrpcService remains as defense-in-depth.
+            server = createServer.createGRPCServer(authenticationProvider, oTelMetricsGrpcService, certificateProvider,
+                    methodDescriptor, circuitBreaker);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
