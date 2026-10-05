@@ -1,0 +1,46 @@
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+#
+
+documentdb-pipeline:
+  source:
+    documentdb:
+      acknowledgments: true
+      host: "docdb-cluster.abcdef.us-east-1.docdb.amazonaws.com"
+      port: 27017
+      authentication:
+        username: ${{aws_secrets:secret:username}}
+        password: ${{aws_secrets:secret:password}}
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/MyRole"
+      s3_bucket: "my-staging-bucket"
+      s3_region: "us-east-1"
+      s3_prefix: "osis-export"
+      scan_mode: "continuous"
+      collections:
+        - collection: "mydb.mycollection"
+          export: true
+          stream: true
+  sink:
+    - opensearch:
+        hosts: ["https://search-mydomain.us-east-1.es.amazonaws.com"]
+        index: "my-index"
+        index_type: custom
+        document_id: "${getMetadata(\"primary_key\")}"
+        action: "${getMetadata(\"opensearch_action\")}"
+        aws:
+          sts_role_arn: "arn:aws:iam::123456789012:role/MyRole"
+          region: "us-east-1"
+
+extension:
+  aws:
+    secrets:
+      secret:
+        secret_id: "my-docdb-secret"
+        region: "us-east-1"
+        refresh_interval: PT1H

@@ -10,11 +10,22 @@ public class FolderPartitioningOptions {
     @JsonProperty("max_objects_per_ownership")
     private Integer objectsPerOwnership = 50;
 
+    @JsonProperty("idle_scan_mode")
+    private IdleScanMode idleScanMode;
+
     public Integer getFolderDepth() {
         return folderDepth;
     }
 
     public Integer getMaxObjectsPerOwnership() {
         return objectsPerOwnership;
+    }
+
+    public IdleScanMode getIdleScanMode() {
+        return idleScanMode != null ? idleScanMode : IdleScanMode.IDLE_OPTIMIZED;
+    }
+
+    public boolean isContinuousScanMode() {
+        return getIdleScanMode() == IdleScanMode.CONTINUOUS;
     }
 }

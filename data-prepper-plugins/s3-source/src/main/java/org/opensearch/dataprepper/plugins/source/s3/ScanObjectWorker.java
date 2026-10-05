@@ -347,6 +347,11 @@ public class ScanObjectWorker implements Runnable {
         if (objectsToProcess.isEmpty()) {
             folderPartitionNoObjectsFound.increment();
             partitionKeys.remove(folderPartition.getPartitionKey());
+            if (folderPartitioningOptions.isContinuousScanMode()) {
+                LOG.debug("No objects to process in continuous scan mode, giving up partition for immediate re-acquisition");
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), 0);
+                return;
+            }
             if (shouldDeleteFolderPartition(folderPartition)) {
                 LOG.info("Deleting folder partition {} as no objects have been found from this folder for {} minutes", folderPartition.getPartitionKey(), NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMinutes());
                 sourceCoordinator.deletePartition(folderPartition.getPartitionKey());
@@ -487,4 +492,5 @@ public class ScanObjectWorker implements Runnable {
                 },
                 CHECKPOINT_OWNERSHIP_INTERVAL);
     }
+
 }
