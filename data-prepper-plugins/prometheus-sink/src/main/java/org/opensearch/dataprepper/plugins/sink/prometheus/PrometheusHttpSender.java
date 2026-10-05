@@ -95,10 +95,16 @@ public class PrometheusHttpSender {
     }
 
     /**
-     * Builds a WebClient with retry logic for known OTLP retryable status codes.
+     * Builds a WebClient with retry logic for known OTLP retryable status codes
+     * and connection-level failures.
      * <p>
      * Retries on 429, 502, 503, and 504 per OTEL spec.
      * See: <a href="https://opentelemetry.io/docs/specs/otlp/#otlphttp-response">OTLP/HTTP Response</a>
+     * <p>
+     * Also retries on {@link UnprocessedRequestException}, which covers connection-level
+     * failures where the request was never sent to the server. This includes HTTP/2 GOAWAY
+     * frames (normal server connection rotation), connection resets, and connection refused
+     * errors. These are safe to retry because the server never processed the request.
      * <p>
      * We are not using the Retry-After header for dynamic backoff because:
      * - Armeria’s retry rule API expects a boolean decision or fixed Backoff.
@@ -107,9 +113,19 @@ public class PrometheusHttpSender {
      * - Our exponential backoff already handles typical retry intervals gracefully.
      */
     private static WebClient buildWebClient(final PrometheusSinkConfiguration config) {
+        final Backoff backoff = Backoff.exponential(BACKOFF_INITIAL_DELAY_MS, BACKOFF_MAX_DELAY_MS)
+                .withJitter(BACKOFF_DEFAULT_JITTER);
+
+        // Retry on connection-level failures where the request was never sent to the server.
+        // This covers HTTP/2 GOAWAY frames (normal server connection rotation), connection
+        // resets, and connection refused errors. Safe to retry since the server never
+        // processed the request.
         final RetryRuleWithContent<HttpResponse> retryRule = RetryRuleWithContent.<HttpResponse>builder()
-                .onStatus((ctx, status) -> RETRYABLE_STATUS_CODES.contains(status.code()))
-                .thenBackoff(Backoff.exponential(BACKOFF_INITIAL_DELAY_MS, BACKOFF_MAX_DELAY_MS).withJitter(BACKOFF_DEFAULT_JITTER));
+                .onUnprocessed()
+                .thenBackoff(backoff)
+                .orElse(RetryRuleWithContent.<HttpResponse>builder()
+                        .onStatus((ctx, status) -> RETRYABLE_STATUS_CODES.contains(status.code()))
+                        .thenBackoff(backoff));
 
         final long estimatedContentLimit = Math.max(1, DEFAULT_MAX_REQUEST_SIZE) * (config.getMaxRetries() + 1);
         final int safeContentLimit = (int) Math.min(estimatedContentLimit, Integer.MAX_VALUE);
