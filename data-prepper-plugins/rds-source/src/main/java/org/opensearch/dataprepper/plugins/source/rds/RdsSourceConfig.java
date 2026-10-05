@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.ScanMode;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.JoinConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
@@ -104,6 +105,9 @@ public class RdsSourceConfig {
     @JsonProperty("disable_s3_read_for_leader")
     private boolean disableS3ReadForLeader = false;
 
+    @JsonProperty("scan_mode")
+    private ScanMode scanMode = ScanMode.IDLE_OPTIMIZED;
+
     @JsonProperty("joins")
     @Valid
     private JoinConfig joinConfig;
@@ -190,6 +194,10 @@ public class RdsSourceConfig {
 
     public JoinConfig getJoinConfig() {
         return joinConfig;
+    }
+
+    public ScanMode getScanMode() {
+        return this.scanMode;
     }
 
     public AuthenticationConfig getAuthenticationConfig() {
