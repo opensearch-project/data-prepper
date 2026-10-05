@@ -40,14 +40,24 @@ import java.util.function.Function;
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
-    private final Collection<PluginProvider> pluginProviders;
+    private final PluginProviderLoader pluginProviderLoader;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
     private final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers;
+    private final Optional<PluginProviderRegistrar> pluginProviderRegistrar;
 
+    /**
+     * @param pluginProviderRegistrar the component which registers plugin providers during its own
+     *                                initialization, currently the OSGi framework runner. Declaring it
+     *                                here is what forces Spring to complete that registration before
+     *                                this factory — and therefore any pipeline — is created; see
+     *                                {@link PluginProviderRegistrar}. It is optional because the only
+     *                                implementation ships in a module {@code data-prepper-core} depends
+     *                                on at runtime only.
+     */
     @Inject
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
@@ -56,22 +66,18 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
             final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers,
-            final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers) {
+            final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers,
+            final Optional<PluginProviderRegistrar> pluginProviderRegistrar) {
         this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
         this.definedPluginConsumers = definedPluginConsumers;
-        Objects.requireNonNull(pluginProviderLoader);
+        this.pluginProviderRegistrar = Objects.requireNonNull(pluginProviderRegistrar);
+        this.pluginProviderLoader = Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
         this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
-        this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
-
-        if (pluginProviders.isEmpty()) {
-            throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
-                    "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
-        }
     }
 
     @Override
@@ -141,7 +147,15 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
-        final Class<? extends T> pluginClass = pluginProviders.stream()
+        // Re-read the providers on every lookup rather than snapshotting them in the constructor.
+        // The PluginProviderRegistrar dependency already forces OSGi registration to complete before
+        // this factory is constructed, so this is defense in depth: it keeps a provider registered by
+        // any other means after construction visible. See PluginProviderLoader#registerProvider.
+        final Collection<PluginProvider> currentProviders = pluginProviderLoader.getPluginProviders();
+        if (currentProviders.isEmpty()) {
+            throw new RuntimeException(describeMissingPluginProviders());
+        }
+        final Class<? extends T> pluginClass = currentProviders.stream()
                 .map(pluginProvider -> pluginProvider.findPluginClass(baseClass, pluginName))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
@@ -151,6 +165,35 @@ public class DefaultPluginFactory implements PluginFactory {
 
         handleDefinedPlugins(pluginClass, baseClass, pluginName);
         return pluginClass;
+    }
+
+    /**
+     * Builds the diagnostic for the case where no plugin provider is available. The registrar state is
+     * included so that a genuine registration failure is not misreported as a startup ordering problem.
+     *
+     * @return the message to fail with
+     */
+    private String describeMissingPluginProviders() {
+        final String commonMessage = "Data Prepper requires at least one PluginProvider. " +
+                "When running with the default plugin framework, your Data Prepper installation may be " +
+                "missing the org.opensearch.dataprepper.plugin.PluginProvider file. ";
+
+        if (!pluginProviderRegistrar.isPresent()) {
+            return commonMessage +
+                    "No PluginProviderRegistrar is present in this application context, so no OSGi plugin " +
+                    "provider was registered. When running with -Ddata-prepper.plugin.framework=osgi, this " +
+                    "means the OSGi plugin framework module is not on the classpath.";
+        }
+
+        if (pluginProviderRegistrar.get().isPluginProviderRegistrationComplete()) {
+            return commonMessage +
+                    "The OSGi plugin framework finished starting but registered no plugin provider. " +
+                    "Check the startup log for bundle resolution or activation failures.";
+        }
+
+        return commonMessage +
+                "No OSGi plugin provider has been registered yet, which means the OSGi framework has not " +
+                "finished starting.";
     }
 
     private <T> void handleDefinedPlugins(final Class<? extends T> pluginClass,

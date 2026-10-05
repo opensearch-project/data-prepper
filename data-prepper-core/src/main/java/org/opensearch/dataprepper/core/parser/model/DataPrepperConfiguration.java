@@ -67,6 +67,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private ExperimentalConfiguration experimental;
     private PipelineExtensions pipelineExtensions;
     private String failurePipelineName = DEFAULT_FAILURE_PIPELINE_NAME;
+    private AcknowledgementsConfig acknowledgementsConfig = AcknowledgementsConfig.defaultConfiguration();
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
@@ -112,6 +113,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
             @JsonProperty("event") final EventConfiguration eventConfiguration,
             @JsonProperty("experimental") final ExperimentalConfiguration experimental,
+            @JsonProperty("acknowledgements") final AcknowledgementsConfig acknowledgementsConfig,
             @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
@@ -145,6 +147,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
         }
         this.experimental = experimental != null ? experimental : ExperimentalConfiguration.defaultConfiguration();
+
+        this.acknowledgementsConfig = acknowledgementsConfig != null ? acknowledgementsConfig : AcknowledgementsConfig.defaultConfiguration();
 
         this.pipelineExtensions = pipelineExtensions;
     }
@@ -266,6 +270,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
 
     public EventConfiguration getEventConfiguration() {
         return eventConfiguration;
+    }
+
+    public AcknowledgementsConfig getAcknowledgementsConfig() {
+        return acknowledgementsConfig;
     }
 
     @Override

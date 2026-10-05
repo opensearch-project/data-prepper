@@ -163,4 +163,102 @@ class ParseJsonProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
             assertThat(event.get("parsed_json", Map.class), equalTo(messageMaps.get(i)));
         }
     }
+
+    @Test
+    void parse_json_with_destination_parses_top_level_array(
+            @PluginConfigurationFile("with-destination.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
+            final EventFactory eventFactory) throws JsonProcessingException {
+
+        final List<Event> inputEvents = new LinkedList<>();
+        final List<List<Map<String, Object>>> messageArrays = new LinkedList<>();
+        final List<String> messageStrings = new LinkedList<>();
+        for (int i = 0; i < 5; i++) {
+
+            final List<Map<String, Object>> messageArray = List.of(
+                    Map.of("type", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString()),
+                    Map.of("type", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())
+            );
+
+            final String messageString = objectMapper.writeValueAsString(messageArray);
+
+            final Event event = eventFactory.eventBuilder(LogEventBuilder.class)
+                    .withData(Map.of(
+                            "message", messageString
+                            , "some_other_key", UUID.randomUUID().toString()
+                    ))
+                    .build();
+
+            inputEvents.add(event);
+            messageArrays.add(messageArray);
+            messageStrings.add(messageString);
+        }
+
+        final List<Record<Event>> inputRecords = inputEvents.stream()
+                .map(Record::new)
+                .collect(Collectors.toList());
+
+        final Collection<Record<Event>> outputRecords = objectUnderTest.execute(inputRecords);
+
+        assertThat(outputRecords, notNullValue());
+
+        final List<Event> outputEvents = outputRecords.stream().map(Record::getData).collect(Collectors.toList());
+
+        assertThat(outputEvents, equalTo(inputEvents));
+
+        assertThat(outputEvents.size(), equalTo(5));
+
+        for (int i = 0; i < outputEvents.size(); i++) {
+            final Event event = outputEvents.get(i);
+            assertThat(event, notNullValue());
+            assertThat(event.get("message", String.class), equalTo(messageStrings.get(i)));
+            assertThat(event.get("parsed_json", List.class), equalTo(messageArrays.get(i)));
+        }
+    }
+
+    @Test
+    void parse_json_with_destination_parses_top_level_scalar(
+            @PluginConfigurationFile("with-destination.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest,
+            final EventFactory eventFactory) throws JsonProcessingException {
+
+        final List<Event> inputEvents = new LinkedList<>();
+        final List<String> messageScalars = new LinkedList<>();
+        final List<String> messageStrings = new LinkedList<>();
+        for (int i = 0; i < 5; i++) {
+
+            final String messageScalar = UUID.randomUUID().toString();
+            final String messageString = objectMapper.writeValueAsString(messageScalar);
+
+            final Event event = eventFactory.eventBuilder(LogEventBuilder.class)
+                    .withData(Map.of(
+                            "message", messageString
+                            , "some_other_key", UUID.randomUUID().toString()
+                    ))
+                    .build();
+
+            inputEvents.add(event);
+            messageScalars.add(messageScalar);
+            messageStrings.add(messageString);
+        }
+
+        final List<Record<Event>> inputRecords = inputEvents.stream()
+                .map(Record::new)
+                .collect(Collectors.toList());
+
+        final Collection<Record<Event>> outputRecords = objectUnderTest.execute(inputRecords);
+
+        assertThat(outputRecords, notNullValue());
+
+        final List<Event> outputEvents = outputRecords.stream().map(Record::getData).collect(Collectors.toList());
+
+        assertThat(outputEvents, equalTo(inputEvents));
+
+        assertThat(outputEvents.size(), equalTo(5));
+
+        for (int i = 0; i < outputEvents.size(); i++) {
+            final Event event = outputEvents.get(i);
+            assertThat(event, notNullValue());
+            assertThat(event.get("message", String.class), equalTo(messageStrings.get(i)));
+            assertThat(event.get("parsed_json", String.class), equalTo(messageScalars.get(i)));
+        }
+    }
 }

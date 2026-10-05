@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PrometheusTimeSeries {
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusTimeSeries.class);
@@ -55,6 +56,12 @@ public class PrometheusTimeSeries {
     private static final String PLUS_INF = "+Inf";
     private static final String RESOURCE_PREFIX = "resource_";
     private static final String SCOPE_PREFIX = "scope_";
+
+    /**
+     * The label names this sink adds to an individual time series. Remote write rejects a series which
+     * carries the same label name twice, so a configured label may not use any of these names.
+     */
+    public static final Set<String> RESERVED_LABEL_NAMES = Set.of(NAME_LABEL, QUANTILE_LABEL, LE_LABEL, GE_LABEL);
 
     private static final Map<String, String> otelToPrometheusUnitsMap = Map.ofEntries(
             Map.entry("d",    "days"),
@@ -91,7 +98,8 @@ public class PrometheusTimeSeries {
     private long baseLabelsSize;
     private int seriesSize;
 
-    public PrometheusTimeSeries(Metric metric, final boolean sanitizeNames) throws Exception {
+    public PrometheusTimeSeries(final Metric metric, final boolean sanitizeNames,
+                                final String instanceLabelName, final String instanceLabelValue) throws Exception {
         this.sanitizeNames = sanitizeNames;
         this.metricName = sanitizeNames ? sanitizeMetricName(metric) : metric.getName();
 
@@ -106,6 +114,7 @@ public class PrometheusTimeSeries {
         // Process all attributes in one pass
         baseLabelsSize = processAttributes(metric.getAttributes(), "");
         baseLabelsSize += processResourceAndScopeAttributes(metric);
+        baseLabelsSize += processInstanceLabel(instanceLabelName, instanceLabelValue);
 
         if (metric instanceof Gauge) {
             addGaugeMetric((Gauge)metric);
@@ -166,6 +175,25 @@ public class PrometheusTimeSeries {
             LOG.warn(NOISY, "Failed to get resource/scope attributes", e);
         }
         return size;
+    }
+
+    private long processInstanceLabel(final String name, final String value) {
+        if (name == null) {
+            return 0L;
+        }
+        // Remote write rejects a series carrying the same label name twice, so the label is dropped rather
+        // than repeated when the name is already taken. This holds even for a caller which did not validate
+        // the name it passed in.
+        if (RESERVED_LABEL_NAMES.contains(name)) {
+            return 0L;
+        }
+        for (final Label label : baseLabels) {
+            // A metric attribute wins any conflict.
+            if (label.getName().equals(name)) {
+                return 0L;
+            }
+        }
+        return addLabelSanitized(name, value);
     }
 
     private long addLabel(String name, final Object value) {

@@ -77,6 +77,9 @@ public class S3DlqWriterConfig {
     @AwsAccountId
     private String bucketOwner;
 
+    @JsonProperty("codec")
+    private DlqCodec codec = DlqCodec.JSON;
+
     public String getBucket() {
         if (bucket.startsWith(S3_PREFIX)) {
             return bucket.substring(S3_PREFIX.length());
@@ -101,6 +104,10 @@ public class S3DlqWriterConfig {
     }
 
     public String getBucketOwner() { return bucketOwner; }
+
+    public DlqCodec getCodec() {
+        return codec;
+    }
 
     private AwsCredentialsProvider getAwsCredentialsProvider() {
 

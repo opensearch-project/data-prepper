@@ -556,6 +556,36 @@ class S3ScanObjectWorkerTest {
     }
 
     @Test
+    void processing_with_folder_partitions_continuous_mode_with_no_objects_gives_up_with_zero_retries() {
+
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.isContinuousScanMode()).thenReturn(true);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String folder = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + folder;
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class).withPartitionKey(partitionKey).build();
+        when(sourceCoordinator.getNextPartition(any(Function.class), eq(true))).thenReturn(Optional.of(partitionToProcess));
+
+        final ListObjectsV2Response listObjectsV2Response = mock(ListObjectsV2Response.class);
+        when(listObjectsV2Response.isTruncated()).thenReturn(false);
+        when(listObjectsV2Response.contents()).thenReturn(Collections.emptyList());
+
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
+        doNothing().when(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(0));
+        doNothing().when(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
+
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
+        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(0));
+        verify(sourceCoordinator, never()).deletePartition(anyString());
+        verify(noObjectsFoundForFolderPartitionCounter).increment();
+    }
+
+    @Test
     void processing_with_folder_partition_with_no_objects_found_for_some_time_deletes_the_partition() {
         final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
         when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);

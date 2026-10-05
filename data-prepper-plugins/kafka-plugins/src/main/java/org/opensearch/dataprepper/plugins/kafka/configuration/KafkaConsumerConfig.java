@@ -18,7 +18,11 @@ public interface KafkaConsumerConfig extends KafkaConnectionConfig {
     boolean getAcknowledgementsEnabled();
 
     Duration getAcknowledgementsTimeout();
-    
+
+    default boolean getAcknowledgementsExpiryResetEnabled() {
+        return false;
+    }
+
     SchemaConfig getSchemaConfig();
 
     List<? extends TopicConfig> getTopics();

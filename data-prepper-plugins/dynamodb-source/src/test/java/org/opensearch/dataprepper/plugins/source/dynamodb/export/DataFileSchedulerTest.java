@@ -47,6 +47,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileScheduler.EXPORT_S3_OBJECTS_PROCESSED_COUNT;
@@ -276,5 +277,42 @@ class DataFileSchedulerTest {
         executorService.shutdown();
         future.cancel(true);
         assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+    }
+
+    @Test
+    void run_with_acknowledgments_decrements_numOfWorkers_even_when_giveUpPartition_throws() throws InterruptedException {
+        given(coordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE))
+                .willReturn(Optional.of(dataFilePartition))
+                .willReturn(Optional.of(dataFilePartition))
+                .willReturn(Optional.empty());
+        given(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).willReturn(true);
+
+        final Duration dataFileAcknowledgmentTimeout = Duration.ofSeconds(30);
+        given(dynamoDBSourceConfig.getDataFileAcknowledgmentTimeout()).willReturn(dataFileAcknowledgmentTimeout);
+
+        // Loader throws exception to trigger giveUpPartition path
+        given(loaderFactory.createDataFileLoader(any(DataFilePartition.class), any(TableInfo.class), any(AcknowledgementSet.class), any(Duration.class)))
+                .willReturn(() -> { throw new RuntimeException("Connection reset"); });
+
+        // giveUpPartition throws - simulating the silent failure
+        lenient().doThrow(new RuntimeException("DDB conditional check failed"))
+                .when(coordinator).giveUpPartition(any(EnhancedSourcePartition.class));
+
+        // Mock acknowledgement set
+        final AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
+        given(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class))).willReturn(ackSet);
+
+        scheduler = new DataFileScheduler(coordinator, loaderFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> scheduler.run());
+        Thread.sleep(3000);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(executorService.awaitTermination(2000, TimeUnit.MILLISECONDS), equalTo(true));
+
+        // Despite giveUpPartition throwing, the scheduler should still acquire more partitions
+        // (proving numOfWorkers was decremented and didn't get stuck at 1)
+        verify(coordinator, atLeast(2)).acquireAvailablePartition(DataFilePartition.PARTITION_TYPE);
     }
 }

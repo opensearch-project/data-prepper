@@ -849,6 +849,7 @@ public class DynamoDbClientWrapperTest {
         reflectivelySetField(objectUnderTest, "table", table);
 
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        when(dynamoDbSourcePartitionItem.getSourceIdentifier()).thenReturn(UUID.randomUUID().toString());
         assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryDeletePartitionItem(dynamoDbSourcePartitionItem));
     }
 

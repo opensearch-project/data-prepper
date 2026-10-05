@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.apache.kafka.common.Metric;
@@ -15,10 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.DoubleUnaryOperator;
 
 public class KafkaTopicConsumerMetrics {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicConsumerMetrics.class);
@@ -33,6 +38,15 @@ public class KafkaTopicConsumerMetrics {
     static final String NUMBER_OF_RECORDS_CONSUMED = "numberOfRecordsConsumed";
     static final String NUMBER_OF_BYTES_CONSUMED = "numberOfBytesConsumed";
     static final String ACTUAL_POLL_INTERVAL = "actualPollInterval";
+    static final String NUMBER_OF_ASSIGNED_PARTITIONS = "numberOfAssignedPartitions";
+    static final String NUMBER_OF_ACTIVE_READERS = "numberOfActiveReaders";
+    static final String NUMBER_OF_CONFIGURED_WORKERS = "numberOfConfiguredWorkers";
+    static final String NUMBER_OF_REBALANCES = "numberOfRebalances";
+    static final String NUMBER_OF_PARTITIONS_REVOKED = "numberOfPartitionsRevoked";
+    static final String RECORDS_LAG_PER_PARTITION = "recordsLagPerPartition";
+    static final String RECORDS_PROCESSING_LATENCY = "recordsProcessingLatency";
+    // kafka-clients metric key; stored raw, inverted at read time (see update()).
+    private static final String ASSIGNED_PARTITIONS = "assigned-partitions";
 
     private final String topicName;
     private long updateTime;
@@ -52,12 +66,29 @@ public class KafkaTopicConsumerMetrics {
     private final Timer timeBetweenPollCalls;
     private Instant lastPollTime;
 
+    private final Counter numberOfRebalances;
+    private final Counter numberOfPartitionsRevoked;
+    private final Timer recordsProcessingLatency;
+    private final int configuredWorkers;
+
+    private final Map<String, Double> perPartitionLag = new ConcurrentHashMap<>();
+    private final Set<String> registeredLagGauges = ConcurrentHashMap.newKeySet();
+
     public KafkaTopicConsumerMetrics(final String topicName, final PluginMetrics pluginMetrics,
                                      final boolean topicNameInMetrics) {
+        this(topicName, pluginMetrics, topicNameInMetrics, 0);
+    }
+
+    public KafkaTopicConsumerMetrics(final String topicName, final PluginMetrics pluginMetrics,
+                                     final boolean topicNameInMetrics, final int configuredWorkers) {
         this.pluginMetrics = pluginMetrics;
         this.topicName = topicName;
+        this.configuredWorkers = configuredWorkers;
         this.updateTime = Instant.now().getEpochSecond();
-        this.metricValues = new HashMap<>();
+        // ConcurrentHashMap: mutated by every worker thread in update()/register() while the metric
+        // scrape thread iterates it inside the gauge lambdas. A plain HashMap here is a
+        // ConcurrentModificationException hazard, especially with the new scaling gauges below.
+        this.metricValues = new ConcurrentHashMap<>();
         initializeMetricNamesMap(topicNameInMetrics);
         this.numberOfRecordsConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_CONSUMED, topicNameInMetrics));
         this.numberOfBytesConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BYTES_CONSUMED, topicNameInMetrics));
@@ -70,7 +101,35 @@ public class KafkaTopicConsumerMetrics {
         this.numberOfPositiveAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS, topicNameInMetrics));
         this.numberOfNegativeAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS, topicNameInMetrics));
         this.timeBetweenPollCalls = pluginMetrics.timer(getTopicMetricName(ACTUAL_POLL_INTERVAL, topicNameInMetrics));
+        this.numberOfRebalances = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_REBALANCES, topicNameInMetrics));
+        this.numberOfPartitionsRevoked = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_PARTITIONS_REVOKED, topicNameInMetrics));
+        this.recordsProcessingLatency = pluginMetrics.timer(getTopicMetricName(RECORDS_PROCESSING_LATENCY, topicNameInMetrics));
+        registerScalingGauges(topicNameInMetrics);
         lastPollTime = Instant.now();
+    }
+
+    private void registerScalingGauges(final boolean topicNameInMetrics) {
+        pluginMetrics.gauge(getTopicMetricName(NUMBER_OF_ASSIGNED_PARTITIONS, topicNameInMetrics), metricValues,
+                mv -> foldAssignedPartitions(mv, raw -> raw));
+        pluginMetrics.gauge(getTopicMetricName(NUMBER_OF_ACTIVE_READERS, topicNameInMetrics), metricValues,
+                mv -> foldAssignedPartitions(mv, raw -> raw > 0 ? 1.0 : 0.0));
+        // Register against the long-lived metricValues object, NOT gauge(name, Integer) whose weak ref
+        // to the boxed Integer is GC'd to NaN.
+        if (configuredWorkers > 0) {
+            pluginMetrics.gauge(getTopicMetricName(NUMBER_OF_CONFIGURED_WORKERS, topicNameInMetrics), metricValues, mv -> (double) configuredWorkers);
+        }
+    }
+
+    private static double foldAssignedPartitions(final Map<KafkaConsumer, Map<String, Double>> mv,
+                                                 final DoubleUnaryOperator perConsumer) {
+        double total = 0;
+        for (final Map.Entry<KafkaConsumer, Map<String, Double>> entry : mv.entrySet()) {
+            final Map<String, Double> consumerMetrics = entry.getValue();
+            synchronized (consumerMetrics) {
+                total += perConsumer.applyAsDouble(consumerMetrics.getOrDefault(ASSIGNED_PARTITIONS, 0.0));
+            }
+        }
+        return total;
     }
 
     private void initializeMetricNamesMap(final boolean topicNameInMetrics) {
@@ -112,6 +171,10 @@ public class KafkaTopicConsumerMetrics {
                     }
                     return min;
                 });
+            } else if (metricName.equals("assigned-partitions")) {
+                // numberOfNonConsumers = count of consumers with ZERO assigned partitions (read-time inversion).
+                pluginMetrics.gauge(getTopicMetricName(camelCaseName, topicNameInMetrics), metricValues,
+                        mv -> foldAssignedPartitions(mv, raw -> raw == 0.0 ? 1.0 : 0.0));
             } else if (!metricName.contains("-total")) {
                 pluginMetrics.gauge(getTopicMetricName(camelCaseName, topicNameInMetrics), metricValues, metricValues -> {
                     double sum = 0;
@@ -175,6 +238,28 @@ public class KafkaTopicConsumerMetrics {
         return numberOfPositiveAcknowledgements;
     }
 
+    public Counter getNumberOfRebalances() {
+        return numberOfRebalances;
+    }
+
+    public Counter getNumberOfPartitionsRevoked() {
+        return numberOfPartitionsRevoked;
+    }
+
+    public void recordProcessingLatency(final long durationMillis) {
+        recordsProcessingLatency.record(durationMillis, TimeUnit.MILLISECONDS);
+    }
+
+    // Drop a closed consumer's entries so they stop skewing the aggregate gauges.
+    public void deregister(final KafkaConsumer consumer) {
+        metricValues.remove(consumer);
+    }
+
+    // Zero (not remove) a revoked partition's lag: the gauge meter stays registered, only the value resets.
+    public void clearPartitionLag(final int partition) {
+        perPartitionLag.put(String.valueOf(partition), 0.0);
+    }
+
     public void recordTimeBetweenPolls() {
         final long timeBetweenPolls = Instant.now().toEpochMilli() - lastPollTime.toEpochMilli();
         timeBetweenPollCalls.record(timeBetweenPolls, TimeUnit.MILLISECONDS);
@@ -211,6 +296,21 @@ public class KafkaTopicConsumerMetrics {
             if (Objects.nonNull(metricsNameMap.get(metricName))) {
                 if (metric.tags().containsKey("partition") &&
                    (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) {
+                   if (metricName.equals("records-lag-max")) {
+                       final String partition = metric.tags().get("partition");
+                       final double lag = (Double) value.metricValue();
+                       if (!Double.isNaN(lag) && !Double.isInfinite(lag)) {
+                           // plain put (latest value), NOT merge(Math::max): a monotonic max would turn
+                           // this into a high-water-mark rather than a live lag gauge.
+                           perPartitionLag.put(partition, lag);
+                           if (registeredLagGauges.add(partition)) {
+                               // topic pinned in the name regardless of topicNameInMetrics: partition tags collide across topics otherwise.
+                               pluginMetrics.gaugeWithTags(getTopicMetricName(RECORDS_LAG_PER_PARTITION, true),
+                                       List.of(Tag.of("partition", partition)), perPartitionLag,
+                                       m -> m.getOrDefault(partition, 0.0));
+                           }
+                       }
+                   }
                    continue;
                 }
 
@@ -236,10 +336,9 @@ public class KafkaTopicConsumerMetrics {
                         numberOfBytesConsumed.increment(newValue - prevValue);
                     }
                 }
-                // Keep the count of number of consumers without any assigned partitions. This value can go up or down. So, it is made as Guage metric
-                if (metricName.equals("assigned-partitions")) {
-                    newValue = (newValue == 0.0) ? 1.0 : 0.0;
-                }
+                // Store the RAW assigned-partitions value; numberOfNonConsumers, numberOfAssignedPartitions
+                // and numberOfActiveReaders all derive from it at read time in their gauge lambdas. This
+                // replaced a destructive write-time inversion that overwrote the raw value.
                 synchronized(consumerMetrics) {
                     consumerMetrics.put(metricName, newValue);
                 }

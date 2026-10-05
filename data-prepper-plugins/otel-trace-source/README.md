@@ -36,6 +36,8 @@ For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see
 * unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. When ```health_check_service``` is true and ```unframed_requests``` is true, enables HTTP health check service under ```/health```.
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
+* max_connection_age(Optional) => An ISO-8601 duration string (for example `PT30M`) that sets the maximum age of a gRPC server connection before it is gracefully closed. Useful when horizontally scaling, because long-lived gRPC channels do not re-resolve DNS on their own. When unset (default), Armeria places no upper bound on connection age. Allowed range: 1s to 24h.
+* connection_drain_duration(Optional) => An ISO-8601 duration string (for example `PT15S`) that controls how long Armeria waits after `max_connection_age` expires before forcefully terminating outstanding RPCs. When unset (default), Armeria uses its built-in drain duration. Allowed range: 0ms to 1h.
 * authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
 * record_type(Optional) => A string represents the supported record data type that is written into the buffer plugin. Value options are `otlp` or `event`. Default is `otlp`.
 * output_format(Optional) => A string that sets the output format for decoded spans. Default is `opensearch`. Supported values are:

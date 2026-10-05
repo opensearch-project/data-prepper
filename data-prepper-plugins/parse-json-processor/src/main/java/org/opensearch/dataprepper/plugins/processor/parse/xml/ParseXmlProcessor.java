@@ -43,9 +43,9 @@ public class ParseXmlProcessor extends AbstractParseProcessor {
     }
 
     @Override
-    protected Optional<Map<String, Object>> readValue(final String message, final Event context) {
+    protected Optional<Object> readValue(final String message, final Event context) {
         try {
-            return Optional.of(xmlMapper.readValue(message, new TypeReference<>() {}));
+            return Optional.of(xmlMapper.readValue(message, new TypeReference<Map<String, Object>>() {}));
         } catch (JsonProcessingException e) {
             if (handleFailedEventsOption.shouldLog()) {
                 LOG.error(SENSITIVE, "An exception occurred due to invalid XML while parsing [{}] due to {}", message, e.getMessage());

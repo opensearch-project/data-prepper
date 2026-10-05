@@ -51,6 +51,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.COMPONENT_TEMPLATES;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.COMPOSED_OF;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_VERSION_EXPRESSION;
@@ -144,6 +146,112 @@ public class IndexConfigurationTests {
 
         assertThat(dynamicTemplates.size(), equalTo(1));
         assertThat(dynamicTemplates.get(0), hasKey("strings_as_keyword"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP"})
+    public void testBuiltInIndexTypeWithComponentTemplates(final IndexType indexType) {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(indexType.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .withComponentTemplates(List.of("parquet-settings", "compression-settings"))
+                .build();
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("template"));
+        assertThat(indexConfiguration.getIndexTemplate().get(COMPOSED_OF),
+                equalTo(List.of("parquet-settings", "compression-settings")));
+    }
+
+    @Test
+    public void testCustomWithComponentTemplatesOnly() throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, "my-index", null, null, null, null, null);
+        metadata.put(TEMPLATE_TYPE, TemplateType.INDEX_TEMPLATE.getTypeName());
+        metadata.put(COMPONENT_TEMPLATES, List.of("parquet-settings"));
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(getOpenSearchSinkConfig(metadata));
+        assertThat(indexConfiguration.getIndexTemplate(), equalTo(Map.of(COMPOSED_OF, List.of("parquet-settings"))));
+    }
+
+    @Test
+    public void testComponentTemplatesAppendToComposedOfInTemplateContent() throws JsonProcessingException {
+        final String templateContent = "{\"composed_of\": [\"from-file\", \"shared\"], \"template\": {}}";
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias("my-index")
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .withTemplateContent(templateContent)
+                .withComponentTemplates(List.of("shared", "from-config"))
+                .build();
+        assertThat(indexConfiguration.getIndexTemplate().get(COMPOSED_OF),
+                equalTo(List.of("from-file", "shared", "from-config")));
+    }
+
+    @Test
+    public void testComponentTemplatesRequireIndexTemplateType() {
+        final IndexConfiguration.Builder builder = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN.getValue())
+                .withTemplateType(TemplateType.V1.getTypeName())
+                .withComponentTemplates(List.of("parquet-settings"));
+        assertThrows(InvalidPluginConfigurationException.class, builder::build);
+    }
+
+    @Test
+    public void testComponentTemplatesRejectedWhenManagementDisabled() {
+        final IndexConfiguration.Builder builder = new IndexConfiguration.Builder()
+                .withIndexAlias("my-index")
+                .withIndexType(IndexType.MANAGEMENT_DISABLED.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .withComponentTemplates(List.of("parquet-settings"));
+        assertThrows(InvalidPluginConfigurationException.class, builder::build);
+    }
+
+    @Test
+    public void testComponentTemplatesRejectEmptyName() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new IndexConfiguration.Builder().withComponentTemplates(List.of("")));
+    }
+
+    @Test
+    public void testNoComponentTemplatesLeavesTemplateUnchanged() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getIndexTemplate(), not(hasKey(COMPOSED_OF)));
+    }
+
+    @Test
+    public void testOTelAPMServiceMap_dependencyAttributesMappedAsKeywordWithKeywordSubField() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
+                IndexType.OTEL_APM_SERVICE_MAP.getValue()).build();
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        assertDependencyAttributesMapping((Map<String, Object>) indexTemplate.get("mappings"));
+    }
+
+    @Test
+    public void testOTelAPMServiceMapWithIndexTemplates_dependencyAttributesMappedAsKeywordWithKeywordSubField() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.OTEL_APM_SERVICE_MAP.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
+        assertDependencyAttributesMapping((Map<String, Object>) template.get("mappings"));
+    }
+
+    private void assertDependencyAttributesMapping(final Map<String, Object> mappings) {
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        final Map<String, Object> dependencyAttributesTemplate = dynamicTemplates.stream()
+                .filter(dynamicTemplate -> dynamicTemplate.containsKey("string_dependency_attributes"))
+                .map(dynamicTemplate -> (Map<String, Object>) dynamicTemplate.get("string_dependency_attributes"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(dependencyAttributesTemplate.get("path_match"), equalTo("*.dependencyAttributes.*"));
+        assertThat(dependencyAttributesTemplate.get("match_mapping_type"), equalTo("string"));
+        final Map<String, Object> mapping = (Map<String, Object>) dependencyAttributesTemplate.get("mapping");
+        assertThat(mapping.get("type"), equalTo("keyword"));
+        final Map<String, Object> fields = (Map<String, Object>) mapping.get("fields");
+        assertThat(fields, equalTo(Map.of("keyword", Map.of("type", "keyword"))));
     }
 
     @Test

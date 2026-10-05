@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -31,8 +32,8 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import software.amazon.awssdk.regions.Region;
 
-
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,6 +67,7 @@ class CloudWatchLogsSinkTest {
     private Map<String, String> mockHeaderOverrides;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
     private CloudWatchLogsClient mockClient;
+    private ExpressionEvaluator mockExpressionEvaluator;
     private static final String TEST_LOG_GROUP = "testLogGroup";
     private static final String TEST_LOG_STREAM= "testLogStream";
     private static final String TEST_PLUGIN_NAME = "testPluginName";
@@ -74,6 +76,9 @@ class CloudWatchLogsSinkTest {
     // Number of args Lombok @Builder passes to the all-args constructor of CloudWatchLogsDispatcher.
     // Bumping this is the signal that positional context.arguments().get(N) calls below need to be re-audited.
     private static final int EXPECTED_DISPATCHER_ARITY = 11;
+    // Number of args in DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, dlqConfig, region, role, metricsPrefix).
+    // Bumping this is the signal that positional get(4)/get(5) reads in captureDlqRegionAndRole() need re-auditing.
+    private static final int EXPECTED_DLQ_PUSH_HANDLER_ARITY = 7;
     private int numRetries;
     @BeforeEach
     void setUp() {
@@ -88,6 +93,7 @@ class CloudWatchLogsSinkTest {
         mockHeaderOverrides.put("X-Test-Header", "test-value");
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         mockClient = mock(CloudWatchLogsClient.class);
+        mockExpressionEvaluator = mock(ExpressionEvaluator.class);
         DistributionSummary summary = mock(DistributionSummary.class);
         when(mockPluginMetrics.summary(anyString())).thenReturn(summary);
 
@@ -106,7 +112,7 @@ class CloudWatchLogsSinkTest {
 
     CloudWatchLogsSink getTestCloudWatchSink() {
         return new CloudWatchLogsSink(mockPluginSetting, mockPluginMetrics, mockPluginFactory, mockCloudWatchLogsSinkConfig,
-                mockCredentialSupplier);
+                mockCredentialSupplier, mockExpressionEvaluator);
     }
 
     Collection<Record<Event>> getMockedRecords() {
@@ -263,9 +269,86 @@ class CloudWatchLogsSinkTest {
         assertThat(numRetries, equalTo(Integer.MAX_VALUE));
     }
 
+    /**
+     * Stubs a DLQ-enabled sink run and returns the {@code [region, role]} pair that was passed to
+     * the {@link DlqPushHandler} constructor.  The mock is declared in a try-with-resources so it
+     * is always closed, even when an assertion inside the block throws.
+     * <p>
+     * An arity guard fires immediately if the {@link DlqPushHandler} constructor signature changes,
+     * keeping the positional {@code get(4)} / {@code get(5)} reads from silently rotting.
+     */
+    private String[] captureDlqRegionAndRole() {
+        PluginModel dlqConfig = mock(PluginModel.class);
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(new HashMap<>());
+        when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
+
+        final String[] captured = new String[2]; // [region, role]
+
+        try (MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class);
+             MockedConstruction<DlqPushHandler> dlqMock = mockConstruction(DlqPushHandler.class, (mock, context) -> {
+                 assertThat(context.arguments().size(), equalTo(EXPECTED_DLQ_PUSH_HANDLER_ARITY));
+                 captured[0] = (String) context.arguments().get(4); // region
+                 captured[1] = (String) context.arguments().get(5); // role
+             })) {
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class), any(), any()))
+                    .thenReturn(mockClient);
+
+            getTestCloudWatchSink().doInitialize();
+
+            assertThat(dlqMock.constructed().size(), equalTo(1));
+        }
+        return captured;
+    }
+
+    @Test
+    void WHEN_dlq_configured_and_awsConfig_has_no_region_or_role_THEN_credentials_supplier_defaults_are_used() {
+        // awsConfig has no region and no sts_role_arn — supplier defaults should be used for both
+        when(mockAwsConfig.getAwsRegion()).thenReturn(null);
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(null);
+        when(mockCredentialSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("us-east-1")));
+        when(mockCredentialSupplier.getDefaultStsRoleArn()).thenReturn(Optional.of("arn:aws:iam::123456789012:role/DefaultRole"));
+
+        String[] result = captureDlqRegionAndRole();
+
+        assertThat(result[0], equalTo("us-east-1"));
+        assertThat(result[1], equalTo("arn:aws:iam::123456789012:role/DefaultRole"));
+    }
+
+    @Test
+    void WHEN_dlq_configured_and_awsConfig_has_region_but_no_role_THEN_supplier_default_role_is_used() {
+        // awsConfig has a region but no sts_role_arn — role should fall back to supplier default
+        when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of("eu-west-1"));
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(null);
+        when(mockCredentialSupplier.getDefaultStsRoleArn()).thenReturn(Optional.of("arn:aws:iam::123456789012:role/SupplierRole"));
+
+        String[] result = captureDlqRegionAndRole();
+
+        assertThat(result[0], equalTo("eu-west-1"));
+        assertThat(result[1], equalTo("arn:aws:iam::123456789012:role/SupplierRole"));
+    }
+
+    @Test
+    void WHEN_dlq_configured_and_awsConfig_has_role_but_no_region_THEN_supplier_default_region_is_used() {
+        // awsConfig has sts_role_arn but no region — region should fall back to supplier default
+        when(mockAwsConfig.getAwsRegion()).thenReturn(null);
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/SinkRole");
+        when(mockCredentialSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("ap-southeast-1")));
+
+        String[] result = captureDlqRegionAndRole();
+
+        assertThat(result[0], equalTo("ap-southeast-1"));
+        assertThat(result[1], equalTo("arn:aws:iam::123456789012:role/SinkRole"));
+    }
+
     @Test
     void WHEN_sink_has_dlq_config_THEN_retries_set_to_user_configured_value() {
         PluginModel dlqConfig = mock(PluginModel.class);
+        Map<String, Object> dlqPluginSettings = new HashMap<>();
+        when(dlqConfig.getPluginName()).thenReturn("s3");
+        when(dlqConfig.getPluginSettings()).thenReturn(dlqPluginSettings);
         when(mockCloudWatchLogsSinkConfig.getDlq()).thenReturn(dlqConfig);
         when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
         when(mockAwsConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
@@ -288,6 +371,7 @@ class CloudWatchLogsSinkTest {
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
+            dlqMock.close();
             dispatcherMock.close();
         }
         // Arity guard: positional reads above silently rot when fields are added/reordered.

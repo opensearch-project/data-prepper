@@ -13,10 +13,10 @@ import com.google.protobuf.Any;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.common.annotation.Nullable;
 import com.linecorp.armeria.common.grpc.GoogleGrpcExceptionHandlerFunction;
+import com.linecorp.armeria.common.util.Exceptions;
 import com.linecorp.armeria.server.RequestTimeoutException;
 import io.grpc.Metadata;
 import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Counter;
 
 import org.opensearch.dataprepper.exceptions.BadRequestException;
@@ -54,6 +54,25 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
     }
 
     @Override
+    public Status apply(final RequestContext ctx, final Status status, final Throwable throwable, final Metadata metadata) {
+        // Armeria's GoogleGrpcExceptionHandlerFunction returns the Status of any StatusRuntimeException/
+        // StatusException verbatim and never invokes applyStatusProto(...) for it. Protobuf deserialization
+        // failures surface as StatusRuntimeException(INTERNAL, ...) wrapping an InvalidProtocolBufferException,
+        // so without this interception the client receives an opaque HTTP 500 for what is actually a client-side
+        // data problem. Remap these to an informative INVALID_ARGUMENT (HTTP 400) before delegating to the default.
+        final Throwable cause = Exceptions.peel(throwable);
+        if (InvalidRequestExceptions.isInvalidProtobuf(cause)) {
+            badRequestsCounter.increment();
+            return Status.INVALID_ARGUMENT.withDescription(InvalidRequestExceptions.INVALID_PROTOBUF_MESSAGE).withCause(cause);
+        }
+        if (InvalidRequestExceptions.isUndecodableCompressedFrame(cause)) {
+            badRequestsCounter.increment();
+            return Status.INVALID_ARGUMENT.withDescription(InvalidRequestExceptions.COMPRESSED_FRAME_MESSAGE).withCause(cause);
+        }
+        return GoogleGrpcExceptionHandlerFunction.super.apply(ctx, status, throwable, metadata);
+    }
+
+    @Override
     public com.google.rpc.@Nullable Status applyStatusProto(RequestContext ctx, Throwable throwable,
                                                             Metadata metadata) {
         final Throwable exceptionCause = throwable instanceof BufferWriteException ? throwable.getCause() : throwable;
@@ -61,7 +80,6 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
     }
 
     private com.google.rpc.Status handleExceptions(final Throwable e) {
-        String message = e.getMessage();
         if (e instanceof RequestTimeoutException || e instanceof TimeoutException) {
             requestTimeoutsCounter.increment();
             return createStatus(e, Status.Code.RESOURCE_EXHAUSTED);
@@ -69,9 +87,6 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
             requestsTooLargeCounter.increment();
             return createStatus(e, Status.Code.RESOURCE_EXHAUSTED);
         } else if (e instanceof BadRequestException) {
-            badRequestsCounter.increment();
-            return createStatus(e, Status.Code.INVALID_ARGUMENT);
-        } else if ((e instanceof StatusRuntimeException) && (message.contains("Invalid protobuf byte sequence") || message.contains("Can't decode compressed frame"))) {
             badRequestsCounter.increment();
             return createStatus(e, Status.Code.INVALID_ARGUMENT);
         } else if (e instanceof RequestCancelledException) {
@@ -85,12 +100,19 @@ public class GrpcRequestExceptionHandler implements GoogleGrpcExceptionHandlerFu
     }
 
     private com.google.rpc.Status createStatus(final Throwable e, final Status.Code code) {
-        com.google.rpc.Status.Builder builder = com.google.rpc.Status.newBuilder().setCode(code.value());
+        final String message;
         if (e instanceof RequestTimeoutException) {
-            builder.setMessage(ARMERIA_REQUEST_TIMEOUT_MESSAGE);
+            message = ARMERIA_REQUEST_TIMEOUT_MESSAGE;
         } else {
-            builder.setMessage(e.getMessage() == null ? code.name() :e.getMessage());
+            message = e.getMessage() == null ? code.name() : e.getMessage();
         }
+        return createStatus(code, message);
+    }
+
+    private com.google.rpc.Status createStatus(final Status.Code code, final String message) {
+        com.google.rpc.Status.Builder builder = com.google.rpc.Status.newBuilder()
+                .setCode(code.value())
+                .setMessage(message);
         if (code == Status.Code.RESOURCE_EXHAUSTED) {
             builder.addDetails(Any.pack(retryInfoCalculator.createRetryInfo()));
         }

@@ -62,7 +62,7 @@ public class LeaderScheduler implements Runnable {
         this(coordinator, dynamoDbClient, shardManager, tableConfigs, DEFAULT_LEASE_INTERVAL);
     }
 
-    LeaderScheduler(EnhancedSourceCoordinator coordinator,
+    public LeaderScheduler(EnhancedSourceCoordinator coordinator,
                     DynamoDbClient dynamoDbClient,
                     ShardManager shardManager,
                     List<TableConfig> tableConfigs,

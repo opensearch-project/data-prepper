@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.common.TransformOption;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
@@ -227,11 +228,22 @@ public class KeyValueProcessorConfig {
             @AlsoRequired.Required(name = WHITESPACE_KEY, allowedValues = {"strict"})
     })
     private boolean recursive = false;
-    
-    @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
-    @JsonPropertyDescription("Specifies whether to overwrite existing fields if there are key conflicts " +
-            "when writing parsed fields to the event. Default is <code>true</code>.")
-    private boolean overwriteIfDestinationExists = true;
+
+    @Deprecated
+    @JsonProperty(value = "overwrite_if_destination_exists")
+    @JsonPropertyDescription("Deprecated. Use <code>destination_conflict_strategy</code> instead. " +
+            "Specifies whether to overwrite existing fields if there are key conflicts " +
+            "when writing parsed fields to the event.")
+    private Boolean overwriteIfDestinationExists = null;
+
+    @JsonProperty(value = "destination_conflict_strategy")
+    @JsonPropertyDescription("Defines the conflict resolution strategy when the destination field already exists. " +
+            "Options are <code>skip</code> (skip the write entirely), " +
+            "<code>overwrite</code> (replace the entire destination), " +
+            "<code>merge_preserve_existing_keys</code> (merge per-field, keeping existing values on conflict), " +
+            "and <code>merge_overwrite_existing_keys</code> (merge per-field, overwriting existing values on conflict). " +
+            "Default is <code>overwrite</code>. Cannot be used together with <code>overwrite_if_destination_exists</code>.")
+    private FieldConflictStrategy fieldConflictStrategy = null;
 
     @JsonProperty(value = "drop_keys_with_no_value", defaultValue = "false")
     @JsonPropertyDescription("Specifies whether keys should be dropped if they have a null value. Default is <code>false</code>. " +
@@ -286,6 +298,12 @@ public class KeyValueProcessorConfig {
                 (!stringLiteralCharacter.equals("'"))))
             return false;
         return valueGrouping;
+    }
+
+    @AssertTrue(message = "overwrite_if_destination_exists and destination_conflict_strategy cannot both be set. " +
+            "Use destination_conflict_strategy only.")
+    boolean isValidDestinationConflictConfig() {
+        return overwriteIfDestinationExists == null || fieldConflictStrategy == null;
     }
 
     public String getSource() {
@@ -384,8 +402,12 @@ public class KeyValueProcessorConfig {
         return tagsOnFailure;
     }
 
-    public boolean getOverwriteIfDestinationExists() {
+    public Boolean getOverwriteIfDestinationExists() {
         return overwriteIfDestinationExists;
+    }
+
+    public FieldConflictStrategy getFieldConflictStrategy() {
+        return fieldConflictStrategy;
     }
 
     public String getKeyValueWhen() { return keyValueWhen; }

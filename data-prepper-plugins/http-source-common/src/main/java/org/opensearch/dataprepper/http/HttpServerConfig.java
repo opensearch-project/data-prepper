@@ -18,6 +18,16 @@ public interface HttpServerConfig {
 
     String getDefaultPath();
 
+    /**
+     * The default value for the <i>ssl</i> configuration when the pipeline author does not set it.
+     * Sources which should be secure by default override this to return true.
+     *
+     * @return the default ssl value
+     */
+    default boolean getDefaultSsl() {
+        return false;
+    }
+
     boolean isPathValid();
 
     int getPort();

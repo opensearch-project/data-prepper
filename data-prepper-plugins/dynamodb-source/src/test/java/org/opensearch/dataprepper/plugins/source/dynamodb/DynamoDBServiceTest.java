@@ -20,10 +20,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.leader.LeaderScheduler;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -113,6 +116,28 @@ class DynamoDBServiceTest {
 
         assertThat(runnableArgumentCaptor.getAllValues(), notNullValue());
         assertThat(runnableArgumentCaptor.getAllValues().size(), equalTo(4));
+    }
+
+    @Test
+    void test_leader_scheduler_receives_configured_shard_discovery_interval() throws NoSuchFieldException, IllegalAccessException {
+        final Duration configuredInterval = Duration.ofSeconds(20);
+        when(tableConfig.getStreamConfig()).thenReturn(streamConfig);
+        when(streamConfig.getShardDiscoveryInterval()).thenReturn(configuredInterval);
+        dynamoDBService = createObjectUnderTest();
+
+        final ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+        dynamoDBService.start(buffer);
+        verify(executorService, times(4)).submit(runnableArgumentCaptor.capture());
+
+        final LeaderScheduler leaderScheduler = runnableArgumentCaptor.getAllValues().stream()
+                .filter(runnable -> runnable instanceof LeaderScheduler)
+                .map(runnable -> (LeaderScheduler) runnable)
+                .findFirst()
+                .orElseThrow();
+
+        final Field leaseIntervalField = LeaderScheduler.class.getDeclaredField("leaseInterval");
+        leaseIntervalField.setAccessible(true);
+        assertThat(leaseIntervalField.get(leaderScheduler), equalTo(configuredInterval));
     }
 
     @Test

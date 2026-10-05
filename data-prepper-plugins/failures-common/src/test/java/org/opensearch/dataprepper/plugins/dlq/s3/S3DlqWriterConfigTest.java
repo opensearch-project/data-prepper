@@ -45,6 +45,11 @@ public class S3DlqWriterConfigTest {
         assertThat(new S3DlqWriterConfig().getLegacyMd5Checksum(), is(equalTo(false)));
     }
 
+    @Test
+    public void testDefaultCodec() {
+        assertThat(new S3DlqWriterConfig().getCodec(), is(equalTo(DlqCodec.JSON)));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"foobar", "arn:aws:es:us-west-2:123456789012:domain/bogus-domain",
         "arn:aws:iam::123456789012:group/bogus-group"})

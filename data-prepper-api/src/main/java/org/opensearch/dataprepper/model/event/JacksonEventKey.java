@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -197,7 +198,18 @@ class JacksonEventKey implements EventKey {
     }
 
     private List<String> toKeyPathList() {
-        return Collections.unmodifiableList(Arrays.asList(trimmedKey.split(SEPARATOR, -1)));
+        return Collections.unmodifiableList(
+                Arrays.stream(trimmedKey.split(SEPARATOR, -1))
+                      .map(JacksonEventKey::unescapeJsonPointerToken)
+                      .collect(Collectors.toList()));
+    }
+
+    /**
+     * Unescapes a single JSON Pointer reference token.
+     * The two escape sequences must be applied in order: ~1 → / before ~0 → ~.
+     */
+    static String unescapeJsonPointerToken(final String token) {
+        return token.replace("~1", "/").replace("~0", "~");
     }
 
     private static JsonPointer toJsonPointer(final String key) {

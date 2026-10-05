@@ -11,7 +11,8 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.junit.jupiter.api.extension.ExtendWith; 
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
@@ -21,11 +22,12 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,8 +62,8 @@ public class RateLimiterAggregateActionTests {
                 .withEventType("event")
                 .withData(eventMap)
                 .build();
-        for (int i = 0; i < testEventsPerSecond; i++) { 
-            final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        for (int i = 0; i < testEventsPerSecond; i++) {
             testEvent.put(dataKey, UUID.randomUUID().toString());
             final AggregateActionResponse aggregateActionResponse = rateLimiterAggregateAction.handleEvent(testEvent, aggregateActionInput);
             assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
@@ -87,13 +89,13 @@ public class RateLimiterAggregateActionTests {
                 .withData(eventMap)
                 .build();
         int numFailed = 0;
-        for (int i = 0; i < testEventsPerSecond; i++) { 
-            final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        for (int i = 0; i < testEventsPerSecond; i++) {
             testEvent.put(dataKey, UUID.randomUUID().toString());
             final AggregateActionResponse aggregateActionResponse = rateLimiterAggregateAction.handleEvent(testEvent, aggregateActionInput);
             if (aggregateActionResponse.getEvent() == null) {
                 numFailed++;
-            } 
+            }
         }
         assertThat(numFailed, greaterThan(0));
         final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
@@ -115,9 +117,9 @@ public class RateLimiterAggregateActionTests {
                 .withEventType("event")
                 .withData(eventMap)
                 .build();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
         int numFailed = 0;
-        for (int i = 0; i < testEventsPerSecond; i++) { 
-            final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        for (int i = 0; i < testEventsPerSecond; i++) {
             testEvent.put(dataKey, UUID.randomUUID().toString());
             final AggregateActionResponse aggregateActionResponse = rateLimiterAggregateAction.handleEvent(testEvent, aggregateActionInput);
             if (aggregateActionResponse.getEvent() == null) {
@@ -130,5 +132,35 @@ public class RateLimiterAggregateActionTests {
         final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
         final List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testRateLimiterByGroupRoutesToConfiguredOrDefaultLimiter() {
+        final String orgField = "/organization";
+        final String regionField = "/region";
+
+        final RateLimiterAggregateActionConfig.GroupRateLimit groupA = new RateLimiterAggregateActionConfig.GroupRateLimit();
+        groupA.key = Map.of(orgField, "A", regionField, "us-east-1");
+        groupA.eventsPerSecond = 1;
+        final RateLimiterAggregateActionConfig.GroupRateLimit groupB = new RateLimiterAggregateActionConfig.GroupRateLimit();
+        groupB.key = Map.of(orgField, "B", regionField, "us-east-1");
+        groupB.eventsPerSecond = 1;
+
+        when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(1);
+        when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP);
+        when(rateLimiterAggregateActionConfig.getEventsPerSecondByGroup()).thenReturn(List.of(groupA, groupB));
+        rateLimiterAggregateAction = createObjectUnderTest(rateLimiterAggregateActionConfig);
+
+        final Event event = JacksonEvent.builder().withEventType("event").withData(Collections.emptyMap()).build();
+        final AggregateActionInput groupAInput = new AggregateActionTestUtils.TestAggregateActionInput(
+                Map.of(orgField, "A", regionField, "us-east-1"));
+        final AggregateActionInput groupBInput = new AggregateActionTestUtils.TestAggregateActionInput(
+                Map.of(orgField, "B", regionField, "us-east-1"));
+        final AggregateActionInput unlistedInput = new AggregateActionTestUtils.TestAggregateActionInput(
+                Map.of(orgField, "C", regionField, "us-west-2"));
+
+        assertThat(rateLimiterAggregateAction.handleEvent(event, groupAInput).getEvent(), notNullValue());
+        assertThat(rateLimiterAggregateAction.handleEvent(event, groupBInput).getEvent(), notNullValue());
+        assertThat(rateLimiterAggregateAction.handleEvent(event, unlistedInput).getEvent(), notNullValue());
     }
 }

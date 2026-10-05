@@ -131,4 +131,34 @@ class AuthConfigTest {
         assertThat(authConfig.getSaslAuthConfig().getOAuthConfig(), equalTo(testOAuthConfig));
     }
 
+    @Test
+    void testSaslAuthConfigWithAzureFederated() throws NoSuchFieldException, IllegalAccessException {
+        final AuthConfig.SaslAuthConfig localSaslAuthConfig = new AuthConfig.SaslAuthConfig();
+        final AzureFederatedAuthConfig azureFederatedAuthConfig = new AzureFederatedAuthConfig();
+        setField(AuthConfig.SaslAuthConfig.class, localSaslAuthConfig, "azureFederatedAuthConfig", azureFederatedAuthConfig);
+        setField(AuthConfig.class, authConfig, "saslAuthConfig", localSaslAuthConfig);
+        assertThat(authConfig.getSaslAuthConfig().getAzureFederatedAuthConfig(), equalTo(azureFederatedAuthConfig));
+    }
+
+    @Test
+    void hasOnlyOneConfig_azureFederatedAlone_isTrue() throws NoSuchFieldException, IllegalAccessException {
+        final AuthConfig.SaslAuthConfig localSaslAuthConfig = new AuthConfig.SaslAuthConfig();
+        setField(AuthConfig.SaslAuthConfig.class, localSaslAuthConfig, "azureFederatedAuthConfig", new AzureFederatedAuthConfig());
+        assertThat(localSaslAuthConfig.hasOnlyOneConfig(), equalTo(true));
+    }
+
+    @Test
+    void hasOnlyOneConfig_azureFederatedWithAnotherMechanism_isFalse() throws NoSuchFieldException, IllegalAccessException {
+        final AuthConfig.SaslAuthConfig localSaslAuthConfig = new AuthConfig.SaslAuthConfig();
+        setField(AuthConfig.SaslAuthConfig.class, localSaslAuthConfig, "azureFederatedAuthConfig", new AzureFederatedAuthConfig());
+        setField(AuthConfig.SaslAuthConfig.class, localSaslAuthConfig, "scramAuthConfig", new ScramAuthConfig());
+        assertThat(localSaslAuthConfig.hasOnlyOneConfig(), equalTo(false));
+    }
+
+    @Test
+    void azureFederatedAuthConfigField_hasValidAnnotation_soNestedNotNullsCascade() throws NoSuchFieldException {
+        final java.lang.reflect.Field field = AuthConfig.SaslAuthConfig.class.getDeclaredField("azureFederatedAuthConfig");
+        assertThat(field.getAnnotation(jakarta.validation.Valid.class), notNullValue());
+    }
+
 }

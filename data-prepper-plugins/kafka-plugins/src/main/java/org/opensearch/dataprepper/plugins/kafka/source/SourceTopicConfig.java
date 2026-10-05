@@ -7,7 +7,10 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.Range;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -33,6 +36,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+    static final Duration DEFAULT_CONNECTIONS_MAX_IDLE = Duration.ofMillis(540000);
 
 
     @JsonProperty("serde_format")
@@ -40,7 +44,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("commit_interval")
     @Valid
-    @Size(min = 1)
+    @DurationMin(seconds = 1)
     private Duration commitInterval = DEFAULT_COMMIT_INTERVAL;
 
     @JsonProperty("key_mode")
@@ -58,12 +62,12 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("workers")
     @Valid
-    @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
+    @Range(min = 1, max = 200, message = "Number of worker threads should lie between 1 and 200")
     private Integer workers = DEFAULT_NUM_OF_WORKERS;
 
     @JsonProperty("session_timeout")
     @Valid
-    @Size(min = 1)
+    @DurationMin(seconds = 1)
     private Duration sessionTimeOut = DEFAULT_SESSION_TIMEOUT;
 
     @JsonProperty("auto_offset_reset")
@@ -80,7 +84,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("heart_beat_interval")
     @Valid
-    @Size(min = 1)
+    @DurationMin(seconds = 1)
     private Duration heartBeatInterval= DEFAULT_HEART_BEAT_INTERVAL_DURATION;
 
     @JsonProperty("auto_commit")
@@ -94,7 +98,7 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("fetch_max_wait")
     @Valid
-    @Size(min = 1)
+    @Min(1)
     private Integer fetchMaxWait = DEFAULT_FETCH_MAX_WAIT;
 
     @JsonProperty("fetch_min_bytes")
@@ -102,6 +106,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("isolation_level")
     private IsolationLevel isolationLevel = IsolationLevel.READ_UNCOMMITTED;
+
+    @JsonProperty("connections_max_idle")
+    @DurationMin(seconds = 1)
+    private Duration connectionsMaxIdle = DEFAULT_CONNECTIONS_MAX_IDLE;
 
     @Override
     public String getEncryptionId() {
@@ -221,5 +229,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @Override
     public IsolationLevel getIsolationLevel() {
         return isolationLevel;
+    }
+
+    @Override
+    public Duration getConnectionsMaxIdle() {
+        return connectionsMaxIdle;
     }
 }

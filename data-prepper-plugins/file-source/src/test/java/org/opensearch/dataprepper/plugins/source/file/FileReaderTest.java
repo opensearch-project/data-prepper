@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +51,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -630,14 +632,18 @@ class FileReaderTest {
         when(rotationDetector.checkRotation(any(), any(), any(long.class)))
                 .thenReturn(new RotationResult(RotationType.CREATE_RENAME, newIdentity));
 
+        final AtomicLong fakeNowMillis = new AtomicLong(0);
+        final Clock clock = mock(Clock.class);
+        when(clock.millis()).thenAnswer(inv -> fakeNowMillis.get());
+
         FileChannel mockChannel = mock(FileChannel.class);
         when(fileOps.openReadChannel(testFile)).thenReturn(mockChannel);
         when(mockChannel.position(anyLong())).thenReturn(mockChannel);
-        lenient().when(mockChannel.read(any(ByteBuffer.class))).thenAnswer(inv -> {
-            Thread.sleep(5);
+        when(mockChannel.read(any(ByteBuffer.class))).thenAnswer(inv -> {
             ByteBuffer buf = inv.getArgument(0);
             byte[] data = "A".repeat(buf.remaining()).getBytes();
             buf.put(data, 0, Math.min(data.length, buf.remaining()));
+            fakeNowMillis.set(1000);
             return buf.position();
         });
         when(mockChannel.size()).thenReturn(100000L);
@@ -649,14 +655,14 @@ class FileReaderTest {
         when(metrics.getFilesRotated()).thenReturn(filesRotated);
         when(metrics.getFilesClosed()).thenReturn(filesClosed);
         when(metrics.getFilesOpened()).thenReturn(mock(Counter.class));
-        lenient().when(metrics.getBytesRead()).thenReturn(bytesRead);
+        when(metrics.getBytesRead()).thenReturn(bytesRead);
         when(metrics.getDataLossEvents()).thenReturn(dataLossEvents);
 
         FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
-                Duration.ofMillis(1), StartPosition.BEGINNING, false,
+                Duration.ofMillis(100), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
                 Duration.ofSeconds(5), 3, null, true, null);
 
@@ -668,7 +674,7 @@ class FileReaderTest {
 
         fileIdentity = mock(FileIdentity.class);
         final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
-                () -> onCompleteCalled.set(true));
+                () -> onCompleteCalled.set(true), clock);
         reader.run();
 
         verify(dataLossEvents).increment();
@@ -682,14 +688,18 @@ class FileReaderTest {
         when(rotationDetector.checkRotation(any(), any(), any(long.class)))
                 .thenReturn(RotationResult.NO_ROTATION);
 
+        final AtomicLong fakeNowMillis = new AtomicLong(0);
+        final Clock clock = mock(Clock.class);
+        when(clock.millis()).thenAnswer(inv -> fakeNowMillis.get());
+
         FileChannel mockChannel = mock(FileChannel.class);
         when(fileOps.openReadChannel(testFile)).thenReturn(mockChannel);
         when(mockChannel.position(anyLong())).thenReturn(mockChannel);
         when(mockChannel.read(any(ByteBuffer.class))).thenAnswer(inv -> {
-            Thread.sleep(5);
             ByteBuffer buf = inv.getArgument(0);
             byte[] data = "A".repeat(buf.remaining()).getBytes();
             buf.put(data, 0, Math.min(data.length, buf.remaining()));
+            fakeNowMillis.set(1000);
             return buf.position();
         });
 
@@ -709,16 +719,18 @@ class FileReaderTest {
         FileReaderContext context = new FileReaderContext(
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
-                4096, 1048576, 5000, Duration.ofMillis(1),
+                4096, 1048576, 5000, Duration.ofMillis(100),
                 Duration.ofSeconds(30), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
                 Duration.ofSeconds(5), 3, null, true, null);
 
         fileIdentity = mock(FileIdentity.class);
         final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
-                () -> onCompleteCalled.set(true));
+                () -> onCompleteCalled.set(true), clock);
         reader.run();
 
+        verify(mockChannel, times(1)).read(any(ByteBuffer.class));
+        verify(bytesRead).increment(anyDouble());
         assertThat(onCompleteCalled.get(), equalTo(true));
     }
 
@@ -909,6 +921,62 @@ class FileReaderTest {
 
         verify(acknowledgementSetManager, atLeastOnce()).create(any(), any(Duration.class));
         verify(ackSet, atLeastOnce()).add(any(Event.class));
+    }
+
+    @Test
+    void run_one_shot_codec_persists_read_offset_after_successful_parse() throws Exception {
+        Path testFile = tempDir.resolve("one-shot-offset.log");
+        final String contents = "line1\nline2\nline3\n";
+        Files.writeString(testFile, contents);
+        final long fileSize = Files.size(testFile);
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter linesRead = mock(Counter.class);
+        Counter eventsEmitted = mock(Counter.class);
+        Timer backpressureTimer = mock(Timer.class);
+        when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        lenient().when(metrics.getLinesRead()).thenReturn(linesRead);
+        lenient().when(metrics.getEventsEmitted()).thenReturn(eventsEmitted);
+        lenient().when(metrics.getBackpressureTimer()).thenReturn(backpressureTimer);
+
+        when(fileOps.size(testFile)).thenReturn(fileSize);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+        doAnswer(inv -> null).when(mockCodec).parse(any(), any());
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
+        reader.run();
+
+        assertThat(checkpointEntry.getReadOffset(), equalTo(fileSize));
+        assertThat(checkpointEntry.getCommittedOffset(), equalTo(fileSize));
+        assertThat(reader.getReadOffset(), equalTo(fileSize));
+    }
+
+    @Test
+    void run_one_shot_codec_does_not_persist_offset_when_parse_throws() throws Exception {
+        Path testFile = tempDir.resolve("one-shot-offset-fail.log");
+        Files.writeString(testFile, "line1\n");
+
+        Counter filesOpened = mock(Counter.class);
+        Counter filesClosed = mock(Counter.class);
+        Counter readErrors = mock(Counter.class);
+        when(metrics.getFilesOpened()).thenReturn(filesOpened);
+        when(metrics.getFilesClosed()).thenReturn(filesClosed);
+        when(metrics.getReadErrors()).thenReturn(readErrors);
+
+        InputCodec mockCodec = mock(InputCodec.class);
+        doThrow(new IOException("parse failed")).when(mockCodec).parse(any(), any());
+
+        FileReaderContext context = createOneShotContextWithCodecAndAcknowledgements(mockCodec);
+        final FileReader reader = createReaderWithContext(testFile, context);
+        reader.run();
+
+        assertThat(checkpointEntry.getReadOffset(), equalTo(0L));
+        assertThat(checkpointEntry.getCommittedOffset(), equalTo(0L));
+        verify(readErrors).increment();
     }
 
     @Test
@@ -1195,14 +1263,18 @@ class FileReaderTest {
         when(rotationDetector.checkRotation(any(), any(), any(long.class)))
                 .thenReturn(new RotationResult(RotationType.CREATE_RENAME, newIdentity));
 
+        final AtomicLong fakeNowMillis = new AtomicLong(0);
+        final Clock clock = mock(Clock.class);
+        when(clock.millis()).thenAnswer(inv -> fakeNowMillis.get());
+
         FileChannel mockChannel = mock(FileChannel.class);
         when(fileOps.openReadChannel(testFile)).thenReturn(mockChannel);
         when(mockChannel.position(anyLong())).thenReturn(mockChannel);
         when(mockChannel.read(any(ByteBuffer.class))).thenAnswer(inv -> {
-            Thread.sleep(5);
             ByteBuffer buf = inv.getArgument(0);
             byte[] data = "A".repeat(buf.remaining()).getBytes();
             buf.put(data, 0, Math.min(data.length, buf.remaining()));
+            fakeNowMillis.set(1000);
             return buf.position();
         });
         when(mockChannel.size()).thenThrow(new IOException("channel closed"));
@@ -1221,7 +1293,7 @@ class FileReaderTest {
                 buffer, eventFactory, fileOps, metrics, rotationDetector,
                 acknowledgementSetManager, false, StandardCharsets.UTF_8,
                 4096, 1048576, 5000, Duration.ofSeconds(30),
-                Duration.ofMillis(1), StartPosition.BEGINNING, false,
+                Duration.ofMillis(100), StartPosition.BEGINNING, false,
                 Duration.ofSeconds(30), 1000,
                 Duration.ofSeconds(5), 3, null, true, null);
 
@@ -1233,8 +1305,11 @@ class FileReaderTest {
 
         fileIdentity = mock(FileIdentity.class);
         final FileReader reader = new FileReader(testFile, fileIdentity, checkpointEntry, context,
-                () -> onCompleteCalled.set(true));
+                () -> onCompleteCalled.set(true), clock);
         reader.run();
+
+        verify(mockChannel, times(1)).read(any(ByteBuffer.class));
+        verify(mockChannel).size();
     }
 
     @Test

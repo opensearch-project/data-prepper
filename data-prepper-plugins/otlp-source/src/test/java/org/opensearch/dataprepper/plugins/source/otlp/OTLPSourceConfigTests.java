@@ -7,6 +7,13 @@ package org.opensearch.dataprepper.plugins.source.otlp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -19,6 +26,7 @@ import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -440,6 +448,85 @@ class OTLPSourceConfigTests {
     assertEquals(OTelOutputFormat.OTEL, config.getLogsOutputFormat());
     assertEquals(OTelOutputFormat.OTEL, config.getMetricsOutputFormat());
     assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
+  }
+
+  @Test
+  void maxConnectionAge_defaultsToNull() {
+    final OTLPSourceConfig config = new OTLPSourceConfig();
+    assertNull(config.getMaxConnectionAge());
+    assertNull(config.getConnectionDrainDuration());
+  }
+
+  @Test
+  void maxConnectionAge_deserializesFromYaml() {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("max_connection_age", "PT30M");
+    settings.put("connection_drain_duration", "PT15S");
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTLPSourceConfig.class);
+    assertThat(config.getMaxConnectionAge(), equalTo(Duration.ofMinutes(30)));
+    assertThat(config.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(15)));
+  }
+
+  @Test
+  void convertConfiguration_propagatesKeepaliveSettings() {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("max_connection_age", "PT10M");
+    settings.put("connection_drain_duration", "PT5S");
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTLPSourceConfig.class);
+    final org.opensearch.dataprepper.plugins.server.ServerConfiguration server =
+        ConvertConfiguration.convertConfiguration(config);
+    assertThat(server.getMaxConnectionAge(), equalTo(Duration.ofMinutes(10)));
+    assertThat(server.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(5)));
+  }
+
+  @Test
+  void maxConnectionAge_rejectsBelowOneSecond() throws Exception {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("max_connection_age", "PT0.5S");
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTLPSourceConfig.class);
+    final Set<ConstraintViolation<OTLPSourceConfig>> violations = validator.validate(config);
+    boolean foundExpectedViolation = violations.stream()
+        .anyMatch(v -> v.getPropertyPath().toString().equals("maxConnectionAge"));
+    assertTrue(foundExpectedViolation, "Expected violation on maxConnectionAge for sub-1s value");
+  }
+
+  @Test
+  void maxConnectionAge_rejectsAboveOneDay() throws Exception {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("max_connection_age", "PT25H");
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTLPSourceConfig.class);
+    final Set<ConstraintViolation<OTLPSourceConfig>> violations = validator.validate(config);
+    boolean foundExpectedViolation = violations.stream()
+        .anyMatch(v -> v.getPropertyPath().toString().equals("maxConnectionAge"));
+    assertTrue(foundExpectedViolation, "Expected violation on maxConnectionAge for >24h value");
+  }
+
+  @Test
+  void connectionDrainDuration_rejectsAboveOneHour() throws Exception {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("connection_drain_duration", "PT2H");
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTLPSourceConfig.class);
+    final Set<ConstraintViolation<OTLPSourceConfig>> violations = validator.validate(config);
+    boolean foundExpectedViolation = violations.stream()
+        .anyMatch(v -> v.getPropertyPath().toString().equals("connectionDrainDuration"));
+    assertTrue(foundExpectedViolation, "Expected violation on connectionDrainDuration for >1h value");
+  }
+
+  private static ValidatorFactory validatorFactory;
+  private static Validator validator;
+
+  @BeforeAll
+  static void setUpValidator() {
+    validatorFactory = Validation.byDefaultProvider()
+        .configure()
+        .messageInterpolator(new ParameterMessageInterpolator())
+        .buildValidatorFactory();
+    validator = validatorFactory.getValidator();
+  }
+
+  @AfterAll
+  static void tearDownValidator() {
+    validatorFactory.close();
   }
 
   private PluginSetting completePluginSetting(final int requestTimeoutInMillis,

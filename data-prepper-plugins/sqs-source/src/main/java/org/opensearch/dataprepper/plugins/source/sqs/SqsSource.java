@@ -18,11 +18,15 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "sqs", pluginType = Source.class,pluginConfigurationType = SqsSourceConfig.class)
 public class SqsSource implements Source<Record<Event>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SqsSource.class);
 
     private final PluginMetrics pluginMetrics;
     private final SqsSourceConfig sqsSourceConfig;
@@ -44,6 +48,12 @@ public class SqsSource implements Source<Record<Event>> {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
 
+        if (!acknowledgementsEnabled) {
+            LOG.warn("SQS source acknowledgments are disabled. Messages will be deleted from SQS before " +
+                    "delivery to the sink is confirmed. If the pipeline fails after receiving a message, " +
+                    "that message will be permanently lost. Set 'acknowledgments: true' to enable " +
+                    "end-to-end delivery confirmation and prevent data loss.");
+        }
     }
 
     @Override

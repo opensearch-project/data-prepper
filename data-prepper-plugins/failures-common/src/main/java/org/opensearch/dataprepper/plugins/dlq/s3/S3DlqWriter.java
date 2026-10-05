@@ -47,7 +47,7 @@ public class S3DlqWriter implements DlqWriter {
     static final String S3_DLQ_REQUEST_LATENCY = "dlqS3RequestLatency";
     static final String S3_DLQ_REQUEST_SIZE_BYTES = "dlqS3RequestSizeBytes";
     static final String DLQ_OBJECTS = "dlqObjects";
-    private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s.json";
+    private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s.%s";
     private static final String FULL_KEY_FORMAT = "%s%s";
 
     private static final Logger LOG = LoggerFactory.getLogger(S3DlqWriter.class);
@@ -58,6 +58,7 @@ public class S3DlqWriter implements DlqWriter {
 
     private final String bucketOwner;
     private final ObjectMapper objectMapper;
+    private final DlqCodec codec;
 
     private final Counter dlqS3RecordsSuccessCounter;
     private final Counter dlqS3RecordsFailedCounter;
@@ -83,6 +84,8 @@ public class S3DlqWriter implements DlqWriter {
         this.objectMapper = objectMapper;
         this.keyPathGenerator = new KeyPathGenerator(keyPathPrefix);
         this.bucketOwner = s3DlqWriterConfig.getBucketOwner();
+        final DlqCodec configuredCodec = s3DlqWriterConfig.getCodec();
+        this.codec = configuredCodec != null ? configuredCodec : DlqCodec.JSON;
     }
 
     @Override
@@ -143,9 +146,17 @@ public class S3DlqWriter implements DlqWriter {
 
     private String deserialize(final List<DlqObject> dlqObjects) throws IOException {
         try {
-            final Map<String, Object> output = Map.of(DLQ_OBJECTS, dlqObjects);
-
-            final String content = objectMapper.writeValueAsString(output);
+            final String content;
+            if (codec == DlqCodec.NDJSON) {
+                final StringBuilder builder = new StringBuilder();
+                for (final DlqObject dlqObject : dlqObjects) {
+                    builder.append(objectMapper.writeValueAsString(dlqObject)).append('\n');
+                }
+                content = builder.toString();
+            } else {
+                final Map<String, Object> output = Map.of(DLQ_OBJECTS, dlqObjects);
+                content = objectMapper.writeValueAsString(output);
+            }
 
             dlqS3RequestSizeBytesSummary.record(content.getBytes(StandardCharsets.UTF_8).length);
 
@@ -158,7 +169,7 @@ public class S3DlqWriter implements DlqWriter {
 
     private String buildKey(final String pipelineName, final String pluginId) {
         final String key = String.format(KEY_NAME_FORMAT, DataPrepperVersion.getCurrentVersion().getMajorVersion(),
-            pipelineName, pluginId, Instant.now(), UUID.randomUUID());
+            pipelineName, pluginId, Instant.now(), UUID.randomUUID(), codec.getExtension());
         return keyPathPrefix == null ? key : String.format(FULL_KEY_FORMAT, keyPathGenerator.generate(), key);
     }
 

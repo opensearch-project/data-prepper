@@ -27,4 +27,6 @@ public class JqlConstants {
     public static final String JQL_FIELD = "jql";
     public static final String EXPAND_FIELD = "expand";
     public static final String EXPAND_VALUE = "all";
+    public static final String FIELDS_PARAM = "fields";
+    public static final String FIELDS_VALUE = "project,created,updated";
 }

@@ -110,6 +110,26 @@ public class JsonDecoderTest {
     }
 
     @Test
+    void test_basicJsonDecoder_withNullMaxEventLength_usesDefaultMaximumStringLength() {
+        // With no max_event_length configured, the decoder uses the Data Prepper default of
+        // 64 MB, which is larger than Jackson's default of 20 MB.
+        String largeString = "x".repeat(21 * 1024 * 1024);
+        String inputString = "[{\"key1\":\"" + largeString + "\"}]";
+
+        jsonDecoder = new JsonDecoder(null, null, null, null);
+
+        assertDoesNotThrow(() -> {
+            jsonDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), null, (record) -> {
+                receivedRecord = record;
+            });
+        });
+
+        assertNotNull(receivedRecord);
+        Map<String, Object> map = receivedRecord.getData().toMap();
+        assertThat(map.get("key1"), equalTo(largeString));
+    }
+
+    @Test
     void test_basicJsonDecoder_withTimeReceived() {
         String stringValue = UUID.randomUUID().toString();
         Random r = new Random();

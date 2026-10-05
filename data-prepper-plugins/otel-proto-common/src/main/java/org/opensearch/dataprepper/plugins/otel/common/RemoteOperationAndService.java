@@ -10,7 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.otel.common;
 
-class RemoteOperationAndService {
+public class RemoteOperationAndService {
     final String remoteService;
     final String remoteOperation;
     public RemoteOperationAndService(final String remoteOperation, final String remoteService) {

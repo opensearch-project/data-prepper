@@ -1,0 +1,196 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+plugins {
+    id 'data-prepper.publish'
+}
+
+group = 'org.opensearch.dataprepper.core'
+
+// This module is the OSGi *host*: data-prepper-core depends on it as a runtimeOnly library and it
+// is never installed as a bundle. Bundles reach org.opensearch.dataprepper.plugin.osgi through
+// FRAMEWORK_SYSTEMPACKAGES_EXTRA (see DataPrepperOsgiPackages), not through a bundle manifest, so
+// this JAR deliberately carries no OSGi headers and the build applies no bundling plugin.
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugin-framework')
+    // The only third-party runtime dependency this module adds to the repository. Every other
+    // coordinate below is already used at the same version elsewhere in Data Prepper.
+    implementation libs.felix.framework
+    implementation libs.slf4j.api
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'javax.inject:javax.inject:1'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    testImplementation project(':data-prepper-test:test-data-prepper-version')
+}
+
+// ===========================================================================
+// Integration Test source set — mirrors data-prepper-core's pattern.
+// ===========================================================================
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources {
+            srcDir file('src/integrationTest/resources')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+
+    // A configuration for the osgi-test-plugin bundle JAR. This is NOT added to
+    // integrationTestCompileClasspath or integrationTestRuntimeClasspath — the test
+    // plugin classes must NOT be visible to the application classloader. The bundle
+    // JAR is only copied to a staging directory so the OSGi framework can load it
+    // from the filesystem.
+    osgiBundleJar
+}
+
+dependencies {
+    // The osgi-test-plugin is declared as osgiBundleJar only — its classes are NOT
+    // on the integration test classpath. This proves that the plugin was loaded via OSGi.
+    // transitive = false ensures only the plugin's own JAR is staged (not its deps).
+    osgiBundleJar(project(path: ':data-prepper-test:osgi-test-plugin')) {
+        transitive = false
+    }
+
+    integrationTestImplementation project(':data-prepper-plugin-framework')
+    integrationTestImplementation project(':data-prepper-api')
+    integrationTestImplementation project(':data-prepper-pipeline-parser')
+    integrationTestImplementation project(':data-prepper-event')
+    integrationTestImplementation project(':data-prepper-test:plugin-test-framework')
+    integrationTestImplementation libs.spring.context
+    integrationTestImplementation libs.spring.core
+    // No osgi.core dependency: the OSGi core API (org.osgi.framework.*, including FrameworkUtil and
+    // BundleReference, which this source set uses) is contained in the Felix framework JAR, which
+    // reaches this classpath through implementation -> testImplementation -> integrationTestImplementation.
+}
+
+// Copy the osgi-test-plugin bundle JAR to a known location before integration tests run.
+// Sync rather than Copy, so the staging directory holds exactly the current bundle. A Copy
+// leaves behind JARs built under an earlier project version, and the integration test points
+// the framework at this whole directory: every stale JAR would be installed as a second bundle
+// registering the same plugin name, and which one wins the lookup is not deterministic.
+task stageOsgiBundles(type: Sync) {
+    from configurations.osgiBundleJar
+    into layout.buildDirectory.dir('osgi-bundles-staging')
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    useJUnitPlatform()
+
+    dependsOn stageOsgiBundles
+
+    // Point the test at the staged bundles directory
+    systemProperty 'data-prepper.plugin.bundles.dir',
+            layout.buildDirectory.dir('osgi-bundles-staging').get().asFile.absolutePath
+    systemProperty 'data-prepper.plugin.framework', 'osgi'
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+
+// Generate a resource file listing all shared API packages from data-prepper-api.
+// The generated file is read at runtime by DataPrepperOsgiPackages to build
+// the FRAMEWORK_SYSTEMPACKAGES_EXTRA value for Felix.
+// Rule: include every org.opensearch.dataprepper.* package EXCEPT
+// org.opensearch.dataprepper.plugins.* (reserved for plugin implementations).
+// Also includes third-party packages that cross the host/plugin boundary.
+task generateSharedPackagesResource {
+    def apiSourceDir = project(':data-prepper-api').file('src/main/java')
+    def outputDir = layout.buildDirectory.dir('generated-resources/osgi-packages')
+    inputs.dir(apiSourceDir)
+    inputs.property("apiVersion", project(':data-prepper-api').version)
+
+    // Third-party packages that cross the host/plugin boundary, mapped to the module that supplies
+    // each one. They must be exported WITH a version: an export carrying no version attribute
+    // defaults to 0.0.0 and therefore satisfies none of the version ranges bnd computes for a
+    // plugin bundle (for example com.fasterxml.jackson.annotation;version="[2.21,3)"), so every
+    // real plugin would fail to resolve at startup. Versions are read from the versions actually
+    // resolved for this build rather than hardcoded, so they cannot drift out of those ranges.
+    def thirdPartyPackageModules = [
+            'com.fasterxml.jackson.annotation': 'com.fasterxml.jackson.core:jackson-annotations',
+            'jakarta.validation'              : 'jakarta.validation:jakarta.validation-api',
+            'jakarta.validation.constraints'  : 'jakarta.validation:jakarta.validation-api',
+            // slf4j-api splits the logger API (org.slf4j) from the provider SPI (org.slf4j.spi).
+            // SLF4J 2.x bytecode references the SPI, so bnd adds it to the imports of virtually any
+            // plugin that logs; org.slf4j alone is not enough. org.slf4j itself is exported by
+            // DataPrepperOsgiPackages.SLF4J_PACKAGE.
+            'org.slf4j.spi'                   : 'org.slf4j:slf4j-api',
+    ]
+    def thirdPartyExports = providers.provider {
+        def resolvedVersions = configurations.runtimeClasspath.resolvedConfiguration
+                .lenientConfiguration.allModuleDependencies
+                .collectEntries { [("${it.moduleGroup}:${it.moduleName}".toString()): it.moduleVersion] }
+        thirdPartyPackageModules.collect { packageName, module ->
+            def resolvedVersion = resolvedVersions[module]
+            if (resolvedVersion == null) {
+                throw new GradleException("Cannot resolve a version for ${module}, which supplies the " +
+                        "'${packageName}' package exported to OSGi bundles. Add it to this project's " +
+                        "runtime classpath or remove it from thirdPartyPackageModules.")
+            }
+            "${packageName};version=\"${resolvedVersion}\""
+        }.join(',')
+    }
+    inputs.property("thirdPartyExports", thirdPartyExports)
+
+    outputs.dir(outputDir)
+    doLast {
+        def dir = outputDir.get().asFile
+        def metaInf = new File(dir, 'META-INF')
+        metaInf.mkdirs()
+
+        // Discover all packages under org.opensearch.dataprepper in data-prepper-api
+        def baseDir = apiSourceDir.toPath()
+        def packages = new TreeSet<String>()
+        apiSourceDir.eachDirRecurse { subDir ->
+            // Only include directories that contain at least one .java file
+            def hasJava = subDir.listFiles({ f -> f.name.endsWith('.java') } as FileFilter)?.length > 0
+            if (hasJava) {
+                def relative = baseDir.relativize(subDir.toPath()).toString()
+                def pkg = relative.replace(File.separator, '.')
+                if (pkg.startsWith('org.opensearch.dataprepper') && !pkg.startsWith('org.opensearch.dataprepper.plugins')) {
+                    packages.add(pkg)
+                }
+            }
+        }
+
+        // Write version resource (still needed for OSGi version resolution)
+        def versionFile = new File(metaInf, 'data-prepper-api.version.properties')
+        versionFile.text = "data-prepper-api.version=${project(':data-prepper-api').version}\n"
+
+        // Write shared packages resource
+        def packagesFile = new File(metaInf, 'osgi-shared-packages.properties')
+        def sb = new StringBuilder()
+        sb.append("# Auto-generated by plugin-framework-osgi build. Do not edit.\n")
+        sb.append("# Lists packages from data-prepper-api shared with OSGi bundles.\n")
+        sb.append("# Rule: org.opensearch.dataprepper.* except org.opensearch.dataprepper.plugins.*\n")
+        sb.append("data-prepper.packages=${packages.join(',')}\n")
+        // Third-party packages shared across the host/plugin boundary, each with its resolved version
+        sb.append("third-party.packages=${thirdPartyExports.get()}\n")
+        packagesFile.text = sb.toString()
+    }
+}
+
+// Wire generated resources into the main source set so they are on the classpath.
+sourceSets.main.resources.srcDir(generateSharedPackagesResource)
+

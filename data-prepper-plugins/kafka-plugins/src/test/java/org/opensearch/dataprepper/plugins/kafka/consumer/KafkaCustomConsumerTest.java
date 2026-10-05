@@ -86,6 +86,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.doNothing;
@@ -176,6 +177,8 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfRebalances()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfPartitionsRevoked()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -348,6 +351,43 @@ public class KafkaCustomConsumerTest {
         assertNotNull(event.getEventHandle().getExternalOriginationTime());
 
         verify(topicMetrics).recordTimeBetweenPolls();
+        verify(topicMetrics).recordProcessingLatency(anyLong());
+    }
+
+    @Test
+    public void onPartitionsAssigned_incrementsRebalanceCount() {
+        final Counter rebalanceCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfRebalances()).thenReturn(rebalanceCounter);
+        final String topic = topicConfig.getName();
+        consumer = createObjectUnderTest("plaintext", false);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        verify(rebalanceCounter).increment();
+    }
+
+    @Test
+    public void onPartitionsRevoked_incrementsRevokedCountAndClearsPartitionLag() {
+        final Counter revokedCounter = mock(Counter.class);
+        when(topicMetrics.getNumberOfPartitionsRevoked()).thenReturn(revokedCounter);
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+
+        consumer.onPartitionsRevoked(List.of(topicPartition));
+
+        verify(revokedCounter).increment(1.0);
+        verify(topicMetrics).clearPartitionLag(testPartition);
+    }
+
+    @Test
+    public void closeConsumer_deregistersFromMetrics() {
+        consumer = createObjectUnderTest("plaintext", false);
+
+        consumer.closeConsumer();
+
+        verify(topicMetrics).deregister(kafkaConsumer);
     }
 
     @Test

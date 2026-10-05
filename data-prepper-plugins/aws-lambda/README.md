@@ -21,6 +21,7 @@ lambda-pipeline:
             read_timeout: 60s
             api_call_timeout: 60s
             max_retries: 3
+            retryable_status_codes: [500, 502, 503, 504]
         batch:
             key_name: "osi_key"
             threshold:
@@ -30,6 +31,8 @@ lambda-pipeline:
 ```
 
 `invocation_type` as request-response is used when the response from aws lambda comes back to dataprepper.
+
+`client.retryable_status_codes` is an optional set of HTTP status codes (for example 500, 502, 503, 504) that the Lambda client retries in addition to the retryable exception types. It is empty by default. Set it only for idempotent functions, since retrying a 5xx may re-run an invocation that already executed on the server.
 
 In batch options, an implicit batch threshold option is that if events size is 3mb, we flush it.
 `payload_model` this is used to define how the payload should be constructed from a dataprepper event by converting it to corresponding json.
@@ -106,6 +109,7 @@ lambda-pipeline:
             read_timeout: 60s
             api_call_timeout: 60s
             max_retries: 3
+            retryable_status_codes: [500, 502, 503, 504]
         batch:
             key_name: "osi_key"
             threshold:

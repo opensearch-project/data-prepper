@@ -164,9 +164,11 @@ public class ExportSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        // Await the last coordinator interaction of the scheduler's iteration. Awaiting an earlier one
+        // lets future.cancel interrupt the scheduler before it makes the remaining calls asserted below.
         await()
             .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
-            .untilAsserted(() -> verify(coordinator, times(1)).createPartition(any()));
+            .untilAsserted(() -> verify(coordinator, times(2)).saveProgressStateForPartition(eq(globalState), any()));
 
         future.cancel(true);
 
@@ -235,9 +237,11 @@ public class ExportSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        // Await the last coordinator interaction of the scheduler's iteration. Awaiting an earlier one
+        // lets future.cancel interrupt the scheduler before it makes the remaining calls asserted below.
         await()
             .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, times(3)).createPartition(any()));
+            .untilAsserted(() -> verify(coordinator).saveProgressStateForPartition(eq(globalState), any()));
 
         future.cancel(true);
 
@@ -301,9 +305,11 @@ public class ExportSchedulerTest {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        // Await the last coordinator interaction of the scheduler's iteration. Awaiting an earlier one
+        // lets future.cancel interrupt the scheduler before it makes the remaining calls asserted below.
         await()
                 .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
-                .untilAsserted(() -> verify(coordinator).completePartition(exportPartition));
+                .untilAsserted(() -> verify(coordinator).saveProgressStateForPartition(eq(globalState), eq(null)));
 
         future.cancel(true);
 

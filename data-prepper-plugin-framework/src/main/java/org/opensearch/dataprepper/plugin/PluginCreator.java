@@ -49,6 +49,21 @@ class PluginCreator {
             pluginConfigurationObservableRegister.registerPluginConfigurationObservables(constructorArguments);
         }
 
+        // Plugin constructors may use the standard ServiceLoader.load(X) idiom, which resolves services
+        // against the thread context classloader. The classloader which defined the plugin class is the
+        // only one guaranteed to see that plugin's own META-INF/services entries: under OSGi it is the
+        // plugin's bundle classloader, which is isolated from the classloader running this code. Switch
+        // only when the two differ, which makes this a no-op for the classpath plugin framework where
+        // plugin classes come from the application classloader.
+        final Thread currentThread = Thread.currentThread();
+        final ClassLoader callerContextClassLoader = currentThread.getContextClassLoader();
+        final ClassLoader pluginClassLoader = pluginClass.getClassLoader();
+        final boolean contextClassLoaderSwitched = pluginClassLoader != null
+                && pluginClassLoader != callerContextClassLoader;
+        if (contextClassLoaderSwitched) {
+            currentThread.setContextClassLoader(pluginClassLoader);
+        }
+
         try {
             return (T) constructor.newInstance(constructorArguments);
         } catch (final IllegalAccessException | InstantiationException ex) {
@@ -58,6 +73,10 @@ class PluginCreator {
         } catch (final InvocationTargetException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
             throw new PluginInvocationException("Exception thrown from plugin \"" + pluginName + "\".", ex.getTargetException());
+        } finally {
+            if (contextClassLoaderSwitched) {
+                currentThread.setContextClassLoader(callerContextClassLoader);
+            }
         }
     }
 

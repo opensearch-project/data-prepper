@@ -93,16 +93,26 @@ public abstract class RecordConverter {
         eventMetadata.setAttribute(EVENT_TIMESTAMP_METADATA_ATTRIBUTE, eventCreateTimeEpochMillis);
         eventMetadata.setAttribute(EVENT_VERSION_FROM_TIMESTAMP, eventVersionNumber);
 
-        if (joinMetadataEnricher != null && joinMetadataEnricher.isJoinTable(tableName)) {
-            final boolean isDelete = bulkAction == OpenSearchBulkActions.DELETE;
-            joinMetadataEnricher.enrich(event, tableName, columnNames, isDelete);
+        if (joinMetadataEnricher != null) {
+            // Resolve the table name used for join matching. The join config uses schema-qualified
+            // names for PostgreSQL (e.g., "public.locations") but bare names for MySQL (e.g., "orders").
+            // Try schema-qualified first, then fall back to bare table name for MySQL compatibility.
+            final String qualifiedTableName = schemaName != null ? schemaName + "." + tableName : null;
+            final String joinTableName = (qualifiedTableName != null && joinMetadataEnricher.isJoinTable(qualifiedTableName))
+                    ? qualifiedTableName
+                    : (joinMetadataEnricher.isJoinTable(tableName) ? tableName : null);
 
-            // For child tables, override S3 partition key to use the join key (parent key value)
-            // so related parent and child events land in the same S3 folder
-            final String joinPrimaryKey = (String) eventMetadata.getAttribute(MetadataKeyAttributes.JOIN_PRIMARY_KEY_METADATA);
-            if (joinPrimaryKey != null) {
-                final String joinPartitionKey = s3Prefix + S3_PATH_DELIMITER + S3_BUFFER_PREFIX + S3_PATH_DELIMITER + hashKeyToPartition(joinPrimaryKey);
-                eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, joinPartitionKey);
+            if (joinTableName != null) {
+                final boolean isDelete = bulkAction == OpenSearchBulkActions.DELETE;
+                joinMetadataEnricher.enrich(event, joinTableName, columnNames, isDelete);
+
+                // For child tables, override S3 partition key to use the join key (parent key value)
+                // so related parent and child events land in the same S3 folder
+                final String joinPrimaryKey = (String) eventMetadata.getAttribute(MetadataKeyAttributes.JOIN_PRIMARY_KEY_METADATA);
+                if (joinPrimaryKey != null) {
+                    final String joinPartitionKey = s3Prefix + S3_PATH_DELIMITER + S3_BUFFER_PREFIX + S3_PATH_DELIMITER + hashKeyToPartition(joinPrimaryKey);
+                    eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, joinPartitionKey);
+                }
             }
         }
 

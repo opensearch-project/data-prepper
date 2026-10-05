@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -72,8 +71,8 @@ public class JiraIteratorTest {
         assertNotNull(jiraIterator);
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         when(mockSearchResults.getIssues()).thenReturn(new ArrayList<>());
-        when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        when(mockSearchResults.getIsLast()).thenReturn(true);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
         assertFalse(jiraIterator.hasNext());
     }
 
@@ -103,8 +102,8 @@ public class JiraIteratorTest {
         IssueBean issue1 = createIssueBean(false);
         mockIssues.add(issue1);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        when(mockSearchResults.getIsLast()).thenReturn(true);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);
@@ -132,8 +131,8 @@ public class JiraIteratorTest {
         IssueBean issue3 = createIssueBean(false);
         mockIssues.add(issue3);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        when(mockSearchResults.getIsLast()).thenReturn(true);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);
@@ -149,8 +148,8 @@ public class JiraIteratorTest {
         jiraIterator = createObjectUnderTest();
         List<IssueBean> mockIssues = new ArrayList<>();
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        when(mockSearchResults.getIsLast()).thenReturn(true);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);

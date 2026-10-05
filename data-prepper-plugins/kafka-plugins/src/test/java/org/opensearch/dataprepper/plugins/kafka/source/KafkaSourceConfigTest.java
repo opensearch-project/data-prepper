@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AzureFederatedAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
@@ -33,6 +36,7 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
@@ -111,5 +115,60 @@ class KafkaSourceConfigTest {
 	void test_default_acknowledgements_timeout() {
 		kafkaSourceConfig = new KafkaSourceConfig();
 		assertEquals(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT, kafkaSourceConfig.getAcknowledgementsTimeout());
+	}
+
+	@Test
+	void isAzureFederatedAwsConfigValid_withStsRoleArnAndRegion_isTrue() throws NoSuchFieldException, IllegalAccessException {
+		final KafkaSourceConfig config = buildAzureFederatedConfig("us-east-1", "arn:aws:iam::123456789012:role/eh-federation");
+		assertTrue(config.isAzureFederatedAwsConfigValid());
+	}
+
+	@Test
+	void isAzureFederatedAwsConfigValid_withoutStsRoleArn_isTrue() throws NoSuchFieldException, IllegalAccessException {
+		// region-only is valid: the role may be supplied out of band rather than in pipeline config
+		final KafkaSourceConfig config = buildAzureFederatedConfig("us-east-1", null);
+		assertTrue(config.isAzureFederatedAwsConfigValid());
+	}
+
+	@Test
+	void isAzureFederatedAwsConfigValid_withoutRegion_isFalse() throws NoSuchFieldException, IllegalAccessException {
+		final KafkaSourceConfig config = buildAzureFederatedConfig(null, "arn:aws:iam::123456789012:role/eh-federation");
+		assertFalse(config.isAzureFederatedAwsConfigValid());
+	}
+
+	@Test
+	void isAzureFederatedAwsConfigValid_withoutAwsConfig_isFalse() throws NoSuchFieldException, IllegalAccessException {
+		final AuthConfig.SaslAuthConfig saslAuthConfig = new AuthConfig.SaslAuthConfig();
+		setField(AuthConfig.SaslAuthConfig.class, saslAuthConfig, "azureFederatedAuthConfig", new AzureFederatedAuthConfig());
+		final AuthConfig authConfig = new AuthConfig();
+		setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+		final KafkaSourceConfig config = new KafkaSourceConfig();
+		setField(KafkaSourceConfig.class, config, "authConfig", authConfig);
+		assertFalse(config.isAzureFederatedAwsConfigValid());
+	}
+
+	@Test
+	void isAzureFederatedAwsConfigValid_withoutAzureFederated_isTrue() {
+		final KafkaSourceConfig config = new KafkaSourceConfig();
+		assertTrue(config.isAzureFederatedAwsConfigValid());
+	}
+
+	private KafkaSourceConfig buildAzureFederatedConfig(final String region, final String stsRoleArn)
+			throws NoSuchFieldException, IllegalAccessException {
+		final AuthConfig.SaslAuthConfig saslAuthConfig = new AuthConfig.SaslAuthConfig();
+		setField(AuthConfig.SaslAuthConfig.class, saslAuthConfig, "azureFederatedAuthConfig", new AzureFederatedAuthConfig());
+		final AuthConfig authConfig = new AuthConfig();
+		setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+		final AwsConfig awsConfig = new AwsConfig();
+		if (region != null) {
+			setField(AwsConfig.class, awsConfig, "region", region);
+		}
+		if (stsRoleArn != null) {
+			setField(AwsConfig.class, awsConfig, "stsRoleArn", stsRoleArn);
+		}
+		final KafkaSourceConfig config = new KafkaSourceConfig();
+		setField(KafkaSourceConfig.class, config, "authConfig", authConfig);
+		setField(KafkaSourceConfig.class, config, "awsConfig", awsConfig);
+		return config;
 	}
 }

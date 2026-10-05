@@ -37,6 +37,14 @@ public class IndexShardProvider {
         return getSettings(indexName).numberOfShards();
     }
 
+    public int getNumberOfRoutingShards(final String indexName) throws IOException {
+        return getSettings(indexName).routingNumShards();
+    }
+
+    public int getRoutingPartitionSize(final String indexName) throws IOException {
+        return getSettings(indexName).routingPartitionSize();
+    }
+
     public String getIngestionTopic(final String indexName) throws IOException {
         return getSettings(indexName).ingestionTopic();
     }
@@ -59,39 +67,63 @@ public class IndexShardProvider {
     }
 
     private IndexIngestionSettings fetchSettings(final String indexName) throws IOException {
-        final Request request = new Request("GET", "/" + indexName + "/_settings");
+        final Request request = new Request("GET", "/_cluster/state/metadata/" + indexName);
         final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
         final JsonNode root = OBJECT_MAPPER.readTree(response.getEntity().getContent());
 
-        final JsonNode indexNode = root.path(indexName).path("settings").path("index");
-        if (indexNode.isMissingNode()) {
-            throw new IllegalStateException("No settings found for index: " + indexName);
+        final JsonNode metadataNode = root.path("metadata").path("indices").path(indexName);
+        if (metadataNode.isMissingNode()) {
+            throw new IllegalStateException("No metadata found for index: " + indexName);
         }
+
+        final JsonNode indexNode = metadataNode.path("settings").path("index");
 
         final JsonNode shardsNode = indexNode.path("number_of_shards");
         if (shardsNode.isMissingNode()) {
             throw new IllegalStateException("number_of_shards not found in settings for index: " + indexName);
         }
+        final int numberOfShards = shardsNode.asInt();
+
+        final JsonNode routingShardsNode = metadataNode.path("routing_num_shards");
+        final int routingNumShards = routingShardsNode.isMissingNode()
+                ? numberOfShards
+                : routingShardsNode.asInt();
+
+        final JsonNode partitionSizeNode = indexNode.path("routing_partition_size");
+        final int routingPartitionSize = partitionSizeNode.isMissingNode() ? 1 : partitionSizeNode.asInt();
 
         final JsonNode topicNode = indexNode.path("ingestion_source").path("param").path("topic");
         if (topicNode.isMissingNode()) {
             throw new IllegalStateException("ingestion_source.param.topic not found in settings for index: " + indexName);
         }
 
-        return new IndexIngestionSettings(Integer.parseInt(shardsNode.asText()), topicNode.asText());
+        return new IndexIngestionSettings(numberOfShards, routingNumShards, routingPartitionSize, topicNode.asText());
     }
 
     static class IndexIngestionSettings {
         private final int numberOfShards;
+        private final int routingNumShards;
+        private final int routingPartitionSize;
         private final String ingestionTopic;
 
-        IndexIngestionSettings(final int numberOfShards, final String ingestionTopic) {
+        IndexIngestionSettings(final int numberOfShards, final int routingNumShards,
+                               final int routingPartitionSize, final String ingestionTopic) {
             this.numberOfShards = numberOfShards;
+            this.routingNumShards = routingNumShards;
+            this.routingPartitionSize = routingPartitionSize;
             this.ingestionTopic = ingestionTopic;
         }
 
         int numberOfShards() {
             return numberOfShards;
+        }
+
+        int routingNumShards() {
+            return routingNumShards;
+        }
+
+        int routingPartitionSize() {
+            return routingPartitionSize;
         }
 
         String ingestionTopic() {

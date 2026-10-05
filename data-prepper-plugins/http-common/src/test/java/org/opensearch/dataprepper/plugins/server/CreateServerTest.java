@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -100,6 +101,44 @@ public class CreateServerTest {
 
     @Mock
     private CircuitBreaker circuitBreaker;
+
+    @Test
+    void createGrpcServer_appliesKeepaliveSettingsWhenConfigured() throws JsonProcessingException {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        final Map<String, Object> metadata = createGrpcMetadata(21895, false, 10000, 10, 5, CompressionOption.NONE,
+                null);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        serverConfiguration.setMaxConnectionAge(Duration.ofMinutes(30));
+        serverConfiguration.setConnectionDrainDuration(Duration.ofSeconds(15));
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME,
+                TEST_PIPELINE_NAME);
+        Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
+        TestService testService = getTestService(buffer);
+
+        Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+
+        assertNotNull(server);
+        assertThat(server.config().maxConnectionAgeMillis(), equalTo(Duration.ofMinutes(30).toMillis()));
+        assertThat(server.config().connectionDrainDurationMicros(),
+                equalTo(Duration.ofSeconds(15).toNanos() / 1_000L));
+    }
+
+    @Test
+    void createGrpcServer_leavesKeepaliveDefaultsWhenNotConfigured() throws JsonProcessingException {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        final Map<String, Object> metadata = createGrpcMetadata(21896, false, 10000, 10, 5, CompressionOption.NONE,
+                null);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME,
+                TEST_PIPELINE_NAME);
+        Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
+        TestService testService = getTestService(buffer);
+
+        Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+
+        assertNotNull(server);
+        assertThat(server.config().maxConnectionAgeMillis(), equalTo(0L));
+    }
 
     @Test
     void createGrpcServerTest() throws JsonProcessingException {

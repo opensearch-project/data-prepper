@@ -29,7 +29,7 @@ jobs:
           add-job-summary: on-failure
 
       - name: Load secret
-        uses: 1password/load-secrets-action@581a835fb51b8e7ec56b71cf2ffddd7e68bb25e0 # v2
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
         with:
           # Export loaded secrets as environment variables
           export-env: true

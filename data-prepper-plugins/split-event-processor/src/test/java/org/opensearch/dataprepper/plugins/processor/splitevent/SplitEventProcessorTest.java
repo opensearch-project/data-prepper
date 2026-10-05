@@ -18,11 +18,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -51,6 +53,9 @@ class SplitEventProcessorTest {
     @Mock
     private AcknowledgementSet mockAcknowledgementSet;
 
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+
     private SplitEventProcessor splitEventProcessor;
 
     private Record<Event> createTestRecord(final Map<String, Object> data) {
@@ -67,7 +72,7 @@ class SplitEventProcessorTest {
     private SplitEventProcessor createNoDelimiterProcessor() {
         when(mockConfig.getDelimiter()).thenReturn(null);
         when(mockConfig.getDelimiterRegex()).thenReturn(null);
-        return new SplitEventProcessor(pluginMetrics, mockConfig);
+        return new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     @BeforeEach
@@ -75,7 +80,7 @@ class SplitEventProcessorTest {
         when(mockConfig.getField()).thenReturn("k1");
         when(mockConfig.getDelimiter()).thenReturn(" ");
 
-        splitEventProcessor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        splitEventProcessor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     private static Stream<Arguments> provideMaps() {
@@ -129,7 +134,7 @@ class SplitEventProcessorTest {
         final Record<Event> record = createTestRecord(testData);
         when(mockConfig.getDelimiter()).thenReturn(";");
 
-        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords, hasSize(2));
@@ -145,7 +150,7 @@ class SplitEventProcessorTest {
         when(mockConfig.getDelimiter()).thenReturn(null);
         when(mockConfig.getDelimiterRegex()).thenReturn("\\s+");
 
-        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords, hasSize(2));
@@ -161,7 +166,7 @@ class SplitEventProcessorTest {
         when(mockConfig.getDelimiter()).thenReturn(null);
         when(mockConfig.getDelimiterRegex()).thenReturn(":");
 
-        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords, hasSize(2));
@@ -173,7 +178,7 @@ class SplitEventProcessorTest {
     void testFailureWithBothDelimiterRegexAndDelimiterDefined() {
         when(mockConfig.getDelimiter()).thenReturn(" ");
         when(mockConfig.getDelimiterRegex()).thenReturn("\\s+");
-        assertThrows(IllegalArgumentException.class, () -> new SplitEventProcessor(pluginMetrics, mockConfig));
+        assertThrows(IllegalArgumentException.class, () -> new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator));
     }
 
     @Test
@@ -572,7 +577,7 @@ class SplitEventProcessorTest {
     void testEmptyOrNullDelimiterCombinationsEnterArrayMode(final String delimiter, final String delimiterRegex) {
         when(mockConfig.getDelimiter()).thenReturn(delimiter);
         when(mockConfig.getDelimiterRegex()).thenReturn(delimiterRegex);
-        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap<>();
         testData.put("k1", List.of("x", "y"));
@@ -602,7 +607,7 @@ class SplitEventProcessorTest {
     void testNonEmptyDelimiterWithNullRegex() {
         when(mockConfig.getDelimiter()).thenReturn(",");
         when(mockConfig.getDelimiterRegex()).thenReturn(null);
-        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig);
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap<>();
         testData.put("k1", "a,b");
@@ -613,5 +618,78 @@ class SplitEventProcessorTest {
         assertThat(results, hasSize(2));
         assertThat(results.get(0).getData().get("k1", Object.class), equalTo("a"));
         assertThat(results.get(1).getData().get("k1", Object.class), equalTo("b"));
+    }
+
+    @Test
+    void testSplitWhenConditionTrue_splitIsApplied() {
+        final String splitWhen = "/k2 == \"split\"";
+        when(mockConfig.getSplitWhen()).thenReturn(splitWhen);
+        when(mockConfig.getDelimiter()).thenReturn(" ");
+        when(expressionEvaluator.isValidExpressionStatement(splitWhen)).thenReturn(true);
+
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", "v1 v2");
+        testData.put("k2", "split");
+        final Record<Event> record = createTestRecord(testData);
+
+        when(expressionEvaluator.evaluateConditional(splitWhen, record.getData())).thenReturn(true);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(2));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("v1"));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo("v2"));
+    }
+
+    @Test
+    void testSplitWhenConditionFalse_eventPassesThrough() {
+        final String splitWhen = "/k2 == \"split\"";
+        when(mockConfig.getSplitWhen()).thenReturn(splitWhen);
+        when(mockConfig.getDelimiter()).thenReturn(" ");
+        when(expressionEvaluator.isValidExpressionStatement(splitWhen)).thenReturn(true);
+
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", "v1 v2");
+        testData.put("k2", "no-split");
+        final Record<Event> record = createTestRecord(testData);
+
+        when(expressionEvaluator.evaluateConditional(splitWhen, record.getData())).thenReturn(false);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(1));
+        assertThat(results.get(0).getData().get("k1", String.class), equalTo("v1 v2"));
+    }
+
+    @Test
+    void testSplitWhenInvalidExpression_throwsInvalidPluginConfigurationException() {
+        final String invalidExpression = "invalid expression";
+        when(mockConfig.getSplitWhen()).thenReturn(invalidExpression);
+        when(expressionEvaluator.isValidExpressionStatement(invalidExpression)).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class,
+                () -> new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator));
+    }
+
+    @Test
+    void testSplitWhenNull_allEventsProcessed() {
+        when(mockConfig.getSplitWhen()).thenReturn(null);
+        when(mockConfig.getDelimiter()).thenReturn(" ");
+
+        final SplitEventProcessor processor = new SplitEventProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("k1", "v1 v2");
+        final Record<Event> record = createTestRecord(testData);
+
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(results, hasSize(2));
+        assertThat(results.get(0).getData().get("k1", Object.class), equalTo("v1"));
+        assertThat(results.get(1).getData().get("k1", Object.class), equalTo("v2"));
     }
 }

@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriterConfig;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -285,7 +286,9 @@ public class CloudWatchLogsIT {
     }
 
     private CloudWatchLogsSink createObjectUnderTest() {
-        return new CloudWatchLogsSink(pluginSetting, pluginMetrics, pluginFactory, cloudWatchLogsSinkConfig, awsCredentialsSupplier);
+        // These tests configure a static entity (or none), so the evaluator is never consulted.
+        return new CloudWatchLogsSink(pluginSetting, pluginMetrics, pluginFactory, cloudWatchLogsSinkConfig,
+                awsCredentialsSupplier, mock(ExpressionEvaluator.class));
     }
     
     private String createLogStream(final String logGroupName) {

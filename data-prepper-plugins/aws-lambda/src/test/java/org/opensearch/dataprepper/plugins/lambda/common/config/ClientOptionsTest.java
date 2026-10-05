@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClientOptionsTest {
 
@@ -27,5 +28,11 @@ class ClientOptionsTest {
     void testDefaultApiCallAttemptTimeout() {
         ClientOptions clientOptions = new ClientOptions();
         assertEquals(null, clientOptions.getApiCallAttemptTimeout());
+    }
+
+    @Test
+    void testDefaultRetryableStatusCodes() {
+        final ClientOptions clientOptions = new ClientOptions();
+        assertTrue(clientOptions.getRetryableStatusCodes().isEmpty());
     }
 }

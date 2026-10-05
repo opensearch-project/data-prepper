@@ -10,9 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import static com.linecorp.armeria.common.HttpStatus.BAD_REQUEST;
 import static com.linecorp.armeria.common.HttpStatus.OK;
 import static com.linecorp.armeria.common.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
@@ -167,6 +169,56 @@ class OTelLogsSourceUnframedRequestTest {
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
+    }
+
+    @Test
+    void unframedRequests_protobufWithInvalidUtf8_returns400WithInformativeMessage() {
+        configureSource(createDefaultConfigBuilder().enableUnframedRequests(true).build());
+        SOURCE.start(buffer);
+
+        // Hand-crafted ExportLogsServiceRequest wire bytes whose nested InstrumentationScope.name (field 1)
+        // contains a lone 0xFF byte, which is invalid UTF-8. Protobuf's String fields require valid UTF-8, so
+        // deserialization fails exactly as it did for the customer. Structure:
+        // ExportLogsServiceRequest{ resource_logs[0]{ scope_logs[0]{ scope{ name = 0xFF } } } }
+        final byte[] invalidUtf8Protobuf = new byte[] {
+                0x0A, 0x07,             // ExportLogsServiceRequest.resource_logs (field 1, len 7)
+                0x12, 0x05,             //   ResourceLogs.scope_logs (field 2, len 5)
+                0x0A, 0x03,             //     ScopeLogs.scope (field 1, len 3)
+                0x0A, 0x01, (byte) 0xFF //       InstrumentationScope.name (field 1, len 1) = 0xFF (invalid UTF-8)
+        };
+
+        final AggregatedHttpResponse response = WebClient.of().execute(getDefaultRequestHeadersBuilder()
+                                .path(CONFIG_GRPC_PATH)
+                                .contentType(MediaType.PROTOBUF)
+                                .build(),
+                        HttpData.wrap(invalidUtf8Protobuf))
+                .aggregate()
+                .join();
+
+        assertThat("Invalid UTF-8 protobuf must be rejected as a client error, not a 500",
+                response.status(), equalTo(BAD_REQUEST));
+        final String grpcMessage = response.headers().get("grpc-message");
+        final String detail = grpcMessage != null ? grpcMessage : response.contentUtf8();
+        assertThat("Client should receive an informative, client-side-oriented message",
+                detail, containsString("contain valid UTF-8"));
+    }
+
+    @Test
+    void unframedRequests_requestWithUnsupportedGrpcEncoding_isRejected() {
+        configureSource(createDefaultConfigBuilder().enableUnframedRequests(true).build());
+        SOURCE.start(buffer);
+
+        final AggregatedHttpResponse response = WebClient.of().execute(getDefaultRequestHeadersBuilder()
+                                .path(CONFIG_GRPC_PATH)
+                                .contentType(MediaType.PROTOBUF)
+                                .add("grpc-encoding", "gzip")
+                                .build(),
+                        HttpData.wrap(new byte[] {0x00}))
+                .aggregate()
+                .join();
+
+        assertThat("A request the pipeline source cannot decode must not be a 500",
+                response.status().isServerError(), equalTo(false));
     }
 
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response,

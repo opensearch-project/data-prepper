@@ -119,6 +119,12 @@ public final class FileReaderPool {
         }
         metrics.getActiveFileCount().decrementAndGet();
 
+        if (!readerContext.isTailMode()) {
+            checkpointRegistry.markCompleted(fileIdentity.toString());
+            promotePendingFiles();
+            return;
+        }
+
         if (completedReader.getLastRotationType() == RotationType.CREATE_RENAME) {
             LOG.info("Re-adding path {} after create/rename rotation", path);
             final FileIdentity newIdentity = FileIdentity.from(path, readerContext.getFileOps(),
