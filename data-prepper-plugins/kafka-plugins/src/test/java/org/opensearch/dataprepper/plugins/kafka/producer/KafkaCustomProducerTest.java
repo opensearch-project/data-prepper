@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicProducerMetrics;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -100,6 +101,17 @@ public class KafkaCustomProducerTest {
         when(kafkaSinkConfig.getSchemaConfig().getRegistryURL()).thenReturn("http://localhost:8085/");
         when(kafkaSinkConfig.getPartitionKey()).thenReturn("testkey");
 
+    }
+
+    @Test
+    public void close_closesTheUnderlyingProducer() {
+        final KafkaProducer kafkaProducer = mock(KafkaProducer.class);
+        producer = new KafkaCustomProducer(kafkaProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class),
+                null, kafkaTopicProducerMetrics, schemaService);
+
+        producer.close();
+
+        verify(kafkaProducer).close(Duration.ofSeconds(30));
     }
 
     @Test
