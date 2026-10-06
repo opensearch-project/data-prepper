@@ -62,8 +62,16 @@ public class KafkaSinkConfig implements KafkaProducerConfig {
     }
 
 
+    /**
+     * Default time the sink waits for its worker threads to drain on shutdown.
+     * Without a default, {@code thread_wait_time} is null for every pipeline
+     * that does not set it, and unboxing it in
+     * {@code KafkaSink.calculateLongestThreadWaitingTime()} throws.
+     */
+    static final long DEFAULT_THREAD_WAIT_TIME_MS = 1000L;
+
     @JsonProperty("thread_wait_time")
-    private Long threadWaitTime;
+    private Long threadWaitTime = DEFAULT_THREAD_WAIT_TIME_MS;
 
 
     @JsonProperty("topic")
