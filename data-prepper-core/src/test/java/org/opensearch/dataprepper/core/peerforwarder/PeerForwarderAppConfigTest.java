@@ -9,14 +9,23 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.server.Server;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +70,35 @@ class PeerForwarderAppConfigTest {
         );
 
         assertThat(peerForwarderClientFactory, notNullValue());
+    }
+
+    @Test
+    void peerForwarderHttpServerProvider_passes_circuit_breaker_so_the_server_rejects_requests_while_it_is_open() {
+        final PeerForwarderConfiguration peerForwarderConfiguration = mock(PeerForwarderConfiguration.class);
+        when(peerForwarderConfiguration.getMaxConnectionCount()).thenReturn(500);
+        final PeerForwarderHttpService peerForwarderHttpService = mock(PeerForwarderHttpService.class);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+
+        final Server server = peerForwarderAppConfig.peerForwarderHttpServerProvider(
+                peerForwarderConfiguration,
+                mock(CertificateProviderFactory.class),
+                peerForwarderHttpService,
+                circuitBreaker
+        ).get();
+
+        server.start().join();
+        try {
+            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .post(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI, "{}")
+                    .aggregate()
+                    .join();
+
+            assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+            verify(peerForwarderHttpService, never()).doPost(any());
+        } finally {
+            server.stop().join();
+        }
     }
 
 }
