@@ -1,6 +1,6 @@
 # Data Prepper Log Ingestion Demo Guide
 
-This is a guide that will walk users through setting up a sample Data Prepper pipeline for log ingestion. 
+This is a guide that will walk users through setting up a sample Data Prepper pipeline for log ingestion.
 This guide will go through the steps required to create a simple log ingestion pipeline from \
 Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in the diagram below.
 
@@ -9,63 +9,45 @@ Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in 
 ## List of Components
 
 - An OpenSearch domain running through Docker.
-- A FluentBit agent running through Docker using `fluent-bit.conf`.
+- A Fluent Bit agent running through Docker using `fluent-bit.conf`.
 - Data Prepper, which includes a `log_pipeline.yaml` and `data-prepper-config.yaml`for data-prepper server configuration running through Docker.
 - An Apache Log Generator in the form of a python script.
 
-### FluentBit And OpenSearch Setup
+## Overview
 
-1. Take a look at the [docker-compose.yaml](docker-compose.yaml). This `docker-compose.yaml` will pull the FluentBit and OpenSearch Docker images and run them in the `log-ingestion_opensearch-net` Docker network.
+The example is split across two Docker Compose files:
 
+- [docker-compose.yaml](docker-compose.yaml) defines the Fluent Bit, OpenSearch, and OpenSearch Dashboards containers.
+- [docker-compose-dataprepper.yaml](docker-compose-dataprepper.yaml) defines the Data Prepper container, which uses [log_pipeline.yaml](log_pipeline.yaml) and [data-prepper-config.yaml](data-prepper-config.yaml).
 
-2. Now take a look at the [fluent-bit.conf](fluent-bit.conf). This config will tell FluentBit to tail the `/var/log/test.log` file for logs, and uses the FluentBit http output plugin to forward these logs to the http source of Data Prepper, which runs by default on port 2021. The `fluent-bit.conf` file
-is mounted as a Docker volume through the `docker-compose.yaml`.
+Fluent Bit is configured in [fluent-bit.conf](fluent-bit.conf) to tail `/var/log/test.log` and forward each new line to Data Prepper's HTTP source on port 2021. The [log_pipeline.yaml](log_pipeline.yaml) file configures Data Prepper to parse each log line with the `COMMONAPACHELOG` grok pattern and write it to the `apache_logs` index in OpenSearch.
 
+The empty `test.log` file is mounted into the Fluent Bit container through `docker-compose.yaml`.
 
-3. An empty file named `test.log` has been created. This file is also mounted through the  `docker-compose.yaml`, and will be the file
-FluentBit is tailing to collect logs from.
-   
+## Running the example
 
-4. Now that you understand a bit more about how FluentBit and OpenSearch are set up, run them with:
-
-```
-docker compose --project-name data-prepper up
-```
-This we can verify using http://127.0.0.1:5601/
-
-Once we are able to access our opensearch-dashboard we can run data-prepper. 
-
-### Data Prepper Setup
- 
-1. Take a look at [log_pipeline.yaml](log_pipeline.yaml). This configuration will take logs sent to the [http source](../../data-prepper-plugins/http-source), 
-process them with the [Grok Processor](../../data-prepper-plugins/grok-prepper) by matching against the `COMMONAPACHELOG` pattern, 
-and send the processed logs to a local [OpenSearch sink](../../data-prepper-plugins/opensearch) to an index named `apache_logs`.
-
-2. And [data-prepper-config.yaml](data-prepper-config.yaml) is also mounted in [docker-compose-dataprepper.yaml](docker-compose-dataprepper.yaml) which will help us to configure our data-prepper server. 
-
-
-3. Run the Data Prepper docker compose file where we are using `log_pipeline.yaml`. Now FluentBit is able to send logs to the http source of Data Prepper.
-
-Run the following to start Data Prepper:
+Start all four containers in a single command so that they join the same Docker network:
 
 ```
-docker compose -f docker-compose-dataprepper.yaml up
+docker compose -f docker-compose.yaml -f docker-compose-dataprepper.yaml up
 ```
 
-If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
+The containers must start as one project. If you run the two Compose files separately, they create two different Docker networks (`log-ingestion_opensearch-net` and `data-prepper_opensearch-net`) and the containers in each project cannot reach each other, so Fluent Bit cannot deliver logs to Data Prepper and Data Prepper cannot deliver logs to OpenSearch.
+
+Wait until the Data Prepper logs include:
 
 ```
-INFO org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink - Initialized OpenSearch sink  
-INFO org.opensearch.dataprepper.pipeline.Pipeline - Pipeline [log-pipeline] Sink is ready, starting source...  
-
-
-INFO org.opensearch.dataprepper.plugins.source.loghttp.HTTPSource - Started http source on port 2021...  
-INFO org.opensearch.dataprepper.pipeline.Pipeline - Pipeline [log-pipeline] - Submitting request to initiate the pipeline processing
+INFO org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink - Initialized OpenSearch sink
+INFO org.opensearch.dataprepper.plugins.source.loghttp.HTTPSource - Started http source on port 2021...
 ```
 
-### Apache Log Generator
+Data Prepper only starts its HTTP source after it connects to OpenSearch, which can take a minute or longer. Logs written to `test.log` before the HTTP source starts can be dropped by Fluent Bit after its retries fail.
 
-Note that if you just want to see the log ingestion workflow in action, you can simply copy and paste some logs into the `test.log` file yourself without using the Python [Fake Apache Log Generator](https://github.com/graytaylor0/Fake-Apache-Log-Generator). 
+Verify OpenSearch Dashboards is reachable at http://127.0.0.1:5601/ (log in as `admin` with the password set in `docker-compose.yaml`, `Developer@123` by default).
+
+## Apache Log Generator
+
+Note that if you just want to see the log ingestion workflow in action, you can simply copy and paste some logs into the `test.log` file yourself without using the Python [Fake Apache Log Generator](https://github.com/graytaylor0/Fake-Apache-Log-Generator).
 Here is a sample batch of randomly generated Apache Logs if you choose to take this route.
 
 ```
@@ -97,30 +79,37 @@ In order to simulate an application generating logs, a simple python script will
 git clone https://github.com/graytaylor0/Fake-Apache-Log-Generator.git
 ```
 
-Note the requirements in the README of the Apache Log Generator. You must have Python 2.7 and you must run 
+Note the requirements in the README of the Apache Log Generator. You must have Python 2.7 and you must run
 ```
 pip install -r requirements.txt
 ```
 
 to install the necessary dependencies.
 
-Run the apache log generator python script so that it sends an apache log to the `test.log` file from the fluent-bit `docker-compose.yaml` every 2 seconds. 
+Run the apache log generator python script so that it sends an apache log to the `test.log` file from the fluent-bit `docker-compose.yaml` every 2 seconds.
 
 ```
 python apache-fake-log-gen.py -n 0 -s 2 -l "CLF" -o "LOG" -f "/full/path/to/test.log"
 ```
 
-You should now be able to check your terminal output for FluentBit and Data Prepper to verify that they are processing logs.
+You should now be able to check your terminal output for Fluent Bit and Data Prepper to verify that they are processing logs.
 
-The following FluentBit ouptut means that FluentBit was able to forward logs to the Data Prepper http source.
+The following Fluent Bit output means that Fluent Bit was able to forward logs to the Data Prepper http source.
 
 ```
 fluent-bit  | [ info] [output:http:http.0] data-prepper:2021, HTTP status=200
 200 OK
 ```
 
+Data Prepper sends documents to OpenSearch in batches, so the first document can take a minute or longer to appear in the `apache_logs` index after Fluent Bit delivers it. To check whether a document has been indexed, run:
+
+```
+curl -X GET -u 'admin:Developer@123' -k 'https://localhost:9200/apache_logs/_search?pretty&size=1'
+```
+
 Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) (login with credentials) to view your processed logs.
 You will need to create an index pattern for the index provided in your `pipeline.yaml` (i.e. `apache_logs`) in order to see them. You can do this by selecting the `Manage` menu with the gear icon at the top of the home page and then the `Index Patterns` menu on the left side of the page. Select the `Create index pattern` button and then start typing in the name of the index you sent logs to in the `Index pattern name` field (in this guide it was `apache_logs`). You should see that the index pattern matches 1 source (This will only be seen if data-prepper is working well with the opensource).
 
-Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.
+The `apache_logs` index does not contain a field of the `date` type, so leave the time field unset when you create the index pattern.
 
+Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.
