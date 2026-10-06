@@ -38,6 +38,7 @@ Wait until the Data Prepper logs include:
 
 ```
 INFO org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink - Initialized OpenSearch sink
+INFO org.opensearch.dataprepper.core.pipeline.Pipeline - Pipeline [log-pipeline] Sink is ready, starting source...
 INFO org.opensearch.dataprepper.plugins.source.loghttp.HTTPSource - Started http source on port 2021...
 ```
 
