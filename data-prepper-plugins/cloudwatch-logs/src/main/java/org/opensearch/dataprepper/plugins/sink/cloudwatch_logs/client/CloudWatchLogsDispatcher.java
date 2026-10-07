@@ -194,19 +194,25 @@ public class CloudWatchLogsDispatcher {
                         if ((createLogGroup || createLogStream) && !resourceCreationAttempted) {
                             resourceCreationAttempted = true;
                             createResources();
-                            // Loop continues; next iteration retries PutLogEvents without incrementing failCount.
-                            // If PutLogEvents still throws ResourceNotFoundException, the guard sends us to the
-                            // else branch and normal retry/DLQ logic takes over.
+                            // The next loop iteration retries PutLogEvents once after resource creation.
                         } else {
                             failureMessage = e.getMessage();
                             if (!createLogGroup && !createLogStream) {
                                 cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
                             }
-                            failCount = handlePutLogEventsFailure(e, failCount, backoff);
+                            final boolean retryable = CloudWatchLogsRetryCondition.isRetryable(e);
+                            failCount = handlePutLogEventsFailure(e, failCount, backoff, retryable);
+                            if (!retryable) {
+                                break;
+                            }
                         }
                     } catch (CloudWatchLogsException | SdkClientException e) {
                         failureMessage = e.getMessage();
-                        failCount = handlePutLogEventsFailure(e, failCount, backoff);
+                        final boolean retryable = CloudWatchLogsRetryCondition.isRetryable(e);
+                        failCount = handlePutLogEventsFailure(e, failCount, backoff, retryable);
+                        if (!retryable) {
+                            break;
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -243,13 +249,12 @@ public class CloudWatchLogsDispatcher {
         }
 
         /**
-         * Logs the failure, increments fail metrics, and sleeps using the backoff schedule.
-         * Returns the new fail count so the caller can update its local. Extracted so the
-         * ResourceNotFoundException-fallback branch and the generic CloudWatchLogsException/SDK
-         * catch don't drift apart.
+         * Logs the failure, increments failure metrics, and uses the backoff schedule for throttling and 5XX errors.
+         * Returns the new failure count so the caller can update its local value. This method keeps
+         * the ResourceNotFoundException and generic exception branches consistent.
          */
-        private int handlePutLogEventsFailure(final Exception e, final int currentFailCount, final Backoff backoff)
-                throws InterruptedException {
+        private int handlePutLogEventsFailure(final Exception e, final int currentFailCount, final Backoff backoff,
+                                              final boolean retryable) throws InterruptedException {
             final String classification = classifyAndCountFailure(e);
             LOG.error(NOISY, "Failed to push logs (classification={}): {}", classification, e.getMessage());
             cloudWatchLogsMetrics.increaseRequestFailCounter(1);
@@ -257,18 +262,18 @@ public class CloudWatchLogsDispatcher {
             if (newFailCount % MULTIPLE_FAILURES_METRIC_COUNT == 0) {
                 cloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
             }
-            final long delayMillis = backoff.nextDelayMillis(newFailCount);
-            if (delayMillis > 0) {
-                Thread.sleep(delayMillis);
+            if (retryable) {
+                final long delayMillis = backoff.nextDelayMillis(newFailCount);
+                if (delayMillis > 0) {
+                    Thread.sleep(delayMillis);
+                }
             }
             return newFailCount;
         }
 
         /**
-         * Classifies an exception as access-denied, throttled, or unclassified and increments
-         * the corresponding classified counter. ResourceNotFound is NOT classified here — it is
-         * counted structurally at the terminal catch site. Returns the classification label for
-         * logging. Never throws.
+         * Classifies a failure and increments its specific metric. ResourceNotFoundException is
+         * counted where it is caught. Returns the classification label for logging. Never throws.
          */
         private String classifyAndCountFailure(final Exception e) {
             if (e instanceof AwsServiceException) {
@@ -281,8 +286,19 @@ public class CloudWatchLogsDispatcher {
                     cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
                     return "accessDenied";
                 }
+                if (isClientError(ase)) {
+                    return "clientError";
+                }
+                if (CloudWatchLogsRetryCondition.isRetryable(ase)) {
+                    return "serverError";
+                }
             }
             return "unclassified";
+        }
+
+        private static boolean isClientError(final AwsServiceException ase) {
+            final int statusCode = ase.statusCode();
+            return statusCode >= 400 && statusCode < 500;
         }
 
         private static boolean isAccessDenied(final AwsServiceException ase) {

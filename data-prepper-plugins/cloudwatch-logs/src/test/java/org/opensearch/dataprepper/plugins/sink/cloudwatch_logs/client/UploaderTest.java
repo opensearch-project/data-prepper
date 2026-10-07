@@ -56,7 +56,11 @@ class UploaderTest {
     }
 
     void establishFailingClientWithCloudWatchLogsExcept() {
-        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(CloudWatchLogsException.class);
+        final CloudWatchLogsException serverException = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("Internal server error")
+                .statusCode(500)
+                .build();
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(serverException);
     }
 
     void establishFailingClientWithSdkClientExcept() {
@@ -88,7 +92,7 @@ class UploaderTest {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(1)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 }
