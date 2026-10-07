@@ -89,6 +89,16 @@
           "path_match": "attributes.*",
           "match_mapping_type": "string"
         }
+      },
+      {
+        "string_events_attributes": {
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "path_match": "events.attributes.*",
+          "match_mapping_type": "string"
+        }
       }
     ],
     "properties": {
