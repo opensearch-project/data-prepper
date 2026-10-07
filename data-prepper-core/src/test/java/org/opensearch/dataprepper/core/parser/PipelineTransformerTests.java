@@ -401,6 +401,25 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_does_not_apply_circuit_breaker_to_failure_pipeline_buffer() {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
+                .thenReturn(Optional.of(circuitBreaker));
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        when(expressionEvaluator.isValidExpressionStatement("/value == raw")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("/value == service")).thenReturn(true);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_WITH_FAILURE_PIPELINE_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+
+        final Pipeline failurePipeline = pipelineMap.get(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        assertThat(failurePipeline, notNullValue());
+        assertThat(failurePipeline.getSource(), instanceOf(HeadlessPipelineSource.class));
+        assertThat(failurePipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
+    }
+
+    @Test
     void testMultipleProcessors() {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
