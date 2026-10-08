@@ -198,6 +198,20 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
+    void checkAndCreatePolicy_withPlainV2IndexManager_usesV2Policy() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
+        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
+        assertEquals(Optional.of("otel-v2-apm-span-policy"), traceAnalyticsRawPlainV2IndexManager.checkAndCreatePolicy());
+        verify(restClient, times(2)).performRequest(any());
+        verify(restHighLevelClient, times(2)).getLowLevelClient();
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
+    }
+
+    @Test
     void checkAndCreateIndexTemplate_NoIndexTemplateOnHost_ISMDisabled() throws IOException {
         when(templateStrategy.getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME))
                 .thenReturn(Optional.empty());
@@ -283,6 +297,22 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenReturn(null);
         traceAnalyticsRawStandardIndexManager.checkAndCreateIndex();
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
+    }
+
+    @Test
+    void checkAndCreateIndex_NeedToCreateNewIndex_withPlainV2IndexManager() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
+                .thenReturn(null);
+        traceAnalyticsRawPlainV2IndexManager.checkAndCreateIndex();
         verify(openSearchClient, times(2)).indices();
         verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
         verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));

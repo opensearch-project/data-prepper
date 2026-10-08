@@ -129,6 +129,44 @@ public class IndexConfigurationTests {
     }
 
     @Test
+    public void testRawAPMSpanPlainV2() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue()).build();
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v2-apm-span"));
+        assertThat(indexConfiguration.getDocumentId(), equalTo("${traceId}/${spanId}"));
+        assertOTelAPMSpanTemplate(indexConfiguration.getIndexTemplate());
+    }
+
+    @Test
+    public void testRawAPMSpanPlainV2WithIndexTemplates() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v2-apm-span"));
+        assertThat(indexConfiguration.getDocumentId(), equalTo("${traceId}/${spanId}"));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("template"));
+        assertOTelAPMSpanTemplate((Map<String, Object>) indexConfiguration.getIndexTemplate().get("template"));
+    }
+
+    private static void assertOTelAPMSpanTemplate(final Map<String, Object> template) {
+        assertThat(template.get("settings"), equalTo(Map.of("index.append_only.enabled", false)));
+
+        final Map<String, Object> mappings = (Map<String, Object>) template.get("mappings");
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        for (final String nestedField : List.of("events", "links")) {
+            final Map<String, Object> dynamicTemplate = dynamicTemplates.stream()
+                    .filter(entry -> entry.containsKey("string_" + nestedField + "_attributes"))
+                    .map(entry -> (Map<String, Object>) entry.get("string_" + nestedField + "_attributes"))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(dynamicTemplate.get("path_match"), equalTo(nestedField + ".attributes.*"));
+            assertThat(dynamicTemplate.get("match_mapping_type"), equalTo("string"));
+            assertThat(dynamicTemplate.get("mapping"), equalTo(Map.of("type", "keyword", "ignore_above", 256)));
+        }
+    }
+
+    @Test
     public void testServiceMapWithIndexTemplates() {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue())
@@ -149,7 +187,7 @@ public class IndexConfigurationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP"})
+    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "TRACE_ANALYTICS_RAW_PLAIN_V2", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP"})
     public void testBuiltInIndexTypeWithComponentTemplates(final IndexType indexType) {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(indexType.getValue())

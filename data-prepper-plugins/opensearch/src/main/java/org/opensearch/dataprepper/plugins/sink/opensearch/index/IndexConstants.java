@@ -41,6 +41,10 @@ public class IndexConstants {
   public static final String OTEL_APM_SERVICE_MAP_ISM_POLICY = "otel-v2-apm-service-map-policy";
   public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_NO_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-no-ism-template.json";
   public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-with-ism-template.json";
+  public static final String OTEL_APM_SPAN_TEMPLATE_FILE = "otel-v2-apm-span-index-template.json";
+  public static final String OTEL_APM_SPAN_ISM_POLICY = "otel-v2-apm-span-policy";
+  public static final String OTEL_APM_SPAN_ISM_FILE_NO_ISM_TEMPLATE = "otel-v2-apm-span-policy-no-ism-template.json";
+  public static final String OTEL_APM_SPAN_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v2-apm-span-policy-with-ism-template.json";
 
   public static final String TSDB_DEFAULT_TEMPLATE_FILE = "tsdb-index-template.json";
 
@@ -50,6 +54,7 @@ public class IndexConstants {
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.OTEL_APM_SERVICE_MAP, "otel-v2-apm-service-map");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW, "otel-v1-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_PLAIN, "otel-v1-apm-span");
+    TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, "otel-v2-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS, "logs-otel-v1");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS_PLAIN, "logs-otel-v1");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS, "metrics-otel-v1");
