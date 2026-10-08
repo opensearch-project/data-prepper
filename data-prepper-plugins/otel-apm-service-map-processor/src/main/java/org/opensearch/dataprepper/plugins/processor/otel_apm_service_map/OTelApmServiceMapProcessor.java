@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -54,6 +56,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -62,7 +65,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
@@ -82,6 +84,10 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static final String SPANS_DB_COUNT = "spansDbCount";
     static final String DEPENDENCY_CALLS_OVERFLOWED_METRIC = "dependencyCallsOverflowed";
     static final String REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC = "dependencyRemoteOperationCallsOverflowed";
+    // The master evaluates each window alone while every worker waits at the barrier, so these measure that pause.
+    static final String WINDOW_EVALUATION_TIME_METRIC = "windowEvaluationTime";
+    static final String WINDOW_EVALUATION_TRACES_METRIC = "windowEvaluationTraces";
+    static final String WINDOW_EVALUATION_SPANS_METRIC = "windowEvaluationSpans";
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelApmServiceMapProcessor.class);
     private static final String EVENT_TYPE_OTEL_APM_SERVICE_MAP = "SERVICE_MAP";
@@ -128,6 +134,12 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private final Runnable onDependencyCallOverflowed;
     /** Increments the remote-operation overflow counter; a no-op when dependency nodes are disabled. */
     private final Runnable onRemoteOperationCallOverflowed;
+    /** Duration of each window evaluation; the master runs it while all workers wait at the barrier. */
+    private final Timer windowEvaluationTimer;
+    /** Traces in the current window per evaluation. */
+    private final DistributionSummary windowEvaluationTraces;
+    /** Spans in the current window per evaluation. */
+    private final DistributionSummary windowEvaluationSpans;
     /**
      * Per-service dependency cardinality caps. Long-lived so admission is sticky across windows: an admitted
      * dependency keeps its name instead of switching to an overflow name from one window to the next.
@@ -245,6 +257,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 ? pluginMetrics.counter(DEPENDENCY_CALLS_OVERFLOWED_METRIC)::increment : () -> { };
         this.onRemoteOperationCallOverflowed = dependencyNodesEnabled
                 ? pluginMetrics.counter(REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC)::increment : () -> { };
+        this.windowEvaluationTimer = pluginMetrics.timer(WINDOW_EVALUATION_TIME_METRIC);
+        this.windowEvaluationTraces = pluginMetrics.summary(WINDOW_EVALUATION_TRACES_METRIC);
+        this.windowEvaluationSpans = pluginMetrics.summary(WINDOW_EVALUATION_SPANS_METRIC);
         this.dependencyLimiter = new DependencyCardinalityLimiter(maxDependenciesPerService,
                 maxRemoteOperationsPerService, onDependencyCallOverflowed, onRemoteOperationCallOverflowed);
     }
@@ -300,6 +315,24 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         }
         processorsCreated.set(0);
         allThreadsCyclicBarrier.reset();
+    }
+
+    /**
+     * Resets the state shared by all instances (worker count, windows, barrier), so a test does not depend on an
+     * earlier test having called {@link #shutdown()}.
+     */
+    static void resetSharedStateForTesting() {
+        for (final MapDbProcessorState<Collection<SpanStateData>> window : Arrays.asList(previousWindow, currentWindow, nextWindow)) {
+            if (window != null) {
+                window.delete();
+            }
+        }
+        previousWindow = null;
+        currentWindow = null;
+        nextWindow = null;
+        previousTimestamp = null;
+        allThreadsCyclicBarrier = null;
+        processorsCreated.set(0);
     }
 
     /**
@@ -443,7 +476,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
             Collection<Record<Event>> apmEvents = new HashSet<>();
             if (isMasterInstance()) {
-                apmEvents = processCurrentWindowSpans();
+                apmEvents = windowEvaluationTimer.record(this::processCurrentWindowSpans);
                 rotateWindows();
             }
 
@@ -482,6 +515,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         final Map<String, Collection<SpanStateData>> previousSpansByTraceId = buildSpansByTraceIdMap(previousWindow);
         final Map<String, Collection<SpanStateData>> currentSpansByTraceId = buildSpansByTraceIdMap(currentWindow);
         final Map<String, Collection<SpanStateData>> nextSpansByTraceId = buildSpansByTraceIdMap(nextWindow);
+        windowEvaluationTraces.record(currentSpansByTraceId.size());
+        windowEvaluationSpans.record(currentSpansByTraceId.values().stream().mapToInt(Collection::size).sum());
 
         final Set<String> knownServerServices = dependencyNodesEnabled
                 ? collectServerServiceNames(previousSpansByTraceId, currentSpansByTraceId, nextSpansByTraceId)
@@ -641,7 +676,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     }
 
     /**
-     * Build a map of traceId -> spans from a window
+     * Build a map of traceId -> spans from a window.
+     * <p>
+     * Only the master instance evaluates the windows (see {@link #evaluateApmEvents()}), so it must read
+     * every trace in the window. Reading a per-instance key-range segment here would leave the other
+     * workers' segments unevaluated when the processor runs with more than one worker.
      *
      * @param window The window to extract spans from
      * @return Map of traceId to collection of spans
@@ -650,17 +689,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         final Map<String, Collection<SpanStateData>> spansByTraceId = new HashMap<>();
 
         if (window != null && window.getAll() != null && window.size() > 0) {
-            try {
-                window.getIterator(processorsCreated.get(), thisProcessorId).forEachRemaining(entry -> {
-                    final String traceId = Hex.encodeHexString(entry.getKey());
-                    final Collection<SpanStateData> spans = entry.getValue();
-                    if (spans != null && !spans.isEmpty()) {
-                        spansByTraceId.put(traceId, spans);
-                    }
-                });
-            } catch (NoSuchElementException e) {
-                LOG.debug("Window is empty, skipping iteration: {}", e.getMessage());
-            }
+            window.getAll().forEach((traceIdBytes, spans) -> {
+                if (spans != null && !spans.isEmpty()) {
+                    spansByTraceId.put(Hex.encodeHexString(traceIdBytes), spans);
+                }
+            });
         }
 
         return spansByTraceId;
