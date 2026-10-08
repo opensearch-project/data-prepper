@@ -12,9 +12,11 @@ import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -32,6 +34,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpService;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,24 +57,52 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final PluginFactory pluginFactory;
     private final CertificateProviderFactory certificateProviderFactory;
     private final String pipelineName;
+    private final CircuitBreaker circuitBreaker;
     private Server server;
     private final ByteDecoder byteDecoder;
 
     @DataPrepperPluginConstructor
-    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final PluginFactory pluginFactory,
+                           final PipelineDescription pipelineDescription,
+                           final CircuitBreaker circuitBreaker) {
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig),
+                pipelineDescription, circuitBreaker);
+    }
+
+    // Legacy public constructor kept for backwards compatibility with existing unit tests.
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                           final PluginMetrics pluginMetrics,
+                           final PluginFactory pluginFactory,
                            final PipelineDescription pipelineDescription) {
-        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig), pipelineDescription);
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig),
+                pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test
-    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                    final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                    final PluginMetrics pluginMetrics,
+                    final PluginFactory pluginFactory,
+                    final CertificateProviderFactory certificateProviderFactory,
+                    final PipelineDescription pipelineDescription) {
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
+    }
+
+    // accessible only in the same package for unit test - allows passing a CircuitBreaker
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig,
+                    final PluginMetrics pluginMetrics,
+                    final PluginFactory pluginFactory,
+                    final CertificateProviderFactory certificateProviderFactory,
+                    final PipelineDescription pipelineDescription,
+                    final CircuitBreaker circuitBreaker) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pluginFactory = pluginFactory;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.circuitBreaker = circuitBreaker;
         this.byteDecoder = new OTelTraceDecoder(oTelTraceSourceConfig.getOutputFormat());
     }
 
@@ -92,6 +123,11 @@ public class OTelTraceSource implements Source<Record<Object>> {
             configureHeadersAndHealthCheck(serverBuilder);
             configureTLS(serverBuilder);
             configureTaskExecutor(serverBuilder);
+            // Server-level decorator installed before services are registered so it gates BOTH
+            // the gRPC service and the additional HTTP service registered on the same builder.
+            // When the circuit breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or
+            // HTTP 429) before any request body is read, decompressed, or parsed.
+            configureCircuitBreaker(serverBuilder);
 
             final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = (oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
             configureGrpcService(serverBuilder, oTelProtoDecoder, buffer);
@@ -187,6 +223,21 @@ public class OTelTraceSource implements Source<Record<Object>> {
                 .threadNamePrefix(pipelineName + "-otel_trace")
                 .build();
         serverBuilder.blockingTaskExecutor(blockingTaskExecutor, true);
+    }
+
+    private void configureCircuitBreaker(ServerBuilder serverBuilder) {
+        if (circuitBreaker == null) {
+            return;
+        }
+        LOG.info("Installing circuit-breaker HTTP decorator for otel_trace_source");
+        // Server-level decorator: wraps every service registered on this ServerBuilder
+        // (gRPC service + optional HTTP service). The authentication decorator is registered
+        // later and therefore runs first; both run before decompression and the handlers.
+        final RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
+                ? oTelTraceSourceConfig.getRetryInfo()
+                : new RetryInfoConfig();
+        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
     }
 
     @Override

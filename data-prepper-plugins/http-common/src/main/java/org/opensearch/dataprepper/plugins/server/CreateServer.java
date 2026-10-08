@@ -21,6 +21,7 @@ import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.netty.handler.ssl.ClientAuth;
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
@@ -29,6 +30,7 @@ import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
@@ -104,9 +106,11 @@ public class CreateServer {
     }
 
     /**
-     * Creates a GRPC server with multiple services, each with its own optional path and method descriptor
+     * Creates a GRPC server with multiple services, each with its own optional path and method descriptor.
+     * Backwards-compatible overload without a circuit breaker.
+     *
      * @param authenticationProvider Provider for authentication
-     * @param grpcServiceConfigs List of service configurations 
+     * @param grpcServiceConfigs List of service configurations
      * @param certificateProvider Provider for SSL/TLS certificates
      * @return Configured server
      */
@@ -114,6 +118,29 @@ public class CreateServer {
             final GrpcAuthenticationProvider authenticationProvider,
             final List<GRPCServiceConfig<?, ?>> grpcServiceConfigs,
             final CertificateProvider certificateProvider) {
+        return createGRPCServer(authenticationProvider, grpcServiceConfigs, certificateProvider, null);
+    }
+
+    /**
+     * Creates a GRPC server with multiple services and an optional circuit breaker.
+     *
+     * <p>When {@code circuitBreaker} is non-null, a server-level decorator is installed. It runs after
+     * HTTP authentication and before decompression and the gRPC handler.
+     * When the circuit breaker is open, incoming requests are rejected before any request body is
+     * read or parsed: gRPC requests with RESOURCE_EXHAUSTED, other requests with HTTP 429, both with
+     * a retry delay from the server's retry info.</p>
+     *
+     * @param authenticationProvider Provider for authentication
+     * @param grpcServiceConfigs List of service configurations
+     * @param certificateProvider Provider for SSL/TLS certificates
+     * @param circuitBreaker optional circuit breaker; may be {@code null} to disable the decorator
+     * @return Configured server
+     */
+    public Server createGRPCServer(
+            final GrpcAuthenticationProvider authenticationProvider,
+            final List<GRPCServiceConfig<?, ?>> grpcServiceConfigs,
+            final CertificateProvider certificateProvider,
+            final CircuitBreaker circuitBreaker) {
             
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
@@ -161,6 +188,19 @@ public class CreateServer {
 
         if (serverConfiguration.enableHttpHealthCheck()) {
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
+        }
+
+        // Armeria runs server-level decorators in reverse order of registration, so the
+        // authentication decorator registered below runs before this one. Both run before
+        // decompression and the gRPC handler. When the breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or HTTP 429,
+        // both with a retry delay) before any request body is read, decompressed, or parsed.
+        if (circuitBreaker != null) {
+            LOG.info("Installing circuit-breaker HTTP decorator for {}", sourceName);
+            final RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
+                    ? serverConfiguration.getRetryInfo()
+                    : DEFAULT_RETRY_INFO;
+            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                    circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
         }
 
         if(serverConfiguration.getAuthentication() != null) {
@@ -211,7 +251,9 @@ public class CreateServer {
     }
 
     /**
-     * Creates a GRPC server with a single service
+     * Creates a GRPC server with a single service.
+     * Backwards-compatible overload without a circuit breaker.
+     *
      * @param <K> Request type parameter
      * @param <V> Response type parameter
      * @param authenticationProvider Provider for authentication
@@ -225,15 +267,37 @@ public class CreateServer {
             final BindableService grpcService,
             final CertificateProvider certificateProvider,
             final MethodDescriptor<K, V> methodDescriptor) {
-        
+        return createGRPCServer(authenticationProvider, grpcService, certificateProvider, methodDescriptor, null);
+    }
+
+    /**
+     * Creates a GRPC server with a single service and an optional circuit breaker that rejects
+     * requests at the HTTP layer (before any body processing) when the breaker is open.
+     *
+     * @param <K> Request type parameter
+     * @param <V> Response type parameter
+     * @param authenticationProvider Provider for authentication
+     * @param grpcService Service to be added
+     * @param certificateProvider Provider for SSL/TLS certificates
+     * @param methodDescriptor Method descriptor for the service
+     * @param circuitBreaker optional circuit breaker; may be {@code null} to disable the decorator
+     * @return Configured server
+     */
+    public <K, V> Server createGRPCServer(
+            final GrpcAuthenticationProvider authenticationProvider,
+            final BindableService grpcService,
+            final CertificateProvider certificateProvider,
+            final MethodDescriptor<K, V> methodDescriptor,
+            final CircuitBreaker circuitBreaker) {
+
         List<GRPCServiceConfig<?, ?>> serviceConfigs = new ArrayList<>();
         if (serverConfiguration.getPath() != null) {
             serviceConfigs.add(new GRPCServiceConfig<>(grpcService, serverConfiguration.getPath(), methodDescriptor));
         } else {
             serviceConfigs.add(new GRPCServiceConfig<>(grpcService));
         }
-        
-        return createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider);
+
+        return createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider, circuitBreaker);
     }
 
 

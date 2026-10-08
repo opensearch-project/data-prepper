@@ -13,9 +13,11 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.util.FingerprintTrustManagerFactory;
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.core.peerforwarder.ForwardingAuthentication;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
@@ -38,13 +40,32 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final CertificateProviderFactory certificateProviderFactory;
     private final PeerForwarderHttpService peerForwarderHttpService;
+    private final CircuitBreaker circuitBreaker;
 
     public PeerForwarderHttpServerProvider(final PeerForwarderConfiguration peerForwarderConfiguration,
                                            final CertificateProviderFactory certificateProviderFactory,
                                            final PeerForwarderHttpService peerForwarderHttpService) {
+        this(peerForwarderConfiguration, certificateProviderFactory, peerForwarderHttpService, null);
+    }
+
+    /**
+     * Creates the provider with an optional circuit breaker. When the circuit breaker is present,
+     * the server rejects peer forwarder requests with HTTP 429 while it is open, before the
+     * request body is read.
+     *
+     * @param peerForwarderConfiguration the peer forwarder configuration
+     * @param certificateProviderFactory the factory for the server certificate
+     * @param peerForwarderHttpService the service handling forwarded events
+     * @param circuitBreaker the circuit breaker to consult on every request; may be {@code null}
+     */
+    public PeerForwarderHttpServerProvider(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                           final CertificateProviderFactory certificateProviderFactory,
+                                           final PeerForwarderHttpService peerForwarderHttpService,
+                                           final CircuitBreaker circuitBreaker) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.certificateProviderFactory = certificateProviderFactory;
         this.peerForwarderHttpService = peerForwarderHttpService;
+        this.circuitBreaker = circuitBreaker;
     }
 
     @Override
@@ -89,6 +110,11 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threadCount);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
         // TODO: Add throttling service
+
+        if (circuitBreaker != null) {
+            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker,
+                    () -> LOG.debug("Rejecting peer forwarder request: circuit breaker is open.")));
+        }
 
         sb.annotatedService(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI, peerForwarderHttpService);
 
