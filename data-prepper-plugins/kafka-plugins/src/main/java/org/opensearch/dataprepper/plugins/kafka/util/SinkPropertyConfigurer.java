@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 
 
 import org.apache.commons.lang3.ObjectUtils;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.TopicConfig;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -171,6 +173,7 @@ public class SinkPropertyConfigurer {
         final String registryURL = schemaConfig != null ? schemaConfig.getRegistryURL() : null;
         if (registryURL != null && !registryURL.isEmpty()) {
             properties.put(REGISTRY_URL, registryURL);
+            properties.put(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
         }
         setSchemaCredentialsConfig(schemaConfig, properties);
     }
