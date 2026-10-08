@@ -33,5 +33,7 @@ public class QueueConfigTest {
         assertEquals(Duration.ofHours(2), queueConfig.getVisibilityDuplicateProtectionTimeout(),
                 "Visibility duplicate protection timeout should default to 2 hours");
         assertNull(queueConfig.getWaitTime(), "Wait time should default to null");
+        assertEquals(Duration.ofMinutes(5), queueConfig.getMaximumBackoff(),
+                "Maximum backoff should default to 5 minutes");
     }
 }

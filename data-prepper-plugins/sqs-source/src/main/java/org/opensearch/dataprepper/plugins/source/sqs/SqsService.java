@@ -71,7 +71,7 @@
             SqsClient sqsClient = sqsClientMap.computeIfAbsent(region,
                     r -> SqsClientFactory.createSqsClient(Region.of(r), credentialsProvider));
             String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
-            Backoff backoff = SqsBackoff.createExponentialBackoff();
+            Backoff backoff = SqsBackoff.createExponentialBackoff(queueConfig.getMaximumBackoff());
             SqsWorkerCommon sqsWorkerCommon = new SqsWorkerCommon(backoff, pluginMetrics, acknowledgementSetManager);
             int numWorkers = queueConfig.getNumWorkers();
             SqsEventProcessor sqsEventProcessor;
