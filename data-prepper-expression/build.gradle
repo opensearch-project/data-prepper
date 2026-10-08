@@ -61,3 +61,13 @@ jacocoTestCoverageVerification {
 tasks.named('sourcesJar').configure {
     dependsOn 'generateGrammarSource'
 }
+
+spotless {
+    java {
+        target 'src/**/*.java'
+    }
+}
+
+tasks.named('spotlessJava').configure {
+    dependsOn 'generateGrammarSource'
+}

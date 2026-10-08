@@ -18,7 +18,6 @@ dependencies {
     implementation project(':data-prepper-plugins:http-common')
     implementation libs.commons.codec
     implementation project(':data-prepper-plugins:armeria-common')
-    implementation libs.opentelemetry.proto
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:auth'

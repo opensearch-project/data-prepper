@@ -43,6 +43,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
     protected static final String SEVERITY_TEXT_KEY = "severityText";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
+    protected static final String EVENT_NAME_KEY = "eventName";
 
     protected void checkAndSetDefaultValues() {
         putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
@@ -118,6 +119,11 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     @Override
     public Integer getDroppedAttributesCount() {
         return this.get(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class);
+    }
+
+    @Override
+    public String getEventName() {
+        return this.get(EVENT_NAME_KEY, String.class);
     }
 
     @Override
@@ -347,6 +353,18 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
             data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
+            return getThis();
+        }
+
+        /**
+         * Sets the event name of this log event as defined in the OTel LogRecord spec.
+         *
+         * @param eventName sets the event name of this log event
+         * @return the builder
+         * @since 2.17
+         */
+        public Builder withEventName(final String eventName) {
+            data.put(EVENT_NAME_KEY, eventName);
             return getThis();
         }
 
