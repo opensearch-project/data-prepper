@@ -115,6 +115,10 @@ public class KafkaSecurityConfigurer {
     private static AwsCredentialsProvider awsGlueCredentialsProvider;
     private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
 
+    static AwsCredentialsProvider getMskCredentialsProvider() {
+        return mskCredentialsProvider;
+    }
+
 
     /*public static void setSaslPlainTextProperties(final KafkaSourceConfig kafkaSourConfig,
                                                   final Properties properties) {
@@ -245,18 +249,8 @@ public class KafkaSecurityConfigurer {
             if (Objects.isNull(awsConfig)) {
                 throw new RuntimeException("AWS Config needs to be specified when sasl/aws_msk_iam is set to \"role\"");
             }
-            String baseIamAuthConfig = "software.amazon.msk.auth.iam.IAMLoginModule required " +
-                "awsRoleArn=\"%s\" " +
-                "awsStsRegion=\"%s\"";
-
-            baseIamAuthConfig = String.format(baseIamAuthConfig, awsConfig.getStsRoleArn(), awsConfig.getRegion());
-
-            if (Objects.nonNull(awsConfig.getStsRoleSessionName())) {
-                baseIamAuthConfig += String.format(" awsRoleSessionName=\"%s\"", awsConfig.getStsRoleSessionName());
-            }
-
-            baseIamAuthConfig += ";";
-            properties.put(SASL_JAAS_CONFIG, baseIamAuthConfig);
+            properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, MskIamAuthCredentialsCallbackHandler.class.getName());
+            properties.put(SASL_JAAS_CONFIG, "software.amazon.msk.auth.iam.IAMLoginModule required;");
         } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
             properties.put(SASL_JAAS_CONFIG,
                     "software.amazon.msk.auth.iam.IAMLoginModule required;");
