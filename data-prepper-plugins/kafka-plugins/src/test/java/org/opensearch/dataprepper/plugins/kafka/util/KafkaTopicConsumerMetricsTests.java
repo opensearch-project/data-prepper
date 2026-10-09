@@ -37,8 +37,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics.ACTUAL_POLL_INTERVAL;
+import static org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics.NUMBER_OF_BUFFER_WRITE_FAILURES;
+import static org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics.NUMBER_OF_COMMIT_FAILURES;
+import static org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics.NUMBER_OF_SEEK_FAILURES;
 
 @ExtendWith(MockitoExtension.class)
 public class KafkaTopicConsumerMetricsTests {
@@ -425,6 +429,15 @@ public class KafkaTopicConsumerMetricsTests {
 
         assertThat(recordedTime, greaterThan(0L));
         assertThat(recordedTime, lessThan(1000L));
+    }
+
+    @Test
+    void constructor_registers_failure_counters() {
+        topicMetrics = createObjectUnderTest();
+
+        verify(pluginMetrics).counter("topic." + topicName + "." + NUMBER_OF_COMMIT_FAILURES);
+        verify(pluginMetrics).counter("topic." + topicName + "." + NUMBER_OF_SEEK_FAILURES);
+        verify(pluginMetrics).counter("topic." + topicName + "." + NUMBER_OF_BUFFER_WRITE_FAILURES);
     }
 
 }
