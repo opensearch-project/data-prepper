@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "template": {
     "mappings": {
       "date_detection": false,
@@ -88,6 +88,26 @@
               "ignore_above": 256
             },
             "path_match": "attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
+          "string_events_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "events.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
+          "string_links_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "links.attributes.*",
             "match_mapping_type": "string"
           }
         }
