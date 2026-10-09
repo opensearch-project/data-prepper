@@ -39,4 +39,14 @@ public interface ArmeriaHttpAuthenticationProvider {
     default Optional<Function<? super HttpService, ? extends HttpService>> getAuthenticationDecorator() {
         return Optional.empty();
     }
+
+    /**
+     * Gets client authentication (mTLS) configuration.
+     * Called during server setup when SSL is enabled to configure client certificate verification.
+     *
+     * @return an optional client auth configuration for mTLS
+     */
+    default Optional<ClientAuthConfiguration> getClientAuthConfiguration() {
+        return Optional.empty();
+    }
 }
