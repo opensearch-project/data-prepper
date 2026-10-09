@@ -26,6 +26,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
@@ -43,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -73,6 +75,7 @@ public class RemotePeerForwarderBenchmark {
     private RemotePeerForwarder peerForwarder;
     private Collection<Record<Event>> testRecords;
     private ScheduledExecutorService networkLatencySimulator;
+    private final ThreadLocal<Phaser> threadPhaser = new ThreadLocal<>();
 
     @Param({"1", "2", "4"})
     private int nodeCount;
@@ -85,25 +88,31 @@ public class RemotePeerForwarderBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-        // Create a thread pool for simulating network latency
-        networkLatencySimulator = Executors.newScheduledThreadPool(PIPELINE_WORKER_THREADS * 2);
+        // Thread pool large enough for PIPELINE_WORKER_THREADS concurrent workers each submitting multiple batches
+        networkLatencySimulator = Executors.newScheduledThreadPool(PIPELINE_WORKER_THREADS * 4);
 
         PeerForwarderClient mockClient = mock(PeerForwarderClient.class);
         
         when(mockClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString()))
             .thenAnswer(invocation -> {
-                CompletableFuture<AggregatedHttpResponse> future = new CompletableFuture<>();                
+                final Phaser phaser = threadPhaser.get();
+                phaser.register();
+                CompletableFuture<AggregatedHttpResponse> future = new CompletableFuture<>();
                 if (networkLatencyMs == 0) {
                     future.complete(AggregatedHttpResponse.of(HttpStatus.OK));
+                    phaser.arrive();
                 } else {
                     // Simulate network latency
                     networkLatencySimulator.schedule(
-                        () -> future.complete(AggregatedHttpResponse.of(HttpStatus.OK)),
+                        () -> {
+                            future.complete(AggregatedHttpResponse.of(HttpStatus.OK));
+                            phaser.arrive();
+                        },
                         networkLatencyMs,
                         TimeUnit.MILLISECONDS
                     );
                 }
-                
+
                 return future;
             });
 
@@ -144,8 +153,13 @@ public class RemotePeerForwarderBenchmark {
     }
 
     @Benchmark
+    @Threads(PIPELINE_WORKER_THREADS)
     public Collection<Record<Event>> benchmarkForwardRecords() {
-        return peerForwarder.forwardRecords(testRecords);
+        final Phaser phaser = new Phaser(1);
+        threadPhaser.set(phaser);
+        final Collection<Record<Event>> result = peerForwarder.forwardRecords(testRecords);
+        phaser.arriveAndAwaitAdvance();
+        return result;
     }
 
     private Collection<Record<Event>> generateTestRecords(int count, int nodes) {
