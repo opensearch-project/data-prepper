@@ -178,7 +178,8 @@ public class IndexConfiguration {
 
         String documentIdField = builder.documentIdField;
         String documentId = builder.documentId;
-        if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW) || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)) {
+        if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW) || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)
+                || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2)) {
             documentId = "${traceId}/${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentId = "${hashId}";
@@ -512,6 +513,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_STANDARD_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.OTEL_APM_SPAN_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.OTEL_APM_SERVICE_MAP)) {
