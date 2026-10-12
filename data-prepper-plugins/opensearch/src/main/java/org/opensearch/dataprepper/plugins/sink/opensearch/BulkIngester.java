@@ -514,25 +514,6 @@ public class BulkIngester implements Ingester {
 
     private void logFailureForDlqObjects(final HeadlessPipeline failurePipeline,
                                          final List<DlqObject> dlqObjects, final Throwable failure) {
-        if (failurePipeline != null) {
-            List<Record<Event>> records = new ArrayList<>();
-            for (DlqObject dlqObject : dlqObjects) {
-                Event event = dlqObject.getEvent();
-                if (event != null) {
-                    event.updateFailureMetadata()
-                            .withPluginId(dlqObject.getPluginId())
-                            .withPluginName(dlqObject.getPluginName())
-                            .withPipelineName(dlqObject.getPipelineName())
-                            .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
-                            .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
-                            .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
-                            .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
-                    records.add(new Record<>(event));
-                }
-            }
-            failurePipeline.sendEvents(records);
-            return;
-        }
         if (dlqFileWriter != null) {
             dlqObjects.forEach(dlqObject -> {
                 final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
@@ -551,17 +532,48 @@ public class BulkIngester implements Ingester {
                 dlqWriter.write(dlqObjects, pipeline, PLUGIN_NAME);
                 dlqObjects.forEach(dlqObject -> dlqObject.releaseEventHandle(true));
             } catch (final IOException e) {
-                dlqObjects.forEach(dlqObject -> {
-                    LOG.error(NOISY, "Failed to write a document to the DLQ", e);
-                    dlqObject.releaseEventHandle(false);
-                });
+                LOG.error(NOISY, "Failed to write to S3 DLQ, falling back to failure pipeline", e);
+                sendToFailurePipelineOrRelease(failurePipeline, dlqObjects, failure);
             }
+        } else if (failurePipeline != null) {
+            sendToFailurePipeline(failurePipeline, dlqObjects);
         } else {
             dlqObjects.forEach(dlqObject -> {
                 final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
                 final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
                 LOG.warn("Document failed to write to OpenSearch with error code {}. Configure a DLQ to save failed documents. Error: {}",
                         failedDlqData.getStatus(), message);
+                dlqObject.releaseEventHandle(false);
+            });
+        }
+    }
+
+    private void sendToFailurePipeline(final HeadlessPipeline failurePipeline, final List<DlqObject> dlqObjects) {
+        final List<Record<Event>> records = new ArrayList<>();
+        for (final DlqObject dlqObject : dlqObjects) {
+            final Event event = dlqObject.getEvent();
+            if (event != null) {
+                event.updateFailureMetadata()
+                        .withPluginId(dlqObject.getPluginId())
+                        .withPluginName(dlqObject.getPluginName())
+                        .withPipelineName(dlqObject.getPipelineName())
+                        .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                        .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
+                        .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
+                        .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
+                records.add(new Record<>(event));
+            }
+        }
+        failurePipeline.sendEvents(records);
+    }
+
+    private void sendToFailurePipelineOrRelease(final HeadlessPipeline failurePipeline,
+                                                final List<DlqObject> dlqObjects, final Throwable failure) {
+        if (failurePipeline != null) {
+            sendToFailurePipeline(failurePipeline, dlqObjects);
+        } else {
+            dlqObjects.forEach(dlqObject -> {
+                LOG.error(NOISY, "Failed to write a document to the DLQ", failure);
                 dlqObject.releaseEventHandle(false);
             });
         }
