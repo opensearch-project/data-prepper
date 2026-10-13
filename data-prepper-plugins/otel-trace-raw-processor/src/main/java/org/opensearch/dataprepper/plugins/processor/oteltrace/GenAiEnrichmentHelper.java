@@ -150,7 +150,8 @@ final class GenAiEnrichmentHelper {
     /**
      * Normalizes vendor-specific attributes to OTel GenAI Semantic Conventions.
      * Copies values to the standard gen_ai.* key, keeping originals intact.
-     * Skips if the target attribute already exists on the span.
+     * Skips if the target attribute already exists on the span. When several source
+     * attributes map to the same target, the one listed first in the mappings file wins.
      */
     static void normalizeAttributes(final Span span) {
         final Map<String, Object> attrs = span.getAttributes();
@@ -158,15 +159,25 @@ final class GenAiEnrichmentHelper {
             return;
         }
 
-        for (final Map.Entry<String, Object> entry : new ArrayList<>(attrs.entrySet())) {
+        // Pick one source per target first: span.put does not update attrs, so checking attrs
+        // while writing would let every later source overwrite the earlier one.
+        final Map<String, Map.Entry<String, Object>> sources = new HashMap<>();
+        for (final Map.Entry<String, Object> entry : attrs.entrySet()) {
             final GenAiAttributeMappings.MappingTarget target =
                     GenAiAttributeMappings.getLookupTable().get(entry.getKey());
-            if (target == null) {
+            if (target == null || attrs.containsKey(target.getKey())) {
                 continue;
             }
-            if (attrs.containsKey(target.getKey())) {
-                continue;
+            final Map.Entry<String, Object> current = sources.get(target.getKey());
+            if (current == null || target.getPriority()
+                    < GenAiAttributeMappings.getLookupTable().get(current.getKey()).getPriority()) {
+                sources.put(target.getKey(), entry);
             }
+        }
+
+        for (final Map.Entry<String, Object> entry : sources.values()) {
+            final GenAiAttributeMappings.MappingTarget target =
+                    GenAiAttributeMappings.getLookupTable().get(entry.getKey());
 
             Object value = entry.getValue();
             if (value instanceof String) {

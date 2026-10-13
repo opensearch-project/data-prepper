@@ -36,10 +36,12 @@ final class GenAiAttributeMappings {
     static final class MappingTarget {
         private final String key;
         private final boolean wrapAsArray;
+        private final int priority;
 
-        MappingTarget(final String key, final boolean wrapAsArray) {
+        MappingTarget(final String key, final boolean wrapAsArray, final int priority) {
             this.key = key;
             this.wrapAsArray = wrapAsArray;
+            this.priority = priority;
         }
 
         String getKey() {
@@ -48,6 +50,14 @@ final class GenAiAttributeMappings {
 
         boolean isWrapAsArray() {
             return wrapAsArray;
+        }
+
+        /**
+         * Position of the mapping in the mappings file. When several source attributes on one
+         * span map to the same target, the one listed first (lowest priority) wins.
+         */
+        int getPriority() {
+            return priority;
         }
     }
 
@@ -89,6 +99,7 @@ final class GenAiAttributeMappings {
     @SuppressWarnings("unchecked")
     private static Map<String, MappingTarget> buildLookupTable(final Map<String, Object> yaml) {
         final Map<String, MappingTarget> table = new HashMap<>();
+        int priority = 0;
         for (final Map.Entry<String, Object> profile : yaml.entrySet()) {
             if (!(profile.getValue() instanceof List)) {
                 continue;
@@ -104,7 +115,7 @@ final class GenAiAttributeMappings {
                     continue;
                 }
                 final boolean wrapSlice = Boolean.TRUE.equals(mapping.get("wrap_as_array"));
-                table.putIfAbsent(from, new MappingTarget(to, wrapSlice));
+                table.putIfAbsent(from, new MappingTarget(to, wrapSlice, priority++));
             }
         }
         return table;
