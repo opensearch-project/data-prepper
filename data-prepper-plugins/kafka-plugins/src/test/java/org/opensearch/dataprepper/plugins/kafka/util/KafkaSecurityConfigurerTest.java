@@ -182,15 +182,29 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
         assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("sasl.jaas.config"),
-                is("software.amazon.msk.auth.iam.IAMLoginModule required " +
-                        "awsRoleArn=\"test_sasl_iam_sts_role\" awsStsRegion=\"us-east-2\";"));
+                is("software.amazon.msk.auth.iam.IAMLoginModule required;"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
         assertThat(props.get("sasl.client.callback.handler.class"),
-                is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+                is(MskIamAuthCredentialsCallbackHandler.class.getName()));
+    }
+
+    @Test
+    public void testSetAuthPropertiesBootstrapServersWithSaslIAMRoleAndStsHeaderOverrides() throws IOException {
+        final Properties props = new Properties();
+        final KafkaSourceConfig kafkaSourceConfig =
+                createKafkaSinkConfig("kafka-pipeline-bootstrap-servers-sasl-iam-role-with-headers.yaml");
+        KafkaSecurityConfigurer.setAuthProperties(props, kafkaSourceConfig, null, LOG);
+        assertThat(props.getProperty("bootstrap.servers"), is("localhost:9092"));
+        assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
+        assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
+        assertThat(props.getProperty("sasl.jaas.config"),
+                is("software.amazon.msk.auth.iam.IAMLoginModule required;"));
+        assertThat(props.get("sasl.client.callback.handler.class"),
+                is(MskIamAuthCredentialsCallbackHandler.class.getName()));
     }
 
     @Test
@@ -230,14 +244,14 @@ public class KafkaSecurityConfigurerTest {
         assertThat(props.getProperty("bootstrap.servers"), is(testMSKEndpoint));
         assertThat(props.getProperty("sasl.mechanism"), is("AWS_MSK_IAM"));
         assertThat(props.getProperty("sasl.jaas.config"),
-                is("software.amazon.msk.auth.iam.IAMLoginModule required awsRoleArn=\"sts_role_arn\" awsStsRegion=\"us-east-2\";"));
+                is("software.amazon.msk.auth.iam.IAMLoginModule required;"));
         assertThat(props.getProperty("security.protocol"), is("SASL_SSL"));
         assertThat(props.getProperty("certificateContent"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.location"), is(nullValue()));
         assertThat(props.getProperty("ssl.truststore.password"), is(nullValue()));
         assertThat(props.get("ssl.engine.factory.class"), is(nullValue()));
         assertThat(props.get("sasl.client.callback.handler.class"),
-                is("software.amazon.msk.auth.iam.IAMClientCallbackHandler"));
+                is(MskIamAuthCredentialsCallbackHandler.class.getName()));
     }
 
     @Test
