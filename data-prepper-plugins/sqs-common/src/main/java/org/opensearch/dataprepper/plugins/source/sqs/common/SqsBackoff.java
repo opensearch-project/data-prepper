@@ -25,27 +25,27 @@ public final class SqsBackoff {
      * @return a configured {@link Backoff}
      */
     public static Backoff createExponentialBackoff() {
-        return createExponentialBackoff(null);
+        return createExponentialBackoff(Duration.ofMillis(DEFAULT_MAX_DELAY_MILLIS));
     }
 
     /**
-     * Creates an exponential backoff capped at {@code maximumDelay}. If the value is
-     * null, zero, negative, or shorter than the backoff's initial delay, the factory
-     * falls back to the default maximum rather than throwing.
+     * Creates an exponential backoff capped at {@code maximumDelay}.
      *
-     * @param maximumDelay the maximum delay between retries
+     * @param maximumDelay the maximum delay between retries. Must be non-null and at
+     *                     least the backoff's initial delay of 20 seconds.
      * @return a configured {@link Backoff}
+     * @throws IllegalArgumentException if {@code maximumDelay} is null or shorter than
+     *                                  the initial delay
      */
     public static Backoff createExponentialBackoff(final Duration maximumDelay) {
-        final long maxDelayMillis = isValidMaximumDelay(maximumDelay) ? maximumDelay.toMillis() : DEFAULT_MAX_DELAY_MILLIS;
-        return Backoff.exponential(INITIAL_DELAY_MILLIS, maxDelayMillis)
+        // Armeria rejects a maximum delay smaller than the initial delay.
+        if (maximumDelay == null || maximumDelay.toMillis() < INITIAL_DELAY_MILLIS) {
+            throw new IllegalArgumentException(
+                    "maximumDelay must be at least " + Duration.ofMillis(INITIAL_DELAY_MILLIS)
+                            + ", but was " + maximumDelay);
+        }
+        return Backoff.exponential(INITIAL_DELAY_MILLIS, maximumDelay.toMillis())
                 .withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-    }
-
-    // Armeria rejects a max below the initial delay. Fall back to the default on null, zero,
-    // negative, or sub-initial values so direct callers do not crash the pipeline.
-    private static boolean isValidMaximumDelay(final Duration duration) {
-        return duration != null && duration.toMillis() >= INITIAL_DELAY_MILLIS;
     }
 }

@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SqsBackoffTest {
 
@@ -53,27 +54,13 @@ class SqsBackoffTest {
                 delayAtHighAttempt, is(lessThanOrEqualTo(maxDelayCeiling)));
     }
 
-    @ParameterizedTest(name = "falls back to default when maximum delay is {0}")
+    @ParameterizedTest(name = "throws when maximum delay is {0}")
     @MethodSource("invalidMaximumDelays")
-    void testCreateExponentialBackoff_fallsBackOnInvalidMaximumDelay(final Duration invalidMaximumDelay) {
-        // Armeria rejects a maximum delay smaller than the initial delay. The factory must shield
-        // callers that bypass config validation by falling back to the default instead of throwing.
-        final Backoff backoff = SqsBackoff.createExponentialBackoff(invalidMaximumDelay);
-        assertThat(String.format("Backoff should not be null for invalid maximum delay %s", invalidMaximumDelay),
-                backoff, is(notNullValue()));
-
-        final long firstDelay = backoff.nextDelayMillis(1);
-        final long minDelay = (long) (SqsBackoff.INITIAL_DELAY_MILLIS * (1 - SqsBackoff.JITTER_RATE));
-        final long maxDelay = (long) (SqsBackoff.INITIAL_DELAY_MILLIS * (1 + SqsBackoff.JITTER_RATE));
-        assertThat(String.format("First delay for input %s should be at or above the default lower bound", invalidMaximumDelay),
-                firstDelay, is(greaterThanOrEqualTo(minDelay)));
-        assertThat(String.format("First delay for input %s should be at or below the default upper bound", invalidMaximumDelay),
-                firstDelay, is(lessThanOrEqualTo(maxDelay)));
-
-        final long defaultMaxCeiling = (long) (SqsBackoff.DEFAULT_MAX_DELAY_MILLIS * (1 + SqsBackoff.JITTER_RATE));
-        final long delayAtHighAttempt = backoff.nextDelayMillis(50);
-        assertThat(String.format("Delay at high attempt for input %s should be at or below the default ceiling", invalidMaximumDelay),
-                delayAtHighAttempt, is(lessThanOrEqualTo(defaultMaxCeiling)));
+    void testCreateExponentialBackoff_rejectsInvalidMaximumDelay(final Duration invalidMaximumDelay) {
+        // Armeria rejects a maximum delay smaller than the initial delay, so the factory must
+        // fail fast rather than silently substituting a default and masking a programmer bug.
+        assertThrows(IllegalArgumentException.class,
+                () -> SqsBackoff.createExponentialBackoff(invalidMaximumDelay));
     }
 
     private static Stream<Arguments> invalidMaximumDelays() {

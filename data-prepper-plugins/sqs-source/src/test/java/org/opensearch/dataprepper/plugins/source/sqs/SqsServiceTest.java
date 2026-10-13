@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
 import java.util.List;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -49,6 +50,7 @@ class SqsServiceTest {
         QueueConfig queueConfig = mock(QueueConfig.class);
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         when(queueConfig.getNumWorkers()).thenReturn(2);
+        when(queueConfig.getMaximumBackoff()).thenReturn(Duration.ofMinutes(5));
         when(sqsSourceConfig.getQueues()).thenReturn(List.of(queueConfig));
         SqsService sqsService = spy(new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, pluginMetrics, credentialsProvider));
         sqsService.start();
@@ -59,6 +61,7 @@ class SqsServiceTest {
         QueueConfig queueConfig = mock(QueueConfig.class);
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         when(queueConfig.getNumWorkers()).thenReturn(1);
+        when(queueConfig.getMaximumBackoff()).thenReturn(Duration.ofMinutes(5));
         when(sqsSourceConfig.getQueues()).thenReturn(List.of(queueConfig));
         SqsService sqsService = new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, pluginMetrics, credentialsProvider) {};
         sqsService.start();
