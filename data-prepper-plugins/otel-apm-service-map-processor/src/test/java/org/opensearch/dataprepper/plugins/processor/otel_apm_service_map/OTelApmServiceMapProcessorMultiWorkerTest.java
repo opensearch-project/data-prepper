@@ -14,7 +14,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,23 +59,27 @@ import static org.mockito.Mockito.when;
  */
 class OTelApmServiceMapProcessorMultiWorkerTest {
     private static final int TRACES = 200;
-    private static final Instant T0 = Instant.ofEpochSecond(1_609_459_200L);
+    private static final Instant START_TIME = Instant.parse("2021-01-01T00:00:00Z");
+    private static final Duration WORKER_TIMEOUT = Duration.ofSeconds(5);
 
     @TempDir
     File tempDir;
 
     private volatile EventMetadata eventMetadata;
     private volatile Object eventData;
+    private final List<OTelApmServiceMapProcessor> processors = new ArrayList<>();
 
-    @BeforeEach
-    void resetSharedState() {
-        OTelApmServiceMapProcessor.resetSharedStateForTesting();
+    @AfterEach
+    void tearDown() {
+        if (!processors.isEmpty()) {
+            processors.get(0).shutdown();
+        }
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 4})
     void everyTraceIsEvaluatedWhateverTheWorkerCount(final int workers) throws Exception {
-        final MutableClock clock = new MutableClock(T0);
+        final MutableClock clock = new MutableClock(START_TIME);
         final EventFactory eventFactory = jacksonEventFactory();
         // Dependency nodes are on by default, so the processor registers its overflow counters.
         final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
@@ -83,53 +87,48 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
         when(pluginMetrics.counter(any())).thenReturn(mock(Counter.class));
         when(pluginMetrics.timer(any())).thenAnswer(a -> meterRegistry.timer(a.getArgument(0)));
         when(pluginMetrics.summary(any())).thenAnswer(a -> meterRegistry.summary(a.getArgument(0)));
-        final List<OTelApmServiceMapProcessor> processors = new ArrayList<>();
         for (int i = 0; i < workers; i++) {
             processors.add(new OTelApmServiceMapProcessor(Duration.ofSeconds(60), tempDir, clock, workers,
                     eventFactory, pluginMetrics));
         }
-        try {
-            // One leaf SERVER span per trace, each for a distinct service, with random trace ids spread over
-            // the key range, split across the workers as the pipeline does.
-            final Random random = new Random(42);
-            final List<List<Record<Event>>> batches = new ArrayList<>();
-            for (int w = 0; w < workers; w++) {
-                batches.add(new ArrayList<>());
-            }
-            for (int t = 0; t < TRACES; t++) {
-                final byte[] traceId = new byte[16];
-                random.nextBytes(traceId);
-                batches.get(t % workers).add(new Record<>(leafServerSpan("svc-" + t, hex(traceId))));
-            }
-
-            // t=0: spans land in the next window; t=65s: rotate; t=130s: the window holding them is evaluated.
-            tick(processors, batches);
-            clock.set(T0.plusSeconds(65));
-            tick(processors, emptyBatches(workers));
-            clock.set(T0.plusSeconds(130));
-            final List<Record<Event>> emitted = tick(processors, emptyBatches(workers));
-
-            final Set<String> evaluatedServices = ConcurrentHashMap.newKeySet();
-            for (final Record<Event> record : emitted) {
-                final Event event = record.getData();
-                if (event.getMetadata() != null && "SERVICE_MAP".equals(event.getMetadata().getEventType())) {
-                    evaluatedServices.add(event.get("sourceNode/keyAttributes/name", String.class));
-                }
-            }
-            assertThat("workers=" + workers, evaluatedServices.size(), equalTo(TRACES));
-
-            // One evaluation per window, timed, and the evaluation that emitted them saw every trace.
-            final Timer evaluationTime = meterRegistry.timer(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TIME_METRIC);
-            final DistributionSummary evaluatedTraces =
-                    meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TRACES_METRIC);
-            final DistributionSummary evaluatedSpans =
-                    meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_SPANS_METRIC);
-            assertThat(evaluationTime.count(), equalTo(2L));
-            assertThat(evaluatedTraces.max(), equalTo((double) TRACES));
-            assertThat(evaluatedSpans.max(), equalTo((double) TRACES));
-        } finally {
-            processors.get(0).shutdown();
+        // One leaf SERVER span per trace, each for a distinct service, with random trace ids spread over
+        // the key range, split across the workers as the pipeline does.
+        final Random random = new Random(42);
+        final List<List<Record<Event>>> batches = new ArrayList<>();
+        for (int w = 0; w < workers; w++) {
+            batches.add(new ArrayList<>());
         }
+        for (int t = 0; t < TRACES; t++) {
+            final byte[] traceId = new byte[16];
+            random.nextBytes(traceId);
+            batches.get(t % workers).add(new Record<>(leafServerSpan("svc-" + t, hex(traceId))));
+        }
+
+        // t=0: spans land in the next window; t=65s: rotate; t=130s: the window holding them is evaluated.
+        tick(processors, batches);
+        clock.set(START_TIME.plusSeconds(65));
+        tick(processors, emptyBatches(workers));
+        clock.set(START_TIME.plusSeconds(130));
+        final List<Record<Event>> emitted = tick(processors, emptyBatches(workers));
+
+        final Set<String> evaluatedServices = ConcurrentHashMap.newKeySet();
+        for (final Record<Event> record : emitted) {
+            final Event event = record.getData();
+            if (event.getMetadata() != null && "SERVICE_MAP".equals(event.getMetadata().getEventType())) {
+                evaluatedServices.add(event.get("sourceNode/keyAttributes/name", String.class));
+            }
+        }
+        assertThat("workers=" + workers, evaluatedServices.size(), equalTo(TRACES));
+
+        // One evaluation per window, timed, and the evaluation that emitted them saw every trace.
+        final Timer evaluationTime = meterRegistry.timer(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TIME_METRIC);
+        final DistributionSummary evaluatedTraces =
+                meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_TRACES_METRIC);
+        final DistributionSummary evaluatedSpans =
+                meterRegistry.summary(OTelApmServiceMapProcessor.WINDOW_EVALUATION_SPANS_METRIC);
+        assertThat(evaluationTime.count(), equalTo(2L));
+        assertThat(evaluatedTraces.max(), equalTo((double) TRACES));
+        assertThat(evaluatedSpans.max(), equalTo((double) TRACES));
     }
 
     /** Runs one doExecute per worker concurrently; the processor's barrier requires all workers. */
@@ -151,8 +150,8 @@ class OTelApmServiceMapProcessorMultiWorkerTest {
         }
         threads.forEach(Thread::start);
         for (final Thread thread : threads) {
-            thread.join(30_000);
-            assertThat("worker still running after 30s (barrier hang?)", thread.isAlive(), equalTo(false));
+            thread.join(WORKER_TIMEOUT.toMillis());
+            assertThat("worker still running after " + WORKER_TIMEOUT + " (barrier hang?)", thread.isAlive(), equalTo(false));
         }
         if (failure.get() != null) {
             throw new AssertionError(failure.get());

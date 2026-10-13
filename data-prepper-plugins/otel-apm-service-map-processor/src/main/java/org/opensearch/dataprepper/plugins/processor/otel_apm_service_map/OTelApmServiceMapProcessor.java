@@ -56,7 +56,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -315,24 +314,6 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         }
         processorsCreated.set(0);
         allThreadsCyclicBarrier.reset();
-    }
-
-    /**
-     * Resets the state shared by all instances (worker count, windows, barrier), so a test does not depend on an
-     * earlier test having called {@link #shutdown()}.
-     */
-    static void resetSharedStateForTesting() {
-        for (final MapDbProcessorState<Collection<SpanStateData>> window : Arrays.asList(previousWindow, currentWindow, nextWindow)) {
-            if (window != null) {
-                window.delete();
-            }
-        }
-        previousWindow = null;
-        currentWindow = null;
-        nextWindow = null;
-        previousTimestamp = null;
-        allThreadsCyclicBarrier = null;
-        processorsCreated.set(0);
     }
 
     /**
