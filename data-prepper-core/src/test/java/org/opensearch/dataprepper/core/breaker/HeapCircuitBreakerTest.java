@@ -24,15 +24,29 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.time.Duration;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +62,11 @@ class HeapCircuitBreakerTest {
     @Mock
     private MemoryMXBean memoryMXBean;
 
+    @Mock
+    private Runnable garbageCollector;
+
+    private Duration initialGarbageCollectionInterval;
+    private Duration maxGarbageCollectionInterval;
     private Random random;
     private long byteUsage;
     private MemoryUsage memoryUsage;
@@ -57,6 +76,8 @@ class HeapCircuitBreakerTest {
     @BeforeEach
     void setUp() {
         random = new Random();
+        initialGarbageCollectionInterval = VERY_LARGE_RESET_PERIOD;
+        maxGarbageCollectionInterval = VERY_LARGE_RESET_PERIOD;
     }
 
     @AfterEach
@@ -68,7 +89,11 @@ class HeapCircuitBreakerTest {
     }
 
     private HeapCircuitBreaker createObjectUnderTest() {
-        return new HeapCircuitBreaker(config, memoryMXBean);
+        return new HeapCircuitBreaker(config,
+                                      memoryMXBean,
+                                      garbageCollector,
+                                      initialGarbageCollectionInterval,
+                                      maxGarbageCollectionInterval);
     }
 
     @Test
@@ -337,6 +362,172 @@ class HeapCircuitBreakerTest {
             }
 
             assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        @Test
+        void garbage_collection_is_requested_once_when_tripping() throws InterruptedException {
+            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+            verify(garbageCollector, times(1)).run();
+        }
+
+        @Test
+        void garbage_collection_is_not_requested_while_closed() throws InterruptedException {
+            when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+            verify(garbageCollector, never()).run();
+        }
+
+        @Test
+        void isOpen_returns_false_if_garbage_collection_before_tripping_frees_memory() throws InterruptedException {
+            final AtomicLong usedBytes = new AtomicLong(byteUsage + 1);
+            when(memoryUsage.getUsed()).thenAnswer(invocation -> usedBytes.get());
+            doAnswer(invocation -> {
+                usedBytes.set(byteUsage - 1);
+                return null;
+            }).when(garbageCollector).run();
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+            verify(garbageCollector, times(1)).run();
+        }
+
+        @Test
+        void isOpen_transition_from_false_to_true_without_garbage_collection_within_garbage_collection_interval()
+                throws InterruptedException {
+            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
+            final AtomicLong usedBytes = new AtomicLong(byteUsage + 1);
+            when(memoryUsage.getUsed()).thenAnswer(invocation -> usedBytes.get());
+            doAnswer(invocation -> {
+                usedBytes.set(byteUsage - 1);
+                return null;
+            }).when(garbageCollector).run();
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+
+            usedBytes.set(byteUsage + 1);
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+            verify(garbageCollector, times(1)).run();
+        }
+
+        @Test
+        void garbage_collection_is_requested_again_before_tripping_after_garbage_collection_interval()
+                throws InterruptedException {
+            initialGarbageCollectionInterval = SMALL_RESET_PERIOD;
+            final AtomicLong usedBytes = new AtomicLong(byteUsage + 1);
+            when(memoryUsage.getUsed()).thenAnswer(invocation -> usedBytes.get());
+            doAnswer(invocation -> {
+                usedBytes.set(byteUsage - 1);
+                return null;
+            }).when(garbageCollector).run();
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+
+            Thread.sleep(SLEEP_MILLIS);
+            usedBytes.set(byteUsage + 1);
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+            verify(garbageCollector, times(2)).run();
+        }
+
+        @Test
+        void garbage_collection_is_not_retried_before_garbage_collection_interval() throws InterruptedException {
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
+            }
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+            verify(garbageCollector, times(1)).run();
+        }
+
+        @Test
+        void isOpen_transition_from_true_to_false_when_retried_garbage_collection_frees_memory() throws InterruptedException {
+            final long closeUsage = byteUsage - 1024;
+            givenCloseUsage(closeUsage);
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            initialGarbageCollectionInterval = SMALL_RESET_PERIOD;
+            final AtomicLong usedBytes = new AtomicLong(byteUsage + 1);
+            when(memoryUsage.getUsed()).thenAnswer(invocation -> usedBytes.get());
+            final AtomicBoolean memoryReleased = new AtomicBoolean(false);
+            doAnswer(invocation -> {
+                if(memoryReleased.get()) {
+                    usedBytes.set(closeUsage - 1);
+                }
+                return null;
+            }).when(garbageCollector).run();
+
+            objectUnderTest = createObjectUnderTest();
+            await().atMost(Duration.ofSeconds(2)).until(objectUnderTest::isOpen);
+            verify(garbageCollector, atLeastOnce()).run();
+
+            memoryReleased.set(true);
+
+            await().atMost(Duration.ofSeconds(2)).until(() -> !objectUnderTest.isOpen());
+            assertThat(usedBytes.get(), equalTo(closeUsage - 1));
+            verify(garbageCollector, atLeast(2)).run();
+        }
+
+        @Test
+        void garbage_collection_interval_backs_off_while_garbage_collection_does_not_free_enough_memory() throws InterruptedException {
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            initialGarbageCollectionInterval = SMALL_RESET_PERIOD;
+            maxGarbageCollectionInterval = SMALL_RESET_PERIOD.multipliedBy(8);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SMALL_RESET_PERIOD.multipliedBy(24).toMillis());
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+            final int garbageCollections = mockingDetails(garbageCollector).getInvocations().size();
+            assertThat(garbageCollections, greaterThanOrEqualTo(3));
+            assertThat(garbageCollections, lessThanOrEqualTo(10));
+        }
+
+        @Test
+        void garbage_collection_interval_stays_at_maximum_once_reached() {
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            initialGarbageCollectionInterval = Duration.ofMillis(150);
+            maxGarbageCollectionInterval = Duration.ofMillis(300);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+            final List<Long> garbageCollectionTimes = new CopyOnWriteArrayList<>();
+            doAnswer(invocation -> {
+                garbageCollectionTimes.add(System.nanoTime());
+                return null;
+            }).when(garbageCollector).run();
+
+            objectUnderTest = createObjectUnderTest();
+            await().atMost(Duration.ofSeconds(5)).until(() -> garbageCollectionTimes.size() >= 6);
+
+            // Without the cap the intervals would continue with 600 ms and 1200 ms.
+            final long maxMillis = maxGarbageCollectionInterval.toMillis();
+            for (int i = 2; i < 6; i++) {
+                final long intervalMillis = TimeUnit.NANOSECONDS.toMillis(
+                        garbageCollectionTimes.get(i) - garbageCollectionTimes.get(i - 1));
+                assertThat(intervalMillis, greaterThanOrEqualTo(maxMillis - SMALL_CHECK_INTERVAL.toMillis()));
+                assertThat(intervalMillis, lessThan(maxMillis + 3 * SMALL_CHECK_INTERVAL.toMillis()));
+            }
         }
 
         private void givenCloseUsage(final long closeUsageBytes) {

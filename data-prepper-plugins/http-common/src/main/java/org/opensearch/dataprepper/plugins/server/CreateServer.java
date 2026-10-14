@@ -20,6 +20,7 @@ import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.micrometer.core.instrument.Counter;
 import io.netty.handler.ssl.ClientAuth;
 import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
@@ -195,12 +196,13 @@ public class CreateServer {
         // decompression and the gRPC handler. When the breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or HTTP 429,
         // both with a retry delay) before any request body is read, decompressed, or parsed.
         if (circuitBreaker != null) {
-            LOG.info("Installing circuit-breaker HTTP decorator for {}", sourceName);
+            LOG.debug("Installing circuit-breaker HTTP decorator for {}", sourceName);
             final RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
                     ? serverConfiguration.getRetryInfo()
                     : DEFAULT_RETRY_INFO;
+            final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
             sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
-                    circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
+                    circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
         }
 
         if(serverConfiguration.getAuthentication() != null) {

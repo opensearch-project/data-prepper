@@ -12,6 +12,7 @@ import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -169,7 +170,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private void configureGrpcService(ServerBuilder serverBuilder, final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, Buffer<Record<Object>> buffer) {
-        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, otelProtoDecoder, oTelTraceSourceConfig, pluginMetrics, pipelineName).create(buffer, serverBuilder);
+        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, otelProtoDecoder, oTelTraceSourceConfig, pluginMetrics, pipelineName, circuitBreaker).create(buffer, serverBuilder);
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.service(grpcService);
@@ -229,15 +230,16 @@ public class OTelTraceSource implements Source<Record<Object>> {
         if (circuitBreaker == null) {
             return;
         }
-        LOG.info("Installing circuit-breaker HTTP decorator for otel_trace_source");
+        LOG.debug("Installing circuit-breaker HTTP decorator for otel_trace_source");
         // Server-level decorator: wraps every service registered on this ServerBuilder
         // (gRPC service + optional HTTP service). The authentication decorator is registered
         // later and therefore runs first; both run before decompression and the handlers.
         final RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
                 ? oTelTraceSourceConfig.getRetryInfo()
                 : new RetryInfoConfig();
+        final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
         serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
-                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
     }
 
     @Override

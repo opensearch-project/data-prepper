@@ -258,6 +258,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                 createOtelProtoDecoder(),
                 buffer,
+                circuitBreaker,
                 pluginMetrics,
                 null
         );
@@ -308,12 +309,13 @@ public class OTelLogsSource implements Source<Record<Object>> {
         if (circuitBreaker == null) {
             return;
         }
-        LOG.info("Installing circuit-breaker HTTP decorator for otel_logs_source");
+        LOG.debug("Installing circuit-breaker HTTP decorator for otel_logs_source");
         final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
                 ? oTelLogsSourceConfig.getRetryInfo()
                 : new RetryInfoConfig();
+        final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
         serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
-                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), () -> { }));
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
     }
 
     @Override

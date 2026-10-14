@@ -40,6 +40,10 @@ import static org.opensearch.dataprepper.RetryInfoCalculator.DEFAULT_MINIMUM_DEL
  * and a {@link RetryInfo} detail. All other requests receive HTTP 429 (Too Many Requests) with a
  * {@code Retry-After} header. Both are retryable for OTLP clients.
  *
+ * <p>Health checks are never rejected: HTTP {@code /health} and the gRPC health service
+ * ({@code grpc.health.v1.Health}) always reach their service, so liveness probes on the source port
+ * do not restart a node while the breaker is open.
+ *
  * <p>Register it as a server-level decorator so it runs before decompression and the gRPC / HTTP
  * handlers, which are attached to the individual services. Armeria runs server-level decorators in
  * reverse order of registration, so server-level decorators registered after this one, such as
@@ -54,7 +58,14 @@ import static org.opensearch.dataprepper.RetryInfoCalculator.DEFAULT_MINIMUM_DEL
  */
 public final class CircuitBreakerDecoratingHttpService extends SimpleDecoratingHttpService {
 
+    /**
+     * Name of the counter that sources register for requests rejected by this decorator.
+     */
+    public static final String REQUESTS_REJECTED = "requestsRejectedByCircuitBreaker";
+
     static final String REJECTION_MESSAGE = "Circuit breaker is open. Request rejected before reading the body.";
+    static final String HTTP_HEALTH_CHECK_PATH = "/health";
+    static final String GRPC_HEALTH_SERVICE_PATH_PREFIX = "/grpc.health.v1.Health/";
 
     private static final int GRPC_RESOURCE_EXHAUSTED = 8;
     private static final MediaType GRPC = MediaType.create("application", "grpc");
@@ -125,12 +136,17 @@ public final class CircuitBreakerDecoratingHttpService extends SimpleDecoratingH
 
     @Override
     public HttpResponse serve(final ServiceRequestContext ctx, final HttpRequest req) throws Exception {
-        if (circuitBreaker.isOpen()) {
+        if (!isHealthCheck(ctx) && circuitBreaker.isOpen()) {
             onRejected.run();
             final RetryInfo retryInfo = retryInfoCalculator.createRetryInfo();
             return isGrpc(req) ? grpcRejection(retryInfo) : httpRejection(retryInfo);
         }
         return unwrap().serve(ctx, req);
+    }
+
+    private static boolean isHealthCheck(final ServiceRequestContext ctx) {
+        final String path = ctx.path();
+        return HTTP_HEALTH_CHECK_PATH.equals(path) || path.startsWith(GRPC_HEALTH_SERVICE_PATH_PREFIX);
     }
 
     private static boolean isGrpc(final HttpRequest req) {
@@ -158,14 +174,14 @@ public final class CircuitBreakerDecoratingHttpService extends SimpleDecoratingH
     private static HttpResponse httpRejection(final RetryInfo retryInfo) {
         final ResponseHeaders headers = ResponseHeaders.builder(HttpStatus.TOO_MANY_REQUESTS)
                 .contentType(MediaType.PLAIN_TEXT_UTF_8)
-                .add(HttpHeaderNames.RETRY_AFTER, String.valueOf(retryAfterSeconds(retryInfo)))
+                .add(HttpHeaderNames.RETRY_AFTER, retryAfterSeconds(retryInfo))
                 .build();
         return HttpResponse.of(headers, HttpData.ofUtf8(REJECTION_MESSAGE));
     }
 
-    private static long retryAfterSeconds(final RetryInfo retryInfo) {
+    private static String retryAfterSeconds(final RetryInfo retryInfo) {
         final com.google.protobuf.Duration delay = retryInfo.getRetryDelay();
         final long seconds = delay.getSeconds() + (delay.getNanos() > 0 ? 1 : 0);
-        return Math.max(1, seconds);
+        return String.valueOf(Math.max(1, seconds));
     }
 }

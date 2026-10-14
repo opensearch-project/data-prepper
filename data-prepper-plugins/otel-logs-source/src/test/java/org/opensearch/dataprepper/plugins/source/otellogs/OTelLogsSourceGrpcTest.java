@@ -207,22 +207,6 @@ class OTelLogsSourceGrpcTest {
         SOURCE = new OTelLogsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
-    /**
-     * Verifies that when a non-null {@link CircuitBreaker} is provided to {@link OTelLogsSource},
-     * a server-level circuit-breaker decorator is installed on the shared {@link ServerBuilder}.
-     *
-     * <p>Like the trace source, the logs source registers BOTH a gRPC service and an optional
-     * additional HTTP service on the same builder, so a server-level decorator gates both paths.
-     * The test captures the function passed to {@code serverBuilder.decorator(...)} and exercises
-     * it end-to-end with an open breaker, proving (a) the wiring happens exactly once and
-     * (b) the wired function is the circuit-breaker decorator: it returns HTTP 503 without
-     * invoking the inner service.</p>
-     *
-     * <p>The complementary "null CircuitBreaker -> no decorator registered" case is implicitly
-     * covered by every other test in this class — none of them set up auth, none of them set
-     * {@code http_path}, and none of them pass a CircuitBreaker, so {@code serverBuilder.decorator}
-     * is never called (and Mockito would fail strict-stubbing assertions if it were).</p>
-     */
     @Test
     void circuit_breaker_provided_registers_HTTP_decorator_that_rejects_open_breaker_requests() throws Exception {
         when(server.stop()).thenReturn(completableFuture);
@@ -254,6 +238,29 @@ class OTelLogsSourceGrpcTest {
 
         assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
         source.stop();
+    }
+
+    @Test
+    void gRPC_request_is_rejected_by_the_service_when_circuit_breaker_opens_after_the_decorator_check() throws Exception {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(false, true);
+        SOURCE = new OTelLogsSource(
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+        final ExportLogsServiceRequest exportLogsRequest = createExportLogsRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportLogsRequest));
+
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+        verify(circuitBreaker, times(2)).isOpen();
+        verify(buffer, never()).writeAll(any(), anyInt());
     }
 
     @Test

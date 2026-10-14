@@ -15,6 +15,7 @@ import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
@@ -37,6 +38,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +105,20 @@ class CircuitBreakerDecoratingHttpServiceTest {
         assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo("3"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"/health", "/grpc.health.v1.Health/Check", "/grpc.health.v1.Health/Watch"})
+    void serve_delegates_health_checks_to_inner_service_when_circuit_breaker_is_open(final String path) throws Exception {
+        final AtomicInteger rejected = new AtomicInteger();
+
+        final AggregatedHttpResponse response = serveRequest(
+                CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker, rejected::incrementAndGet),
+                HttpRequest.of(HttpMethod.POST, path));
+
+        assertThat(response.status(), equalTo(HttpStatus.OK));
+        assertThat(rejected.get(), equalTo(0));
+        verify(circuitBreaker, never()).isOpen();
+    }
+
     @Test
     void serve_delegates_to_inner_service_when_circuit_breaker_is_closed() throws Exception {
         when(circuitBreaker.isOpen()).thenReturn(false);
@@ -155,7 +171,7 @@ class CircuitBreakerDecoratingHttpServiceTest {
                                                 final HttpRequest req) throws Exception {
         // Build a minimal Armeria service chain using the decorator
         final HttpService innerService = (ctx, request) ->
-                com.linecorp.armeria.common.HttpResponse.of(HttpStatus.OK);
+                HttpResponse.of(HttpStatus.OK);
 
         final HttpService decorated = decorator.apply(innerService);
 

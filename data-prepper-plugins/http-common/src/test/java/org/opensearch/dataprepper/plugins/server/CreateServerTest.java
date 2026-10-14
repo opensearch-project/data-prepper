@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.rpc.RetryInfo;
 import com.google.rpc.Status;
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpHeaderNames;
@@ -18,12 +19,17 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServiceRequestContext;
 
 import io.grpc.ServerInterceptor;
+import io.grpc.health.v1.HealthCheckRequest;
+import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.health.v1.HealthGrpc;
+import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
@@ -62,6 +68,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,6 +109,9 @@ public class CreateServerTest {
 
     @Mock
     private CircuitBreaker circuitBreaker;
+
+    @Mock
+    private Counter requestsRejectedCounter;
 
     @Test
     void createGrpcServer_appliesKeepaliveSettingsWhenConfigured() throws JsonProcessingException {
@@ -225,7 +236,8 @@ public class CreateServerTest {
             throws Exception {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         when(circuitBreaker.isOpen()).thenReturn(true);
-        final Server server = createGrpcServerWithCircuitBreaker();
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(false);
 
         server.start().join();
         try {
@@ -240,6 +252,7 @@ public class CreateServerTest {
             assertThat(response.headers().get("grpc-status"), equalTo("8"));
             final Status status = Status.parseFrom(Base64.getDecoder().decode(response.headers().get("grpc-status-details-bin")));
             assertThat(status.getDetails(0).unpack(RetryInfo.class).getRetryDelay().getSeconds(), equalTo(3L));
+            verify(requestsRejectedCounter).increment();
         } finally {
             server.stop().join();
         }
@@ -250,7 +263,8 @@ public class CreateServerTest {
             throws Exception {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         when(circuitBreaker.isOpen()).thenReturn(true);
-        final Server server = createGrpcServerWithCircuitBreaker();
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(false);
 
         server.start().join();
         try {
@@ -261,6 +275,32 @@ public class CreateServerTest {
 
             assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
             assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo("3"));
+            verify(requestsRejectedCounter).increment();
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
+    void createGRPCServer_with_open_circuit_breaker_still_answers_grpc_and_http_health_checks() throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(true);
+
+        server.start().join();
+        try {
+            final HealthGrpc.HealthBlockingStub healthClient = Clients.builder("gproto+http://127.0.0.1:" + server.activeLocalPort() + "/")
+                    .build(HealthGrpc.HealthBlockingStub.class);
+            final HealthCheckResponse grpcHealth = healthClient.check(HealthCheckRequest.getDefaultInstance());
+            final AggregatedHttpResponse httpHealth = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .get("/health")
+                    .aggregate()
+                    .join();
+
+            assertThat(grpcHealth.getStatus(), equalTo(HealthCheckResponse.ServingStatus.SERVING));
+            assertThat(httpHealth.status(), equalTo(HttpStatus.OK));
+            verify(circuitBreaker, never()).isOpen();
+            verify(requestsRejectedCounter, never()).increment();
         } finally {
             server.stop().join();
         }
@@ -291,9 +331,11 @@ public class CreateServerTest {
         assertDoesNotThrow(() -> server.stop());
     }
 
-    private Server createGrpcServerWithCircuitBreaker() throws JsonProcessingException {
+    private Server createGrpcServerWithCircuitBreaker(final boolean healthCheck) throws JsonProcessingException {
         final Map<String, Object> metadata = createGrpcMetadata(0, false, 10000, 10, 5, CompressionOption.NONE,
                 null);
+        metadata.put("healthCheck", healthCheck);
+        metadata.put("enableUnframedRequests", healthCheck);
         metadata.put("retryInfo", Map.of(
                 "min_delay", "PT3S",
                 "max_delay", "PT5S"));

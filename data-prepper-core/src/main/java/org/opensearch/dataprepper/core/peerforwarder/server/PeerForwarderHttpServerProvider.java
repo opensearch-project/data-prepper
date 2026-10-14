@@ -13,7 +13,6 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.util.FingerprintTrustManagerFactory;
-import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.core.peerforwarder.ForwardingAuthentication;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
@@ -112,8 +111,7 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
         // TODO: Add throttling service
 
         if (circuitBreaker != null) {
-            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker,
-                    () -> LOG.debug("Rejecting peer forwarder request: circuit breaker is open.")));
+            sb.decorator(PeerForwarderCircuitBreakerDecorator.newDecorator(circuitBreaker));
         }
 
         sb.annotatedService(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI, peerForwarderHttpService);

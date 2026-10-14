@@ -16,7 +16,9 @@
 # on a private Docker network, drives load with telemetrygen, and asserts that
 # the heap circuit breaker opens, rejects requests at the layers hardened by
 # the change (P1 decorator, P2 gRPC pre-parse check, P3 hysteresis, P4 peer
-# forwarder), and closes again.
+# forwarder), and closes again. It also reports the garbage collections the
+# breaker requests before it opens and while it is open (P5): how many, and how
+# much each one freed.
 #
 # Usage:
 #   ./heap-circuit-breaker.sh [--source trace|logs|metrics] [--nodes 1|3]
@@ -26,9 +28,11 @@
 # One node (default):
 #   Floods the chosen OTel source until the breaker opens. Asserts the trip,
 #   the P1 decorator rejection (HTTP 429, or gRPC RESOURCE_EXHAUSTED with retry
-#   info) on a parallel probe (HTTP/JSON for trace
-#   and logs, raw gRPC for metrics), the P2 check (logs and metrics), the
-#   health check, hysteresis (P3) and recovery.
+#   info) on a parallel probe (HTTP/JSON for trace and logs, raw gRPC for
+#   metrics), the P2 check, the gRPC health check, the HTTP /health check (logs
+#   and metrics), hysteresis (P3) and recovery. Asserts that every trip comes
+#   after a garbage collection (P5) and lists every collection with the memory
+#   it freed.
 #
 # Three nodes (--nodes 3, trace source only):
 #   dp1, dp2 and dp3 forward to each other through the peer forwarder
@@ -36,10 +40,11 @@
 #   forwarder server listens on all interfaces and a node forwards to the port
 #   from its own configuration. Only dp3 is meant to trip its breaker.
 #   isolated   (default) Low traffic to dp1 only. dp3's thresholds are
-#              calibrated just above its own heap so its breaker opens and
-#              closes by itself. Asserts that every failed forward from dp1 is
-#              a P4 rejection (HTTP 429) by dp3, that nothing is dropped, and that
-#              dp3's gRPC health check answers RESOURCE_EXHAUSTED while open.
+#              calibrated below its live heap (the heap after a garbage
+#              collection), so its breaker opens and stays open. Asserts that
+#              every failed forward from dp1 is a P4 rejection (HTTP 429) by
+#              dp3, that nothing is dropped, and that dp3's gRPC health check
+#              answers OK while open (health checks bypass the breaker).
 #   load-wave  Steady traffic to dp1 plus a flood on dp3. Observational; only
 #              the breaker trip is asserted.
 #
@@ -60,13 +65,16 @@
 #               DP_HEAP (256m), USAGE (200mb), CLOSE_USAGE (150mb)
 #   Three nodes: STEADY_RATE (100 isolated, 200 load-wave), STEADY_SECS (90/75),
 #               FLOOD_RATE (5000, load-wave), CALIBRATION_SECS (30),
-#               DP3_USAGE / DP3_CLOSE (calibrated in isolated; 200mb/120mb in load-wave),
+#               DP3_USAGE / DP3_CLOSE (calibrated in isolated to 80 % / 70 % of dp3's
+#               live heap; 200mb/120mb in load-wave),
 #               PF_BUFFER_SIZE (2048), PF_FORWARDING_BATCH_SIZE (500),
 #               PF_FORWARDING_BATCH_TIMEOUT (500ms)
 #   Both:       NET_PREFIX (172.28.0), JRE_IMAGE (eclipse-temurin:17-jre),
 #               OUT_DIR (/tmp/cb-test-<source>-n<nodes>[-<scenario>])
 #
-# Output (OUT_DIR): samples.tsv (every 0.5 s), events.tsv (timed log events),
+# Output (OUT_DIR): samples.tsv (every 0.5 s), events.tsv (timed log events;
+#   gc rows carry the freed bytes, gc_backoff rows the next interval in seconds,
+#   averted rows the heap after a collection that kept the breaker closed),
 #   one log per node, and the generated node configuration under nodes/.
 #
 # Exit code: 0 if every assertion PASSED, 1 if any FAILED, >1 on setup error.
@@ -103,19 +111,25 @@ done
 
 # ---------- Source table ----------
 # plugin | container port | telemetrygen signal | pipeline | processor | extra source config | probe | probe path | P2 service
+# | HTTP /health served
+# The trace source serves /health only with unframed_requests, which turns off
+# its HTTP service that the probe uses, so it gets no HTTP health check.
 case "$SOURCE" in
     trace)
-        PLUGIN=otlp_traces; SRC_PORT=21890; SIGNAL=traces; PIPELINE=traces-pipeline; PROCESSOR=otel_traces
+        PLUGIN=otlp_traces; SRC_PORT=21890; SIGNAL=traces; PIPELINE="traces-pipeline"; PROCESSOR=otel_traces
         SOURCE_EXTRA=""; PROBE=http-json
-        PROBE_PATH="/opentelemetry.proto.collector.trace.v1.TraceService/Export"; P2_SERVICE="" ;;
+        PROBE_PATH="/opentelemetry.proto.collector.trace.v1.TraceService/Export"; P2_SERVICE=OTelTraceGrpcService
+        HTTP_HEALTH=false ;;
     logs)
-        PLUGIN=otlp_logs; SRC_PORT=21892; SIGNAL=logs; PIPELINE=logs-pipeline; PROCESSOR=""
+        PLUGIN=otlp_logs; SRC_PORT=21892; SIGNAL=logs; PIPELINE="logs-pipeline"; PROCESSOR=""
         SOURCE_EXTRA="      http_path: /v1/logs"; PROBE=http-json
-        PROBE_PATH="/v1/logs"; P2_SERVICE=OTelLogsGrpcService ;;
+        PROBE_PATH="/v1/logs"; P2_SERVICE=OTelLogsGrpcService
+        HTTP_HEALTH=true ;;
     metrics)
-        PLUGIN=otlp_metrics; SRC_PORT=21891; SIGNAL=metrics; PIPELINE=metrics-pipeline; PROCESSOR=otel_metrics
-        SOURCE_EXTRA=""; PROBE=grpc
-        PROBE_PATH="/opentelemetry.proto.collector.metrics.v1.MetricsService/Export"; P2_SERVICE=OTelMetricsGrpcService ;;
+        PLUGIN=otlp_metrics; SRC_PORT=21891; SIGNAL=metrics; PIPELINE="metrics-pipeline"; PROCESSOR=otel_metrics
+        SOURCE_EXTRA="      unframed_requests: true"; PROBE=grpc
+        PROBE_PATH="/opentelemetry.proto.collector.metrics.v1.MetricsService/Export"; P2_SERVICE=OTelMetricsGrpcService
+        HTTP_HEALTH=true ;;
     *) echo "Unknown source: $SOURCE" >&2; exit 2 ;;
 esac
 [[ "$NODE_COUNT" == 1 || "$NODE_COUNT" == 3 ]] || { echo "--nodes must be 1 or 3" >&2; exit 2; }
@@ -123,7 +137,7 @@ esac
 if (( NODE_COUNT == 3 )) && [[ "$SOURCE" != trace ]]; then
     echo "--nodes 3 needs --source trace: only otel_traces uses the peer forwarder here." >&2; exit 2
 fi
-readonly SOURCE NODE_COUNT SCENARIO PLUGIN SRC_PORT SIGNAL PIPELINE PROCESSOR SOURCE_EXTRA PROBE PROBE_PATH P2_SERVICE
+readonly SOURCE NODE_COUNT SCENARIO PLUGIN SRC_PORT SIGNAL PIPELINE PROCESSOR SOURCE_EXTRA PROBE PROBE_PATH P2_SERVICE HTTP_HEALTH
 
 # ---------- Tunables ----------
 LOAD_RATE="${LOAD_RATE:-5000}"; LOAD_WORKERS="${LOAD_WORKERS:-100}"; LOAD_DURATION="${LOAD_DURATION:-30}"
@@ -160,12 +174,15 @@ else
     readonly SOURCE_HOST_PORTS=(21890 21892 21893)
 fi
 readonly GRPC_HEALTH_PATH="/grpc.health.v1.Health/Check"
+readonly HTTP_HEALTH_PATH="/health"
 readonly CERT_DIR="$OUT_DIR/certs"
 readonly KEY_STORE_PASSWORD="changeit"
 if $TLS; then
     readonly SCHEME=https H2=(--http2) CURL_TLS=(--cacert "$CERT_DIR/ca.crt") TG_TLS=(--ca-cert "$CERT_DIR/ca.crt")
+    readonly CERT_MOUNT=(-v "$CERT_DIR:/dp/certs:ro")
 else
     readonly SCHEME=http H2=(--http2-prior-knowledge) CURL_TLS=() TG_TLS=(--otlp-insecure)
+    readonly CERT_MOUNT=()
 fi
 NODES=("${ALL_NODES[@]:0:$NODE_COUNT}")
 
@@ -209,6 +226,7 @@ remove_everything() {
     docker network rm "$NET_NAME" >/dev/null 2>&1 || true
 }
 
+# shellcheck disable=SC2329 # invoked through trap
 cleanup() {
     local rc=$?
     set +e
@@ -244,6 +262,12 @@ grpc_health() {
         -H 'content-type: application/grpc' -H 'te: trailers' --data-binary @- \
         "${SCHEME}://localhost:$1${GRPC_HEALTH_PATH}" 2>/dev/null | tr -d '\r' \
         | awk '/^HTTP\//{s=$2} /^grpc-status:/{g=$2} END{printf "%s/%s", (s?s:"000"), (g==""?"-":g)}' || true
+}
+
+# HTTP health check against a host port. Echoes the HTTP status, 000 without an answer.
+http_health() {
+    curl -s "${CURL_TLS[@]}" --max-time 2 -o /dev/null -w '%{http_code}' \
+        "${SCHEME}://localhost:$1${HTTP_HEALTH_PATH}" 2>/dev/null || true
 }
 
 # One request to the source's export endpoint on host port $1. Echoes:
@@ -301,7 +325,8 @@ phase_check_prereqs() {
 
 phase_build() {
     section "Building Data Prepper (${INSTALL_TASK})"
-    ( cd "$REPO_ROOT" && ./gradlew ":release:archives:linux:${INSTALL_TASK}" )
+    # The script runs with LC_ALL=C; javadoc needs UTF-8 for non-ASCII sources.
+    ( cd "$REPO_ROOT" && LC_ALL=C.UTF-8 ./gradlew ":release:archives:linux:${INSTALL_TASK}" )
 }
 
 phase_locate_dp_home() {
@@ -425,6 +450,15 @@ logger.plugins.name = org.opensearch.dataprepper.plugins
 logger.plugins.level = info
 logger.pfservice.name = org.opensearch.dataprepper.core.peerforwarder.server
 logger.pfservice.level = debug
+# "Installing circuit-breaker HTTP decorator" is logged at DEBUG.
+logger.createserver.name = org.opensearch.dataprepper.plugins.server.CreateServer
+logger.createserver.level = debug
+logger.otellogs.name = org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSource
+logger.otellogs.level = debug
+logger.oteltrace.name = org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSource
+logger.oteltrace.level = debug
+logger.otelmetrics.name = org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSource
+logger.otelmetrics.level = debug
 PROPS
 }
 
@@ -435,16 +469,18 @@ start_node() {
         -p "${SOURCE_HOST_PORTS[$1]}:${SRC_PORT}" -p "${ADMIN_HOST_PORTS[$1]}:4900" -w /tmp \
         -v "$DP_HOME/bin:/dp/bin:ro" -v "$DP_HOME/lib:/dp/lib:ro" \
         -v "$dir/config:/dp/config:ro" -v "$dir/pipelines:/dp/pipelines:ro" \
-        $($TLS && echo "-v $CERT_DIR:/dp/certs:ro" || true) \
+        "${CERT_MOUNT[@]}" \
         -e JAVA_OPTS="-Xms$2 -Xmx$2" "$JRE_IMAGE" /dp/bin/data-prepper >/dev/null
 }
 
-# $1 index into NODES
+# $1 index into NODES, $2 (optional) "open": the breaker is expected to be open,
+# so a health check answering RESOURCE_EXHAUSTED also counts as ready.
 wait_for_node() {
-    local i n="${NODES[$1]}"
+    local i h n="${NODES[$1]}"
     for i in $(seq 1 120); do
-        if [[ "$(grpc_health "${SOURCE_HOST_PORTS[$1]}")" == "200/0" ]]; then
-            log "$n is ready (source and health check up)."
+        h="$(grpc_health "${SOURCE_HOST_PORTS[$1]}")"
+        if [[ "$h" == "200/0" ]] || [[ "${2:-}" == open && "$h" == */8 ]]; then
+            log "$n is ready (source and health check up, health=$h)."
             return 0
         fi
         docker ps --format '{{.Names}}' | grep -qx "$(container "$n")" \
@@ -478,24 +514,32 @@ phase_calibrate_dp3() {
         log "Using DP3_USAGE=$DP3_USAGE DP3_CLOSE=$DP3_CLOSE (no calibration)."
         return 0
     fi
+    # The breaker requests a garbage collection before it opens and opens only
+    # if the heap is still above usage, so thresholds above the live heap never
+    # trip under low traffic. Measure the live heap: run dp3 with a tiny usage,
+    # so its breaker opens at once and logs the heap after every garbage
+    # collection it requests (on trip and on each retry while open).
     section "Calibrating dp3's breaker (${CALIBRATION_SECS}s at ${STEADY_RATE} traces/s)"
-    telemetrygen traces --otlp-endpoint "localhost:${SOURCE_HOST_PORTS[0]}" "${TG_TLS[@]}" \
-        --workers 2 --rate "$STEADY_RATE" --duration "${CALIBRATION_SECS}s" > "$OUT_DIR/telem-calibration.log" 2>&1 &
-    local tg=$! peak=0 h i
-    for i in $(seq 1 $((CALIBRATION_SECS * 2))); do
-        h="$(mib "$(metric "${ADMIN_HOST_PORTS[2]}" '^core_circuitBreakers_heap_memoryUsage')")"
-        if (( h > peak )); then peak=$h; fi
-        sleep 0.5
-    done
-    wait "$tg" 2>/dev/null || true
-    (( peak > 0 )) || die "Could not read dp3's heap during calibration"
-    DP3_USAGE="$(( peak * 85 / 100 ))mb"
-    DP3_CLOSE="$(( peak * 70 / 100 ))mb"
-    log "dp3 heap peaked at ${peak} MB -> usage=$DP3_USAGE close_usage=$DP3_CLOSE. Restarting dp3..."
+    docker rm -f "$(container dp3)" >/dev/null
+    write_node_config dp3 1mb 1mb
+    start_node 2 256m
+    wait_for_node 2 open
+    timeout --foreground --kill-after=5s "$((CALIBRATION_SECS + 15))s" telemetrygen traces \
+        --otlp-endpoint "localhost:${SOURCE_HOST_PORTS[0]}" "${TG_TLS[@]}" \
+        --workers 2 --rate "$STEADY_RATE" --duration "${CALIBRATION_SECS}s" > "$OUT_DIR/telem-calibration.log" 2>&1 || true
+    local live
+    live="$(docker logs "$(container dp3)" 2>&1 \
+        | grep 'requested garbage collection' \
+        | grep -oE 'after [0-9.]+ MiB \([0-9]+' | grep -oE '[0-9]+$' | sort -n | tail -1)"
+    [[ -n "$live" ]] || die "Could not read dp3's heap after garbage collection during calibration"
+    live="$(mib "$live")"
+    DP3_USAGE="$(( live * 80 / 100 ))mb"
+    DP3_CLOSE="$(( live * 70 / 100 ))mb"
+    log "dp3 live heap (after garbage collection) is ${live} MB -> usage=$DP3_USAGE close_usage=$DP3_CLOSE. Restarting dp3..."
     docker rm -f "$(container dp3)" >/dev/null
     write_node_config dp3 "$DP3_USAGE" "$DP3_CLOSE"
     start_node 2 256m
-    wait_for_node 2
+    wait_for_node 2 open
     sleep 5
 }
 
@@ -519,6 +563,15 @@ phase_check_startup() {
             fail "No 'Configuring HTTP service under /v1/logs' in the log: http_path was ignored."
         fi
     fi
+    if $HTTP_HEALTH; then
+        local h
+        h="$(http_health "${SOURCE_HOST_PORTS[0]}")"
+        if [[ "$h" == 200 ]]; then
+            pass "HTTP health check ${HTTP_HEALTH_PATH} answered 200 with the breaker closed."
+        else
+            fail "HTTP health check ${HTTP_HEALTH_PATH} answered $h with the breaker closed; expected 200."
+        fi
+    fi
 }
 
 # =============================================================================
@@ -530,7 +583,7 @@ sampler() {
     local t0=$1 i h n bodies=()
     printf 't'
     for n in "${NODES[@]}"; do printf '\t%s_heap\t%s_open' "$n" "$n"; done
-    printf '\tfwd_ok\tfwd_failed\tfwd_req_failed\tprobe\thealth'
+    printf '\tfwd_ok\tfwd_failed\tfwd_req_failed\tprobe\thealth\thttp_health'
     for n in "${NODES[@]}"; do printf '\t%s_rb' "$n"; done
     printf '\n'
     local health_port="${SOURCE_HOST_PORTS[$((NODE_COUNT - 1))]}"
@@ -545,6 +598,7 @@ sampler() {
             "$(pick "${bodies[0]}" 'recordsFailedForwarding_total')" "$(pick "${bodies[0]}" 'core_peerForwarder_requestsFailed_total')"
         if (( NODE_COUNT == 1 )); then printf '\t%s' "$(probe_once "${SOURCE_HOST_PORTS[0]}")"; else printf '\t-'; fi
         printf '\t%s' "$(grpc_health "$health_port")"
+        if $HTTP_HEALTH; then printf '\t%s' "$(http_health "$health_port")"; else printf '\t-'; fi
         for i in "${!NODES[@]}"; do printf '\t%s' "$(pick "${bodies[$i]}" 'peerForwarder_.*_bufferUsage')"; done
         printf '\n'
         sleep 0.5
@@ -635,6 +689,15 @@ phase_measure_multi() {
     stop_sampler
 }
 
+# Numeric value of an event line: freed bytes of a garbage collection, the next
+# garbage collection interval in seconds, or the first count / byte value.
+event_value() {
+    local re_freed='freed -?[0-9.]+ MiB \((-?[0-9]+) bytes\)' re_next='Next garbage collection in ([0-9]+) s'
+    if [[ "$1" =~ $re_freed ]]; then printf '%s' "${BASH_REMATCH[1]}"; return; fi
+    if [[ "$1" =~ $re_next ]]; then printf '%s' "${BASH_REMATCH[1]}"; return; fi
+    printf '%s' "$1" | grep -oE 'Failed to add [0-9]+ records|Dropping [0-9]+ records|MiB \([0-9]+ bytes\) used' | grep -oE '[0-9]+' | head -1 || true
+}
+
 phase_extract_events() {
     local f label re
     : > "$OUT_DIR/events.tsv"
@@ -644,10 +707,12 @@ phase_extract_events() {
             local ts e
             ts="$(echo "$line" | cut -c1-23 | tr ',' '.')"
             e="$(date -u -d "${ts/T/ } UTC" +%s.%N 2>/dev/null)" || continue
-            printf '%s\t%s\t%s\n' "$(awk -v a="$e" -v b="$T0" 'BEGIN{printf "%.2f", a-b}')" "$label" \
-                "$(echo "$line" | grep -oE 'Failed to add [0-9]+ records|Dropping [0-9]+ records|MiB \([0-9]+ bytes\) used' | grep -oE '[0-9]+' | head -1 || true)"
+            printf '%s\t%s\t%s\n' "$(awk -v a="$e" -v b="$T0" 'BEGIN{printf "%.2f", a-b}')" "$label" "$(event_value "$line")"
         done
     done <<EOF >> "$OUT_DIR/events.tsv"
+${NODES[$((NODE_COUNT - 1))]}.log|gc|Circuit breaker requested garbage collection
+${NODES[$((NODE_COUNT - 1))]}.log|gc_backoff|Circuit breaker remains open after garbage collection
+${NODES[$((NODE_COUNT - 1))]}.log|averted|Circuit breaker did not trip
 ${NODES[$((NODE_COUNT - 1))]}.log|open|tripped and open
 ${NODES[$((NODE_COUNT - 1))]}.log|closed|Circuit breaker closed
 ${NODES[$((NODE_COUNT - 1))]}.log|p4_reject|Rejecting peer forwarder request
@@ -655,12 +720,41 @@ dp1.log|queue_full|Failed to add [0-9]+ records to the batching queue
 dp1.log|send_error|Unable to (send|submit) request
 dp1.log|drop|Dropping [0-9]+ records
 EOF
-    sort -n -o "$OUT_DIR/events.tsv" "$OUT_DIR/events.tsv"
+    # Stable sort on the time only: events with the same timestamp keep the order of the list above.
+    sort -s -t$'\t' -k1,1n -o "$OUT_DIR/events.tsv" "$OUT_DIR/events.tsv"
 }
 
 # =============================================================================
 # Evaluation
 # =============================================================================
+
+# $1 node, $2 number of trips. Lists the garbage collections the breaker
+# requested (P5) and asserts that every trip came at most 5 s (plus one check
+# interval) after a requested garbage collection: the breaker collects before
+# it opens, unless it collected within the last 5 s.
+report_garbage_collections() {
+    local node="$1" trips="$2" ev="$OUT_DIR/events.tsv" gcs before_trip averted backoffs freed late
+    read -r gcs before_trip averted backoffs freed late < <(awk -F'\t' '
+        $2=="gc"         { gcs++; freed += $3; last_gc = $1; pending = 1 }
+        $2=="averted"    { averted++; pending = 0 }
+        $2=="gc_backoff" { backoffs++; pending = 0 }
+        $2=="open"       { if (pending) before_trip++; pending = 0
+                           if (last_gc == "" || $1 - last_gc > 5.6) late++ }
+        $2=="closed"     { pending = 0 }
+        END { printf "%d %d %d %d %d %d\n", gcs, before_trip, averted, backoffs, freed, late }' "$ev")
+    log "P5: $node requested $gcs garbage collection(s): $before_trip before a trip, $averted averted a trip, $(( gcs - before_trip - averted )) while open ($backoffs followed by a backoff); freed $(mib "$freed") MiB in total"
+    awk -F'\t' '
+        $2=="open"       { printf "    t=%7.2fs  breaker opened\n", $1 }
+        $2=="gc"         { printf "    t=%7.2fs  garbage collection freed %.1f MiB\n", $1, $3 / 1048576 }
+        $2=="averted"    { printf "    t=%7.2fs  below usage after garbage collection, breaker stayed closed\n", $1 }
+        $2=="gc_backoff" { printf "    t=%7.2fs  still above close threshold, next garbage collection in %d s\n", $1, $3 }
+        $2=="closed"     { printf "    t=%7.2fs  breaker closed\n", $1 }' "$ev"
+    if (( late == 0 )); then
+        pass "P5: every trip came after a garbage collection ($trips trip(s), $before_trip directly after one)."
+    else
+        fail "P5: $late of $trips trip(s) came without a garbage collection in the 5 s before."
+    fi
+}
 
 phase_evaluate_single() {
     section "Results"
@@ -677,6 +771,7 @@ phase_evaluate_single() {
     else
         fail "Breaker did not trip above $open_bytes bytes (trips: $trips). Raise LOAD_RATE or lower USAGE."
     fi
+    report_garbage_collections dp1 "$trips"
     local open_samples p1 p2_probe other
     read -r open_samples p1 p2_probe other < <(awk -F'\t' -v o="$oc" -v p="$pc" 'NR>1 { if ($o+0==1) n++; if ($p=="p1") a++; if ($p=="p2") b++; if ($p=="other") c++ } END { printf "%d %d %d %d\n", n, a, b, c }' "$s")
     if (( open_samples > 0 )); then pass "Gauge core_circuitBreakers_heap_open=1 in $open_samples samples."; else warn "No sample caught the gauge at 1."; fi
@@ -706,9 +801,35 @@ phase_evaluate_single() {
         log "P2: not applicable to the trace source (OTelTraceGrpcService has no pre-parse check)."
     fi
 
-    local h_open h_open_rejected
-    read -r h_open h_open_rejected < <(awk -F'\t' -v o="$oc" -v h="$hc" 'NR>1 && $o+0==1 { n++; if ($h ~ /\/8$/) a++ } END { printf "%d %d\n", n, a }' "$s")
-    if (( h_open_rejected > 0 )); then pass "gRPC health check answered RESOURCE_EXHAUSTED in $h_open_rejected of $h_open open samples."; else warn "No sample caught the health check while open."; fi
+    local h_open h_open_ok h_open_rejected rejected_metric
+    read -r h_open h_open_ok h_open_rejected < <(awk -F'\t' -v o="$oc" -v h="$hc" 'NR>1 && $o+0==1 { n++; if ($h=="200/0") a++; if ($h ~ /\/8$/) b++ } END { printf "%d %d %d\n", n, a, b }' "$s")
+    if (( h_open_rejected > 0 )); then
+        fail "gRPC health check answered RESOURCE_EXHAUSTED in $h_open_rejected of $h_open open samples; health checks must bypass the breaker."
+    elif (( h_open_ok > 0 )); then
+        pass "gRPC health check answered OK in $h_open_ok of $h_open open samples (health checks bypass the breaker)."
+    else
+        warn "No sample caught the health check while open."
+    fi
+    if $HTTP_HEALTH; then
+        local hh h_http_open h_http_ok h_http_rejected
+        hh="$(col "$s" http_health)"
+        read -r h_http_open h_http_ok h_http_rejected < <(awk -F'\t' -v o="$oc" -v h="$hh" 'NR>1 && $o+0==1 { n++; if ($h=="200") a++; if ($h=="429") b++ } END { printf "%d %d %d\n", n, a, b }' "$s")
+        if (( h_http_rejected > 0 )); then
+            fail "HTTP health check ${HTTP_HEALTH_PATH} answered 429 in $h_http_rejected of $h_http_open open samples; health checks must bypass the breaker."
+        elif (( h_http_ok > 0 )); then
+            pass "HTTP health check ${HTTP_HEALTH_PATH} answered 200 in $h_http_ok of $h_http_open open samples (health checks bypass the breaker)."
+        else
+            warn "No sample caught the HTTP health check answering while open."
+        fi
+    else
+        log "HTTP health check: not applicable to the trace source (${HTTP_HEALTH_PATH} needs unframed_requests, which turns off its HTTP service)."
+    fi
+    rejected_metric="$(metric "${ADMIN_HOST_PORTS[0]}" "^${PIPELINE//-/_}_.*_requestsRejectedByCircuitBreaker_total")"
+    if awk -v v="${rejected_metric:-0}" 'BEGIN { exit (v + 0 > 0) ? 0 : 1 }'; then
+        pass "P1: requestsRejectedByCircuitBreaker counted ${rejected_metric} rejected request(s)."
+    else
+        fail "P1: requestsRejectedByCircuitBreaker is ${rejected_metric:-missing}; expected the decorator rejections to be counted."
+    fi
 
     if [[ -n "$last_close" ]] && (( last_close <= close_bytes )); then
         pass "P3: last close at $last_close bytes (<= close threshold $close_bytes)."
@@ -739,19 +860,25 @@ phase_evaluate_multi() {
     log "dp1 events for other nodes: forwarded=$ok, local after failed request=$local_after, local because queue full=$queue, dropped=$drop ($drop_n batches)"
     log "inbound write failures on all receivers: $inbound"
 
-    if (( trips > 0 )); then
-        pass "dp3's breaker tripped $trips time(s)."
+    local open_samples
+    open_samples="$(awk -F'\t' -v o="$(col "$s" dp3_open)" 'NR>1 && $o+0==1 { n++ } END { printf "%d", n }' "$s")"
+    if (( trips > 0 || open_samples > 0 )); then
+        pass "dp3's breaker was open in $open_samples samples ($trips trip(s) during the measurement)."
     else
-        fail "dp3's breaker never tripped. Set DP3_USAGE/DP3_CLOSE closer to dp3's heap, or raise STEADY_RATE."
+        fail "dp3's breaker was never open. Set DP3_USAGE/DP3_CLOSE below dp3's live heap, or raise STEADY_RATE."
     fi
+    report_garbage_collections dp3 "$trips"
     if [[ "$SCENARIO" == load-wave ]]; then
         log "load-wave is observational: forwarding numbers above are reported, not asserted."
         return 0
     fi
-    if (( p4 == req_failed )); then
-        pass "Every failed forward from dp1 is a P4 rejection by dp3 ($p4 = $req_failed)."
+    # A failure with another cause would make dp1 count more failed requests
+    # than dp3 logged rejections. dp3 can log a rejection that dp1 does not count
+    # as a failed request, so more rejections than failures is not an error.
+    if (( req_failed <= p4 )); then
+        pass "Every failed forward from dp1 is a P4 rejection by dp3 ($req_failed failed requests <= $p4 rejections)."
     else
-        fail "P4 rejections ($p4) != failed requests at dp1 ($req_failed): another failure source is present."
+        fail "Failed requests at dp1 ($req_failed) > P4 rejections ($p4): another failure source is present."
     fi
     (( p4 > 0 )) || warn "No forwarding request hit an open window of dp3 (P4 not exercised). Raise STEADY_SECS."
     if (( drop == 0 )); then pass "Nothing was dropped."; else fail "dp1 dropped $drop records in $drop_n batches."; fi
@@ -760,15 +887,19 @@ phase_evaluate_multi() {
     else
         fail "Other failure sources present (queue full: $queue records, inbound write failures: $inbound). Lower STEADY_RATE."
     fi
-    local oc hc h_open h_open_rejected h_closed h_closed_ok
+    local oc hc h_open h_open_ok h_open_rejected h_closed h_closed_ok
     oc="$(col "$s" dp3_open)"; hc="$(col "$s" health)"
-    read -r h_open h_open_rejected h_closed h_closed_ok < <(awk -F'\t' -v o="$oc" -v h="$hc" 'NR>1 { if ($o+0==1) { n++; if ($h ~ /\/8$/) a++ } else if ($o!="") { c++; if ($h=="200/0") b++ } } END { printf "%d %d %d %d\n", n, a, c, b }' "$s")
+    read -r h_open h_open_ok h_open_rejected h_closed h_closed_ok < <(awk -F'\t' -v o="$oc" -v h="$hc" 'NR>1 { if ($o+0==1) { n++; if ($h=="200/0") a++; if ($h ~ /\/8$/) r++ } else if ($o!="") { c++; if ($h=="200/0") b++ } } END { printf "%d %d %d %d %d\n", n, a, r, c, b }' "$s")
     if (( h_open_rejected > 0 )); then
-        pass "dp3's gRPC health check answered RESOURCE_EXHAUSTED in $h_open_rejected of $h_open samples while open."
+        fail "dp3's gRPC health check answered RESOURCE_EXHAUSTED in $h_open_rejected of $h_open samples while open; health checks must bypass the breaker."
+    elif (( h_open_ok > 0 )); then
+        pass "dp3's gRPC health check answered OK in $h_open_ok of $h_open samples while open (health checks bypass the breaker)."
     else
         warn "No sample caught dp3's health check during an open window ($h_open open samples)."
     fi
-    if (( h_closed > 0 && h_closed_ok * 100 / h_closed >= 90 )); then
+    if (( h_closed == 0 )); then
+        pass "dp3's breaker stayed open during the measurement; its gRPC health check answered OK while closed at startup."
+    elif (( h_closed_ok * 100 / h_closed >= 90 )); then
         pass "dp3's gRPC health check answered OK in $h_closed_ok of $h_closed samples while closed."
     else
         fail "dp3's gRPC health check answered OK in only $h_closed_ok of $h_closed closed samples."

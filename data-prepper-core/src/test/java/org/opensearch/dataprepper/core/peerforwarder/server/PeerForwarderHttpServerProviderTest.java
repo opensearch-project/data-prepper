@@ -9,9 +9,6 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.server;
 
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.Server;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,6 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -58,7 +60,7 @@ class PeerForwarderHttpServerProviderTest {
     }
 
     @Test
-    void get_with_open_circuit_breaker_rejects_requests_with_429_before_the_service() {
+    void get_with_open_circuit_breaker_rejects_requests_with_429_before_the_service() throws Exception {
         when(peerForwarderConfiguration.getMaxConnectionCount()).thenReturn(500);
         when(circuitBreaker.isOpen()).thenReturn(true);
         final Server server = new PeerForwarderHttpServerProvider(
@@ -66,12 +68,13 @@ class PeerForwarderHttpServerProviderTest {
 
         server.start().join();
         try {
-            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
-                    .post(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI, "{}")
-                    .aggregate()
-                    .join();
+            final HttpRequest request = HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + server.activeLocalPort() + PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI))
+                    .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                    .build();
+            final HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
-            assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+            assertThat(response.statusCode(), equalTo(429));
             verify(peerForwarderHttpService, never()).doPost(any());
         } finally {
             server.stop().join();
