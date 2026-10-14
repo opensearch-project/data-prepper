@@ -320,6 +320,7 @@ public class OTelProtoStandardCodec {
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
                             .withBody(convertAnyValue(log.getBody()))
+                            .withEventName(log.getEventName().isEmpty() ? null : log.getEventName())
                             .withTimeReceived(timeReceived)
                             .build())
                     .collect(Collectors.toList());
@@ -1390,6 +1391,12 @@ public class OTelProtoStandardCodec {
                 // Set attributes from the log's own attributes (not metadata)
                 if (otelLog.getAttributes() != null) {
                     builder.addAllAttributes(convertAttributesToKeyValue(otelLog.getAttributes()));
+                }
+
+                // Set event name (added in OTel proto v1.5.0)
+                final String eventName = otelLog.getEventName();
+                if (eventName != null && !eventName.isEmpty()) {
+                    builder.setEventName(eventName);
                 }
             } else {
                 // Fallback for plain Log instances

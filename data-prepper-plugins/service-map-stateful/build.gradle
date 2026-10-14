@@ -15,9 +15,7 @@ dependencies {
     implementation libs.commons.codec
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation(libs.opentelemetry.proto) {
-        exclude group: 'com.google.protobuf', module: 'protobuf-java'
-    }
+    implementation project(':data-prepper-plugins:otel-proto-common')
     implementation libs.protobuf.core
     testImplementation project(':data-prepper-test:test-common')
 }

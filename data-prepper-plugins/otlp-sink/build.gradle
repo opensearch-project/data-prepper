@@ -30,9 +30,7 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 
     // OpenTelemetry Protobuf
-    implementation libs.opentelemetry.proto
     implementation libs.protobuf.util
-    testImplementation libs.opentelemetry.proto
     testImplementation libs.protobuf.util
 
     // Jackson

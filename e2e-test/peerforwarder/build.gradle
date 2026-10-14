@@ -166,7 +166,6 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
     integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
-    integrationTestImplementation libs.opentelemetry.proto
     integrationTestImplementation libs.protobuf.util
     integrationTestImplementation libs.armeria.core
     integrationTestImplementation libs.armeria.grpc

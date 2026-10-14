@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasValue;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 public class JacksonOtelLogTest {
 
@@ -143,6 +144,20 @@ public class JacksonOtelLogTest {
     public void testGetDroppedAttributesCount() {
         final Integer droppedAttributesCount = log.getDroppedAttributesCount();
         assertThat(droppedAttributesCount, is(equalTo(TEST_DROPPED_ATTRIBUTES_COUNT)));
+    }
+
+    @Test
+    public void testGetEventName() {
+        final String testEventName = "my.event";
+        JacksonOtelLog logWithEventName = JacksonOtelLog.builder()
+                .withEventName(testEventName)
+                .build();
+        assertThat(logWithEventName.getEventName(), is(equalTo(testEventName)));
+    }
+
+    @Test
+    public void testGetEventName_whenNotSet_returnsNull() {
+        assertThat(log.getEventName(), is(nullValue()));
     }
 
     @Test

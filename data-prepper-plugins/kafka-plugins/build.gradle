@@ -76,7 +76,6 @@ dependencies {
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
     testImplementation project(':data-prepper-plugins:otel-proto-common')
-    testImplementation libs.opentelemetry.proto
     testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
