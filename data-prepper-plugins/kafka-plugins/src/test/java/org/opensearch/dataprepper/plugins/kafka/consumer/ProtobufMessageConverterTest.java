@@ -16,12 +16,18 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.Int64Value;
 import com.google.protobuf.StringValue;
+import com.google.protobuf.Struct;
 import com.google.protobuf.Timestamp;
+import com.google.protobuf.UInt64Value;
+import com.google.protobuf.Value;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -34,6 +40,49 @@ class ProtobufMessageConverterTest {
     @Test
     void convert_withScalarWrapper_returnsScalarValue() throws Exception {
         assertThat(objectUnderTest.convert(StringValue.of("test-value")), equalTo("test-value"));
+    }
+
+    @Test
+    void convert_withSixtyFourBitWrappers_returnsNumbers() throws Exception {
+        assertThat(objectUnderTest.convert(Int64Value.of(-12L)), equalTo(-12L));
+        assertThat(objectUnderTest.convert(UInt64Value.of(12L)), equalTo(12L));
+        assertThat(objectUnderTest.convert(UInt64Value.of(-1L)), equalTo(new BigInteger("18446744073709551615")));
+    }
+
+    @Test
+    void convert_withSixtyFourBitIntegerFields_returnsNumbers() throws Exception {
+        final Object convertedValue = objectUnderTest.convert(createIntegerMessage());
+
+        assertThat(convertedValue, instanceOf(Map.class));
+        final Map<String, Object> convertedMap = (Map<String, Object>) convertedValue;
+        assertThat(convertedMap.get("count"), equalTo(12L));
+        assertThat(convertedMap.get("signedFixed"), equalTo(-5L));
+        assertThat(convertedMap.get("unsignedMax"), equalTo(new BigInteger("18446744073709551615")));
+        assertThat(convertedMap.get("counts"), equalTo(List.of(1L, 9_007_199_254_740_993L)));
+        assertThat(convertedMap.get("countsByName"), equalTo(Map.of("first", 7L)));
+    }
+
+    @Test
+    void convert_withTimestampInRange_returnsRfc3339String() throws Exception {
+        final Timestamp timestamp = Timestamp.newBuilder().setSeconds(1_700_000_000L).build();
+
+        assertThat(objectUnderTest.convert(timestamp), equalTo("2023-11-14T22:13:20Z"));
+    }
+
+    @Test
+    void convert_withStruct_returnsJsonMapping() throws Exception {
+        final Struct struct = Struct.newBuilder()
+                .putFields("name", Value.newBuilder().setStringValue("test").build())
+                .putFields("missing", Value.newBuilder().setNullValueValue(0).build())
+                .build();
+
+        final Object convertedValue = objectUnderTest.convert(struct);
+
+        assertThat(convertedValue, instanceOf(Map.class));
+        final Map<String, Object> convertedMap = (Map<String, Object>) convertedValue;
+        assertThat(convertedMap.get("name"), equalTo("test"));
+        assertThat(convertedMap.containsKey("missing"), equalTo(true));
+        assertThat(convertedMap.get("missing"), equalTo(null));
     }
 
     @Test
@@ -63,7 +112,7 @@ class ProtobufMessageConverterTest {
     }
 
     @Test
-    void convert_withFallback_preservesKnownAnyAndUnsignedValues() throws Exception {
+    void convert_withMixedAnyAndUnsignedValues_preservesValues() throws Exception {
         final Any knownAny = Any.pack(StringValue.of("known-value"));
         final Any unknownAny = Any.newBuilder()
                 .setTypeUrl("type.googleapis.com/example.UnknownMessage")
@@ -77,7 +126,9 @@ class ProtobufMessageConverterTest {
         final Map<String, Object> convertedMap = (Map<String, Object>) convertedValue;
         assertThat(((Map<?, ?>) convertedMap.get("knownAny")).get("value"), equalTo("known-value"));
         assertThat(convertedMap.get("unsigned32"), equalTo(4_294_967_295L));
-        assertThat(convertedMap.get("unsigned64"), equalTo("18446744073709551615"));
+        assertThat(((Map<?, ?>) convertedMap.get("unknownAny")).get("typeUrl"), equalTo("type.googleapis.com/example.UnknownMessage"));
+        assertThat(convertedMap.get("unsigned32"), equalTo(4_294_967_295L));
+        assertThat(convertedMap.get("unsigned64"), equalTo(new BigInteger("18446744073709551615")));
         assertThat(convertedMap.get("enumValue"), equalTo(123));
     }
 
@@ -92,8 +143,73 @@ class ProtobufMessageConverterTest {
 
         assertThat(convertedValue, instanceOf(Map.class));
         final Map<String, Object> convertedMap = (Map<String, Object>) convertedValue;
-        assertThat(convertedMap.get("seconds"), equalTo("1700000000000"));
+        assertThat(convertedMap.get("seconds"), equalTo(1_700_000_000_000L));
         assertThat(convertedMap.get("nanos"), equalTo(123));
+    }
+
+    private DynamicMessage createIntegerMessage() throws Descriptors.DescriptorValidationException {
+        final DescriptorProtos.DescriptorProto entryDescriptor = DescriptorProtos.DescriptorProto.newBuilder()
+                .setName("CountsByNameEntry")
+                .setOptions(DescriptorProtos.MessageOptions.newBuilder().setMapEntry(true))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("key")
+                        .setNumber(1)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("value")
+                        .setNumber(2)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_INT64))
+                .build();
+        final DescriptorProtos.DescriptorProto messageDescriptor = DescriptorProtos.DescriptorProto.newBuilder()
+                .setName("IntegerMessage")
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("count")
+                        .setNumber(1)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_INT64))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("signed_fixed")
+                        .setNumber(2)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_SFIXED64))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("unsigned_max")
+                        .setNumber(3)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_FIXED64))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("counts")
+                        .setNumber(4)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_INT64)
+                        .setLabel(DescriptorProtos.FieldDescriptorProto.Label.LABEL_REPEATED))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("counts_by_name")
+                        .setNumber(5)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_MESSAGE)
+                        .setTypeName(".example.IntegerMessage.CountsByNameEntry")
+                        .setLabel(DescriptorProtos.FieldDescriptorProto.Label.LABEL_REPEATED))
+                .addNestedType(entryDescriptor)
+                .build();
+        final DescriptorProtos.FileDescriptorProto fileDescriptor = DescriptorProtos.FileDescriptorProto.newBuilder()
+                .setName("integer_message.proto")
+                .setPackage("example")
+                .setSyntax("proto3")
+                .addMessageType(messageDescriptor)
+                .build();
+        final Descriptors.Descriptor descriptor = Descriptors.FileDescriptor
+                .buildFrom(fileDescriptor, new Descriptors.FileDescriptor[0])
+                .findMessageTypeByName("IntegerMessage");
+        final Descriptors.Descriptor entry = descriptor.findNestedTypeByName("CountsByNameEntry");
+        final DynamicMessage mapEntry = DynamicMessage.newBuilder(entry)
+                .setField(entry.findFieldByName("key"), "first")
+                .setField(entry.findFieldByName("value"), 7L)
+                .build();
+
+        return DynamicMessage.newBuilder(descriptor)
+                .setField(descriptor.findFieldByName("count"), 12L)
+                .setField(descriptor.findFieldByName("signed_fixed"), -5L)
+                .setField(descriptor.findFieldByName("unsigned_max"), -1L)
+                .addRepeatedField(descriptor.findFieldByName("counts"), 1L)
+                .addRepeatedField(descriptor.findFieldByName("counts"), 9_007_199_254_740_993L)
+                .addRepeatedField(descriptor.findFieldByName("counts_by_name"), mapEntry)
+                .build();
     }
 
     private DynamicMessage createFallbackMessage(final Any knownAny, final Any unknownAny)

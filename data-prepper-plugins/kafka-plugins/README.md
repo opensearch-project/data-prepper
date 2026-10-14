@@ -11,6 +11,8 @@ Event Hubs Kafka endpoint using AWS to Azure Entra workload-identity federation,
 
 When using Confluent Schema Registry, the Kafka source automatically detects and deserializes Avro, JSON Schema,
 and Protobuf values registered under the `<topic>-value` subject.
+Protobuf values follow the ProtoJSON field mapping, except that 64-bit integer fields are emitted as numbers rather than
+strings so that numeric conditions in processors work as expected.
 
 ## Developer guide
 
