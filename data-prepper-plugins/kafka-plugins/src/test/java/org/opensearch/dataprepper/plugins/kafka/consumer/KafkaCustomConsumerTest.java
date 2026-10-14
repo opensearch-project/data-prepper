@@ -647,13 +647,14 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testProtobufConversionFailureSkipsFailedRecordAndProcessesRemainingRecords() throws Exception {
+    public void testProtobufConversionFailureKeepsRawPayloadAndProcessesRemainingRecords() throws Exception {
         final String topic = topicConfig.getName();
         final TopicPartition firstPartition = new TopicPartition(topic, 0);
         final TopicPartition secondPartition = new TopicPartition(topic, 1);
         final Counter recordsFailedToParseCounter = mock(Counter.class);
         final Message invalidMessage = mock(Message.class);
         when(invalidMessage.getDescriptorForType()).thenThrow(new IllegalStateException("invalid descriptor"));
+        when(invalidMessage.toByteArray()).thenReturn("raw".getBytes());
         when(topicMetrics.getNumberOfRecordsFailedToParse()).thenReturn(recordsFailedToParseCounter);
 
         final Map<TopicPartition, List<ConsumerRecord>> records = new LinkedHashMap<>();
@@ -670,7 +671,11 @@ public class KafkaCustomConsumerTest {
 
         verify(kafkaConsumer, never()).seek(any(TopicPartition.class), anyLong());
         verify(recordsFailedToParseCounter).increment();
-        assertThat(buffer.read(100).getKey().size(), equalTo(3));
+        final List<Record<Event>> bufferedRecords = new ArrayList<>(buffer.read(100).getKey());
+        assertThat(bufferedRecords.size(), equalTo(4));
+        final Event failedEvent = bufferedRecords.get(1).getData();
+        assertThat(failedEvent.get("message", String.class), equalTo("cmF3"));
+        assertThat(failedEvent.getMetadata().getAttribute("kafka_partition"), equalTo("0"));
         assertThat(consumer.getOffsetsToCommit().get(firstPartition).offset(), equalTo(103L));
         assertThat(consumer.getOffsetsToCommit().get(secondPartition).offset(), equalTo(201L));
     }

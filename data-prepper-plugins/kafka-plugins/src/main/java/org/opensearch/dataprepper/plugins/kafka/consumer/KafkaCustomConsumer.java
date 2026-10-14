@@ -54,6 +54,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -471,7 +472,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         KafkaKeyMode kafkaKeyMode = topicConfig.getKafkaKeyMode();
         boolean plainTextMode = false;
         if (value instanceof Message) {
-            value = convertProtobufMessage((Message) value);
+            value = convertProtobufMessage((Message) value, consumerRecord);
         } else {
             try {
                 if (value instanceof JsonDataWithSchema) {
@@ -527,19 +528,22 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         return new Record<Event>(event);
     }
 
-    private Object convertProtobufMessage(final Message message) {
+    private Object convertProtobufMessage(final Message message, final ConsumerRecord<String, ?> consumerRecord) {
+        Object convertedValue;
         try {
-            final Object convertedValue = protobufMessageConverter.convert(message);
-            if (convertedValue instanceof Map) {
-                return convertedValue;
-            }
-            final Map<String, Object> wrappedValue = new HashMap<>();
-            wrappedValue.put(DEFAULT_KEY, convertedValue);
-            return wrappedValue;
+            convertedValue = protobufMessageConverter.convert(message);
         } catch (final Exception e) {
+            LOG.error("Failed to convert Protobuf record from topic {} partition {} offset {}; keeping the raw payload",
+                    topicName, consumerRecord.partition(), consumerRecord.offset(), e);
             topicMetrics.getNumberOfRecordsFailedToParse().increment();
-            throw new ProtobufMessageConversionException(e);
+            convertedValue = Base64.getEncoder().encodeToString(message.toByteArray());
         }
+        if (convertedValue instanceof Map) {
+            return convertedValue;
+        }
+        final Map<String, Object> wrappedValue = new HashMap<>();
+        wrappedValue.put(DEFAULT_KEY, convertedValue);
+        return wrappedValue;
     }
 
     private void processRecords(final AcknowledgementSet acknowledgementSet, final List<Record<Event>> eventRecords) {
@@ -607,31 +611,26 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             final List<Record<Event>> eventRecords = new ArrayList<>();
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
-                try {
-                    if (schema == MessageFormat.BYTES) {
-                        InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-                        InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
+                if (schema == MessageFormat.BYTES) {
+                    InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
+                    InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
 
-                        if(byteDecoder != null) {
-                            final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
+                    if(byteDecoder != null) {
+                        final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                            byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), eventRecords::add);
-                        } else {
-                            JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
-
-                            Event event = JacksonLog.builder().withData(jsonNode).build();
-                            Record<Event> record = new Record<>(event);
-                            eventRecords.add(record);
-                        }
+                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), eventRecords::add);
                     } else {
-                        Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
-                        if (record != null) {
-                            eventRecords.add(record);
-                        }
+                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
+
+                        Event event = JacksonLog.builder().withData(jsonNode).build();
+                        Record<Event> record = new Record<>(event);
+                        eventRecords.add(record);
                     }
-                } catch (final ProtobufMessageConversionException e) {
-                    LOG.error("Dropping unconvertible Protobuf record from topic {} partition {} offset {}",
-                            topicName, topicPartition.partition(), consumerRecord.offset(), e);
+                } else {
+                    Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
+                    if (record != null) {
+                        eventRecords.add(record);
+                    }
                 }
             }
 
@@ -654,12 +653,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             partitionCommitTrackerMap.put(
                     topicPartition.partition(),
                     new TopicPartitionCommitTracker(topicPartition, firstOffset));
-        }
-    }
-
-    private static class ProtobufMessageConversionException extends RuntimeException {
-        private ProtobufMessageConversionException(final Throwable cause) {
-            super(cause);
         }
     }
 
