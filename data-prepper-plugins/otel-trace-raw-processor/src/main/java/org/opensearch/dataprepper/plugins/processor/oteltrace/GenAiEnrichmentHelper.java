@@ -158,9 +158,7 @@ final class GenAiEnrichmentHelper {
             if (attrs != null && attrs.containsKey(GEN_AI_INPUT_TOKENS_KEY)) {
                 continue;
             }
-            long inputTokens = 0;
-            long outputTokens = 0;
-            boolean foundTokens = false;
+            final List<Span> descendants = new ArrayList<>();
             final List<Span> pending = new ArrayList<>(
                     childrenByParent.getOrDefault(agentRoot.getSpanId(), List.of()));
             final Set<String> seen = new HashSet<>();
@@ -169,24 +167,67 @@ final class GenAiEnrichmentHelper {
                 if (!seen.add(descendant.getSpanId())) {
                     continue;
                 }
-                final Map<String, Object> descendantAttrs = descendant.getAttributes();
-                if (descendantAttrs != null) {
-                    final Number input = (Number) descendantAttrs.get(GEN_AI_INPUT_TOKENS_KEY);
-                    final Number output = (Number) descendantAttrs.get(GEN_AI_OUTPUT_TOKENS_KEY);
-                    if (input != null || output != null) {
-                        foundTokens = true;
-                        inputTokens += input != null ? input.longValue() : 0;
-                        outputTokens += output != null ? output.longValue() : 0;
-                    }
-                }
+                descendants.add(descendant);
                 pending.addAll(childrenByParent.getOrDefault(descendant.getSpanId(), List.of()));
             }
-            if (foundTokens) {
-                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_INPUT_TOKENS_KEY, inputTokens);
-                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_OUTPUT_TOKENS_KEY, outputTokens);
+            final TokenTotals tokens = sumTopmostTokens(descendants);
+            if (tokens.found) {
+                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_INPUT_TOKENS_KEY, tokens.input);
+                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_OUTPUT_TOKENS_KEY, tokens.output);
             }
             LOG.debug("Marked span {} as the GenAI root of trace {}", agentRoot.getSpanId(), agentRoot.getTraceId());
         }
+    }
+
+    private static final class TokenTotals {
+        private long input;
+        private long output;
+        private boolean found;
+    }
+
+    private static boolean hasTokens(final Span span) {
+        final Map<String, Object> attrs = span.getAttributes();
+        return attrs != null
+                && (attrs.get(GEN_AI_INPUT_TOKENS_KEY) != null || attrs.get(GEN_AI_OUTPUT_TOKENS_KEY) != null);
+    }
+
+    /**
+     * Sums token usage over the given spans, counting only spans with no ancestor among them that
+     * also reports usage. Agent spans such as invoke_agent often report the total of their own
+     * LLM calls, so adding every span with usage would count those calls twice.
+     */
+    static TokenTotals sumTopmostTokens(final Collection<Span> spans) {
+        final Map<String, Span> bySpanId = new HashMap<>();
+        for (final Span span : spans) {
+            if (span.getSpanId() != null) {
+                bySpanId.put(span.getSpanId(), span);
+            }
+        }
+        final TokenTotals totals = new TokenTotals();
+        for (final Span span : spans) {
+            if (!hasTokens(span) || hasTokenAncestor(span, bySpanId)) {
+                continue;
+            }
+            final Map<String, Object> attrs = span.getAttributes();
+            final Number input = (Number) attrs.get(GEN_AI_INPUT_TOKENS_KEY);
+            final Number output = (Number) attrs.get(GEN_AI_OUTPUT_TOKENS_KEY);
+            totals.found = true;
+            totals.input += input != null ? input.longValue() : 0;
+            totals.output += output != null ? output.longValue() : 0;
+        }
+        return totals;
+    }
+
+    private static boolean hasTokenAncestor(final Span span, final Map<String, Span> bySpanId) {
+        final Set<String> seen = new HashSet<>();
+        Span parent = bySpanId.get(span.getParentSpanId());
+        while (parent != null && seen.add(parent.getSpanId())) {
+            if (hasTokens(parent)) {
+                return true;
+            }
+            parent = bySpanId.get(parent.getParentSpanId());
+        }
+        return false;
     }
 
     private static boolean isRootSpan(final Span span) {
@@ -214,10 +255,6 @@ final class GenAiEnrichmentHelper {
             return;
         }
 
-        long totalInputTokens = 0;
-        long totalOutputTokens = 0;
-        boolean foundTokens = false;
-
         // Propagated values come from the outermost GenAI spans first, so the trace gets the outer
         // agent's name and model whatever order the batch is in.
         final Set<Span> outermost = new HashSet<>(outermostGenAiSpans(children));
@@ -236,18 +273,6 @@ final class GenAiEnrichmentHelper {
                     entry.setValue((String) attrs.get(entry.getKey()));
                 }
             }
-
-            final Number inputTokens = (Number) attrs.get(GEN_AI_INPUT_TOKENS_KEY);
-            final Number outputTokens = (Number) attrs.get(GEN_AI_OUTPUT_TOKENS_KEY);
-            if (inputTokens != null || outputTokens != null) {
-                foundTokens = true;
-                if (inputTokens != null) {
-                    totalInputTokens += inputTokens.longValue();
-                }
-                if (outputTokens != null) {
-                    totalOutputTokens += outputTokens.longValue();
-                }
-            }
         }
 
         for (final Map.Entry<String, String> entry : toPropagate.entrySet()) {
@@ -257,10 +282,11 @@ final class GenAiEnrichmentHelper {
             }
         }
 
-        if (!rootHasTokens && foundTokens) {
-            rootSpan.put(ATTRIBUTES_PREFIX + GEN_AI_INPUT_TOKENS_KEY, totalInputTokens);
-            rootSpan.put(ATTRIBUTES_PREFIX + GEN_AI_OUTPUT_TOKENS_KEY, totalOutputTokens);
-            LOG.debug("Aggregated tokens (input={}, output={}) to root span {}", totalInputTokens, totalOutputTokens, rootSpan.getSpanId());
+        final TokenTotals tokens = sumTopmostTokens(children);
+        if (!rootHasTokens && tokens.found) {
+            rootSpan.put(ATTRIBUTES_PREFIX + GEN_AI_INPUT_TOKENS_KEY, tokens.input);
+            rootSpan.put(ATTRIBUTES_PREFIX + GEN_AI_OUTPUT_TOKENS_KEY, tokens.output);
+            LOG.debug("Aggregated tokens (input={}, output={}) to root span {}", tokens.input, tokens.output, rootSpan.getSpanId());
         }
     }
 

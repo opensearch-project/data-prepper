@@ -82,6 +82,57 @@ class GenAiAgentRootTest {
     }
 
     @Test
+    void countsAnAgentsReportedTotalOnceWhenItsCallsAlsoReportUsage() {
+        // Strands-style: invoke_agent reports the total of its own chat calls.
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("agent", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent",
+                "gen_ai.usage.input_tokens", 15L, "gen_ai.usage.output_tokens", 7L)));
+        spans.add(span("chat1", "agent", "2026-01-01T00:00:02Z", Map.of(
+                "gen_ai.operation.name", "chat",
+                "gen_ai.usage.input_tokens", 10L, "gen_ai.usage.output_tokens", 4L)));
+        spans.add(span("chat2", "agent", "2026-01-01T00:00:03Z", Map.of(
+                "gen_ai.operation.name", "chat",
+                "gen_ai.usage.input_tokens", 5L, "gen_ai.usage.output_tokens", 3L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> root = byId(spans, "http").getAttributes();
+        assertEquals(15L, ((Number) root.get("gen_ai.usage.input_tokens")).longValue());
+        assertEquals(7L, ((Number) root.get("gen_ai.usage.output_tokens")).longValue());
+        final Map<String, Object> agent = byId(spans, "agent").getAttributes();
+        assertEquals(15L, ((Number) agent.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void countsANestedAgentsReportedTotalOnceOnTheMarkedSpan() {
+        // The outer agent reports no usage; a sub-agent reports the total of its own chat call.
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("agent", "http", "2026-01-01T00:00:01Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+        spans.add(span("chat1", "agent", "2026-01-01T00:00:02Z", Map.of(
+                "gen_ai.operation.name", "chat",
+                "gen_ai.usage.input_tokens", 10L, "gen_ai.usage.output_tokens", 4L)));
+        spans.add(span("tool", "agent", "2026-01-01T00:00:03Z", Map.of("gen_ai.operation.name", "execute_tool")));
+        spans.add(span("sub", "tool", "2026-01-01T00:00:04Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent",
+                "gen_ai.usage.input_tokens", 5L, "gen_ai.usage.output_tokens", 3L)));
+        spans.add(span("subchat", "sub", "2026-01-01T00:00:05Z", Map.of(
+                "gen_ai.operation.name", "chat",
+                "gen_ai.usage.input_tokens", 5L, "gen_ai.usage.output_tokens", 3L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals(List.of("agent"), markedSpanIds(spans));
+        for (final String id : List.of("agent", "http")) {
+            final Map<String, Object> attrs = byId(spans, id).getAttributes();
+            assertEquals(15L, ((Number) attrs.get("gen_ai.usage.input_tokens")).longValue(), id);
+            assertEquals(7L, ((Number) attrs.get("gen_ai.usage.output_tokens")).longValue(), id);
+        }
+    }
+
+    @Test
     void leavesAGenAiRootUnmarked() {
         final List<Span> spans = new ArrayList<>();
         spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
@@ -140,6 +191,30 @@ class GenAiAgentRootTest {
     }
 
     @Test
+    void marksOnlyTheCallingAgentWhenAnAgentCallsAnotherAgentOverHttp() {
+        // POST /runs > invoke_agent Planner > HTTP client > HTTP server (other service)
+        //   > invoke_agent Weather > MCP tool
+        final List<Span> spans = crossServiceTrace();
+        Collections.shuffle(spans);
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals(List.of("planner"), markedSpanIds(spans));
+    }
+
+    @Test
+    void marksTheRemoteAgentWhenItsCallerIsMissingFromTheBatch() {
+        // The remote service's spans were flushed after trace_flush_interval without the caller's.
+        final List<Span> spans = crossServiceTrace().stream()
+                .filter(s -> List.of("server", "weather", "mcp").contains(s.getSpanId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals(List.of("weather"), markedSpanIds(spans));
+    }
+
+    @Test
     void marksTheAgentSpanThroughTheProcessorWhenTheRootArrivesLast() {
         final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
@@ -157,6 +232,20 @@ class GenAiAgentRootTest {
         final List<Span> out = flushed.stream().map(Record::getData).collect(Collectors.toList());
         assertEquals(List.of("agent"), markedSpanIds(out));
         assertFalse(byId(out, "http").getAttributes().containsKey(DERIVED_GEN_AI_IS_ROOT_KEY));
+    }
+
+    private static List<Span> crossServiceTrace() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("planner", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Planner")));
+        spans.add(span("client", "planner", "2026-01-01T00:00:02Z", Map.of("http.method", "POST")));
+        spans.add(span("server", "client", "2026-01-01T00:00:03Z", Map.of("http.route", "/weather")));
+        spans.add(span("weather", "server", "2026-01-01T00:00:04Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Weather")));
+        spans.add(span("mcp", "weather", "2026-01-01T00:00:05Z", Map.of(
+                "gen_ai.operation.name", "execute_tool")));
+        return spans;
     }
 
     /** POST /runs > invoke_agent > chat, execute_tool > chat. */
