@@ -16,9 +16,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Enriches GenAI agent traces by propagating attributes from child spans to root
@@ -35,11 +38,20 @@ final class GenAiEnrichmentHelper {
     private static final String GEN_AI_REQUEST_MODEL_KEY = "gen_ai.request.model";
     private static final String GEN_AI_INPUT_TOKENS_KEY = "gen_ai.usage.input_tokens";
     private static final String GEN_AI_OUTPUT_TOKENS_KEY = "gen_ai.usage.output_tokens";
+    private static final String GEN_AI_OPERATION_NAME_KEY = "gen_ai.operation.name";
+    /**
+     * Marks the outermost GenAI span of a trace whose root is not a GenAI span (for example an
+     * agent behind an HTTP handler), so the agent span can be listed as the trace's AI root.
+     */
+    static final String DERIVED_GEN_AI_IS_ROOT_KEY = "derived.gen_ai.is_root";
     private static final String ATTRIBUTES_PREFIX = "attributes/";
 
     private static final String[] PROPAGATED_STRING_KEYS = {
             GEN_AI_SYSTEM_KEY, GEN_AI_PROVIDER_NAME_KEY, GEN_AI_AGENT_NAME_KEY, GEN_AI_REQUEST_MODEL_KEY
     };
+
+    private static final Comparator<Span> BY_START_TIME = Comparator.comparing(
+            Span::getStartTime, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private static final String[] FLATTENED_PARENT_KEYS = {
             "llm.input_messages", "llm.output_messages",
@@ -50,7 +62,8 @@ final class GenAiEnrichmentHelper {
 
     /**
      * Enriches a batch of spans: normalizes vendor attributes, strips flattened sub-keys,
-     * then propagates select gen_ai attributes from children to root spans grouped by traceId.
+     * marks the outermost GenAI spans of traces whose root is not a GenAI span, then
+     * propagates select gen_ai attributes from children to root spans grouped by traceId.
      */
     static void enrichBatch(final List<Span> spans) {
         for (final Span span : spans) {
@@ -73,9 +86,106 @@ final class GenAiEnrichmentHelper {
                     children.add(span);
                 }
             }
+            // Root first: it sums the spans' own tokens, before marking adds aggregates to agent roots.
             if (rootSpan != null && !children.isEmpty()) {
                 enrichRootSpan(rootSpan, children);
             }
+            if (rootSpan == null || !isGenAiSpan(rootSpan)) {
+                markAgentRoots(traceSpans);
+            }
+        }
+    }
+
+    private static boolean isGenAiSpan(final Span span) {
+        final Map<String, Object> attrs = span.getAttributes();
+        return attrs != null && attrs.get(GEN_AI_OPERATION_NAME_KEY) != null;
+    }
+
+    /**
+     * GenAI spans of one trace with no GenAI ancestor among the given spans, earliest first.
+     * A parent that is not in the batch counts as a non-GenAI span.
+     */
+    static List<Span> outermostGenAiSpans(final Collection<Span> traceSpans) {
+        final Map<String, Span> bySpanId = new HashMap<>();
+        for (final Span span : traceSpans) {
+            if (span.getSpanId() != null) {
+                bySpanId.put(span.getSpanId(), span);
+            }
+        }
+        final List<Span> outermost = new ArrayList<>();
+        for (final Span span : traceSpans) {
+            if (isGenAiSpan(span) && !hasGenAiAncestor(span, bySpanId)) {
+                outermost.add(span);
+            }
+        }
+        outermost.sort(BY_START_TIME);
+        return outermost;
+    }
+
+    private static boolean hasGenAiAncestor(final Span span, final Map<String, Span> bySpanId) {
+        final Set<String> seen = new HashSet<>();
+        Span parent = bySpanId.get(span.getParentSpanId());
+        while (parent != null && seen.add(parent.getSpanId())) {
+            if (isGenAiSpan(parent)) {
+                return true;
+            }
+            parent = bySpanId.get(parent.getParentSpanId());
+        }
+        return false;
+    }
+
+    /**
+     * Marks the outermost GenAI spans of a trace with {@code derived.gen_ai.is_root} and
+     * aggregates their descendants' tokens onto them. Skipped when any span already carries the
+     * marker, so a span marked by the SDK or the user is the only AI root.
+     */
+    static void markAgentRoots(final Collection<Span> traceSpans) {
+        for (final Span span : traceSpans) {
+            final Map<String, Object> attrs = span.getAttributes();
+            if (attrs != null && attrs.containsKey(DERIVED_GEN_AI_IS_ROOT_KEY)) {
+                return;
+            }
+        }
+        final Map<String, List<Span>> childrenByParent = new HashMap<>();
+        for (final Span span : traceSpans) {
+            if (span.getParentSpanId() != null) {
+                childrenByParent.computeIfAbsent(span.getParentSpanId(), k -> new ArrayList<>()).add(span);
+            }
+        }
+        for (final Span agentRoot : outermostGenAiSpans(traceSpans)) {
+            agentRoot.put(ATTRIBUTES_PREFIX + DERIVED_GEN_AI_IS_ROOT_KEY, true);
+            final Map<String, Object> attrs = agentRoot.getAttributes();
+            if (attrs != null && attrs.containsKey(GEN_AI_INPUT_TOKENS_KEY)) {
+                continue;
+            }
+            long inputTokens = 0;
+            long outputTokens = 0;
+            boolean foundTokens = false;
+            final List<Span> pending = new ArrayList<>(
+                    childrenByParent.getOrDefault(agentRoot.getSpanId(), List.of()));
+            final Set<String> seen = new HashSet<>();
+            while (!pending.isEmpty()) {
+                final Span descendant = pending.remove(pending.size() - 1);
+                if (!seen.add(descendant.getSpanId())) {
+                    continue;
+                }
+                final Map<String, Object> descendantAttrs = descendant.getAttributes();
+                if (descendantAttrs != null) {
+                    final Number input = (Number) descendantAttrs.get(GEN_AI_INPUT_TOKENS_KEY);
+                    final Number output = (Number) descendantAttrs.get(GEN_AI_OUTPUT_TOKENS_KEY);
+                    if (input != null || output != null) {
+                        foundTokens = true;
+                        inputTokens += input != null ? input.longValue() : 0;
+                        outputTokens += output != null ? output.longValue() : 0;
+                    }
+                }
+                pending.addAll(childrenByParent.getOrDefault(descendant.getSpanId(), List.of()));
+            }
+            if (foundTokens) {
+                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_INPUT_TOKENS_KEY, inputTokens);
+                agentRoot.put(ATTRIBUTES_PREFIX + GEN_AI_OUTPUT_TOKENS_KEY, outputTokens);
+            }
+            LOG.debug("Marked span {} as the GenAI root of trace {}", agentRoot.getSpanId(), agentRoot.getTraceId());
         }
     }
 
@@ -108,7 +218,14 @@ final class GenAiEnrichmentHelper {
         long totalOutputTokens = 0;
         boolean foundTokens = false;
 
-        for (final Span child : children) {
+        // Propagated values come from the outermost GenAI spans first, so the trace gets the outer
+        // agent's name and model whatever order the batch is in.
+        final Set<Span> outermost = new HashSet<>(outermostGenAiSpans(children));
+        final List<Span> ordered = new ArrayList<>(children);
+        ordered.sort(Comparator.<Span>comparingInt(span -> outermost.contains(span) ? 0 : isGenAiSpan(span) ? 1 : 2)
+                .thenComparing(BY_START_TIME));
+
+        for (final Span child : ordered) {
             final Map<String, Object> attrs = child.getAttributes();
             if (attrs == null) {
                 continue;

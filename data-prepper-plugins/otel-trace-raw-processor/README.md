@@ -23,8 +23,12 @@ This processor automatically enriches GenAI agent traces. The enrichment is alwa
 
 **What it does:**
 1. **Vendor attribute normalization** — Maps vendor-specific attributes (OpenInference, OpenLLMetry) to [OTel GenAI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/). Original attributes are preserved. See [`genai-attribute-mappings.yaml`](src/main/resources/genai-attribute-mappings.yaml) for the full mapping table.
-2. **Root span enrichment** — Propagates `gen_ai.system`, `gen_ai.provider.name`, `gen_ai.agent.name`, `gen_ai.request.model`, and `gen_ai.operation.name` from child spans to root (first-child-wins, skip-if-present). Aggregates `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` across children (sum).
-3. **Flattened sub-key stripping** — Removes flattened sub-keys (e.g. `llm.input_messages.0.message.content`) that conflict with parent string values, preventing OpenSearch mapping failures.
+2. **Root span enrichment** — Propagates `gen_ai.system`, `gen_ai.provider.name`, `gen_ai.agent.name`, and `gen_ai.request.model` from child spans to root (skip-if-present). Values come from the outermost GenAI span first (earliest start time), then other GenAI spans, then the remaining children. Aggregates `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` across children (sum).
+3. **Agent root marker** — When a trace's root is not a GenAI span (for example an agent served behind an HTTP handler), sets `derived.gen_ai.is_root: true` on each outermost GenAI span: a span with `gen_ai.operation.name` and no GenAI ancestor. It also aggregates the token usage of that span's descendants onto it, unless it already has `gen_ai.usage.input_tokens`. A trace whose root is a GenAI span is not marked.
+   * Several top-level agents under one root are each marked.
+   * Spans flushed after `trace_flush_interval` without their root are still marked, because the marker only needs the spans below it.
+   * If any span in the trace already carries `derived.gen_ai.is_root` (set by an SDK or by hand), no spans are marked by the processor. To choose the root yourself, set `derived.gen_ai.is_root` to `true` on that span when you create it.
+4. **Flattened sub-key stripping** — Removes flattened sub-keys (e.g. `llm.input_messages.0.message.content`) that conflict with parent string values, preventing OpenSearch mapping failures.
 
 **Important:** The enrichment matches attributes by their original OTel key names (e.g. `http.method`). This requires the source to use `output_format: otel` so that attribute keys are not transformed. The default `opensearch` format rewrites keys (e.g. `http.method` → `span.attributes.http@method`), which prevents the enrichment from working. See the [otel-trace-source README](../otel-trace-source/README.md#output-format) for details.
 
