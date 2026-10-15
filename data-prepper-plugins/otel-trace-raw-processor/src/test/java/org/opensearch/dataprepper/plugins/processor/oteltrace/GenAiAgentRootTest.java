@@ -34,8 +34,8 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.oteltrace.GenAiEnrichmentHelper.DERIVED_GEN_AI_IS_ROOT_KEY;
 
 /**
- * An agent behind an HTTP handler: the trace root is a non-GenAI span, and the outermost
- * GenAI span is marked as the trace's AI root.
+ * The outermost GenAI span of each trace is marked as its AI root: the root itself when it is a
+ * GenAI span, else the agent span below a non-GenAI root (an agent behind an HTTP handler).
  */
 class GenAiAgentRootTest {
 
@@ -133,14 +133,17 @@ class GenAiAgentRootTest {
     }
 
     @Test
-    void leavesAGenAiRootUnmarked() {
+    void marksAGenAiRootItself() {
         final List<Span> spans = new ArrayList<>();
         spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
-        spans.add(span("chat1", "agent", "2026-01-01T00:00:01Z", Map.of("gen_ai.operation.name", "chat")));
+        spans.add(span("chat1", "agent", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "chat",
+                "gen_ai.usage.input_tokens", 10L, "gen_ai.usage.output_tokens", 4L)));
 
         GenAiEnrichmentHelper.enrichBatch(spans);
 
-        assertEquals(List.of(), markedSpanIds(spans));
+        assertEquals(List.of("agent"), markedSpanIds(spans));
+        assertEquals(10L, ((Number) byId(spans, "agent").getAttributes().get("gen_ai.usage.input_tokens")).longValue());
     }
 
     @Test
@@ -212,6 +215,77 @@ class GenAiAgentRootTest {
         GenAiEnrichmentHelper.enrichBatch(spans);
 
         assertEquals(List.of("weather"), markedSpanIds(spans));
+    }
+
+    @Test
+    void doesNotMarkALateSpanWhoseAgentArrivedInAnEarlierBatch() {
+        final GenAiCoverage coverage = GenAiCoverage.create(1_000, java.time.Duration.ofMinutes(1));
+        final List<Span> first = httpAgentTrace();
+        final Span lateChat = first.remove(first.size() - 1);
+
+        GenAiEnrichmentHelper.enrichBatch(first, coverage);
+        final List<Span> late = new ArrayList<>(List.of(lateChat));
+        GenAiEnrichmentHelper.enrichBatch(late, coverage);
+
+        assertEquals(List.of("agent"), markedSpanIds(first));
+        assertEquals(List.of(), markedSpanIds(late));
+    }
+
+    @Test
+    void doesNotMarkALateRemoteAgentWhoseCallerArrivedEarlier() {
+        // The called service exports after the caller's trace has been processed.
+        final GenAiCoverage coverage = GenAiCoverage.create(1_000, java.time.Duration.ofMinutes(1));
+        final List<Span> caller = crossServiceTrace().stream()
+                .filter(s -> List.of("http", "planner", "client").contains(s.getSpanId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        final List<Span> remote = crossServiceTrace().stream()
+                .filter(s -> List.of("server", "weather", "mcp").contains(s.getSpanId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        GenAiEnrichmentHelper.enrichBatch(caller, coverage);
+        GenAiEnrichmentHelper.enrichBatch(remote, coverage);
+
+        assertEquals(List.of("planner"), markedSpanIds(caller));
+        assertEquals(List.of(), markedSpanIds(remote));
+    }
+
+    @Test
+    void doesNotMarkALateAgentBelowASpanMarkedAtTheSource() {
+        final GenAiCoverage coverage = GenAiCoverage.create(1_000, java.time.Duration.ofMinutes(1));
+        final List<Span> first = new ArrayList<>(List.of(
+                span("http", "", "2026-01-01T00:00:00Z", Map.of(DERIVED_GEN_AI_IS_ROOT_KEY, true))));
+        final List<Span> late = new ArrayList<>(List.of(
+                span("agent", "http", "2026-01-01T00:00:01Z", Map.of("gen_ai.operation.name", "invoke_agent"))));
+
+        GenAiEnrichmentHelper.enrichBatch(first, coverage);
+        GenAiEnrichmentHelper.enrichBatch(late, coverage);
+
+        assertEquals(List.of("http"), markedSpanIds(first));
+        assertEquals(List.of(), markedSpanIds(late));
+    }
+
+    @Test
+    void doesNotMarkALateChildThroughTheProcessor() {
+        final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
+        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        final OTelTraceRawProcessor processor =
+                new OTelTraceRawProcessor(config, mock(PipelineDescription.class), mock(PluginMetrics.class));
+
+        final List<Span> spans = httpAgentTrace();
+        final Span lateChat = spans.remove(spans.size() - 1);
+        final Span root = spans.remove(0);
+        processor.doExecute(records(spans));
+        final List<Span> flushed = processor.doExecute(records(List.of(root))).stream()
+                .map(Record::getData).collect(Collectors.toList());
+        // Exported after the root: emitted on its own, without its ancestors.
+        final List<Span> late = processor.doExecute(records(List.of(lateChat))).stream()
+                .map(Record::getData).collect(Collectors.toList());
+
+        assertEquals(List.of("agent"), markedSpanIds(flushed));
+        assertEquals(1, late.size());
+        assertEquals(List.of(), markedSpanIds(late));
     }
 
     @Test

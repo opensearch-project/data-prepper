@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,8 +41,9 @@ final class GenAiEnrichmentHelper {
     private static final String GEN_AI_OUTPUT_TOKENS_KEY = "gen_ai.usage.output_tokens";
     private static final String GEN_AI_OPERATION_NAME_KEY = "gen_ai.operation.name";
     /**
-     * Marks the outermost GenAI span of a trace whose root is not a GenAI span (for example an
-     * agent behind an HTTP handler), so the agent span can be listed as the trace's AI root.
+     * Marks the outermost GenAI span of a trace: the root when it is a GenAI span, else the agent
+     * span below a non-GenAI root (for example an agent behind an HTTP handler), so consumers can
+     * list the trace by that span.
      */
     static final String DERIVED_GEN_AI_IS_ROOT_KEY = "derived.gen_ai.is_root";
     private static final String ATTRIBUTES_PREFIX = "attributes/";
@@ -62,10 +64,18 @@ final class GenAiEnrichmentHelper {
 
     /**
      * Enriches a batch of spans: normalizes vendor attributes, strips flattened sub-keys,
-     * marks the outermost GenAI spans of traces whose root is not a GenAI span, then
+     * marks the outermost GenAI spans of each trace, then
      * propagates select gen_ai attributes from children to root spans grouped by traceId.
      */
     static void enrichBatch(final List<Span> spans) {
+        enrichBatch(spans, GenAiCoverage.NONE);
+    }
+
+    /**
+     * Same as {@link #enrichBatch(List)}, using and updating {@code coverage} so spans that arrive
+     * after their ancestors are not mistaken for a trace's outermost GenAI span.
+     */
+    static void enrichBatch(final List<Span> spans, final GenAiCoverage coverage) {
         for (final Span span : spans) {
             normalizeAttributes(span);
             stripFlattenedSubkeys(span);
@@ -90,9 +100,10 @@ final class GenAiEnrichmentHelper {
             if (rootSpan != null && !children.isEmpty()) {
                 enrichRootSpan(rootSpan, children);
             }
-            if (rootSpan == null || !isGenAiSpan(rootSpan)) {
-                markAgentRoots(traceSpans);
-            }
+            final String traceId = traceSpans.get(0).getTraceId();
+            final Set<String> known = coverage.covered(traceId);
+            markAgentRoots(traceSpans, known);
+            coverage.record(traceId, coveredSpanIds(traceSpans, known));
         }
     }
 
@@ -106,6 +117,15 @@ final class GenAiEnrichmentHelper {
      * A parent that is not in the batch counts as a non-GenAI span.
      */
     static List<Span> outermostGenAiSpans(final Collection<Span> traceSpans) {
+        return outermostGenAiSpans(traceSpans, Collections.emptySet());
+    }
+
+    /**
+     * GenAI spans of one trace with no GenAI ancestor, earliest first. Ancestors are looked up in
+     * the batch, then in {@code known}: span ids of the trace already covered by a GenAI span or a
+     * marker in earlier batches. Any other parent counts as a non-GenAI span.
+     */
+    static List<Span> outermostGenAiSpans(final Collection<Span> traceSpans, final Set<String> known) {
         final Map<String, Span> bySpanId = new HashMap<>();
         for (final Span span : traceSpans) {
             if (span.getSpanId() != null) {
@@ -114,7 +134,7 @@ final class GenAiEnrichmentHelper {
         }
         final List<Span> outermost = new ArrayList<>();
         for (final Span span : traceSpans) {
-            if (isGenAiSpan(span) && !hasGenAiAncestor(span, bySpanId)) {
+            if (isGenAiSpan(span) && !hasGenAiAncestor(span, bySpanId, known)) {
                 outermost.add(span);
             }
         }
@@ -122,16 +142,42 @@ final class GenAiEnrichmentHelper {
         return outermost;
     }
 
-    private static boolean hasGenAiAncestor(final Span span, final Map<String, Span> bySpanId) {
+    private static boolean hasGenAiAncestor(final Span span, final Map<String, Span> bySpanId,
+                                            final Set<String> known) {
         final Set<String> seen = new HashSet<>();
-        Span parent = bySpanId.get(span.getParentSpanId());
+        String parentId = span.getParentSpanId();
+        Span parent = bySpanId.get(parentId);
         while (parent != null && seen.add(parent.getSpanId())) {
-            if (isGenAiSpan(parent)) {
+            if (isGenAiSpan(parent) || isMarked(parent)) {
                 return true;
             }
-            parent = bySpanId.get(parent.getParentSpanId());
+            parentId = parent.getParentSpanId();
+            parent = bySpanId.get(parentId);
         }
-        return false;
+        return parentId != null && known.contains(parentId);
+    }
+
+    private static boolean isMarked(final Span span) {
+        final Map<String, Object> attrs = span.getAttributes();
+        return attrs != null && attrs.containsKey(DERIVED_GEN_AI_IS_ROOT_KEY);
+    }
+
+    /** Span ids of the batch that are, or are below, a GenAI span or a marked span. */
+    static Set<String> coveredSpanIds(final Collection<Span> traceSpans, final Set<String> known) {
+        final Map<String, Span> bySpanId = new HashMap<>();
+        for (final Span span : traceSpans) {
+            if (span.getSpanId() != null) {
+                bySpanId.put(span.getSpanId(), span);
+            }
+        }
+        final Set<String> covered = new HashSet<>();
+        for (final Span span : traceSpans) {
+            if (span.getSpanId() != null
+                    && (isGenAiSpan(span) || isMarked(span) || hasGenAiAncestor(span, bySpanId, known))) {
+                covered.add(span.getSpanId());
+            }
+        }
+        return covered;
     }
 
     /**
@@ -140,6 +186,14 @@ final class GenAiEnrichmentHelper {
      * marker, so a span marked by the SDK or the user is the only AI root.
      */
     static void markAgentRoots(final Collection<Span> traceSpans) {
+        markAgentRoots(traceSpans, Collections.emptySet());
+    }
+
+    /**
+     * Same as {@link #markAgentRoots(Collection)}, with {@code known} span ids of the trace already
+     * covered by a GenAI span or a marker in earlier batches.
+     */
+    static void markAgentRoots(final Collection<Span> traceSpans, final Set<String> known) {
         for (final Span span : traceSpans) {
             final Map<String, Object> attrs = span.getAttributes();
             if (attrs != null && attrs.containsKey(DERIVED_GEN_AI_IS_ROOT_KEY)) {
@@ -152,7 +206,7 @@ final class GenAiEnrichmentHelper {
                 childrenByParent.computeIfAbsent(span.getParentSpanId(), k -> new ArrayList<>()).add(span);
             }
         }
-        for (final Span agentRoot : outermostGenAiSpans(traceSpans)) {
+        for (final Span agentRoot : outermostGenAiSpans(traceSpans, known)) {
             agentRoot.put(ATTRIBUTES_PREFIX + DERIVED_GEN_AI_IS_ROOT_KEY, true);
             final Map<String, Object> attrs = agentRoot.getAttributes();
             if (attrs != null && attrs.containsKey(GEN_AI_INPUT_TOKENS_KEY)) {
