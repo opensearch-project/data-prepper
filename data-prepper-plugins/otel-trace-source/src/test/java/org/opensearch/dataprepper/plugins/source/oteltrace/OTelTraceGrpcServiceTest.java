@@ -37,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -57,6 +58,7 @@ import java.util.stream.Stream;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -127,6 +129,8 @@ public class OTelTraceGrpcServiceTest {
     Timer requestProcessDuration;
     @Mock
     private ServiceRequestContext serviceRequestContext;
+    @Mock
+    private CircuitBreaker circuitBreaker;
 
     @Captor
     ArgumentCaptor<byte[]> bytesCaptor;
@@ -336,6 +340,49 @@ public class OTelTraceGrpcServiceTest {
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/test-standard-trace.json"));
         String expected = String.format(file, TIME_KEY, END_TIME_KEY);
         JSONAssert.assertEquals(expected, result, false);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerOpen_rejectsRequestBeforeBufferWrite(final OTelProtoCodec.OTelProtoDecoder decoder) {
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        objectUnderTest = generateOTelTraceGrpcService(decoder, circuitBreaker);
+        final BufferWriteException thrown;
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            thrown = assertThrows(BufferWriteException.class, () -> objectUnderTest.export(SUCCESS_REQUEST, responseObserver));
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        assertThat(thrown.getMessage(), equalTo("Circuit breaker is open."));
+        assertThat(thrown.getCause(), instanceOf(TimeoutException.class));
+        verifyNoInteractions(buffer);
+        verifyNoInteractions(responseObserver);
+        verifyNoInteractions(successRequestsCounter);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDecoderArguments")
+    public void export_circuitBreakerClosed_proceedsNormally(final OTelProtoCodec.OTelProtoDecoder decoder) throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(false);
+        objectUnderTest = generateOTelTraceGrpcService(decoder, circuitBreaker);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
+        }
+
+        verify(circuitBreaker, times(1)).isOpen();
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+        verify(responseObserver, times(1)).onCompleted();
+        verify(successRequestsCounter, times(1)).increment();
+    }
+
+    private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder,
+                                                              final CircuitBreaker circuitBreaker) {
+        return new OTelTraceGrpcService(
+                bufferWriteTimeoutInMillis, decoder, buffer, circuitBreaker, mockPluginMetrics, null);
     }
 
     private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
