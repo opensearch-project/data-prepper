@@ -33,6 +33,9 @@ public class ConnectionConfiguration {
   @JsonProperty("insecure")
   private boolean insecure = false;
 
+  @JsonProperty("proxy")
+  private String proxy;
+
   public Path getCertPath() {
     return certPath;
   }
@@ -51,6 +54,10 @@ public class ConnectionConfiguration {
 
   public boolean isInsecure() {
     return insecure;
+  }
+
+  public String getProxy() {
+    return proxy;
   }
 
   @AssertTrue(message = "cert and certificate both are configured. " +
