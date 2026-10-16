@@ -137,6 +137,7 @@ public final class BulkRetryStrategy {
     private final Counter documentsDuplicates;
     private final ExistingDocumentQueryManager existingDocumentQueryManager;
     private final boolean isExternalVersioning;
+    private final boolean dropVersionConflicts;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -169,9 +170,11 @@ public final class BulkRetryStrategy {
                              final String pipelineName,
                              final String pluginName,
                              final ExistingDocumentQueryManager existingDocumentQueryManager,
-                             final boolean isExternalVersioning) {
+                             final boolean isExternalVersioning,
+                             final boolean dropVersionConflicts) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.isExternalVersioning = isExternalVersioning;
+        this.dropVersionConflicts = dropVersionConflicts;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.successfulOperationsHandler = successfulOperationsHandler;
@@ -268,7 +271,7 @@ public final class BulkRetryStrategy {
         if (isDeleteOperationWithNotFoundError(bulkItemResponse)) {
             return canRetryDeleteNotFoundOperation(bulkItemResponse, attemptNumber);
         }
-        
+
         return isGenerallyRetryableOperation(bulkItemResponse);
     }
 
@@ -279,7 +282,7 @@ public final class BulkRetryStrategy {
 
     private boolean canRetryDeleteNotFoundOperation(final BulkResponseItem bulkItemResponse, final int attemptNumber) {
         if (attemptNumber > DELETE_404_MAX_RETRIES) {
-            LOG.info("DELETE operation for index '{}' reached maximum retry limit ({}) for 404 errors, sending to DLQ", 
+            LOG.info("DELETE operation for index '{}' reached maximum retry limit ({}) for 404 errors, sending to DLQ",
                     bulkItemResponse.index(), DELETE_404_MAX_RETRIES);
             return false;
         }
@@ -295,7 +298,7 @@ public final class BulkRetryStrategy {
                                                                   final BulkResponse bulkResponse,
                                                                   final Exception exceptionFromRequest) {
         final boolean doRetry = (Objects.isNull(exceptionFromRequest)) ? canRetry(bulkResponse) : canRetry(exceptionFromRequest);
-        if (!Objects.isNull(bulkResponse) && attemptNumber == 1) { 
+        if (!Objects.isNull(bulkResponse) && attemptNumber == 1) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (!isItemInError(bulkItemResponse)) {
                     sentDocumentsOnFirstAttemptCounter.increment();
@@ -303,7 +306,7 @@ public final class BulkRetryStrategy {
             }
         }
         if (doRetry) {
-            if (attemptNumber % 5 == 1) { 
+            if (attemptNumber % 5 == 1) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
@@ -326,9 +329,8 @@ public final class BulkRetryStrategy {
         if (failure == null) {
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
-                    // Skip logging the error for version conflicts when using external versioning
                     final ErrorCause error = bulkItemResponse.error();
-                    if (isExternalVersioning && error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+                    if (shouldDropVersionConflict(error)) {
                         continue;
                     }
                     LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
@@ -411,11 +413,9 @@ public final class BulkRetryStrategy {
 
                     if (canRetryItem(bulkItemResponse, attemptNumber)) {
                         requestToReissue.addOperation(bulkOperation);
-                    } else if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                    } else if (shouldDropVersionConflict(bulkItemResponse.error())) {
                         documentsVersionConflictErrors.increment();
                         LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkItemResponse.index(), bulkItemResponse.error().reason());
-                        // When using external versioning, version conflicts are expected and not true errors.
-                        // Release the eventHandle without counting as a document error.
                         bulkOperation.releaseEventHandle(true);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
@@ -452,11 +452,9 @@ public final class BulkRetryStrategy {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
             final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (isItemInError(bulkItemResponse)) {
-                if (isExternalVersioning && bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
+                if (shouldDropVersionConflict(bulkItemResponse.error())) {
                     documentsVersionConflictErrors.increment();
                     LOG.debug("Index: {}, Received version conflict from OpenSearch: {}", bulkOperation.getIndex(), bulkItemResponse.error().reason());
-                    // When using external versioning, version conflicts are expected and not true errors.
-                    // Release the eventHandle without counting as a document error.
                     bulkOperation.releaseEventHandle(true);
                 } else {
                     failures.add(FailedBulkOperation.builder()
@@ -517,5 +515,21 @@ public final class BulkRetryStrategy {
         }
 
         return false;
+    }
+
+    /**
+     * Determines whether a version conflict error on a bulk response item should be dropped
+     * (treated as success) rather than sent to the DLQ.
+     *
+     * A version conflict is dropped when:
+     * 1. External versioning is used - conflicts indicate the document already has a newer version
+     * 2. The drop_version_conflicts configuration option is enabled
+     */
+    private boolean shouldDropVersionConflict(final ErrorCause error) {
+        if (error == null || !VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
+            return false;
+        }
+
+        return isExternalVersioning || dropVersionConflicts;
     }
 }
