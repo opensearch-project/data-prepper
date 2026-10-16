@@ -41,6 +41,13 @@ public class DataPrepperExecute {
 
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
+        // Register shutdown hook to jvm for graceful shutdown
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOG.info("Shutdown signal received. Initiating graceful shutdown of Data Prepper.");
+            dataPrepper.shutdown();
+            LOG.info("Data Prepper shutdown complete.");
+        }));
+
         LOG.trace("Starting Data Prepper execution");
         dataPrepper.execute();
     }
