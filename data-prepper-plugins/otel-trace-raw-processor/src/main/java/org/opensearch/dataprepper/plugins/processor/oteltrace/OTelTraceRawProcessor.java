@@ -50,10 +50,14 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     public static final String SPAN_SET_COUNT_METRIC_NAME = "spanSetCount";
 
     private final long traceFlushInterval;
+    static final long GENAI_COVERAGE_MAX_SPAN_IDS = 500_000L;
 
     private final Map<String, SpanSet> traceIdSpanSetMap = new ConcurrentHashMap<>();
 
     private final Cache<String, TraceGroup> traceIdTraceGroupCache;
+
+    /** Span ids covered by GenAI spans, per trace, for spans that arrive after their ancestors. */
+    private final GenAiCoverage genAiCoverage;
 
     private long lastTraceFlushTime = 0L;
 
@@ -73,6 +77,9 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
           .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
           .build();
 
+
+        genAiCoverage = GenAiCoverage.create(GENAI_COVERAGE_MAX_SPAN_IDS,
+                otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive());
 
         pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.estimatedSize());
         pluginMetrics.gauge(SPAN_SET_COUNT_METRIC_NAME, traceIdSpanSetMap, cache -> (double) cache.size());
@@ -100,7 +107,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
 
         // Enrich GenAI agent traces (propagate select gen_ai attributes to root, aggregate tokens, strip conflicting sub-keys)
-        GenAiEnrichmentHelper.enrichBatch(processedSpans);
+        GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage);
 
         // Derive server span attributes (fault, error, operation, environment)
         OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
