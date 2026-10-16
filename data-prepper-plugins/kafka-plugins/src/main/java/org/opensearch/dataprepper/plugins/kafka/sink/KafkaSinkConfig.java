@@ -86,8 +86,6 @@ public class KafkaSinkConfig implements KafkaProducerConfig {
     @Valid
     private AwsConfig awsConfig;
     @JsonProperty("partition_key")
-    @NotNull
-    @NotEmpty
     private String partitionKey;
 
     @JsonProperty("producer_properties")
