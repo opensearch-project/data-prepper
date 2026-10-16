@@ -1,0 +1,56 @@
+receivers:
+  filelog:
+    include: [ /var/log/test.log ]
+    start_at: beginning
+    operators:
+      - type: json_parser
+        body: attributes.body
+        timestamp:
+          parse_from: attributes.time
+          layout: "%Y-%m-%dT%H:%M:%S.%L%z"
+        severity:
+          parse_from: attributes.severity
+        trace:
+          trace_id:
+            parse_from: attributes.trace_id
+          span_id:
+            parse_from: attributes.span_id
+          trace_flage:
+            parse_from: attributes.trace_flags
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+exporters:
+  otlp/logs:
+    endpoint: data-prepper:21892
+    tls:
+      insecure: true
+  logging:
+  debug:
+    verbosity: detailed
+processors:
+  resourcedetection/env:
+    detectors: [env]
+    timeout: 2s
+    override: false
+  attributes:
+    actions:
+      - key: severity
+        action: delete
+      - key: body
+        action: delete
+      - key: time
+        action: delete
+      - key: trace_id
+        action: delete
+      - key: span_id
+        action: delete
+      - key: trace_flags
+        action: delete
+service:
+  pipelines:
+    logs:
+      receivers: [otlp,filelog]
+      processors: [attributes, resourcedetection/env]
+      exporters: [debug, logging, otlp/logs]
