@@ -1,0 +1,35 @@
+{
+  "convert_entry_type": [
+      "key", "keys"
+  ],
+  "csv": [
+      "source"
+  ],
+  "date": [
+      "match", "from_time_received"
+  ],
+  "delay": [
+      "for"
+  ],
+  "grok": [
+      "match"
+  ],
+  "key_value": [
+      "source", "default_values", "include_keys", "exclude_keys", "whitespace", "skip_duplicate_values"
+  ],
+  "parse_ion": [
+      "source", "handle_failed_events"
+  ],
+  "parse_json": [
+      "source", "handle_failed_events"
+  ],
+  "parse_xml": [
+      "source", "handle_failed_events"
+  ],
+  "service_map": [
+      "db_path"
+  ],
+  "translate": [
+      "file", "mappings"
+  ]
+}
