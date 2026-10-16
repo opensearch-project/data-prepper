@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
