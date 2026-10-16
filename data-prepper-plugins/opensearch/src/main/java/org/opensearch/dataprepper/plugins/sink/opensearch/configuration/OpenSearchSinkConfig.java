@@ -207,6 +207,11 @@ public class OpenSearchSinkConfig {
     private Integer maxRetries = null;
 
     @Getter
+    @Valid
+    @JsonProperty("retry")
+    private RetryConfig retryConfig = new RetryConfig();
+
+    @Getter
     @JsonProperty("dlq")
     private DlqConfiguration dlq;
 

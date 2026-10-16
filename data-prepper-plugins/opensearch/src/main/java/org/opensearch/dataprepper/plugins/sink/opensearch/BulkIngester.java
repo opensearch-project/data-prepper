@@ -41,6 +41,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkR
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.RetryConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
@@ -218,6 +219,13 @@ public class BulkIngester implements Ingester {
         setupBulkRequestSupplier(requireAlias);
 
         final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
+        final RetryConfig retryConfig = openSearchSinkConfig.getRetryConfiguration().getRetryConfig();
+        final long initialDelayMs = retryConfig.getInitialDelay().toMillis();
+        final long maxDelayMs = retryConfig.getMaxDelay().toMillis();
+        final double jitter = retryConfig.getJitter();
+        final AdaptiveBackoffState adaptiveBackoffState = retryConfig.isAdaptive()
+                ? new AdaptiveBackoffState(initialDelayMs, retryConfig.getDecayThreshold())
+                : null;
         bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(),
                 openSearchClientSupplier);
 
@@ -237,7 +245,11 @@ public class BulkIngester implements Ingester {
                 pipeline,
                 PLUGIN_NAME,
                 openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
-                isExternalVersionType(versionType));
+                isExternalVersionType(versionType),
+                initialDelayMs,
+                maxDelayMs,
+                jitter,
+                adaptiveBackoffState);
 
         final IndexCache indexCache = new IndexCache();
         final DataStreamDetector dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
