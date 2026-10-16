@@ -179,6 +179,9 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfRebalances()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfPartitionsRevoked()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfCommitFailures()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfSeekFailures()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfBufferWriteFailures()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
