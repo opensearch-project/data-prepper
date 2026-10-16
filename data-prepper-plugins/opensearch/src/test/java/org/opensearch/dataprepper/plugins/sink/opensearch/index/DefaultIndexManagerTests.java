@@ -412,7 +412,7 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
-        assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
+        assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(restHighLevelClient).getLowLevelClient();
         verify(restClient).performRequest(any());
         verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
@@ -428,7 +428,7 @@ public class DefaultIndexManagerTests {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
-        assertThrows(ResponseException.class, () -> defaultIndexManager.checkAndCreatePolicy());
+        assertThrows(ResponseException.class, () -> defaultIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(restHighLevelClient, times(2)).getLowLevelClient();
         verify(restClient, times(2)).performRequest(any());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
@@ -441,7 +441,7 @@ public class DefaultIndexManagerTests {
     void checkAndCreatePolicy() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
-        assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
+        assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy(INDEX_ALIAS));
         verify(indexConfiguration).getIndexAlias();
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();

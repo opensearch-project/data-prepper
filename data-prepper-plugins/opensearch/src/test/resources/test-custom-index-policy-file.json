@@ -16,7 +16,8 @@
       }
     ],
     "ism_template": {
-      "index_patterns": ["sink-custom-index-ism-test-alias-*"]
+      "priority": 100,
+      "index_patterns": ["dummy-pattern-*"]
     }
   }
 }
