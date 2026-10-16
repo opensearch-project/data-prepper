@@ -9,6 +9,11 @@ For usage and configuration, please refer to the documentation [here] (https://o
 The `azure_federated` SASL/OAUTHBEARER mechanism additionally lets the Kafka source consume from an Azure
 Event Hubs Kafka endpoint using AWS to Azure Entra workload-identity federation, with no stored secret.
 
+When using Confluent Schema Registry, the Kafka source automatically detects and deserializes Avro, JSON Schema,
+and Protobuf values registered under the `<topic>-value` subject.
+Protobuf values follow the ProtoJSON field mapping, except that 64-bit integer fields are emitted as numbers rather than
+strings so that numeric conditions in processors work as expected.
+
 ## Developer guide
 
 ### Integration tests
