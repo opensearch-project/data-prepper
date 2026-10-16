@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSo
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchTimeoutException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
@@ -631,5 +632,110 @@ public class PitWorkerTest {
             a.<Runnable>getArgument(0).run();
             return null;
         }).when(indexProcessingTimeTimer).record(any(Runnable.class));
+    }
+
+    @Test
+    void run_with_SearchTimeoutException_retries_and_succeeds() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String pitId = UUID.randomUUID().toString();
+        final CreatePointInTimeResponse createPointInTimeResponse = mock(CreatePointInTimeResponse.class);
+        when(createPointInTimeResponse.getPitId()).thenReturn(pitId);
+        when(searchAccessor.createPit(any(CreatePointInTimeRequest.class))).thenReturn(createPointInTimeResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final Event testEvent = mock(Event.class);
+        final JsonNode testData = mock(JsonNode.class);
+        when(testEvent.getJsonNode()).thenReturn(testData);
+        when(objectMapper.writeValueAsBytes(testData)).thenReturn(new byte[10]);
+
+        // First call throws SearchTimeoutException, second call succeeds
+        final SearchWithSearchAfterResults successResults = mock(SearchWithSearchAfterResults.class);
+        when(successResults.getNextSearchAfter()).thenReturn(null);
+        when(successResults.getDocuments()).thenReturn(List.of(testEvent));
+
+        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class)))
+                .thenThrow(new SearchTimeoutException("Read timed out"))
+                .thenReturn(successResults);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+        doNothing().when(searchAccessor).deletePit(any(DeletePointInTimeRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+
+        createObjectUnderTest().run();
+
+        // Verify the partition was completed (not given up) since retry succeeded
+        verify(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+        verify(sourceCoordinator, never()).giveUpPartition(partitionKey);
+    }
+
+    @Test
+    void run_with_SocketTimeoutException_retries_and_succeeds() throws Exception {
+        mockTimerCallable();
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final String pitId = UUID.randomUUID().toString();
+        final CreatePointInTimeResponse createPointInTimeResponse = mock(CreatePointInTimeResponse.class);
+        when(createPointInTimeResponse.getPitId()).thenReturn(pitId);
+        when(searchAccessor.createPit(any(CreatePointInTimeRequest.class))).thenReturn(createPointInTimeResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final Event testEvent = mock(Event.class);
+        final JsonNode testData = mock(JsonNode.class);
+        when(testEvent.getJsonNode()).thenReturn(testData);
+        when(objectMapper.writeValueAsBytes(testData)).thenReturn(new byte[10]);
+
+        final SearchWithSearchAfterResults successResults = mock(SearchWithSearchAfterResults.class);
+        when(successResults.getNextSearchAfter()).thenReturn(null);
+        when(successResults.getDocuments()).thenReturn(List.of(testEvent));
+
+        // First call throws SearchTimeoutException (wrapping SocketTimeoutException), second succeeds
+        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class)))
+                .thenThrow(new SearchTimeoutException("Read timed out", new java.net.SocketTimeoutException("Read timed out")))
+                .thenReturn(successResults);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+        doNothing().when(searchAccessor).deletePit(any(DeletePointInTimeRequest.class));
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier))
+                .thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+
+        createObjectUnderTest().run();
+
+        verify(sourceCoordinator).closePartition(partitionKey, Duration.ZERO, 1, false);
+        verify(sourceCoordinator, never()).giveUpPartition(partitionKey);
     }
 }

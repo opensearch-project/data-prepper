@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSo
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchTimeoutException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
@@ -189,13 +190,8 @@ public class PitWorker implements SearchWorker, Runnable {
         final List<SortingOptions> sortingOptions = SortingOptions.fromSortConfigs(searchConfiguration.getSort());
 
         do {
-            searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
-                    .withPitId(openSearchIndexProgressState.getPitId())
-                    .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
-                    .withPaginationSize(searchConfiguration.getBatchSize())
-                    .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
-                    .withSortOptions(sortingOptions)
-                    .build());
+            searchWithSearchAfterResults = searchWithRetry(openSearchIndexProgressState, searchConfiguration,
+                    searchWithSearchAfterResults, sortingOptions);
 
             searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
                 try {
@@ -245,6 +241,41 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private OpenSearchIndexProgressState initializeProgressState() {
         return new OpenSearchIndexProgressState();
+    }
+
+    private static final int MAX_SEARCH_RETRIES = 50;
+    private static final Duration SEARCH_RETRY_BACKOFF = Duration.ofSeconds(5);
+
+    private SearchWithSearchAfterResults searchWithRetry(final OpenSearchIndexProgressState openSearchIndexProgressState,
+                                                         final SearchConfiguration searchConfiguration,
+                                                         final SearchWithSearchAfterResults previousResults,
+                                                         final List<SortingOptions> sortingOptions) {
+        for (int attempt = 1; attempt <= MAX_SEARCH_RETRIES; attempt++) {
+            try {
+                return searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
+                        .withPitId(openSearchIndexProgressState.getPitId())
+                        .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
+                        .withPaginationSize(searchConfiguration.getBatchSize())
+                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, previousResults))
+                        .withSortOptions(sortingOptions)
+                        .build());
+            } catch (final SearchTimeoutException e) {
+                LOG.warn("Search request failed (attempt {}/{}): {}. Retrying after {} seconds.",
+                        attempt, MAX_SEARCH_RETRIES, e.getMessage(), SEARCH_RETRY_BACKOFF.getSeconds());
+                openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
+                if (attempt == MAX_SEARCH_RETRIES) {
+                    throw new RuntimeException(String.format("Search request failed after %d retries", MAX_SEARCH_RETRIES), e);
+                }
+                try {
+                    Thread.sleep(SEARCH_RETRY_BACKOFF.toMillis());
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during search retry backoff", ex);
+                }
+            }
+        }
+        // Should never reach here
+        throw new RuntimeException("Unexpected state: search retry loop exited without returning or throwing");
     }
 
     private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchWithSearchAfterResults searchWithSearchAfterResults) {
