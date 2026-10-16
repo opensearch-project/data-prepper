@@ -1,0 +1,6 @@
+2026-06-17 10:00:00 INFO [main] Application starting up
+2026-06-17 10:00:01 DEBUG [main] Loading configuration from /etc/app/config.yml
+2026-06-17 10:00:02 INFO [main] Connected to database at localhost:5432
+2026-06-17 10:00:03 WARN [pool-1] Connection pool nearing capacity: 45/50
+2026-06-17 10:00:04 ERROR [handler-3] Failed to process request: timeout after 30s
+2026-06-17 10:00:05 INFO [main] Health check endpoint ready on :8080/health

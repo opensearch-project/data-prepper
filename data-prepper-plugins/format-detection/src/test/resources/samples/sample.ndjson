@@ -1,0 +1,6 @@
+{"timestamp":"2026-06-17T10:00:00Z","level":"INFO","service":"api","message":"Request received","duration_ms":12}
+{"timestamp":"2026-06-17T10:00:01Z","level":"DEBUG","service":"api","message":"Processing payload","duration_ms":45}
+{"timestamp":"2026-06-17T10:00:02Z","level":"INFO","service":"worker","message":"Task completed","duration_ms":230}
+{"timestamp":"2026-06-17T10:00:03Z","level":"WARN","service":"api","message":"Slow response","duration_ms":1500}
+{"timestamp":"2026-06-17T10:00:04Z","level":"ERROR","service":"worker","message":"Connection timeout","duration_ms":5000}
+{"timestamp":"2026-06-17T10:00:05Z","level":"INFO","service":"api","message":"Health check OK","duration_ms":2}
