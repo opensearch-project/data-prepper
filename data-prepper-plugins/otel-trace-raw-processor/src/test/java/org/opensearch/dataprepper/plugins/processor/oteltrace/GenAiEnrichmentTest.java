@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -204,6 +205,81 @@ class GenAiEnrichmentTest {
         final Span root = findRoot(result);
         assertEquals(150L, ((Number) root.getAttributes().get("gen_ai.usage.input_tokens")).longValue());
         assertEquals(42L, ((Number) root.getAttributes().get("gen_ai.usage.output_tokens")).longValue());
+    }
+
+    @Test
+    void testConversationIdNormalizedOnSourceSpanOnly() {
+        final Collection<Record<Span>> result = processor.doExecute(records(
+                "genai-root-span.json", "openinference-child-span.json"));
+
+        assertEquals("sess-123", findChild(result).getAttributes().get("gen_ai.conversation.id"));
+        assertNull(findRoot(result).getAttributes().get("gen_ai.conversation.id"));
+    }
+
+    @Test
+    void testTraceloopAssociationSessionIdNormalized() {
+        final Collection<Record<Span>> result = processor.doExecute(records(
+                "genai-root-span.json", "openllmetry-session-child-span.json"));
+
+        final Span child = findChild(result);
+        assertEquals("traceloop-sess-42", child.getAttributes().get("gen_ai.conversation.id"));
+        // Original preserved
+        assertEquals("traceloop-sess-42",
+                child.getAttributes().get("traceloop.association.properties.session_id"));
+        assertNull(findRoot(result).getAttributes().get("gen_ai.conversation.id"));
+    }
+
+    @Test
+    void testFirstListedSourceWinsWhateverTheAttributeOrder() {
+        // OpenInference session.id is listed before the Traceloop key in the mappings file.
+        final Map<String, Object> sessionFirst = new LinkedHashMap<>();
+        sessionFirst.put("session.id", "oi-sess");
+        sessionFirst.put("traceloop.association.properties.session_id", "tl-sess");
+        final Map<String, Object> traceloopFirst = new LinkedHashMap<>();
+        traceloopFirst.put("traceloop.association.properties.session_id", "tl-sess");
+        traceloopFirst.put("session.id", "oi-sess");
+
+        for (final Map<String, Object> attributes : List.of(sessionFirst, traceloopFirst)) {
+            final Span span = spanWithAttributes(attributes);
+            GenAiEnrichmentHelper.normalizeAttributes(span);
+            assertEquals("oi-sess", span.getAttributes().get("gen_ai.conversation.id"));
+        }
+    }
+
+    @Test
+    void testExistingConversationIdIsNotOverwritten() {
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("traceloop.association.properties.session_id", "tl-sess");
+        attributes.put("session.id", "oi-sess");
+        attributes.put("gen_ai.conversation.id", "native-conv");
+
+        final Span span = spanWithAttributes(attributes);
+        GenAiEnrichmentHelper.normalizeAttributes(span);
+
+        assertEquals("native-conv", span.getAttributes().get("gen_ai.conversation.id"));
+    }
+
+    private static Span spanWithAttributes(final Map<String, Object> attributes) {
+        return JacksonSpan.builder()
+                .withTraceId("GENAI_TRACE_ID_1")
+                .withSpanId("000000000000c004")
+                .withParentSpanId("GENAI_ROOT_SPAN_ID")
+                .withTraceState("")
+                .withName("chat")
+                .withKind("CLIENT")
+                .withDurationInNanos(1L)
+                .withStartTime("2026-01-01T00:00:00.000Z")
+                .withEndTime("2026-01-01T00:00:01.000Z")
+                .withTraceGroup(null)
+                .withTraceGroupFields(DefaultTraceGroupFields.builder().build())
+                .withAttributes(attributes)
+                .build();
+    }
+
+    private static Span findChild(final Collection<Record<Span>> result) {
+        return result.stream().map(Record::getData)
+                .filter(s -> s.getParentSpanId() != null && !s.getParentSpanId().isEmpty())
+                .findFirst().orElseThrow();
     }
 
     private List<Record<Span>> records(final String... files) {
