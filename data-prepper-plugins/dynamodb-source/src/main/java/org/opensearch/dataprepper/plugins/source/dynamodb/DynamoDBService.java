@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -81,7 +82,7 @@ public class DynamoDBService {
         // A shard manager is responsible to retrieve the shard information from streams.
         shardManager = new ShardManager(dynamoDbStreamsClient, dynamoDBSourceAggregateMetrics, pluginMetrics);
         tableConfigs = sourceConfig.getTableConfigs();
-        executor = Executors.newFixedThreadPool(4);
+        executor = Executors.newFixedThreadPool(4, BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-source"));
     }
 
     /**

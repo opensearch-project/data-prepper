@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -99,7 +100,8 @@ public class DataFileScheduler implements Runnable {
             recordConverter.setJoinMetadataEnricher(
                     new JoinMetadataEnricher(sourceConfig.getJoinConfig().getRelations()));
         }
-        executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT);
+        executor = Executors.newFixedThreadPool(DATA_LOADER_MAX_JOB_COUNT,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-data-file"));
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;

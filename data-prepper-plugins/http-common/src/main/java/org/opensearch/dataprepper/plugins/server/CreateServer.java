@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
@@ -277,7 +278,8 @@ public class CreateServer {
         }
 
         final int threads = serverConfiguration.getThreadCount();
-        final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
+        final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads,
+                BackgroundThreadFactory.defaultExecutorThreadFactory(pipelineName + "-" + sourceName));
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
         final int maxPendingRequests = serverConfiguration.getMaxPendingRequests();
         final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(

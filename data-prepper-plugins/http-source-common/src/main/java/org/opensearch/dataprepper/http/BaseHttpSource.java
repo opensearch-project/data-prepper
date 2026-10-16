@@ -8,6 +8,7 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -124,7 +125,8 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
                 sb.maxRequestLength(sourceConfig.getMaxRequestLength().getBytes());
             }
             final int threads = sourceConfig.getThreadCount();
-            final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
+            final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads,
+                    BackgroundThreadFactory.defaultExecutorThreadFactory(pipelineName + "-" + sourceName));
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
             final int maxPendingRequests = sourceConfig.getMaxPendingRequests();
             final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(

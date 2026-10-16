@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -57,7 +58,9 @@ public class OpenSearchService {
                                                             final AcknowledgementSetManager acknowledgementSetManager,
                                                             final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         return new OpenSearchService(
-                searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, Executors.newSingleThreadScheduledExecutor(),
+                searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer,
+                Executors.newSingleThreadScheduledExecutor(
+                        BackgroundThreadFactory.defaultExecutorThreadFactory("opensearch-source")),
                 BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT),
                 acknowledgementSetManager, openSearchSourcePluginMetrics);
     }
