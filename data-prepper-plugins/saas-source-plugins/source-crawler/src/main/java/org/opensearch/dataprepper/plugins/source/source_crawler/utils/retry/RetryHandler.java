@@ -81,14 +81,14 @@ public class RetryHandler {
 
                 if (decision.isShouldStop()) {
                     decision.getException().ifPresent(e -> {
-                        throw new SecurityException("Access forbidden: " + e.getMessage());
+                        throw new SaaSCrawlerException("Access forbidden: " + e.getMessage(), e, false);
                     });
-                    throw ex;
+                    throw new SaaSCrawlerException(ex.getMessage(), ex, false);
                 }
 
                 if (retryCount == maxRetries - 1) {
                     log.error("Exceeded maximum retry attempts ({})", maxRetries, ex);
-                    throw ex;
+                    throw new SaaSCrawlerException(ex.getMessage(), ex, true);
                 }
 
                 // Calculate sleep time and wait
@@ -101,7 +101,7 @@ public class RetryHandler {
             }
             retryCount++;
         }
-        throw new RuntimeException("Exceeded maximum retry attempts (" + maxRetries + ")");
+        throw new SaaSCrawlerException("Exceeded maximum retry attempts (" + maxRetries + ")", true);
     }
 
     private void sleep(long milliseconds) {
@@ -109,7 +109,7 @@ public class RetryHandler {
             Thread.sleep(milliseconds);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", ie);
+            throw new SaaSCrawlerException("Retry interrupted", ie, true);
         }
     }
 }
