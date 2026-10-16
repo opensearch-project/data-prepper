@@ -11,6 +11,7 @@
  package org.opensearch.dataprepper.plugins.source.sqs;
 
  import com.fasterxml.jackson.annotation.JsonProperty;
+ import jakarta.validation.constraints.AssertTrue;
  import jakarta.validation.constraints.Size;
  import software.amazon.awssdk.arns.Arn;
  import software.amazon.awssdk.regions.Region;
@@ -70,5 +71,14 @@
 
      public Map<String, String> getAwsStsHeaderOverrides() {
          return awsStsHeaderOverrides;
+     }
+
+     @AssertTrue(message = "sts_external_id is required when sts_role_arn is specified to prevent confused deputy attacks. " +
+             "See https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html")
+     public boolean isExternalIdProvidedWhenRoleArnSet() {
+         if (awsStsRoleArn == null) {
+             return true;
+         }
+         return awsStsExternalId != null && !awsStsExternalId.isBlank();
      }
  }
