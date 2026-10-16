@@ -209,6 +209,9 @@ class KafkaBufferTest {
         when(plainTextAuthConfig.getUsername()).thenReturn("username");
         when(plainTextAuthConfig.getPassword()).thenReturn("password");
 
+        when(bufferConfig.getBoundedBufferSize()).thenReturn(KafkaBufferConfig.DEFAULT_BOUNDED_BUFFER_SIZE);
+        when(bufferConfig.getBoundedBatchSize()).thenReturn(KafkaBufferConfig.DEFAULT_BOUNDED_BATCH_SIZE);
+
         executorService = mock(ExecutorService.class);
         when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
 
@@ -372,6 +375,44 @@ class KafkaBufferTest {
         verify(executorService).shutdown();
         verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
         verify(executorService).shutdownNow();
+    }
+
+    @Test
+    void constructor_passes_configured_bounded_buffer_size_and_batch_size_to_BlockingBuffer() {
+        final int customBufferSize = 800000;
+        final int customBatchSize = 200000;
+        when(bufferConfig.getBoundedBufferSize()).thenReturn(customBufferSize);
+        when(bufferConfig.getBoundedBatchSize()).thenReturn(customBatchSize);
+
+        final List<List<?>> capturedArgs = new java.util.ArrayList<>();
+
+        try (
+            final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
+            final MockedConstruction<KafkaCustomProducerFactory> producerFactoryMock =
+                mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
+                    producerFactory = mock;
+                    when(producerFactory.createProducer(any(), isNull(), isNull(), any(), any(), anyBoolean(), any())).thenReturn(producer);
+                });
+            final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
+                mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
+                    consumerFactory = mock;
+                    when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), anyBoolean())).thenReturn(List.of(consumer));
+                });
+            final MockedConstruction<KafkaAdminAccessor> adminAccessorMock =
+                mockConstruction(KafkaAdminAccessor.class, (mock, context) -> kafkaAdminAccessor = mock);
+            final MockedConstruction<BlockingBuffer> blockingBufferMock =
+                mockConstruction(BlockingBuffer.class, (mock, context) -> {
+                    blockingBuffer = mock;
+                    capturedArgs.add(new java.util.ArrayList<>(context.arguments()));
+                })) {
+
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(KafkaPluginThreadFactory.class))).thenReturn(executorService);
+            new KafkaBuffer(pluginSetting, bufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, circuitBreaker, encryptionSupplier);
+
+            assertThat(capturedArgs.size(), equalTo(1));
+            assertThat(capturedArgs.get(0).get(0), equalTo(customBufferSize));
+            assertThat(capturedArgs.get(0).get(1), equalTo(customBatchSize));
+        }
     }
 
     @Nested
