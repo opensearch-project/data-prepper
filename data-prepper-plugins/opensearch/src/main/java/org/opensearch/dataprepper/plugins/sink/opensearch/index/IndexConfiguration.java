@@ -37,7 +37,9 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,6 +67,8 @@ public class IndexConfiguration {
     public static final String TEMPLATE_CONTENT = "template_content";
     public static final String COMPONENT_TEMPLATES = "component_templates";
     static final String COMPOSED_OF = "composed_of";
+    static final String VERSION = "version";
+    static final String TEMPLATE = "template";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
@@ -89,6 +93,7 @@ public class IndexConfiguration {
     private TemplateType templateType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
+    private final Map<String, Map<String, Object>> managedComponentTemplates;
     private final String documentIdField;
     private final String documentId;
     private final String routingField;
@@ -148,6 +153,7 @@ public class IndexConfiguration {
         determineTemplateType(builder);
 
         this.indexTemplate = builder.templateContent != null ? readTemplateContent(builder.templateContent) : readIndexTemplate(builder.templateFile, indexType, templateType);
+        this.managedComponentTemplates = readManagedComponentTemplates(indexType);
         addComponentTemplates(builder.componentTemplates);
 
         if (builder.numReplicas > 0) {
@@ -244,7 +250,15 @@ public class IndexConfiguration {
     }
 
     private void determineTemplateType(Builder builder) {
-        if (builder.serverless) {
+        if (indexType == IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2) {
+            // The v2 span template is composed from component templates, which V1 templates cannot do.
+            if (DistributionVersion.ES6.equals(builder.distributionVersion)) {
+                throw new InvalidPluginConfigurationException(String.format(
+                        "%s %s is not supported with %s %s", INDEX_TYPE, indexType.getValue(),
+                        DISTRIBUTION_VERSION, DistributionVersion.ES6.getVersion()));
+            }
+            templateType = TemplateType.INDEX_TEMPLATE;
+        } else if (builder.serverless) {
             templateType = TemplateType.INDEX_TEMPLATE;
         } else {
             templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
@@ -407,6 +421,14 @@ public class IndexConfiguration {
         return indexTemplate;
     }
 
+    /**
+     * Component templates that the sink creates before the index template, keyed by name in
+     * {@code composed_of} order. Empty for index types that do not manage component templates.
+     */
+    public Map<String, Map<String, Object>> getManagedComponentTemplates() {
+        return managedComponentTemplates;
+    }
+
     public String getDocumentIdField() {
         return documentIdField;
     }
@@ -547,6 +569,32 @@ public class IndexConfiguration {
             } else {
                 return new HashMap<>();
             }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Index template is not valid.", ex);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Map<String, Object>> readManagedComponentTemplates(final IndexType indexType) {
+        if (indexType != IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2) {
+            return Collections.emptyMap();
+        }
+        // Reuse the plain span template's mappings so they are defined in one file only.
+        final Map<String, Object> plainTemplate = readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.RAW_STANDARD_TEMPLATE_FILE);
+        final Map<String, Object> plainComponentTemplate = new HashMap<>();
+        plainComponentTemplate.put(VERSION, plainTemplate.get(VERSION));
+        plainComponentTemplate.put(TEMPLATE, plainTemplate.get(TEMPLATE));
+
+        final Map<String, Map<String, Object>> componentTemplates = new LinkedHashMap<>();
+        componentTemplates.put(IndexConstants.OTEL_APM_SPAN_PLAIN_COMPONENT_TEMPLATE, plainComponentTemplate);
+        componentTemplates.put(IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE,
+                readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE_FILE));
+        return Collections.unmodifiableMap(componentTemplates);
+    }
+
+    private Map<String, Object> readResourceTemplate(final TemplateType templateType, final String templateFile) {
+        try {
+            return OBJECT_MAPPER.readValue(loadExistingTemplate(templateType, templateFile), new TypeReference<Map<String, Object>>() {});
         } catch (IOException ex) {
             throw new IllegalStateException("Index template is not valid.", ex);
         }

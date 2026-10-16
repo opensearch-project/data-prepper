@@ -42,6 +42,10 @@ public class IndexConstants {
   public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_NO_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-no-ism-template.json";
   public static final String OTEL_APM_SERVICE_MAP_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v2-apm-service-map-policy-with-ism-template.json";
   public static final String OTEL_APM_SPAN_TEMPLATE_FILE = "otel-v2-apm-span-index-template.json";
+  // Component templates composed by OTEL_APM_SPAN_TEMPLATE_FILE. The plain one is built from RAW_STANDARD_TEMPLATE_FILE.
+  public static final String OTEL_APM_SPAN_PLAIN_COMPONENT_TEMPLATE = "otel-v2-apm-span-plain";
+  public static final String OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE = "otel-v2-apm-span-nested-keyword";
+  public static final String OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE_FILE = "otel-v2-apm-span-nested-keyword-component-template.json";
   public static final String OTEL_APM_SPAN_ISM_POLICY = "otel-v2-apm-span-policy";
   public static final String OTEL_APM_SPAN_ISM_FILE_NO_ISM_TEMPLATE = "otel-v2-apm-span-policy-no-ism-template.json";
   public static final String OTEL_APM_SPAN_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v2-apm-span-policy-with-ism-template.json";
