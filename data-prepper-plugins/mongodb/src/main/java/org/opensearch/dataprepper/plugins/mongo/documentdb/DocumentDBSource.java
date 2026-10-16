@@ -47,6 +47,8 @@ public class DocumentDBSource implements Source<Record<Event>>, UsesEnhancedSour
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
         this.acknowledgementsEnabled = sourceConfig.isAcknowledgmentsEnabled();
+
+        sourceConfig.validateAwsConfigWithUsernameAndPassword();
     }
 
     @Override
