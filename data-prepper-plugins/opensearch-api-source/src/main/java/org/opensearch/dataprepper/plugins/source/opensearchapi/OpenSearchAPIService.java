@@ -17,28 +17,19 @@ import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.http.BaseHttpService;
-import org.opensearch.dataprepper.http.codec.MultiLineJsonCodec;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIRequestParams;
-import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkActionAndMetadataObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /*
  * OpenSearch API Service class is responsible for handling bulk API requests.
@@ -56,8 +47,7 @@ public class OpenSearchAPIService implements BaseHttpService {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAPIService.class);
 
-    // TODO: support other data-types as request body, e.g. json_lines, msgpack
-    private final MultiLineJsonCodec jsonCodec = new MultiLineJsonCodec();
+    private final OpenSearchBulkByteDecoder bulkByteDecoder = new OpenSearchBulkByteDecoder();
     private final Buffer<Record<Event>> buffer;
     private final int bufferWriteTimeoutInMillis;
     private final Counter requestsReceivedCounter;
@@ -110,21 +100,13 @@ public class OpenSearchAPIService implements BaseHttpService {
         }
 
         final HttpData content = aggregatedHttpRequest.content();
-        List<Map<String, Object>> bulkRequestPayloadList;
-
-        // parse the request payload
-        try {
-            bulkRequestPayloadList = jsonCodec.parse(content);
-        } catch (IOException e) {
-            LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
-            throw new IOException("Bad request data format.", e.getCause());
-        }
 
         try {
             if (buffer.isByteBuffer()) {
                 buffer.writeBytes(content.array(), null, bufferWriteTimeoutInMillis);
             } else {
-                List<Record<Event>> records = generateEventsFromBulkRequest(bulkRequestPayloadList, bulkAPIRequestParams);
+                List<Record<Event>> records = new ArrayList<>();
+                bulkByteDecoder.parse(new ByteArrayInputStream(content.array()), Instant.now(), bulkAPIRequestParams, records::add);
                 buffer.writeAll(records, bufferWriteTimeoutInMillis);
             }
         } catch (Exception e) {
@@ -133,73 +115,5 @@ public class OpenSearchAPIService implements BaseHttpService {
         }
         successRequestsCounter.increment();
         return HttpResponse.of(HttpStatus.OK);
-    }
-
-    private boolean isValidBulkAction(Map<String, Object> actionMap) {
-        return Arrays.stream(OpenSearchBulkActions.values())
-                .anyMatch(bulkAction -> actionMap.containsKey(bulkAction.toString()));
-    }
-
-    private List<Record<Event>> generateEventsFromBulkRequest(final List<Map<String, Object>> bulkRequestPayloadList, final BulkAPIRequestParams bulkAPIRequestParams) throws Exception {
-        List<Record<Event>> records = new ArrayList<>();
-        Iterator<Map<String, Object>> bulkRequestPayloadListIterator = bulkRequestPayloadList.iterator();
-
-        while (bulkRequestPayloadListIterator.hasNext()) {
-            Map<String, Object> actionMetadataRow = bulkRequestPayloadListIterator.next();
-            if (!isValidBulkAction(actionMetadataRow)) {
-                throw new IOException("Invalid request data.");
-            }
-
-            BulkActionAndMetadataObject bulkActionAndMetadataObject = new BulkActionAndMetadataObject(actionMetadataRow);
-            final boolean isDeleteAction = bulkActionAndMetadataObject.getAction().equals(OpenSearchBulkActions.DELETE.toString());
-            Map<String, Object> documentDataObject = null;
-            if (!isDeleteAction) {
-                if (!bulkRequestPayloadListIterator.hasNext()) {
-                    throw new IOException("Invalid request data.");
-                }
-                documentDataObject = bulkRequestPayloadListIterator.next();
-                // Performing another validation check to make sure that the doc row is not a valid action row
-                if (isValidBulkAction(documentDataObject)) {
-                    throw new IOException("Invalid request data.");
-                }
-            }
-            final JacksonEvent event = createBulkRequestActionEvent(bulkActionAndMetadataObject, bulkAPIRequestParams, documentDataObject);
-            records.add(new Record<>(event));
-        }
-
-        return records;
-    }
-
-    private JacksonEvent createBulkRequestActionEvent(
-            final BulkActionAndMetadataObject bulkActionAndMetadataObject,
-            final BulkAPIRequestParams bulkAPIRequestParams, Map<String, Object> optionalDocumentData) {
-
-        final JacksonEvent.Builder eventBuilder = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString());
-        if (optionalDocumentData != null) {
-            eventBuilder.withData(optionalDocumentData);
-        }
-        final JacksonEvent event = eventBuilder.build();
-
-        final String index = !StringUtils.isEmpty(bulkAPIRequestParams.getIndex()) ? bulkAPIRequestParams.getIndex() : bulkActionAndMetadataObject.getIndex();
-
-        event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_ACTION, bulkActionAndMetadataObject.getAction());
-        event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_INDEX, index);
-
-        String docId = bulkActionAndMetadataObject.getDocId();
-        if (!StringUtils.isBlank(docId) && !StringUtils.isEmpty(docId)) {
-            event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_ID, docId);
-        }
-
-        String pipeline = bulkAPIRequestParams.getPipeline();
-        if (!StringUtils.isBlank(pipeline) && !StringUtils.isEmpty(pipeline)) {
-            event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_PIPELINE, pipeline);
-        }
-
-        String routing = bulkAPIRequestParams.getRouting();
-        if (!StringUtils.isBlank(routing) && !StringUtils.isEmpty(routing)) {
-            event.getMetadata().setAttribute(BulkAPIEventMetadataKeyAttributes.BULK_API_EVENT_METADATA_ATTRIBUTE_ROUTING, routing);
-        }
-
-        return event;
     }
 }
