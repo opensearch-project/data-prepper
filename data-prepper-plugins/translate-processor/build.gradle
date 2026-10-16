@@ -19,6 +19,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-test:test-event')
+    testImplementation project(':data-prepper-test:plugin-test-framework')
     implementation libs.commons.lang3
 
     jmh project(':data-prepper-api')

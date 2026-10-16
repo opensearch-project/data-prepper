@@ -38,6 +38,10 @@ public class TranslateProcessorConfig {
     @JsonIgnore
     private List<MappingsParameterConfig> combinedMappingsConfigs;
 
+    @JsonProperty("use_absolute_paths")
+    @JsonPropertyDescription("Boolean to decide, whether to use relative paths to describe json key paths in the translate_when expressions")
+    private boolean useAbsolutePaths = false;
+
     public FileParameterConfig getFileParameterConfig() {
         return fileParameterConfig;
     }
@@ -48,6 +52,10 @@ public class TranslateProcessorConfig {
 
     public List<MappingsParameterConfig> getCombinedMappingsConfigs() {
         return combinedMappingsConfigs;
+    }
+
+    public boolean isUseAbsolutePaths() {
+        return useAbsolutePaths;
     }
 
     @AssertTrue(message = "Please ensure that at least one of the options, either \"mappings\" or \"file_path\", is properly configured.")
