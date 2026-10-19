@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.geoip.extension;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.plugins.geoip.extension.api.GeoIPDatabaseReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,8 @@ public class GeoIPProcessorService {
         if (geoIPDatabaseManager.getNextUpdateAt().isBefore(Instant.now())) {
             LOG.info("Trying to update geoip Database readers");
             geoIPDatabaseManager.setNextUpdateAt(Instant.now().plus(maxMindConfig.getDatabaseRefreshInterval()));
-            executorService = Executors.newSingleThreadExecutor();
+            executorService = Executors.newSingleThreadExecutor(
+                    BackgroundThreadFactory.defaultExecutorThreadFactory("geoip-database-update"));
             executorService.execute(geoIPDatabaseManager::updateDatabaseReader);
             executorService.shutdown();
         }

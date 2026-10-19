@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.buffer.common;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
@@ -80,7 +81,8 @@ public class BufferAccumulator<T extends Record<?>> {
     }
 
     private boolean flushWithBackoff() throws Exception{
-        final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("buffer-accumulator-flush-retry"));
         long nextDelay = INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION.toMillis();
         boolean flushedSuccessfully;
 

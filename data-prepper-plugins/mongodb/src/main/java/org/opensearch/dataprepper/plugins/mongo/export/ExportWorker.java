@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.mongo.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -88,7 +89,8 @@ public class ExportWorker implements Runnable {
                         final String s3PathPrefix,
                         final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics) {
         this.sourceCoordinator = sourceCoordinator;
-        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
+        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-export"));
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
         recordBufferWriter = RecordBufferWriter.create(bufferAccumulator, pluginMetrics);
         this.acknowledgementSetManager = acknowledgementSetManager;

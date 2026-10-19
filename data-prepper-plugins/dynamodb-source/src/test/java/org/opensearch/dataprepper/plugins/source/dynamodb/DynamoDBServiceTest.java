@@ -31,10 +31,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
@@ -96,7 +98,8 @@ class DynamoDBServiceTest {
     private DynamoDBService createObjectUnderTest() {
 
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(eq(4))).thenReturn(executorService);
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newFixedThreadPool(eq(4), any(ThreadFactory.class))).thenReturn(executorService);
 
             return new DynamoDBService(coordinator, clientFactory, sourceConfig, pluginMetrics, acknowledgementSetManager);
         }

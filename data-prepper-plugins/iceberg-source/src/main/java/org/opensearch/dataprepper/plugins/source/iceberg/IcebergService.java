@@ -14,6 +14,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -124,7 +125,8 @@ public class IcebergService {
         runnableList.add(new ChangelogWorker(
                 sourceCoordinator, sourceConfig, tables, tableConfigs, buffer, acknowledgementSetManager, eventFactory, shuffleStorage, certificate));
 
-        executor = Executors.newFixedThreadPool(runnableList.size());
+        executor = Executors.newFixedThreadPool(runnableList.size(),
+                BackgroundThreadFactory.defaultExecutorThreadFactory("iceberg-source"));
         runnableList.forEach(executor::submit);
     }
 

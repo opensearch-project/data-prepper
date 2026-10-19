@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -86,7 +87,8 @@ public class ExportScheduler implements Runnable {
         this.exportTaskManager = new ExportTaskManager(dynamoDBClient, dynamoDBSourceAggregateMetrics);
 
         this.manifestFileReader = manifestFileReader;
-        executor = Executors.newCachedThreadPool();
+        executor = Executors.newCachedThreadPool(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-source-export"));
 
         exportJobSuccessCounter = pluginMetrics.counter(EXPORT_JOB_SUCCESS_COUNT);
         exportJobFailureCounter = pluginMetrics.counter(EXPORT_JOB_FAILURE_COUNT);

@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.encryption;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -100,7 +101,8 @@ public class EncryptionPlugin implements ExtensionPlugin {
                                 entry -> encryptionSupplier.getEncryptedDataKeySupplier(entry.getKey())
                         ));
         if (!rotationEnabledEncryptionIdToEncryptedDataSuppliers.isEmpty()) {
-            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                    BackgroundThreadFactory.defaultExecutorThreadFactory("encryption-key-rotation"));
             rotationEnabledEncryptionIdToEncryptedDataSuppliers.forEach((encryptionId, encryptedDataKeySupplier) -> {
                 final EncryptionEngineConfiguration encryptionEngineConfiguration = encryptionEngineConfigurationMap.get(encryptionId);
                 final long jitterDelay = ThreadLocalRandom.current().nextLong(60L);
