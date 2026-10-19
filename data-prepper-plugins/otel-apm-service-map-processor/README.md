@@ -633,6 +633,8 @@ The processor exposes the following metrics for monitoring:
 - `spansDbCount`: Total number of spans stored across all databases
 - `dependencyCallsOverflowed` (counter): Dependency calls, including consumed messages, collapsed into an overflow node (`OtherDatabase` / `OtherExternal` / `OtherMessaging`) by `max_dependencies_per_service` (not registered when `dependency_nodes.enabled` is false)
 - `dependencyRemoteOperationCallsOverflowed` (counter): Calls to an admitted dependency collapsed into `OtherRemoteOperation` by `max_remote_operations_per_service` (not registered when `dependency_nodes.enabled` is false)
+- `windowEvaluationTime` (timer): Time to evaluate one window. Only the first worker evaluates, once per `window_duration`, while the other workers wait, so this is the pause in span processing; compare it with `window_duration`.
+- `windowEvaluationTraces` / `windowEvaluationSpans` (summaries): Traces and spans in the window evaluated, one sample per evaluation.
 
 ## Related Documentation
 
