@@ -226,8 +226,7 @@ public class OTelProtoStandardCodec {
         }
 
         protected Map<String, Object> convertKeyValueToAttributes(List<KeyValue> attributesList) {
-             return attributesList.stream()
-                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            return OTelProtoStandardCodec.collectAttributes(attributesList, this::convertAnyValue);
         }
 
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
@@ -382,8 +381,7 @@ public class OTelProtoStandardCodec {
                         .map(OTelProtoStandardCodec::convertAnyValue)
                         .collect(Collectors.toList());
                 case KVLIST_VALUE:
-                    return value.getKvlistValue().getValuesList().stream()
-                            .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+                    return convertKeyValueToAttributes(value.getKvlistValue().getValuesList());
                 default:
                     throw new OTelDecodingException("Unknown case");
             }
@@ -409,11 +407,11 @@ public class OTelProtoStandardCodec {
         }
 
         protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
-            return span.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            return convertKeyValueToAttributes(span.getAttributesList());
         }
 
         protected Map<String, Object> getResourceAttributes(final Resource resource, final String schemaUrl) {
-            Map<String, Object> attributes = resource.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+            final Map<String, Object> attributes = convertKeyValueToAttributes(resource.getAttributesList());
             return Map.of(ATTRIBUTES_KEY, attributes, DROPPED_ATTRIBUTES_COUNT_KEY, resource.getDroppedAttributesCount(), SCHEMA_URL_KEY, schemaUrl);
         }
 
@@ -770,10 +768,6 @@ public class OTelProtoStandardCodec {
             }
             rsBuilder.addAllAttributes(resourceAttributes);
             return rsBuilder.build();
-        }
-
-        protected Map<String, Object> convertKeyValueToAttributes(List<KeyValue> keyValues) {
-            return keyValues.stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
         }
 
         protected List<KeyValue> convertAttributesToKeyValue(final Map<String, Object> attributes) throws UnsupportedEncodingException {
@@ -1440,8 +1434,7 @@ public class OTelProtoStandardCodec {
                     .map(OTelProtoStandardCodec::convertAnyValue)
                     .collect(Collectors.toList());
             case KVLIST_VALUE:
-                return value.getKvlistValue().getValuesList().stream()
-                        .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+                return OTelProtoStandardCodec.collectAttributes(value.getKvlistValue().getValuesList());
             default:
                 throw new RuntimeException(String.format("Can not convert AnyValue of type %s", value.getValueCase()));
         }
@@ -1501,7 +1494,7 @@ public class OTelProtoStandardCodec {
         instrumentationScopeAttr.put(DROPPED_ATTRIBUTES_COUNT_KEY, instrumentationScope.getDroppedAttributesCount());
         List<KeyValue> attributesList = instrumentationScope.getAttributesList();
         if (!attributesList.isEmpty()) {
-            instrumentationScopeAttr.put(ATTRIBUTES_KEY, convertKeyValueToAttributes(attributesList));
+            instrumentationScopeAttr.put(ATTRIBUTES_KEY, collectAttributes(attributesList));
         }
         return instrumentationScopeAttr;
     }
@@ -1586,9 +1579,13 @@ public class OTelProtoStandardCodec {
         return buckets;
     }
 
-    static Map<String, Object> convertKeyValueToAttributes(List<KeyValue> attributesList) {
-         return attributesList.stream()
-            .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue())));
+    private static Map<String, Object> collectAttributes(List<KeyValue> attributesList) {
+        return collectAttributes(attributesList, OTelProtoStandardCodec::convertAnyValue);
+    }
+
+    private static Map<String, Object> collectAttributes(List<KeyValue> attributesList, final Function<AnyValue, Object> valueConverter) {
+        return attributesList.stream()
+                .collect(HashMap::new, (m, i) -> m.put(i.getKey(), valueConverter.apply(i.getValue())), Map::putAll);
     }
 
     /**
@@ -1604,7 +1601,7 @@ public class OTelProtoStandardCodec {
                                 getExemplarValueAsDouble(exemplar),
                                 convertByteStringToString(exemplar.getSpanId()),
                                 convertByteStringToString(exemplar.getTraceId()),
-                                convertKeyValueToAttributes(exemplar.getFilteredAttributesList())))
+                                collectAttributes(exemplar.getFilteredAttributesList())))
                 .collect(Collectors.toList());
     }
 
