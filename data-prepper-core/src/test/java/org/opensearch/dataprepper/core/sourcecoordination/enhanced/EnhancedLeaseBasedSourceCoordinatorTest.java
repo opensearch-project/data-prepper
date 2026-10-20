@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -188,6 +190,41 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         verify(sourceCoordinationStore).tryAcquireAvailablePartition(anyString(), anyString(), any(Duration.class));
         verify(sourceCoordinationStore).tryUpdateSourcePartitionItem(any(SourcePartitionStoreItem.class));
 
+    }
+
+    @Test
+    void test_renewPartitionOwnership_extends_the_lease_on_the_cached_item_and_leaves_progress_state_alone() {
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
+                .willReturn(Optional.of(sourcePartitionStoreItem));
+        when(sourcePartitionStoreItem.getPartitionOwnershipTimeout()).thenReturn(Instant.now().plus(Duration.ofMinutes(1)));
+        coordinator = createObjectUnderTest();
+
+        final Optional<EnhancedSourcePartition> sourcePartition = coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE);
+        assertThat(sourcePartition.isPresent(), equalTo(true));
+        final TestEnhancedSourcePartition partition = (TestEnhancedSourcePartition) sourcePartition.get();
+
+        coordinator.renewPartitionOwnership(partition);
+
+        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(any(Instant.class));
+        verify(sourcePartitionStoreItem, never()).setPartitionProgressState(anyString());
+        verify(sourceCoordinationStore).tryUpdateSourcePartitionItem(eq(sourcePartitionStoreItem));
+    }
+
+    @Test
+    void test_renewPartitionOwnership_does_nothing_once_the_lease_has_been_released() {
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
+                .willReturn(Optional.of(sourcePartitionStoreItem));
+        coordinator = createObjectUnderTest();
+
+        final TestEnhancedSourcePartition partition =
+                (TestEnhancedSourcePartition) coordinator.acquireAvailablePartition(DEFAULT_PARTITION_TYPE).get();
+
+        when(sourcePartitionStoreItem.getPartitionOwnershipTimeout()).thenReturn(null);
+
+        coordinator.renewPartitionOwnership(partition);
+
+        verify(sourcePartitionStoreItem, never()).setPartitionOwnershipTimeout(any());
+        verify(sourceCoordinationStore, never()).tryUpdateSourcePartitionItem(any(SourcePartitionStoreItem.class));
     }
 
     @Test

@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 
@@ -36,6 +40,7 @@ import software.amazon.awssdk.services.dynamodb.model.Projection;
 import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.TimeToLiveSpecification;
 import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveRequest;
@@ -154,7 +159,8 @@ class DynamoDbClientWrapper {
 
     private boolean tryAcquirePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
         try {
-            tryUpdateItem(dynamoDbSourcePartitionItem);
+            // No reconciliation: a failed candidate is discarded, and losing an acquire race is routine.
+            tryUpdateItem(dynamoDbSourcePartitionItem, false);
             return true;
         } catch (final Exception e) {
             return false;
@@ -163,14 +169,17 @@ class DynamoDbClientWrapper {
 
     public void tryUpdatePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
         try {
-            tryUpdateItem(dynamoDbSourcePartitionItem);
+            tryUpdateItem(dynamoDbSourcePartitionItem, true);
         } catch (final PartitionUpdateException e) {
             LOG.warn(e.getMessage(), e);
             throw e;
         }
     }
 
-    private void tryUpdateItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+    /**
+     * Writes the item if the stored version is still the one it was read at, incrementing its version.
+     */
+    private void tryUpdateItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem, final boolean reconcileOnFailure) {
         try {
             dynamoDbSourcePartitionItem.setVersion(dynamoDbSourcePartitionItem.getVersion() + 1L);
             table.putItem(PutItemEnhancedRequest.builder(DynamoDbSourcePartitionItem.class)
@@ -179,19 +188,98 @@ class DynamoDbClientWrapper {
                             .expression(ITEM_EXISTS_AND_HAS_LATEST_VERSION)
                             .expressionValues(Map.of(":v", AttributeValue.builder().n(String.valueOf(dynamoDbSourcePartitionItem.getVersion() - 1L)).build()))
                             .build())
+                    .returnValuesOnConditionCheckFailure(reconcileOnFailure
+                            ? ReturnValuesOnConditionCheckFailure.ALL_OLD : ReturnValuesOnConditionCheckFailure.NONE)
                     .build());
         } catch (final ConditionalCheckFailedException e) {
             final String message = String.format(
                     "ConditionalCheckFailed while updating partition %s. This partition item was either deleted from the dynamo table, " +
                             "or another instance of Data Prepper has modified it. Expected version: %s",
                     dynamoDbSourcePartitionItem.getSourcePartitionKey(), dynamoDbSourcePartitionItem.getVersion() - 1L);
+            // The write may still have landed: an SDK retry of a request that landed fails its condition against our own write.
+            if (reconcileOnFailure) {
+                try {
+                    reconcileVersion(dynamoDbSourcePartitionItem, e.hasItem() ? table.tableSchema().mapToItem(e.item()) : null);
+                } catch (final Exception reconcileException) {
+                    undoIncrement(dynamoDbSourcePartitionItem);
+                    LOG.warn("Unable to reconcile the version of partition {} after a failed condition.",
+                            dynamoDbSourcePartitionItem.getSourcePartitionKey(), reconcileException);
+                }
+            }
             throw new PartitionUpdateException(message, e);
         } catch (final Exception e) {
             final String errorMessage = String.format("An exception occurred while attempting to update a DynamoDb partition item %s",
                     dynamoDbSourcePartitionItem.getSourcePartitionKey());
             LOG.error(errorMessage, e);
+            if (reconcileOnFailure) {
+                resyncVersion(dynamoDbSourcePartitionItem);
+            }
             throw new PartitionUpdateException(errorMessage, e);
         }
+    }
+
+    /**
+     * Resolves the version after an update whose outcome is unknown by reading the stored item back.
+     */
+    private void resyncVersion(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+        try {
+            final Key key = Key.builder()
+                    .partitionValue(dynamoDbSourcePartitionItem.getSourceIdentifier())
+                    .sortValue(dynamoDbSourcePartitionItem.getSourcePartitionKey())
+                    .build();
+
+            // A stale read can miss a write that landed, making this instance give up a partition it still owns.
+            final DynamoDbSourcePartitionItem storedItem = table.getItem(
+                    GetItemEnhancedRequest.builder().key(key).consistentRead(true).build());
+            reconcileVersion(dynamoDbSourcePartitionItem, storedItem);
+        } catch (final Exception e) {
+            undoIncrement(dynamoDbSourcePartitionItem);
+            LOG.warn("Unable to read back the version of partition {} after a failed update. If the update landed, " +
+                    "later updates of this partition will fail their conditional check.",
+                    dynamoDbSourcePartitionItem.getSourcePartitionKey(), e);
+        }
+    }
+
+    /**
+     * Sets the version after a failed update so that it matches the stored item only if the stored item reflects this write.
+     */
+    private void reconcileVersion(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem,
+                                  final DynamoDbSourcePartitionItem storedItem) {
+        if (Objects.isNull(storedItem) || Objects.isNull(storedItem.getVersion())) {
+            undoIncrement(dynamoDbSourcePartitionItem);
+            return;
+        }
+
+        final long attemptedVersion = dynamoDbSourcePartitionItem.getVersion();
+        final long storedVersion = storedItem.getVersion();
+        if (storedVersion == attemptedVersion) {
+            // A takeover of a lapsed lease also advances the version by one, so compare the ownership fields this write set.
+            if (Objects.equals(storedItem.getPartitionOwner(), dynamoDbSourcePartitionItem.getPartitionOwner())
+                    && Objects.equals(storedItem.getPartitionOwnershipTimeout(), dynamoDbSourcePartitionItem.getPartitionOwnershipTimeout())
+                    && storedItem.getSourcePartitionStatus() == dynamoDbSourcePartitionItem.getSourcePartitionStatus()) {
+                return;
+            }
+            // Stored versions only increase, so a version behind can never match again. Equal or ahead
+            // could be matched by the new owner's writes and let the next write clobber it.
+            dynamoDbSourcePartitionItem.setVersion(storedVersion - 1L);
+            LOG.warn("Partition {} is at the expected version {} but holds another writer's ownership. This " +
+                            "instance has lost the partition and will not update it again.",
+                    dynamoDbSourcePartitionItem.getSourcePartitionKey(), storedVersion);
+            return;
+        }
+        if (storedVersion == attemptedVersion - 1L) {
+            dynamoDbSourcePartitionItem.setVersion(storedVersion);
+            return;
+        }
+
+        dynamoDbSourcePartitionItem.setVersion(storedVersion - 1L);
+        LOG.warn("Partition {} was modified by another writer while an update was in flight. Expected version " +
+                        "{} or {} but found {}. This instance has lost the partition and will not update it again.",
+                dynamoDbSourcePartitionItem.getSourcePartitionKey(), attemptedVersion, attemptedVersion - 1L, storedVersion);
+    }
+
+    private void undoIncrement(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+        dynamoDbSourcePartitionItem.setVersion(dynamoDbSourcePartitionItem.getVersion() - 1L);
     }
 
     public void tryDeletePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
