@@ -158,6 +158,17 @@ public class JacksonStandardSpanTest extends JacksonSpanTest {
     }
 
     @Test
+    void fromSpan_preservesStandardSpanSerialization() {
+        final JacksonSpan original = createObjectUnderTest(TEST_ATTRIBUTES);
+
+        final JacksonSpan copy = JacksonSpan.fromSpan(original);
+
+        assertThat(copy, instanceOf(JacksonStandardSpan.class));
+        assertThat(copy.toMap(), equalTo(original.toMap()));
+        assertThat(copy.toJsonString(), equalTo(original.toJsonString()));
+    }
+
+    @Test
     @Override
     public void testToJsonStringWithoutAttributes() throws JsonProcessingException {
         jacksonSpan = createObjectUnderTest(null);
