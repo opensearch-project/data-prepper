@@ -194,14 +194,42 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         }
 
         final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
-        // Also extend the timeout of the lease (ownership)
-        if (updateItem.getPartitionOwnershipTimeout() != null) {
-            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? DEFAULT_LEASE_TIMEOUT : ownershipTimeoutRenewal));
-        }
-        updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
+        synchronized (updateItem) {
+            // Also extend the timeout of the lease (ownership)
+            if (updateItem.getPartitionOwnershipTimeout() != null) {
+                updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? DEFAULT_LEASE_TIMEOUT : ownershipTimeoutRenewal));
+            }
+            updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        }
         LOG.debug("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
+    }
+
+    @Override
+    public <T> void renewPartitionOwnership(final EnhancedSourcePartition<T> partition) {
+        final String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
+        LOG.debug("Try to renew ownership for partition {} (Type {})", partition.getPartitionKey(), partitionType);
+
+        if (partition.getSourcePartitionStoreItem() == null) {
+            LOG.error("Unable to renew ownership, the item was not found.");
+            return;
+        }
+
+        final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
+        synchronized (updateItem) {
+            // A null ownership timeout means the partition was already completed, given up or closed.
+            if (updateItem.getPartitionOwnershipTimeout() == null) {
+                LOG.debug("Not renewing ownership for partition {}, the lease has already been released.", partition.getPartitionKey());
+                return;
+            }
+
+            // Ownership only: progress state belongs to the processing thread, which may not be this one.
+            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        }
+        LOG.debug("Ownership for partition {} (Type {}) was renewed", partition.getPartitionKey(), partitionType);
     }
 
     @Override
@@ -216,13 +244,15 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         }
 
         final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
-        // Clear the ownership and reset status.
-        updateItem.setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
-        updateItem.setPartitionOwner(null);
-        updateItem.setPartitionOwnershipTimeout(null);
+        synchronized (updateItem) {
+            // Clear the ownership and reset status.
+            updateItem.setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
+            updateItem.setPartitionOwner(null);
+            updateItem.setPartitionOwnershipTimeout(null);
 
-        // Throws UpdateException if update failed.
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+            // Throws UpdateException if update failed.
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        }
         LOG.debug("Partition key {} was given up by owner {}", partition.getPartitionKey(), hostName);
 
     }
@@ -239,15 +269,17 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         }
 
         SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
-        updateItem.setPartitionOwner(null);
-        updateItem.setReOpenAt(null);
-        updateItem.setPartitionOwnershipTimeout(null);
-        updateItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+        synchronized (updateItem) {
+            updateItem.setPartitionOwner(null);
+            updateItem.setReOpenAt(null);
+            updateItem.setPartitionOwnershipTimeout(null);
+            updateItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
 
-        updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
+            updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
-        // Throws UpdateException if update failed.
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+            // Throws UpdateException if update failed.
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        }
         partitionsCompletedCounter.increment();
     }
 
@@ -264,22 +296,24 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
         SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
 
-        // Reset ownership
-        updateItem.setPartitionOwner(null);
-        updateItem.setPartitionOwnershipTimeout(null);
-        updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
+        synchronized (updateItem) {
+            // Reset ownership
+            updateItem.setPartitionOwner(null);
+            updateItem.setPartitionOwnershipTimeout(null);
+            updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
-        updateItem.setClosedCount(updateItem.getClosedCount() + 1L);
-        if (updateItem.getClosedCount() >= maxClosedCount) {
-            updateItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
-            updateItem.setReOpenAt(null);
-        } else {
-            updateItem.setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
-            updateItem.setReOpenAt(Instant.now().plus(reopenAfter));
+            updateItem.setClosedCount(updateItem.getClosedCount() + 1L);
+            if (updateItem.getClosedCount() >= maxClosedCount) {
+                updateItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+                updateItem.setReOpenAt(null);
+            } else {
+                updateItem.setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
+                updateItem.setReOpenAt(Instant.now().plus(reopenAfter));
+            }
+
+            // Throws UpdateException if update failed.
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
         }
-
-        // Throws UpdateException if update failed.
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
     }
 
 

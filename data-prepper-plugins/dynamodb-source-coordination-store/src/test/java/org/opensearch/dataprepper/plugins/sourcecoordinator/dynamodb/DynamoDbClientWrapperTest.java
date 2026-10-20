@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
@@ -24,6 +28,7 @@ import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.BeanTableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.DeleteItemEnhancedRequest;
@@ -53,6 +58,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -73,6 +79,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -296,7 +303,8 @@ public class DynamoDbClientWrapperTest {
     }
 
     @Test
-    void tryCreatePartitionItem_catches_conditionalCheckFailedException_from_putItem_and_returns_false() throws NoSuchFieldException, IllegalAccessException {
+    void tryCreatePartitionItem_catches_conditionalCheckFailedException_from_putItem_and_returns_false()
+            throws NoSuchFieldException, IllegalAccessException {
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
 
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
@@ -373,6 +381,264 @@ public class DynamoDbClientWrapperTest {
 
         assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryUpdatePartitionItem(dynamoDbSourcePartitionItem));
         verify(dynamoDbSourcePartitionItem).setVersion(version + 1L);
+    }
+
+    @Test
+    void tryUpdatePartitionItem_rolls_the_version_back_when_the_conditional_check_fails_on_a_deleted_item()
+            throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        final Long version = (long) new Random().nextInt(10);
+        given(dynamoDbSourcePartitionItem.getVersion()).willReturn(version).willReturn(version + 1L);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        doThrow(ConditionalCheckFailedException.builder().message("deleted").build())
+                .when(table).putItem(any(PutItemEnhancedRequest.class));
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryUpdatePartitionItem(dynamoDbSourcePartitionItem));
+
+        verify(dynamoDbSourcePartitionItem).setVersion(version);
+        verify(table, never()).getItem(any(GetItemEnhancedRequest.class));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_leaves_a_writable_version_when_the_table_shows_the_write_landed()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+        final String owner = UUID.randomUUID().toString();
+        final Instant ownershipTimeout = Instant.now();
+
+        final DynamoDbSourcePartitionItem item =
+                resyncAgainstTable(version, version + 1L,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED);
+
+        assertThat(item.getVersion(), equalTo(version + 1L));
+        assertThat(nextWriteWouldSucceed(item, version + 1L), equalTo(true));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_leaves_an_unwritable_version_when_another_instance_acquired_at_the_same_version()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+
+        final DynamoDbSourcePartitionItem item =
+                resyncAgainstTable(version, version + 1L,
+                        "this-host", Instant.now(), SourcePartitionStatus.ASSIGNED,
+                        "another-host", Instant.now().plusSeconds(30), SourcePartitionStatus.ASSIGNED);
+
+        assertThat(nextWriteWouldSucceed(item, version + 1L), equalTo(false));
+
+        for (long newOwnerWrites = 1; newOwnerWrites <= 5; newOwnerWrites++) {
+            assertThat("the version must not match the table after the new owner writes " + newOwnerWrites + " more time(s)",
+                    nextWriteWouldSucceed(item, version + 1L + newOwnerWrites), equalTo(false));
+        }
+    }
+
+    @Test
+    void partitionOwnershipTimeout_survives_a_round_trip_through_the_table_schema() {
+        final TableSchema<DynamoDbSourcePartitionItem> tableSchema = TableSchema.fromBean(DynamoDbSourcePartitionItem.class);
+        final Instant ownershipTimeout = Instant.now().plusNanos(123456789L);
+
+        final DynamoDbSourcePartitionItem item = new DynamoDbSourcePartitionItem();
+        item.setSourceIdentifier(sourceIdentifier);
+        item.setSourcePartitionKey(UUID.randomUUID().toString());
+        item.setPartitionOwner(UUID.randomUUID().toString());
+        item.setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
+        item.setPartitionOwnershipTimeout(ownershipTimeout);
+
+        final DynamoDbSourcePartitionItem roundTripped = tableSchema.mapToItem(tableSchema.itemToMap(item, true));
+
+        assertThat(roundTripped.getPartitionOwnershipTimeout(), equalTo(ownershipTimeout));
+        assertThat(roundTripped.getPartitionOwner(), equalTo(item.getPartitionOwner()));
+        assertThat(roundTripped.getSourcePartitionStatus(), equalTo(item.getSourcePartitionStatus()));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_undoes_the_increment_when_the_table_shows_the_write_did_not_land()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+        final String owner = UUID.randomUUID().toString();
+        final Instant ownershipTimeout = Instant.now();
+
+        final DynamoDbSourcePartitionItem item =
+                resyncAgainstTable(version, version,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED);
+
+        assertThat(item.getVersion(), equalTo(version));
+        assertThat(nextWriteWouldSucceed(item, version), equalTo(true));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_leaves_an_unwritable_version_when_another_writer_has_taken_the_partition()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+        final Long otherWritersVersion = version + 7L;
+        final DynamoDbSourcePartitionItem item =
+                resyncAgainstTable(version, otherWritersVersion,
+                        "this-host", Instant.now(), SourcePartitionStatus.ASSIGNED,
+                        "another-host", Instant.now(), SourcePartitionStatus.ASSIGNED);
+
+        assertThat(nextWriteWouldSucceed(item, otherWritersVersion), equalTo(false));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_keeps_a_writable_version_when_a_retry_fails_its_condition_against_its_own_landed_write()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+        final String owner = UUID.randomUUID().toString();
+        final Instant ownershipTimeout = Instant.now();
+
+        final DynamoDbSourcePartitionItem item =
+                conditionalCheckFailureAgainstTable(version, version + 1L,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
+                        owner, ownershipTimeout, SourcePartitionStatus.ASSIGNED);
+
+        assertThat(item.getVersion(), equalTo(version + 1L));
+        assertThat(nextWriteWouldSucceed(item, version + 1L), equalTo(true));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_leaves_an_unwritable_version_when_the_conditional_check_fails_against_another_owner()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10);
+
+        final DynamoDbSourcePartitionItem item =
+                conditionalCheckFailureAgainstTable(version, version + 1L,
+                        "this-host", Instant.now(), SourcePartitionStatus.ASSIGNED,
+                        "another-host", Instant.now().plusSeconds(30), SourcePartitionStatus.ASSIGNED);
+
+        for (long newOwnerWrites = 0; newOwnerWrites <= 5; newOwnerWrites++) {
+            assertThat("the version must not match the table after the new owner writes " + newOwnerWrites + " more time(s)",
+                    nextWriteWouldSucceed(item, version + 1L + newOwnerWrites), equalTo(false));
+        }
+    }
+
+    @Test
+    void tryUpdatePartitionItem_sets_the_version_behind_the_table_when_the_table_is_behind_the_attempted_version()
+            throws NoSuchFieldException, IllegalAccessException {
+        final Long version = (long) new Random().nextInt(10) + 5L;
+        final Long storedVersion = version - 1L;
+
+        final DynamoDbSourcePartitionItem item =
+                conditionalCheckFailureAgainstTable(version, storedVersion,
+                        "this-host", Instant.now(), SourcePartitionStatus.ASSIGNED,
+                        "another-host", Instant.now(), SourcePartitionStatus.ASSIGNED);
+
+        assertThat(item.getVersion(), equalTo(storedVersion - 1L));
+    }
+
+    @Test
+    void tryUpdatePartitionItem_resyncs_with_a_strongly_consistent_read() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        given(dynamoDbSourcePartitionItem.getVersion()).willReturn(1L);
+        given(dynamoDbSourcePartitionItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(dynamoDbSourcePartitionItem.getSourcePartitionKey()).willReturn(UUID.randomUUID().toString());
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        doThrow(RuntimeException.class).when(table).putItem(any(PutItemEnhancedRequest.class));
+        final ArgumentCaptor<GetItemEnhancedRequest> getItemRequestCaptor = ArgumentCaptor.forClass(GetItemEnhancedRequest.class);
+        given(table.getItem(getItemRequestCaptor.capture())).willReturn(null);
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryUpdatePartitionItem(dynamoDbSourcePartitionItem));
+
+        assertThat(getItemRequestCaptor.getValue().consistentRead(), equalTo(true));
+    }
+
+    private boolean nextWriteWouldSucceed(final DynamoDbSourcePartitionItem item, final Long storedVersion) {
+        return Objects.equals(item.getVersion(), storedVersion);
+    }
+
+    private DynamoDbSourcePartitionItem resyncAgainstTable(final Long version, final Long storedVersion,
+                                                           final String owner, final Instant ownershipTimeout,
+                                                           final SourcePartitionStatus status,
+                                                           final String storedOwner, final Instant storedTimeout,
+                                                           final SourcePartitionStatus storedStatus)
+            throws NoSuchFieldException, IllegalAccessException {
+        return failUpdateAgainstTable(false, version, storedVersion, owner, ownershipTimeout, status,
+                storedOwner, storedTimeout, storedStatus);
+    }
+
+    private DynamoDbSourcePartitionItem conditionalCheckFailureAgainstTable(final Long version, final Long storedVersion,
+                                                                            final String owner, final Instant ownershipTimeout,
+                                                                            final SourcePartitionStatus status,
+                                                                            final String storedOwner, final Instant storedTimeout,
+                                                                            final SourcePartitionStatus storedStatus)
+            throws NoSuchFieldException, IllegalAccessException {
+        return failUpdateAgainstTable(true, version, storedVersion, owner, ownershipTimeout, status,
+                storedOwner, storedTimeout, storedStatus);
+    }
+
+    private DynamoDbSourcePartitionItem failUpdateAgainstTable(final boolean conditionalCheckFailure,
+                                                               final Long version, final Long storedVersion,
+                                                               final String owner, final Instant ownershipTimeout,
+                                                               final SourcePartitionStatus status,
+                                                               final String storedOwner, final Instant storedTimeout,
+                                                               final SourcePartitionStatus storedStatus)
+            throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem item = new DynamoDbSourcePartitionItem();
+        item.setSourceIdentifier(sourceIdentifier);
+        item.setSourcePartitionKey(UUID.randomUUID().toString());
+        item.setVersion(version);
+        item.setPartitionOwner(owner);
+        item.setPartitionOwnershipTimeout(ownershipTimeout);
+        item.setSourcePartitionStatus(status);
+
+        final DynamoDbSourcePartitionItem storedItem = new DynamoDbSourcePartitionItem();
+        storedItem.setSourceIdentifier(sourceIdentifier);
+        storedItem.setSourcePartitionKey(item.getSourcePartitionKey());
+        storedItem.setVersion(storedVersion);
+        storedItem.setPartitionOwner(storedOwner);
+        storedItem.setPartitionOwnershipTimeout(storedTimeout);
+        storedItem.setSourcePartitionStatus(storedStatus);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        if (conditionalCheckFailure) {
+            final TableSchema<DynamoDbSourcePartitionItem> tableSchema = TableSchema.fromBean(DynamoDbSourcePartitionItem.class);
+            given(table.tableSchema()).willReturn(tableSchema);
+            doThrow(ConditionalCheckFailedException.builder().item(tableSchema.itemToMap(storedItem, true)).build())
+                    .when(table).putItem(any(PutItemEnhancedRequest.class));
+        } else {
+            doThrow(RuntimeException.class).when(table).putItem(any(PutItemEnhancedRequest.class));
+            given(table.getItem(any(GetItemEnhancedRequest.class))).willReturn(storedItem);
+        }
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryUpdatePartitionItem(item));
+        if (conditionalCheckFailure) {
+            final ArgumentCaptor<PutItemEnhancedRequest> putItemRequestCaptor = ArgumentCaptor.forClass(PutItemEnhancedRequest.class);
+            verify(table).putItem(putItemRequestCaptor.capture());
+            assertThat(putItemRequestCaptor.getValue().returnValuesOnConditionCheckFailureAsString(), equalTo("ALL_OLD"));
+        }
+        return item;
+    }
+
+    @Test
+    void tryUpdatePartitionItem_undoes_the_increment_when_the_resync_read_also_fails() throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        final Long version = (long) new Random().nextInt(10);
+        given(dynamoDbSourcePartitionItem.getVersion()).willReturn(version).willReturn(version + 1L);
+        given(dynamoDbSourcePartitionItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(dynamoDbSourcePartitionItem.getSourcePartitionKey()).willReturn(UUID.randomUUID().toString());
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        doThrow(RuntimeException.class).when(table).putItem(any(PutItemEnhancedRequest.class));
+        doThrow(RuntimeException.class).when(table).getItem(any(GetItemEnhancedRequest.class));
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        assertThrows(PartitionUpdateException.class, () -> objectUnderTest.tryUpdatePartitionItem(dynamoDbSourcePartitionItem));
+        verify(table).getItem(any(GetItemEnhancedRequest.class));
+        verify(dynamoDbSourcePartitionItem).setVersion(version);
     }
 
     @Test
@@ -517,7 +783,8 @@ public class DynamoDbClientWrapperTest {
             return List.of(page).iterator();
         };
 
-        doThrow(PartitionUpdateException.class).doNothing().when(table).putItem(any(PutItemEnhancedRequest.class));
+        doThrow(ConditionalCheckFailedException.builder().item(Collections.emptyMap()).build())
+                .doNothing().when(table).putItem(any(PutItemEnhancedRequest.class));
 
         given(sourceStatusIndex.query(any(QueryEnhancedRequest.class))).willReturn(pageSdkIterable);
 
@@ -531,6 +798,12 @@ public class DynamoDbClientWrapperTest {
 
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(acquiredItem));
+
+        final ArgumentCaptor<PutItemEnhancedRequest> putItemRequestCaptor = ArgumentCaptor.forClass(PutItemEnhancedRequest.class);
+        verify(table, times(2)).putItem(putItemRequestCaptor.capture());
+        assertThat(putItemRequestCaptor.getAllValues().get(0).returnValuesOnConditionCheckFailureAsString(), equalTo("NONE"));
+        verify(table, never()).tableSchema();
+        verify(table, never()).getItem(any(GetItemEnhancedRequest.class));
 
         verify(acquiredItem).setPartitionOwner(ownerId);
         verify(acquiredItem).setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
@@ -685,7 +958,8 @@ public class DynamoDbClientWrapperTest {
     }
 
     @Test
-    void getAvailablePartition_with_assigned_partition_with_unexpired_partitionOwnershipTimeout_returns_empty_optional() throws NoSuchFieldException, IllegalAccessException {
+    void getAvailablePartition_with_assigned_partition_with_unexpired_partitionOwnershipTimeout_returns_empty_optional()
+            throws NoSuchFieldException, IllegalAccessException {
         final String ownerId = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(1);
         final String sourceStatusCombinationKey = String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED);
@@ -720,7 +994,8 @@ public class DynamoDbClientWrapperTest {
     }
 
     @Test
-    void getAvailablePartition_with_closed_partition_with_unreached_reOpenAt_time_returns_empty_optional() throws NoSuchFieldException, IllegalAccessException {
+    void getAvailablePartition_with_closed_partition_with_unreached_reOpenAt_time_returns_empty_optional()
+            throws NoSuchFieldException, IllegalAccessException {
         final String ownerId = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(1);
         final String sourceStatusCombinationKey = String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED);

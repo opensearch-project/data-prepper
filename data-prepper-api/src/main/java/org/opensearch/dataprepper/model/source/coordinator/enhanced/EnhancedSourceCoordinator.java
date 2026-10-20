@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -71,9 +73,25 @@ public interface EnhancedSourceCoordinator {
      * @param partition               The partition to be updated.
      * @param <T>                     The progress state class
      * @param ownershipTimeoutRenewal The amount of time to update ownership of the partition before another instance can acquire it.
-     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
+     * @throws PartitionUpdateException when the partition was not updated successfully
      */
     <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, Duration ownershipTimeoutRenewal);
+
+    /**
+     * This method extends ownership of a partition without writing its progress state. It is called repeatedly
+     * while an end-to-end acknowledgement is outstanding, so a live instance keeps its partition and a dead one
+     * releases it after the lease timeout.
+     * <p>
+     * Implementations must be safe to call from a thread other than the one processing the partition, and must not
+     * write the progress state, which belongs to that thread. The default implementation does nothing.
+     *
+     * @param partition The partition whose ownership should be renewed.
+     * @param <T>       The progress state class
+     * @throws PartitionUpdateException when the partition was not updated successfully
+     * @since 2.17
+     */
+    default <T> void renewPartitionOwnership(EnhancedSourcePartition<T> partition) {
+    }
 
     /**
      * This method is used to release the lease of a partition in the coordination store.
@@ -81,7 +99,7 @@ public interface EnhancedSourceCoordinator {
      *
      * @param partition The partition to be updated.
      * @param <T>       The progress state class
-     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
+     * @throws PartitionUpdateException when the partition was not updated successfully
      */
     <T> void giveUpPartition(EnhancedSourcePartition<T> partition);
 
@@ -91,7 +109,7 @@ public interface EnhancedSourceCoordinator {
      *
      * @param partition The partition to be updated.
      * @param <T>       The progress state class
-     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
+     * @throws PartitionUpdateException when the partition was not updated successfully
      */
     <T> void completePartition(EnhancedSourcePartition<T> partition);
 
@@ -105,7 +123,7 @@ public interface EnhancedSourceCoordinator {
      * @param maxClosedCount The number of times to allow this partition to be closed. Will mark the partition as completed if the partition has been closed this many times or more
      *                       in the past
      * @param <T>            The progress state class
-     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
+     * @throws PartitionUpdateException when the partition was not updated successfully
      */
     <T> void closePartition(EnhancedSourcePartition<T> partition, final Duration reopenAfter, final int maxClosedCount);
 
