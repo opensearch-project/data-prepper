@@ -17,6 +17,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class RetryInfoCalculator {
 
+    public static final Duration DEFAULT_MINIMUM_DELAY = Duration.ofMillis(100);
+    public static final Duration DEFAULT_MAXIMUM_DELAY = Duration.ofMillis(2000);
+
     private final Duration minimumDelay;
     private final Duration maximumDelay;
 

@@ -13,10 +13,15 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.BindableService;
@@ -54,6 +59,7 @@ import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvi
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -80,6 +86,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
@@ -198,6 +205,62 @@ class OTelLogsSourceGrpcTest {
 
     private void setupLogsSource(OTelLogsSourceConfig config) {
         SOURCE = new OTelLogsSource(config, pluginMetrics, pluginFactory, pipelineDescription);
+    }
+
+    @Test
+    void circuit_breaker_provided_registers_HTTP_decorator_that_rejects_open_breaker_requests() throws Exception {
+        when(server.stop()).thenReturn(completableFuture);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final OTelLogsSource source = new OTelLogsSource(
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        final ArgumentCaptor<Function> decoratorCaptor = ArgumentCaptor.forClass(Function.class);
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            source.start(buffer);
+        }
+        verify(serverBuilder, times(1)).decorator(decoratorCaptor.capture());
+        verify(serverBuilder).service(isA(GrpcService.class));
+        final HttpService innerService = (ctx, req) -> HttpResponse.of(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        final HttpService decoratedService = (HttpService) decoratorCaptor.getValue().apply(innerService);
+        final HttpRequest request = HttpRequest.of(HttpMethod.POST, "/opentelemetry.proto.collector.logs.v1.LogsService/Export");
+        final ServiceRequestContext ctx = ServiceRequestContext.of(request);
+
+        final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
+
+        assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+        source.stop();
+    }
+
+    @Test
+    void gRPC_request_is_rejected_by_the_service_when_circuit_breaker_opens_after_the_decorator_check() throws Exception {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(false, true);
+        SOURCE = new OTelLogsSource(
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+        final ExportLogsServiceRequest exportLogsRequest = createExportLogsRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportLogsRequest));
+
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+        verify(circuitBreaker, times(2)).isOpen();
+        verify(buffer, never()).writeAll(any(), anyInt());
     }
 
     @Test

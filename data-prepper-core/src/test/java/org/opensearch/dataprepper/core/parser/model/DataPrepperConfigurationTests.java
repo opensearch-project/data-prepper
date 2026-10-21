@@ -252,6 +252,8 @@ public class DataPrepperConfigurationTests {
         assertThat(config.getCircuitBreakerConfig().getHeapConfig(), notNullValue());
         assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage(), notNullValue());
         assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage().getBytes(), Matchers.equalTo(2_684_354_560L));
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getCloseUsage(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getCloseUsage().getBytes(), Matchers.equalTo(2_147_483_648L));
     }
 
     @Test
