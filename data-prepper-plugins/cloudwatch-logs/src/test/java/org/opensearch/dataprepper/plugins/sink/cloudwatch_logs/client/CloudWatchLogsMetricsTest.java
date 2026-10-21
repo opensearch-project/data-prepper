@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,6 +32,9 @@ class CloudWatchLogsMetricsTest {
     private Counter mockThrottledCounter;
     private Counter mockEntityGroupsCreatedCounter;
     private Counter mockEntityOverflowEventsCounter;
+    private Counter mockRequestMultiFailCounter;
+    private Counter mockLargeEventsDroppedCounter;
+    private DistributionSummary mockRequestSizeSummary;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +50,9 @@ class CloudWatchLogsMetricsTest {
         mockThrottledCounter = mock(Counter.class);
         mockEntityGroupsCreatedCounter = mock(Counter.class);
         mockEntityOverflowEventsCounter = mock(Counter.class);
+        mockRequestMultiFailCounter = mock(Counter.class);
+        mockLargeEventsDroppedCounter = mock(Counter.class);
+        mockRequestSizeSummary = mock(DistributionSummary.class);
 
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_SUCCEEDED)).thenReturn(mockSuccessEventCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED)).thenReturn(mockSuccessRequestCounter);
@@ -58,6 +65,9 @@ class CloudWatchLogsMetricsTest {
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_THROTTLED)).thenReturn(mockThrottledCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED)).thenReturn(mockEntityGroupsCreatedCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS)).thenReturn(mockEntityOverflowEventsCounter);
+        when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUEST_MULTI_FAILED)).thenReturn(mockRequestMultiFailCounter);
+        when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_LARGE_EVENTS_DROPPED)).thenReturn(mockLargeEventsDroppedCounter);
+        when(mockPluginMetrics.summary(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUEST_SIZE)).thenReturn(mockRequestSizeSummary);
 
         testCloudWatchLogsMetrics = new CloudWatchLogsMetrics(mockPluginMetrics);
     }
@@ -150,5 +160,34 @@ class CloudWatchLogsMetricsTest {
         assertEquals(3.0, functionCaptor.getValue().applyAsDouble(liveGroupCount));
         liveGroupCount.set(7);
         assertEquals(7.0, functionCaptor.getValue().applyAsDouble(liveGroupCount));
+    }
+
+    @Test
+    void WHEN_increase_entity_dropped_counter_called_THEN_counter_tagged_with_reason_is_incremented() {
+        final Counter droppedCounter = mock(Counter.class);
+        when(mockPluginMetrics.counterWithTags(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_DROPPED,
+                CloudWatchLogsMetrics.REASON_TAG, "blank_value")).thenReturn(droppedCounter);
+
+        testCloudWatchLogsMetrics.increaseEntityDroppedCounter("blank_value");
+
+        verify(droppedCounter).increment();
+    }
+
+    @Test
+    void WHEN_increase_request_multi_fail_counter_called_THEN_request_multi_fail_counter_increase_method_should_be_called() {
+        testCloudWatchLogsMetrics.increaseRequestMultiFailCounter(1);
+        verify(mockRequestMultiFailCounter).increment(1);
+    }
+
+    @Test
+    void WHEN_increase_log_large_events_dropped_counter_called_THEN_large_events_dropped_counter_increase_method_should_be_called() {
+        testCloudWatchLogsMetrics.increaseLogLargeEventsDroppedCounter(1);
+        verify(mockLargeEventsDroppedCounter).increment(1);
+    }
+
+    @Test
+    void WHEN_record_request_size_called_THEN_request_size_summary_record_method_should_be_called() {
+        testCloudWatchLogsMetrics.recordRequestSize(100);
+        verify(mockRequestSizeSummary).record(100);
     }
 }
