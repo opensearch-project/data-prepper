@@ -33,6 +33,8 @@ public class CloudWatchLogsMetrics {
     public static final String CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED = "cloudWatchLogsEntityGroupsCreated";
     public static final String CLOUDWATCH_LOGS_ENTITY_CARDINALITY = "cloudWatchLogsEntityCardinality";
     public static final String CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS = "cloudWatchLogsEntityOverflowEvents";
+    public static final String CLOUDWATCH_LOGS_ENTITY_DROPPED = "cloudWatchLogsEntityDropped";
+    public static final String REASON_TAG = "reason";
     private final Counter logEventSuccessCounter;
     private final Counter logEventFailCounter;
     private final Counter requestSuccessCount;
@@ -129,6 +131,10 @@ public class CloudWatchLogsMetrics {
      */
     public void increaseEntityOverflowEventsCounter(int value) {
         entityOverflowEventsCounter.increment(value);
+    }
+
+    public void increaseEntityDroppedCounter(final String reason) {
+        pluginMetrics.counterWithTags(CLOUDWATCH_LOGS_ENTITY_DROPPED, REASON_TAG, reason).increment();
     }
 
     /**

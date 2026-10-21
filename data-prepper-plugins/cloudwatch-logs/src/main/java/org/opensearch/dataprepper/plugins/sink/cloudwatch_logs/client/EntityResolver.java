@@ -17,8 +17,13 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 /**
  * Resolves a CloudWatch Logs Entity from an event by interpolating the configured
@@ -32,11 +37,15 @@ import java.util.Map;
  */
 public class EntityResolver {
     private static final Logger LOG = LoggerFactory.getLogger(EntityResolver.class);
+    static final int MAX_ENTITY_VALUE_LENGTH = 512;
+    static final String BLANK_VALUE = "blank_value";
+    static final String VALUE_TOO_LONG = "value_too_long";
 
     private final Map<String, String> keyAttributeTemplates;
     private final Map<String, String> attributeTemplates;
     private final Map<String, String> headerTemplates;
     private final ExpressionEvaluator expressionEvaluator;
+    private final Set<String> loggedDrops = new HashSet<>();
 
     public EntityResolver(final Map<String, String> keyAttributeTemplates,
                           final Map<String, String> attributeTemplates,
@@ -84,6 +93,42 @@ public class EntityResolver {
             builder.attributes(resolvedAttributes);
         }
         return builder.build();
+    }
+
+    /**
+     * Returns the reason this event's entity must not be sent, or empty if every resolved value is valid.
+     * CloudWatch rejects the whole PutLogEvents request when an entity value is empty or over 512 characters.
+     */
+    public Optional<String> findInvalidValue(final ResolvedKey resolvedKey, final Event event) {
+        final Optional<String> invalidKey = findInvalidIn(resolvedKey.keyAttributes, keyAttributeTemplates);
+        if (invalidKey.isPresent()) {
+            return invalidKey;
+        }
+        return findInvalidIn(resolveTemplates(attributeTemplates, event), attributeTemplates);
+    }
+
+    private Optional<String> findInvalidIn(final Map<String, String> resolved, final Map<String, String> templates) {
+        for (final Map.Entry<String, String> entry : resolved.entrySet()) {
+            final String reason = invalidReason(entry.getValue());
+            if (reason != null) {
+                if (loggedDrops.add(entry.getKey() + ':' + reason)) {
+                    LOG.warn(NOISY, "Sending events without a CloudWatch entity: '{}' (template '{}') resolved to an "
+                            + "invalid value, reason={}", entry.getKey(), templates.get(entry.getKey()), reason);
+                }
+                return Optional.of(reason);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String invalidReason(final String value) {
+        if (value == null || value.isBlank()) {
+            return BLANK_VALUE;
+        }
+        if (value.codePointCount(0, value.length()) > MAX_ENTITY_VALUE_LENGTH) {
+            return VALUE_TOO_LONG;
+        }
+        return null;
     }
 
     /**

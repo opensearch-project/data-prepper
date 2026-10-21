@@ -98,7 +98,7 @@ pipeline:
   The entity is **dynamic** when any `key_attributes` or `attributes` value contains a `${...}` reference — either a Data Prepper field reference such as `${/resourceId}` or an expression such as `${getMetadata("resourceId")}`; otherwise it is **static**. No separate mode flag is required.
 
   - Static: one constant entity is attached to every `PutLogEvents` request, exactly as configured.
-  - Dynamic: each value is interpolated against the event, and the sink partitions buffered events by their resolved key attributes, sending one `PutLogEvents` request per distinct entity. This is how a stream carrying logs for many resources (for example Azure diagnostic logs keyed by `resourceId`) gets one correct entity per resource. An event missing a templated field resolves that reference to an empty string and shares a group with other such events.
+  - Dynamic: each value is interpolated against the event, and the sink partitions buffered events by their resolved key attributes, sending one `PutLogEvents` request per distinct entity. This is how a stream carrying logs for many resources (for example Azure diagnostic logs keyed by `resourceId`) gets one correct entity per resource. If a resolved value is blank or longer than 512 characters, the event is sent without an entity.
 
   ```yaml
   entity:
@@ -135,6 +135,7 @@ threshold parameters.
 * `cloudWatchLogsResourceNotFound` - The number of `PutLogEvents` attempts that failed because the target log group or log stream does not exist. Only incremented when `create_log_group` and `create_log_stream` are both disabled — if the sink is configured to create resources, a resource-not-found error is internal control flow rather than an actionable user signal.
 * `cloudWatchLogsEntityGroupsCreated` - The number of buffer groups opened for a distinct resolved entity (dynamic entity mode only). Because idle groups are released and a returning entity opens a new group, this counts group churn over time; use `cloudWatchLogsEntityCardinality` for how many are active now. The shared overflow group is excluded so this stays a count of real entities.
 * `cloudWatchLogsEntityOverflowEvents` - The number of events that could not be given their own entity group because the concurrent-entity limit was already reached, and were sent in the shared fallback group with no entity instead. Any non-zero value means events are losing their per-resource entity attribution; reduce the cardinality of the templated `key_attributes`, or raise `max_cardinality`.
+* `cloudWatchLogsEntityDropped` - The number of events sent without an entity because a resolved value was blank or longer than 512 characters, tagged with `reason` (`blank_value` or `value_too_long`).
 
 ### Gauges
 

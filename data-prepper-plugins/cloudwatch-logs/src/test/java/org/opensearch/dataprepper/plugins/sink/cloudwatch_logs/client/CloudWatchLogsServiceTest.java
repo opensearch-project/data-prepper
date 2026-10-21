@@ -420,25 +420,140 @@ class CloudWatchLogsServiceTest {
             assertThat(service.activeEntityGroupCount(), equalTo(1));
         }
 
-        @Test
-        void GIVEN_dynamic_mode_WHEN_event_missing_templated_field_THEN_delivered_via_shared_group_with_empty_name() {
-            service = dynamicService(resourceIdResolver());
-
+        private Collection<Record<Event>> recordsWithoutResourceId(final int count) {
             final ArrayList<Record<Event>> records = new ArrayList<>();
-            for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
+            for (int i = 0; i < count; i++) {
                 final Event event = JacksonLog.builder()
-                        .withData(Map.of("someOtherField", "value", "seq", i))
+                        .withData(Map.of("ResourceId", "res-A", "seq", i))
                         .withEventHandle(mock(EventHandle.class))
                         .build();
                 records.add(new Record<>(event));
             }
+            return records;
+        }
 
-            service.processLogEvents(records);
+        private EntityResolver resourceIdWithCategoryAttributeResolver() {
+            final Map<String, String> keyAttributes = new LinkedHashMap<>();
+            keyAttributes.put("Type", "Service");
+            keyAttributes.put("Name", "${resourceId}");
+            return new EntityResolver(keyAttributes, Map.of("Category", "${category}"), mock(ExpressionEvaluator.class));
+        }
 
-            // The templated ${resourceId} is absent, so every such event resolves to the same key
-            // attributes ({Type=Service, Name=}) and shares one group. Events are still delivered; the
-            // resolved entity carries an empty Name rather than being dropped.
-            assertThat(dispatchedEntityNames().contains(""), equalTo(true));
+        @Test
+        void GIVEN_dynamic_mode_WHEN_event_missing_templated_field_THEN_delivered_via_shared_group_with_no_entity() {
+            service = dynamicService(resourceIdResolver());
+
+            service.processLogEvents(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
+            verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
+                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+            verify(cloudWatchLogsMetrics, never()).increaseEntityGroupsCreatedCounter(anyInt());
+            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
+            assertThat(service.activeEntityGroupCount(), equalTo(0));
+        }
+
+        @Test
+        void GIVEN_dynamic_mode_WHEN_attribute_resolves_empty_THEN_whole_entity_is_dropped_and_events_use_shared_group() {
+            service = dynamicService(resourceIdWithCategoryAttributeResolver());
+
+            service.processLogEvents(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
+            verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
+                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+            verify(cloudWatchLogsMetrics, never()).increaseEntityGroupsCreatedCounter(anyInt());
+            assertThat(service.activeEntityGroupCount(), equalTo(0));
+        }
+
+        @Test
+        void GIVEN_dynamic_mode_WHEN_batch_mixes_valid_and_invalid_keys_THEN_valid_keep_their_entity_and_invalid_use_fallback() {
+            service = dynamicService(resourceIdResolver());
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+
+            service.processLogEvents(combined);
+
+            final List<String> dispatchedNames = dispatchedEntityNames();
+            assertThat(dispatchedNames.contains("res-A"), equalTo(true));
+            assertThat(dispatchedNames.contains(""), equalTo(false));
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
+            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
+                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+        }
+
+        @Test
+        void GIVEN_max_cardinality_of_one_WHEN_invalid_entities_arrive_first_THEN_they_take_no_slot_and_are_not_overflow() {
+            service = dynamicService(resourceIdResolver(), 1);
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+
+            service.processLogEvents(combined);
+
+            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
+            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
+            assertThat(dispatchedEntityNames().contains("res-A"), equalTo(true));
+        }
+
+        @Test
+        void GIVEN_max_cardinality_reached_WHEN_new_key_has_invalid_attribute_THEN_counted_as_dropped_not_overflow() {
+            service = dynamicService(resourceIdWithCategoryAttributeResolver(), 1);
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
+
+            service.processLogEvents(combined);
+
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
+                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
+        }
+
+        @Test
+        void GIVEN_max_cardinality_reached_WHEN_new_key_has_blank_key_attribute_THEN_counted_as_dropped_not_overflow() {
+            service = dynamicService(resourceIdResolver(), 1);
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+
+            service.processLogEvents(combined);
+
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
+                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
+        }
+
+        @Test
+        void GIVEN_dynamic_mode_WHEN_attribute_missing_only_on_some_events_of_a_key_THEN_checked_only_when_opening_the_group() {
+            service = dynamicService(resourceIdWithCategoryAttributeResolver());
+
+            final Collection<Record<Event>> combined = new ArrayList<>();
+            combined.addAll(recordsWithResourceId("res-A", 1));
+            combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+            combined.addAll(recordsWithResourceId("res-A", 1));
+
+            service.processLogEvents(combined);
+
+            verify(cloudWatchLogsMetrics, times(1)).increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
+            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
+            final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
+            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
+            final List<String> categories = new ArrayList<>();
+            for (final Entity entity : entityCaptor.getAllValues()) {
+                if (entity != null) {
+                    categories.add(entity.attributes().get("Category"));
+                }
+            }
+            assertThat(categories.contains("cat-1"), equalTo(true));
         }
 
         @Test
