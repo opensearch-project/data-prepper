@@ -1,3 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler;
 
 import io.micrometer.core.instrument.Counter;
@@ -23,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.Optional;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
@@ -36,8 +46,14 @@ public class WorkerScheduler implements Runnable {
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
     public static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
     public static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
-    
-    private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
+    public static final String PARTITION_OWNERSHIP_RENEWAL_FAILURES = "partitionOwnershipRenewalFailures";
+    public static final String ACKNOWLEDGEMENT_CALLBACK_FAILURES = "acknowledgementCallbackFailures";
+
+    @VisibleForTesting
+    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
+    /** Must stay well below the coordinator's 10 minute lease so a few missed renewals do not lose the partition. */
+    @VisibleForTesting
+    static final Duration OWNERSHIP_RENEWAL_INTERVAL = Duration.ofMinutes(2);
     private static final Logger log = LoggerFactory.getLogger(WorkerScheduler.class);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
     private static final Duration DEFAULT_SLEEP_DURATION_MILLIS = Duration.ofMillis(10000);
@@ -51,6 +67,8 @@ public class WorkerScheduler implements Runnable {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Counter acknowledgementSetSuccesses;
     private final Counter acknowledgementSetFailures;
+    private final Counter partitionOwnershipRenewalFailures;
+    private final Counter acknowledgementCallbackFailures;
     private final String sourcePluginName;
 
 
@@ -73,6 +91,8 @@ public class WorkerScheduler implements Runnable {
         this.acknowledgementSetFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME);
         this.parititionsCompletedCounter = pluginMetrics.counter(WORKER_PARTITIONS_COMPLETED);
         this.parititionsFailedCounter = pluginMetrics.counter(WORKER_PARTITIONS_FAILED);
+        this.partitionOwnershipRenewalFailures = pluginMetrics.counter(PARTITION_OWNERSHIP_RENEWAL_FAILURES);
+        this.acknowledgementCallbackFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_CALLBACK_FAILURES);
     }
 
     @Override
@@ -81,12 +101,13 @@ public class WorkerScheduler implements Runnable {
         log.info("Processing Partitions");
         while (!Thread.currentThread().isInterrupted()) {
             Optional<EnhancedSourcePartition> partition = Optional.empty();
+            final AtomicBoolean renewalFailed = new AtomicBoolean();
             try {
                 // Get the next available partition from the coordinator
                 partition = sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
-                    processPartition(partition.get(), buffer);
+                    processPartition(partition.get(), buffer, renewalFailed);
                     parititionsCompletedCounter.increment();
 
                 } else {
@@ -105,7 +126,7 @@ public class WorkerScheduler implements Runnable {
                 if (e instanceof SaaSCrawlerException) {
                     SaaSCrawlerException saasException = (SaaSCrawlerException) e;
                     if (!saasException.isRetryable()) {
-                        shouldLocalRetry = delayWorkerPartitionRetry(partition, e);
+                        shouldLocalRetry = delayWorkerPartitionRetry(partition, e, renewalFailed);
                     }
                 }
                 if (shouldLocalRetry) {
@@ -133,9 +154,11 @@ public class WorkerScheduler implements Runnable {
      * Delay retry on a workerPartition by X Duration (current default = 1 day) for all non-retryble exceptions up to X days (current default = 30 days)
      * @param sourcePartition - information on WorkerPartition state
      * @param ex - exception thrown by workerScheduler
+     * @param renewalFailed - set once an ownership renewal for this acquisition has failed
      * @return boolean: true if we should fallback to localRetry
      */
-    private boolean delayWorkerPartitionRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex) {
+    private boolean delayWorkerPartitionRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex,
+                                              final AtomicBoolean renewalFailed) {
         log.error("[Non-Retryable Exception] Error processing worker partition. Will delay retry with the configured duration", ex);
         try {
             SaasSourcePartition workerPartition = (SaasSourcePartition) sourcePartition.get();
@@ -145,7 +168,13 @@ public class WorkerScheduler implements Runnable {
                 // TODO: ideally we should add partitionCreationTime for all type of SaasWorkerProgressState
                 if (progressState instanceof DimensionalTimeSliceWorkerProgressState) {
                     DimensionalTimeSliceWorkerProgressState workerProgressState = (DimensionalTimeSliceWorkerProgressState) progressState;
-                    updateWorkerPartition(workerProgressState.getPartitionCreationTime(), workerPartition);
+                    synchronized (workerPartition) {
+                        if (renewalFailed.get()) {
+                            log.debug("Not updating partition {}, its ownership renewal failed", workerPartition.getPartitionKey());
+                        } else {
+                            updateWorkerPartition(workerProgressState.getPartitionCreationTime(), workerPartition);
+                        }
+                    }
                     shouldLocalRetry = false;
                 }
             }
@@ -179,16 +208,26 @@ public class WorkerScheduler implements Runnable {
         }
     }
 
-    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer) {
+    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, final AtomicBoolean renewalFailed) {
         // Implement your source extraction logic here
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed
         if (partition.getProgressState().isPresent()) {
             AcknowledgementSet acknowledgementSet = null;
             if (sourceConfig.isAcknowledgments()) {
-                acknowledgementSet = createAcknowledgementSet(partition);
+                acknowledgementSet = createAcknowledgementSet(partition, renewalFailed);
+                // Register before executePartition: the crawler completes the set, which cancels the progress check,
+                // so registering afterwards would leave renewal running on an already released partition.
+                acknowledgementSet.addProgressCheck(progress -> renewPartitionOwnership(partition, renewalFailed),
+                        OWNERSHIP_RENEWAL_INTERVAL);
                 // When acknowledgments are enabled, partition completion is handled in the acknowledgment callback
-                crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+                try {
+                    crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
+                } catch (final RuntimeException | Error e) {
+                    // Nothing will complete the set now, so renewals would hold the partition until the ack timeout.
+                    acknowledgementSet.cancel();
+                    throw e;
+                }
             } else {
                 // When acknowledgments are disabled, complete the partition immediately after execution
                 crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
@@ -200,17 +239,47 @@ public class WorkerScheduler implements Runnable {
         }
     }
 
+    // Must never throw: a throw on the acknowledgement scheduler thread silently stops later renewals. A failed write can leave
+    // the cached version ahead of the store, so after one this instance stops writing the partition and lets the lease lapse.
+    private void renewPartitionOwnership(final EnhancedSourcePartition partition, final AtomicBoolean renewalFailed) {
+        synchronized (partition) {
+            if (renewalFailed.get()) {
+                return;
+            }
+            try {
+                sourceCoordinator.renewPartitionOwnership(partition);
+            } catch (final Exception e) {
+                renewalFailed.set(true);
+                partitionOwnershipRenewalFailures.increment();
+                log.warn("Failed to renew ownership of partition {}, it will be re-acquired after its lease lapses",
+                        partition.getPartitionKey(), e);
+            }
+        }
+    }
+
     @VisibleForTesting
-    AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition) {
+    AcknowledgementSet createAcknowledgementSet(EnhancedSourcePartition partition, final AtomicBoolean renewalFailed) {
         return acknowledgementSetManager.create((result) -> {
-            if (result) {
-                acknowledgementSetSuccesses.increment();
-                sourceCoordinator.completePartition(partition);
-                log.debug("acknowledgements received for partitionKey: {}", partition.getPartitionKey());
-            } else {
-                acknowledgementSetFailures.increment();
-                log.debug("acknowledgements received with false for partitionKey: {}", partition.getPartitionKey());
-                sourceCoordinator.giveUpPartition(partition);
+            synchronized (partition) {
+                if (renewalFailed.get()) {
+                    log.debug("Not updating partition {} after acknowledgement, its ownership renewal failed", partition.getPartitionKey());
+                    return;
+                }
+                // The acknowledgement callback executor discards exceptions, so they must be logged and counted here.
+                try {
+                    if (result) {
+                        sourceCoordinator.completePartition(partition);
+                        acknowledgementSetSuccesses.increment();
+                        log.debug("acknowledgements received for partitionKey: {}", partition.getPartitionKey());
+                    } else {
+                        acknowledgementSetFailures.increment();
+                        log.debug("acknowledgements received with false for partitionKey: {}", partition.getPartitionKey());
+                        sourceCoordinator.giveUpPartition(partition);
+                    }
+                } catch (final Exception e) {
+                    acknowledgementCallbackFailures.increment();
+                    log.warn("Failed to update partition {} after acknowledgement result {}", partition.getPartitionKey(), result, e);
+                }
             }
         }, ACKNOWLEDGEMENT_SET_TIMEOUT);
     }
