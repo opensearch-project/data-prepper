@@ -250,7 +250,12 @@ public class JacksonSpan extends JacksonEvent implements Span {
     }
 
     public static JacksonSpan fromSpan(final Span span) {
-        if (span instanceof JacksonSpan) {
+        if (span instanceof JacksonStandardSpan) {
+            return JacksonStandardSpan.builder()
+                    .withData(span.toMap())
+                    .withEventMetadata(span.getMetadata())
+                    .build();
+        } else if (span instanceof JacksonSpan) {
             return new JacksonSpan((JacksonSpan) span);
         } else {
             return JacksonSpan.builder()
