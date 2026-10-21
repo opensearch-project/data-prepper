@@ -96,8 +96,9 @@ final class GenAiAttributeMappings {
         return OPERATION_NAME_VALUES;
     }
 
+    /** Package-private for tests. */
     @SuppressWarnings("unchecked")
-    private static Map<String, MappingTarget> buildLookupTable(final Map<String, Object> yaml) {
+    static Map<String, MappingTarget> buildLookupTable(final Map<String, Object> yaml) {
         final Map<String, MappingTarget> table = new HashMap<>();
         int priority = 0;
         for (final Map.Entry<String, Object> profile : yaml.entrySet()) {
