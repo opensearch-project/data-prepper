@@ -323,6 +323,79 @@ class GenAiAgentRootTest {
     }
 
     /** POST /runs > invoke_agent > chat, execute_tool > chat. */
+    @Test
+    void ordersAgentsByStartTimeWhateverTheFractionalPrecision() {
+        // As text, "...:01Z" sorts after "...:01.500Z"; as instants it is earlier.
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("late", "http", "2026-01-01T00:00:01.500Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Late Agent")));
+        spans.add(span("early", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Early Agent")));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals("Early Agent", byId(spans, "http").getAttributes().get("gen_ai.agent.name"));
+        assertEquals(List.of("early", "late"), markedSpanIds(spans));
+    }
+
+    @Test
+    void keepsTheOutputTokensOfAnAgentThatReportsOnlyOutputTokens() {
+        final List<Span> spans = httpAgentTrace();
+        spans.set(1, span("agent", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.usage.output_tokens", 700L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> agent = byId(spans, "agent").getAttributes();
+        assertEquals(700L, ((Number) agent.get("gen_ai.usage.output_tokens")).longValue());
+        assertNull(agent.get("gen_ai.usage.input_tokens"));
+    }
+
+    @Test
+    void readsStringTokenCountsAndIgnoresNonNumericOnes() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("agent", "http", "2026-01-01T00:00:01Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+        spans.add(span("chat1", "agent", "2026-01-01T00:00:02Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.usage.input_tokens", "12", "gen_ai.usage.output_tokens", "n/a")));
+        spans.add(span("chat2", "agent", "2026-01-01T00:00:03Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.usage.input_tokens", 3L, "gen_ai.usage.output_tokens", 2L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> agent = byId(spans, "agent").getAttributes();
+        assertEquals(15L, ((Number) agent.get("gen_ai.usage.input_tokens")).longValue());
+        assertEquals(2L, ((Number) agent.get("gen_ai.usage.output_tokens")).longValue());
+    }
+
+    @Test
+    void neverMarksASpanSetToFalseAndStillMarksTheOthers() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST", DERIVED_GEN_AI_IS_ROOT_KEY, false)));
+        spans.add(span("agentA", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", DERIVED_GEN_AI_IS_ROOT_KEY, false)));
+        spans.add(span("agentB", "http", "2026-01-01T00:00:02Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals(List.of("agentB"), markedSpanIds(spans));
+        assertEquals(false, byId(spans, "agentA").getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY));
+    }
+
+    @Test
+    void leavesTracesWithoutGenAiDataUntouched() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("db", "http", "2026-01-01T00:00:01Z", Map.of("db.system", "postgresql")));
+        final GenAiCoverage coverage = GenAiCoverage.create(100, java.time.Duration.ofMinutes(1));
+
+        GenAiEnrichmentHelper.enrichBatch(spans, coverage);
+
+        assertEquals(Map.of("http.method", "POST"), byId(spans, "http").getAttributes());
+        assertEquals(0, coverage.estimatedSize());
+    }
+
     private static List<Span> httpAgentTrace() {
         final List<Span> spans = new ArrayList<>();
         spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));

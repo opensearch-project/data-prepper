@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -48,6 +49,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
     public static final String TRACE_GROUP_CACHE_COUNT_METRIC_NAME = "traceGroupCacheCount";
     public static final String SPAN_SET_COUNT_METRIC_NAME = "spanSetCount";
+    public static final String GENAI_COVERAGE_COUNT_METRIC_NAME = "genAiCoverageCount";
 
     private final long traceFlushInterval;
     static final long GENAI_COVERAGE_MAX_SPAN_IDS = 500_000L;
@@ -78,11 +80,13 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
           .build();
 
 
+        // Outlives the orphan flush: spans that arrive late are held up to two flush intervals.
         genAiCoverage = GenAiCoverage.create(GENAI_COVERAGE_MAX_SPAN_IDS,
-                otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive());
+                Duration.ofMillis(2 * traceFlushInterval).plus(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive()));
 
         pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.estimatedSize());
         pluginMetrics.gauge(SPAN_SET_COUNT_METRIC_NAME, traceIdSpanSetMap, cache -> (double) cache.size());
+        pluginMetrics.gauge(GENAI_COVERAGE_COUNT_METRIC_NAME, genAiCoverage, coverage -> (double) coverage.estimatedSize());
 
         LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms.", traceFlushInterval);
     }

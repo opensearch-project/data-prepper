@@ -14,10 +14,10 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Remembers, per trace, the span ids already covered by a GenAI span or an agent root marker (the
@@ -44,23 +44,35 @@ final class GenAiCoverage {
                 .build());
     }
 
+    /**
+     * Runs {@code enrich} with the trace's span ids covered so far and records the ids it returns.
+     * The read, the enrichment and the write happen atomically for the trace, so pipeline workers
+     * processing spans of one trace at the same time cannot both take a span for the outermost.
+     */
+    void update(final String traceId, final Function<Set<String>, Set<String>> enrich) {
+        if (coveredByTrace == null || traceId == null) {
+            enrich.apply(Collections.emptySet());
+            return;
+        }
+        coveredByTrace.asMap().compute(traceId, (id, existing) -> {
+            final Set<String> known = existing == null ? Collections.emptySet() : existing;
+            final Set<String> added = enrich.apply(known);
+            if (added.isEmpty() || known.containsAll(added)) {
+                return existing;
+            }
+            final Set<String> merged = new HashSet<>(known);
+            merged.addAll(added);
+            return merged;
+        });
+    }
+
+    /** Span ids of the trace covered so far; for tests. */
     Set<String> covered(final String traceId) {
         if (coveredByTrace == null || traceId == null) {
             return Collections.emptySet();
         }
         final Set<String> spanIds = coveredByTrace.getIfPresent(traceId);
         return spanIds == null ? Collections.emptySet() : spanIds;
-    }
-
-    void record(final String traceId, final Collection<String> spanIds) {
-        if (coveredByTrace == null || traceId == null || spanIds.isEmpty()) {
-            return;
-        }
-        coveredByTrace.asMap().merge(traceId, new HashSet<>(spanIds), (existing, added) -> {
-            final Set<String> merged = new HashSet<>(existing);
-            merged.addAll(added);
-            return merged;
-        });
     }
 
     long estimatedSize() {
