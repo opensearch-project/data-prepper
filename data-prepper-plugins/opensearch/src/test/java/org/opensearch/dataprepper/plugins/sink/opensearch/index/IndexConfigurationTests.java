@@ -192,6 +192,26 @@ public class IndexConfigurationTests {
         assertThrows(InvalidPluginConfigurationException.class, builder::build);
     }
 
+    @Test
+    public void testReadIndexConfigWithIndexTypeOverride() throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN.getValue(), null, null, null, null, null, null);
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfig(metadata);
+
+        final IndexConfiguration v2 = IndexConfiguration.readIndexConfig(openSearchSinkConfig, null, IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2);
+        assertThat(v2.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2));
+        assertThat(v2.getIndexAlias(), equalTo("otel-v2-apm-span"));
+        assertThat(v2.getTemplateType(), equalTo(TemplateType.INDEX_TEMPLATE));
+        assertThat(v2.getIndexTemplate().get(COMPOSED_OF),
+                equalTo(List.of("otel-v2-apm-span-plain", "otel-v2-apm-span-nested-keyword")));
+
+        final IndexConfiguration configured = IndexConfiguration.readIndexConfig(openSearchSinkConfig, null, null);
+        assertThat(configured.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN));
+        assertThat(configured.getIndexAlias(), equalTo("otel-v1-apm-span"));
+        assertThat(configured.getTemplateType(), equalTo(TemplateType.V1));
+    }
+
     @ParameterizedTest
     @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN_V2"}, mode = EnumSource.Mode.EXCLUDE)
     public void testOtherIndexTypesHaveNoManagedComponentTemplates(final IndexType indexType) {

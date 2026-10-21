@@ -271,12 +271,20 @@ public class IndexConfiguration {
     }
 
     public static IndexConfiguration readIndexConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator) {
+        return readIndexConfig(openSearchSinkConfig, expressionEvaluator, null);
+    }
+
+    /**
+     * @param indexTypeOverride The index type to use instead of the configured index_type, or null to use the configured one
+     */
+    public static IndexConfiguration readIndexConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator,
+                                                     final IndexType indexTypeOverride) {
         IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
         final String indexAlias = openSearchSinkConfig.getIndexAlias();
         if (indexAlias != null) {
             builder = builder.withIndexAlias(indexAlias);
         }
-        final String indexType = openSearchSinkConfig.getIndexType();
+        final String indexType = indexTypeOverride != null ? indexTypeOverride.getValue() : openSearchSinkConfig.getIndexType();
         if (indexType != null) {
             builder = builder.withIndexType(indexType);
         }
