@@ -392,6 +392,16 @@ class OTelTraceRawProcessorTest {
     }
 
     @Test
+    void testMetricsOnGenAiCoverage() {
+        final ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
+        final ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(OTelTraceRawProcessor.GENAI_COVERAGE_COUNT_METRIC_NAME), gaugeObjectArgumentCaptor.capture(),
+                gaugeFunctionArgumentCaptor.capture());
+
+        assertThat(gaugeFunctionArgumentCaptor.getValue().applyAsDouble(gaugeObjectArgumentCaptor.getValue()), equalTo(0.0));
+    }
+
+    @Test
     void testMetricsOnSpanSet() {
         ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
         ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
