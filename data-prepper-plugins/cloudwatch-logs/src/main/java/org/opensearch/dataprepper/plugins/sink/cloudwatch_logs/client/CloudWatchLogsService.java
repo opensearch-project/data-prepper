@@ -6,54 +6,39 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.SinkStopWatch;
-import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsSinkUtils;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
-import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
-import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
- * CloudWatchLogs Service encapsulates the log processing step.
- * It accomplishes this by:
- * <ol>
- *   <li>Reading in log events.</li>
- *   <li>Buffering data.</li>
- *   <li>Checking for limit conditions.</li>
- *   <li>Making PLE calls to CloudWatchLogs.</li>
- * </ol>
+ * The sink's group buffers: groups buffered events by resolved entity and headers, and takes ready groups as
+ * {@link Batch}es for the caller to send.
+ *
+ * <p>Not thread-safe. Every method except {@link #activeEntityGroupCount()} MUST be called while holding the
+ * sink's {@code processLock}. Taken batches are owned by the caller.
  */
 public class CloudWatchLogsService {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
 
-    private final CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
     private final BufferFactory bufferFactory;
     private final CloudWatchLogsLimits cloudWatchLogsLimits;
     private CloudWatchLogsMetrics cloudWatchLogsMetrics;
-    private final ReentrantLock processLock;
-    private final DlqPushHandler dlqPushHandler;
-    private final boolean dropIfDlqNotConfigured;
+    private final Supplier<SinkStopWatch> stopWatchFactory;
 
     /**
      * Whether events are partitioned per resolved entity. False in static mode, where
-     * {@link #entityResolver} is null and the dispatcher's own entity is used for every request.
+     * {@link #entityResolver} is null and every batch carries {@link #staticEntity}.
      */
     private final boolean dynamic;
 
@@ -71,15 +56,15 @@ public class CloudWatchLogsService {
     private final int maxEntityCardinality;
 
     /**
-     * A fixed entity applied to every group when the resolver does not build one per group, i.e. when events
-     * are partitioned by dynamic headers but the entity itself is static (or absent, in which case null).
+     * A fixed entity applied to every group when the resolver does not build one per group (or in static mode),
+     * i.e. when the entity itself is static (or absent, in which case null).
      */
     private final Entity staticEntity;
 
     /**
      * The per-entity buffer groups, keyed by resolved entity. Empty in static mode.
      *
-     * <p>Mutated only while holding {@link #processLock}. Concurrent so that
+     * <p>Mutated only while the caller holds {@code processLock}. Concurrent so that
      * {@link #activeEntityGroupCount()}, which the cardinality gauge samples from the metrics thread,
      * never reads the map mid-rehash.
      */
@@ -93,150 +78,148 @@ public class CloudWatchLogsService {
      * go stale — so keeping it in the map would permanently consume one of the cardinality slots it
      * exists to absorb overflow from. With {@code max_cardinality} of 1 that was fatal: the first
      * overflow would take the single slot and every subsequent event, of every key, would overflow into
-     * it forever. Created lazily, and read and written only while holding {@link #processLock}.
+     * it forever. Created lazily, and read and written only while the caller holds {@code processLock}.
      */
     private LogGroupBuffer sharedGroup;
 
     /**
      * Whether the cardinality-bound warning has already been emitted. Overflow is counted on every event
      * but logged only once, so a sustained high-cardinality stream cannot flood the logs. Guarded by
-     * {@link #processLock}.
+     * the caller's {@code processLock}.
      */
     private boolean overflowLogged = false;
 
     /**
-     * Static-entity constructor. Preserves the original behavior: a single buffer, and one entity for
-     * every request. The cardinality bound is irrelevant without a resolver, since static mode only ever
-     * holds the shared group.
+     * Static-entity constructor: a single buffer, and one entity for every batch. The cardinality bound is
+     * irrelevant without a resolver, since static mode only ever holds the shared group.
      *
      * @param buffer the single buffer all events are written to
      * @param cloudWatchLogsMetrics the sink's metrics
      * @param cloudWatchLogsLimits the batch size, request size, and flush interval thresholds
-     * @param cloudWatchLogsDispatcher dispatches staged events, supplying its own configured entity
-     * @param dlqPushHandler handler for events that cannot be sent, or null
-     * @param dropIfDlqNotConfigured whether to drop oversized events when no DLQ is configured
+     * @param staticEntity the entity carried by every batch, or null
      */
     public CloudWatchLogsService(final Buffer buffer,
                                  final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                  final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher,
-                                 final DlqPushHandler dlqPushHandler,
-                                 final boolean dropIfDlqNotConfigured) {
-        this(new SingleBufferFactory(buffer), cloudWatchLogsMetrics, cloudWatchLogsLimits,
-                cloudWatchLogsDispatcher, dlqPushHandler, dropIfDlqNotConfigured, null, 0);
+                                 final Entity staticEntity) {
+        this(new SingleBufferFactory(buffer), cloudWatchLogsMetrics, cloudWatchLogsLimits, null, 0, staticEntity,
+                SinkStopWatch::new);
     }
 
     /**
-     * Dynamic-entity constructor. Events are partitioned by their resolved entity, one buffer and so one
-     * {@code PutLogEvents} request per entity.
+     * Grouped constructor. Events are partitioned by their resolved entity and headers, one buffer and so one
+     * {@code PutLogEvents} request per group.
      *
      * @param bufferFactory supplies a fresh buffer for each entity group
      * @param cloudWatchLogsMetrics the sink's metrics
      * @param cloudWatchLogsLimits the batch size, request size, and flush interval thresholds
-     * @param cloudWatchLogsDispatcher dispatches staged events with the group's resolved entity
-     * @param dlqPushHandler handler for events that cannot be sent, or null
-     * @param dropIfDlqNotConfigured whether to drop oversized events when no DLQ is configured
      * @param entityResolver resolves entity keys and entities, or null for static mode
      * @param maxEntityCardinality maximum number of entity groups held at one time
-     */
-    public CloudWatchLogsService(final BufferFactory bufferFactory,
-                                 final CloudWatchLogsMetrics cloudWatchLogsMetrics,
-                                 final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher,
-                                 final DlqPushHandler dlqPushHandler,
-                                 final boolean dropIfDlqNotConfigured,
-                                 final EntityResolver entityResolver,
-                                 final int maxEntityCardinality) {
-        this(bufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits, cloudWatchLogsDispatcher,
-                dlqPushHandler, dropIfDlqNotConfigured, entityResolver, maxEntityCardinality, null);
-    }
-
-    /**
-     * Dynamic-entity constructor that also accepts a static entity, applied to every group when the resolver
-     * partitions purely by dynamic headers rather than building an entity per group.
-     *
      * @param staticEntity the entity applied to each group when {@code entityResolver} does not build one, or null
      */
     public CloudWatchLogsService(final BufferFactory bufferFactory,
                                  final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                  final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher,
-                                 final DlqPushHandler dlqPushHandler,
-                                 final boolean dropIfDlqNotConfigured,
                                  final EntityResolver entityResolver,
                                  final int maxEntityCardinality,
                                  final Entity staticEntity) {
+        this(bufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits, entityResolver, maxEntityCardinality, staticEntity,
+                SinkStopWatch::new);
+    }
+
+    CloudWatchLogsService(final BufferFactory bufferFactory,
+                          final CloudWatchLogsMetrics cloudWatchLogsMetrics,
+                          final CloudWatchLogsLimits cloudWatchLogsLimits,
+                          final EntityResolver entityResolver,
+                          final int maxEntityCardinality,
+                          final Entity staticEntity,
+                          final Supplier<SinkStopWatch> stopWatchFactory) {
         this.bufferFactory = bufferFactory;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
-        this.processLock = new ReentrantLock();
-        this.cloudWatchLogsDispatcher = cloudWatchLogsDispatcher;
-        this.dlqPushHandler = dlqPushHandler;
-        this.dropIfDlqNotConfigured = dropIfDlqNotConfigured;
         this.entityResolver = entityResolver;
         this.dynamic = entityResolver != null;
         this.maxEntityCardinality = maxEntityCardinality;
         this.staticEntity = staticEntity;
+        this.stopWatchFactory = stopWatchFactory;
     }
 
     /**
-     * Function handles the packaging of events into log events before sending a bulk request to CloudWatchLogs.
-     * @param logs Collection of Record events.
+     * Buffers one event, appending to {@code out} each batch taken along the way. The group is resolved before
+     * any group state is mutated. Throws only if the event was not written to a buffer; once written, the event
+     * is owned by the buffer and any later failure is logged instead.
+     *
+     * @param event the event to buffer
+     * @param message the event's serialized UTF-8 bytes
+     * @param out receives the batches taken, 0, 1 or 2 per call
      */
-    public void processLogEvents(final Collection<Record<Event>> logs) {
-        if (logs.isEmpty()) {
-            sweepGroups();
-            return;
+    public void add(final Event event, final byte[] message, final List<Batch> out) {
+        final LogGroupBuffer group = groupFor(event);
+        final Buffer buffer = group.buffer;
+        final int bufferEventCount = buffer.getEventCount();
+        if (bufferEventCount > 0
+                && cloudWatchLogsLimits.maxRequestSizeLimitExceeds(message.length + buffer.getBufferSize(), bufferEventCount + 1)) {
+            take(group, out);
         }
+        group.stopWatch.startIfNotRunning();
+        buffer.writeEvent(event.getEventHandle(), message);
+        try {
+            // The time limit is checked here, not only on an empty poll, because a group that keeps
+            // receiving events but never reaches the count or size threshold would otherwise sit
+            // unsent for as long as the pipeline stays busy.
+            if (cloudWatchLogsLimits.isMaxEventCountLimitReached(buffer.getEventCount())
+                    || cloudWatchLogsLimits.isTimeLimitReached(group.stopWatch.getElapsedTimeInSeconds())) {
+                take(group, out);
+            }
+        } catch (final Exception | StackOverflowError e) {
+            LOG.error("Unexpected error after buffering an event; it stays buffered and is sent with its group.", e);
+        }
+    }
 
-        final List<DlqObject> dlqObjects = new ArrayList<>();
-        for (Record<Event> log : logs) {
-            final Event event = log.getData();
-            final String logString = event.toJsonString();
-            final byte[] logBytes = logString.getBytes(StandardCharsets.UTF_8);
-            final int logLength = logBytes.length;
-
-            cloudWatchLogsMetrics.recordLogSize(logLength);
-            if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
-                final String failureMessage = String.format("Event blocked due to Max Size restriction! Event Size : %s", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
-                DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, event.getEventHandle(), logString, failureMessage, dlqPushHandler, dropIfDlqNotConfigured);
-                if (dlqObject != null) {
-                    dlqObjects.add(dlqObject);
-                } else if (dropIfDlqNotConfigured) {
-                    cloudWatchLogsMetrics.increaseLogLargeEventsDroppedCounter(1);
-                }
+    /**
+     * Takes every non-empty group whose flush interval has elapsed, and evicts the dynamic groups left empty
+     * and idle for the flush interval. Evicting is what keeps the cardinality bound a measure of concurrently
+     * active entities. The shared group is flushed but never evicted.
+     *
+     * @param out receives the batches taken
+     */
+    public void takeReady(final List<Batch> out) {
+        final Iterator<LogGroupBuffer> iterator = groups.values().iterator();
+        while (iterator.hasNext()) {
+            final LogGroupBuffer group = iterator.next();
+            if (!cloudWatchLogsLimits.isTimeLimitReached(group.stopWatch.getElapsedTimeInSeconds())) {
                 continue;
             }
-
-            processLock.lock();
-            try {
-                final LogGroupBuffer group = groupFor(event);
-                group.stopWatch.startIfNotRunning();
-
-                final Buffer buffer = group.buffer;
-                int bufferSize = buffer.getBufferSize();
-                int bufferEventCount = buffer.getEventCount();
-                if (cloudWatchLogsLimits.maxRequestSizeLimitExceeds(logLength + bufferSize, bufferEventCount + 1)) {
-                    stageLogEvents(group);
-                }
-                addToBuffer(buffer, event.getEventHandle(), logBytes);
-                bufferEventCount = buffer.getEventCount();
-                // The time limit is checked here, not only on an empty poll, because a group that keeps
-                // receiving events but never reaches the count or size threshold would otherwise sit
-                // unsent for as long as the pipeline stays busy.
-                if (cloudWatchLogsLimits.isMaxEventCountLimitReached(bufferEventCount)
-                        || cloudWatchLogsLimits.isTimeLimitReached(group.stopWatch.getElapsedTimeInSeconds())) {
-                    stageLogEvents(group);
-                }
-            } finally {
-                processLock.unlock();
+            if (group.buffer.getEventCount() > 0) {
+                take(group, out);
+            } else {
+                // Safe to drop: a take copies the events and handles into the batch before the buffer is
+                // reset, so nothing taken refers to this group.
+                iterator.remove();
             }
         }
+        // The shared group is flushed but never dropped. It holds no entity that could go stale, and
+        // it lives outside `groups` so retaining it costs no cardinality slot.
+        if (sharedGroup != null && sharedGroup.buffer.getEventCount() > 0
+                && cloudWatchLogsLimits.isTimeLimitReached(sharedGroup.stopWatch.getElapsedTimeInSeconds())) {
+            take(sharedGroup, out);
+        }
+    }
 
-        // Groups that received nothing in this batch still have to honour the flush interval, so every
-        // batch ends with a sweep rather than only empty polls triggering one.
-        sweepGroups();
-        CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
+    /**
+     * Takes every non-empty group, dynamic and shared, regardless of readiness. Used by shutdown.
+     *
+     * @param out receives the batches taken
+     */
+    public void takeAll(final List<Batch> out) {
+        for (final LogGroupBuffer group : groups.values()) {
+            if (group.buffer.getEventCount() > 0) {
+                take(group, out);
+            }
+        }
+        if (sharedGroup != null && sharedGroup.buffer.getEventCount() > 0) {
+            take(sharedGroup, out);
+        }
     }
 
     /**
@@ -265,7 +248,7 @@ public class CloudWatchLogsService {
 
         // Cap the groups held concurrently so a high-cardinality templated key cannot grow the groups
         // map without limit. On overflow, route the event to the shared group, which carries no
-        // per-resource entity, rather than allocating a new group per distinct key. Because sweepGroups()
+        // per-resource entity, rather than allocating a new group per distinct key. Because takeReady()
         // evicts idle groups, this bound applies to entities active at the same time rather than every
         // key seen since startup.
         if (groups.size() >= maxEntityCardinality) {
@@ -288,7 +271,7 @@ public class CloudWatchLogsService {
                 ? entityResolver.buildEntity(resolvedKey, event)
                 : staticEntity;
         group = new LogGroupBuffer(bufferFactory.getBuffer(), entity, resolvedKey.getHeaders(),
-                new SinkStopWatch());
+                stopWatchFactory.get());
         groups.put(resolvedKey, group);
         cloudWatchLogsMetrics.increaseEntityGroupsCreatedCounter(1);
         return group;
@@ -302,43 +285,10 @@ public class CloudWatchLogsService {
         if (sharedGroup == null) {
             // A constant static entity is not high-cardinality, so it still applies to overflow events; only
             // a per-group resolved entity (and the per-request headers) are dropped when attribution is lost.
-            final Entity sharedEntity = (entityResolver != null && !entityResolver.buildsEntity()) ? staticEntity : null;
-            sharedGroup = new LogGroupBuffer(bufferFactory.getBuffer(), sharedEntity, null, new SinkStopWatch());
+            final Entity sharedEntity = (entityResolver == null || !entityResolver.buildsEntity()) ? staticEntity : null;
+            sharedGroup = new LogGroupBuffer(bufferFactory.getBuffer(), sharedEntity, null, stopWatchFactory.get());
         }
         return sharedGroup;
-    }
-
-    /**
-     * Flushes every group whose time limit has been reached and drops the entity groups left empty and
-     * idle. Evicting is what keeps the cardinality bound a measure of concurrently active entities: a key
-     * seen once would otherwise hold its slot, and its buffer, for the lifetime of the process.
-     */
-    private void sweepGroups() {
-        processLock.lock();
-        try {
-            final Iterator<LogGroupBuffer> iterator = groups.values().iterator();
-            while (iterator.hasNext()) {
-                final LogGroupBuffer group = iterator.next();
-                if (!cloudWatchLogsLimits.isTimeLimitReached(group.stopWatch.getElapsedTimeInSeconds())) {
-                    continue;
-                }
-                if (group.buffer.getEventCount() > 0) {
-                    stageLogEvents(group);
-                } else {
-                    // Safe to drop: staging hands the events and handles to the dispatcher before the
-                    // buffer is reset, so nothing in flight refers to this group.
-                    iterator.remove();
-                }
-            }
-            // The shared group is flushed but never dropped. It holds no entity that could go stale, and
-            // it lives outside `groups` so retaining it costs no cardinality slot.
-            if (sharedGroup != null && sharedGroup.buffer.getEventCount() > 0
-                    && cloudWatchLogsLimits.isTimeLimitReached(sharedGroup.stopWatch.getElapsedTimeInSeconds())) {
-                stageLogEvents(sharedGroup);
-            }
-        } finally {
-            processLock.unlock();
-        }
     }
 
     /**
@@ -352,31 +302,19 @@ public class CloudWatchLogsService {
         return groups.size();
     }
 
-    private void stageLogEvents(final LogGroupBuffer group) {
+    /**
+     * Takes the group's contents as a batch. The batch copies the handles and messages, and the buffer is reset
+     * right after, with nothing that can throw in between. The batch is added to {@code out} before the stopwatch
+     * restart and the metric call, so a taken batch always has an owner.
+     */
+    private void take(final LogGroupBuffer group, final List<Batch> out) {
         final Buffer buffer = group.buffer;
-        group.stopWatch.stopAndReset();
-
-        List<InputLogEvent> inputLogEvents = cloudWatchLogsDispatcher.prepareInputLogEvents(buffer.getBufferedData());
-        if (dynamic) {
-            // Dynamic mode supplies the group's resolved entity explicitly, one entity per request. Resolved
-            // headers, when present, ride along as a per-request override; when absent, the 3-arg path keeps
-            // the request free of any override configuration.
-            if (group.headers == null || group.headers.isEmpty()) {
-                cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles(), group.entity);
-            } else {
-                cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles(), group.entity, group.headers);
-            }
-        } else {
-            // Static mode defers to the dispatcher's frozen entity so it is not overridden by null.
-            cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles());
-        }
-        cloudWatchLogsMetrics.recordRequestSize(buffer.getBufferSize());
-
+        final int bufferSize = buffer.getBufferSize();
+        final Batch batch = new Batch(buffer.getEventHandles(), buffer.getBufferedData(), group.entity, group.headers);
         buffer.resetBuffer();
-    }
-
-    private void addToBuffer(final Buffer buffer, final EventHandle logEventHandle, final byte[] logBytes) {
-        buffer.writeEvent(logEventHandle, logBytes);
+        out.add(batch);
+        group.stopWatch.stopAndReset();
+        cloudWatchLogsMetrics.recordRequestSize(bufferSize);
     }
 
     /**

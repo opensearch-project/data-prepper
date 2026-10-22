@@ -225,8 +225,8 @@ public class CloudWatchLogsMetricsIT {
 
         final double requestsFailedCount = getCounterValue(
                 METRICS_PREFIX + CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_FAILED);
-        assertThat("cloudWatchLogsRequestsFailed must NOT increment when auto-create recovers",
-                requestsFailedCount, org.hamcrest.Matchers.equalTo(0.0));
+        assertThat("cloudWatchLogsRequestsFailed counts the attempt that triggered auto-create",
+                requestsFailedCount, org.hamcrest.Matchers.equalTo(1.0));
     }
 
     @Test

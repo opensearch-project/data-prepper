@@ -44,15 +44,6 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public byte[] popEvent() {
-        if (eventsBuffered.isEmpty()) {
-            return new byte[0];
-        }
-        bufferSize -= eventsBuffered.get(0).length;
-        return eventsBuffered.remove(0);
-    }
-
-    @Override
     public List<byte[]> getBufferedData() {
         return Collections.unmodifiableList(eventsBuffered);
     }
