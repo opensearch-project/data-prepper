@@ -21,6 +21,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -51,10 +52,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -117,6 +120,15 @@ public class OpenSearchSinkTest {
     @Mock
     private PluginFactory pluginFactory;
 
+    @Mock
+    private ConnectionConfiguration connectionConfiguration;
+
+    @Mock
+    private RestHighLevelClient restHighLevelClient;
+
+    @Mock
+    private OpenSearchTransport openSearchTransport;
+
     @BeforeEach
     void setup() {
         when(pipelineDescription.getPipelineName()).thenReturn(UUID.randomUUID().toString());
@@ -125,10 +137,9 @@ public class OpenSearchSinkTest {
         lenient().when(retryConfiguration.getDlq()).thenReturn(Optional.empty());
         lenient().when(retryConfiguration.getDlqFile()).thenReturn(null);
 
-        final ConnectionConfiguration connectionConfiguration = mock(ConnectionConfiguration.class);
-        final RestHighLevelClient restHighLevelClient = mock(RestHighLevelClient.class);
         lenient().when(connectionConfiguration.createClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);
         lenient().when(connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier)).thenReturn(openSearchClient);
+        lenient().when(openSearchClient._transport()).thenReturn(openSearchTransport);
 
         lenient().when(indexConfiguration.getAction()).thenReturn("index");
         lenient().when(indexConfiguration.getDocumentId()).thenReturn(null);
@@ -206,6 +217,75 @@ public class OpenSearchSinkTest {
             objectUnderTest.initialize();
         }
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void test_initialization_with_failure_and_retry_closes_clients_from_failed_attempt() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final RestHighLevelClient firstRestHighLevelClient = mock(RestHighLevelClient.class);
+        final OpenSearchClient firstOpenSearchClient = mock(OpenSearchClient.class);
+        final OpenSearchTransport firstOpenSearchTransport = mock(OpenSearchTransport.class);
+        when(firstOpenSearchClient._transport()).thenReturn(firstOpenSearchTransport);
+        when(connectionConfiguration.createClient(awsCredentialsSupplier))
+                .thenReturn(firstRestHighLevelClient, restHighLevelClient);
+        when(connectionConfiguration.createOpenSearchClient(firstRestHighLevelClient, awsCredentialsSupplier))
+                .thenReturn(firstOpenSearchClient);
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), any(OpenSearchClient.class), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenThrow(RuntimeException.class).thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            objectUnderTest.initialize();
+        }
+
+        verify(firstRestHighLevelClient).close();
+        verify(firstOpenSearchTransport).close();
+        verify(restHighLevelClient, never()).close();
+        verify(openSearchClient, never())._transport();
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+    }
+
+    @Test
+    void test_initialization_with_ioexception_and_retry_closes_clients_from_failed_attempt() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final RestHighLevelClient firstRestHighLevelClient = mock(RestHighLevelClient.class);
+        final OpenSearchClient firstOpenSearchClient = mock(OpenSearchClient.class);
+        final OpenSearchTransport firstOpenSearchTransport = mock(OpenSearchTransport.class);
+        when(firstOpenSearchClient._transport()).thenReturn(firstOpenSearchTransport);
+        when(connectionConfiguration.createClient(awsCredentialsSupplier))
+                .thenReturn(firstRestHighLevelClient, restHighLevelClient);
+        when(connectionConfiguration.createOpenSearchClient(firstRestHighLevelClient, awsCredentialsSupplier))
+                .thenReturn(firstOpenSearchClient);
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), any(OpenSearchClient.class), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doThrow(new IOException()).doNothing().when(indexManager).setupIndex();
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            objectUnderTest.initialize();
+        }
+
+        verify(firstRestHighLevelClient).close();
+        verify(firstOpenSearchTransport).close();
+        verify(restHighLevelClient, never()).close();
+        verify(openSearchClient, never())._transport();
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+    }
+
+    @Test
+    void test_shutdown_after_initialization_failure_does_not_close_clients_again() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenThrow(RuntimeException.class);
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+        }
+        objectUnderTest.shutdown();
+
+        verify(restHighLevelClient, times(1)).close();
+        verify(openSearchTransport, times(1)).close();
     }
 
     @Test
