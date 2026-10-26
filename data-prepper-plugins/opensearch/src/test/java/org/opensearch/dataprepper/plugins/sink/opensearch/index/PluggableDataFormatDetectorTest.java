@@ -20,9 +20,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.ErrorResponse;
+import org.opensearch.client.opensearch.indices.AliasDefinition;
 import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
 import org.opensearch.client.opensearch.indices.ExistsRequest;
+import org.opensearch.client.opensearch.indices.GetAliasRequest;
+import org.opensearch.client.opensearch.indices.GetAliasResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.opensearch.indices.get_alias.IndexAliases;
 import org.opensearch.client.transport.Endpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.TransportOptions;
@@ -30,6 +34,7 @@ import org.opensearch.client.transport.endpoints.BooleanResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +47,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ComponentTemplateAPIWrapperTest.toJsonData;
 
@@ -87,6 +94,18 @@ class PluggableDataFormatDetectorTest {
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
     }
 
+    private void givenAlias(final Map<String, Boolean> isWriteIndexByIndex) throws IOException {
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
+        final GetAliasResponse.Builder response = new GetAliasResponse.Builder();
+        isWriteIndexByIndex.forEach((index, isWriteIndex) -> response.putResult(index,
+                IndexAliases.of(aliases -> aliases.aliases(ALIAS, AliasDefinition.of(alias -> alias.isWriteIndex(isWriteIndex))))));
+        when(openSearchIndicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(response.build());
+    }
+
+    private void givenIndexSettings(final String index, final String settings, final String defaults) {
+        responses.put("/" + index + "/_settings", "{\"" + index + "\":{\"settings\":{" + settings + "},\"defaults\":{" + defaults + "}}}");
+    }
+
     private void givenClusterSettings(final String persistent, final String defaults) {
         responses.put("/_cluster/settings", "{\"persistent\":{" + persistent + "},\"transient\":{},\"defaults\":{" + defaults + "}}");
     }
@@ -116,7 +135,6 @@ class PluggableDataFormatDetectorTest {
 
     @Test
     void returns_false_for_cluster_without_pluggable_data_formats() throws IOException {
-        givenNoExistingIndex();
         givenClusterSettings("", "\"cluster.pluggable.dataformat.enabled\":\"false\",\"cluster.pluggable.dataformat\":\"\","
                 + "\"opensearch.experimental.feature.pluggable.dataformat.enabled\":\"false\"");
 
@@ -150,7 +168,6 @@ class PluggableDataFormatDetectorTest {
 
     @Test
     void returns_false_when_feature_flag_is_disabled() throws IOException {
-        givenNoExistingIndex();
         givenClusterSettings("", parquetClusterDefaults()
                 .replace("\"opensearch.experimental.feature.pluggable.dataformat.enabled\":\"true\"",
                         "\"opensearch.experimental.feature.pluggable.dataformat.enabled\":\"false\""));
@@ -167,26 +184,39 @@ class PluggableDataFormatDetectorTest {
     }
 
     @Test
+    void returns_false_when_first_index_matches_allowlist_prefix_longer_than_alias() throws IOException {
+        givenNoExistingIndex();
+        givenClusterSettings("", parquetClusterDefaults().replace("\".kibana\"", "\"otel-v1-apm-span-0\""));
+
+        assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(false));
+    }
+
+    @Test
     void reads_settings_of_write_index_when_alias_exists() throws IOException {
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
-        responses.put("/_alias/" + ALIAS, "{\"otel-v1-apm-span-000001\":{\"aliases\":{\"" + ALIAS + "\":{\"is_write_index\":false}}},"
-                + "\"" + WRITE_INDEX + "\":{\"aliases\":{\"" + ALIAS + "\":{\"is_write_index\":true}}}}");
-        responses.put("/" + WRITE_INDEX + "/_settings", "{\"" + WRITE_INDEX + "\":{\"settings\":{"
-                + "\"index.pluggable.dataformat.enabled\":\"true\",\"index.pluggable.dataformat\":\"composite\","
-                + "\"index.composite.primary_data_format\":\"parquet\"},\"defaults\":{}}}");
+        givenClusterSettings("", parquetClusterDefaults());
+        givenAlias(Map.of("otel-v1-apm-span-000001", false, WRITE_INDEX, true));
+        givenIndexSettings(WRITE_INDEX, "\"index.pluggable.dataformat.enabled\":\"true\",\"index.pluggable.dataformat\":\"composite\","
+                + "\"index.composite.primary_data_format\":\"parquet\"", "");
 
         assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(true));
-        assertThat(requests, contains("/_alias/" + ALIAS + " {}",
+        assertThat(requests, contains("/_cluster/settings {flat_settings=true, include_defaults=true}",
                 "/" + WRITE_INDEX + "/_settings {flat_settings=true, include_defaults=true}"));
     }
 
     @Test
+    void returns_false_without_reading_index_settings_when_feature_flag_is_disabled() throws IOException {
+        givenClusterSettings("", "\"opensearch.experimental.feature.pluggable.dataformat.enabled\":\"false\"");
+
+        assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(false));
+        assertThat(requests, contains("/_cluster/settings {flat_settings=true, include_defaults=true}"));
+        verify(openSearchIndicesClient, never()).existsAlias(any(ExistsAliasRequest.class));
+    }
+
+    @Test
     void returns_false_when_existing_write_index_is_not_pluggable() throws IOException {
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
-        responses.put("/_alias/" + ALIAS, "{\"" + WRITE_INDEX + "\":{\"aliases\":{\"" + ALIAS + "\":{\"is_write_index\":true}}}}");
-        responses.put("/" + WRITE_INDEX + "/_settings", "{\"" + WRITE_INDEX + "\":{\"settings\":{},"
-                + "\"defaults\":{\"index.pluggable.dataformat.enabled\":\"false\",\"index.pluggable.dataformat\":\"\"}}}");
         givenClusterSettings("", parquetClusterDefaults());
+        givenAlias(Map.of(WRITE_INDEX, true));
+        givenIndexSettings(WRITE_INDEX, "", "\"index.pluggable.dataformat.enabled\":\"false\",\"index.pluggable.dataformat\":\"\"");
 
         assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(false));
         assertThat(requests.size(), equalTo(2));
@@ -194,26 +224,28 @@ class PluggableDataFormatDetectorTest {
 
     @Test
     void uses_only_index_of_alias_without_write_index_flag() throws IOException {
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
-        responses.put("/_alias/" + ALIAS, "{\"" + WRITE_INDEX + "\":{\"aliases\":{\"" + ALIAS + "\":{}}}}");
-        responses.put("/" + WRITE_INDEX + "/_settings", "{\"" + WRITE_INDEX + "\":{\"settings\":{"
-                + "\"index.pluggable.dataformat.enabled\":\"true\",\"index.pluggable.dataformat\":\"parquet\"},\"defaults\":{}}}");
+        givenClusterSettings("", parquetClusterDefaults());
+        givenAlias(Collections.singletonMap(WRITE_INDEX, null));
+        givenIndexSettings(WRITE_INDEX, "\"index.pluggable.dataformat.enabled\":\"true\",\"index.pluggable.dataformat\":\"parquet\"", "");
 
         assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(true));
     }
 
     @Test
     void falls_back_to_cluster_settings_when_alias_has_no_write_index() throws IOException {
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
-        responses.put("/_alias/" + ALIAS, "{\"a\":{\"aliases\":{\"" + ALIAS + "\":{}}},\"b\":{\"aliases\":{\"" + ALIAS + "\":{}}}}");
         givenClusterSettings("", parquetClusterDefaults());
+        final Map<String, Boolean> indices = new HashMap<>();
+        indices.put("otel-v1-apm-span-000001", null);
+        indices.put(WRITE_INDEX, false);
+        givenAlias(indices);
 
         assertThat(createObjectUnderTest().isParquetPrimary(ALIAS), equalTo(true));
-        assertThat(requests, contains("/_alias/" + ALIAS + " {}", "/_cluster/settings {flat_settings=true, include_defaults=true}"));
+        assertThat(requests, contains("/_cluster/settings {flat_settings=true, include_defaults=true}"));
     }
 
     @Test
     void reads_settings_of_concrete_index_named_like_alias() throws IOException {
+        givenClusterSettings("", parquetClusterDefaults());
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(true));
         responses.put("/" + ALIAS + "/_settings", "{\"" + ALIAS + "\":{\"settings\":{},\"defaults\":{"
