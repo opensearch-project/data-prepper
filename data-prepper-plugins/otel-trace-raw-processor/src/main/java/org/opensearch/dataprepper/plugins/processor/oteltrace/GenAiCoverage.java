@@ -85,6 +85,8 @@ final class GenAiCoverage {
         if (coveredByTrace == null) {
             return 0;
         }
+        // The weighted size is updated asynchronously; apply pending writes so the count is current.
+        coveredByTrace.cleanUp();
         return coveredByTrace.policy().eviction()
                 .map(eviction -> eviction.weightedSize().orElse(0L))
                 .orElse(0L);

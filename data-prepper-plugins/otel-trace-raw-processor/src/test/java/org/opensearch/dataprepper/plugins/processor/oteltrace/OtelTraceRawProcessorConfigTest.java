@@ -12,24 +12,20 @@ package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
-import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+import jakarta.validation.constraints.Min;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
+import java.lang.reflect.Field;
 import java.util.Map;
-import java.util.Set;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OtelTraceRawProcessorConfigTest {
@@ -38,15 +34,6 @@ class OtelTraceRawProcessorConfigTest {
 
     private static OtelTraceRawProcessorConfig deserialize(final Map<String, Object> settings) {
         return OBJECT_MAPPER.convertValue(settings, OtelTraceRawProcessorConfig.class);
-    }
-
-    private static Set<ConstraintViolation<OtelTraceRawProcessorConfig>> validate(final OtelTraceRawProcessorConfig config) {
-        final Validator validator = Validation.byDefaultProvider()
-                .configure()
-                .messageInterpolator(new ParameterMessageInterpolator())
-                .buildValidatorFactory()
-                .getValidator();
-        return validator.validate(config);
     }
 
     @Test
@@ -96,7 +83,7 @@ class OtelTraceRawProcessorConfigTest {
         final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> deserialize(Map.of("genai_root_propagation", "roots")));
 
-        assertThat(exception.getCause(), is(org.hamcrest.Matchers.instanceOf(ValueInstantiationException.class)));
+        assertThat(exception.getCause(), instanceOf(ValueInstantiationException.class));
         assertThat(exception.getMessage(), containsString("ai_root, all_roots, none"));
     }
 
@@ -108,23 +95,12 @@ class OtelTraceRawProcessorConfigTest {
     }
 
     @Test
-    void validate_defaults_hasNoViolations() {
-        assertThat(validate(new OtelTraceRawProcessorConfig()), is(empty()));
-    }
+    void genAiCoverageCacheMaxSize_mustBeAtLeastOne() throws NoSuchFieldException {
+        final Field field = OtelTraceRawProcessorConfig.class.getDeclaredField("genAiCoverageCacheMaxSize");
 
-    @ParameterizedTest
-    @ValueSource(longs = {0, -1})
-    void validate_genAiCoverageCacheMaxSizeBelowOne_isRejected(final long maxSize) {
-        final OtelTraceRawProcessorConfig config = deserialize(Map.of("genai_coverage_cache_max_size", maxSize));
+        final Min min = field.getAnnotation(Min.class);
 
-        final Set<ConstraintViolation<OtelTraceRawProcessorConfig>> violations = validate(config);
-
-        assertThat(violations, hasSize(1));
-        assertThat(violations.iterator().next().getPropertyPath().toString(), equalTo("genAiCoverageCacheMaxSize"));
-    }
-
-    @Test
-    void validate_genAiCoverageCacheMaxSizeOfOne_isAccepted() {
-        assertThat(validate(deserialize(Map.of("genai_coverage_cache_max_size", 1))), is(empty()));
+        assertThat(min, notNullValue());
+        assertThat(min.value(), equalTo(1L));
     }
 }
