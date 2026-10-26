@@ -16,14 +16,25 @@ processor:
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 * `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
-* `genai_coverage_cache_max_size`: An `int` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Default is `500000`.
+* `genai_enrichment_enabled`: A `boolean` that turns [GenAI agent trace enrichment](#genai-agent-trace-enrichment) on or off. Default is `true`.
+* `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
 * `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none` (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
 
 ## GenAI agent trace enrichment
 
-The processor enriches traces from GenAI agents and LLM applications, so that agent runs can be found, listed and measured from the spans themselves. It is always on and does nothing to traces without GenAI data.
+The processor enriches traces from GenAI agents and LLM applications, so that agent runs can be found, listed and measured from the spans themselves. It is on by default and does nothing to traces without GenAI data. Set `genai_enrichment_enabled: false` to turn it off: span attributes are then left as they arrive, with no normalized attributes, no sub-key stripping, no markers and no root enrichment, and the coverage cache is not created.
 
 It needs the source to use `output_format: otel`, because it matches attributes by their OTel key names (for example `gen_ai.operation.name`). The default `opensearch` format rewrites keys (`http.method` becomes `span.attributes.http@method`) and the enrichment then finds nothing. See the [otel-trace-source README](../otel-trace-source/README.md#output-format).
+
+Example with the GenAI settings at their defaults:
+
+```
+processor:
+    - otel_traces:
+        genai_enrichment_enabled: true
+        genai_root_propagation: ai_root
+        genai_coverage_cache_max_size: 500000
+```
 
 Each batch is enriched in this order, per trace:
 
@@ -66,7 +77,7 @@ Agents usually run behind a service: the trace's root is an HTTP or RPC span, su
 Spans of a trace can arrive in several batches. A span that arrives after its agent was processed is enriched without its ancestors, so it would look outermost and be marked as a second agent run. To prevent this, the processor remembers, per trace, which span ids are already covered by a GenAI span or a marker, and checks there when a parent is not in the batch.
 
 * Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (375 seconds at defaults), so they outlive the flush of spans that arrive without their root.
-* The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageCount` metric reports how full it is.
+* The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
 * Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 1,300 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
 * The covered-span lookup, the marking and the update run atomically per trace, so pipeline workers processing spans of one trace at the same time do not both mark one.
 
@@ -108,6 +119,7 @@ In addition to the metrics from [AbstractProcessor](https://github.com/opensearc
 * `traceGroupCacheCount` - (gauge) The count of trace groups in the trace group cache
 * `spanSetCount` - (gauge) The count of span sets in the span set collection
 * `genAiCoverageCount` - (gauge) The count of traces in the GenAI coverage cache
+* `genAiCoverageSpanIdCount` - (gauge) The count of span ids in the GenAI coverage cache, the unit of `genai_coverage_cache_max_size`
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 

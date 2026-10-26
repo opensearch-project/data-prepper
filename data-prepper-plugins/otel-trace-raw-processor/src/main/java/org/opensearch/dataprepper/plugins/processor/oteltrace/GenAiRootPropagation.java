@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -33,7 +34,7 @@ public enum GenAiRootPropagation {
     NONE("none");
 
     private static final Map<String, GenAiRootPropagation> OPTIONS = Arrays.stream(values())
-            .collect(Collectors.toMap(value -> value.option, value -> value));
+            .collect(Collectors.toMap(value -> value.option, value -> value, (a, b) -> a, LinkedHashMap::new));
 
     private final String option;
 
@@ -43,7 +44,15 @@ public enum GenAiRootPropagation {
 
     @JsonCreator
     static GenAiRootPropagation fromOptionValue(final String option) {
-        return OPTIONS.get(option.toLowerCase());
+        if (option == null) {
+            return null;
+        }
+        final GenAiRootPropagation value = OPTIONS.get(option.toLowerCase());
+        if (value == null) {
+            throw new IllegalArgumentException("Unknown genai_root_propagation value '" + option
+                    + "'. Use one of: " + String.join(", ", OPTIONS.keySet()));
+        }
+        return value;
     }
 
     @JsonValue
