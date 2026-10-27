@@ -80,21 +80,37 @@ public class DocumentDBService {
     }
 
     private String getS3PathPrefix() {
-        final String s3UserPathPrefix;
-        if (sourceConfig.getS3Prefix() != null && !sourceConfig.getS3Prefix().isBlank()) {
-            s3UserPathPrefix = sourceConfig.getS3Prefix() + S3_PATH_DELIMITER;
-        } else {
-            s3UserPathPrefix = "";
-        }
+        return buildS3PathPrefix(sourceConfig.getS3Prefix(), sourceCoordinator.getPartitionPrefix(), Instant.now().toEpochMilli());
+    }
 
-        final String s3PathPrefix;
-        final Instant now = Instant.now();
-        if (sourceCoordinator.getPartitionPrefix() != null ) {
-            s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + now.toEpochMilli() + S3_PATH_DELIMITER;
-        } else {
-            s3PathPrefix = s3UserPathPrefix + now.toEpochMilli() + S3_PATH_DELIMITER;
+    static String buildS3PathPrefix(final String userPrefix, final String partitionPrefix, final long epochMillis) {
+        final String normalizedUserPrefix = normalizeS3Prefix(userPrefix);
+        final String s3UserPathPrefix = normalizedUserPrefix.isEmpty() ? "" : normalizedUserPrefix + S3_PATH_DELIMITER;
+
+        if (partitionPrefix != null) {
+            return s3UserPathPrefix + partitionPrefix + S3_PATH_DELIMITER + epochMillis + S3_PATH_DELIMITER;
         }
-        return s3PathPrefix;
+        return s3UserPathPrefix + epochMillis + S3_PATH_DELIMITER;
+    }
+
+    /**
+     * Strips leading and trailing delimiters and collapses repeated delimiters, so that
+     * "prefix", "prefix/" and "/prefix/" all produce the same key layout. Without this, a trailing
+     * slash creates an empty path segment ("prefix//...") which shifts the folder depth that the
+     * S3 read stage partitions on.
+     */
+    static String normalizeS3Prefix(final String userPrefix) {
+        if (userPrefix == null || userPrefix.isBlank()) {
+            return "";
+        }
+        String normalized = userPrefix.trim().replaceAll("/{2,}", S3_PATH_DELIMITER);
+        while (normalized.startsWith(S3_PATH_DELIMITER)) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith(S3_PATH_DELIMITER)) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     /**
