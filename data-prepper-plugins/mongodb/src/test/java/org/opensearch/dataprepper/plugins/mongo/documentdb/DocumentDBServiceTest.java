@@ -17,12 +17,12 @@ class DocumentDBServiceTest {
     private static final long EPOCH_MILLIS = 1761000000000L;
 
     @ParameterizedTest
-    @ValueSource(strings = {"annuitycontract", "annuitycontract/", "/annuitycontract", "/annuitycontract/", "annuitycontract//", " annuitycontract/ "})
+    @ValueSource(strings = {"my-prefix", "my-prefix/", "/my-prefix", "/my-prefix/", "my-prefix//", " my-prefix/ "})
     void buildS3PathPrefix_sameLayout_withOrWithoutSurroundingSlashes(final String userPrefix) {
         assertThat(DocumentDBService.buildS3PathPrefix(userPrefix, "pipeline-a", EPOCH_MILLIS),
-                equalTo("annuitycontract/pipeline-a/" + EPOCH_MILLIS + "/"));
+                equalTo("my-prefix/pipeline-a/" + EPOCH_MILLIS + "/"));
         assertThat(DocumentDBService.buildS3PathPrefix(userPrefix, null, EPOCH_MILLIS),
-                equalTo("annuitycontract/" + EPOCH_MILLIS + "/"));
+                equalTo("my-prefix/" + EPOCH_MILLIS + "/"));
     }
 
     @Test
