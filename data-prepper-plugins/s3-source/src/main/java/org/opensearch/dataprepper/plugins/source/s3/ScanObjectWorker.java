@@ -349,7 +349,7 @@ public class ScanObjectWorker implements Runnable {
             partitionKeys.remove(folderPartition.getPartitionKey());
             if (folderPartitioningOptions.isContinuousScanMode()) {
                 LOG.debug("No objects to process in continuous scan mode, giving up partition for immediate re-acquisition");
-                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), 0);
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), MAX_RETRIES);
                 return;
             }
             if (shouldDeleteFolderPartition(folderPartition)) {
