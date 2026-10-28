@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.dlq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
@@ -15,7 +16,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.ErrorCauseStrin
 
 public class FailedBulkOperationConverter {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(JsonFactories.defaultJsonFactory());
 
     private final String pluginName;
     private final String pipelineName;

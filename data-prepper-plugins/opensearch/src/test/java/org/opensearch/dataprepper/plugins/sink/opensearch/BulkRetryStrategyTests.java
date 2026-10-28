@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import io.micrometer.core.instrument.Measurement;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -1405,7 +1404,7 @@ public class BulkRetryStrategyTests {
     private TimeSeriesIndex createTimeSeriesIndex() {
         return new TimeSeriesIndex(
                 new TimeSeriesIndexDetector(mock(OpenSearchClient.class), new IndexCache()),
-                new BulkOperationFactory(null, mock(ScriptManager.class), new ObjectMapper(), false),
+                new BulkOperationFactory(null, mock(ScriptManager.class), false),
                 false);
     }
 

@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 
 import java.io.IOException;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
 
 class PullIngestionEnvelopeBuilderTest {
 
@@ -37,7 +39,7 @@ class PullIngestionEnvelopeBuilderTest {
     }
 
     private PullIngestionEnvelopeBuilder createObjectUnderTest() {
-        return new PullIngestionEnvelopeBuilder(objectMapper);
+        return new PullIngestionEnvelopeBuilder();
     }
 
     @Test
@@ -75,5 +77,20 @@ class PullIngestionEnvelopeBuilderTest {
         @SuppressWarnings("unchecked")
         final Map<String, Object> envelope = objectMapper.readValue(result, Map.class);
         assertThat(envelope.get("_version"), equalTo(String.valueOf(version)));
+    }
+
+    @Test
+    void build_parses_source_with_string_values_above_the_jackson_default_limit() throws IOException {
+        final int length = 21 * 1024 * 1024;
+        final String sourceJson = "{\"largeField\":\"" + "a".repeat(length) + "\"}";
+
+        final byte[] result = createObjectUnderTest().build(documentId, version, sourceJson, opType);
+
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> envelope = new ObjectMapper(JsonFactories.defaultJsonFactory()).readValue(result, Map.class);
+        assertThat(envelope.get("_source"), instanceOf(Map.class));
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> source = (Map<String, Object>) envelope.get("_source");
+        assertThat(((String) source.get("largeField")).length(), equalTo(length));
     }
 }
