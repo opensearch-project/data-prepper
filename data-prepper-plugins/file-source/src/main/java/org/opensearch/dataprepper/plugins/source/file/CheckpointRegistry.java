@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.file;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,11 +44,8 @@ public final class CheckpointRegistry {
     private final ScheduledExecutorService scheduler;
 
     public CheckpointRegistry(final Path checkpointFile, final Duration flushInterval, final Duration cleanupAfter) {
-        this(checkpointFile, flushInterval, cleanupAfter, () -> Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "file-checkpoint-flush");
-            thread.setDaemon(true);
-            return thread;
-        }));
+        this(checkpointFile, flushInterval, cleanupAfter, () -> Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("file-checkpoint-flush")));
     }
 
     CheckpointRegistry(final Path checkpointFile, final Duration flushInterval, final Duration cleanupAfter,

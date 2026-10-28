@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.kinesis.source;
 import com.linecorp.armeria.client.retry.Backoff;
 import lombok.Getter;
 import lombok.Setter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -115,7 +116,8 @@ public class KinesisService {
             this.applicationName = kinesisLeaseConfig.getPipelineIdentifier();
             }
         this.workerIdentifierGenerator = workerIdentifierGenerator;
-        this.executorService = Executors.newFixedThreadPool(1);
+        this.executorService = Executors.newFixedThreadPool(1,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("kinesis-source-scheduler"));
         final PluginModel codecConfiguration = kinesisSourceConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         this.codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);

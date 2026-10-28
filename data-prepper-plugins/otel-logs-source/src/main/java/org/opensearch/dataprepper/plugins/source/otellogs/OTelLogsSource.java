@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -170,7 +171,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
             serverBuilder.connectionDrainDuration(oTelLogsSourceConfig.getConnectionDrainDuration());
         }
         final int threadCount = oTelLogsSourceConfig.getThreadCount();
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount);
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threadCount,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("otel-logs-source"));
         serverBuilder.blockingTaskExecutor(executor, true);
 
         if ((oTelLogsSourceConfig.enableUnframedRequests() || oTelLogsSourceConfig.getHttpPath() != null)

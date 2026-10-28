@@ -13,6 +13,7 @@ plugins {
 
 dependencies {
     implementation project(path: ':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
 }
 
 test {

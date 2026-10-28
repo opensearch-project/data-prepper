@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -77,7 +78,8 @@ public class DataFileScheduler implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
 
-        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
+        executor = Executors.newFixedThreadPool(MAX_JOB_COUNT,
+                BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-source-data-file"));
 
         this.exportFileSuccessCounter = pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT);
         this.activeExportS3ObjectConsumersGauge = pluginMetrics.gauge(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE, numOfWorkers);

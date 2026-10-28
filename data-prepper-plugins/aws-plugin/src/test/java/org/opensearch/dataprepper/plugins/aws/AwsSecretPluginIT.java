@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -105,7 +106,8 @@ class AwsSecretPluginIT {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
         when(getSecretValueResponse.secretString()).thenReturn(UUID.randomUUID().toString());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
@@ -140,7 +142,8 @@ class AwsSecretPluginIT {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
         when(getSecretValueResponse.secretString()).thenReturn(UUID.randomUUID().toString());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
@@ -184,7 +187,8 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
@@ -203,7 +207,8 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
@@ -222,7 +227,8 @@ class AwsSecretPluginIT {
         when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
                 Collections.emptyMap());
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(awsSecretPluginConfig);
             objectUnderTest.apply(extensionPoints);
@@ -240,7 +246,8 @@ class AwsSecretPluginIT {
     @Test
     void testShutdownWithNullScheduledExecutorService() {
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
+            executorsMockedStatic.when(Executors::defaultThreadFactory).thenCallRealMethod();
+            executorsMockedStatic.when(() -> Executors.newSingleThreadScheduledExecutor(any(ThreadFactory.class)))
                     .thenReturn(scheduledExecutorService);
             objectUnderTest = new AwsSecretPlugin(null);
             objectUnderTest.apply(extensionPoints);

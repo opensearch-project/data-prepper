@@ -10,6 +10,7 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 
 
 import org.apache.parquet.io.PositionOutputStream;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -118,7 +119,8 @@ public class S3OutputStream extends PositionOutputStream {
         etags = new ArrayList<>();
         open = true;
         this.defaultBucket = defaultBucket;
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.executorService = Executors.newSingleThreadExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("s3-sink-multipart-upload"));
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.serverSideEncryptionConfig = serverSideEncryptionConfig;
     }

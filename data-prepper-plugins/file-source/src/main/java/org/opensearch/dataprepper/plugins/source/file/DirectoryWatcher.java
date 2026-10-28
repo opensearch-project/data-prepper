@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -261,11 +262,8 @@ public final class DirectoryWatcher {
     }
 
     static ScheduledExecutorService createDefaultPollScheduler() {
-        return Executors.newSingleThreadScheduledExecutor(r -> {
-            final Thread thread = new Thread(r, "file-poll");
-            thread.setDaemon(true);
-            return thread;
-        });
+        return Executors.newSingleThreadScheduledExecutor(
+                BackgroundThreadFactory.defaultExecutorThreadFactory("file-poll"));
     }
 
     private void startPollScheduler(final boolean watchServiceActive) {

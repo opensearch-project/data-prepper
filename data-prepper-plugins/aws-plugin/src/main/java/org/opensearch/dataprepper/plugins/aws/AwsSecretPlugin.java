@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.aws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -95,7 +96,8 @@ public class AwsSecretPlugin implements ExtensionPlugin {
             secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER, awsCredentialsSupplier);
             this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
-            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                    BackgroundThreadFactory.defaultExecutorThreadFactory("aws-secrets-refresh"));
             pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
             submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
         } else {
