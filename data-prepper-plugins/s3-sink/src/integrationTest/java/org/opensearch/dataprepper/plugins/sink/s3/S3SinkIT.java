@@ -50,6 +50,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -59,6 +60,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 
 import java.io.File;
+import java.net.URI;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -171,10 +173,20 @@ public class S3SinkIT {
 
         when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
-        s3Client = S3Client.builder()
+        final String endpoint = System.getProperty("tests.s3sink.endpoint");
+        final boolean forcePathStyle = Boolean.getBoolean("tests.s3sink.force_path_style");
+        when(s3SinkConfig.getEndpoint()).thenReturn(endpoint);
+        when(s3SinkConfig.getForcePathStyle()).thenReturn(forcePathStyle);
+        when(s3SinkConfig.getLegacyMd5Checksum()).thenReturn(Boolean.getBoolean("tests.s3sink.legacy_md5_checksum"));
+
+        final S3ClientBuilder s3ClientBuilder = S3Client.builder()
                 .credentialsProvider(awsCredentialsProvider)
-                .region(region)
-                .build();
+                .region(region);
+        if (endpoint != null) {
+            s3ClientBuilder.endpointOverride(URI.create(endpoint))
+                    .forcePathStyle(forcePathStyle);
+        }
+        s3Client = s3ClientBuilder.build();
 
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
 
