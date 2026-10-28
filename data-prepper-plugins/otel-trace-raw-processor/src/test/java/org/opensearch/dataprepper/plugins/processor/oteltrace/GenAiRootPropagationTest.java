@@ -30,8 +30,9 @@ class GenAiRootPropagationTest {
 
     @ParameterizedTest
     @EnumSource(GenAiRootPropagation.class)
-    void fromOptionValue_ignoresCase(final GenAiRootPropagation mode) {
-        assertThat(GenAiRootPropagation.fromOptionValue(mode.getOptionValue().toUpperCase()), equalTo(mode));
+    void fromOptionValue_withADifferentCase_throws(final GenAiRootPropagation mode) {
+        assertThrows(IllegalArgumentException.class,
+                () -> GenAiRootPropagation.fromOptionValue(mode.getOptionValue().toUpperCase()));
     }
 
     @ParameterizedTest

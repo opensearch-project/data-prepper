@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 
 import java.time.Duration;
@@ -43,18 +44,18 @@ public class OtelTraceRawProcessorConfig {
             "Default is <code>1000000</code>.")
     private long traceGroupCacheMaxSize = MAX_TRACE_ID_CACHE_SIZE;
 
-    @JsonProperty(value = "genai_enrichment_enabled", defaultValue = "true")
-    @JsonPropertyDescription("Whether to enrich GenAI agent traces: normalize vendor attributes to <code>gen_ai.*</code>, " +
-            "strip flattened sub-keys that conflict with their parent, mark agent root spans and copy agent data onto " +
-            "trace roots. Traces without GenAI data are left unchanged either way. Default is <code>true</code>.")
-    private boolean genAiEnrichmentEnabled = true;
+    @JsonProperty(value = "disable_genai_enrichment", defaultValue = "false")
+    @JsonPropertyDescription("Turns off GenAI agent trace enrichment: normalizing vendor attributes to <code>gen_ai.*</code>, " +
+            "stripping flattened sub-keys that conflict with their parent, marking agent root spans and copying agent data " +
+            "onto trace roots. Traces without GenAI data are left unchanged either way. Default is <code>false</code>.")
+    private boolean disableGenAiEnrichment = false;
 
     @JsonProperty(value = "genai_coverage_cache_max_size", defaultValue = "500000")
     @JsonPropertyDescription("Represents the maximum number of span ids to keep in the cache of GenAI spans already seen " +
             "per trace, used so that GenAI spans arriving after their ancestors are not marked as a trace's AI root. " +
             "Default is <code>500000</code>.")
     @Min(1)
-    private long genAiCoverageCacheMaxSize = DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE;
+    private Long genAiCoverageCacheMaxSize;
 
     @JsonProperty(value = "genai_root_propagation", defaultValue = "ai_root")
     @JsonPropertyDescription("Which trace root spans get <code>gen_ai.system</code>, <code>gen_ai.provider.name</code>, " +
@@ -63,7 +64,7 @@ public class OtelTraceRawProcessorConfig {
             "<code>derived.gen_ai.is_root: true</code> at the source). <code>all_roots</code> also copies them onto " +
             "non-GenAI roots, such as the HTTP span an agent runs behind. <code>none</code> copies nothing. " +
             "Default is <code>ai_root</code>.")
-    private GenAiRootPropagation genAiRootPropagation = GenAiRootPropagation.AI_ROOT;
+    private GenAiRootPropagation genAiRootPropagation;
 
     public long getTraceFlushIntervalSeconds() {
         return traceFlushInterval;
@@ -77,15 +78,20 @@ public class OtelTraceRawProcessorConfig {
         return traceGroupCacheMaxSize;
     }
 
-    public boolean isGenAiEnrichmentEnabled() {
-        return genAiEnrichmentEnabled;
+    public boolean isGenAiEnrichmentDisabled() {
+        return disableGenAiEnrichment;
     }
 
     public long getGenAiCoverageCacheMaxSize() {
-        return genAiCoverageCacheMaxSize;
+        return genAiCoverageCacheMaxSize != null ? genAiCoverageCacheMaxSize : DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE;
     }
 
     public GenAiRootPropagation getGenAiRootPropagation() {
-        return genAiRootPropagation;
+        return genAiRootPropagation != null ? genAiRootPropagation : GenAiRootPropagation.AI_ROOT;
+    }
+
+    @AssertTrue(message = "genai_root_propagation and genai_coverage_cache_max_size cannot be set when disable_genai_enrichment is true")
+    boolean isGenAiSettingsValid() {
+        return !disableGenAiEnrichment || (genAiRootPropagation == null && genAiCoverageCacheMaxSize == null);
     }
 }

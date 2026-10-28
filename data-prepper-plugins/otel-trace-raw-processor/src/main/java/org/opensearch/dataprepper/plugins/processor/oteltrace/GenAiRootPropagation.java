@@ -47,7 +47,7 @@ public enum GenAiRootPropagation {
         if (option == null) {
             return null;
         }
-        final GenAiRootPropagation value = OPTIONS.get(option.toLowerCase());
+        final GenAiRootPropagation value = OPTIONS.get(option);
         if (value == null) {
             throw new IllegalArgumentException("Unknown genai_root_propagation value '" + option
                     + "'. Use one of: " + String.join(", ", OPTIONS.keySet()));

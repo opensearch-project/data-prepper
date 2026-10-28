@@ -129,7 +129,7 @@ class OTelTraceRawProcessorTest {
 
         when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
-        when(config.isGenAiEnrichmentEnabled()).thenReturn(true);
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(false);
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         // testGenAiEnrichmentRunsDuringDoExecute copies onto a non-GenAI root.
         when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.ALL_ROOTS);

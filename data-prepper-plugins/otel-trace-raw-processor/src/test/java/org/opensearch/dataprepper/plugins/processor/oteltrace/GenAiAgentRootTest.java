@@ -643,7 +643,7 @@ class GenAiAgentRootTest {
         final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
-        when(config.isGenAiEnrichmentEnabled()).thenReturn(enrichmentEnabled);
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(!enrichmentEnabled);
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         when(config.getGenAiRootPropagation()).thenReturn(propagation);
         when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);

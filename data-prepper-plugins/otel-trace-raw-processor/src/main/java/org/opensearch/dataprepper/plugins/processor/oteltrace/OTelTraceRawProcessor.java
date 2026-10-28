@@ -83,7 +83,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
           .build();
 
 
-        genAiEnrichmentEnabled = otelTraceRawProcessorConfig.isGenAiEnrichmentEnabled();
+        genAiEnrichmentEnabled = !otelTraceRawProcessorConfig.isGenAiEnrichmentDisabled();
         genAiRootPropagation = Objects.requireNonNullElse(
                 otelTraceRawProcessorConfig.getGenAiRootPropagation(), GenAiRootPropagation.AI_ROOT);
         // Outlives the orphan flush: spans that arrive late are held up to two flush intervals.

@@ -16,13 +16,13 @@ processor:
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 * `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
-* `genai_enrichment_enabled`: A `boolean` that turns [GenAI agent trace enrichment](#genai-agent-trace-enrichment) on or off. Default is `true`.
+* `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation` and `genai_coverage_cache_max_size` cannot be set.
 * `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
-* `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none` (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
+* `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none`, written exactly so (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
 
 ## GenAI agent trace enrichment
 
-The processor enriches traces from GenAI agents and LLM applications, so that agent runs can be found, listed and measured from the spans themselves. It is on by default and does nothing to traces without GenAI data. Set `genai_enrichment_enabled: false` to turn it off: span attributes are then left as they arrive, with no normalized attributes, no sub-key stripping, no markers and no root enrichment, and the coverage cache is not created.
+The processor enriches traces from GenAI agents and LLM applications, so that agent runs can be found, listed and measured from the spans themselves. It is on by default and does nothing to traces without GenAI data. Set `disable_genai_enrichment: true` to turn it off: span attributes are then left as they arrive, with no normalized attributes, no sub-key stripping, no markers and no root enrichment, and the coverage cache is not created.
 
 It needs the source to use `output_format: otel`, because it matches attributes by their OTel key names (for example `gen_ai.operation.name`). The default `opensearch` format rewrites keys (`http.method` becomes `span.attributes.http@method`) and the enrichment then finds nothing. See the [otel-trace-source README](../otel-trace-source/README.md#output-format).
 
@@ -31,7 +31,7 @@ Example with the GenAI settings at their defaults:
 ```
 processor:
     - otel_traces:
-        genai_enrichment_enabled: true
+        disable_genai_enrichment: false
         genai_root_propagation: ai_root
         genai_coverage_cache_max_size: 500000
 ```
