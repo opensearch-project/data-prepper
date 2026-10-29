@@ -23,10 +23,14 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.Set;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.hasToString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class QueueConfigTest {
 
@@ -47,8 +51,7 @@ public class QueueConfigTest {
         assertEquals(Duration.ofHours(2), queueConfig.getVisibilityDuplicateProtectionTimeout(),
                 "Visibility duplicate protection timeout should default to 2 hours");
         assertNull(queueConfig.getWaitTime(), "Wait time should default to null");
-        assertEquals(Duration.ofMinutes(5), queueConfig.getMaximumBackoff(),
-                "Maximum backoff should default to 5 minutes");
+        assertThat(queueConfig.getMaximumBackoff(), equalTo(Duration.ofMinutes(5)));
     }
 
     @Test
@@ -58,8 +61,7 @@ public class QueueConfigTest {
 
         final QueueConfig queueConfig = YAML_MAPPER.readValue(yaml, QueueConfig.class);
 
-        assertEquals(Duration.ofMinutes(10), queueConfig.getMaximumBackoff(),
-                "Maximum backoff should reflect the configured value");
+        assertThat(queueConfig.getMaximumBackoff(), equalTo(Duration.ofMinutes(10)));
     }
 
     @Test
@@ -75,9 +77,7 @@ public class QueueConfigTest {
                 .buildValidatorFactory()) {
             final Validator validator = factory.getValidator();
             final Set<ConstraintViolation<QueueConfig>> violations = validator.validate(queueConfig);
-            assertTrue(
-                    violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("maximumBackoff")),
-                    "Expected a validation violation on maximumBackoff for a value below 20 seconds");
+            assertThat(violations, hasItem(hasProperty("propertyPath", hasToString("maximumBackoff"))));
         }
     }
 }
