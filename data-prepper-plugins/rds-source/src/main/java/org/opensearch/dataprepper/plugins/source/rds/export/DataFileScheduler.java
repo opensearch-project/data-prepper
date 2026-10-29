@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
@@ -38,7 +39,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 
 import static org.opensearch.dataprepper.plugins.source.rds.RdsService.DATA_LOADER_MAX_JOB_COUNT;
 
@@ -161,12 +161,12 @@ public class DataFileScheduler implements Runnable {
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
                 if (result) {
-                    completeDataLoader(dataFilePartition).accept(null, null);
+                    completeDataFile(dataFilePartition);
                     LOG.info("Received acknowledgment of completion from sink for data file {}", dataFilePartition.getKey());
                 } else {
                     exportFileErrorCounter.increment();
                     LOG.warn("Negative acknowledgment received for data file {}, retrying", dataFilePartition.getKey());
-                    sourceCoordinator.giveUpPartition(dataFilePartition);
+                    giveUpDataFile(dataFilePartition, null);
                 }
             }, sourceConfig.getDataFileAcknowledgmentTimeout());
         }
@@ -175,21 +175,32 @@ public class DataFileScheduler implements Runnable {
                 dataFilePartition, codec, buffer, objectReader, recordConverter, pluginMetrics,
                 sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout(),
                 getDBTableMetadata(), pluginSetting, pipelineDescription, failurePipeline);
-        CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
-        if (isAcknowledgmentsEnabled) {
-            runLoader.whenComplete((v, ex) -> {
+        // Release the worker slot exactly once, when the loader completes.
+        numOfWorkers.incrementAndGet();
+        final CompletableFuture<Void> runLoader;
+        try {
+            runLoader = CompletableFuture.runAsync(loader, executor);
+        } catch (final RuntimeException e) {
+            numOfWorkers.decrementAndGet();
+            throw e;
+        }
+
+        runLoader.whenComplete((v, ex) -> {
+            try {
                 if (ex != null) {
                     exportFileErrorCounter.increment();
                     LOG.error("There was an exception while processing an S3 data file: {}", ex);
-                    sourceCoordinator.giveUpPartition(dataFilePartition);
+                    giveUpDataFile(dataFilePartition, ex);
+                } else if (!isAcknowledgmentsEnabled) {
+                    completeDataFile(dataFilePartition);
                 }
+            } catch (final Exception e) {
+                LOG.error("Failed to finalize data file partition {}", dataFilePartition.getKey(), e);
+            } finally {
                 numOfWorkers.decrementAndGet();
-            });
-        } else {
-            runLoader.whenComplete(completeDataLoader(dataFilePartition));
-        }
-        numOfWorkers.incrementAndGet();
+            }
+        });
     }
 
     void updateLoadStatus(String exportTaskId, Duration timeout) {
@@ -235,20 +246,39 @@ public class DataFileScheduler implements Runnable {
         }
     }
 
-    private BiConsumer<Void, Throwable> completeDataLoader(DataFilePartition dataFilePartition) {
-        return (v, ex) -> {
-            if (ex == null) {
-                exportFileSuccessCounter.increment();
-                // Update global state, so we know if all s3 files have been loaded
-                updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
-                sourceCoordinator.completePartition(dataFilePartition);
-            } else {
-                exportFileErrorCounter.increment();
-                LOG.error("There was an exception while processing an S3 data file", ex);
-                sourceCoordinator.giveUpPartition(dataFilePartition);
+    private void completeDataFile(final DataFilePartition dataFilePartition) {
+        exportFileSuccessCounter.increment();
+        // Update global state, so we know if all s3 files have been loaded
+        updateLoadStatus(dataFilePartition.getExportTaskId(), DEFAULT_UPDATE_LOAD_STATUS_TIMEOUT);
+        sourceCoordinator.completePartition(dataFilePartition);
+    }
+
+    /**
+     * Gives up the partition unless ownership was already lost, to avoid releasing another node's lease.
+     */
+    private void giveUpDataFile(final DataFilePartition dataFilePartition, final Throwable cause) {
+        if (isPartitionUpdateFailure(cause)) {
+            LOG.warn("Lost ownership of data file {}, not giving it up since another node may own it now",
+                    dataFilePartition.getKey());
+            return;
+        }
+        try {
+            sourceCoordinator.giveUpPartition(dataFilePartition);
+        } catch (final Exception e) {
+            LOG.warn("Failed to give up data file partition {}", dataFilePartition.getKey(), e);
+        }
+    }
+
+    private static boolean isPartitionUpdateFailure(final Throwable throwable) {
+        for (Throwable t = throwable; t != null; t = t.getCause()) {
+            if (t instanceof PartitionUpdateException) {
+                return true;
             }
-            numOfWorkers.decrementAndGet();
-        };
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+        return false;
     }
 
     private DbTableMetadata getDBTableMetadata() {

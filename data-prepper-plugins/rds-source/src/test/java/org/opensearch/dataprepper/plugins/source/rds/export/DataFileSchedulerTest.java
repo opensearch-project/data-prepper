@@ -6,14 +6,17 @@
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
@@ -24,6 +27,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
@@ -39,14 +43,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -266,6 +276,67 @@ class DataFileSchedulerTest {
         verify(sourceCoordinator, times(2)).createPartition(any(GlobalState.class));
     }
 
+    @Test
+    void test_with_acknowledgments_positive_ack_releases_worker_slot_exactly_once() throws InterruptedException {
+        final String exportTaskId = UUID.randomUUID().toString();
+        when(dataFilePartition.getExportTaskId()).thenReturn(exportTaskId);
+        final GlobalState globalStatePartition = mock(GlobalState.class);
+        when(globalStatePartition.getProgressState()).thenReturn(Optional.of(new LoadStatus(10, 0).toMap()));
+        when(sourceCoordinator.getPartition(exportTaskId)).thenReturn(Optional.of(globalStatePartition));
+
+        final AtomicInteger numOfWorkers = runOneFileWithAcknowledgments(() -> { });
+
+        // The loader finished but no ack yet: the slot is already free.
+        assertThat(numOfWorkers.get(), equalTo(0));
+
+        // The sink acknowledges the file.
+        ackCallbackCaptor.getValue().accept(true);
+
+        verify(sourceCoordinator).completePartition(dataFilePartition);
+        // The ack callback must not decrement the counter a second time.
+        assertThat(numOfWorkers.get(), equalTo(0));
+    }
+
+    @Test
+    void test_with_acknowledgments_lost_ownership_does_not_give_up_partition_owned_by_another_node() throws InterruptedException {
+        final PartitionUpdateException conditionalCheckFailed = new PartitionUpdateException(
+                "ConditionalCheckFailed while updating partition", new RuntimeException("The conditional request failed"));
+
+        final AtomicInteger numOfWorkers = runOneFileWithAcknowledgments(() -> {
+            throw new RuntimeException(conditionalCheckFailed);
+        });
+
+        // A stale give-up could release the lease another node now holds.
+        verify(sourceCoordinator, never()).giveUpPartition(dataFilePartition);
+        verify(exportFileErrorCounter).increment();
+        assertThat(numOfWorkers.get(), equalTo(0));
+    }
+
+    @Test
+    void test_with_acknowledgments_give_up_failure_still_releases_worker_slot() throws InterruptedException {
+        doThrow(new RuntimeException("give up failed")).when(sourceCoordinator).giveUpPartition(dataFilePartition);
+
+        final AtomicInteger numOfWorkers = runOneFileWithAcknowledgments(() -> {
+            throw new RuntimeException("S3 read failed");
+        });
+
+        verify(sourceCoordinator).giveUpPartition(dataFilePartition);
+        // A failing give-up must not leak the worker slot.
+        assertThat(numOfWorkers.get(), equalTo(0));
+    }
+
+    @Test
+    void test_without_acknowledgments_give_up_failure_still_releases_worker_slot() throws InterruptedException {
+        doThrow(new RuntimeException("give up failed")).when(sourceCoordinator).giveUpPartition(dataFilePartition);
+
+        final AtomicInteger numOfWorkers = runOneFile(() -> {
+            throw new RuntimeException("S3 read failed");
+        });
+
+        verify(sourceCoordinator).giveUpPartition(dataFilePartition);
+        assertThat(numOfWorkers.get(), equalTo(0));
+    }
+
     @Disabled("Flaky test, needs to be fixed")
     @Test
     void test_shutdown() throws InterruptedException {
@@ -278,6 +349,68 @@ class DataFileSchedulerTest {
 
         verifyNoMoreInteractions(sourceCoordinator);
         executorService.shutdownNow();
+    }
+
+    private final ArgumentCaptor<Consumer<Boolean>> ackCallbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+    private ExecutorService schedulerExecutor;
+    private DataFileScheduler runningScheduler;
+
+    @AfterEach
+    void stopScheduler() {
+        if (runningScheduler != null) {
+            runningScheduler.shutdown();
+        }
+        if (schedulerExecutor != null) {
+            schedulerExecutor.shutdownNow();
+        }
+    }
+
+    /** Runs one data file with acknowledgments enabled and returns the scheduler's worker counter. */
+    private AtomicInteger runOneFileWithAcknowledgments(final Runnable loaderBody) throws InterruptedException {
+        when(sourceConfig.isAcknowledgmentsEnabled()).thenReturn(true);
+        when(sourceConfig.getDataFileAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(30));
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+                .thenReturn(mock(AcknowledgementSet.class));
+        return runOneFile(loaderBody);
+    }
+
+    private AtomicInteger runOneFile(final Runnable loaderBody) throws InterruptedException {
+        when(sourceCoordinator.acquireAvailablePartition(DataFilePartition.PARTITION_TYPE))
+                .thenReturn(Optional.of(dataFilePartition))
+                .thenReturn(Optional.empty());
+        mockDbTableMetadata();
+        final ArgumentCaptor<AtomicInteger> workersCaptor = ArgumentCaptor.forClass(AtomicInteger.class);
+        runningScheduler = createObjectUnderTest();
+        verify(pluginMetrics).gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), workersCaptor.capture(), any());
+
+        final CountDownLatch loaderDone = new CountDownLatch(1);
+        schedulerExecutor = Executors.newSingleThreadExecutor();
+        schedulerExecutor.submit(() -> {
+            // MockedStatic needs to be created on the same thread it's used
+            try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
+                final DataFileLoader dataFileLoader = mock(DataFileLoader.class);
+                dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
+                                any(Buffer.class), any(S3ObjectReader.class),
+                                any(ExportRecordConverter.class), any(PluginMetrics.class),
+                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class),
+                                any(PluginSetting.class), any(PipelineDescription.class), any(HeadlessPipeline.class)))
+                        .thenReturn(dataFileLoader);
+                doAnswer(invocation -> {
+                    try {
+                        loaderBody.run();
+                    } finally {
+                        loaderDone.countDown();
+                    }
+                    return null;
+                }).when(dataFileLoader).run();
+                runningScheduler.run();
+            }
+        });
+
+        assertThat(loaderDone.await(5, TimeUnit.SECONDS), equalTo(true));
+        // The completion stage runs right after the loader body; give it time to settle.
+        Thread.sleep(300);
+        return workersCaptor.getValue();
     }
 
     private DataFileScheduler createObjectUnderTest() {
