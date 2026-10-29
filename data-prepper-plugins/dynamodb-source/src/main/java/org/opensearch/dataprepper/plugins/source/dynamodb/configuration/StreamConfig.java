@@ -22,6 +22,14 @@ public class StreamConfig {
      */
     public static final Duration DEFAULT_SHARD_DISCOVERY_INTERVAL = Duration.ofMinutes(1);
 
+    /**
+     * Upper bound on how long a worker waits between attempts to acquire a DynamoDB stream shard.
+     * A lower value shortens the delay before a new child shard is read after a shard rotation and
+     * speeds up how quickly a node claims shards at startup. The cost is more frequent coordination
+     * store reads and less even shard distribution across nodes.
+     */
+    public static final Duration DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX = Duration.ofSeconds(15);
+
     @JsonProperty(value = "start_position")
     private StreamStartPosition startPosition = StreamStartPosition.LATEST;
 
@@ -36,6 +44,11 @@ public class StreamConfig {
     @DurationMin(seconds = 1, message = "shard_discovery_interval must be at least 1 second.")
     private Duration shardDiscoveryInterval = DEFAULT_SHARD_DISCOVERY_INTERVAL;
 
+    @JsonProperty("shard_acquisition_backoff_max")
+    @NotNull
+    @DurationMin(seconds = 1, message = "shard_acquisition_backoff_max must be at least 1 second.")
+    private Duration shardAcquisitionBackoffMax = DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX;
+
     public StreamStartPosition getStartPosition() {
         return startPosition;
     }
@@ -48,6 +61,10 @@ public class StreamConfig {
 
     public Duration getShardDiscoveryInterval() {
         return shardDiscoveryInterval;
+    }
+
+    public Duration getShardAcquisitionBackoffMax() {
+        return shardAcquisitionBackoffMax;
     }
 
 }

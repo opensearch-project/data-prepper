@@ -55,6 +55,43 @@ class StreamConfigTest {
         assertThat(streamConfig.isDisableCheckpointing(), equalTo(false));
         assertThat(streamConfig.getShardDiscoveryInterval(), equalTo(Duration.ofMinutes(1)));
         assertThat(streamConfig.getShardDiscoveryInterval(), equalTo(StreamConfig.DEFAULT_SHARD_DISCOVERY_INTERVAL));
+        assertThat(streamConfig.getShardAcquisitionBackoffMax(), equalTo(Duration.ofSeconds(15)));
+        assertThat(streamConfig.getShardAcquisitionBackoffMax(), equalTo(StreamConfig.DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX));
+    }
+
+    @Test
+    void test_shard_acquisition_backoff_max_is_configurable() throws JsonProcessingException {
+        final String yaml = "shard_acquisition_backoff_max: PT2S";
+        final StreamConfig streamConfig = objectMapper.readValue(yaml, StreamConfig.class);
+
+        assertThat(streamConfig.getShardAcquisitionBackoffMax(), equalTo(Duration.ofSeconds(2)));
+    }
+
+    @Test
+    void test_shard_acquisition_backoff_max_validation_passes_at_minimum_boundary() throws NoSuchFieldException, IllegalAccessException {
+        final StreamConfig streamConfig = new StreamConfig();
+        ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardAcquisitionBackoffMax", Duration.ofSeconds(1));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(0));
+    }
+
+    @Test
+    void test_shard_acquisition_backoff_max_validation_fails_below_minimum() throws NoSuchFieldException, IllegalAccessException {
+        final StreamConfig streamConfig = new StreamConfig();
+        ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardAcquisitionBackoffMax", Duration.ofMillis(500));
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(1));
+    }
+
+    @Test
+    void test_shard_acquisition_backoff_max_validation_fails_when_null() throws NoSuchFieldException, IllegalAccessException {
+        final StreamConfig streamConfig = new StreamConfig();
+        ReflectivelySetField.setField(StreamConfig.class, streamConfig, "shardAcquisitionBackoffMax", null);
+        final Set<ConstraintViolation<StreamConfig>> violations = validator.validate(streamConfig);
+
+        assertThat(violations, hasSize(1));
     }
 
     @Test

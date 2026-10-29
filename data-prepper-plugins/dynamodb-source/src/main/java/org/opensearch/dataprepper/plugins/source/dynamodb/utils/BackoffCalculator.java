@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.utils;
 
+import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,18 +25,29 @@ public class BackoffCalculator {
     private static final Random RANDOM = new Random();
 
     static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
-    static final Duration MAX_BACKOFF_WITH_SHARDS = Duration.ofSeconds(15);
-    static final Duration MAX_BACKOFF_NO_SHARDS_ACQUIRED = Duration.ofSeconds(15);
+    static final Duration DEFAULT_MAX_BACKOFF = StreamConfig.DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX;
     static final int BACKOFF_RATE = 2;
     static final Duration MAX_JITTER = Duration.ofSeconds(2);
     static final Duration MIN_JITTER = Duration.ofSeconds(-2);
 
     private final boolean isExportConfigured;
-
-
+    private final Duration maxBackoff;
 
     public BackoffCalculator(final boolean isExportConfigured) {
+        this(isExportConfigured, DEFAULT_MAX_BACKOFF);
+    }
+
+    /**
+     * @param isExportConfigured whether the source also runs an export, used only to shape the
+     *                           periodic log message emitted while no shards can be acquired
+     * @param maxBackoff         ceiling on the backoff returned by
+     *                           {@link #calculateBackoffToAcquireNextShard(int, AtomicInteger)}, applied
+     *                           both when no shard is available and when shards are already held;
+     *                           sourced from {@code stream.shard_acquisition_backoff_max}
+     */
+    public BackoffCalculator(final boolean isExportConfigured, final Duration maxBackoff) {
         this.isExportConfigured = isExportConfigured;
+        this.maxBackoff = maxBackoff;
     }
 
     public long calculateBackoffToAcquireNextShard(final int noAvailableShardCount, final AtomicInteger shardsAcquired) {
@@ -53,10 +65,10 @@ public class BackoffCalculator {
             }
 
             final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
-            return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, (int) min(noAvailableShardCount - 1, 8)) + jitterMillis, MAX_BACKOFF_NO_SHARDS_ACQUIRED.toMillis()));
+            return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, (int) min(noAvailableShardCount - 1, 8)) + jitterMillis, maxBackoff.toMillis()));
         }
 
         // When shards are being acquired we backoff linearly based on how many shards this node is actively processing, to encourage a fast start but still a balance of shards between nodes
-        return max(500, min(MAX_BACKOFF_WITH_SHARDS.toMillis(), shardsAcquired.get() * STARTING_BACKOFF.toMillis()));
+        return max(500, min(maxBackoff.toMillis(), shardsAcquired.get() * STARTING_BACKOFF.toMillis()));
     }
 }
