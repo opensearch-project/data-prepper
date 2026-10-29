@@ -457,8 +457,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
             Collection<Record<Event>> apmEvents = new HashSet<>();
             if (isMasterInstance()) {
-                apmEvents = windowEvaluationTimer.record(this::processCurrentWindowSpans);
-                rotateWindows();
+                apmEvents = windowEvaluationTimer.record(() -> {
+                    final Collection<Record<Event>> windowEvents = processCurrentWindowSpans();
+                    rotateWindows();
+                    return windowEvents;
+                });
             }
 
             allThreadsCyclicBarrier.await();
@@ -619,7 +622,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     /**
      * Rotate windows for processor state using three-window slot-machine semantics
      */
-    private void rotateWindows() throws InterruptedException {
+    private void rotateWindows() {
         LOG.debug("Rotating APM service map windows at " + clock.instant().toString());
 
         MapDbProcessorState<Collection<SpanStateData>> tempWindow = previousWindow;
