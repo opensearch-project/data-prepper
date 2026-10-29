@@ -162,10 +162,13 @@ public class JacksonStandardSpanTest extends JacksonSpanTest {
         final JacksonSpan original = createObjectUnderTest(TEST_ATTRIBUTES);
 
         final JacksonSpan copy = JacksonSpan.fromSpan(original);
+        copy.getMetadata().addTags(List.of("copy-tag"));
 
         assertThat(copy, instanceOf(JacksonStandardSpan.class));
         assertThat(copy.toMap(), equalTo(original.toMap()));
         assertThat(copy.toJsonString(), equalTo(original.toJsonString()));
+        assertThat(copy.getMetadata().hasTags(List.of("copy-tag")), is(true));
+        assertThat(original.getMetadata().hasTags(List.of("copy-tag")), is(false));
     }
 
     @Test

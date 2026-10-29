@@ -19,6 +19,10 @@ public class JacksonStandardSpan extends JacksonSpan {
     protected JacksonStandardSpan(final Builder builder) {
         super(builder);
     }
+
+    JacksonStandardSpan(final JacksonStandardSpan otherSpan) {
+        super(otherSpan);
+    }
     
     public static JacksonStandardSpan.Builder builder() {
         return new JacksonStandardSpan.Builder();

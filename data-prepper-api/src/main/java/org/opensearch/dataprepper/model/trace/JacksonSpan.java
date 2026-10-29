@@ -79,7 +79,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
     }
 
-    private JacksonSpan(final JacksonSpan otherSpan) {
+    protected JacksonSpan(final JacksonSpan otherSpan) {
         super(otherSpan);
     }
 
@@ -251,10 +251,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     public static JacksonSpan fromSpan(final Span span) {
         if (span instanceof JacksonStandardSpan) {
-            return JacksonStandardSpan.builder()
-                    .withData(span.toMap())
-                    .withEventMetadata(span.getMetadata())
-                    .build();
+            return new JacksonStandardSpan((JacksonStandardSpan) span);
         } else if (span instanceof JacksonSpan) {
             return new JacksonSpan((JacksonSpan) span);
         } else {
