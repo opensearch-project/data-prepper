@@ -33,6 +33,23 @@ Note that `indices:admin/template/*` need to be in cluster permissions.
 
 `Field level security` and `Anonymization` should be left with default values.
 
+### Amazon OpenSearch Service with fine-grained access control
+
+On FGAC-enabled Amazon OpenSearch Service domains, the cluster and index lists above are not enough for a non-admin user. Map the sink user to a role with these permissions instead:
+
+#### Cluster permissions
+
+- `cluster:monitor/state`
+- `indices:data/write/bulk`
+
+#### Index permissions
+
+- `Index`: `*`; `Index permissions`: `manage`, `write`
+
+`Field level security` and `Anonymization` should be left with default values.
+
+See [security.md](security.md) for IAM vs internal-user sink configuration on FGAC domains. Creating an ISM policy on Amazon OpenSearch Service is limited to the master user; for first-time Trace Analytics index setup, use the master user or a user mapped to `all_access`.
+
 ---------------
 
 With administrative privilege, one can create an internal user, a role and map the user to the role by following the OpenSearch [Users and roles documentation](https://opensearch.org/docs/latest/security-plugin/access-control/users-roles/).
