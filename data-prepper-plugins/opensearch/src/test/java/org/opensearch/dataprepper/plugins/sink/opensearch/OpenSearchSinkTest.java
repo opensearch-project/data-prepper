@@ -15,12 +15,16 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.ErrorResponse;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -36,6 +40,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfigurati
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.PluggableDataFormatDetector;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
@@ -46,6 +51,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -56,6 +62,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.EXTERNAL_LATENCY;
@@ -206,6 +213,144 @@ public class OpenSearchSinkTest {
             objectUnderTest.initialize();
         }
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void initialize_switches_plain_raw_to_v2_when_span_indices_are_parquet_primary() throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        when(indexConfiguration.getIndexAlias()).thenReturn("otel-v1-apm-span");
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+
+        final OpenSearchSinkConfiguration v2SinkConfiguration = mock(OpenSearchSinkConfiguration.class);
+        final IndexConfiguration v2IndexConfiguration = mock(IndexConfiguration.class);
+        when(v2SinkConfiguration.getIndexConfiguration()).thenReturn(v2IndexConfiguration);
+        final ConnectionConfiguration connectionConfiguration = openSearchSinkConfiguration.getConnectionConfiguration();
+        when(v2SinkConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
+        when(v2IndexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2);
+        when(v2IndexConfiguration.getIndexAlias()).thenReturn("otel-v2-apm-span");
+        when(v2IndexConfiguration.getTemplateType()).thenReturn(TemplateType.INDEX_TEMPLATE);
+        when(indexManagerFactory.getIndexManager(eq(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(v2SinkConfiguration), any(TemplateStrategy.class), eq("otel-v2-apm-span")))
+                .thenReturn(indexManager);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> detectors = mockConstruction(PluggableDataFormatDetector.class,
+                     (mock, context) -> when(mock.isParquetPrimary("otel-v1-apm-span")).thenReturn(true));
+             final MockedStatic<OpenSearchSinkConfiguration> sinkConfigurationMockedStatic = mockStatic(OpenSearchSinkConfiguration.class);
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            sinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readOSConfig(
+                    openSearchSinkConfig, expressionEvaluator, IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2)).thenReturn(v2SinkConfiguration);
+            objectUnderTest.initialize();
+            assertThat(detectors.constructed().size(), equalTo(1));
+        }
+
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+        assertThat(objectUnderTest.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2));
+        verify(indexManager).setupIndex();
+    }
+
+    @Test
+    void initialize_keeps_plain_raw_when_span_indices_are_not_parquet_primary() throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        when(indexConfiguration.getIndexAlias()).thenReturn("otel-v1-apm-span");
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(eq(IndexType.TRACE_ANALYTICS_RAW_PLAIN), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(openSearchSinkConfiguration), any(TemplateStrategy.class), eq("otel-v1-apm-span")))
+                .thenReturn(indexManager);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> detectors = mockConstruction(PluggableDataFormatDetector.class,
+                     (mock, context) -> when(mock.isParquetPrimary("otel-v1-apm-span")).thenReturn(false));
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            assertThat(detectors.constructed().size(), equalTo(1));
+        }
+
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+        assertThat(objectUnderTest.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 403})
+    void initialize_keeps_plain_raw_when_data_format_cannot_be_read(final int status) throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(eq(IndexType.TRACE_ANALYTICS_RAW_PLAIN), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        final OpenSearchException exception = mock(OpenSearchException.class);
+        when(exception.status()).thenReturn(status);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> ignoredDetector = mockConstruction(PluggableDataFormatDetector.class,
+                     (mock, context) -> when(mock.isParquetPrimary(anyString())).thenThrow(exception));
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+        }
+
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+        assertThat(objectUnderTest.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN));
+    }
+
+    @Test
+    void initialize_retries_when_data_format_check_fails_with_other_error() throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final OpenSearchException exception = new OpenSearchException(
+                new ErrorResponse.Builder().status(503).error(e -> e.type("unavailable").reason("unavailable")).build());
+
+        try (final MockedConstruction<PluggableDataFormatDetector> ignoredDetector = mockConstruction(PluggableDataFormatDetector.class,
+                     (mock, context) -> when(mock.isParquetPrimary(anyString())).thenThrow(exception))) {
+            objectUnderTest.initialize();
+        }
+
+        assertThat(objectUnderTest.isReady(), equalTo(false));
+        verify(indexManagerFactory, never()).getIndexManager(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void initialize_does_not_check_data_format_for_other_index_types() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(eq(IndexType.CUSTOM), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> detectors = mockConstruction(PluggableDataFormatDetector.class);
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            assertThat(detectors.constructed(), empty());
+        }
+        assertThat(objectUnderTest.getIndexType(), equalTo(IndexType.CUSTOM));
+    }
+
+    @Test
+    void initialize_does_not_check_data_format_for_serverless() throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        when(indexConfiguration.getServerless()).thenReturn(true);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(eq(IndexType.TRACE_ANALYTICS_RAW_PLAIN), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> detectors = mockConstruction(PluggableDataFormatDetector.class);
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            assertThat(detectors.constructed(), empty());
+        }
+        assertThat(objectUnderTest.getIndexType(), equalTo(IndexType.TRACE_ANALYTICS_RAW_PLAIN));
+    }
+
+    @Test
+    void initialize_does_not_check_data_format_with_template_content() throws IOException {
+        when(indexConfiguration.getIndexType()).thenReturn(IndexType.TRACE_ANALYTICS_RAW_PLAIN);
+        when(openSearchSinkConfig.getTemplateContent()).thenReturn("{}");
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(eq(IndexType.TRACE_ANALYTICS_RAW_PLAIN), eq(openSearchClient), any(RestHighLevelClient.class),
+                eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+
+        try (final MockedConstruction<PluggableDataFormatDetector> detectors = mockConstruction(PluggableDataFormatDetector.class);
+             final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+            assertThat(detectors.constructed(), empty());
+        }
     }
 
     @Test

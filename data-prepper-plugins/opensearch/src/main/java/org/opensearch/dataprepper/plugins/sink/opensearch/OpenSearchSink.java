@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -35,10 +36,12 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSear
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.PullIndexingConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.CustomDocumentBuilderFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.PluggableDataFormatDetector;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.SemanticEnrichmentIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
@@ -55,6 +58,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class, pluginConfigurationType = OpenSearchSinkConfig.class)
@@ -68,11 +72,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
+  private static final Set<Integer> UNAUTHORIZED_HTTP_STATUS = Set.of(401, 403);
 
   private final AwsCredentialsSupplier awsCredentialsSupplier;
-  private final OpenSearchSinkConfiguration openSearchSinkConfig;
+  private OpenSearchSinkConfiguration openSearchSinkConfig;
   private final IndexManagerFactory indexManagerFactory;
-  private final IndexType indexType;
+  private IndexType indexType;
   private final PluginConfigObservable pluginConfigObservable;
   private final ExpressionEvaluator expressionEvaluator;
   private final SinkContext sinkContext;
@@ -138,6 +143,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final ConnectionConfiguration connectionConfiguration = openSearchSinkConfig.getConnectionConfiguration();
     restHighLevelClient = connectionConfiguration.createClient(awsCredentialsSupplier);
     openSearchClient = connectionConfiguration.createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
+    maybeSelectPlainRawV2();
     final Function<ConnectionConfiguration, OpenSearchClient> clientFunction =
             (connConfig) -> {
       final RestHighLevelClient client = connConfig.createClient(awsCredentialsSupplier);
@@ -211,6 +217,45 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   IndexManager getIndexManager() {
     return indexManager;
+  }
+
+  IndexType getIndexType() {
+    return indexType;
+  }
+
+  /**
+   * Switches trace-analytics-plain-raw to trace-analytics-plain-raw-v2 when its span indices use parquet as the
+   * primary data format. Those indices are append-only by default and reject the v1 span writes.
+   */
+  private void maybeSelectPlainRawV2() throws IOException {
+    final IndexConfiguration indexConfiguration = openSearchSinkConfig.getIndexConfiguration();
+    if (indexType != IndexType.TRACE_ANALYTICS_RAW_PLAIN
+            || indexConfiguration.getServerless()
+            || DistributionVersion.ES6.equals(indexConfiguration.getDistributionVersion())
+            || openSearchSinkConfiguration.getTemplateContent() != null
+            || openSearchSinkConfiguration.getPullIndexing() != null) {
+      return;
+    }
+
+    final String indexAlias = indexConfiguration.getIndexAlias();
+    try {
+      if (!new PluggableDataFormatDetector(openSearchClient).isParquetPrimary(indexAlias)) {
+        return;
+      }
+    } catch (final OpenSearchException e) {
+      if (!UNAUTHORIZED_HTTP_STATUS.contains(e.status())) {
+        throw e;
+      }
+      LOG.warn("Unable to read the data format of the {} indices, keeping index_type {}: {}",
+              indexAlias, indexType.getValue(), e.getMessage());
+      return;
+    }
+
+    LOG.info("The {} indices use parquet as the primary data format, using index_type {} instead of {}",
+            indexAlias, IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue(), indexType.getValue());
+    openSearchSinkConfig = OpenSearchSinkConfiguration.readOSConfig(
+            openSearchSinkConfiguration, expressionEvaluator, IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2);
+    indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
   }
 
   @Override
