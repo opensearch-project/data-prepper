@@ -143,10 +143,12 @@ class DynamoDBServiceTest {
     }
 
     @Test
-    void test_stream_scheduler_receives_configured_shard_acquisition_backoff_max() throws NoSuchFieldException, IllegalAccessException {
-        final Duration configuredBackoffMax = Duration.ofSeconds(2);
+    void test_stream_scheduler_receives_configured_backoff_maxes() throws NoSuchFieldException, IllegalAccessException {
+        final Duration configuredNewShardAcquisitionBackoffMax = Duration.ofSeconds(2);
+        final Duration configuredShardDistributionBackoffMax = Duration.ofSeconds(5);
         when(tableConfig.getStreamConfig()).thenReturn(streamConfig);
-        when(streamConfig.getShardAcquisitionBackoffMax()).thenReturn(configuredBackoffMax);
+        when(streamConfig.getNewShardAcquisitionBackoffMax()).thenReturn(configuredNewShardAcquisitionBackoffMax);
+        when(streamConfig.getShardDistributionBackoffMax()).thenReturn(configuredShardDistributionBackoffMax);
         dynamoDBService = createObjectUnderTest();
 
         final ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
@@ -163,9 +165,13 @@ class DynamoDBServiceTest {
         backoffCalculatorField.setAccessible(true);
         final BackoffCalculator backoffCalculator = (BackoffCalculator) backoffCalculatorField.get(streamScheduler);
 
-        final Field maxBackoffField = BackoffCalculator.class.getDeclaredField("maxBackoff");
-        maxBackoffField.setAccessible(true);
-        assertThat(maxBackoffField.get(backoffCalculator), equalTo(configuredBackoffMax));
+        final Field newShardAcquisitionBackoffMaxField = BackoffCalculator.class.getDeclaredField("newShardAcquisitionBackoffMax");
+        newShardAcquisitionBackoffMaxField.setAccessible(true);
+        assertThat(newShardAcquisitionBackoffMaxField.get(backoffCalculator), equalTo(configuredNewShardAcquisitionBackoffMax));
+
+        final Field shardDistributionBackoffMaxField = BackoffCalculator.class.getDeclaredField("shardDistributionBackoffMax");
+        shardDistributionBackoffMaxField.setAccessible(true);
+        assertThat(shardDistributionBackoffMaxField.get(backoffCalculator), equalTo(configuredShardDistributionBackoffMax));
     }
 
     @Test

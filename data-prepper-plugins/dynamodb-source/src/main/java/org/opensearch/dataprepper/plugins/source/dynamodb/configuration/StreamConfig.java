@@ -23,12 +23,19 @@ public class StreamConfig {
     public static final Duration DEFAULT_SHARD_DISCOVERY_INTERVAL = Duration.ofMinutes(1);
 
     /**
-     * Upper bound on how long a worker waits between attempts to acquire a DynamoDB stream shard.
-     * A lower value shortens the delay before a new child shard is read after a shard rotation and
-     * speeds up how quickly a node claims shards at startup. The cost is more frequent coordination
-     * store reads and less even shard distribution across nodes.
+     * Upper bound on how long a worker waits before polling for a shard again after finding none
+     * available. A lower value shortens the delay before a new child shard is read after a shard
+     * rotation. The cost is more frequent coordination store reads.
      */
-    public static final Duration DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX = Duration.ofSeconds(15);
+    public static final Duration DEFAULT_NEW_SHARD_ACQUISITION_BACKOFF_MAX = Duration.ofSeconds(15);
+
+    /**
+     * Upper bound on how long a worker waits before polling for another shard after acquiring one.
+     * The wait grows linearly with the number of shards the worker holds so that other nodes get a
+     * chance to claim shards. A lower value speeds up how quickly a node claims shards at startup at
+     * the cost of less even shard distribution across nodes.
+     */
+    public static final Duration DEFAULT_SHARD_DISTRIBUTION_BACKOFF_MAX = Duration.ofSeconds(15);
 
     @JsonProperty(value = "start_position")
     private StreamStartPosition startPosition = StreamStartPosition.LATEST;
@@ -44,10 +51,15 @@ public class StreamConfig {
     @DurationMin(seconds = 1, message = "shard_discovery_interval must be at least 1 second.")
     private Duration shardDiscoveryInterval = DEFAULT_SHARD_DISCOVERY_INTERVAL;
 
-    @JsonProperty("shard_acquisition_backoff_max")
+    @JsonProperty("new_shard_acquisition_backoff_max")
     @NotNull
-    @DurationMin(seconds = 1, message = "shard_acquisition_backoff_max must be at least 1 second.")
-    private Duration shardAcquisitionBackoffMax = DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX;
+    @DurationMin(seconds = 1, message = "new_shard_acquisition_backoff_max must be at least 1 second.")
+    private Duration newShardAcquisitionBackoffMax = DEFAULT_NEW_SHARD_ACQUISITION_BACKOFF_MAX;
+
+    @JsonProperty("shard_distribution_backoff_max")
+    @NotNull
+    @DurationMin(seconds = 1, message = "shard_distribution_backoff_max must be at least 1 second.")
+    private Duration shardDistributionBackoffMax = DEFAULT_SHARD_DISTRIBUTION_BACKOFF_MAX;
 
     public StreamStartPosition getStartPosition() {
         return startPosition;
@@ -63,8 +75,12 @@ public class StreamConfig {
         return shardDiscoveryInterval;
     }
 
-    public Duration getShardAcquisitionBackoffMax() {
-        return shardAcquisitionBackoffMax;
+    public Duration getNewShardAcquisitionBackoffMax() {
+        return newShardAcquisitionBackoffMax;
+    }
+
+    public Duration getShardDistributionBackoffMax() {
+        return shardDistributionBackoffMax;
     }
 
 }

@@ -102,11 +102,16 @@ public class DynamoDBService {
 
         final StreamConfig streamConfig = dynamoDBSourceConfig.getTableConfigs().get(0).getStreamConfig();
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        final Duration shardAcquisitionBackoffMax = streamConfig == null
-                ? StreamConfig.DEFAULT_SHARD_ACQUISITION_BACKOFF_MAX
-                : streamConfig.getShardAcquisitionBackoffMax();
+        final Duration newShardAcquisitionBackoffMax = streamConfig == null
+                ? StreamConfig.DEFAULT_NEW_SHARD_ACQUISITION_BACKOFF_MAX
+                : streamConfig.getNewShardAcquisitionBackoffMax();
+        final Duration shardDistributionBackoffMax = streamConfig == null
+                ? StreamConfig.DEFAULT_SHARD_DISTRIBUTION_BACKOFF_MAX
+                : streamConfig.getShardDistributionBackoffMax();
         final BackoffCalculator backoffCalculator = new BackoffCalculator(
-                dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null, shardAcquisitionBackoffMax);
+                dynamoDBSourceConfig.getTableConfigs().get(0).getExportConfig() != null,
+                newShardAcquisitionBackoffMax,
+                shardDistributionBackoffMax);
         Runnable streamScheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
         final Duration leaseInterval = streamConfig == null
                 ? StreamConfig.DEFAULT_SHARD_DISCOVERY_INTERVAL
