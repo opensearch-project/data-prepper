@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.Counter;
 import jakarta.json.stream.JsonParsingException;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.opensearch.client.opensearch._types.Result;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
@@ -499,7 +500,7 @@ public final class BulkRetryStrategy {
     }
 
     private boolean isDuplicateDocument(final BulkResponseItem item) {
-        return item.seqNo() != null && item.seqNo() > 0;
+        return Result.Updated.jsonValue().equals(item.result());
     }
 
     private Counter getDocumentStatusCounter(final int status) {

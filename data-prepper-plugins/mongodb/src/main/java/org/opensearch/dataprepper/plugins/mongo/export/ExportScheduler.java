@@ -168,17 +168,41 @@ public class ExportScheduler implements Runnable {
 
     private void markTotalPartitionsAsComplete(final String collection) {
         final String exportPartitionKey = EXPORT_PREFIX + collection;
-        Optional<EnhancedSourcePartition> globalPartition = enhancedSourceCoordinator
-                .getPartition(exportPartitionKey);
-        if (globalPartition.isEmpty()) {
-            throw new RuntimeException("Wait for global partition to be created.");
+        // Retry until saved. Export workers update the same global state on every partition completion, so this
+        // write can lose a version race. Dropping it is not safe: the export partition is already completed and
+        // is never acquired again, so the flag would stay false and the stream would wait for the export forever.
+        while (!Thread.currentThread().isInterrupted()) {
+            final Optional<EnhancedSourcePartition> globalPartition = enhancedSourceCoordinator
+                    .getPartition(exportPartitionKey);
+            if (globalPartition.isEmpty()) {
+                throw new RuntimeException("Wait for global partition to be created.");
+            }
+            final GlobalState globalState = (GlobalState) globalPartition.get();
+            final ExportLoadStatus exportLoadStatus = ExportLoadStatus.fromMap(globalState.getProgressState().get());
+            exportLoadStatus.setTotalParitionsComplete(true);
+            exportLoadStatus.setLastUpdateTimestamp(Instant.now().toEpochMilli());
+            globalState.setProgressState(exportLoadStatus.toMap());
+            try {
+                enhancedSourceCoordinator.saveProgressStateForPartition(globalState, null);
+            } catch (final Exception e) {
+                LOG.warn("Failed to mark the total partitions as complete for {}, the global state was out of date, will retry", collection);
+                try {
+                    Thread.sleep(DEFAULT_GET_PARTITION_BACKOFF_MILLIS);
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+                continue;
+            }
+            // Every partition may already be loaded, leaving no export worker update to start the stream.
+            // An empty export has no partitions and already started the stream in completeExportPartition.
+            if (exportLoadStatus.getTotalPartitions() > 0 &&
+                    exportLoadStatus.getLoadedPartitions() >= exportLoadStatus.getTotalPartitions()) {
+                LOG.info("All Exports are done, streaming can continue...");
+                final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
+                enhancedSourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));
+            }
+            return;
         }
-        final GlobalState globalState = (GlobalState) globalPartition.get();
-        final ExportLoadStatus exportLoadStatus = ExportLoadStatus.fromMap(globalState.getProgressState().get());
-        exportLoadStatus.setTotalParitionsComplete(true);
-        exportLoadStatus.setLastUpdateTimestamp(Instant.now().toEpochMilli());
-        globalState.setProgressState(exportLoadStatus.toMap());
-        enhancedSourceCoordinator.saveProgressStateForPartition(globalState, null);
     }
 
     private void closeExportPartitionWithError(final ExportPartition exportPartition) {

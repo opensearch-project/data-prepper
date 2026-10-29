@@ -88,6 +88,11 @@ openllmetry:
     to: gen_ai.input.messages
   - from: traceloop.entity.output
     to: gen_ai.output.messages
+  # Traceloop's standard session association (AssociationProperty.SESSION_ID), written as
+  # traceloop.association.properties.session_id. Traceloop's set_conversation_id() and its
+  # LangGraph thread_id handling write gen_ai.conversation.id directly, which wins here.
+  - from: traceloop.association.properties.session_id
+    to: gen_ai.conversation.id
 
 # Value mappings for gen_ai.operation.name.
 

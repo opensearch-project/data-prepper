@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -62,6 +63,10 @@ class EntityResolverTest {
 
     private Entity resolveEntity(final EntityResolver resolver, final Event event) {
         return resolver.buildEntity(resolver.resolveKey(event), event);
+    }
+
+    private Optional<String> invalidValueOf(final EntityResolver resolver, final Event event) {
+        return resolver.findInvalidValue(resolver.resolveKey(event), event);
     }
 
     @Test
@@ -289,5 +294,88 @@ class EntityResolverTest {
 
         // formatString throws on a malformed template; the literal is kept rather than failing the batch.
         assertThat(entity.keyAttributes().get("Name"), equalTo("${unclosed"));
+    }
+
+    @Test
+    void findInvalidValue_allKeyAttributesPresent_isEmpty() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a"))).isPresent(), equalTo(false));
+    }
+
+    @Test
+    void findInvalidValue_templatedKeyFieldMissing_isBlankValue() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("ResourceId", "res-a"))),
+                equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
+    }
+
+    @Test
+    void findInvalidValue_keyValueIsWhitespace_isBlankValueByChoiceThoughCloudWatchAcceptsIt() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "   "))),
+                equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
+    }
+
+    @Test
+    void findInvalidValue_keyValueAtLengthLimit_isEmptyAndOneOverIsValueTooLong() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+        final String atLimit = "a".repeat(EntityResolver.MAX_ENTITY_VALUE_LENGTH);
+        final String overLimit = atLimit + "a";
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", atLimit))), equalTo(Optional.empty()));
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", overLimit))),
+                equalTo(Optional.of(EntityResolver.VALUE_TOO_LONG)));
+    }
+
+    @Test
+    void findInvalidValue_supplementaryCharactersAtCodePointLimit_isEmpty() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+        final String atLimit = "\uD83D\uDE00".repeat(EntityResolver.MAX_ENTITY_VALUE_LENGTH);
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", atLimit))), equalTo(Optional.empty()));
+    }
+
+    @Test
+    void findInvalidValue_headerOnlyResolver_isEmpty() {
+        final EntityResolver resolver = resolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}"));
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("unrelated", "value"))).isPresent(), equalTo(false));
+    }
+
+    @Test
+    void findInvalidValue_allAttributesPresent_isEmpty() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a", "category", "cat-1"))).isPresent(),
+                equalTo(false));
+    }
+
+    @Test
+    void findInvalidValue_templatedAttributeFieldMissing_isBlankValue() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a"))),
+                equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
+    }
+
+    @Test
+    void findInvalidValue_attributeOverLengthLimit_isValueTooLong() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
+        final String overLimit = "a".repeat(EntityResolver.MAX_ENTITY_VALUE_LENGTH + 1);
+
+        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a", "category", overLimit))),
+                equalTo(Optional.of(EntityResolver.VALUE_TOO_LONG)));
+    }
+
+    @Test
+    void findInvalidValue_sameInvalidValueRepeatedly_keepsReturningTheReason() {
+        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
+        final Event event = eventWith(Map.of("ResourceId", "res-a"));
+
+        assertThat(invalidValueOf(resolver, event), equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
+        assertThat(invalidValueOf(resolver, event), equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
     }
 }

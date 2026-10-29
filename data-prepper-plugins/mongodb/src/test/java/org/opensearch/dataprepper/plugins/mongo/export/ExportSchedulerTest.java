@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
@@ -22,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +32,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.awaitility.Awaitility.await;
@@ -40,6 +44,7 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -323,5 +328,137 @@ public class ExportSchedulerTest {
         assertThat(streamGlobalState.getPartitionKey(), is(STREAM_PREFIX + exportPartition.getCollection()));
         verify(coordinator).saveProgressStateForPartition(eq(globalState), eq(null));
         executorService.shutdownNow();
+    }
+
+    /**
+     * The last export batch completes the EXPORT partition and then marks the total partition count as final.
+     * If that second write loses a version race with an export worker updating the same global state, the
+     * flag must still be persisted. Otherwise the export partition is already COMPLETED, it is never acquired
+     * again, the flag stays false, and the stream worker waits for the initial load forever.
+     */
+    @Test
+    void test_lastBatch_markTotalPartitionsComplete_conflict_isRetriedUntilPersisted() {
+        exportScheduler = new ExportScheduler(coordinator, mongoDBExportPartitionSupplier, pluginMetrics);
+        final String collection = UUID.randomUUID().toString();
+        final String exportStateKey = EXPORT_PREFIX + collection;
+        final Instant exportTime = Instant.now();
+        final String partitionKey = collection + "|" + UUID.randomUUID();
+
+        final ExportProgressState exportProgressState = new ExportProgressState();
+        exportProgressState.setCollectionName(collection);
+        exportProgressState.setDatabaseName(collection);
+        exportProgressState.setExportTime(exportTime.toString());
+        exportPartition = new ExportPartition(collection, RANDOM.nextInt(), exportTime, exportProgressState);
+
+        given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
+        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(partitionIdentifierBatch);
+        given(partitionIdentifierBatch.getPartitionIdentifiers()).willReturn(List.of(partitionIdentifier));
+        given(partitionIdentifierBatch.isLastBatch()).willReturn(true);
+        given(partitionIdentifierBatch.getEndDocId()).willReturn(UUID.randomUUID().toString());
+        // Once completed, the export partition is no longer available to acquire.
+        given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE))
+                .willReturn(Optional.of(exportPartition), Optional.empty());
+
+        // Stored copy of the EXPORT global state; every read returns a fresh object, like the real store.
+        final AtomicReference<Map<String, Object>> storedState = new AtomicReference<>(new HashMap<>(Map.of(
+                TOTAL_PARTITIONS, 0L,
+                LOADED_PARTITIONS, 0L,
+                LOADED_RECORDS, 0L,
+                LAST_UPDATE_TIMESTAMP, Instant.now().toEpochMilli(),
+                TOTAL_PARTITIONS_COMPLETE, false)));
+        given(coordinator.getPartition(eq(exportStateKey))).willAnswer(invocation ->
+                Optional.of(new GlobalState(exportStateKey, new HashMap<>(storedState.get()))));
+
+        // Save #1 (total partitions) succeeds, save #2 (the "total complete" flag) loses a version race
+        // with a concurrent worker update, later saves succeed.
+        final AtomicInteger globalStateSaves = new AtomicInteger();
+        willAnswer(invocation -> {
+            final EnhancedSourcePartition<?> partition = invocation.getArgument(0);
+            if (partition instanceof GlobalState && exportStateKey.equals(partition.getPartitionKey())) {
+                if (globalStateSaves.incrementAndGet() == 2) {
+                    throw new PartitionUpdateException("ConditionalCheckFailed: the global state was modified", null);
+                }
+                @SuppressWarnings("unchecked")
+                final Map<String, Object> saved = (Map<String, Object>) partition.getProgressState().get();
+                storedState.set(new HashMap<>(saved));
+            }
+            return null;
+        }).given(coordinator).saveProgressStateForPartition(any(), any());
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        try {
+            await()
+                    .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(5)))
+                    .untilAsserted(() -> assertThat(storedState.get().get(TOTAL_PARTITIONS_COMPLETE), is(true)));
+            assertThat(storedState.get().get(TOTAL_PARTITIONS), equalTo(1L));
+            verify(coordinator).completePartition(exportPartition);
+        } finally {
+            future.cancel(true);
+            executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * When every data query partition is already loaded by the time the total is marked final, no export worker
+     * update is left to start the stream, so marking the total complete must create the STREAM global state.
+     */
+    @Test
+    void test_lastBatch_allPartitionsAlreadyLoaded_whenTotalMarkedComplete_createsStreamState() {
+        exportScheduler = new ExportScheduler(coordinator, mongoDBExportPartitionSupplier, pluginMetrics);
+        final String collection = UUID.randomUUID().toString();
+        final String exportStateKey = EXPORT_PREFIX + collection;
+        final Instant exportTime = Instant.now();
+
+        final ExportProgressState exportProgressState = new ExportProgressState();
+        exportProgressState.setCollectionName(collection);
+        exportProgressState.setDatabaseName(collection);
+        exportProgressState.setExportTime(exportTime.toString());
+        exportPartition = new ExportPartition(collection, RANDOM.nextInt(), exportTime, exportProgressState);
+
+        given(partitionIdentifier.getPartitionKey()).willReturn(collection + "|" + UUID.randomUUID());
+        given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(partitionIdentifierBatch);
+        given(partitionIdentifierBatch.getPartitionIdentifiers()).willReturn(List.of(partitionIdentifier));
+        given(partitionIdentifierBatch.isLastBatch()).willReturn(true);
+        given(partitionIdentifierBatch.getEndDocId()).willReturn(UUID.randomUUID().toString());
+        given(coordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE))
+                .willReturn(Optional.of(exportPartition), Optional.empty());
+
+        final AtomicReference<Map<String, Object>> storedState = new AtomicReference<>(new HashMap<>(Map.of(
+                TOTAL_PARTITIONS, 0L,
+                LOADED_PARTITIONS, 0L,
+                LOADED_RECORDS, 0L,
+                LAST_UPDATE_TIMESTAMP, Instant.now().toEpochMilli(),
+                TOTAL_PARTITIONS_COMPLETE, false)));
+        given(coordinator.getPartition(eq(exportStateKey))).willAnswer(invocation ->
+                Optional.of(new GlobalState(exportStateKey, new HashMap<>(storedState.get()))));
+        // After the total is saved, an export worker loads the only partition before the scheduler marks it final.
+        willAnswer(invocation -> {
+            final EnhancedSourcePartition<?> partition = invocation.getArgument(0);
+            if (partition instanceof GlobalState && exportStateKey.equals(partition.getPartitionKey())) {
+                @SuppressWarnings("unchecked")
+                final Map<String, Object> saved = new HashMap<>((Map<String, Object>) partition.getProgressState().get());
+                if (!Boolean.TRUE.equals(saved.get(TOTAL_PARTITIONS_COMPLETE))) {
+                    saved.put(LOADED_PARTITIONS, 1L);
+                }
+                storedState.set(saved);
+            }
+            return null;
+        }).given(coordinator).saveProgressStateForPartition(any(), any());
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final Future<?> future = executorService.submit(() -> exportScheduler.run());
+        try {
+            await()
+                    .atMost(Duration.ofSeconds(5))
+                    .untilAsserted(() -> {
+                        final ArgumentCaptor<EnhancedSourcePartition> created = ArgumentCaptor.forClass(EnhancedSourcePartition.class);
+                        verify(coordinator, times(2)).createPartition(created.capture());
+                        assertThat(created.getAllValues().get(1).getPartitionKey(), equalTo(STREAM_PREFIX + collection));
+                    });
+        } finally {
+            future.cancel(true);
+            executorService.shutdownNow();
+        }
     }
 }

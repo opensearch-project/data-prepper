@@ -449,6 +449,9 @@ public class PipelineTransformer {
         if (source instanceof PipelineConnector)
             return buffer;
 
+        if (source instanceof HeadlessPipelineSource)
+            return buffer;
+
         if (buffer.isWrittenOffHeapOnly())
             return buffer;
 

@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.util.CountingRetryCondit
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicyContext;
+import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
@@ -25,6 +26,7 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 
 import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -260,6 +262,73 @@ class LambdaClientFactoryTest {
 
     assertNotNull(client);
     assertEquals(customReadTimeout, clientOptions.getReadTimeout());
+  }
+
+  @Test
+  void testRetryableStatusCodesThreadsThroughToRetryCondition() {
+    final ClientOptions clientOptions = mock(ClientOptions.class);
+    when(clientOptions.getMaxConcurrency()).thenReturn(200);
+    when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getReadTimeout()).thenReturn(null);
+    when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getApiCallAttemptTimeout()).thenReturn(null);
+    when(clientOptions.getMaxConnectionRetries()).thenReturn(3);
+    when(clientOptions.getBaseDelay()).thenReturn(Duration.ofMillis(100));
+    when(clientOptions.getMaxBackoff()).thenReturn(Duration.ofSeconds(20));
+    when(clientOptions.getRetryableStatusCodes()).thenReturn(Set.of(502, 504));
+
+    final LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions, awsCredentialsSupplier, clientOptions);
+
+    final RetryCondition retryCondition = client.serviceClientConfiguration()
+            .overrideConfiguration().retryPolicy().get().retryCondition();
+    final RetryPolicyContext gatewayError = RetryPolicyContext.builder()
+            .httpStatusCode(502)
+            .retriesAttempted(0)
+            .build();
+    assertTrue(retryCondition.shouldRetry(gatewayError));
+  }
+
+  @Test
+  void testStatusCodePathInactiveByDefault() {
+    final ClientOptions clientOptions = new ClientOptions();
+
+    final LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions, awsCredentialsSupplier, clientOptions);
+
+    final RetryCondition retryCondition = client.serviceClientConfiguration()
+            .overrideConfiguration().retryPolicy().get().retryCondition();
+    final RetryPolicyContext gatewayError = RetryPolicyContext.builder()
+            .httpStatusCode(502)
+            .retriesAttempted(0)
+            .build();
+    assertFalse(retryCondition.shouldRetry(gatewayError));
+  }
+
+  @Test
+  void testComposedConditionStillRetriesRetryableExceptions() {
+    final ClientOptions clientOptions = mock(ClientOptions.class);
+    when(clientOptions.getMaxConcurrency()).thenReturn(200);
+    when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getReadTimeout()).thenReturn(null);
+    when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(60));
+    when(clientOptions.getApiCallAttemptTimeout()).thenReturn(null);
+    when(clientOptions.getMaxConnectionRetries()).thenReturn(3);
+    when(clientOptions.getBaseDelay()).thenReturn(Duration.ofMillis(100));
+    when(clientOptions.getMaxBackoff()).thenReturn(Duration.ofSeconds(20));
+    when(clientOptions.getRetryableStatusCodes()).thenReturn(Set.of(502, 504));
+
+    final LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions, awsCredentialsSupplier, clientOptions);
+
+    final RetryCondition retryCondition = client.serviceClientConfiguration()
+            .overrideConfiguration().retryPolicy().get().retryCondition();
+    // No matching status code on the context: the exception path must still trigger a retry.
+    final RetryPolicyContext throttling = RetryPolicyContext.builder()
+            .exception(TooManyRequestsException.builder().build())
+            .retriesAttempted(0)
+            .build();
+    assertTrue(retryCondition.shouldRetry(throttling));
   }
 
 }

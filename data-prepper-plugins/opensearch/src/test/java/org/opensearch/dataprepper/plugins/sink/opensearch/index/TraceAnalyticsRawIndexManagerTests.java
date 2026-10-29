@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -20,6 +21,7 @@ import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.opensearch.client.opensearch.cluster.ExistsComponentTemplateRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
@@ -27,6 +29,7 @@ import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.transport.Endpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
@@ -34,6 +37,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJson
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,7 +47,9 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -198,6 +204,79 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
+    void checkAndCreatePolicy_withPlainV2IndexManager_usesV2Policy() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
+        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
+        assertEquals(Optional.of("otel-v2-apm-span-policy"), traceAnalyticsRawPlainV2IndexManager.checkAndCreatePolicy());
+        verify(restClient, times(2)).performRequest(any());
+        verify(restHighLevelClient, times(2)).getLowLevelClient();
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
+    }
+
+    @Test
+    void checkAndCreateComponentTemplates_withPlainV2IndexManager_createsMissingAndOlderComponentTemplates() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        final Map<String, Object> missing = Map.of("version", 1, "template", Map.of());
+        final Map<String, Object> current = Map.of("version", 2, "template", Map.of());
+        final Map<String, Object> older = Map.of("version", 3, "template", Map.of());
+        final Map<String, Map<String, Object>> componentTemplates = new LinkedHashMap<>();
+        componentTemplates.put("missing", missing);
+        componentTemplates.put("current", current);
+        componentTemplates.put("older", older);
+        when(indexConfiguration.getManagedComponentTemplates()).thenReturn(componentTemplates);
+        stubExistingComponentTemplates(Map.of("current", 2L, "older", 1L));
+
+        traceAnalyticsRawPlainV2IndexManager.checkAndCreateComponentTemplates();
+
+        verify(openSearchTransport).performRequest(eq(missing), any(), any());
+        verify(openSearchTransport, never()).performRequest(eq(current), any(), any());
+        verify(openSearchTransport).performRequest(eq(older), any(), any());
+        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
+        verify(indexConfiguration).getManagedComponentTemplates();
+    }
+
+    @Test
+    void setupIndex_withPlainV2IndexManager_createsComponentTemplatesBeforeIndexTemplate() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        final Map<String, Object> componentTemplate = Map.of("version", 1, "template", Map.of());
+        when(indexConfiguration.getManagedComponentTemplates()).thenReturn(Map.of("component", componentTemplate));
+        stubExistingComponentTemplates(Map.of());
+        when(templateStrategy.getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME)).thenReturn(Optional.empty());
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
+
+        traceAnalyticsRawPlainV2IndexManager.setupIndex();
+
+        final InOrder inOrder = inOrder(openSearchTransport, templateStrategy);
+        inOrder.verify(openSearchTransport).performRequest(eq(componentTemplate), any(), any());
+        inOrder.verify(templateStrategy).createTemplate(indexTemplateObject);
+        verify(openSearchSinkConfiguration, atLeastOnce()).getIndexConfiguration();
+        verify(indexConfiguration, atLeastOnce()).getIndexAlias();
+        verify(indexConfiguration, atLeastOnce()).getIndexTemplate();
+        verify(indexConfiguration).getManagedComponentTemplates();
+    }
+
+    private void stubExistingComponentTemplates(final Map<String, Long> existingVersions) throws IOException {
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchClusterClient.existsComponentTemplate(any(ExistsComponentTemplateRequest.class)))
+                .thenAnswer(invocation -> new BooleanResponse(existingVersions.containsKey(
+                        invocation.<ExistsComponentTemplateRequest>getArgument(0).name().get(0))));
+        when(openSearchTransport.performRequest(isNull(), any(), any()))
+                .thenAnswer(invocation -> {
+                    final String path = invocation.<Endpoint<?, ?, ?>>getArgument(1).requestUrl(null);
+                    final String name = path.substring(path.lastIndexOf('/') + 1);
+                    return ComponentTemplateAPIWrapperTest.toJsonData("{\"component_templates\":[{\"name\":\"" + name
+                            + "\",\"component_template\":{\"template\":{},\"version\":" + existingVersions.get(name) + "}}]}");
+                });
+    }
+
+    @Test
     void checkAndCreateIndexTemplate_NoIndexTemplateOnHost_ISMDisabled() throws IOException {
         when(templateStrategy.getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME))
                 .thenReturn(Optional.empty());
@@ -283,6 +362,22 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenReturn(null);
         traceAnalyticsRawStandardIndexManager.checkAndCreateIndex();
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
+    }
+
+    @Test
+    void checkAndCreateIndex_NeedToCreateNewIndex_withPlainV2IndexManager() throws IOException {
+        final AbstractIndexManager traceAnalyticsRawPlainV2IndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
+                .thenReturn(null);
+        traceAnalyticsRawPlainV2IndexManager.checkAndCreateIndex();
         verify(openSearchClient, times(2)).indices();
         verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
         verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));

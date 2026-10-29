@@ -60,6 +60,13 @@ public class IndexManagerFactoryTests {
     }
 
     @Test
+    public void getIndexManager_TraceAnalyticsRawPlainV2() {
+        final IndexManager indexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        assertThat(indexManager, instanceOf(IndexManager.class));
+    }
+
+    @Test
     public void getIndexManager_TraceAnalyticsServiceMap() {
         final IndexManager indexManager = indexManagerFactory.getIndexManager(
                 IndexType.TRACE_ANALYTICS_SERVICE_MAP, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
