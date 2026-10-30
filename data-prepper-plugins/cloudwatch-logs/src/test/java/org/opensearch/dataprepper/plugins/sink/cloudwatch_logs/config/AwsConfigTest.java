@@ -38,10 +38,13 @@ class AwsConfigTest {
     }
 
     @Test
-    void GIVEN_no_region_WHEN_deserialized_SHOULD_return_region_as_null() {
+    void GIVEN_empty_config_WHEN_deserialized_SHOULD_return_null_region_and_sts_fields() {
         final Map<String, Object> jsonMap = Collections.emptyMap();
         final AwsConfig objectUnderTest = objectMapper.convertValue(jsonMap, AwsConfig.class);
         assertThat(objectUnderTest.getAwsRegion(), nullValue());
+        assertThat(objectUnderTest.getAwsStsRoleArn(), nullValue());
+        assertThat(objectUnderTest.getAwsStsExternalId(), nullValue());
+        assertThat(objectUnderTest.getAwsStsHeaderOverrides(), nullValue());
     }
 
     @Test
@@ -53,13 +56,6 @@ class AwsConfigTest {
     }
 
     @Test
-    void GIVEN_empty_sts_role_arn_WHEN_deserialized_SHOULD_return_as_null() {
-        final Map<String, Object> jsonMap = Collections.emptyMap();
-        final AwsConfig objectUnderTest = objectMapper.convertValue(jsonMap, AwsConfig.class);
-        assertThat(objectUnderTest.getAwsStsRoleArn(), nullValue());
-    }
-
-    @Test
     void GIVEN_valid_aws_sts_external_id_WHEN_deserialized_SHOULD_return_as_string() {
         final String stsExternalId = UUID.randomUUID().toString();
         final Map<String, Object> jsonMap = Map.of("sts_external_id", stsExternalId);
@@ -68,24 +64,10 @@ class AwsConfigTest {
     }
 
     @Test
-    void GIVEN_valid_aws_sts_external_id_WHEN_deserialized_SHOULD_return_as_null() {
-        final Map<String, Object> jsonMap = Collections.emptyMap();
-        final AwsConfig objectUnderTest = objectMapper.convertValue(jsonMap, AwsConfig.class);
-        assertThat(objectUnderTest.getAwsStsExternalId(), nullValue());
-    }
-
-    @Test
     void GIVEN_valid_aws_sts_header_overrides_WHEN_deserialized_SHOULD_return_as_string_map() {
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final Map<String, Object> jsonMap = Map.of("sts_header_overrides", stsHeaderOverrides);
         final AwsConfig objectUnderTest = objectMapper.convertValue(jsonMap, AwsConfig.class);
         assertThat(objectUnderTest.getAwsStsHeaderOverrides(), equalTo(stsHeaderOverrides));
-    }
-
-    @Test
-    void GIVEN_valid_aws_sts_header_overrides_WHEN_deserialized_SHOULD_return_as_null() {
-        final Map<String, Object> jsonMap = Collections.emptyMap();
-        final AwsConfig objectUnderTest = objectMapper.convertValue(jsonMap, AwsConfig.class);
-        assertThat(objectUnderTest.getAwsStsHeaderOverrides(), nullValue());
     }
 }
