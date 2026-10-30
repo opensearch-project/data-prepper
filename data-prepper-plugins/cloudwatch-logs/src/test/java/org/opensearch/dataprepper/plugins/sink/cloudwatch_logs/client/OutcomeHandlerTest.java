@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.invocation.Invocation;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.dlq.CloudWatchLogsSinkDlqData;
@@ -55,6 +56,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_DLQ_WRITE_FAILED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_REJECTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_RETRIES_EXHAUSTED;
@@ -250,6 +252,36 @@ class OutcomeHandlerTest {
                     ordered.stream().map(OutcomeHandlerTest::message).collect(Collectors.toList()), failureMessage);
         }
         verify(metrics, never()).increaseUnhandledErrorCounter(anyInt());
+    }
+
+    @Test
+    void mustRetryUntilDelivered_dlqConfigured_false() {
+        assertThat(handlerFor(DlqMode.OK).mustRetryUntilDelivered(batchOf(handles(2))), equalTo(false));
+    }
+
+    @Test
+    void mustRetryUntilDelivered_noDlqAllHandlesHaveAcknowledgementSet_false() {
+        final List<EventHandle> handles = List.of(acknowledgedHandle(true), acknowledgedHandle(true));
+
+        assertThat(handlerFor(DlqMode.NONE).mustRetryUntilDelivered(batchOf(handles)), equalTo(false));
+    }
+
+    @Test
+    void mustRetryUntilDelivered_noDlqOneHandleWithoutAcknowledgementSet_true() {
+        final List<EventHandle> handles = List.of(acknowledgedHandle(true), acknowledgedHandle(false));
+
+        assertThat(handlerFor(DlqMode.NONE).mustRetryUntilDelivered(batchOf(handles)), equalTo(true));
+    }
+
+    @Test
+    void mustRetryUntilDelivered_noDlqHandleNotInternal_true() {
+        assertThat(handlerFor(DlqMode.NONE).mustRetryUntilDelivered(batchOf(handles(1))), equalTo(true));
+    }
+
+    private static EventHandle acknowledgedHandle(final boolean hasAcknowledgementSet) {
+        final InternalEventHandle handle = mock(InternalEventHandle.class, withSettings().extraInterfaces(EventHandle.class));
+        when(handle.hasAcknowledgementSet()).thenReturn(hasAcknowledgementSet);
+        return (EventHandle) handle;
     }
 
     private static void assertDlqPayload(final List<DlqObject> dlqObjects, final List<EventHandle> expectedHandles,

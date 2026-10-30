@@ -122,7 +122,7 @@ public class ParallelFlusher {
         try {
             final BatchSender.Result result;
             try {
-                result = batchSender.send(buildRequest(batch));
+                result = batchSender.send(buildRequest(batch), outcomeHandler.mustRetryUntilDelivered(batch));
             } catch (final Exception | StackOverflowError e) {
                 interrupted = Thread.interrupted();
                 LOG.error("Unexpected error sending a batch of {} events", batch.getEventHandles().size(), e);

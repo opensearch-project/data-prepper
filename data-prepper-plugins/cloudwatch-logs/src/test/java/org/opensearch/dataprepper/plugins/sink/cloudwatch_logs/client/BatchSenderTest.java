@@ -27,6 +27,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsExcept
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
+import software.amazon.awssdk.services.cloudwatchlogs.model.InvalidParameterException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.OperationAbortedException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
@@ -123,7 +124,7 @@ class BatchSenderTest {
         final CloudWatchLogsException failure = cloudWatchLogsException("InternalFailure");
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(failure);
 
-        final BatchSender.Result result = createSender(maxRetries, false, false).send(request);
+        final BatchSender.Result result = createSender(maxRetries, false, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
         assertThat(result.getLastException(), sameInstance(failure));
@@ -146,7 +147,7 @@ class BatchSenderTest {
         when(random.nextDouble()).thenReturn(draw);
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(cloudWatchLogsException("InternalFailure"));
 
-        createSender(maxRetries, false, false).send(request);
+        createSender(maxRetries, false, false).send(request, false);
 
         final ArgumentCaptor<Long> delays = ArgumentCaptor.forClass(Long.class);
         verify(closedSignal, times(maxRetries)).await(delays.capture(), eq(TimeUnit.MILLISECONDS));
@@ -155,6 +156,61 @@ class BatchSenderTest {
             assertThat(values.get(retry - 1), equalTo((long) (draw * fullJitterCap(retry))));
         }
         assertThat(values.get(maxRetries - 1), lessThan(30_001L));
+    }
+
+    @Test
+    void send_retryUntilDelivered_ignoresMaxRetriesUntilDelivered() throws InterruptedException {
+        final int failures = 40;
+        final PutLogEventsResponse response = PutLogEventsResponse.builder().build();
+        final AtomicInteger calls = new AtomicInteger();
+        when(client.putLogEvents(any(PutLogEventsRequest.class))).thenAnswer(invocation -> {
+            if (calls.incrementAndGet() <= failures) {
+                throw cloudWatchLogsException("ServiceUnavailable");
+            }
+            return response;
+        });
+
+        final BatchSender.Result result = createSender(1, false, false).send(request, true);
+
+        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
+        verify(client, times(failures + 1)).putLogEvents(any(PutLogEventsRequest.class));
+        final ArgumentCaptor<Long> delays = ArgumentCaptor.forClass(Long.class);
+        verify(closedSignal, times(failures)).await(delays.capture(), eq(TimeUnit.MILLISECONDS));
+        assertThat(delays.getValue(), equalTo((long) (MAX_DRAW * 30_000L)));
+        verify(metrics, never()).increaseLogEventFailCounter(anyInt());
+    }
+
+    @Test
+    void send_retryUntilDeliveredAndClosed_shutdown() throws InterruptedException {
+        when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(cloudWatchLogsException("ServiceUnavailable"));
+        when(closedSignal.await(anyLong(), any(TimeUnit.class))).thenReturn(false, false, true);
+
+        final BatchSender.Result result = createSender(1, false, false).send(request, true);
+
+        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
+        verify(client, times(3)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(metrics).increaseLogEventFailCounter(2);
+    }
+
+    static Stream<Exception> permanentExceptions() {
+        return Stream.of(
+                InvalidParameterException.builder().message("invalid").build(),
+                AwsServiceException.builder().message("too large").statusCode(BatchSender.REQUEST_TOO_LARGE_STATUS).build());
+    }
+
+    @ParameterizedTest
+    @MethodSource("permanentExceptions")
+    void send_permanentFailure_failedAfterOneAttemptInBothModes(final Exception exception) throws InterruptedException {
+        when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(exception);
+
+        for (final boolean retryUntilDelivered : new boolean[] {false, true}) {
+            final BatchSender.Result result = createSender(5, false, false).send(request, retryUntilDelivered);
+
+            assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
+            assertThat(result.getLastException(), sameInstance(exception));
+        }
+        verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
     }
 
     @Test
@@ -181,7 +237,7 @@ class BatchSenderTest {
         final PutLogEventsResponse response = PutLogEventsResponse.builder().build();
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(exception).thenReturn(response);
 
-        final BatchSender.Result result = createSender(5, false, false).send(request);
+        final BatchSender.Result result = createSender(5, false, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         assertThat(result.getResponse(), sameInstance(response));
@@ -199,7 +255,7 @@ class BatchSenderTest {
                 .thenThrow(resourceNotFound())
                 .thenReturn(PutLogEventsResponse.builder().build());
 
-        final BatchSender.Result result = createSender(5, true, createLogStream).send(request);
+        final BatchSender.Result result = createSender(5, true, createLogStream).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         final ArgumentCaptor<CreateLogGroupRequest> groupRequest = ArgumentCaptor.forClass(CreateLogGroupRequest.class);
@@ -226,7 +282,7 @@ class BatchSenderTest {
         // The ResourceNotFound that triggered creation counts as an attempt, so max_retries = 1 allows exactly two calls.
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(resourceNotFound());
 
-        final BatchSender.Result result = createSender(1, true, false).send(request);
+        final BatchSender.Result result = createSender(1, true, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
@@ -241,7 +297,7 @@ class BatchSenderTest {
     void send_resourceNotFoundWithoutCreateFlags_ordinaryRetryableFailure() {
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(resourceNotFound());
 
-        final BatchSender.Result result = createSender(3, false, false).send(request);
+        final BatchSender.Result result = createSender(3, false, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
         verify(client, times(4)).putLogEvents(any(PutLogEventsRequest.class));
@@ -259,7 +315,7 @@ class BatchSenderTest {
         when(client.createLogGroup(any(CreateLogGroupRequest.class)))
                 .thenThrow(ResourceAlreadyExistsException.builder().message("exists").build());
 
-        final BatchSender.Result result = createSender(1, true, true).send(request);
+        final BatchSender.Result result = createSender(1, true, true).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         verify(client).createLogStream(any(CreateLogStreamRequest.class));
@@ -279,7 +335,7 @@ class BatchSenderTest {
                 .thenReturn(PutLogEventsResponse.builder().build());
         when(client.createLogGroup(any(CreateLogGroupRequest.class))).thenThrow(creationFailure);
 
-        final BatchSender.Result result = createSender(1, true, true).send(request);
+        final BatchSender.Result result = createSender(1, true, true).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
@@ -294,7 +350,7 @@ class BatchSenderTest {
                 .thenReturn(PutLogEventsResponse.builder().build());
         when(client.createLogGroup(any(CreateLogGroupRequest.class))).thenThrow(cloudWatchLogsException("AccessDeniedException"));
 
-        createSender(1, true, false).send(request);
+        createSender(1, true, false).send(request, false);
 
         verify(metrics).increaseAccessDeniedCounter(1);
     }
@@ -308,7 +364,7 @@ class BatchSenderTest {
         });
         sender.set(createSender(5, true, true));
 
-        final BatchSender.Result result = sender.get().send(request);
+        final BatchSender.Result result = sender.get().send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
         verify(client, never()).createLogGroup(any(CreateLogGroupRequest.class));
@@ -322,7 +378,7 @@ class BatchSenderTest {
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(failure);
         when(closedSignal.await(anyLong(), any(TimeUnit.class))).thenThrow(new InterruptedException());
 
-        final BatchSender.Result result = createSender(5, false, false).send(request);
+        final BatchSender.Result result = createSender(5, false, false).send(request, false);
         final boolean interrupted = Thread.interrupted();
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
@@ -342,7 +398,7 @@ class BatchSenderTest {
         });
         sender.set(createSender(5, false, false));
 
-        final BatchSender.Result result = sender.get().send(request);
+        final BatchSender.Result result = sender.get().send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
         assertThat(result.getLastException(), sameInstance(failure));
@@ -365,7 +421,7 @@ class BatchSenderTest {
         });
         final BatchSender sender = new BatchSender(client, metrics, 15, false, false, random, clock::get, new CountDownLatch(1));
         final AtomicReference<BatchSender.Result> result = new AtomicReference<>();
-        final Thread senderThread = new Thread(() -> result.set(sender.send(request)));
+        final Thread senderThread = new Thread(() -> result.set(sender.send(request, false)));
         senderThread.start();
         assertThat(reachedLongSleep.await(10, TimeUnit.SECONDS), equalTo(true));
         while (senderThread.getState() != Thread.State.TIMED_WAITING && senderThread.isAlive()) {
@@ -392,7 +448,7 @@ class BatchSenderTest {
         });
         sender.set(createSender(5, false, false));
 
-        final BatchSender.Result result = sender.get().send(request);
+        final BatchSender.Result result = sender.get().send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
         verify(client, times(1)).putLogEvents(any(PutLogEventsRequest.class));
@@ -408,7 +464,7 @@ class BatchSenderTest {
         sender.close();
         clock.addAndGet(elapsedMillis);
 
-        final BatchSender.Result result = sender.send(request);
+        final BatchSender.Result result = sender.send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
         if (expectedCalls == 0) {
@@ -424,7 +480,7 @@ class BatchSenderTest {
     void send_delivered_countsSuccessAndStagedAge() {
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(PutLogEventsResponse.builder().build());
 
-        final BatchSender.Result result = createSender(5, false, false).send(request);
+        final BatchSender.Result result = createSender(5, false, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         verify(metrics).increaseRequestSuccessCounter(1);
@@ -439,7 +495,7 @@ class BatchSenderTest {
                 .rejectedEntityInfo(RejectedEntityInfo.builder().errorType("InvalidEntity").build())
                 .build());
 
-        final BatchSender.Result result = createSender(5, false, false).send(request);
+        final BatchSender.Result result = createSender(5, false, false).send(request, false);
 
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
         verify(metrics).increaseEntityRejectedCounter(1);
@@ -454,7 +510,7 @@ class BatchSenderTest {
                 .build();
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(throttled);
 
-        createSender(2, false, false).send(request);
+        createSender(2, false, false).send(request, false);
 
         verify(metrics, times(3)).increaseThrottledCounter(1);
         verify(metrics, never()).increaseAccessDeniedCounter(anyInt());
@@ -464,7 +520,7 @@ class BatchSenderTest {
     void send_accessDenied_countsAccessDeniedPerAttempt() {
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(cloudWatchLogsException("AccessDeniedException"));
 
-        createSender(2, false, false).send(request);
+        createSender(2, false, false).send(request, false);
 
         verify(metrics, times(3)).increaseAccessDeniedCounter(1);
         verify(metrics, never()).increaseThrottledCounter(anyInt());
@@ -481,7 +537,7 @@ class BatchSenderTest {
             throw cloudWatchLogsException("InternalFailure");
         }).thenAnswer(invocation -> PutLogEventsResponse.builder().build());
 
-        sender.send(request);
+        sender.send(request, false);
 
         assertThat(inFlightDuringCall.get(), equalTo(1));
         assertThat(gauge.getValue().get(), equalTo(0));

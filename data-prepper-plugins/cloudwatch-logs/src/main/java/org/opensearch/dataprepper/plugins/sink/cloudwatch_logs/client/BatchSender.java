@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
+import software.amazon.awssdk.services.cloudwatchlogs.model.InvalidParameterException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceAlreadyExistsException;
@@ -36,7 +37,7 @@ import java.util.function.LongSupplier;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 /**
- * Sends one {@link PutLogEventsRequest} with bounded retries. It never releases event handles, never writes the DLQ and
+ * Sends one {@link PutLogEventsRequest} with retries. It never releases event handles, never writes the DLQ and
  * never throws for an {@link Exception} from the AWS call. It also holds the sink-level shutdown state.
  */
 public class BatchSender {
@@ -46,6 +47,8 @@ public class BatchSender {
     static final Duration BACKOFF_CAP = Duration.ofSeconds(30);
     public static final Duration SHUTDOWN_DEADLINE = Duration.ofSeconds(30);
     static final int MULTIPLE_FAILURES_METRIC_COUNT = 5;
+    static final int REQUEST_TOO_LARGE_STATUS = 413;
+    private static final int MAX_BACKOFF_EXPONENT = 16;
 
     private final CloudWatchLogsClient cloudWatchLogsClient;
     private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
@@ -81,13 +84,14 @@ public class BatchSender {
     }
 
     /**
-     * Makes at most {@code 1 + maxRetries} PutLogEvents calls, reusing the same request object for every retry.
+     * Makes at most {@code 1 + maxRetries} PutLogEvents calls, reusing the same request object for every retry. When
+     * {@code retryUntilDelivered} is true, {@code maxRetries} does not apply.
      */
-    public Result send(final PutLogEventsRequest request) {
+    public Result send(final PutLogEventsRequest request, final boolean retryUntilDelivered) {
         Exception lastException = null;
         boolean resourceCreationAttempted = false;
         int failCount = 0;
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+        for (int attempt = 0; retryUntilDelivered || attempt <= maxRetries; attempt++) {
             if (attempt > 0) {
                 if (closed) {
                     return shutdown(request, lastException);
@@ -122,6 +126,9 @@ public class BatchSender {
             lastException = failure;
             failCount++;
             countFailedAttempt(failure, failCount);
+            if (isPermanent(failure)) {
+                return failed(request, lastException);
+            }
             if (failure instanceof ResourceNotFoundException) {
                 if (!createLogGroup && !createLogStream) {
                     cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
@@ -154,7 +161,7 @@ public class BatchSender {
     }
 
     private long backoffDelayMillis(final int retry) {
-        final long cap = Math.min(BACKOFF_CAP.toMillis(), BACKOFF_BASE.toMillis() << (retry - 1));
+        final long cap = Math.min(BACKOFF_CAP.toMillis(), BACKOFF_BASE.toMillis() << Math.min(retry - 1, MAX_BACKOFF_EXPONENT));
         return (long) (random.nextDouble() * cap);
     }
 
@@ -180,6 +187,11 @@ public class BatchSender {
             }
         }
         return "unclassified";
+    }
+
+    static boolean isPermanent(final Exception e) {
+        return e instanceof InvalidParameterException
+                || (e instanceof AwsServiceException && ((AwsServiceException) e).statusCode() == REQUEST_TOO_LARGE_STATUS);
     }
 
     private static boolean isAccessDenied(final AwsServiceException ase) {

@@ -69,7 +69,7 @@ pipeline:
 
 - `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
-- `max_retries` (Optional) : An integer value that indicates the number of retries made for each `PutLogEvents` request after its first attempt, so a request makes at most `1 + max_retries` calls. It is always applied, with or without a `dlq`. Defaults to 5. (Min = 1, Max = 15)
+- `max_retries` (Optional) : An integer value that indicates the number of retries made for each `PutLogEvents` request after its first attempt, so a request makes at most `1 + max_retries` calls. It applies when a `dlq` is configured or every event in the request has an end-to-end acknowledgement set. Otherwise the request is retried until it is delivered or the sink shuts down. See [Delivery semantics](#delivery-semantics). Defaults to 5. (Min = 1, Max = 15)
 
 - `workers` (Optional) : An integer cap on the number of concurrent `PutLogEvents` calls per sink instance. Defaults to 10. (Min = 1, Max = 50)
 
@@ -129,9 +129,13 @@ Each sink call (`doOutput`) buffers its events, takes the batches that are ready
 waits until every batch it took has been delivered, redriven or written to the DLQ. The pipeline's
 `<pipeline>.<sink>.timeElapsed` timer measures that call and so includes delivery time; the sink adds no separate flush timer.
 
-Each `PutLogEvents` request makes at most `1 + max_retries` calls. SDK-level retries are disabled; each attempt times out
-after 10 s and each call after 15 s (`T_call`). Every error is retried. Before retry *n* the sink sleeps a random time in
-[0, min(30 s, 500 ms × 2^(n−1))]. When `create_log_group` or `create_log_stream` is set, a missing log group or stream is
+Each `PutLogEvents` request makes at most `1 + max_retries` calls when it has somewhere to go on failure: a `dlq` is
+configured, or every event in it has an end-to-end acknowledgement set. Otherwise nothing can take a failed request, so
+`max_retries` does not apply and the request is retried until it is delivered or the sink shuts down. The pipeline worker
+waits on it, so an outage applies backpressure to the source instead of dropping events. SDK-level retries are disabled; each
+attempt times out after 10 s and each call after 15 s (`T_call`). Every error is retried except permanent errors
+(`InvalidParameterException` and HTTP 413), which no retry can fix: they end the request after that attempt and take the
+`retriesExhausted` row below. Before retry *n* the sink sleeps a random time in [0, min(30 s, 500 ms × 2^(n−1))]. When `create_log_group` or `create_log_stream` is set, a missing log group or stream is
 created at most once per request and counts as a failed attempt.
 
 An event that cannot be delivered reaches one terminal step:
@@ -145,15 +149,17 @@ An event that cannot be delivered reaches one terminal step:
 If the DLQ write fails, the events are negatively acknowledged (reason `dlqWriteFailed`). This includes a DLQ plugin that
 supplied no writer: its write returns `false` and is handled the same way.
 
-Redrive requires end-to-end acknowledgements. With acknowledgements disabled, every negative acknowledgement above is a drop,
-made visible by `cloudWatchLogsEventsNegativelyAcked`. Redrive is coarse-grained for the supported sources: Kafka seeks the
+Redrive requires end-to-end acknowledgements. With acknowledgements disabled and no DLQ, a retryable failure never reaches
+`retriesExhausted`, because the request is retried until it is delivered. A permanent error, `unexpectedError` or `shutdown`
+is still a drop there, made visible by `cloudWatchLogsEventsNegativelyAcked`. Redrive is coarse-grained for the supported sources: Kafka seeks the
 whole partition back to its last committed offset, and `azure_blob` gives up the whole partition. Without a DLQ, a persistent
 failure that is not `undeliverable` replays the partition indefinitely and duplicates events that were already delivered.
 Operators should alarm on `cloudWatchLogsEventsNegativelyAcked{reason=retriesExhausted}`.
 
 ### Time bounds
 
-Worst-case time for one request, where `C` = 1 if `create_log_group` or `create_log_stream` is true, else 0:
+Worst-case time for one request with a `dlq` or acknowledgements, where `C` = 1 if `create_log_group` or `create_log_stream` is
+true, else 0. Without either, a request has no upper bound during an outage:
 
 `T_send ≤ (1 + max_retries) × T_call + 2 × C × T_call + Σ_{n=1..max_retries} min(30 s, 0.5 s × 2^(n−1))`
 

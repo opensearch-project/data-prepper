@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.dlq.CloudWatchLogsSinkDlqData;
@@ -151,6 +152,19 @@ public class OutcomeHandler {
             LOG.error("Failed to write {} events to the DLQ", pending.size(), e);
             return false;
         }
+    }
+
+    /** Without a DLQ or an acknowledgement set, a negative acknowledgement is a drop. */
+    boolean mustRetryUntilDelivered(final Batch batch) {
+        if (dlqPushHandler != null) {
+            return false;
+        }
+        for (final EventHandle handle : batch.getEventHandles()) {
+            if (!(handle instanceof InternalEventHandle) || !((InternalEventHandle) handle).hasAcknowledgementSet()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void handleResult(final Batch batch, final BatchSender.Result result) {

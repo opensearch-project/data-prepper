@@ -226,7 +226,7 @@ class ParallelFlusherTest {
         if (failure == Failure.BUILD_RUNTIME_EXCEPTION) {
             doThrow(thrown).when(parallelFlusher).buildRequest(batch);
         } else {
-            when(batchSender.send(any())).thenThrow(thrown);
+            when(batchSender.send(any(), anyBoolean())).thenThrow(thrown);
         }
 
         parallelFlusher.runTask(batch);
@@ -255,7 +255,7 @@ class ParallelFlusherTest {
             interruptedDuringRelease.add(Thread.currentThread().isInterrupted());
             return true;
         }));
-        when(batchSender.send(any())).thenAnswer(invocation -> {
+        when(batchSender.send(any(), anyBoolean())).thenAnswer(invocation -> {
             Thread.currentThread().interrupt();
             return BatchSender.Result.failed(new RuntimeException("x"));
         });
@@ -270,7 +270,7 @@ class ParallelFlusherTest {
     @Test
     void runTask_outcomeHandlingThrows_sweepReleasesFalse() {
         final List<EventHandle> handles = handles(2);
-        when(batchSender.send(any())).thenReturn(null);
+        when(batchSender.send(any(), anyBoolean())).thenReturn(null);
 
         assertThrows(NullPointerException.class,
                 () -> flusher(mock(ExecutorService.class), outcomeHandlerFor(DlqMode.OK)).runTask(batchOf("a", handles)));
@@ -290,7 +290,7 @@ class ParallelFlusherTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .thenThrow(new RejectedExecutionException("rejected"));
-        when(batchSender.send(any())).thenReturn(delivered());
+        when(batchSender.send(any(), anyBoolean())).thenReturn(delivered());
         final List<EventHandle> submitted = handles(2);
         final List<EventHandle> rejected = handles(2);
         final Batch submittedBatch = batchOf("a", submitted);
@@ -298,7 +298,7 @@ class ParallelFlusherTest {
 
         flusher(rejectingPool, outcomeHandlerFor(DlqMode.OK)).flush(List.of(submittedBatch, rejectedBatch));
 
-        verify(batchSender, times(1)).send(any());
+        verify(batchSender, times(1)).send(any(), anyBoolean());
         submitted.forEach(handle -> verify(handle, times(1)).release(true));
         rejected.forEach(handle -> verify(handle, times(1)).release(true));
         assertThat(submittedBatch.isSettlementStarted(), equalTo(true));
@@ -314,7 +314,7 @@ class ParallelFlusherTest {
     void flush_taskThrowsExceptionOrStackOverflow_notRethrownSweptFalseCallerTouchesNothing(final Throwable thrown) {
         pool = daemonPool(1);
         final OutcomeHandler outcomeHandler = spy(outcomeHandlerFor(DlqMode.OK));
-        when(batchSender.send(any())).thenReturn(delivered());
+        when(batchSender.send(any(), anyBoolean())).thenReturn(delivered());
         doThrow(thrown).when(outcomeHandler).handleResult(any(), any());
         final List<EventHandle> handles = handles(2);
         final Batch batch = batchOf("a", handles);
@@ -344,7 +344,7 @@ class ParallelFlusherTest {
         }));
         final CountDownLatch slowGate = new CountDownLatch(1);
         final AtomicBoolean slowDone = new AtomicBoolean();
-        when(batchSender.send(any())).thenAnswer(invocation -> {
+        when(batchSender.send(any(), anyBoolean())).thenAnswer(invocation -> {
             final PutLogEventsRequest request = invocation.getArgument(0);
             if (request.logEvents().get(0).message().startsWith("failing")) {
                 throw new OutOfMemoryError("oom");
@@ -391,7 +391,7 @@ class ParallelFlusherTest {
         final Map<String, Integer> sends = new ConcurrentHashMap<>();
         final CountDownLatch poolSaturated = new CountDownLatch(workers);
         final CountDownLatch gate = new CountDownLatch(1);
-        when(batchSender.send(any())).thenAnswer(invocation -> {
+        when(batchSender.send(any(), anyBoolean())).thenAnswer(invocation -> {
             final PutLogEventsRequest request = invocation.getArgument(0);
             maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
             sends.merge(request.logEvents().get(0).message(), 1, Integer::sum);
@@ -441,7 +441,7 @@ class ParallelFlusherTest {
         final CountDownLatch gatedSendEntered = new CountDownLatch(1);
         final CountDownLatch gate = new CountDownLatch(1);
         final AtomicBoolean senderInterrupted = new AtomicBoolean();
-        when(batchSender.send(any())).thenAnswer(invocation -> {
+        when(batchSender.send(any(), anyBoolean())).thenAnswer(invocation -> {
             final PutLogEventsRequest request = invocation.getArgument(0);
             if (request.logEvents().get(0).message().startsWith("gated")) {
                 gatedSendEntered.countDown();
@@ -486,7 +486,7 @@ class ParallelFlusherTest {
         caller.join(TimeUnit.SECONDS.toMillis(WAIT_SECONDS));
 
         assertThat(senderInterrupted.get(), equalTo(false));
-        verify(batchSender, times(2)).send(any());
+        verify(batchSender, times(2)).send(any(), anyBoolean());
         assertThat(releasedOnReturn.get(), equalTo(4));
         assertThat(interruptedOnReturn.get(), equalTo(true));
         assertThat(releasingThreads.stream().filter(name -> !name.startsWith("flusher-pool")).collect(Collectors.toList()), empty());
