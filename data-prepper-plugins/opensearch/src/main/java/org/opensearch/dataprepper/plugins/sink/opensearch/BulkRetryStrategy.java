@@ -307,11 +307,19 @@ public final class BulkRetryStrategy {
             if (attemptNumber % 5 == 1) { 
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
+                    int throttledCount = 0;
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
-                            final ErrorCause error = bulkItemResponse.error();
-                            LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
+                                throttledCount++;
+                            } else {
+                                final ErrorCause error = bulkItemResponse.error();
+                                LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            }
                         }
+                    }
+                    if (throttledCount > 0) {
+                        LOG.warn("Bulk operation throttled for {} documents", throttledCount);
                     }
                 }
             }
@@ -325,6 +333,7 @@ public final class BulkRetryStrategy {
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest, final BulkResponse bulkResponse, final Throwable failure) {
         if (failure == null) {
+            int throttledCount = 0;
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
                     // Skip logging the error for version conflicts when using external versioning
@@ -332,8 +341,15 @@ public final class BulkRetryStrategy {
                     if (isExternalVersioning && error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
                         continue;
                     }
-                    LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
+                    if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
+                        throttledCount++;
+                    } else {
+                        LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
+                    }
                 }
+            }
+            if (throttledCount > 0) {
+                LOG.warn("Bulk operation throttled for {} documents", throttledCount);
             }
             handleFailures(bulkRequest, bulkResponse.items());
         } else {
