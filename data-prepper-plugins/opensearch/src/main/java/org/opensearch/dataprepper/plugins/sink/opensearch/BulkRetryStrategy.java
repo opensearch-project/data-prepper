@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndex;
 import org.opensearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +139,7 @@ public final class BulkRetryStrategy {
     private final Counter documentsDuplicates;
     private final ExistingDocumentQueryManager existingDocumentQueryManager;
     private final boolean isExternalVersioning;
+    private final TimeSeriesIndex timeSeriesIndex;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -170,9 +172,11 @@ public final class BulkRetryStrategy {
                              final String pipelineName,
                              final String pluginName,
                              final ExistingDocumentQueryManager existingDocumentQueryManager,
-                             final boolean isExternalVersioning) {
+                             final boolean isExternalVersioning,
+                             final TimeSeriesIndex timeSeriesIndex) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.isExternalVersioning = isExternalVersioning;
+        this.timeSeriesIndex = timeSeriesIndex;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.successfulOperationsHandler = successfulOperationsHandler;
@@ -248,11 +252,15 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
-            if (isItemInError(bulkItemResponse) && canRetryItem(bulkItemResponse)) {
+            if (isItemInError(bulkItemResponse) && (canRetryItem(bulkItemResponse) || isMissingTimestampError(bulkItemResponse))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean isMissingTimestampError(final BulkResponseItem bulkItemResponse) {
+        return timeSeriesIndex != null && timeSeriesIndex.isMissingTimestampError(bulkItemResponse);
     }
 
     public static boolean canRetry(final Exception e) {
@@ -404,6 +412,16 @@ public final class BulkRetryStrategy {
                 BulkOperationWrapper bulkOperation =
                         (BulkOperationWrapper)request.getOperationAt(index);
                 if (isItemInError(bulkItemResponse)) {
+                    if (isMissingTimestampError(bulkItemResponse)) {
+                        final BulkOperationWrapper operationWithTimestamp =
+                                timeSeriesIndex.addMissingTimestamp(bulkOperation, bulkItemResponse);
+                        if (operationWithTimestamp != null) {
+                            requestToReissue.addOperation(operationWithTimestamp);
+                            index++;
+                            continue;
+                        }
+                    }
+
                     if (existingDocumentQueryManager != null && POTENTIAL_DUPLICATES_ERRORS.contains(bulkItemResponse.status())) {
                         existingDocumentQueryManager.addBulkOperation(bulkOperation);
                         index++;
