@@ -156,13 +156,27 @@ class GenericRecordJsonEncoderTest {
         assertEquals(expectedJson, json);
     }
 
+    
     @Test
     void serialize_WithBytesValue_ReturnsCorrectJson() {
-        // Test for serializing bytes value
+        // Raw bytes are Base64-encoded into a JSON string (not a {"bytes": ...} object)
         GenericRecord record = new GenericData.Record(SCHEMA);
         record.put("rawData", ByteBuffer.wrap(new byte[]{1, 2, 3}));
 
-        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": {\"bytes\": \"\\u0001\\u0002\\u0003\"}, \"suit\": null}";
+        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": \"AQID\", \"suit\": null}";
+
+        String json = encoder.serialize(record);
+
+        assertEquals(expectedJson, json);
+    }
+
+
+    @Test
+    void serialize_WithEmptyBytes_ReturnsEmptyBase64Json() {
+        GenericRecord record = new GenericData.Record(SCHEMA);
+        record.put("rawData", ByteBuffer.wrap(new byte[0]));
+
+        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": \"\", \"suit\": null}";
 
         String json = encoder.serialize(record);
 
@@ -195,32 +209,37 @@ class GenericRecordJsonEncoderTest {
         assertEquals(expectedJson, json);
     }
 
+    
     @Test
-    void serialize_WithBytesContainingSpecialCharacters_ReturnsEscapedJson() {
-        // Test for serializing bytes with special characters
+    void serialize_WithBytesContainingSpecialCharacters_ReturnsBase64Json() {
+        // Binary content that is not valid text is still a plain Base64 JSON string
         GenericRecord record = new GenericData.Record(SCHEMA);
         record.put("rawData", ByteBuffer.wrap(new byte[]{34, 92, 13, 10, 9}));
 
-        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": {\"bytes\": \"\\\"\\\\\\r\\n\\t\"}, \"suit\": null}";
+        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": \"IlwNCgk=\", \"suit\": null}";
 
         String json = encoder.serialize(record);
 
         assertEquals(expectedJson, json);
     }
 
+    
     @ParameterizedTest
-    @ValueSource(doubles = { 3.2, 5.0, 7.8})
-    void serialize_WithBytes_that_can_be_converted_to_big_decimal_Returns_expected_Json(
-            final Double decimalValue
+    @ValueSource(strings = { "3.2", "5.0", "7.8"})
+    void serialize_WithBytes_that_look_like_decimal_Returns_base64_Json(
+            final String decimalLookingUtf8
     ) {
-        // Test for serializing bytes with special characters
+        // UTF-8 bytes that happen to parse as BigDecimal must still be Base64 strings,
+        // not silently coerced to a JSON number (that caused mapping errors).
         GenericRecord record = new GenericData.Record(SCHEMA);
 
-        final ByteBuffer buffer = StandardCharsets.UTF_8.encode(decimalValue.toString());
+        final ByteBuffer buffer = StandardCharsets.UTF_8.encode(decimalLookingUtf8);
         record.put("rawData", buffer);
 
-        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": " +
-                decimalValue + "," +
+        final String expectedBase64 = java.util.Base64.getEncoder()
+                .encodeToString(decimalLookingUtf8.getBytes(StandardCharsets.UTF_8));
+        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": \"" +
+                expectedBase64 + "\"," +
                 " \"suit\": null}";
 
         String json = encoder.serialize(record);
