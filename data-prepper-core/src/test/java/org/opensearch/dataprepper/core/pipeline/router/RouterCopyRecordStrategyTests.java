@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -181,6 +182,32 @@ public class RouterCopyRecordStrategyTests {
 
         Set<Record> recordsOutSet =  recordsOut.stream().collect(Collectors.toSet());
         recordsIn.forEach(recordIn -> assertFalse(recordsOutSet.contains(recordIn)));
+    }
+
+    @Test
+    void test_copy_preserves_standard_span_serialization() {
+        Collection<DataFlowComponent<PipelineConnector>> dataFlowComponents = new ArrayList<>();
+        when(pipelineDataFlowComponent.getComponent()).thenReturn(new PipelineConnector());
+        dataFlowComponents.add(pipelineDataFlowComponent);
+        dataFlowComponents.add(pipelineDataFlowComponent);
+
+        final JacksonStandardSpan span = (JacksonStandardSpan) JacksonStandardSpan.builder()
+                .withTraceId("trace-id")
+                .withSpanId("span-id")
+                .withName("span-name")
+                .withKind("SPAN_KIND_INTERNAL")
+                .withStartTime("2026-10-20T00:00:00Z")
+                .withEndTime("2026-10-20T00:00:01Z")
+                .withAttributes(Map.of("gen_ai.operation.name", "chat"))
+                .build();
+        final Record<JacksonStandardSpan> record = new Record<>(span);
+        final RouterCopyRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
+
+        assertThat(getRecordStrategy.getRecord(record), sameInstance(record));
+        final Record copiedRecord = getRecordStrategy.getRecord(record);
+
+        assertTrue(copiedRecord.getData() instanceof JacksonStandardSpan);
+        assertThat(((JacksonStandardSpan) copiedRecord.getData()).toJsonString(), equalTo(span.toJsonString()));
     }
 
     @Test
