@@ -48,6 +48,10 @@ class GenAiEnrichmentTest {
         when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
         when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(false);
+        when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
+        // These fixtures have non-GenAI roots (e.g. LangGraph.workflow) and test copying onto them.
+        when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.ALL_ROOTS);
 
         final PipelineDescription pipelineDescription = mock(PipelineDescription.class);
 

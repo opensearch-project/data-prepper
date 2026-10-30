@@ -75,7 +75,20 @@ final class GenAiCoverage {
         return spanIds == null ? Collections.emptySet() : spanIds;
     }
 
+    /** Number of traces in the cache. */
     long estimatedSize() {
         return coveredByTrace == null ? 0 : coveredByTrace.estimatedSize();
+    }
+
+    /** Number of span ids in the cache, the unit of {@code genai_coverage_cache_max_size}. */
+    long spanIdCount() {
+        if (coveredByTrace == null) {
+            return 0;
+        }
+        // The weighted size is updated asynchronously; apply pending writes so the count is current.
+        coveredByTrace.cleanUp();
+        return coveredByTrace.policy().eviction()
+                .map(eviction -> eviction.weightedSize().orElse(0L))
+                .orElse(0L);
     }
 }

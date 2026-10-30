@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
@@ -24,12 +25,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.oteltrace.GenAiEnrichmentHelper.DERIVED_GEN_AI_IS_ROOT_KEY;
 
@@ -58,7 +62,7 @@ class GenAiAgentRootTest {
     void aggregatesDescendantTokensOntoTheAgentRootWithoutDoubleCountingTheTraceRoot() {
         final List<Span> spans = httpAgentTrace();
 
-        GenAiEnrichmentHelper.enrichBatch(spans);
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
 
         final Map<String, Object> agent = byId(spans, "agent").getAttributes();
         assertEquals(15L, ((Number) agent.get("gen_ai.usage.input_tokens")).longValue());
@@ -76,7 +80,7 @@ class GenAiAgentRootTest {
         // Inner agent first in the batch: first-child-wins would pick it.
         Collections.reverse(spans);
 
-        GenAiEnrichmentHelper.enrichBatch(spans);
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
 
         assertEquals("Travel Planner", byId(spans, "http").getAttributes().get("gen_ai.agent.name"));
     }
@@ -96,7 +100,7 @@ class GenAiAgentRootTest {
                 "gen_ai.operation.name", "chat",
                 "gen_ai.usage.input_tokens", 5L, "gen_ai.usage.output_tokens", 3L)));
 
-        GenAiEnrichmentHelper.enrichBatch(spans);
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
 
         final Map<String, Object> root = byId(spans, "http").getAttributes();
         assertEquals(15L, ((Number) root.get("gen_ai.usage.input_tokens")).longValue());
@@ -122,7 +126,7 @@ class GenAiAgentRootTest {
                 "gen_ai.operation.name", "chat",
                 "gen_ai.usage.input_tokens", 5L, "gen_ai.usage.output_tokens", 3L)));
 
-        GenAiEnrichmentHelper.enrichBatch(spans);
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
 
         assertEquals(List.of("agent"), markedSpanIds(spans));
         for (final String id : List.of("agent", "http")) {
@@ -266,12 +270,7 @@ class GenAiAgentRootTest {
 
     @Test
     void doesNotMarkALateChildThroughTheProcessor() {
-        final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
-        when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
-        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
-        final OTelTraceRawProcessor processor =
-                new OTelTraceRawProcessor(config, mock(PipelineDescription.class), mock(PluginMetrics.class));
+        final OTelTraceRawProcessor processor = processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class));
 
         final List<Span> spans = httpAgentTrace();
         final Span lateChat = spans.remove(spans.size() - 1);
@@ -290,12 +289,7 @@ class GenAiAgentRootTest {
 
     @Test
     void marksTheAgentSpanThroughTheProcessorWhenTheRootArrivesLast() {
-        final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
-        when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
-        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
-        final OTelTraceRawProcessor processor =
-                new OTelTraceRawProcessor(config, mock(PipelineDescription.class), mock(PluginMetrics.class));
+        final OTelTraceRawProcessor processor = processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class));
 
         final List<Span> spans = httpAgentTrace();
         final Span root = spans.remove(0);
@@ -333,7 +327,7 @@ class GenAiAgentRootTest {
         spans.add(span("early", "http", "2026-01-01T00:00:01Z", Map.of(
                 "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Early Agent")));
 
-        GenAiEnrichmentHelper.enrichBatch(spans);
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
 
         assertEquals("Early Agent", byId(spans, "http").getAttributes().get("gen_ai.agent.name"));
         assertEquals(List.of("early", "late"), markedSpanIds(spans));
@@ -394,6 +388,278 @@ class GenAiAgentRootTest {
 
         assertEquals(Map.of("http.method", "POST"), byId(spans, "http").getAttributes());
         assertEquals(0, coverage.estimatedSize());
+    }
+
+    @Test
+    void doesNotCopyAgentDataOntoANonGenAiRootByDefault() {
+        final List<Span> spans = httpAgentTrace();
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        // The HTTP span keeps its own attributes; the marked agent span carries the agent data.
+        assertEquals(Map.of("http.method", "POST"), byId(spans, "http").getAttributes());
+        final Map<String, Object> agent = byId(spans, "agent").getAttributes();
+        assertEquals(true, agent.get(DERIVED_GEN_AI_IS_ROOT_KEY));
+        assertEquals(15L, ((Number) agent.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void copiesOntoAGenAiRootByDefault() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+        spans.add(span("chat", "agent", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.request.model", "claude",
+                "gen_ai.usage.input_tokens", 10L, "gen_ai.usage.output_tokens", 4L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> root = byId(spans, "agent").getAttributes();
+        assertEquals("claude", root.get("gen_ai.request.model"));
+        assertEquals(10L, ((Number) root.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void copiesOntoARootMarkedAtTheSourceByDefault() {
+        final List<Span> spans = httpAgentTrace();
+        spans.set(0, span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST", DERIVED_GEN_AI_IS_ROOT_KEY, true)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> http = byId(spans, "http").getAttributes();
+        assertEquals("Travel Planner", http.get("gen_ai.agent.name"));
+        assertEquals(15L, ((Number) http.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void copiesNoAttributesWithPropagationNone() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+        spans.add(span("chat", "agent", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.request.model", "claude", "gen_ai.usage.input_tokens", 10L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.NONE);
+
+        final Map<String, Object> root = byId(spans, "agent").getAttributes();
+        assertNull(root.get("gen_ai.request.model"));
+        // Marking does not depend on propagation: the marked agent root still gets its
+        // descendants' token totals.
+        assertEquals(true, root.get(DERIVED_GEN_AI_IS_ROOT_KEY));
+        assertEquals(10L, ((Number) root.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void copiesOntoANonGenAiRootWithPropagationAllRoots() {
+        final List<Span> spans = httpAgentTrace();
+
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
+
+        final Map<String, Object> http = byId(spans, "http").getAttributes();
+        assertEquals("Travel Planner", http.get("gen_ai.agent.name"));
+        assertEquals(15L, ((Number) http.get("gen_ai.usage.input_tokens")).longValue());
+        assertNull(http.get(DERIVED_GEN_AI_IS_ROOT_KEY));
+    }
+
+    @Test
+    void processor_withEnrichmentDisabled_leavesGenAiSpansUnchanged() {
+        final List<Span> spans = vendorAgentTrace();
+        final Map<String, Map<String, Object>> before = spans.stream()
+                .collect(Collectors.toMap(Span::getSpanId, s -> new HashMap<>(s.getAttributes())));
+
+        final List<Span> out = execute(processor(false, GenAiRootPropagation.ALL_ROOTS, mock(PluginMetrics.class)), spans);
+
+        assertEquals(spans.size(), out.size());
+        for (final Span span : out) {
+            assertEquals(before.get(span.getSpanId()), span.getAttributes(), span.getSpanId());
+        }
+    }
+
+    @Test
+    void processor_withEnrichmentDisabled_keepsNoCoverage() {
+        final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        final OTelTraceRawProcessor processor = processor(false, GenAiRootPropagation.AI_ROOT, pluginMetrics);
+
+        execute(processor, httpAgentTrace());
+
+        assertEquals(0.0, gauge(pluginMetrics, OTelTraceRawProcessor.GENAI_COVERAGE_COUNT_METRIC_NAME));
+        assertEquals(0.0, gauge(pluginMetrics, OTelTraceRawProcessor.GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME));
+    }
+
+    @Test
+    void processor_withEnrichmentEnabled_normalizesStripsAndMarks() {
+        final List<Span> out = execute(processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class)), vendorAgentTrace());
+
+        assertEquals(List.of("agent"), markedSpanIds(out));
+        final Map<String, Object> chat = byId(out, "chat").getAttributes();
+        assertEquals(12L, ((Number) chat.get("gen_ai.usage.input_tokens")).longValue());
+        assertEquals("gpt-4o", chat.get("gen_ai.request.model"));
+        assertFalse(chat.containsKey("llm.input_messages.0.message.content"));
+        assertEquals(Map.of("http.method", "POST"), byId(out, "http").getAttributes());
+    }
+
+    @Test
+    void processor_withEnrichmentEnabled_reportsCoveredTracesAndSpanIds() {
+        final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        final OTelTraceRawProcessor processor = processor(true, GenAiRootPropagation.AI_ROOT, pluginMetrics);
+
+        execute(processor, httpAgentTrace());
+
+        assertEquals(1.0, gauge(pluginMetrics, OTelTraceRawProcessor.GENAI_COVERAGE_COUNT_METRIC_NAME));
+        // The agent and its three descendants; the HTTP root is not covered by a GenAI span.
+        assertEquals(4.0, gauge(pluginMetrics, OTelTraceRawProcessor.GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME));
+    }
+
+    @Test
+    void processor_withAiRootPropagation_leavesTheHttpRootUnchanged() {
+        final List<Span> out = execute(processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class)), httpAgentTrace());
+
+        assertEquals(Map.of("http.method", "POST"), byId(out, "http").getAttributes());
+        assertEquals(List.of("agent"), markedSpanIds(out));
+    }
+
+    @Test
+    void processor_withAllRootsPropagation_copiesOntoTheHttpRoot() {
+        final List<Span> out = execute(processor(true, GenAiRootPropagation.ALL_ROOTS, mock(PluginMetrics.class)), httpAgentTrace());
+
+        final Map<String, Object> http = byId(out, "http").getAttributes();
+        assertEquals("Travel Planner", http.get("gen_ai.agent.name"));
+        assertEquals(15L, ((Number) http.get("gen_ai.usage.input_tokens")).longValue());
+        assertEquals(List.of("agent"), markedSpanIds(out));
+    }
+
+    @Test
+    void processor_withNonePropagation_copiesOntoNoRootButStillMarks() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+        spans.add(span("chat", "agent", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.request.model", "claude", "gen_ai.usage.input_tokens", 10L)));
+
+        final List<Span> out = execute(processor(true, GenAiRootPropagation.NONE, mock(PluginMetrics.class)), spans);
+
+        final Map<String, Object> root = byId(out, "agent").getAttributes();
+        assertNull(root.get("gen_ai.request.model"));
+        assertEquals(true, root.get(DERIVED_GEN_AI_IS_ROOT_KEY));
+        assertEquals(10L, ((Number) root.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void processor_withNoPropagationConfigured_defaultsToAiRoot() {
+        final List<Span> out = execute(processor(true, null, mock(PluginMetrics.class)), httpAgentTrace());
+
+        assertEquals(Map.of("http.method", "POST"), byId(out, "http").getAttributes());
+        assertEquals(List.of("agent"), markedSpanIds(out));
+    }
+
+    @Test
+    void copiesOntoAGenAiRootThatIsSetToFalseAtTheSource() {
+        // Opting a span out of the marker does not stop it being its trace's GenAI root.
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", DERIVED_GEN_AI_IS_ROOT_KEY, false)));
+        spans.add(span("chat", "agent", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "chat", "gen_ai.request.model", "claude", "gen_ai.usage.input_tokens", 10L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        final Map<String, Object> root = byId(spans, "agent").getAttributes();
+        assertEquals("claude", root.get("gen_ai.request.model"));
+        assertEquals(false, root.get(DERIVED_GEN_AI_IS_ROOT_KEY));
+        assertEquals(List.of(), markedSpanIds(spans));
+    }
+
+    @Test
+    void keepsTheRootsOwnAttributesWithPropagationAllRoots() {
+        final List<Span> spans = httpAgentTrace();
+        spans.set(0, span("http", "", "2026-01-01T00:00:00Z", Map.of(
+                "http.method", "POST", "gen_ai.agent.name", "Gateway", "gen_ai.usage.input_tokens", 1L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, GenAiRootPropagation.ALL_ROOTS);
+
+        final Map<String, Object> http = byId(spans, "http").getAttributes();
+        assertEquals("Gateway", http.get("gen_ai.agent.name"));
+        assertEquals(1L, ((Number) http.get("gen_ai.usage.input_tokens")).longValue());
+    }
+
+    @Test
+    void copiesNothingOntoASingleSpanTraceInAnyMode() {
+        for (final GenAiRootPropagation propagation : GenAiRootPropagation.values()) {
+            final List<Span> spans = new ArrayList<>();
+            spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+
+            GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, propagation);
+
+            assertEquals(Map.of("gen_ai.operation.name", "invoke_agent", DERIVED_GEN_AI_IS_ROOT_KEY, true),
+                    spans.get(0).getAttributes(), propagation.toString());
+        }
+    }
+
+    @Test
+    void copiesOntoAGenAiRootInEveryModeButNone() {
+        for (final GenAiRootPropagation propagation : GenAiRootPropagation.values()) {
+            final List<Span> spans = new ArrayList<>();
+            spans.add(span("agent", "", "2026-01-01T00:00:00Z", Map.of("gen_ai.operation.name", "invoke_agent")));
+            spans.add(span("chat", "agent", "2026-01-01T00:00:01Z", Map.of(
+                    "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai")));
+
+            GenAiEnrichmentHelper.enrichBatch(spans, GenAiCoverage.NONE, propagation);
+
+            final Object provider = byId(spans, "agent").getAttributes().get("gen_ai.provider.name");
+            assertEquals(propagation == GenAiRootPropagation.NONE ? null : "openai", provider, propagation.toString());
+        }
+    }
+
+    @Test
+    void doesNotCopyOntoAnyRootOfParallelAgentsByDefault() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("agentA", "http", "2026-01-01T00:00:01Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "A", "gen_ai.usage.input_tokens", 3L)));
+        spans.add(span("agentB", "http", "2026-01-01T00:00:02Z", Map.of(
+                "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "B", "gen_ai.usage.input_tokens", 4L)));
+
+        GenAiEnrichmentHelper.enrichBatch(spans);
+
+        assertEquals(Map.of("http.method", "POST"), byId(spans, "http").getAttributes());
+        assertEquals(List.of("agentA", "agentB"), markedSpanIds(spans));
+        assertEquals("A", byId(spans, "agentA").getAttributes().get("gen_ai.agent.name"));
+        assertEquals("B", byId(spans, "agentB").getAttributes().get("gen_ai.agent.name"));
+    }
+
+    /** POST /chat > OpenInference AGENT > LLM, with a JSON string and its flattened sub-keys. */
+    private static List<Span> vendorAgentTrace() {
+        final List<Span> spans = new ArrayList<>();
+        spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));
+        spans.add(span("agent", "http", "2026-01-01T00:00:01Z", Map.of("openinference.span.kind", "AGENT")));
+        spans.add(span("chat", "agent", "2026-01-01T00:00:02Z", Map.of(
+                "openinference.span.kind", "LLM",
+                "llm.model_name", "gpt-4o",
+                "llm.token_count.prompt", 12L,
+                "llm.input_messages", "[{\"role\":\"user\",\"content\":\"hi\"}]",
+                "llm.input_messages.0.message.content", "hi")));
+        return spans;
+    }
+
+    private static OTelTraceRawProcessor processor(final boolean enrichmentEnabled, final GenAiRootPropagation propagation,
+                                                   final PluginMetrics pluginMetrics) {
+        final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
+        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(!enrichmentEnabled);
+        when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
+        when(config.getGenAiRootPropagation()).thenReturn(propagation);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        return new OTelTraceRawProcessor(config, mock(PipelineDescription.class), pluginMetrics);
+    }
+
+    private static List<Span> execute(final OTelTraceRawProcessor processor, final List<Span> spans) {
+        return processor.doExecute(records(spans)).stream().map(Record::getData).collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static double gauge(final PluginMetrics pluginMetrics, final String name) {
+        final ArgumentCaptor<Object> measured = ArgumentCaptor.forClass(Object.class);
+        final ArgumentCaptor<ToDoubleFunction> function = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(name), measured.capture(), function.capture());
+        return function.getValue().applyAsDouble(measured.getValue());
     }
 
     private static List<Span> httpAgentTrace() {

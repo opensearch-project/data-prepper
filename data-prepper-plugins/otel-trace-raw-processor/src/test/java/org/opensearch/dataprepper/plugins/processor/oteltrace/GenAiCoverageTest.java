@@ -89,4 +89,47 @@ class GenAiCoverageTest {
         assertThat(secondRanEarly.get(), is(false));
         assertThat(coverage.covered("trace"), equalTo(Set.of("agent", "child")));
     }
+
+    @Test
+    void spanIdCount_countsSpanIdsAcrossTraces_andEstimatedSizeCountsTraces() {
+        final GenAiCoverage coverage = GenAiCoverage.create(100, Duration.ofMinutes(1));
+
+        coverage.update("trace1", known -> Set.of("a", "b", "c"));
+        coverage.update("trace2", known -> Set.of("d"));
+        coverage.update("trace1", known -> Set.of("e"));
+
+        assertThat(coverage.estimatedSize(), equalTo(2L));
+        assertThat(coverage.spanIdCount(), equalTo(5L));
+    }
+
+    @Test
+    void spanIdCount_onNone_isZero() {
+        assertThat(GenAiCoverage.NONE.spanIdCount(), equalTo(0L));
+    }
+
+    @Test
+    void update_withNoNewSpanIds_keepsTheEntryUnchanged() {
+        final GenAiCoverage coverage = GenAiCoverage.create(100, Duration.ofMinutes(1));
+
+        coverage.update("trace", known -> Set.of("a", "b"));
+        coverage.update("trace", known -> Set.of("a"));
+        coverage.update("other", known -> Set.of());
+
+        assertThat(coverage.covered("trace"), equalTo(Set.of("a", "b")));
+        assertThat(coverage.covered("other"), is(empty()));
+        assertThat(coverage.spanIdCount(), equalTo(2L));
+    }
+
+    @Test
+    void update_withANullTraceId_runsWithNothingKnownAndKeepsNothing() {
+        final GenAiCoverage coverage = GenAiCoverage.create(100, Duration.ofMinutes(1));
+
+        coverage.update(null, known -> {
+            assertThat(known, is(empty()));
+            return Set.of("a");
+        });
+
+        assertThat(coverage.covered(null), is(empty()));
+        assertThat(coverage.estimatedSize(), equalTo(0L));
+    }
 }
