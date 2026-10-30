@@ -127,18 +127,18 @@ public class BatchSender {
             failCount++;
             countFailedAttempt(failure, failCount);
             if (isPermanent(failure)) {
-                return failed(request, lastException);
+                return permanentFailure(request, lastException);
             }
             if (failure instanceof ResourceNotFoundException) {
                 if (!createLogGroup && !createLogStream) {
                     cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
+                    return permanentFailure(request, lastException);
                 } else if (resourceCreationAttempted) {
                     cloudWatchLogsMetrics.increaseResourceNotFoundAfterCreateCounter(1);
                 } else if (closed) {
                     return shutdown(request, lastException);
                 } else {
-                    resourceCreationAttempted = true;
-                    createResources(request);
+                    resourceCreationAttempted = createResources(request);
                 }
             }
         }
@@ -189,7 +189,7 @@ public class BatchSender {
         return "unclassified";
     }
 
-    static boolean isPermanent(final Exception e) {
+    private static boolean isPermanent(final Exception e) {
         return e instanceof InvalidParameterException
                 || (e instanceof AwsServiceException && ((AwsServiceException) e).statusCode() == REQUEST_TOO_LARGE_STATUS);
     }
@@ -201,9 +201,10 @@ public class BatchSender {
         return ase.awsErrorDetails().errorCode().contains("AccessDenied");
     }
 
-    private void createResources(final PutLogEventsRequest request) {
+    private boolean createResources(final PutLogEventsRequest request) {
         final String logGroupName = request.logGroupName();
         final String logStreamName = request.logStreamName();
+        boolean succeeded = true;
         if (createLogGroup) {
             try {
                 cloudWatchLogsClient.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroupName).build());
@@ -212,6 +213,7 @@ public class BatchSender {
                 LOG.debug("Log group already exists: {}", logGroupName);
             } catch (final Exception e) {
                 countResourceCreationFailure(e, "log group", logGroupName);
+                succeeded = false;
             }
         }
         if (createLogStream) {
@@ -225,8 +227,10 @@ public class BatchSender {
                 LOG.debug("Log stream already exists: {}/{}", logGroupName, logStreamName);
             } catch (final Exception e) {
                 countResourceCreationFailure(e, "log stream", logGroupName + "/" + logStreamName);
+                succeeded = false;
             }
         }
+        return succeeded;
     }
 
     private void countResourceCreationFailure(final Exception e, final String resourceType, final String resourceName) {
@@ -256,6 +260,11 @@ public class BatchSender {
         return Result.failed(lastException);
     }
 
+    private Result permanentFailure(final PutLogEventsRequest request, final Exception lastException) {
+        cloudWatchLogsMetrics.increaseLogEventFailCounter(request.logEvents().size());
+        return Result.permanentFailure(lastException);
+    }
+
     private Result shutdown(final PutLogEventsRequest request, final Exception lastException) {
         cloudWatchLogsMetrics.increaseLogEventFailCounter(request.logEvents().size());
         return Result.shutdown(lastException);
@@ -264,7 +273,7 @@ public class BatchSender {
     @Getter
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Result {
-        public enum Status { DELIVERED, FAILED, SHUTDOWN }
+        public enum Status { DELIVERED, FAILED, PERMANENT_FAILURE, SHUTDOWN }
 
         private final Status status;
         /** The 2xx response; only set for {@link Status#DELIVERED}. */
@@ -278,6 +287,10 @@ public class BatchSender {
 
         static Result failed(final Exception lastException) {
             return new Result(Status.FAILED, null, lastException);
+        }
+
+        static Result permanentFailure(final Exception lastException) {
+            return new Result(Status.PERMANENT_FAILURE, null, lastException);
         }
 
         static Result shutdown(final Exception lastException) {

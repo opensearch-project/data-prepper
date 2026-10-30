@@ -55,14 +55,17 @@ public class CloudWatchLogsMetrics {
     public static final String REASON_UNDELIVERABLE = "undeliverable";
     public static final String REASON_REJECTED = "rejected";
     public static final String REASON_RETRIES_EXHAUSTED = "retriesExhausted";
+    public static final String REASON_PERMANENT_FAILURE = "permanentFailure";
     public static final String REASON_UNEXPECTED_ERROR = "unexpectedError";
     public static final String REASON_SHUTDOWN = "shutdown";
     public static final String REASON_DLQ_WRITE_FAILED = "dlqWriteFailed";
     static final List<String> RELEASED_WITHOUT_DELIVERY_REASONS = List.of(REASON_UNDELIVERABLE, REASON_REJECTED);
     static final List<String> SENT_TO_DLQ_REASONS =
-            List.of(REASON_UNDELIVERABLE, REASON_REJECTED, REASON_RETRIES_EXHAUSTED, REASON_UNEXPECTED_ERROR, REASON_SHUTDOWN);
+            List.of(REASON_UNDELIVERABLE, REASON_REJECTED, REASON_RETRIES_EXHAUSTED, REASON_PERMANENT_FAILURE, REASON_UNEXPECTED_ERROR,
+                    REASON_SHUTDOWN);
     static final List<String> NEGATIVELY_ACKED_REASONS =
-            List.of(REASON_RETRIES_EXHAUSTED, REASON_UNEXPECTED_ERROR, REASON_DLQ_WRITE_FAILED, REASON_SHUTDOWN);
+            List.of(REASON_RETRIES_EXHAUSTED, REASON_PERMANENT_FAILURE, REASON_UNEXPECTED_ERROR, REASON_DLQ_WRITE_FAILED,
+                    REASON_SHUTDOWN);
     private final Counter logEventSuccessCounter;
     private final Counter logEventFailCounter;
     private final Counter requestSuccessCount;

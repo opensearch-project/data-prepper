@@ -1050,6 +1050,22 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
+    void doOutput_takeReadyThrows_oversizedEventStillTakesUndeliverableTerminalStep() throws Exception {
+        setThreshold("maxEventSize", ByteCount.parse("100b"));
+        final Record<Event> oversized = record(OVERSIZED_MESSAGE);
+        final CloudWatchLogsSink sink;
+        try (MockedConstruction<CloudWatchLogsService> serviceMock = mockConstruction(CloudWatchLogsService.class,
+                (mock, context) -> doThrow(new RuntimeException("unexpected")).when(mock).takeReady(any()))) {
+            sink = createSink(pool(2), DlqMode.NONE);
+        }
+
+        sink.doOutput(List.of(oversized));
+
+        assertReleasedOnce(handleOf(oversized), true);
+        assertThat(dispositions(), equalTo(Map.of("releasedWithoutDelivery:undeliverable", 1)));
+    }
+
+    @Test
     void doOutput_recordWithNullEventAndSubmitThrows_returnsNormallyOthersReleasedOnce() throws Exception {
         setThreshold("batchSize", 1);
         final ThreadPoolExecutor pool = spyPool(2);

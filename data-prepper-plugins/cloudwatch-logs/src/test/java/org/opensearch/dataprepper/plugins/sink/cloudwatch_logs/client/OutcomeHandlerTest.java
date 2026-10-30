@@ -58,6 +58,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_DLQ_WRITE_FAILED;
+import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_PERMANENT_FAILURE;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_REJECTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_RETRIES_EXHAUSTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_SHUTDOWN;
@@ -203,6 +204,18 @@ class OutcomeHandlerTest {
             default:
                 return Set.of(0, 1, 2, 3);
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(DlqMode.class)
+    void handleResult_failedWithPermanentError_countedAsPermanentFailure(final DlqMode dlqMode) {
+        final OutcomeHandler outcomeHandler = handlerFor(dlqMode);
+        final Batch batch = batchOf(handles(BATCH_SIZE));
+
+        outcomeHandler.handleResult(batch,
+                BatchSender.Result.permanentFailure(new RuntimeException(LAST_EXCEPTION_MESSAGE)));
+
+        assertThat(dispositions(), equalTo(expectedTerminal(REASON_PERMANENT_FAILURE, false, dlqMode, BATCH_SIZE)));
     }
 
     @ParameterizedTest

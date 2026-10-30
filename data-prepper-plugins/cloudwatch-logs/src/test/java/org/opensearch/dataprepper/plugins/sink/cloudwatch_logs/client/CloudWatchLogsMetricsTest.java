@@ -131,10 +131,10 @@ class CloudWatchLogsMetricsTest {
         final String sentToDlq = "cloudWatchLogsEventsSentToDlq/reason=";
         final Set<String> expected = Set.of(
                 released + "undeliverable", released + "rejected",
-                negativelyAcked + "retriesExhausted", negativelyAcked + "unexpectedError", negativelyAcked + "dlqWriteFailed",
-                negativelyAcked + "shutdown",
-                sentToDlq + "undeliverable", sentToDlq + "rejected", sentToDlq + "retriesExhausted", sentToDlq + "unexpectedError",
-                sentToDlq + "shutdown");
+                negativelyAcked + "retriesExhausted", negativelyAcked + "permanentFailure", negativelyAcked + "unexpectedError",
+                negativelyAcked + "dlqWriteFailed", negativelyAcked + "shutdown",
+                sentToDlq + "undeliverable", sentToDlq + "rejected", sentToDlq + "retriesExhausted", sentToDlq + "permanentFailure",
+                sentToDlq + "unexpectedError", sentToDlq + "shutdown");
 
         assertThat(taggedKeys(), equalTo(expected));
     }

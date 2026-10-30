@@ -262,34 +262,36 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 }
             }
 
-            processLock.lock();
             try {
-                if (batchSender.isClosed()) {
-                    for (final SerializedEvent serialized : deliverable) {
-                        refused.add(new OutcomeHandler.FailedEvent(serialized.event.getEventHandle(), serialized.message, null));
-                    }
-                } else {
-                    for (final SerializedEvent serialized : deliverable) {
-                        final EventHandle eventHandle = serialized.event.getEventHandle();
-                        addInProgress = eventHandle;
-                        try {
-                            cloudWatchLogsService.add(serialized.event, serialized.bytes, batches);
-                            ownedByBuffer.add(eventHandle);
-                        } catch (final Exception | StackOverflowError e) {
-                            LOG.error("Failed to buffer an event", e);
-                            unexpected.add(new OutcomeHandler.FailedEvent(eventHandle, serialized.message, e.getMessage()));
+                processLock.lock();
+                try {
+                    if (batchSender.isClosed()) {
+                        for (final SerializedEvent serialized : deliverable) {
+                            refused.add(new OutcomeHandler.FailedEvent(serialized.event.getEventHandle(), serialized.message, null));
                         }
-                        addInProgress = null;
+                    } else {
+                        for (final SerializedEvent serialized : deliverable) {
+                            final EventHandle eventHandle = serialized.event.getEventHandle();
+                            addInProgress = eventHandle;
+                            try {
+                                cloudWatchLogsService.add(serialized.event, serialized.bytes, batches);
+                                ownedByBuffer.add(eventHandle);
+                            } catch (final Exception | StackOverflowError e) {
+                                LOG.error("Failed to buffer an event", e);
+                                unexpected.add(new OutcomeHandler.FailedEvent(eventHandle, serialized.message, e.getMessage()));
+                            }
+                            addInProgress = null;
+                        }
+                        cloudWatchLogsService.takeReady(batches);
                     }
-                    cloudWatchLogsService.takeReady(batches);
+                } finally {
+                    processLock.unlock();
                 }
             } finally {
-                processLock.unlock();
+                outcomeHandler.terminalStep(released, OutcomeHandler.Reason.UNDELIVERABLE, undeliverable);
+                outcomeHandler.terminalStep(released, OutcomeHandler.Reason.UNEXPECTED_ERROR, unexpected);
+                outcomeHandler.terminalStep(released, OutcomeHandler.Reason.SHUTDOWN, refused);
             }
-
-            outcomeHandler.terminalStep(released, OutcomeHandler.Reason.UNDELIVERABLE, undeliverable);
-            outcomeHandler.terminalStep(released, OutcomeHandler.Reason.UNEXPECTED_ERROR, unexpected);
-            outcomeHandler.terminalStep(released, OutcomeHandler.Reason.SHUTDOWN, refused);
             parallelFlusher.flush(batches);
         } catch (final Exception | StackOverflowError e) {
             LOG.error("Unexpected error in doOutput; settling every event this call still owns", e);

@@ -206,7 +206,7 @@ class BatchSenderTest {
         for (final boolean retryUntilDelivered : new boolean[] {false, true}) {
             final BatchSender.Result result = createSender(5, false, false).send(request, retryUntilDelivered);
 
-            assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
+            assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.PERMANENT_FAILURE));
             assertThat(result.getLastException(), sameInstance(exception));
         }
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
@@ -294,14 +294,17 @@ class BatchSenderTest {
     }
 
     @Test
-    void send_resourceNotFoundWithoutCreateFlags_ordinaryRetryableFailure() {
+    void send_resourceNotFoundWithoutCreateFlags_permanentFailureAfterOneAttemptInBothModes() throws InterruptedException {
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(resourceNotFound());
 
-        final BatchSender.Result result = createSender(3, false, false).send(request, false);
+        for (final boolean retryUntilDelivered : new boolean[] {false, true}) {
+            final BatchSender.Result result = createSender(3, false, false).send(request, retryUntilDelivered);
 
-        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.FAILED));
-        verify(client, times(4)).putLogEvents(any(PutLogEventsRequest.class));
-        verify(metrics, times(4)).increaseResourceNotFoundCounter(1);
+            assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.PERMANENT_FAILURE));
+        }
+        verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(metrics, times(2)).increaseResourceNotFoundCounter(1);
+        verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
         verify(client, never()).createLogGroup(any(CreateLogGroupRequest.class));
         verify(client, never()).createLogStream(any(CreateLogStreamRequest.class));
     }
@@ -341,6 +344,24 @@ class BatchSenderTest {
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(client).createLogStream(any(CreateLogStreamRequest.class));
         verify(metrics, times(1)).increaseRequestFailCounter(1);
+    }
+
+    @Test
+    void send_creationFailed_retriedOnNextResourceNotFound() {
+        when(client.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(resourceNotFound())
+                .thenThrow(resourceNotFound())
+                .thenReturn(PutLogEventsResponse.builder().build());
+        when(client.createLogGroup(any(CreateLogGroupRequest.class)))
+                .thenThrow(cloudWatchLogsException("ThrottlingException"))
+                .thenReturn(null);
+
+        final BatchSender.Result result = createSender(5, true, false).send(request, false);
+
+        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
+        verify(client, times(2)).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(client, times(3)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(metrics, never()).increaseResourceNotFoundAfterCreateCounter(anyInt());
     }
 
     @Test

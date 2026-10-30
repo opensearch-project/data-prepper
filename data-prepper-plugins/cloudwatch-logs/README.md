@@ -134,9 +134,11 @@ configured, or every event in it has an end-to-end acknowledgement set. Otherwis
 `max_retries` does not apply and the request is retried until it is delivered or the sink shuts down. The pipeline worker
 waits on it, so an outage applies backpressure to the source instead of dropping events. SDK-level retries are disabled; each
 attempt times out after 10 s and each call after 15 s (`T_call`). Every error is retried except permanent errors
-(`InvalidParameterException` and HTTP 413), which no retry can fix: they end the request after that attempt and take the
-`retriesExhausted` row below. Before retry *n* the sink sleeps a random time in [0, min(30 s, 500 ms × 2^(n−1))]. When `create_log_group` or `create_log_stream` is set, a missing log group or stream is
-created at most once per request and counts as a failed attempt.
+(`InvalidParameterException`, HTTP 413, and a missing log group or stream when neither `create_log_group` nor
+`create_log_stream` is set), which no retry can fix: they end the request after that attempt and take the
+`permanentFailure` row below. Before retry *n* the sink sleeps a random time in [0, min(30 s, 500 ms × 2^(n−1))]. When `create_log_group` or `create_log_stream` is set, a missing log group or stream is
+created on the first `ResourceNotFoundException` of a request and counts as a failed attempt. A creation that fails is
+retried on the next `ResourceNotFoundException`; a successful one is not repeated.
 
 An event that cannot be delivered reaches one terminal step:
 
@@ -144,7 +146,7 @@ An event that cannot be delivered reaches one terminal step:
 |---|---|---|
 | `undeliverable` (larger than `max_event_size`) | written to the DLQ | dropped (`release(true)`) |
 | `rejected` (in `rejectedLogEventsInfo`) | written to the DLQ | dropped (`release(true)`) |
-| `retriesExhausted`, `unexpectedError`, `shutdown` | written to the DLQ | negatively acknowledged (`release(false)`), so the source redrives it |
+| `retriesExhausted`, `permanentFailure`, `unexpectedError`, `shutdown` | written to the DLQ | negatively acknowledged (`release(false)`), so the source redrives it |
 
 If the DLQ write fails, the events are negatively acknowledged (reason `dlqWriteFailed`). This includes a DLQ plugin that
 supplied no writer: its write returns `false` and is handled the same way.
@@ -178,7 +180,7 @@ Set the source acknowledgement timeout to at least `T_event` for your configurat
 (Kafka's default is effectively unbounded). An acknowledgement set that expires while the sink still holds its events causes a
 redrive, which duplicates events. With `invokeCallbackOnExpiry`, a later release can invoke the callback a second time.
 
-Note for Bifrost (`max_retries` 15, `create_log_stream` true, `T_call` 15 s), during a full outage: `T_send` is about 9.5 min
+For example, with `max_retries` 15, `create_log_stream` true and `T_call` 15 s, during a full outage: `T_send` is about 9.5 min
 worst case and about 2.5 min when errors return quickly. There is no fail-fast across batches, so every batch spends its full
 `T_send`, and at full cardinality `T_event` can reach many hours (`ceil(B / workers)` = 10 already gives about 95 min). For
 Kafka this only delays the redrive. `azure_blob`'s acknowledgement timeout (about 2 h) can expire first and cause duplicate
@@ -209,8 +211,8 @@ sink call throws an `Error`, it runs on a sink thread, and core then waits its f
 
 * `cloudWatchLogsEventsSucceeded` - The number of log events successfully published to CloudWatch Logs. Events rejected in `rejectedLogEventsInfo` are not counted here.
 * `cloudWatchLogsEventsFailed` - The number of log events in requests that failed after all attempts or were stopped by shutdown.
-* `cloudWatchLogsEventsNegativelyAcked` - The number of events negatively acknowledged, tagged with `reason` (`retriesExhausted`, `unexpectedError`, `dlqWriteFailed` or `shutdown`).
-* `cloudWatchLogsEventsSentToDlq` - The number of events written to the DLQ, tagged with `reason` (`undeliverable`, `rejected`, `retriesExhausted`, `unexpectedError` or `shutdown`).
+* `cloudWatchLogsEventsNegativelyAcked` - The number of events negatively acknowledged, tagged with `reason` (`retriesExhausted`, `permanentFailure`, `unexpectedError`, `dlqWriteFailed` or `shutdown`).
+* `cloudWatchLogsEventsSentToDlq` - The number of events written to the DLQ, tagged with `reason` (`undeliverable`, `rejected`, `retriesExhausted`, `permanentFailure`, `unexpectedError` or `shutdown`).
 * `cloudWatchLogsEventsReleasedWithoutDelivery` - The number of events dropped without a DLQ, tagged with `reason` (`undeliverable` or `rejected`).
 * `cloudWatchLogsRequestsSucceeded` - The number of log requests successfully made to CloudWatch Logs.
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.

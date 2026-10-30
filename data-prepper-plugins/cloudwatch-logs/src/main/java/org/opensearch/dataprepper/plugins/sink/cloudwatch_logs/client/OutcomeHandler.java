@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_DLQ_WRITE_FAILED;
+import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_PERMANENT_FAILURE;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_REJECTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_RETRIES_EXHAUSTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_SHUTDOWN;
@@ -51,6 +53,7 @@ public class OutcomeHandler {
         UNDELIVERABLE(REASON_UNDELIVERABLE, true),
         REJECTED(REASON_REJECTED, true),
         RETRIES_EXHAUSTED(REASON_RETRIES_EXHAUSTED, false),
+        PERMANENT_FAILURE(REASON_PERMANENT_FAILURE, false),
         UNEXPECTED_ERROR(REASON_UNEXPECTED_ERROR, false),
         SHUTDOWN(REASON_SHUTDOWN, false);
 
@@ -77,6 +80,7 @@ public class OutcomeHandler {
     /** Null when no DLQ is configured. */
     private final DlqPushHandler dlqPushHandler;
     private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
+    private final AtomicBoolean retryUntilDeliveredLogged = new AtomicBoolean();
 
     /**
      * Writes events that share one reason to the DLQ in a single call, skipping handles already in {@code released}. If the DLQ
@@ -161,6 +165,10 @@ public class OutcomeHandler {
         }
         for (final EventHandle handle : batch.getEventHandles()) {
             if (!(handle instanceof InternalEventHandle) || !((InternalEventHandle) handle).hasAcknowledgementSet()) {
+                if (retryUntilDeliveredLogged.compareAndSet(false, true)) {
+                    LOG.warn("Events without an acknowledgement set and no DLQ configured: max_retries does not apply and requests "
+                            + "are retried until delivered");
+                }
                 return true;
             }
         }
@@ -174,6 +182,9 @@ public class OutcomeHandler {
                 break;
             case FAILED:
                 terminalStep(batch, Reason.RETRIES_EXHAUSTED, result.getLastException());
+                break;
+            case PERMANENT_FAILURE:
+                terminalStep(batch, Reason.PERMANENT_FAILURE, result.getLastException());
                 break;
             default:
                 terminalStep(batch, Reason.SHUTDOWN, result.getLastException());
