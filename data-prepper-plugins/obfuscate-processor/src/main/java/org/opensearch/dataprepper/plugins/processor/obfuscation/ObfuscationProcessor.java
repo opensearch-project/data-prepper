@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Matcher;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 @DataPrepperPlugin(name = "obfuscate", pluginType = Processor.class, pluginConfigurationType = ObfuscationProcessorConfig.class)
 public class ObfuscationProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
