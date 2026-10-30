@@ -14,9 +14,12 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.json.JsonpMapper;
+import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
@@ -37,6 +40,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -113,6 +117,7 @@ public class OpenSearchClientFactoryTest {
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
 
@@ -135,6 +140,7 @@ public class OpenSearchClientFactoryTest {
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
 
@@ -154,6 +160,7 @@ public class OpenSearchClientFactoryTest {
 
         final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
         assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
     }
@@ -173,6 +180,7 @@ public class OpenSearchClientFactoryTest {
 
         final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
         assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
     }
@@ -196,6 +204,7 @@ public class OpenSearchClientFactoryTest {
 
         final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
         assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
 
         final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
         assertThat(awsCredentialsOptions, notNullValue());
@@ -223,6 +232,7 @@ public class OpenSearchClientFactoryTest {
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
 
         final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
         assertThat(awsCredentialsOptions, notNullValue());
@@ -242,6 +252,7 @@ public class OpenSearchClientFactoryTest {
 
         final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
         assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
         verify(openSearchSourceConfiguration, never()).getUsername();
@@ -259,6 +270,7 @@ public class OpenSearchClientFactoryTest {
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
 
         verifyNoInteractions(awsCredentialsSupplier);
         verify(openSearchSourceConfiguration, never()).getUsername();
@@ -284,6 +296,7 @@ public class OpenSearchClientFactoryTest {
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
 
         final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
         assertThat(awsCredentialsOptions, notNullValue());
@@ -307,6 +320,7 @@ public class OpenSearchClientFactoryTest {
             final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(path));
             assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
         }
     }
 
@@ -325,6 +339,7 @@ public class OpenSearchClientFactoryTest {
             final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(certificatePathCaptor.capture()));
             assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
             assertThat(certificatePathCaptor.getValue(), equalTo(Path.of(certificate)));
         }
     }
@@ -343,6 +358,7 @@ public class OpenSearchClientFactoryTest {
             final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(TEST_CERTIFICATE));
             assertThat(openSearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(openSearchClient);
         }
     }
 
@@ -360,6 +376,7 @@ public class OpenSearchClientFactoryTest {
                     .thenReturn(sslContext);
             final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
             assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(path));
         }
     }
@@ -378,6 +395,7 @@ public class OpenSearchClientFactoryTest {
                     .thenReturn(sslContext);
             final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
             assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(certificatePathCaptor.capture()));
             assertThat(certificatePathCaptor.getValue().toString(), equalTo(certificate));
         }
@@ -396,6 +414,7 @@ public class OpenSearchClientFactoryTest {
                     .thenReturn(sslContext);
             final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
             assertThat(elasticsearchClient, notNullValue());
+        assertMaxStringLengthIsRaised(elasticsearchClient);
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(TEST_CERTIFICATE));
         }
     }
@@ -448,4 +467,17 @@ public class OpenSearchClientFactoryTest {
         }
     }
 
+    private static void assertMaxStringLengthIsRaised(final OpenSearchClient openSearchClient) {
+        final JsonpMapper jsonpMapper = openSearchClient._transport().jsonpMapper();
+        assertThat(jsonpMapper, instanceOf(JacksonJsonpMapper.class));
+        assertThat(((JacksonJsonpMapper) jsonpMapper).objectMapper().getFactory().streamReadConstraints().getMaxStringLength(),
+                equalTo(JsonFactories.MAX_JSON_STRING_LENGTH));
+    }
+
+    private static void assertMaxStringLengthIsRaised(final ElasticsearchClient elasticsearchClient) {
+        final co.elastic.clients.json.JsonpMapper jsonpMapper = elasticsearchClient._transport().jsonpMapper();
+        assertThat(jsonpMapper, instanceOf(co.elastic.clients.json.jackson.JacksonJsonpMapper.class));
+        assertThat(((co.elastic.clients.json.jackson.JacksonJsonpMapper) jsonpMapper).objectMapper().getFactory().streamReadConstraints().getMaxStringLength(),
+                equalTo(JsonFactories.MAX_JSON_STRING_LENGTH));
+    }
 }
