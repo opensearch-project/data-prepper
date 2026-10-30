@@ -56,6 +56,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +66,8 @@ import static org.mockito.Mockito.when;
 public class KafkaSinkTest {
     @Mock
     KafkaCustomProducer kafkaCustomProducer;
+
+    KafkaCustomProducerFactory kafkaCustomProducerFactory;
 
     KafkaSinkConfig kafkaSinkConfig;
 
@@ -134,6 +137,7 @@ public class KafkaSinkTest {
     private KafkaSink createObjectUnderTest() {
         final KafkaSink objectUnderTest;
         try(final MockedConstruction<KafkaCustomProducerFactory> ignored = mockConstruction(KafkaCustomProducerFactory.class, (mock, context) -> {
+           kafkaCustomProducerFactory = mock;
            when(mock.createProducer(any(), any(), any(), any(), any(), anyBoolean())).thenReturn(kafkaCustomProducer);
         })) {
             objectUnderTest = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, pluginMetrics, mock(ExpressionEvaluator.class), sinkContext, awsCredentialsSupplier);
@@ -233,5 +237,34 @@ public class KafkaSinkTest {
         final KafkaSink objectUnderTest = createObjectUnderTest();
 
         assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
+    }
+
+    @Test
+    public void doOutput_calledRepeatedly_createsExactlyOneProducer() {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        when(Executors.newFixedThreadPool(totalWorkers)).thenReturn(executorService);
+        when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
+        final Collection records = Arrays.asList(new Record(event));
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.doInitialize();
+        objectUnderTest.doOutput(records);
+        objectUnderTest.doOutput(records);
+        objectUnderTest.doOutput(records);
+
+        verify(kafkaCustomProducerFactory, times(1))
+                .createProducer(any(), any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    public void shutdown_afterDoInitialize_closesTheProducer() throws InterruptedException {
+        when(Executors.newFixedThreadPool(totalWorkers)).thenReturn(executorService);
+        when(executorService.awaitTermination(1000L, TimeUnit.MILLISECONDS)).thenReturn(true);
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+        objectUnderTest.doInitialize();
+
+        objectUnderTest.shutdown();
+
+        verify(kafkaCustomProducer).close();
     }
 }
