@@ -9,6 +9,7 @@ import java.util.function.Function;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -49,8 +50,15 @@ public class GrpcService {
     private final GrpcAuthenticationProvider authenticationProvider;
     private final PluginMetrics pluginMetrics;
     private final String pipelineName;
+    private final CircuitBreaker circuitBreaker;
 
-    public GrpcService(PluginFactory pluginFactory,final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final String pipelineName) {
+    public GrpcService(final PluginFactory pluginFactory,
+                       final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder,
+                       final OTelTraceSourceConfig oTelTraceSourceConfig,
+                       final PluginMetrics pluginMetrics,
+                       final String pipelineName,
+                       final CircuitBreaker circuitBreaker) {
+        this.circuitBreaker = circuitBreaker;
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.otelProtoDecoder = otelProtoDecoder;
         this.pluginMetrics = pluginMetrics;
@@ -64,6 +72,7 @@ public class GrpcService {
                 (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
                 otelProtoDecoder,
                 buffer,
+                circuitBreaker,
                 pluginMetrics,
                 null
         );
