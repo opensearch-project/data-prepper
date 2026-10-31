@@ -144,6 +144,38 @@ public class DeleteEntryProcessorConfigTests {
         assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
     }
 
+    @Test
+    void testConfigurationValidation_with_onlyDeleteAllExcept() throws NoSuchFieldException, IllegalAccessException {
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "deleteAllExcept", List.of(mock(EventKey.class)));
+
+        assertThat(objectUnderTest.isConfigurationPresent(), equalTo(true));
+        assertThat(objectUnderTest.hasOnlyOneConfiguration(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideConflictingDeleteAllExceptConfigurations")
+    void testConfigurationValidation_with_deleteAllExcept_conflicts(
+            final String conflictingFieldName,
+            final Object conflictingFieldValue) throws NoSuchFieldException, IllegalAccessException {
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "deleteAllExcept", List.of(mock(EventKey.class)));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, conflictingFieldName, conflictingFieldValue);
+
+        assertThat(objectUnderTest.hasOnlyOneConfiguration(), equalTo(false));
+    }
+
+    private static Stream<Arguments> provideConflictingDeleteAllExceptConfigurations() {
+        return Stream.of(
+                Arguments.of("withKeys", List.of(mock(EventKey.class))),
+                Arguments.of("withKeysRegex", List.of("^test.*")),
+                Arguments.of("entries", List.of(new DeleteEntryProcessorConfig.Entry(
+                        List.of(mock(EventKey.class)), null, null, null, null, null)))
+        );
+    }
+
     @ParameterizedTest
     @MethodSource("provideEntriesForExcludeFromDeleteValidation")
     void testIsExcludeFromDeleteValid_with_entries(DeleteEntryProcessorConfig.Entry entry, boolean expectedResult) {
