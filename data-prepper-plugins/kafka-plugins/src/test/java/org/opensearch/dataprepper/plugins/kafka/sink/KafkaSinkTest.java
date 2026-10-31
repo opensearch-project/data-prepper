@@ -48,6 +48,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -189,6 +190,17 @@ public class KafkaSinkTest {
                 1000L, TimeUnit.MILLISECONDS)).thenThrow(interruptedException);
 
         createObjectUnderTest().shutdown();
+    }
+
+    @Test
+    public void shutdown_whenThreadWaitTimeIsNull_usesDefaultAndDoesNotThrow() throws InterruptedException {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "threadWaitTime", null);
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        assertDoesNotThrow(objectUnderTest::shutdown);
+
+        verify(executorService).awaitTermination(
+                KafkaSinkConfig.DEFAULT_THREAD_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
     }
 
 
