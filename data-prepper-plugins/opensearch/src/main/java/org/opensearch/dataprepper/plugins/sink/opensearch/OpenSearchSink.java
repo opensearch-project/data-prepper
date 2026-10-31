@@ -151,9 +151,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     openSearchClientRefresher = new OpenSearchClientRefresher(
             pluginMetrics, connectionConfiguration, clientFunction);
 
-    pluginConfigObservable.addPluginConfigObserver(
-            newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
-
     final String configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     final IndexTemplateAPIWrapper indexTemplateAPIWrapper = IndexTemplateAPIWrapperFactory.getWrapper(
             openSearchSinkConfig.getIndexConfiguration(), openSearchClient);
@@ -206,6 +203,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
 
     ingester.initialize();
+
+    pluginConfigObservable.addPluginConfigObserver(
+            newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");

@@ -216,7 +216,21 @@ public class OpenSearchSinkTest {
             objectUnderTest.initialize();
             objectUnderTest.initialize();
         }
-        verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+        verify(pluginConfigObservable, times(1)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void test_initialization_failure_does_not_register_config_observer() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenThrow(RuntimeException.class);
+
+        try (final MockedConstruction<BulkIngester> ignored = mockConstruction(BulkIngester.class)) {
+            objectUnderTest.initialize();
+        }
+
+        verify(pluginConfigObservable, never()).addPluginConfigObserver(any());
+        assertThat(objectUnderTest.isReady(), equalTo(false));
     }
 
     @Test

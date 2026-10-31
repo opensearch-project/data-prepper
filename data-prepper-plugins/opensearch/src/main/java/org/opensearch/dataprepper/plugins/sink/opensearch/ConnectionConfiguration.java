@@ -576,8 +576,15 @@ public class ConnectionConfiguration {
         transportOptions.setRequestCompressionSize(Integer.MAX_VALUE);
       }
 
-      return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).toHostString(),
-              serviceName, Region.of(awsRegion), transportOptions.build());
+      final SdkHttpClient sdkHttpClient = createSdkHttpClient();
+      // AwsSdk2Transport.close() does not close the SdkHttpClient it was given, so close it here.
+      return new AwsSdk2Transport(sdkHttpClient, HttpHost.create(hosts.get(0)).toHostString(),
+              serviceName, Region.of(awsRegion), transportOptions.build()) {
+        @Override
+        public void close() {
+          sdkHttpClient.close();
+        }
+      };
     } else {
       return new RestClientTransport(
               restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
