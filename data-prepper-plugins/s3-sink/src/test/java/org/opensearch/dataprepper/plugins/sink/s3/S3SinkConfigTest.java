@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -73,6 +75,27 @@ class S3SinkConfigTest {
         final S3SinkConfig objectUnderTest = new S3SinkConfig();
         ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "legacyMd5Checksum", true);
         assertThat(objectUnderTest.getLegacyMd5Checksum(), equalTo(true));
+    }
+
+    @Test
+    void isValidEndpoint_returns_true_when_endpoint_is_not_set() {
+        assertThat(new S3SinkConfig().isValidEndpoint(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://localhost:9000", "https://minio.example.com", "https://minio.example.com:9000/path"})
+    void isValidEndpoint_returns_true_for_http_and_https_urls(final String endpoint) throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.isValidEndpoint(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"minio:9000", "localhost:9000", "ftp://minio.example.com", "http://", "not a url"})
+    void isValidEndpoint_returns_false_for_invalid_urls(final String endpoint) throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.isValidEndpoint(), equalTo(false));
     }
 
     @Test

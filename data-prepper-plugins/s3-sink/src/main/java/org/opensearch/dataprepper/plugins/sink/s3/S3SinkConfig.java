@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ServerSideEncryptionConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 
+import java.net.URI;
 import java.util.Map;
 
 /**
@@ -115,6 +116,20 @@ public class S3SinkConfig {
 
     @JsonProperty("endpoint")
     private String endpoint;
+
+    @AssertTrue(message = "endpoint must be a valid URL starting with http:// or https://")
+    boolean isValidEndpoint() {
+        if (endpoint == null || endpoint.trim().isEmpty()) {
+            return true;
+        }
+        try {
+            final URI uri = URI.create(endpoint);
+            return ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+                    && uri.getHost() != null;
+        } catch (final IllegalArgumentException e) {
+            return false;
+        }
+    }
 
     @JsonProperty("force_path_style")
     private boolean forcePathStyle = false;
