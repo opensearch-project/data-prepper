@@ -241,6 +241,24 @@ public class PrometheusTimeSeriesTest {
     }
 
     @Test
+    public void testHistogramBucketsAreCumulative() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final Histogram histogram = createHistogramMetric(name, "s");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, null, null);
+        final String bucketName = PrometheusTimeSeries.sanitizeMetricName(histogram) + "_bucket";
+
+        final Map<String, Double> bucketValues = timeSeries.getTimeSeriesList().stream()
+                .filter(series -> bucketName.equals(getLabels(series).get("__name__")))
+                .collect(Collectors.toMap(series -> getLabels(series).get("le"), series -> series.getSamples(0).getValue()));
+
+        // Per-bucket counts are 2222, 5555, 3333 and 7777; each "le" bucket includes all smaller ones.
+        assertThat(bucketValues.get("5.0"), equalTo(2222.0));
+        assertThat(bucketValues.get("10.0"), equalTo(7777.0));
+        assertThat(bucketValues.get("100.0"), equalTo(11110.0));
+        assertThat(bucketValues.get("+Inf"), equalTo(18887.0));
+    }
+
+    @Test
     public void testInstanceLabelDoesNotOverrideAMetricAttribute() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final Gauge gauge = createGaugeMetric(name, "s");
