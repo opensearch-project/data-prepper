@@ -161,6 +161,8 @@ public class KafkaBufferOTelIT {
         when(topicConfig.getName()).thenReturn(topicName);
         when(topicConfig.getGroupId()).thenReturn("buffergroup-" + RandomStringUtils.randomAlphabetic(6));
         when(topicConfig.isCreateTopic()).thenReturn(true);
+        when(topicConfig.getNumberOfPartitions()).thenReturn(1);
+        when(topicConfig.getReplicationFactor()).thenReturn((short) 1);
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.BYTES);
         when(topicConfig.getWorkers()).thenReturn(1);
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
@@ -170,7 +172,12 @@ public class KafkaBufferOTelIT {
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(topicConfig.getAutoOffsetReset()).thenReturn("earliest");
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(topicConfig.getRetryBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(topicConfig.getReconnectBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(topicConfig.getConnectionsMaxIdle()).thenReturn(Duration.ofMinutes(9));
         when(kafkaBufferConfig.getTopic()).thenReturn(topicConfig);
+        when(kafkaBufferConfig.getBoundedBufferSize()).thenReturn(100);
+        when(kafkaBufferConfig.getBoundedBatchSize()).thenReturn(10);
 
         EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
 
