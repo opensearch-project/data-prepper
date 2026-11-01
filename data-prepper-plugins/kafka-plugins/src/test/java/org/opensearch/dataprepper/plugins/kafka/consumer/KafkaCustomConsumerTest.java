@@ -75,6 +75,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -422,8 +423,8 @@ public class KafkaCustomConsumerTest {
 
         final Event event = new ArrayList<>(buffer.read(1000).getKey()).get(0).getData();
         assertThat(event.getMetadata().getAttributes().get("kafka_timestamp"), equalTo(futureTimestamp));
-        assertTrue(event.getMetadata().getExternalOriginationTime().toEpochMilli() < futureTimestamp);
-        assertTrue(event.getEventHandle().getExternalOriginationTime().toEpochMilli() < futureTimestamp);
+        assertThat(event.getMetadata().getExternalOriginationTime().toEpochMilli(), lessThan(futureTimestamp));
+        assertThat(event.getEventHandle().getExternalOriginationTime().toEpochMilli(), lessThan(futureTimestamp));
     }
 
     @Test
