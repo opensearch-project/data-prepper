@@ -47,7 +47,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,6 +174,30 @@ public class KafkaSinkTest {
         objectUnderTest.doOutput(records);
         verify(objectUnderTest).doOutput(records);
 
+    }
+
+    @Test
+    public void doOutputReleasesLockWhenRecordsAreEmpty() {
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.doOutput(Arrays.asList());
+
+        assertThat(getLock(objectUnderTest).isLocked(), equalTo(false));
+    }
+
+    @Test
+    public void doOutputReleasesLockWhenSubmitFails() {
+        final Collection records = Arrays.asList(new Record(event));
+        when(executorService.submit(any(ProducerWorker.class))).thenThrow(new RuntimeException());
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
+
+        assertThat(getLock(objectUnderTest).isLocked(), equalTo(false));
+    }
+
+    private ReentrantLock getLock(final KafkaSink kafkaSink) {
+        return (ReentrantLock) ReflectionTestUtils.getField(kafkaSink, "reentrantLock");
     }
 
     @Test
