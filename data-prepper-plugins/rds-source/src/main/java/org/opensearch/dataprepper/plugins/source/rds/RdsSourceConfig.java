@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rds;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
  */
 public class RdsSourceConfig {
     private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 100;
+    private static final Duration MAX_EMPTY_SCAN_DELAY = Duration.ofMinutes(30);
 
     /**
      * Identifier for RDS instance/cluster or Aurora cluster
@@ -107,6 +109,14 @@ public class RdsSourceConfig {
 
     @JsonProperty("scan_mode")
     private ScanMode scanMode = ScanMode.IDLE_OPTIMIZED;
+
+    /**
+     * Minimum time to wait before an S3 buffer folder that had no objects is listed again.
+     * Increasing this value lowers the number of S3 ListObjectsV2 calls made while the source is quiet,
+     * at the cost of up to this much additional end-to-end latency. Defaults to zero (no delay).
+     */
+    @JsonProperty("empty_scan_delay")
+    private Duration emptyScanDelay = Duration.ZERO;
 
     @JsonProperty("joins")
     @Valid
@@ -198,6 +208,16 @@ public class RdsSourceConfig {
 
     public ScanMode getScanMode() {
         return this.scanMode;
+    }
+
+    public Duration getEmptyScanDelay() {
+        return emptyScanDelay != null ? emptyScanDelay : Duration.ZERO;
+    }
+
+    @AssertTrue(message = "empty_scan_delay must be between 0 seconds and 30 minutes")
+    boolean isEmptyScanDelayValid() {
+        final Duration delay = getEmptyScanDelay();
+        return !delay.isNegative() && delay.compareTo(MAX_EMPTY_SCAN_DELAY) <= 0;
     }
 
     public AuthenticationConfig getAuthenticationConfig() {

@@ -67,6 +67,7 @@ public class ScanObjectWorker implements Runnable {
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     static final String NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION = "folderPartitionNoObjectsFound";
+    static final String EMPTY_FOLDER_PARTITION_RESCAN_DELAYED = "folderPartitionRescanDelayed";
 
     static final String PARTITION_OWNERSHIP_UPDATE_ERRORS = "partitionOwnershipUpdateErrors";
     private final S3Client s3Client;
@@ -94,6 +95,7 @@ public class ScanObjectWorker implements Runnable {
     private final Counter acknowledgementSetCallbackCounter;
 
     private final Counter folderPartitionNoObjectsFound;
+    private final Counter emptyFolderPartitionRescanDelayed;
 
     private final Counter partitionOwnershipUpdateFailures;
     private final long backOffMs;
@@ -162,6 +164,7 @@ public class ScanObjectWorker implements Runnable {
         this.pluginMetrics = pluginMetrics;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
         this.folderPartitionNoObjectsFound = pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION);
+        this.emptyFolderPartitionRescanDelayed = pluginMetrics.counter(EMPTY_FOLDER_PARTITION_RESCAN_DELAYED);
         this.partitionOwnershipUpdateFailures = pluginMetrics.counter(PARTITION_OWNERSHIP_UPDATE_ERRORS);
         this.sourceCoordinator.initialize();
         this.partitionKeys = new ArrayList<>();
@@ -347,17 +350,15 @@ public class ScanObjectWorker implements Runnable {
         if (objectsToProcess.isEmpty()) {
             folderPartitionNoObjectsFound.increment();
             partitionKeys.remove(folderPartition.getPartitionKey());
-            if (folderPartitioningOptions.isContinuousScanMode()) {
-                LOG.debug("No objects to process in continuous scan mode, giving up partition for immediate re-acquisition");
-                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), MAX_RETRIES);
-                return;
-            }
-            if (shouldDeleteFolderPartition(folderPartition)) {
+            if (!folderPartitioningOptions.isContinuousScanMode() && shouldDeleteFolderPartition(folderPartition)) {
                 LOG.info("Deleting folder partition {} as no objects have been found from this folder for {} minutes", folderPartition.getPartitionKey(), NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION.toMinutes());
                 sourceCoordinator.deletePartition(folderPartition.getPartitionKey());
                 return;
             }
-            LOG.debug("No objects to process, giving up partition");
+            if (holdEmptyFolderPartitionForRescanDelay(folderPartition)) {
+                return;
+            }
+            LOG.debug("No objects to process, giving up partition for immediate re-acquisition");
             sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), MAX_RETRIES);
             return;
         }
@@ -367,6 +368,30 @@ public class ScanObjectWorker implements Runnable {
         sourceCoordinator.saveProgressStateForPartition(folderPartition.getPartitionKey(), folderPartitionState.get());
 
         processObjectsForFolderPartition(objectsToProcess, folderPartition);
+    }
+
+    /**
+     * Keeps ownership of an empty folder partition for the configured empty_folder_rescan_delay so that no worker
+     * lists the folder again until the delay has passed. The partition's progress state is preserved, so idle folder
+     * deletion keeps working. Once the lease expires, the partition can be acquired again by any worker.
+     *
+     * @return true if the partition is being held, false if it should be given up immediately
+     */
+    private boolean holdEmptyFolderPartitionForRescanDelay(final SourcePartition<S3SourceProgressState> folderPartition) {
+        final Duration rescanDelay = folderPartitioningOptions.getEmptyFolderRescanDelay();
+        if (rescanDelay == null || rescanDelay.isZero() || rescanDelay.isNegative()) {
+            return false;
+        }
+
+        try {
+            sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), rescanDelay);
+            emptyFolderPartitionRescanDelayed.increment();
+            LOG.debug("No objects to process, holding folder partition {} for {} before it can be listed again", folderPartition.getPartitionKey(), rescanDelay);
+            return true;
+        } catch (final PartitionUpdateException | PartitionNotOwnedException | PartitionNotFoundException e) {
+            LOG.warn("Unable to hold empty folder partition {} for the rescan delay, giving it up instead: {}", folderPartition.getPartitionKey(), e.getMessage());
+            return false;
+        }
     }
 
     private List<S3ObjectReference> getObjectsForPrefix(final String bucket, final String s3Prefix) {
