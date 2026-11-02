@@ -114,7 +114,7 @@ otlp-pipeline:
 The index template maps `traceId`, `spanId` and `eventName` as `keyword`, and `time` and `@timestamp` as `date_nanos`. The attributes
 `gen_ai.evaluation.score.value`, `opensearch.evaluation.score.min` and `opensearch.evaluation.score.max` are `double`, and
 `gen_ai.evaluation.explanation` is `text` with a `keyword` sub-field. Other known string attributes, such as `gen_ai.evaluation.name`,
-`gen_ai.evaluation.score.label`, `test.*` and `opensearch.evaluation.*`, are `keyword`. Any other string attribute is mapped as `keyword`
+`gen_ai.evaluation.score.label`, `test.*`, `cicd.pipeline.*` and `opensearch.evaluation.*`, are `keyword`. Any other string attribute is mapped as `keyword`
 and any other integer attribute as `double`.
 
 Do not combine these types with another index template or ISM policy that matches `otel-v1-genai-evaluation-*`, such as a custom template
