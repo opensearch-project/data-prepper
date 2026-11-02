@@ -65,7 +65,7 @@ class TimeSeriesIndexTest {
 
     @BeforeEach
     void setUp() {
-        bulkOperationFactory = new BulkOperationFactory(null, mock(ScriptManager.class), new ObjectMapper(), false);
+        bulkOperationFactory = new BulkOperationFactory(null, mock(ScriptManager.class), false);
         usingDocumentFilters = false;
         indexName = UUID.randomUUID().toString();
         timestampField = UUID.randomUUID().toString();

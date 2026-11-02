@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.pull_ingestion;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +23,8 @@ public class PullIngestionEnvelopeBuilder {
 
     private final ObjectMapper objectMapper;
 
-    public PullIngestionEnvelopeBuilder(final ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public PullIngestionEnvelopeBuilder() {
+        this.objectMapper = new ObjectMapper(JsonFactories.defaultJsonFactory());
     }
 
     public byte[] build(final String id, final long version, final String source, final String opType) throws JsonProcessingException {

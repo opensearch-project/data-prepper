@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.TransportOptions;
@@ -187,7 +186,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final PullEngine pullEngine = pluginFactory.loadPlugin(PullEngine.class, enginePluginSetting);
       final IndexShardProvider indexShardProvider = new IndexShardProvider(restHighLevelClient);
       final IndexRouter indexRouter = new IndexRouter(indexShardProvider);
-      final PullIngestionEnvelopeBuilder envelopeBuilder = new PullIngestionEnvelopeBuilder(new ObjectMapper());
+      final PullIngestionEnvelopeBuilder envelopeBuilder = new PullIngestionEnvelopeBuilder();
       final DocumentIdResolver documentIdResolver = new DocumentIdResolver(
               openSearchSinkConfig.getIndexConfiguration().getDocumentIdField(),
               openSearchSinkConfig.getIndexConfiguration().getDocumentId(),

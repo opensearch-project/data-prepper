@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -179,7 +178,7 @@ public class BulkIngester implements Ingester {
         this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
         this.scriptManager = new ScriptManager(openSearchSinkConfig.getIndexConfiguration().getScriptConfiguration(),
                 expressionEvaluator);
-        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager, new ObjectMapper(),
+        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager,
                 isUsingDocumentFilters());
         this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME);
 
