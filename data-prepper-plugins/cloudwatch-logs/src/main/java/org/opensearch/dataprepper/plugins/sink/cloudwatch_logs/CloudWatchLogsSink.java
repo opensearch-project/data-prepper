@@ -63,6 +63,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 @Experimental
 @DataPrepperPlugin(name = "cloudwatch_logs", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
 public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
@@ -225,8 +227,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     }
 
     /**
-     * Returns only once every batch sent by this call is settled. Never propagates an {@link Exception} or
-     * {@link StackOverflowError}.
+     * Returns only once every batch sent by this call is settled. Never propagates an {@link Exception}.
      */
     @Override
     public void doOutput(final Collection<Record<Event>> records) {
@@ -242,7 +243,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
             for (final Record<Event> record : records) {
                 final Event event = eventOf(record);
                 if (event == null) {
-                    LOG.warn("Skipping a record with no event");
+                    LOG.warn(NOISY, "Skipping a record with no event");
                     continue;
                 }
                 try {
@@ -256,8 +257,8 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                     } else {
                         deliverable.add(new SerializedEvent(event, logString, logBytes));
                     }
-                } catch (final Exception | StackOverflowError e) {
-                    LOG.error("Failed to serialize an event", e);
+                } catch (final Exception e) {
+                    LOG.error(NOISY, "Failed to serialize an event", e);
                     unexpected.add(new OutcomeHandler.FailedEvent(event.getEventHandle(), null, e.getMessage()));
                 }
             }
@@ -276,8 +277,8 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                             try {
                                 cloudWatchLogsService.add(serialized.event, serialized.bytes, batches);
                                 ownedByBuffer.add(eventHandle);
-                            } catch (final Exception | StackOverflowError e) {
-                                LOG.error("Failed to buffer an event", e);
+                            } catch (final Exception e) {
+                                LOG.error(NOISY, "Failed to buffer an event", e);
                                 unexpected.add(new OutcomeHandler.FailedEvent(eventHandle, serialized.message, e.getMessage()));
                             }
                             addInProgress = null;
@@ -293,8 +294,8 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 outcomeHandler.terminalStep(released, OutcomeHandler.Reason.SHUTDOWN, refused);
             }
             parallelFlusher.flush(batches);
-        } catch (final Exception | StackOverflowError e) {
-            LOG.error("Unexpected error in doOutput; settling every event this call still owns", e);
+        } catch (final Exception e) {
+            LOG.error(NOISY, "Unexpected error in doOutput; settling every event this call still owns", e);
             outcomeHandler.settleUnsettled(batches,
                     batchSender.isClosed() ? OutcomeHandler.Reason.SHUTDOWN : OutcomeHandler.Reason.UNEXPECTED_ERROR, e);
             if (outcomeHandler.releaseUnreleased(released, handlesNotOwnedByBuffer(records, ownedByBuffer, null)) > 0) {
@@ -331,7 +332,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                     processLock.unlock();
                 }
                 parallelFlusher.flush(batches);
-            } catch (final Exception | StackOverflowError e) {
+            } catch (final Exception e) {
                 LOG.error("Unexpected error flushing on shutdown; settling the remaining batches with reason shutdown", e);
                 takeRemaining(batches);
                 outcomeHandler.settleUnsettled(batches, OutcomeHandler.Reason.SHUTDOWN, e);
@@ -359,7 +360,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         processLock.lock();
         try {
             cloudWatchLogsService.takeAll(batches);
-        } catch (final Exception | StackOverflowError e) {
+        } catch (final Exception e) {
             LOG.error("Unable to take the remaining buffered events on shutdown; they are left for the source to redrive", e);
         } finally {
             processLock.unlock();

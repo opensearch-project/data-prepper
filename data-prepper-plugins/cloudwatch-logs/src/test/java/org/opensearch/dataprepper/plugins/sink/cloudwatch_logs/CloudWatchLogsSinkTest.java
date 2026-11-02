@@ -614,7 +614,7 @@ class CloudWatchLogsSinkTest {
     }
 
     static Stream<Arguments> serializationFailures() {
-        return Stream.of(arguments(new RuntimeException("serialization failed")), arguments(new StackOverflowError()));
+        return Stream.of(arguments(new RuntimeException("serialization failed")));
     }
 
     @ParameterizedTest
@@ -647,11 +647,11 @@ class CloudWatchLogsSinkTest {
     }
 
     static Stream<Arguments> groupingFailures() {
-        return Stream.of(arguments(new RuntimeException("resolveKey failed")), arguments(new StackOverflowError()));
+        return Stream.of(arguments(new RuntimeException("resolveKey failed")));
     }
 
-    // A grouping failure under the lock, including StackOverflowError from a header or entity function, sends event k to the
-    // terminal step only after the lock is released; the other events still reach their groups.
+    // A grouping failure under the lock sends event k to the terminal step only after the lock is released; the other events
+    // still reach their groups.
     @ParameterizedTest
     @MethodSource("groupingFailures")
     void doOutput_groupingThrowsUnderLock_eventKTerminalAfterUnlock(final Throwable failure) {
@@ -1017,9 +1017,7 @@ class CloudWatchLogsSinkTest {
     static Stream<Arguments> unexpectedFailures() {
         return Stream.of(
                 arguments("takeReady", new RuntimeException("unexpected")),
-                arguments("takeReady", new StackOverflowError()),
-                arguments("submit", new RuntimeException("unexpected")),
-                arguments("submit", new StackOverflowError()));
+                arguments("submit", new RuntimeException("unexpected")));
     }
 
     @ParameterizedTest
@@ -1085,9 +1083,7 @@ class CloudWatchLogsSinkTest {
     static Stream<Arguments> unexpectedShutdownFailures() {
         return Stream.of(
                 arguments("takeAll", new RuntimeException("unexpected")),
-                arguments("takeAll", new StackOverflowError()),
-                arguments("submit", new RuntimeException("unexpected")),
-                arguments("submit", new StackOverflowError()));
+                arguments("submit", new RuntimeException("unexpected")));
     }
 
     // The taken batches, and the groups a takeAll that threw part-way had not reached, are settled as shutdown.

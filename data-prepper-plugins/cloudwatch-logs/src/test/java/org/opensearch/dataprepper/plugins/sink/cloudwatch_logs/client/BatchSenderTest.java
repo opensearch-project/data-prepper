@@ -310,6 +310,41 @@ class BatchSenderTest {
     }
 
     @Test
+    void send_logGroupMissingAndOnlyStreamCreationEnabled_permanentFailureInBothModes() throws InterruptedException {
+        final ResourceNotFoundException groupMissing = resourceNotFound();
+        when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(resourceNotFound());
+        when(client.createLogStream(any(CreateLogStreamRequest.class))).thenThrow(groupMissing);
+
+        for (final boolean retryUntilDelivered : new boolean[] {false, true}) {
+            final BatchSender.Result result = createSender(5, false, true).send(request, retryUntilDelivered);
+
+            assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.PERMANENT_FAILURE));
+            assertThat(result.getLastException(), sameInstance(groupMissing));
+        }
+        verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
+        verify(client, times(2)).createLogStream(any(CreateLogStreamRequest.class));
+        verify(client, never()).createLogGroup(any(CreateLogGroupRequest.class));
+        verify(metrics, times(2)).increaseResourceNotFoundCounter(1);
+        verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void send_logStreamCreationResourceNotFoundWithGroupCreationEnabled_retried() {
+        when(client.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(resourceNotFound())
+                .thenThrow(resourceNotFound())
+                .thenReturn(PutLogEventsResponse.builder().build());
+        when(client.createLogStream(any(CreateLogStreamRequest.class)))
+                .thenThrow(resourceNotFound())
+                .thenReturn(null);
+
+        final BatchSender.Result result = createSender(5, true, true).send(request, false);
+
+        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
+        verify(client, times(2)).createLogStream(any(CreateLogStreamRequest.class));
+    }
+
+    @Test
     void send_resourceAlreadyExists_treatedAsSuccess() {
         // An existing log group must not stop creation of the log stream.
         when(client.putLogEvents(any(PutLogEventsRequest.class)))

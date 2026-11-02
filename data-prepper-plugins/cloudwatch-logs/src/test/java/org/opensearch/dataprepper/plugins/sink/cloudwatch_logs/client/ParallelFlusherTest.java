@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.invocation.Invocation;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.dlq.CloudWatchLogsSinkDlqData;
@@ -58,6 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -67,6 +69,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_DLQ_WRITE_FAILED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_RETRIES_EXHAUSTED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_SHUTDOWN;
@@ -80,7 +83,7 @@ class ParallelFlusherTest {
 
     enum DlqMode { NONE, OK, FALSE, THROWS }
 
-    enum Failure { SEND_RUNTIME_EXCEPTION, SEND_STACK_OVERFLOW_ERROR, BUILD_RUNTIME_EXCEPTION }
+    enum Failure { SEND_RUNTIME_EXCEPTION, BUILD_RUNTIME_EXCEPTION }
 
     private CloudWatchLogsMetrics metrics;
     private BatchSender batchSender;
@@ -176,6 +179,31 @@ class ParallelFlusherTest {
         return dispositions().values().stream().mapToInt(Integer::intValue).sum();
     }
 
+    private static Stream<Arguments> retryUntilDeliveredMatrix() {
+        return Stream.of(
+                arguments(DlqMode.NONE, false, true),
+                arguments(DlqMode.NONE, true, false),
+                arguments(DlqMode.OK, false, false),
+                arguments(DlqMode.OK, true, false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("retryUntilDeliveredMatrix")
+    void runTask_passesRetryUntilDeliveredOnlyWithoutDlqOrAcknowledgementSet(final DlqMode dlqMode,
+                                                                             final boolean hasAcknowledgementSet,
+                                                                             final boolean expected) {
+        final List<EventHandle> handles = IntStream.range(0, 2).mapToObj(i -> {
+            final InternalEventHandle handle = mock(InternalEventHandle.class, withSettings().extraInterfaces(EventHandle.class));
+            when(handle.hasAcknowledgementSet()).thenReturn(hasAcknowledgementSet);
+            return (EventHandle) handle;
+        }).collect(Collectors.toList());
+        when(batchSender.send(any(), anyBoolean())).thenReturn(delivered());
+
+        flusher(mock(ExecutorService.class), outcomeHandlerFor(dlqMode)).runTask(batchOf("a", handles));
+
+        verify(batchSender).send(any(), eq(expected));
+    }
+
     @Test
     void buildRequest_allEventsShareOneTimestampInOrder() {
         final Entity entity = Entity.builder().keyAttributes(Map.of("Type", "Service", "Name", "svc")).build();
@@ -218,8 +246,7 @@ class ParallelFlusherTest {
     @ParameterizedTest
     @MethodSource("unexpectedErrorMatrix")
     void runTask_sendOrBuildThrows_unexpectedErrorRow(final Failure failure, final DlqMode dlqMode) {
-        final Throwable thrown = failure == Failure.SEND_STACK_OVERFLOW_ERROR
-                ? new StackOverflowError("deep") : new RuntimeException("bad");
+        final Throwable thrown = new RuntimeException("bad");
         final ParallelFlusher parallelFlusher = spy(flusher(mock(ExecutorService.class), outcomeHandlerFor(dlqMode)));
         final List<EventHandle> handles = handles(3);
         final Batch batch = batchOf("a", handles);
@@ -329,7 +356,7 @@ class ParallelFlusherTest {
     }
 
     private static Stream<Throwable> taskThrowables() {
-        return Stream.of(new IllegalStateException("bad"), new StackOverflowError("deep"));
+        return Stream.of(new IllegalStateException("bad"));
     }
 
     @Test

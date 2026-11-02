@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_DLQ_WRITE_FAILED;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_PERMANENT_FAILURE;
 import static org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics.REASON_REJECTED;
@@ -101,7 +102,7 @@ public class OutcomeHandler {
             try {
                 cloudWatchLogsMetrics.increaseUnhandledErrorCounter(1);
             } catch (final Exception e) {
-                LOG.error("Failed to count an unhandled error", e);
+                LOG.error(NOISY, "Failed to count an unhandled error", e);
             }
         }
         if (dlqPushHandler == null) {
@@ -134,7 +135,7 @@ public class OutcomeHandler {
             try {
                 cloudWatchLogsMetrics.increaseLogLargeEventsDroppedCounter(pending.size());
             } catch (final Exception e) {
-                LOG.error("Failed to count dropped large events", e);
+                LOG.error(NOISY, "Failed to count dropped large events", e);
             }
         }
         pending.forEach(event -> release(released, event.eventHandle, Disposition.RELEASED_WITHOUT_DELIVERY, reason.getTag()));
@@ -153,7 +154,7 @@ public class OutcomeHandler {
             }
             return dlqPushHandler.perform(dlqObjects);
         } catch (final Exception e) {
-            LOG.error("Failed to write {} events to the DLQ", pending.size(), e);
+            LOG.error(NOISY, "Failed to write {} events to the DLQ", pending.size(), e);
             return false;
         }
     }
@@ -259,7 +260,7 @@ public class OutcomeHandler {
     void releaseUnreleased(final Batch batch) {
         final int count = releaseUnreleased(batch.getReleased(), batch.getEventHandles());
         if (count > 0) {
-            LOG.error("Released {} unsettled events of a batch with false", count);
+            LOG.error(NOISY, "Released {} unsettled events of a batch with false", count);
         }
     }
 
@@ -298,12 +299,12 @@ public class OutcomeHandler {
         try {
             handle.release(disposition != Disposition.NEGATIVELY_ACKED);
         } catch (final Exception e) {
-            LOG.error("EventHandle.release threw", e);
+            LOG.error(NOISY, "EventHandle.release threw", e);
         }
         try {
             countDisposition(disposition, reason);
         } catch (final Exception e) {
-            LOG.error("Failed to count a released event", e);
+            LOG.error(NOISY, "Failed to count a released event", e);
         }
         return true;
     }

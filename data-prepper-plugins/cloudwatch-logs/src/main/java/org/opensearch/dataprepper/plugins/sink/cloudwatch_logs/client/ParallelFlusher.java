@@ -26,6 +26,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * Sends batches on the sink-owned flusher pool and waits for them. Each submitted batch is owned end to end by its pool task, so
  * this class never cancels a future, never interrupts a pool thread and never acquires processLock.
@@ -42,8 +44,7 @@ public class ParallelFlusher {
 
     /**
      * Submits one task per batch. A rejected batch has no task to own it, so it is settled on this thread with reason shutdown.
-     * Waits for every submitted task without being interruptible, then rethrows the first task Error other than
-     * StackOverflowError.
+     * Waits for every submitted task without being interruptible, then rethrows the first task Error.
      */
     public void flush(final List<Batch> batches) {
         final List<Future<?>> futures = new ArrayList<>(batches.size());
@@ -75,8 +76,8 @@ public class ParallelFlusher {
                 } catch (final InterruptedException e) {
                     interrupted = true;
                 } catch (final ExecutionException e) {
-                    LOG.error("A flusher task failed after settling its batch", e.getCause());
-                    if (error == null && e.getCause() instanceof Error && !(e.getCause() instanceof StackOverflowError)) {
+                    LOG.error(NOISY, "A flusher task failed after settling its batch", e.getCause());
+                    if (error == null && e.getCause() instanceof Error) {
                         error = (Error) e.getCause();
                     }
                     break;
@@ -123,9 +124,9 @@ public class ParallelFlusher {
             final BatchSender.Result result;
             try {
                 result = batchSender.send(buildRequest(batch), outcomeHandler.mustRetryUntilDelivered(batch));
-            } catch (final Exception | StackOverflowError e) {
+            } catch (final Exception e) {
                 interrupted = Thread.interrupted();
-                LOG.error("Unexpected error sending a batch of {} events", batch.getEventHandles().size(), e);
+                LOG.error(NOISY, "Unexpected error sending a batch of {} events", batch.getEventHandles().size(), e);
                 outcomeHandler.terminalStep(batch, OutcomeHandler.Reason.UNEXPECTED_ERROR, e);
                 return;
             }

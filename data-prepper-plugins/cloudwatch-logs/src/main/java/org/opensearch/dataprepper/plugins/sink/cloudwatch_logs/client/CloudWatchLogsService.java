@@ -21,6 +21,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * The sink's group buffers: groups buffered events by resolved entity and headers, and takes ready groups as
  * {@link Batch}es for the caller to send.
@@ -171,8 +173,8 @@ public class CloudWatchLogsService {
                     || cloudWatchLogsLimits.isTimeLimitReached(group.stopWatch.getElapsedTimeInSeconds())) {
                 take(group, out);
             }
-        } catch (final Exception | StackOverflowError e) {
-            LOG.error("Unexpected error after buffering an event; it stays buffered and is sent with its group.", e);
+        } catch (final Exception e) {
+            LOG.error(NOISY, "Unexpected error after buffering an event; it stays buffered and is sent with its group.", e);
         }
     }
 

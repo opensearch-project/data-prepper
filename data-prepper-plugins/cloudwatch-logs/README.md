@@ -134,8 +134,8 @@ configured, or every event in it has an end-to-end acknowledgement set. Otherwis
 `max_retries` does not apply and the request is retried until it is delivered or the sink shuts down. The pipeline worker
 waits on it, so an outage applies backpressure to the source instead of dropping events. SDK-level retries are disabled; each
 attempt times out after 10 s and each call after 15 s (`T_call`). Every error is retried except permanent errors
-(`InvalidParameterException`, HTTP 413, and a missing log group or stream when neither `create_log_group` nor
-`create_log_stream` is set), which no retry can fix: they end the request after that attempt and take the
+(`InvalidParameterException`, HTTP 413, a missing log group or stream when neither `create_log_group` nor
+`create_log_stream` is set, and a missing log group when only `create_log_stream` is set), which no retry can fix: they end the request after that attempt and take the
 `permanentFailure` row below. Before retry *n* the sink sleeps a random time in [0, min(30 s, 500 ms × 2^(n−1))]. When `create_log_group` or `create_log_stream` is set, a missing log group or stream is
 created on the first `ResourceNotFoundException` of a request and counts as a failed attempt. A creation that fails is
 retried on the next `ResourceNotFoundException`; a successful one is not repeated.

@@ -138,7 +138,12 @@ public class BatchSender {
                 } else if (closed) {
                     return shutdown(request, lastException);
                 } else {
-                    resourceCreationAttempted = createResources(request);
+                    try {
+                        resourceCreationAttempted = createResources(request);
+                    } catch (final ResourceNotFoundException e) {
+                        cloudWatchLogsMetrics.increaseResourceNotFoundCounter(1);
+                        return permanentFailure(request, e);
+                    }
                 }
             }
         }
@@ -227,6 +232,9 @@ public class BatchSender {
                 LOG.debug("Log stream already exists: {}/{}", logGroupName, logStreamName);
             } catch (final Exception e) {
                 countResourceCreationFailure(e, "log stream", logGroupName + "/" + logStreamName);
+                if (!createLogGroup && e instanceof ResourceNotFoundException) {
+                    throw (ResourceNotFoundException) e;
+                }
                 succeeded = false;
             }
         }
@@ -236,9 +244,9 @@ public class BatchSender {
     private void countResourceCreationFailure(final Exception e, final String resourceType, final String resourceName) {
         if (e instanceof AwsServiceException && isAccessDenied((AwsServiceException) e)) {
             cloudWatchLogsMetrics.increaseAccessDeniedCounter(1);
-            LOG.warn("Access denied creating {} '{}': {}", resourceType, resourceName, e.getMessage());
+            LOG.warn(NOISY, "Access denied creating {} '{}': {}", resourceType, resourceName, e.getMessage());
         } else {
-            LOG.warn("Unable to create {} '{}': {}", resourceType, resourceName, e.getMessage());
+            LOG.warn(NOISY, "Unable to create {} '{}': {}", resourceType, resourceName, e.getMessage());
         }
     }
 
