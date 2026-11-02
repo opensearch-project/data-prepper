@@ -271,8 +271,6 @@ public class PrometheusTimeSeries {
         List<Double> explicitBounds = histogram.getExplicitBoundsList();
         List<Long> bucketCounts = histogram.getBucketCountsList();
         if (explicitBounds != null && bucketCounts != null) {
-            // OTLP bucket counts are per bucket, but a Prometheus "le" bucket counts every
-            // observation less than or equal to its bound, so the counts are accumulated.
             int lastIndex = bucketCounts.size() - 1;
             long cumulativeCount = 0;
             for (int i = 0; i < bucketCounts.size(); i++) {

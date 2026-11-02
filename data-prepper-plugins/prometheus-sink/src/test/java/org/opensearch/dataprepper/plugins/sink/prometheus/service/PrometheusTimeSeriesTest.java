@@ -251,7 +251,6 @@ public class PrometheusTimeSeriesTest {
                 .filter(series -> bucketName.equals(getLabels(series).get("__name__")))
                 .collect(Collectors.toMap(series -> getLabels(series).get("le"), series -> series.getSamples(0).getValue()));
 
-        // Per-bucket counts are 2222, 5555, 3333 and 7777; each "le" bucket includes all smaller ones.
         assertThat(bucketValues.get("5.0"), equalTo(2222.0));
         assertThat(bucketValues.get("10.0"), equalTo(7777.0));
         assertThat(bucketValues.get("100.0"), equalTo(11110.0));
