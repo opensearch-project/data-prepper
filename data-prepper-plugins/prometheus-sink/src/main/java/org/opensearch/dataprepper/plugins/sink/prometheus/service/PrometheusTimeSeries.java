@@ -299,16 +299,18 @@ public class PrometheusTimeSeries {
         List<Long> positiveBucketCounts = histogram.getPositive();
         Integer positiveOffset = histogram.getPositiveOffset();
         List<Long> negativeBucketCounts = histogram.getNegative();
-        Integer negativeOffset = histogram.getPositiveOffset();
+        Integer negativeOffset = histogram.getNegativeOffset();
 
         boolean positiveBucketsPresent = (positiveBucketCounts != null) && (positiveOffset != null);
         boolean negativeBucketsPresent = (negativeBucketCounts != null) && (negativeOffset != null);
 
         if (positiveBucketsPresent || negativeBucketsPresent) {
             if (positiveBucketsPresent) {
+                long cumulativeCount = 0;
                 for (int i = 0; i < positiveBucketCounts.size(); i++) {
+                    cumulativeCount += positiveBucketCounts.get(i);
                     double bound = calculateBucketBound(i + positiveOffset + 1, scale);
-                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, Double.toString(bound), (double) positiveBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, Double.toString(bound), (double) cumulativeCount);
                 }
             }
             if (negativeBucketsPresent) {
