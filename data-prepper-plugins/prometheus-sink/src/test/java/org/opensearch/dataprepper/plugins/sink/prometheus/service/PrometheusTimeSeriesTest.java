@@ -229,6 +229,39 @@ public class PrometheusTimeSeriesTest {
     }
 
     @Test
+    public void testExponentialHistogramPositiveBucketsAreCumulative() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, null, null);
+
+        final Map<String, Double> bucketValues = timeSeries.getTimeSeriesList().stream()
+                .filter(series -> getLabels(series).containsKey("le"))
+                .collect(Collectors.toMap(series -> getLabels(series).get("le"), series -> series.getSamples(0).getValue()));
+
+        assertThat(bucketValues.get(Double.toString(1.0)), equalTo(1.0));
+        assertThat(bucketValues.get(Double.toString(Math.pow(2, 0.5))), equalTo(4.0));
+        assertThat(bucketValues.get(Double.toString(2.0)), equalTo(9.0));
+    }
+
+    @Test
+    public void testExponentialHistogramNegativeBucketsUseNegativeOffset() throws Exception {
+        final String name = RandomStringUtils.randomAlphabetic(10);
+        final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
+        final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, null, null);
+
+        final List<String> negativeBounds = timeSeries.getTimeSeriesList().stream()
+                .filter(series -> getLabels(series).containsKey("ge"))
+                .map(series -> getLabels(series).get("ge"))
+                .collect(Collectors.toList());
+
+        assertThat(negativeBounds, equalTo(Arrays.asList(
+                Double.toString(-Math.pow(2, 1.5)),
+                Double.toString(-Math.pow(2, 2.0)),
+                Double.toString(-Math.pow(2, 2.5)),
+                Double.toString(-Math.pow(2, 3.0)))));
+    }
+
+    @Test
     public void testInstanceLabelIsAddedToEveryTimeSeries() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final Histogram histogram = createHistogramMetric(name, "s");
