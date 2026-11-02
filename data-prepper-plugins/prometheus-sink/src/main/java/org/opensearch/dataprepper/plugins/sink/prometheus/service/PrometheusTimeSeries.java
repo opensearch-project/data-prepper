@@ -314,9 +314,11 @@ public class PrometheusTimeSeries {
                 }
             }
             if (negativeBucketsPresent) {
+                long cumulativeCount = 0;
                 for (int i = 0; i < negativeBucketCounts.size(); i++) {
+                    cumulativeCount += negativeBucketCounts.get(i);
                     double bound = -calculateBucketBound(i + negativeOffset + 1, scale);
-                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) negativeBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) cumulativeCount);
                 }
             }
         }
