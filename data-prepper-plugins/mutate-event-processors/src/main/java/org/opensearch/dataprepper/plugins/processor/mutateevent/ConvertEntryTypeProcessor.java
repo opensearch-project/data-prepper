@@ -259,13 +259,18 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                             iterateOn, e.getMessage()), e);
         }
         if (iterateOnList != null) {
+            final String[] path = key.split("/");
+            final String leafKey = path[path.length - 1];
             int listIndex = 0;
             for (final Map<String, Object> item : iterateOnList) {
                 Object value = null;
                 try {
-                    value = item.get(key);
-                    if (value != null) {
-                        item.put(key, converter.convert(value, converterArguments));
+                    final Map<String, Object> parent = resolveParent(item, path);
+                    if (parent != null) {
+                        value = parent.get(leafKey);
+                        if (value != null) {
+                            parent.put(leafKey, converter.convert(value, converterArguments));
+                        }
                     }
                 } catch (final RuntimeException e) {
                     LOG.error(EVENT, "Unable to convert element {} with key: {} with value: {} to {}", listIndex, key, value, type, e);
@@ -276,6 +281,16 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
 
             recordEvent.put(iterateOn, iterateOnList);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveParent(final Map<String, Object> item, final String[] path) {
+        Map<String, Object> current = item;
+        for (int i = 0; i < path.length - 1 && current != null; i++) {
+            final Object next = current.get(path[i]);
+            current = next instanceof Map ? (Map<String, Object>) next : null;
+        }
+        return current;
     }
 
     private List<String> getKeysToConvert(final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig) {
