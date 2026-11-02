@@ -368,9 +368,13 @@ public class IndexConfigurationTests {
         assertThat(opensearchEvaluation.get("level"), equalTo(Map.of("type", "keyword")));
         assertThat(getProperties(opensearchEvaluation, "score").get("min"), equalTo(Map.of("type", "double")));
         assertThat(getProperties(opensearchEvaluation, "score").get("max"), equalTo(Map.of("type", "double")));
-        assertThat(getProperties(getProperties(getProperties(attributes, "test"), "case"), "result").get("status"),
-                equalTo(Map.of("type", "keyword")));
-        assertThat(getProperties(getProperties(attributes, "derived"), "session").get("id"), equalTo(Map.of("type", "keyword")));
+        final Map<String, Object> test = getProperties(attributes, "test");
+        final Map<String, Object> testCase = getProperties(test, "case");
+        assertThat(testCase.get("id"), equalTo(Map.of("type", "keyword")));
+        assertThat(testCase, not(hasKey("result")));
+        final Map<String, Object> testSuiteRun = getProperties(getProperties(test, "suite"), "run");
+        assertThat(testSuiteRun.get("id"), equalTo(Map.of("type", "keyword")));
+        assertThat(testSuiteRun, not(hasKey("status")));
 
         final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
         final Map<String, Object> longAttributes = dynamicTemplates.stream()

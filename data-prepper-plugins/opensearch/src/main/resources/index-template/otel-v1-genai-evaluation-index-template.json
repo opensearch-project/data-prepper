@@ -269,9 +269,6 @@
                       "properties": {
                         "id": {
                           "type": "keyword"
-                        },
-                        "status": {
-                          "type": "keyword"
                         }
                       }
                     }
@@ -284,13 +281,6 @@
                     },
                     "name": {
                       "type": "keyword"
-                    },
-                    "result": {
-                      "properties": {
-                        "status": {
-                          "type": "keyword"
-                        }
-                      }
                     }
                   }
                 }
