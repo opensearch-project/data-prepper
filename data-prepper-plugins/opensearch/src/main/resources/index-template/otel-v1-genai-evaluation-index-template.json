@@ -258,27 +258,6 @@
                 }
               }
             },
-            "derived": {
-              "properties": {
-                "evaluation": {
-                  "properties": {
-                    "level": {
-                      "type": "keyword"
-                    },
-                    "source": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "session": {
-                  "properties": {
-                    "id": {
-                      "type": "keyword"
-                    }
-                  }
-                }
-              }
-            },
             "test": {
               "properties": {
                 "suite": {
