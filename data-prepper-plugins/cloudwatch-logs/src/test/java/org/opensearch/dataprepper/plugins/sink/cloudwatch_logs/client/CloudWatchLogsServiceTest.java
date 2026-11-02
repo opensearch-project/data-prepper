@@ -9,40 +9,56 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.InOrder;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
-import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.SinkStopWatch;
 import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -51,273 +67,377 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CloudWatchLogsServiceTest {
-    private static final int LARGE_THREAD_COUNT = 1000;
-    private CloudWatchLogsClient mockClient;
-    private CloudWatchLogsMetrics mockMetrics;
-    private CloudWatchLogsService cloudWatchLogsService;
-    private CloudWatchLogsSinkConfig mockCloudWatchLogsSinkConfig;
+    private static final long FLUSH_INTERVAL = ThresholdConfig.DEFAULT_FLUSH_INTERVAL;
+
+    private enum BlankEntityField { KEY_ATTRIBUTE, ATTRIBUTE }
+
     private ThresholdConfig thresholdConfig;
     private CloudWatchLogsLimits cloudWatchLogsLimits;
     private CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private InMemoryBufferFactory inMemoryBufferFactory;
-    private Buffer buffer;
-    private CloudWatchLogsDispatcher mockDispatcher;
-    private DlqPushHandler dlqPushHandler;
-    private EventHandle eventHandle;
+    private SinkStopWatch stopWatch;
 
     @BeforeEach
     void setUp() {
-        mockCloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
-
-        eventHandle = mock(EventHandle.class);
         cloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         thresholdConfig = new ThresholdConfig();
         cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSizeBytes(),
                 thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getFlushInterval());
-
-        mockClient = mock(CloudWatchLogsClient.class);
-        mockMetrics = mock(CloudWatchLogsMetrics.class);
         inMemoryBufferFactory = new InMemoryBufferFactory();
-        mockDispatcher = mock(CloudWatchLogsDispatcher.class);
-        dlqPushHandler = mock(DlqPushHandler.class);
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
-                cloudWatchLogsLimits, mockDispatcher, null, true);
+        stopWatch = mock(SinkStopWatch.class);
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(0L);
     }
 
-    Collection<Record<Event>> getSampleRecordsCollectionSmall() {
-        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
-            returnCollection.add(new Record<>(mockJacksonEvent));
-        }
-
-        return returnCollection;
+    private CloudWatchLogsService staticService(final Buffer buffer) {
+        return new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, null);
     }
 
-    Collection<Record<Event>> getSampleRecordsCollection() {
-        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
-        for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
-            returnCollection.add(new Record<>(mockJacksonEvent));
-        }
-
-        return returnCollection;
+    private CloudWatchLogsService staticServiceWithMockedStopWatch() {
+        return new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits, null, 0, null,
+                () -> stopWatch);
     }
 
-    Collection<Record<Event>> getSampleRecordsOfLargerSize() {
-        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
-        int messageSize = (int) (thresholdConfig.getMaxRequestSizeBytes() / 24);
-        for (int i = 0; i < thresholdConfig.getBatchSize() * 2; i++) {
-            JacksonEvent mockJacksonEvent =
-                    (JacksonEvent) JacksonEvent.fromMessage(RandomStringUtils.insecure().nextAlphabetic(messageSize));
-            returnCollection.add(new Record<>(mockJacksonEvent));
-        }
-
-        return returnCollection;
+    private static byte[] bytesOf(final Event event) {
+        return event.toJsonString().getBytes(StandardCharsets.UTF_8);
     }
 
-    Collection<Record<Event>> getSampleRecordsOfLimitSize() {
-        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
-        int messageSize = (int) thresholdConfig.getMaxEventSizeBytes();
-        for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
-            JacksonEvent mockJacksonEvent =
-                    (JacksonEvent) JacksonEvent.fromMessage(RandomStringUtils.insecure().nextAlphabetic(messageSize));
-            returnCollection.add(new Record<>(mockJacksonEvent));
-        }
-
-        return returnCollection;
-    }
-
-    void setUpSpyBuffer() {
-        buffer = spy(InMemoryBuffer.class);
-    }
-
-    void setUpRealBuffer() {
-        buffer = inMemoryBufferFactory.getBuffer();
-    }
-
-    CloudWatchLogsService getSampleService(DlqPushHandler dlqPushHandler) {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, mockDispatcher, dlqPushHandler, true);
-    }
-
-    CloudWatchLogsService getSampleService() {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, mockDispatcher, null, true);
-    }
-
-    @Test
-    void SHOULD_not_call_dispatcher_WHEN_process_log_events_called_with_small_collection() {
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecordsCollectionSmall());
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
-    }
-
-    @Test
-    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection() {
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecordsCollection());
-        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class));
-    }
-
-    @Test
-    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_dlq() throws Exception {
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService(dlqPushHandler);
-        cloudWatchLogsService.processLogEvents(getSampleRecordsCollection());
-        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class));
-        verify(dlqPushHandler, never()).perform(any(List.class));
-    }
-
-    @Test
-    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_large_record_dlq() throws Exception {
-        PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn("test");
-        when(pluginSetting.getPipelineName()).thenReturn("test");
-        when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService(dlqPushHandler);
-        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
-        verify(dlqPushHandler, atLeast(1)).perform(any(List.class));
-    }
-
-    @Test
-    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_large_record_no_dlq_are_dropped() throws Exception {
-        PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn("test");
-        when(pluginSetting.getPipelineName()).thenReturn("test");
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService(null);
-        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
-        verify(eventHandle, times(1)).release(eq(true));
-        verify(cloudWatchLogsMetrics, times(1)).increaseLogLargeEventsDroppedCounter(eq(1));
-    }
-
-    @Test
-    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_dispatcher_throws_sending_events_to_dlq() throws Exception {
-        PluginSetting pluginSetting = mock(PluginSetting.class);
-        doAnswer(a -> {
-            throw new RuntimeException("failed to dispatch");
-        }).when(mockDispatcher).dispatchLogs(any(List.class), any(List.class));
-        when(pluginSetting.getName()).thenReturn("test");
-        when(pluginSetting.getPipelineName()).thenReturn("test");
-        when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
-        setUpRealBuffer();
-        cloudWatchLogsService = getSampleService(dlqPushHandler);
-        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
-        verify(dlqPushHandler, atLeast(1)).perform(any(List.class));
-    }
-
-    @Test
-    void SHOULD_not_call_buffer_WHEN_process_log_events_called_with_limit_sized_records() {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecordsOfLimitSize());
-        verify(buffer, never()).writeEvent(any(EventHandle.class), any(byte[].class));
-    }
-    
-    @Test
-    void SHOULD_call_buffer_WHEN_process_log_events_called_with_larger_sized_records() {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecordsOfLargerSize());
-        verify(buffer, atLeast(1)).writeEvent(any(EventHandle.class), any(byte[].class));
-    }
-
-    @Test
-    void GIVEN_non_ascii_event_WHEN_utf8_bytes_exceed_request_limit_THEN_dispatch_existing_buffer() {
-        setUpRealBuffer();
-        final Event firstEvent = JacksonLog.builder()
-                .withData(Map.of("message", "ascii"))
+    private static Event eventWithMessage(final String message) {
+        return JacksonLog.builder()
+                .withData(Map.of("message", message))
                 .withEventHandle(mock(EventHandle.class))
                 .build();
-        final Event nonAsciiEvent = JacksonLog.builder()
-                .withData(Map.of("message", "\u4E2D".repeat(20)))
-                .withEventHandle(mock(EventHandle.class))
-                .build();
-        final String firstLogString = firstEvent.toJsonString();
-        final String nonAsciiLogString = nonAsciiEvent.toJsonString();
-        final byte[] nonAsciiLogBytes = nonAsciiLogString.getBytes(StandardCharsets.UTF_8);
-        final int eventCount = 2;
-        final long requestLimitBasedOnCharacterCount = firstLogString.getBytes(StandardCharsets.UTF_8).length
-                + nonAsciiLogString.length()
-                + eventCount * CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
+    }
+
+    private static Collection<Record<Event>> records(final int count) {
+        final List<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            records.add(new Record<>(JacksonEvent.fromMessage("testMessage")));
+        }
+        return records;
+    }
+
+    private static List<Batch> addAllThenTakeReady(final CloudWatchLogsService service, final Collection<Record<Event>> records) {
+        final List<Batch> out = new ArrayList<>();
+        for (final Record<Event> record : records) {
+            service.add(record.getData(), bytesOf(record.getData()), out);
+        }
+        service.takeReady(out);
+        return out;
+    }
+
+    private static List<EventHandle> handlesOf(final List<Batch> batches) {
+        final List<EventHandle> handles = new ArrayList<>();
+        for (final Batch batch : batches) {
+            handles.addAll(batch.getEventHandles());
+        }
+        return handles;
+    }
+
+    @Test
+    void add_threeTimesBatchSize_threeBatchesOfBatchSize() {
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+
+        final List<Batch> out = addAllThenTakeReady(service, records(3 * thresholdConfig.getBatchSize()));
+
+        assertThat(out, hasSize(3));
+        for (final Batch batch : out) {
+            assertThat(batch.getEventHandles(), hasSize(thresholdConfig.getBatchSize()));
+            assertThat(batch.getMessages(), hasSize(thresholdConfig.getBatchSize()));
+        }
+    }
+
+    @Test
+    void add_sizeExceeded_splits() {
+        final Event first = eventWithMessage("a".repeat(100));
+        final int length = bytesOf(first).length;
         cloudWatchLogsLimits = new CloudWatchLogsLimits(100, 1_000_000,
-                requestLimitBasedOnCharacterCount, thresholdConfig.getFlushInterval());
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
-                cloudWatchLogsLimits, mockDispatcher, null, true);
+                2L * (length + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE), FLUSH_INTERVAL);
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+        final List<Event> events = new ArrayList<>(List.of(first));
+        for (int i = 0; i < 4; i++) {
+            events.add(eventWithMessage("a".repeat(100)));
+        }
 
-        cloudWatchLogsService.processLogEvents(List.of(new Record<>(firstEvent), new Record<>(nonAsciiEvent)));
+        final List<Batch> out = new ArrayList<>();
+        for (final Event event : events) {
+            service.add(event, bytesOf(event), out);
+        }
 
-        verify(mockDispatcher, times(1)).dispatchLogs(any(List.class), any(List.class));
-        verify(cloudWatchLogsMetrics).recordLogSize(nonAsciiLogBytes.length);
-        assertThat(buffer.getEventCount(), equalTo(1));
-        assertThat(buffer.getBufferSize(), equalTo(nonAsciiLogBytes.length));
-        assertThat(buffer.getBufferedData().get(0), equalTo(nonAsciiLogBytes));
+        assertThat(out, hasSize(2));
+        assertThat(out.get(0).getEventHandles(), contains(events.get(0).getEventHandle(), events.get(1).getEventHandle()));
+        assertThat(out.get(1).getEventHandles(), contains(events.get(2).getEventHandle(), events.get(3).getEventHandle()));
+        for (final Batch batch : out) {
+            final long requestSize = batch.getMessages().stream().mapToLong(m -> m.length).sum()
+                    + (long) batch.getMessages().size() * CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
+            assertThat(requestSize, lessThanOrEqualTo(2L * (length + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE)));
+        }
+        final List<Batch> remaining = new ArrayList<>();
+        service.takeAll(remaining);
+        assertThat(handlesOf(remaining), contains(events.get(4).getEventHandle()));
     }
 
     @Test
-    void GIVEN_non_ascii_event_WHEN_utf8_bytes_exceed_event_limit_THEN_drop_event() {
-        setUpRealBuffer();
-        final EventHandle nonAsciiEventHandle = mock(EventHandle.class);
-        final Event nonAsciiEvent = JacksonLog.builder()
-                .withData(Map.of("message", "\u4E2D".repeat(20)))
-                .withEventHandle(nonAsciiEventHandle)
-                .build();
+    void add_utf8BytesExceedRequestLimit_takesExistingGroupFirst() {
+        // The request size check uses the UTF-8 byte length, not the character count.
+        final Event firstEvent = eventWithMessage("ascii");
+        final Event nonAsciiEvent = eventWithMessage("\u4E2D".repeat(20));
         final String nonAsciiLogString = nonAsciiEvent.toJsonString();
-        final byte[] nonAsciiLogBytes = nonAsciiLogString.getBytes(StandardCharsets.UTF_8);
-        final long eventLimitBasedOnCharacterCount = nonAsciiLogString.length()
-                + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
-        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, eventLimitBasedOnCharacterCount,
-                1_000_000, thresholdConfig.getFlushInterval());
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics,
-                cloudWatchLogsLimits, mockDispatcher, null, true);
+        final long requestLimitBasedOnCharacterCount = bytesOf(firstEvent).length + nonAsciiLogString.length()
+                + 2 * CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE;
+        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, 1_000_000, requestLimitBasedOnCharacterCount, FLUSH_INTERVAL);
+        final Buffer buffer = inMemoryBufferFactory.getBuffer();
+        final CloudWatchLogsService service = staticService(buffer);
 
-        cloudWatchLogsService.processLogEvents(List.of(new Record<>(nonAsciiEvent)));
+        final List<Batch> out = addAllThenTakeReady(service, List.of(new Record<>(firstEvent), new Record<>(nonAsciiEvent)));
 
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
-        verify(cloudWatchLogsMetrics).recordLogSize(nonAsciiLogBytes.length);
-        verify(cloudWatchLogsMetrics).increaseLogLargeEventsDroppedCounter(1);
-        verify(nonAsciiEventHandle).release(true);
+        assertThat(out, hasSize(1));
+        assertThat(out.get(0).getEventHandles(), contains(firstEvent.getEventHandle()));
+        assertThat(buffer.getEventCount(), equalTo(1));
+        assertThat(buffer.getBufferedData().get(0), equalTo(bytesOf(nonAsciiEvent)));
+    }
+
+    @Test
+    void add_singleEventLargerThanMaxRequestSize_takenAloneNoEmptyBatch() {
+        final Event large = eventWithMessage(RandomStringUtils.insecure().nextAlphabetic(500));
+        final Event small = eventWithMessage("small");
+        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, 1_000_000, 100, FLUSH_INTERVAL);
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+
+        final List<Batch> out = new ArrayList<>();
+        service.add(large, bytesOf(large), out);
+        assertThat(out, empty());
+
+        service.add(small, bytesOf(small), out);
+        service.takeAll(out);
+
+        assertThat(out, hasSize(2));
+        assertThat(out.get(0).getEventHandles(), contains(large.getEventHandle()));
+        assertThat(out.get(1).getEventHandles(), contains(small.getEventHandle()));
+        for (final Batch batch : out) {
+            assertThat(batch.getEventHandles(), not(empty()));
+        }
+    }
+
+    @Test
+    void add_and_takeReady_timeReady_takes() {
+        // Time readiness is checked by add for each event, and by takeReady for groups that received no events.
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+        final Event first = eventWithMessage("first");
+        final Event second = eventWithMessage("second");
+        final List<Batch> out = new ArrayList<>();
+
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL - 1);
+        service.add(first, bytesOf(first), out);
+        service.takeReady(out);
+        assertThat(out, empty());
+
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL);
+        service.add(second, bytesOf(second), out);
+        assertThat(out, hasSize(1));
+        assertThat(out.get(0).getEventHandles(), contains(first.getEventHandle(), second.getEventHandle()));
+
+        final Event third = eventWithMessage("third");
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(0L);
+        service.add(third, bytesOf(third), out);
+        service.takeReady(out);
+        assertThat(out, hasSize(1));
+
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL);
+        service.takeReady(out);
+        assertThat(out, hasSize(2));
+        assertThat(out.get(1).getEventHandles(), contains(third.getEventHandle()));
+        verify(stopWatch, times(2)).stopAndReset();
+    }
+
+    @Test
+    void add_failureAfterWriteEvent_loggedAndEventStaysBuffered() {
+        // Once writeEvent returns, the event is owned by the buffer, so add must not throw for it.
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+        when(stopWatch.getElapsedTimeInSeconds()).thenThrow(new RuntimeException("stopwatch failed"));
+        final Event event = eventWithMessage("buffered");
+        final List<Batch> out = new ArrayList<>();
+
+        service.add(event, bytesOf(event), out);
+
+        assertThat(out, empty());
+        service.takeAll(out);
+        assertThat(handlesOf(out), contains(event.getEventHandle()));
+    }
+
+    @Test
+    void add_sizeSplitThenWriteEventThrows_takenBatchReachesOut() {
+        final Event first = eventWithMessage("a".repeat(100));
+        final Event second = eventWithMessage("a".repeat(100));
+        cloudWatchLogsLimits = new CloudWatchLogsLimits(100, 1_000_000,
+                bytesOf(first).length + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE, FLUSH_INTERVAL);
+        final Buffer buffer = spy(InMemoryBuffer.class);
+        doCallRealMethod().doThrow(new RuntimeException("write failed")).when(buffer).writeEvent(any(), any());
+        final CloudWatchLogsService service = staticService(buffer);
+        final List<Batch> out = new ArrayList<>();
+        service.add(first, bytesOf(first), out);
+
+        assertThrows(RuntimeException.class, () -> service.add(second, bytesOf(second), out));
+
+        assertThat(out, hasSize(1));
+        assertThat(out.get(0).getEventHandles(), contains(first.getEventHandle()));
         assertThat(buffer.getEventCount(), equalTo(0));
     }
 
-    //Multithreaded tests:
-    void setUpThreadsProcessingLogsWithNormalSample(final int numberOfThreads) throws InterruptedException {
-        Thread[] threads = new Thread[numberOfThreads];
-        Collection<Record<Event>> sampleEvents = getSampleRecordsCollection();
-
-        for (int i = 0; i < numberOfThreads; i++) {
-            threads[i] = new Thread(() -> {
-                cloudWatchLogsService.processLogEvents(sampleEvents);
-            });
-            threads[i].start();
+    @Test
+    void takeReady_take_removesBatchFromGroup() {
+        final CloudWatchLogsService service = staticServiceWithMockedStopWatch();
+        final List<Batch> out = new ArrayList<>();
+        for (final Record<Event> record : records(3)) {
+            service.add(record.getData(), bytesOf(record.getData()), out);
         }
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL);
 
-        for (int i = 0; i < numberOfThreads; i++) {
-            threads[i].join();
+        service.takeReady(out);
+        assertThat(out, hasSize(1));
+        assertThat(out.get(0).getEventHandles(), hasSize(3));
+
+        final List<Batch> again = new ArrayList<>();
+        service.takeReady(again);
+        service.takeAll(again);
+        assertThat(again, empty());
+    }
+
+    @Test
+    void take_thenResetOrAddMore_takenListsUnchanged() {
+        final List<EventHandle> handles = new ArrayList<>();
+        final List<byte[]> messages = new ArrayList<>();
+        final Buffer buffer = mock(Buffer.class);
+        when(buffer.getEventCount()).thenAnswer(invocation -> handles.size());
+        when(buffer.getEventHandles()).thenReturn(handles);
+        when(buffer.getBufferedData()).thenReturn(messages);
+        when(buffer.getBufferSize()).thenReturn(42);
+        doAnswer(invocation -> {
+            handles.add(invocation.getArgument(0));
+            messages.add(invocation.getArgument(1));
+            return null;
+        }).when(buffer).writeEvent(any(), any());
+        final CloudWatchLogsService service = new CloudWatchLogsService(() -> buffer, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, null, 0, null, () -> stopWatch);
+        final Event first = eventWithMessage("first");
+        final Event second = eventWithMessage("second");
+        final List<Batch> out = new ArrayList<>();
+        service.add(first, bytesOf(first), out);
+        service.add(second, bytesOf(second), out);
+
+        service.takeAll(out);
+
+        assertThat(out, hasSize(1));
+        final Batch batch = out.get(0);
+        handles.clear();
+        messages.clear();
+        final Event third = eventWithMessage("third");
+        service.add(third, bytesOf(third), new ArrayList<>());
+        assertThat(batch.getEventHandles(), contains(first.getEventHandle(), second.getEventHandle()));
+        assertThat(batch.getMessages(), hasSize(2));
+        assertThat(batch.getMessages().get(0), equalTo(bytesOf(first)));
+        final InOrder inOrder = inOrder(buffer, stopWatch, cloudWatchLogsMetrics);
+        inOrder.verify(buffer).getBufferedData();
+        inOrder.verify(buffer).resetBuffer();
+        inOrder.verify(stopWatch).stopAndReset();
+        inOrder.verify(cloudWatchLogsMetrics).recordRequestSize(42);
+        verify(buffer, never()).clearBuffer();
+    }
+
+    @Test
+    void takeAll_nonEmptyAndEmptyGroups_takesOnlyNonEmptyRegardlessOfReadiness() {
+        final Map<String, String> keyAttributes = new LinkedHashMap<>();
+        keyAttributes.put("Name", "${resourceId}");
+        final EntityResolver resolver = new EntityResolver(keyAttributes, Map.of(), mock(ExpressionEvaluator.class));
+        final CloudWatchLogsService service = new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, resolver, EntityConfig.DEFAULT_MAX_CARDINALITY, null, () -> stopWatch);
+        final Event dynamicEvent = JacksonLog.builder().withData(Map.of("resourceId", "res-A"))
+                .withEventHandle(mock(EventHandle.class)).build();
+        final Event sharedEvent = JacksonLog.builder().withData(Map.of("other", "x"))
+                .withEventHandle(mock(EventHandle.class)).build();
+        final List<Batch> out = new ArrayList<>();
+        service.add(dynamicEvent, bytesOf(dynamicEvent), out);
+        service.add(sharedEvent, bytesOf(sharedEvent), out);
+
+        service.takeAll(out);
+
+        assertThat(out, hasSize(2));
+        assertThat(handlesOf(out), hasItem(dynamicEvent.getEventHandle()));
+        assertThat(handlesOf(out), hasItem(sharedEvent.getEventHandle()));
+        final List<Batch> again = new ArrayList<>();
+        service.takeAll(again);
+        assertThat(again, empty());
+    }
+
+    @Test
+    void takeReady_twoThreadsRacing_eachBatchReturnedOnce() throws InterruptedException {
+        final Map<String, String> keyAttributes = new LinkedHashMap<>();
+        keyAttributes.put("Name", "${resourceId}");
+        final EntityResolver resolver = new EntityResolver(keyAttributes, Map.of(), mock(ExpressionEvaluator.class));
+        final CloudWatchLogsService service = new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, resolver, EntityConfig.DEFAULT_MAX_CARDINALITY, null, () -> stopWatch);
+        final int groupCount = 20;
+        final List<EventHandle> allHandles = new ArrayList<>();
+        final List<Batch> unused = new ArrayList<>();
+        for (int i = 0; i < groupCount; i++) {
+            for (int j = 0; j < 3; j++) {
+                final Event event = JacksonLog.builder().withData(Map.of("resourceId", "res-" + i, "seq", j))
+                        .withEventHandle(mock(EventHandle.class)).build();
+                allHandles.add(event.getEventHandle());
+                service.add(event, bytesOf(event), unused);
+            }
+        }
+        assertThat(unused, empty());
+        when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL);
+
+        final ReentrantLock processLock = new ReentrantLock();
+        final CountDownLatch start = new CountDownLatch(1);
+        final List<Batch> firstOut = new ArrayList<>();
+        final List<Batch> secondOut = new ArrayList<>();
+        final Thread firstThread = new Thread(() -> takeReadyUnderLock(service, processLock, start, firstOut));
+        final Thread secondThread = new Thread(() -> takeReadyUnderLock(service, processLock, start, secondOut));
+        firstThread.start();
+        secondThread.start();
+        start.countDown();
+        firstThread.join();
+        secondThread.join();
+
+        final List<Batch> combined = new ArrayList<>(firstOut);
+        combined.addAll(secondOut);
+        assertThat(combined, hasSize(groupCount));
+        final Set<EventHandle> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (final EventHandle handle : handlesOf(combined)) {
+            assertThat(seen.add(handle), equalTo(true));
+        }
+        assertThat(seen.size(), equalTo(allHandles.size()));
+    }
+
+    private static void takeReadyUnderLock(final CloudWatchLogsService service, final ReentrantLock processLock,
+                                           final CountDownLatch start, final List<Batch> out) {
+        try {
+            start.await();
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        processLock.lock();
+        try {
+            service.takeReady(out);
+        } finally {
+            processLock.unlock();
         }
     }
 
     @Test
-    void GIVEN_large_thread_count_WHEN_processing_log_events_THEN_buffer_should_be_called_large_thread_count_times() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
+    void add_staticMode_batchCarriesStaticEntityAndNoHeaders() {
+        final Entity staticEntity = Entity.builder().keyAttributes(Map.of("Identifier", "fixed")).build();
+        final CloudWatchLogsService service = new CloudWatchLogsService(inMemoryBufferFactory.getBuffer(), cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, staticEntity);
 
-        verify(buffer, atLeast(LARGE_THREAD_COUNT)).getBufferedData();
-    }
+        final List<Batch> out = addAllThenTakeReady(service, records(thresholdConfig.getBatchSize()));
 
-    @Test
-    void GIVEN_large_thread_count_WHEN_processing_log_events_THEN_dispatcher_should_be_called_large_thread_count_times() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
-
-        verify(mockDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(List.class));
+        assertThat(out, hasSize(1));
+        assertThat(out.get(0).getEntity(), sameInstance(staticEntity));
+        assertThat(out.get(0).getHeaders(), nullValue());
     }
 
     @Nested
@@ -330,7 +450,7 @@ class CloudWatchLogsServiceTest {
 
         private CloudWatchLogsService dynamicService(final EntityResolver entityResolver, final int maxCardinality) {
             return new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
-                    mockDispatcher, null, true, entityResolver, maxCardinality);
+                    entityResolver, maxCardinality, null);
         }
 
         private EntityResolver resourceIdResolver() {
@@ -341,14 +461,17 @@ class CloudWatchLogsServiceTest {
             return new EntityResolver(keyAttributes, Map.of(), mock(ExpressionEvaluator.class));
         }
 
+        private Event eventWithResourceId(final String resourceId, final int seq) {
+            return JacksonLog.builder()
+                    .withData(Map.of("resourceId", resourceId, "seq", seq))
+                    .withEventHandle(mock(EventHandle.class))
+                    .build();
+        }
+
         private Collection<Record<Event>> recordsWithResourceId(final String resourceId, final int count) {
             final ArrayList<Record<Event>> records = new ArrayList<>();
             for (int i = 0; i < count; i++) {
-                final Event event = JacksonLog.builder()
-                        .withData(Map.of("resourceId", resourceId, "seq", i))
-                        .withEventHandle(mock(EventHandle.class))
-                        .build();
-                records.add(new Record<>(event));
+                records.add(new Record<>(eventWithResourceId(resourceId, i)));
             }
             return records;
         }
@@ -362,62 +485,58 @@ class CloudWatchLogsServiceTest {
                     thresholdConfig.getMaxRequestSizeBytes(), 0);
         }
 
-        /**
-         * The {@code Name} key attribute of every entity dispatched so far. The shared group dispatches a
-         * null entity, which contributes no name.
-         */
-        private List<String> dispatchedEntityNames() {
-            final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
+        /** Skips batches with a null entity, which come from the shared group. */
+        private List<String> entityNames(final List<Batch> batches) {
             final List<String> names = new ArrayList<>();
-            for (final Entity entity : entityCaptor.getAllValues()) {
-                if (entity != null) {
-                    names.add(entity.keyAttributes().get("Name"));
+            for (final Batch batch : batches) {
+                if (batch.getEntity() != null) {
+                    names.add(batch.getEntity().keyAttributes().get("Name"));
                 }
             }
             return names;
         }
 
-        @Test
-        void GIVEN_dynamic_mode_WHEN_events_share_a_resource_id_THEN_dispatch_carries_that_resolved_entity() {
-            service = dynamicService(resourceIdResolver());
-
-            service.processLogEvents(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
-
-            assertThat(dispatchedEntityNames().contains("res-A"), equalTo(true));
+        private List<Entity> entities(final List<Batch> batches) {
+            final List<Entity> entities = new ArrayList<>();
+            for (final Batch batch : batches) {
+                entities.add(batch.getEntity());
+            }
+            return entities;
         }
 
         @Test
-        void GIVEN_dynamic_mode_WHEN_events_have_distinct_resource_ids_THEN_each_group_dispatches_its_own_entity() {
+        void add_distinctResourceIds_eachGroupBatchCarriesItsOwnEntity() {
             service = dynamicService(resourceIdResolver());
 
             final Collection<Record<Event>> combined = new ArrayList<>();
             combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
             combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
 
-            service.processLogEvents(combined);
+            final List<String> names = entityNames(addAllThenTakeReady(service, combined));
 
-            final List<String> dispatchedNames = dispatchedEntityNames();
-            assertThat(dispatchedNames.contains("res-A"), equalTo(true));
-            assertThat(dispatchedNames.contains("res-B"), equalTo(true));
+            assertThat(names, hasItem("res-A"));
+            assertThat(names, hasItem("res-B"));
             // Each distinct key opens exactly one group.
             verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
         }
 
         @Test
-        void GIVEN_dynamic_mode_WHEN_key_attributes_resolve_equal_THEN_one_group_serves_both_events() {
-            service = dynamicService(resourceIdResolver());
+        void add_resolveKeyThrows_groupStateUnchanged() {
+            final EntityResolver resolver = spy(resourceIdResolver());
+            service = dynamicService(resolver);
+            final Event buffered = eventWithResourceId("res-A", 0);
+            final Event failing = eventWithResourceId("res-B", 1);
+            doThrow(new RuntimeException("resolve failed")).when(resolver).resolveKey(failing);
+            final List<Batch> out = new ArrayList<>();
+            service.add(buffered, bytesOf(buffered), out);
 
-            // Two separate events resolving to the same key attributes. ResolvedKey is the groups-map key,
-            // so its equals()/hashCode() are what make these share a group instead of opening two.
-            final Collection<Record<Event>> combined = new ArrayList<>();
-            combined.addAll(recordsWithResourceId("res-A", 1));
-            combined.addAll(recordsWithResourceId("res-A", 1));
+            assertThrows(RuntimeException.class, () -> service.add(failing, bytesOf(failing), out));
 
-            service.processLogEvents(combined);
-
-            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
+            assertThat(out, empty());
             assertThat(service.activeEntityGroupCount(), equalTo(1));
+            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
+            service.takeAll(out);
+            assertThat(handlesOf(out), contains(buffered.getEventHandle()));
         }
 
         private Collection<Record<Event>> recordsWithoutResourceId(final int count) {
@@ -439,14 +558,22 @@ class CloudWatchLogsServiceTest {
             return new EntityResolver(keyAttributes, Map.of("Category", "${category}"), mock(ExpressionEvaluator.class));
         }
 
-        @Test
-        void GIVEN_dynamic_mode_WHEN_event_missing_templated_field_THEN_delivered_via_shared_group_with_no_entity() {
-            service = dynamicService(resourceIdResolver());
+        @ParameterizedTest
+        @EnumSource(BlankEntityField.class)
+        void add_eventMissingTemplatedField_takenViaSharedGroupWithNoEntity(final BlankEntityField blankField) {
+            final Collection<Record<Event>> records;
+            if (blankField == BlankEntityField.KEY_ATTRIBUTE) {
+                service = dynamicService(resourceIdResolver());
+                records = recordsWithoutResourceId(thresholdConfig.getBatchSize());
+            } else {
+                service = dynamicService(resourceIdWithCategoryAttributeResolver());
+                records = recordsWithResourceId("res-A", thresholdConfig.getBatchSize());
+            }
 
-            service.processLogEvents(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+            final List<Batch> out = addAllThenTakeReady(service, records);
 
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
-            verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+            assertThat(out, not(empty()));
+            assertThat(entities(out), everyItem(nullValue()));
             verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
                     .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
             verify(cloudWatchLogsMetrics, never()).increaseEntityGroupsCreatedCounter(anyInt());
@@ -455,62 +582,35 @@ class CloudWatchLogsServiceTest {
         }
 
         @Test
-        void GIVEN_dynamic_mode_WHEN_attribute_resolves_empty_THEN_whole_entity_is_dropped_and_events_use_shared_group() {
-            service = dynamicService(resourceIdWithCategoryAttributeResolver());
-
-            service.processLogEvents(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
-
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
-            verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
-            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
-                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
-            verify(cloudWatchLogsMetrics, never()).increaseEntityGroupsCreatedCounter(anyInt());
-            assertThat(service.activeEntityGroupCount(), equalTo(0));
-        }
-
-        @Test
-        void GIVEN_dynamic_mode_WHEN_batch_mixes_valid_and_invalid_keys_THEN_valid_keep_their_entity_and_invalid_use_fallback() {
-            service = dynamicService(resourceIdResolver());
-
-            final Collection<Record<Event>> combined = new ArrayList<>();
-            combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
-            combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
-
-            service.processLogEvents(combined);
-
-            final List<String> dispatchedNames = dispatchedEntityNames();
-            assertThat(dispatchedNames.contains("res-A"), equalTo(true));
-            assertThat(dispatchedNames.contains(""), equalTo(false));
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
-            verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
-            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
-                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
-        }
-
-        @Test
-        void GIVEN_max_cardinality_of_one_WHEN_invalid_entities_arrive_first_THEN_they_take_no_slot_and_are_not_overflow() {
+        void add_maxCardinalityOneAndInvalidEntitiesFirst_theyTakeNoSlotAndAreNotOverflow() {
             service = dynamicService(resourceIdResolver(), 1);
 
             final Collection<Record<Event>> combined = new ArrayList<>();
             combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
             combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
 
-            service.processLogEvents(combined);
+            final List<Batch> out = addAllThenTakeReady(service, combined);
 
             verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
             verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
-            assertThat(dispatchedEntityNames().contains("res-A"), equalTo(true));
+            assertThat(entityNames(out), hasItem("res-A"));
         }
 
-        @Test
-        void GIVEN_max_cardinality_reached_WHEN_new_key_has_invalid_attribute_THEN_counted_as_dropped_not_overflow() {
-            service = dynamicService(resourceIdWithCategoryAttributeResolver(), 1);
-
+        @ParameterizedTest
+        @EnumSource(BlankEntityField.class)
+        void add_maxCardinalityReachedAndNewKeyHasBlankField_countedAsDroppedNotOverflow(final BlankEntityField blankField) {
             final Collection<Record<Event>> combined = new ArrayList<>();
-            combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
-            combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
+            if (blankField == BlankEntityField.KEY_ATTRIBUTE) {
+                service = dynamicService(resourceIdResolver(), 1);
+                combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+                combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
+            } else {
+                service = dynamicService(resourceIdWithCategoryAttributeResolver(), 1);
+                combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+                combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
+            }
 
-            service.processLogEvents(combined);
+            addAllThenTakeReady(service, combined);
 
             verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
                     .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
@@ -518,22 +618,7 @@ class CloudWatchLogsServiceTest {
         }
 
         @Test
-        void GIVEN_max_cardinality_reached_WHEN_new_key_has_blank_key_attribute_THEN_counted_as_dropped_not_overflow() {
-            service = dynamicService(resourceIdResolver(), 1);
-
-            final Collection<Record<Event>> combined = new ArrayList<>();
-            combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
-            combined.addAll(recordsWithoutResourceId(thresholdConfig.getBatchSize()));
-
-            service.processLogEvents(combined);
-
-            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
-                    .increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
-            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
-        }
-
-        @Test
-        void GIVEN_dynamic_mode_WHEN_attribute_missing_only_on_some_events_of_a_key_THEN_checked_only_when_opening_the_group() {
+        void add_attributeMissingOnlyOnSomeEventsOfAKey_checkedOnlyWhenOpeningTheGroup() {
             service = dynamicService(resourceIdWithCategoryAttributeResolver());
 
             final Collection<Record<Event>> combined = new ArrayList<>();
@@ -541,43 +626,21 @@ class CloudWatchLogsServiceTest {
             combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
             combined.addAll(recordsWithResourceId("res-A", 1));
 
-            service.processLogEvents(combined);
+            final List<Batch> out = addAllThenTakeReady(service, combined);
 
             verify(cloudWatchLogsMetrics, times(1)).increaseEntityDroppedCounter(EntityResolver.BLANK_VALUE);
             verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
-            final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture());
             final List<String> categories = new ArrayList<>();
-            for (final Entity entity : entityCaptor.getAllValues()) {
+            for (final Entity entity : entities(out)) {
                 if (entity != null) {
                     categories.add(entity.attributes().get("Category"));
                 }
             }
-            assertThat(categories.contains("cat-1"), equalTo(true));
+            assertThat(categories, hasItem("cat-1"));
         }
 
         @Test
-        void GIVEN_dynamic_mode_WHEN_many_threads_process_distinct_resource_ids_THEN_all_dispatched_without_races() throws InterruptedException {
-            service = dynamicService(resourceIdResolver());
-
-            final int numberOfThreads = 50;
-            final Thread[] threads = new Thread[numberOfThreads];
-            for (int i = 0; i < numberOfThreads; i++) {
-                final String resourceId = "res-" + i;
-                threads[i] = new Thread(() ->
-                        service.processLogEvents(recordsWithResourceId(resourceId, thresholdConfig.getBatchSize())));
-                threads[i].start();
-            }
-            for (int i = 0; i < numberOfThreads; i++) {
-                threads[i].join();
-            }
-
-            verify(mockDispatcher, atLeast(numberOfThreads)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
-            verify(cloudWatchLogsMetrics, times(numberOfThreads)).increaseEntityGroupsCreatedCounter(eq(1));
-        }
-
-        @Test
-        void GIVEN_dynamic_mode_WHEN_distinct_keys_exceed_max_cardinality_THEN_groups_are_bounded_and_overflow_uses_fallback() {
+        void add_distinctKeysExceedMaxCardinality_groupsBoundedAndOverflowUsesFallback() {
             // Bound of 2: the first two distinct resource ids each open their own group; every further
             // distinct id must reuse the shared fallback group rather than growing the groups map.
             final int maxCardinality = 2;
@@ -589,86 +652,66 @@ class CloudWatchLogsServiceTest {
                 combined.addAll(recordsWithResourceId("res-" + i, thresholdConfig.getBatchSize()));
             }
 
-            service.processLogEvents(combined);
+            final List<Batch> out = addAllThenTakeReady(service, combined);
 
-            // Despite five distinct keys, group creation is bounded to maxCardinality. The shared fallback
-            // is deliberately not counted here, so this stays a count of real entities.
             verify(cloudWatchLogsMetrics, times(maxCardinality)).increaseEntityGroupsCreatedCounter(eq(1));
-
-            // Every event of every overflowing key is counted, so the loss of attribution is visible.
             final int overflowEvents = (distinctKeys - maxCardinality) * thresholdConfig.getBatchSize();
             verify(cloudWatchLogsMetrics, times(overflowEvents)).increaseEntityOverflowEventsCounter(eq(1));
-
-            // The whole point of the fallback: overflow events must not be labelled with some arbitrary
-            // resource's id, so the entity dispatched for that group is null.
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), isNull());
-            // The two in-bounds keys still dispatch their own real entities.
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+            // Overflow events must not be labelled with some arbitrary resource's id, so the shared batch's entity is null.
+            assertThat(entities(out), hasItem(nullValue()));
+            assertThat(entities(out), hasItem(notNullValue()));
         }
 
         @Test
-        void GIVEN_max_cardinality_of_one_WHEN_overflow_has_happened_THEN_a_freed_slot_still_admits_a_new_entity() {
+        void takeReady_maxCardinalityOneAfterOverflow_freedSlotStillAdmitsANewEntity() {
             cloudWatchLogsLimits = zeroFlushIntervalLimits();
             // The tightest possible bound, which is where holding the shared group inside the groups map
-            // used to be fatal: the first overflow would take the single slot and never release it, so
-            // every subsequent event of every key overflowed into it for the lifetime of the process.
+            // used to be fatal: the first overflow would take the single slot and never release it.
             service = dynamicService(resourceIdResolver(), 1);
 
             final Collection<Record<Event>> combined = new ArrayList<>();
             combined.addAll(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
             combined.addAll(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
-            service.processLogEvents(combined);
+            addAllThenTakeReady(service, combined);
 
-            // res-A took the slot and res-B overflowed. The end-of-batch sweep then dropped res-A's
-            // drained group, and the shared group lives outside the map so it holds no slot.
+            // res-A took the slot and res-B overflowed. The sweep then dropped res-A's drained group, and the
+            // shared group lives outside the map so it holds no slot.
             verify(cloudWatchLogsMetrics, times(1)).increaseEntityGroupsCreatedCounter(eq(1));
-            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize()))
-                    .increaseEntityOverflowEventsCounter(eq(1));
+            verify(cloudWatchLogsMetrics, times(thresholdConfig.getBatchSize())).increaseEntityOverflowEventsCounter(eq(1));
             assertThat(service.activeEntityGroupCount(), equalTo(0));
 
-            service.processLogEvents(recordsWithResourceId("res-C", thresholdConfig.getBatchSize()));
+            final List<Batch> out = addAllThenTakeReady(service, recordsWithResourceId("res-C", thresholdConfig.getBatchSize()));
 
-            // So res-C gets a real group and its own entity, rather than being absorbed forever.
             verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
-            assertThat(dispatchedEntityNames().contains("res-C"), equalTo(true));
+            assertThat(entityNames(out), hasItem("res-C"));
         }
 
         @Test
-        void GIVEN_dynamic_mode_WHEN_a_group_is_left_empty_and_idle_THEN_its_slot_is_released_for_a_new_entity() {
-            cloudWatchLogsLimits = zeroFlushIntervalLimits();
-            // Bound of 1: without eviction res-A would hold the only slot for the lifetime of the process,
-            // and res-B would have to collapse into the null-entity fallback.
-            service = dynamicService(resourceIdResolver(), 1);
+        void takeReady_idleEmptyDynamicGroup_evictedSharedGroupKept() {
+            final InMemoryBufferFactory bufferFactory = spy(new InMemoryBufferFactory());
+            service = new CloudWatchLogsService(bufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
+                    resourceIdResolver(), 1, null, () -> stopWatch);
+            final List<Batch> out = new ArrayList<>();
+            final Event groupA = eventWithResourceId("res-A", 0);
+            final Event overflow = eventWithResourceId("res-B", 1);
+            service.add(groupA, bytesOf(groupA), out);
+            service.add(overflow, bytesOf(overflow), out);
+            service.takeAll(out);
+            assertThat(out, hasSize(2));
 
-            service.processLogEvents(recordsWithResourceId("res-A", thresholdConfig.getBatchSize()));
+            when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL - 1);
+            service.takeReady(out);
+            assertThat(service.activeEntityGroupCount(), equalTo(1));
 
-            // res-A's buffer was drained and its group is past the flush interval, so the sweep dropped it.
+            when(stopWatch.getElapsedTimeInSeconds()).thenReturn(FLUSH_INTERVAL);
+            service.takeReady(out);
             assertThat(service.activeEntityGroupCount(), equalTo(0));
+            assertThat(out, hasSize(2));
 
-            service.processLogEvents(recordsWithResourceId("res-B", thresholdConfig.getBatchSize()));
-
-            // Two real groups over the run even though only one could exist at a time, and no overflow.
-            verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
-            verify(cloudWatchLogsMetrics, never()).increaseEntityOverflowEventsCounter(anyInt());
-
-            final List<String> dispatchedNames = dispatchedEntityNames();
-            assertThat(dispatchedNames.contains("res-A"), equalTo(true));
-            assertThat(dispatchedNames.contains("res-B"), equalTo(true));
-        }
-
-        @Test
-        void GIVEN_dynamic_mode_WHEN_a_group_stays_below_the_count_limit_THEN_the_timer_flushes_it_on_a_non_empty_batch() {
-            cloudWatchLogsLimits = zeroFlushIntervalLimits();
-            service = dynamicService(resourceIdResolver());
-
-            // Far below batchSize and nowhere near the request size limit, so only the time limit can
-            // trigger a flush. The batch is non-empty, so the empty-poll path is never reached.
-            final int eventCount = 3;
-            service.processLogEvents(recordsWithResourceId("res-A", eventCount));
-
-            // One dispatch per event, from the time-limit check in the hot path. Before that check existed
-            // these events would have sat in the buffer for as long as the pipeline kept delivering records.
-            verify(mockDispatcher, times(eventCount)).dispatchLogs(any(List.class), any(List.class), any(Entity.class));
+            final Event invalid = JacksonLog.builder().withData(Map.of("other", "x"))
+                    .withEventHandle(mock(EventHandle.class)).build();
+            service.add(invalid, bytesOf(invalid), new ArrayList<>());
+            verify(bufferFactory, times(2)).getBuffer();
         }
 
         private EntityResolver headerResolver() {
@@ -691,49 +734,29 @@ class CloudWatchLogsServiceTest {
         }
 
         @Test
-        void GIVEN_dynamic_headers_WHEN_events_processed_THEN_dispatch_carries_the_resolved_headers() {
+        void add_dynamicHeadersAndResolvedEntity_batchCarriesBothTheHeadersAndTheEntity() {
             service = dynamicService(headerResolver());
 
-            service.processLogEvents(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+            final List<Batch> out = addAllThenTakeReady(service, recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
 
-            final ArgumentCaptor<Map> headerCaptor = ArgumentCaptor.forClass(Map.class);
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), any(), headerCaptor.capture());
-            assertThat(headerCaptor.getValue().get("x-source-type"), equalTo("cat-1"));
+            assertThat(out, hasSize(1));
+            assertThat(out.get(0).getEntity().keyAttributes().get("Name"), equalTo("res-A"));
+            assertThat(out.get(0).getHeaders().get("x-source-type"), equalTo("cat-1"));
         }
 
         @Test
-        void GIVEN_dynamic_headers_WHEN_events_differ_only_by_header_value_THEN_each_value_opens_its_own_group() {
-            service = dynamicService(headerResolver());
-
-            final Collection<Record<Event>> combined = new ArrayList<>();
-            combined.addAll(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
-            combined.addAll(recordsWith("res-A", "cat-2", thresholdConfig.getBatchSize()));
-
-            service.processLogEvents(combined);
-
-            // Same resolved key attributes but distinct header values, so the groups do not collapse.
-            verify(cloudWatchLogsMetrics, times(2)).increaseEntityGroupsCreatedCounter(eq(1));
-        }
-
-        @Test
-        void GIVEN_dynamic_headers_and_static_entity_WHEN_events_processed_THEN_each_group_uses_the_static_entity() {
+        void add_dynamicHeadersAndStaticEntity_eachGroupUsesTheStaticEntity() {
             final Entity staticEntity = Entity.builder().keyAttributes(Map.of("Identifier", "fixed")).build();
             final EntityResolver resolver = new EntityResolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}"),
                     mock(ExpressionEvaluator.class));
             service = new CloudWatchLogsService(inMemoryBufferFactory, cloudWatchLogsMetrics, cloudWatchLogsLimits,
-                    mockDispatcher, null, true, resolver, EntityConfig.DEFAULT_MAX_CARDINALITY, staticEntity);
+                    resolver, EntityConfig.DEFAULT_MAX_CARDINALITY, staticEntity);
 
-            service.processLogEvents(recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
+            final List<Batch> out = addAllThenTakeReady(service, recordsWith("res-A", "cat-1", thresholdConfig.getBatchSize()));
 
-            final ArgumentCaptor<Entity> entityCaptor = ArgumentCaptor.forClass(Entity.class);
-            verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class), entityCaptor.capture(), any(Map.class));
-            assertThat(entityCaptor.getValue().keyAttributes().get("Identifier"), equalTo("fixed"));
+            assertThat(out, hasSize(1));
+            assertThat(out.get(0).getEntity().keyAttributes().get("Identifier"), equalTo("fixed"));
+            assertThat(out.get(0).getHeaders().get("x-source-type"), equalTo("cat-1"));
         }
-    }
-
-     private Record<Event> getLargeRecord(long size) {
-        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.insecure().nextAlphabetic((int)size))).withEventHandle(eventHandle).build();
-
-        return new Record<>(event);
     }
 }

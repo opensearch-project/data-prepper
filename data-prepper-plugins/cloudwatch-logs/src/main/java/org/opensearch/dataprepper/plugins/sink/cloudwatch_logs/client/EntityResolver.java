@@ -45,6 +45,7 @@ public class EntityResolver {
     private final Map<String, String> attributeTemplates;
     private final Map<String, String> headerTemplates;
     private final ExpressionEvaluator expressionEvaluator;
+    private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private final Set<String> loggedDrops = new HashSet<>();
 
     public EntityResolver(final Map<String, String> keyAttributeTemplates,
@@ -57,10 +58,22 @@ public class EntityResolver {
                           final Map<String, String> attributeTemplates,
                           final Map<String, String> headerTemplates,
                           final ExpressionEvaluator expressionEvaluator) {
+        this(keyAttributeTemplates, attributeTemplates, headerTemplates, expressionEvaluator, null);
+    }
+
+    /**
+     * @param cloudWatchLogsMetrics counts failed template interpolations and blank header values, or null to skip counting
+     */
+    public EntityResolver(final Map<String, String> keyAttributeTemplates,
+                          final Map<String, String> attributeTemplates,
+                          final Map<String, String> headerTemplates,
+                          final ExpressionEvaluator expressionEvaluator,
+                          final CloudWatchLogsMetrics cloudWatchLogsMetrics) {
         this.keyAttributeTemplates = keyAttributeTemplates;
         this.attributeTemplates = attributeTemplates;
         this.headerTemplates = headerTemplates;
         this.expressionEvaluator = expressionEvaluator;
+        this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
     }
 
     /**
@@ -69,8 +82,25 @@ public class EntityResolver {
      * events differing only by a resolved header value land in separate groups, and so separate requests.
      */
     public ResolvedKey resolveKey(final Event event) {
-        return new ResolvedKey(resolveTemplates(keyAttributeTemplates, event),
-                resolveTemplates(headerTemplates, event));
+        final Map<String, String> keyAttributes = resolveTemplates(keyAttributeTemplates, event);
+        final Map<String, String> headers = resolveTemplates(headerTemplates, event);
+        countBlankHeaders(headers);
+        return new ResolvedKey(keyAttributes, headers);
+    }
+
+    private void countBlankHeaders(final Map<String, String> headers) {
+        if (cloudWatchLogsMetrics == null) {
+            return;
+        }
+        int blank = 0;
+        for (final String value : headers.values()) {
+            if (value == null || value.isBlank()) {
+                blank++;
+            }
+        }
+        if (blank > 0) {
+            cloudWatchLogsMetrics.increaseHeaderValueBlankCounter(blank);
+        }
     }
 
     /**
@@ -194,6 +224,9 @@ public class EntityResolver {
                 // whole group, and log it so this is never a silent substitution.
                 LOG.warn("Failed to resolve entity attribute template '{}': {}", value, e.getMessage());
                 interpolated = value;
+                if (cloudWatchLogsMetrics != null) {
+                    cloudWatchLogsMetrics.increaseTemplateExpressionFailedCounter(1);
+                }
             }
             resolved.put(entry.getKey(), interpolated);
         }
