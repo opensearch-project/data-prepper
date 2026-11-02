@@ -719,6 +719,63 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
+    public void testExecuteRetryWithThrottledItems_aggregatesThrottledLogs() throws Exception {
+        final String testIndex = "throttle-test-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+        final BulkOperationWrapper wrapper3 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp3).build(), eventHandle3);
+        final BulkOperationWrapper wrapper4 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp4).build(), eventHandle4);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+        accumulatingBulkRequest.addOperation(wrapper3);
+        accumulatingBulkRequest.addOperation(wrapper4);
+
+        // First response: 1 success, 2 throttled (429), 1 bad request (non-retryable)
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem throttledItem1 = tooManyRequestItemResponse(testIndex);
+        final BulkResponseItem throttledItem2 = tooManyRequestItemResponse(testIndex);
+        final BulkResponseItem badRequestItem = badRequestItemResponse(testIndex);
+        final List<BulkResponseItem> firstResponseItems = Arrays.asList(successItem, throttledItem1, throttledItem2, badRequestItem);
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        when(firstResponse.items()).thenReturn(firstResponseItems);
+
+        // Second response: both throttled items succeed on retry
+        final BulkResponseItem retrySuccess1 = successItemResponse(testIndex);
+        final BulkResponseItem retrySuccess2 = successItemResponse(testIndex);
+        final List<BulkResponseItem> secondResponseItems = Arrays.asList(retrySuccess1, retrySuccess2);
+
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(false);
+        when(secondResponse.items()).thenReturn(secondResponseItems);
+
+        when(requestFunction.apply(any())).thenReturn(firstResponse).thenReturn(secondResponse);
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // 1 success on first attempt + 2 throttled items succeed on retry = 3 succeeded
+        assertEquals(3, numEventsSucceeded);
+        // 1 bad request = 1 failed (non-retryable)
+        assertEquals(1, numEventsFailed);
+    }
+
+    @Test
     public void testExecute_VersionConflictDoesNotIncrementDocumentErrors() throws Exception {
         final String testIndex = "version-conflict-index";
         final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);

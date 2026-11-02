@@ -308,9 +308,18 @@ public final class BulkRetryStrategy {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
                     int throttledCount = 0;
+                    String sampleIndex = null;
+                    OperationType sampleOperation = null;
+                    String sampleError = null;
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
                             if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
+                                if (throttledCount == 0) {
+                                    final ErrorCause error = bulkItemResponse.error();
+                                    sampleIndex = bulkItemResponse.index();
+                                    sampleOperation = bulkItemResponse.operationType();
+                                    sampleError = error != null ? error.reason() : "";
+                                }
                                 throttledCount++;
                             } else {
                                 final ErrorCause error = bulkItemResponse.error();
@@ -319,7 +328,8 @@ public final class BulkRetryStrategy {
                         }
                     }
                     if (throttledCount > 0) {
-                        LOG.warn("Bulk operation throttled for {} documents", throttledCount);
+                        LOG.warn("Bulk operation throttled for {} documents. Sample: index = {}, operation = {}, error = {}",
+                                throttledCount, sampleIndex, sampleOperation, sampleError);
                     }
                 }
             }
@@ -333,7 +343,6 @@ public final class BulkRetryStrategy {
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest, final BulkResponse bulkResponse, final Throwable failure) {
         if (failure == null) {
-            int throttledCount = 0;
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if(isItemInError(bulkItemResponse)) {
                     // Skip logging the error for version conflicts when using external versioning
@@ -341,15 +350,8 @@ public final class BulkRetryStrategy {
                     if (isExternalVersioning && error != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(error.type())) {
                         continue;
                     }
-                    if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
-                        throttledCount++;
-                    } else {
-                        LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
-                    }
+                    LOG.warn("index = {}, operation = {}, status = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), bulkItemResponse.status(), error != null ? error.reason() : "");
                 }
-            }
-            if (throttledCount > 0) {
-                LOG.warn("Bulk operation throttled for {} documents", throttledCount);
             }
             handleFailures(bulkRequest, bulkResponse.items());
         } else {
