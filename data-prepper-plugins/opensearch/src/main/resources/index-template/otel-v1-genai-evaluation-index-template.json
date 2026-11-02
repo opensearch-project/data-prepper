@@ -247,9 +247,6 @@
                     "level": {
                       "type": "keyword"
                     },
-                    "trace_id": {
-                      "type": "keyword"
-                    },
                     "judge": {
                       "properties": {
                         "trace_id": {
@@ -269,9 +266,6 @@
                       "type": "keyword"
                     },
                     "source": {
-                      "type": "keyword"
-                    },
-                    "target_trace_id": {
                       "type": "keyword"
                     }
                   }
