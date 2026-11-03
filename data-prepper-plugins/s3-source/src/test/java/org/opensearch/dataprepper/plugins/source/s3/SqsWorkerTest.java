@@ -953,6 +953,50 @@ class SqsWorkerTest {
     }
 
     @Test
+    void processSqsMessages_removes_pending_acknowledgement_sets_which_have_expired() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().build());
+        assertThat(objectUnderTest.processSqsMessages(), equalTo(0));
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+        verify(sqsMessageDelayTimer).record(Duration.ZERO);
+    }
+
+    @Test
+    void processSqsMessages_keeps_pending_acknowledgement_sets_which_have_not_expired() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().plusSeconds(60));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().build());
+        assertThat(objectUnderTest.processSqsMessages(), equalTo(0));
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+        verify(sqsMessageDelayTimer).record(Duration.ZERO);
+    }
+
+    @Test
+    void processSqsMessages_does_not_accumulate_acknowledgement_sets_which_expire_without_invoking_the_callback() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+
+        for (int i = 0; i < 100; i++) {
+            assertThat(objectUnderTest.processSqsMessages(), equalTo(1));
+        }
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+        verify(sqsMessagesReceivedCounter, times(100)).increment(1);
+        verify(sqsMessageDelayTimer, times(100)).record(any(Duration.class));
+    }
+
+    @Test
     void processSqsMessages_should_record_zero_message_delay_when_no_messages_are_found_on_poll() {
         final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
         when(receiveMessageResponse.messages()).thenReturn(Collections.emptyList());

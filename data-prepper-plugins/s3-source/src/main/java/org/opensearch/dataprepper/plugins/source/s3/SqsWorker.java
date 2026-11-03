@@ -161,6 +161,7 @@ public class SqsWorker implements Runnable {
     }
 
     int processSqsMessages() {
+        removeExpiredAcknowledgementSets();
         final List<Message> sqsMessages = getMessagesFromSqs();
         if (!sqsMessages.isEmpty()) {
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
@@ -513,7 +514,7 @@ public class SqsWorker implements Runnable {
      */
     boolean waitForPendingAcknowledgements(final Duration timeout) throws InterruptedException {
         final long deadlineNanos = System.nanoTime() + timeout.toNanos();
-        while (getPendingAcknowledgementSetCount() > 0) {
+        while (hasPendingAcknowledgementSets()) {
             final long remainingNanos = deadlineNanos - System.nanoTime();
             if (remainingNanos <= 0) {
                 return false;
@@ -524,9 +525,21 @@ public class SqsWorker implements Runnable {
     }
 
     int getPendingAcknowledgementSetCount() {
+        return pendingAcknowledgementSets.size();
+    }
+
+    private boolean hasPendingAcknowledgementSets() {
+        removeExpiredAcknowledgementSets();
+        return !pendingAcknowledgementSets.isEmpty();
+    }
+
+    /**
+     * The callback of an acknowledgement set which expires is never invoked, so it can't remove its own entry.
+     * This runs on every poll to keep those entries from accumulating while the pipeline is running.
+     */
+    private void removeExpiredAcknowledgementSets() {
         final Instant now = Instant.now();
         pendingAcknowledgementSets.values().removeIf(acknowledgementSet -> isExpired(acknowledgementSet, now));
-        return pendingAcknowledgementSets.size();
     }
 
     private static boolean isExpired(final AcknowledgementSet acknowledgementSet, final Instant now) {
