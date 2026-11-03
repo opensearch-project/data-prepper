@@ -50,14 +50,21 @@ class DatabaseSourceIdentification {
      * @return boolean
      */
     public static boolean isURL(final String input) {
+        if (input == null) {
+            return false;
+        }
         try {
             final URI uri = new URI(input);
             final URL url = new URL(input);
+            final String host = uri.getHost();
+            final String urlHost = url.getHost();
             return !input.endsWith(MANIFEST_ENDPOINT_PATH) &&
-                    !uri.getHost().contains("geoip.maps.opensearch") &&
-                    uri.getHost().equals("download.maxmind.com") &&
+                    host != null &&
+                    !host.contains("geoip.maps.opensearch") &&
+                    host.equals("download.maxmind.com") &&
                     uri.getScheme() != null &&
-                    !Pattern.matches(S3_DOMAIN_PATTERN, url.getHost()) &&
+                    urlHost != null &&
+                    !Pattern.matches(S3_DOMAIN_PATTERN, urlHost) &&
                     (uri.getScheme().equals("http") || uri.getScheme().equals("https"));
         } catch (URISyntaxException | MalformedURLException e) {
             return false;
@@ -70,6 +77,9 @@ class DatabaseSourceIdentification {
      * @return boolean
      */
     public static boolean isFilePath(final String input) {
+        if (input == null) {
+            return false;
+        }
         final File file = new File(input);
         return file.exists() && file.isFile();
     }
@@ -80,10 +90,13 @@ class DatabaseSourceIdentification {
      * @return boolean
      */
     public static boolean isCDNEndpoint(final String input) {
+        if (input == null) {
+            return false;
+        }
         if (input.endsWith(MANIFEST_ENDPOINT_PATH)) {
             try {
                 final URI uri = new URI(input);
-                return uri.getScheme().equals("http") || uri.getScheme().equals("https");
+                return uri.getScheme() != null && (uri.getScheme().equals("http") || uri.getScheme().equals("https"));
             } catch (final URISyntaxException e) {
                 return false;
             }
