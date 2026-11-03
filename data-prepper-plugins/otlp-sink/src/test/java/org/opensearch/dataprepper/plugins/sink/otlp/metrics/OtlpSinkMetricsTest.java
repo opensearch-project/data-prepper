@@ -87,6 +87,13 @@ class OtlpSinkMetricsTest {
     }
 
     @Test
+    void incrementDroppedSpansTransactionSearchDisabledCount_incrementsDroppedSpansCounter() {
+        sinkMetrics.incrementDroppedSpansTransactionSearchDisabledCount(5);
+        verify(pluginMetrics).counter("droppedSpansTransactionSearchDisabledCount");
+        verify(counterMock).increment(5.0);
+    }
+
+    @Test
     void testIncrementFailedRecordsCount() {
         sinkMetrics.incrementFailedRecordsCount(5);
         verify(pluginMetrics).counter("failedRecordsCount");
