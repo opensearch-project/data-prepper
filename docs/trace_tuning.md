@@ -29,7 +29,7 @@ Our recommendation is that set the workers based on the CPU utilization, this va
 
 ### Heap
 
-You can configure the heap of Data Prepper by setting the `JVM_OPTS` environmental variable. 
+You can configure the heap of Data Prepper by setting the `JAVA_OPTS` environmental variable. 
 
 Our recommendation is that set the heap value should be minimum `4` * `batch_size` * `otel_send_batch_size` * `maximum size of indvidual span`.
 
