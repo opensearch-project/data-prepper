@@ -104,7 +104,7 @@ public class SqsWorkerCommon {
             return messages;
         }
         catch (SqsException | StsException e) {
-            LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", SafeExceptionSummary.summarize(e));
             recordSqsException(e);
             applyBackoff();
             return Collections.emptyList();
@@ -172,7 +172,7 @@ public class SqsWorkerCommon {
             }
         } catch (SdkException e) {
             sqsMessagesDeleteFailedCounter.increment(entries.size());
-            LOG.error("Failed to delete messages from SQS queue [{}]: {}", queueUrl, e.getMessage());
+            LOG.error("Failed to delete messages from SQS queue: {}", SafeExceptionSummary.summarize(e));
         }
     }
 
@@ -200,7 +200,7 @@ public class SqsWorkerCommon {
         catch (Exception e) {
             sqsVisibilityTimeoutChangeFailedCount.increment();
             LOG.error("Failed to set visibility timeout for message {} to {}. Reason: {}",
-                    messageIdForLogging, newVisibilityTimeoutSeconds, e.getMessage());
+                    messageIdForLogging, newVisibilityTimeoutSeconds, SafeExceptionSummary.summarize(e));
         }
     }
 
