@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.time.Duration;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
@@ -34,6 +35,8 @@ public class QueueConfig {
 
     @JsonProperty("url")
     @NotNull
+    @Pattern(regexp = "^https://sqs\\.[a-z0-9-]+\\.amazonaws\\.com(\\.cn)?/\\d{12}/[a-zA-Z0-9_-]+$",
+            message = "url must be a valid Amazon SQS queue URL: https://sqs.<region>.amazonaws.com/<12-digit-account-id>/<queue-name>")
     private String url;
 
     @JsonProperty("workers") 

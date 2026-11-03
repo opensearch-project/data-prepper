@@ -138,4 +138,31 @@ class AwsAuthenticationOptionsTest {
             field.setAccessible(false);
         }
     }
+
+    @Test
+    void isExternalIdProvidedWhenRoleArnSet_returns_true_when_no_role_arn() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", null);
+        assertThat(awsAuthenticationOptions.isExternalIdProvidedWhenRoleArnSet(), equalTo(true));
+    }
+
+    @Test
+    void isExternalIdProvidedWhenRoleArnSet_returns_true_when_role_arn_and_external_id_present() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:role/SampleRole");
+        reflectivelySetField(awsAuthenticationOptions, "awsStsExternalId", "my-external-id");
+        assertThat(awsAuthenticationOptions.isExternalIdProvidedWhenRoleArnSet(), equalTo(true));
+    }
+
+    @Test
+    void isExternalIdProvidedWhenRoleArnSet_returns_false_when_role_arn_set_but_external_id_null() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:role/SampleRole");
+        reflectivelySetField(awsAuthenticationOptions, "awsStsExternalId", null);
+        assertThat(awsAuthenticationOptions.isExternalIdProvidedWhenRoleArnSet(), equalTo(false));
+    }
+
+    @Test
+    void isExternalIdProvidedWhenRoleArnSet_returns_false_when_role_arn_set_but_external_id_blank() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:role/SampleRole");
+        reflectivelySetField(awsAuthenticationOptions, "awsStsExternalId", "   ");
+        assertThat(awsAuthenticationOptions.isExternalIdProvidedWhenRoleArnSet(), equalTo(false));
+    }
 }
