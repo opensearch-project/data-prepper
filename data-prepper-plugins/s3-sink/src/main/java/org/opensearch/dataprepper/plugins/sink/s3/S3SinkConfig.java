@@ -10,6 +10,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -115,6 +116,8 @@ public class S3SinkConfig {
     private ClientOptions clientOptions;
 
     @JsonProperty("endpoint")
+    @JsonPropertyDescription("A custom S3 endpoint URL for writing to S3-compatible storage. " +
+            "Must start with http:// or https://. When set, cross-region access is disabled.")
     private String endpoint;
 
     @AssertTrue(message = "endpoint must be a valid URL starting with http:// or https://")
@@ -132,9 +135,14 @@ public class S3SinkConfig {
     }
 
     @JsonProperty("force_path_style")
+    @JsonPropertyDescription("When true, uses path-style addressing (http://endpoint/bucket/key) instead of " +
+            "virtual-hosted-style addressing. Most S3-compatible storage requires this. Defaults to false.")
     private boolean forcePathStyle = false;
 
     @JsonProperty("legacy_md5_checksum")
+    @JsonPropertyDescription("When true, uses legacy MD5 checksums instead of the default integrity protections " +
+            "introduced in AWS SDK 2.30. Enable this for S3-compatible storage that does not support the newer " +
+            "request checksums. Defaults to false.")
     private boolean legacyMd5Checksum = false;
 
     @JsonProperty("server_side_encryption")
