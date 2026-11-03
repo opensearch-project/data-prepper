@@ -35,6 +35,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -56,6 +57,7 @@ class S3ObjectWorker implements S3ObjectHandler {
 
     private final CompressionOption compressionOption;
     private final InputCodec codec;
+    private final Function<S3ObjectReference, InputCodec> codecProvider;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
@@ -67,6 +69,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.buffer = s3ObjectRequest.getBuffer();
         this.compressionOption = s3ObjectRequest.getCompressionOption();
         this.codec = s3ObjectRequest.getCodec();
+        this.codecProvider = s3ObjectRequest.getCodecProvider();
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
         this.bufferTimeout = s3ObjectRequest.getBufferTimeout();
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
@@ -158,8 +161,16 @@ class S3ObjectWorker implements S3ObjectHandler {
             final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                     compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
 
+            // Resolve the codec: use the fixed codec if configured, otherwise auto-detect via the provider.
+            final InputCodec resolvedCodec = codec != null ? codec : codecProvider.apply(s3ObjectReference);
+            if (resolvedCodec == null) {
+                s3ObjectPluginMetrics.getS3ObjectReadFailedCounter().increment();
+                throw new S3ReadFailedException(
+                        new IllegalStateException("Unable to determine codec for object " + s3ObjectReference.getKey()));
+            }
+
             try {
-                codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
+                resolvedCodec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
                     consumer.accept(record, dataSelection);
                 });
                 return inputFile.getLength();
@@ -214,7 +225,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                         saveStateCounter.getAndIncrement();
                     }
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer.", e);
+                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
 

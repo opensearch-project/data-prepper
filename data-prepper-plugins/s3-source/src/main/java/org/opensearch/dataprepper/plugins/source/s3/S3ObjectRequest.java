@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.s3.model.CompressionType;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class S3ObjectRequest {
     private final Buffer<Record<Event>> buffer;
@@ -34,6 +35,7 @@ public class S3ObjectRequest {
     private final CompressionOption compressionOption;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final InputCodec codec;
+    private final Function<S3ObjectReference, InputCodec> codecProvider;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final S3Client s3Client;
     private final CompressionType compressionType;
@@ -55,6 +57,7 @@ public class S3ObjectRequest {
         this.compressionOption = builder.compressionOption;
         this.bucketOwnerProvider = builder.bucketOwnerProvider;
         this.codec = builder.codec;
+        this.codecProvider = builder.codecProvider;
         this.eventConsumer = builder.eventConsumer;
         this.s3Client = builder.s3Client;
         this.compressionType = builder.compressionType;
@@ -107,6 +110,10 @@ public class S3ObjectRequest {
         return codec;
     }
 
+    public Function<S3ObjectReference, InputCodec> getCodecProvider() {
+        return codecProvider;
+    }
+
     public BiConsumer<Event, S3ObjectReference> getEventConsumer() {
         return eventConsumer;
     }
@@ -143,6 +150,7 @@ public class S3ObjectRequest {
         private S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
         private CompressionOption compressionOption;
         private InputCodec codec;
+        private Function<S3ObjectReference, InputCodec> codecProvider;
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
         private S3Client s3Client;
         private CompressionType compressionType;
@@ -192,6 +200,11 @@ public class S3ObjectRequest {
 
         public Builder codec(InputCodec codec) {
             this.codec = codec;
+            return this;
+        }
+
+        public Builder codecProvider(Function<S3ObjectReference, InputCodec> codecProvider) {
+            this.codecProvider = codecProvider;
             return this;
         }
 
