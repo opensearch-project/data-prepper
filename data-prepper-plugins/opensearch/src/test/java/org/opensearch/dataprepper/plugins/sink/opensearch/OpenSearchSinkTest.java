@@ -44,9 +44,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -206,6 +208,29 @@ public class OpenSearchSinkTest {
             objectUnderTest.initialize();
         }
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void doInitialize_when_already_initialized_does_not_expose_uninitialized_ingester_to_doOutput() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        final AtomicReference<Throwable> outputFailure = new AtomicReference<>();
+        when(indexManager.isIndexAlias(anyString())).thenReturn(false).thenAnswer(invocation -> {
+            try {
+                objectUnderTest.doOutput(Collections.emptyList());
+            } catch (final Throwable e) {
+                outputFailure.set(e);
+            }
+            return false;
+        });
+
+        objectUnderTest.doInitialize();
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+
+        objectUnderTest.doInitialize();
+
+        assertThat(outputFailure.get(), nullValue());
     }
 
     @Test
