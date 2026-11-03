@@ -50,10 +50,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
+    private static final Duration PENDING_ACKNOWLEDGEMENTS_POLL_INTERVAL = Duration.ofMillis(100);
     static final String SQS_MESSAGES_RECEIVED_METRIC_NAME = "sqsMessagesReceived";
     static final String SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME = "sqsReceiveMessageFailed";
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
@@ -96,7 +99,9 @@ public class SqsWorker implements Runnable {
     private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private volatile boolean isStopped = false;
+    private volatile boolean isSqsClientClosed = false;
     private Map<ParsedMessage, Integer> parsedMessageVisibilityTimesMap;
+    private final Map<ParsedMessage, AcknowledgementSet> pendingAcknowledgementSets = new ConcurrentHashMap<>();
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
@@ -284,23 +289,28 @@ public class SqsWorker implements Runnable {
                 }
                 acknowledgementSet = acknowledgementSetManager.create(
                     (result) -> {
-                        acknowledgementSetCallbackCounter.increment();
-                        // Delete only if this is positive acknowledgement
-                        if (visibilityDuplicateProtectionEnabled) {
-                            parsedMessageVisibilityTimesMap.remove(parsedMessage);
-                        }
-                        if (result == true) {
-                            final boolean successfullyDeletedAllMessages = deleteSqsMessages(waitingForAcknowledgements);
-                            if (successfullyDeletedAllMessages) {
-                                LOG.info("Deleted SQS message for S3 object s3://{}/{}, sqsMessageId={}",
-                                    parsedMessage.getBucketName(), parsedMessage.getObjectKey(), parsedMessage.getMessage().messageId());
-                                if (s3SourceConfig.isDeleteS3ObjectsOnRead()) {
-                                    deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                        try {
+                            acknowledgementSetCallbackCounter.increment();
+                            // Delete only if this is positive acknowledgement
+                            if (visibilityDuplicateProtectionEnabled) {
+                                parsedMessageVisibilityTimesMap.remove(parsedMessage);
+                            }
+                            if (result == true) {
+                                final boolean successfullyDeletedAllMessages = deleteSqsMessages(waitingForAcknowledgements);
+                                if (successfullyDeletedAllMessages) {
+                                    LOG.info("Deleted SQS message for S3 object s3://{}/{}, sqsMessageId={}",
+                                        parsedMessage.getBucketName(), parsedMessage.getObjectKey(), parsedMessage.getMessage().messageId());
+                                    if (s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                                        deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                                    }
                                 }
                             }
+                        } finally {
+                            pendingAcknowledgementSets.remove(parsedMessage);
                         }
                     },
                     Duration.ofSeconds(expiryTimeout));
+                pendingAcknowledgementSets.put(parsedMessage, acknowledgementSet);
                 if (visibilityDuplicateProtectionEnabled) {
                     acknowledgementSet.addProgressCheck(
                         (ratio) -> {
@@ -385,7 +395,7 @@ public class SqsWorker implements Runnable {
     }
 
     private boolean deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
-        if(isStopped)
+        if(isSqsClientClosed)
             return false;
         if (deleteMessageBatchRequestEntryCollection.size() == 0) {
             return false;
@@ -491,6 +501,45 @@ public class SqsWorker implements Runnable {
 
     void stop() {
         isStopped = true;
+    }
+
+    /**
+     * Waits for the acknowledgement sets created by this worker to complete, including
+     * the deletion of their SQS messages. Acknowledgement sets which have already expired
+     * are not waited on since they will never complete.
+     *
+     * @param timeout the maximum time to wait
+     * @return true if no acknowledgement sets are pending, false if the timeout elapsed first
+     */
+    boolean waitForPendingAcknowledgements(final Duration timeout) throws InterruptedException {
+        final long deadlineNanos = System.nanoTime() + timeout.toNanos();
+        while (getPendingAcknowledgementSetCount() > 0) {
+            final long remainingNanos = deadlineNanos - System.nanoTime();
+            if (remainingNanos <= 0) {
+                return false;
+            }
+            TimeUnit.NANOSECONDS.sleep(Math.min(remainingNanos, PENDING_ACKNOWLEDGEMENTS_POLL_INTERVAL.toNanos()));
+        }
+        return true;
+    }
+
+    int getPendingAcknowledgementSetCount() {
+        final Instant now = Instant.now();
+        pendingAcknowledgementSets.values().removeIf(acknowledgementSet -> isExpired(acknowledgementSet, now));
+        return pendingAcknowledgementSets.size();
+    }
+
+    private static boolean isExpired(final AcknowledgementSet acknowledgementSet, final Instant now) {
+        final Instant expirationTime = acknowledgementSet.getExpirationTime();
+        return expirationTime != null && now.isAfter(expirationTime);
+    }
+
+    /**
+     * Prevents this worker from making further SQS calls. This must be called before the
+     * {@link SqsClient} is closed since acknowledgement callbacks may still arrive afterwards.
+     */
+    void markSqsClientClosed() {
+        isSqsClientClosed = true;
     }
 
     private void recordSqsException(final AwsServiceException e) {
