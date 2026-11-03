@@ -8,11 +8,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.avro.LogicalType;
@@ -155,16 +155,15 @@ public class GenericRecordJsonEncoder {
                 BigDecimal decimal = new BigDecimal(unscaledValue, decimalScale);
                 buffer.append(decimal.doubleValue());
             } else {
-                final String bytesAsString = StandardCharsets.UTF_8.decode((ByteBuffer) datum).toString();
-                final Optional<BigDecimal> bytesAsBigDecimal = getBigDecimal(bytesAsString);
-                if (bytesAsBigDecimal.isPresent()) {
-                    buffer.append(bytesAsBigDecimal.get().doubleValue());
-                } else {
-                    buffer.append("{\"bytes\": \"");
-                    ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
-                    writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
-                    buffer.append("\"}");
-                }
+                // Encode raw bytes as a Base64 JSON string (RFC 4648). Avoids UTF-8/toString
+                // guessing that either coerces to a number or emits a {"bytes": ...} object
+                // where a scalar is expected (see issue #5892).
+                ByteBuffer sourceBuffer = ((ByteBuffer) datum).duplicate();
+                byte[] bytesArray = new byte[sourceBuffer.remaining()];
+                sourceBuffer.get(bytesArray);
+                buffer.append("\"");
+                buffer.append(Base64.getEncoder().encodeToString(bytesArray));
+                buffer.append("\"");
             }
         } else if (((datum instanceof Float) &&       // quote Nan & Infinity
                 (((Float)datum).isInfinite() || ((Float)datum).isNaN()))
@@ -243,13 +242,5 @@ public class GenericRecordJsonEncoder {
 
     private void writeEscapedString(String string, StringBuilder builder) {
         builder.append(StringEscapeUtils.escapeJava(string));
-    }
-
-    private Optional<BigDecimal> getBigDecimal(String decimalString) {
-        try {
-            return Optional.of(new BigDecimal(decimalString));
-        } catch (final Exception e) {
-            return Optional.empty();
-        }
     }
 }
