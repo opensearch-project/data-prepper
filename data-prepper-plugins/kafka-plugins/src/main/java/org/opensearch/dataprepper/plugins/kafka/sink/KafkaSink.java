@@ -191,7 +191,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     private long calculateLongestThreadWaitingTime() {
-        return kafkaSinkConfig.getThreadWaitTime();
+        final Long configuredThreadWaitTime = kafkaSinkConfig.getThreadWaitTime();
+        return configuredThreadWaitTime != null
+                ? configuredThreadWaitTime
+                : KafkaSinkConfig.DEFAULT_THREAD_WAIT_TIME_MS;
     }
 
 
