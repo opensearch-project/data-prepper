@@ -596,6 +596,26 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @Test
+    void iterate_on_converts_nested_key_with_leading_slash() {
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
+        when(mockConfig.getKey()).thenReturn("/src_endpoint/uid");
+        when(mockConfig.getIterateOn()).thenReturn("participants");
+
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final List<Map<String, Object>> participants = new ArrayList<>();
+        participants.add(new HashMap<>(Map.of("src_endpoint", new HashMap<>(Map.of("uid", 100005)))));
+        final Event event = JacksonEvent.builder()
+                .withData(Map.of("participants", participants))
+                .withEventType("event")
+                .build();
+
+        typeConversionProcessor.doExecute(Collections.singletonList(new Record<>(event)));
+
+        assertThat(event.get("participants/0/src_endpoint/uid", Object.class), equalTo("100005"));
+    }
+
+    @Test
     void iterate_on_with_key_that_is_not_list_of_map_does_not_update() {
         final String iterateOn = "list-key";
         final String keyToConvert = "key-to-convert";

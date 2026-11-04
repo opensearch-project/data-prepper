@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -259,38 +260,25 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                             iterateOn, e.getMessage()), e);
         }
         if (iterateOnList != null) {
-            final String[] path = key.split("/");
-            final String leafKey = path[path.length - 1];
-            int listIndex = 0;
-            for (final Map<String, Object> item : iterateOnList) {
+            for (int listIndex = 0; listIndex < iterateOnList.size(); listIndex++) {
                 Object value = null;
                 try {
-                    final Map<String, Object> parent = resolveParent(item, path);
-                    if (parent != null) {
-                        value = parent.get(leafKey);
-                        if (value != null) {
-                            parent.put(leafKey, converter.convert(value, converterArguments));
-                        }
+                    final Event context = JacksonEvent.builder()
+                            .withEventType("event")
+                            .withData(iterateOnList.get(listIndex))
+                            .build();
+                    value = context.get(key, Object.class);
+                    if (value != null) {
+                        context.put(key, converter.convert(value, converterArguments));
+                        iterateOnList.set(listIndex, context.toMap());
                     }
                 } catch (final RuntimeException e) {
                     LOG.error(EVENT, "Unable to convert element {} with key: {} with value: {} to {}", listIndex, key, value, type, e);
                 }
-
-                listIndex++;
             }
 
             recordEvent.put(iterateOn, iterateOnList);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> resolveParent(final Map<String, Object> item, final String[] path) {
-        Map<String, Object> current = item;
-        for (int i = 0; i < path.length - 1 && current != null; i++) {
-            final Object next = current.get(path[i]);
-            current = next instanceof Map ? (Map<String, Object>) next : null;
-        }
-        return current;
     }
 
     private List<String> getKeysToConvert(final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig) {
