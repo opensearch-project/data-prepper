@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -145,6 +146,7 @@ public class KafkaSourceSaslPlainTextIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(mock(Timer.class));
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
             doAnswer(args -> {
