@@ -28,6 +28,8 @@ import java.io.StringReader;
 import java.util.Map;
 import java.util.Properties;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mockStatic;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,10 +87,9 @@ public class SinkPropertyConfigurerTest {
         // Assertions.assertThrows(RuntimeException.class, () -> SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
         ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", schemaConfig);
         final Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
-        Assertions.assertEquals("30000", properties.getProperty("session.timeout.ms"));
-        Assertions.assertEquals(
-                TopicNameStrategy.class.getName(),
-                properties.getProperty(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY));
+        assertThat(properties.getProperty("session.timeout.ms"), equalTo("30000"));
+        assertThat(properties.getProperty(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY),
+                equalTo(TopicNameStrategy.class.getName()));
 
     }
 

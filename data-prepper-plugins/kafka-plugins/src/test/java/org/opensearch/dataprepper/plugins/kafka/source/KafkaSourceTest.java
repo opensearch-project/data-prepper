@@ -198,9 +198,8 @@ class KafkaSourceTest {
 
     @Test
     void getConfluentValueDeserializerClass_withProtobuf_returnsProtobufDeserializer() {
-        Assertions.assertEquals(
-                KafkaProtobufDeserializer.class,
-                KafkaSource.getConfluentValueDeserializerClass("PROTOBUF"));
+        assertThat(KafkaSource.getConfluentValueDeserializerClass("PROTOBUF"),
+                equalTo(KafkaProtobufDeserializer.class));
     }
 
     @Test

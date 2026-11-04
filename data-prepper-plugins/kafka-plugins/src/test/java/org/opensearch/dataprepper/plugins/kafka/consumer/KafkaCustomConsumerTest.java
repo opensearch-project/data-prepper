@@ -86,6 +86,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -624,7 +625,7 @@ public class KafkaCustomConsumerTest {
         assertThat(event.get("active", Boolean.class), equalTo(true));
         assertThat(event.get("tags", List.class), equalTo(List.of("priority", "fragile")));
         assertThat(event.get("kafka_key", String.class), equalTo(testKey1));
-        assertThat(deserializedMessage, org.hamcrest.Matchers.instanceOf(DynamicMessage.class));
+        assertThat(deserializedMessage, instanceOf(DynamicMessage.class));
 
         serializer.close();
         deserializer.close();
