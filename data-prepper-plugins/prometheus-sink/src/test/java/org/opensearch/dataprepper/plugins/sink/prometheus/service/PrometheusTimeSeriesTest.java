@@ -229,7 +229,7 @@ public class PrometheusTimeSeriesTest {
     }
 
     @Test
-    public void testExponentialHistogramPositiveBucketsAreCumulative() throws Exception {
+    public void testExponentialHistogramLeBucketsCountEveryObservationAtOrBelowTheBound() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
         final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, null, null);
@@ -238,9 +238,10 @@ public class PrometheusTimeSeriesTest {
                 .filter(series -> getLabels(series).containsKey("le"))
                 .collect(Collectors.toMap(series -> getLabels(series).get("le"), series -> series.getSamples(0).getValue()));
 
-        assertThat(bucketValues.get(Double.toString(1.0)), equalTo(1.0));
-        assertThat(bucketValues.get(Double.toString(Math.pow(2, 0.5))), equalTo(4.0));
-        assertThat(bucketValues.get(Double.toString(2.0)), equalTo(9.0));
+        assertThat(bucketValues.get(Double.toString(1.0)), equalTo(24.0));
+        assertThat(bucketValues.get(Double.toString(Math.pow(2, 0.5))), equalTo(27.0));
+        assertThat(bucketValues.get(Double.toString(2.0)), equalTo(32.0));
+        assertThat(bucketValues.get("+Inf"), equalTo(32.0));
     }
 
     @Test
@@ -428,7 +429,7 @@ public class PrometheusTimeSeriesTest {
             .withStartTime(Instant.now().plusSeconds(5).toString())
             .withUnit(unit)
             .withSum(50d)
-            .withCount(10)
+            .withCount(32)
             .withScale(scale)
             .withPositiveOffset(-1)
             .withNegativeOffset(2)
