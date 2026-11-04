@@ -74,13 +74,6 @@ public class IndexManagerFactoryTests {
     }
 
     @Test
-    public void getIndexManager_GenAIEvaluation() {
-        final IndexManager indexManager = indexManagerFactory.getIndexManager(
-                IndexType.GENAI_EVALUATION, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
-        assertThat(indexManager, instanceOf(IndexManager.class));
-    }
-
-    @Test
     public void getIndexManager_GenAIEvaluationPlain() {
         final IndexManager indexManager = indexManagerFactory.getIndexManager(
                 IndexType.GENAI_EVALUATION_PLAIN, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);

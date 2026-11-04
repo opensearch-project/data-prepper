@@ -38,12 +38,10 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -102,19 +100,6 @@ class GenAIEvaluationIndexManagerTest {
     }
 
     @Test
-    void checkAndCreatePolicy_withGenAIEvaluation_usesGenAIEvaluationPolicy() throws IOException {
-        final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION);
-        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
-        when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
-        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
-
-        final Optional<String> policyId = objectUnderTest.checkAndCreatePolicy();
-
-        assertThat(policyId, equalTo(Optional.of("otel-v1-genai-evaluation-policy")));
-        verify(restClient, times(2)).performRequest(any());
-    }
-
-    @Test
     void checkAndCreatePolicy_withGenAIEvaluationPlain_createsNoPolicy() throws IOException {
         final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION_PLAIN);
 
@@ -122,20 +107,6 @@ class GenAIEvaluationIndexManagerTest {
 
         assertThat(policyId, equalTo(Optional.empty()));
         verify(restHighLevelClient, never()).getLowLevelClient();
-    }
-
-    @Test
-    void checkAndCreateIndexTemplate_withGenAIEvaluation_matchesRolloverIndices() throws IOException {
-        final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION);
-        when(templateStrategy.getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME)).thenReturn(Optional.empty());
-
-        objectUnderTest.checkAndCreateIndexTemplate(true, IndexConstants.GENAI_EVALUATION_ISM_POLICY);
-
-        verify(indexTemplate).setTemplateName(EXPECTED_TEMPLATE_NAME);
-        verify(indexTemplate).setIndexPatterns(Collections.singletonList(INDEX_ALIAS + "-*"));
-        verify(indexTemplate).putCustomSetting(IndexConstants.ISM_POLICY_ID_SETTING, IndexConstants.GENAI_EVALUATION_ISM_POLICY);
-        verify(indexTemplate).putCustomSetting(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, INDEX_ALIAS);
-        verify(templateStrategy).createTemplate(indexTemplate);
     }
 
     @Test
@@ -153,21 +124,6 @@ class GenAIEvaluationIndexManagerTest {
     }
 
     @Test
-    void checkAndCreateIndex_withGenAIEvaluation_createsFirstRolloverIndexWithWriteAlias() throws IOException {
-        final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION);
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
-
-        objectUnderTest.checkAndCreateIndex();
-
-        final ArgumentCaptor<CreateIndexRequest> requestCaptor = ArgumentCaptor.forClass(CreateIndexRequest.class);
-        verify(openSearchIndicesClient).create(requestCaptor.capture());
-        final CreateIndexRequest createIndexRequest = requestCaptor.getValue();
-        assertThat(createIndexRequest.index(), equalTo("otel-v1-genai-evaluation-000001"));
-        assertThat(createIndexRequest.aliases(), hasKey(INDEX_ALIAS));
-        assertThat(createIndexRequest.aliases().get(INDEX_ALIAS).isWriteIndex(), equalTo(true));
-    }
-
-    @Test
     void checkAndCreateIndex_withGenAIEvaluationPlain_createsIndexNamedAfterAlias() throws IOException {
         final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION_PLAIN);
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
@@ -182,13 +138,4 @@ class GenAIEvaluationIndexManagerTest {
         verify(openSearchIndicesClient, never()).existsAlias(any(ExistsAliasRequest.class));
     }
 
-    @Test
-    void checkAndCreateIndex_withGenAIEvaluation_doesNotCreateIndexWhenAliasExists() throws IOException {
-        final AbstractIndexManager objectUnderTest = createObjectUnderTest(IndexType.GENAI_EVALUATION);
-        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
-
-        objectUnderTest.checkAndCreateIndex();
-
-        verify(openSearchIndicesClient, never()).create(any(CreateIndexRequest.class));
-    }
 }

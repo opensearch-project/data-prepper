@@ -28,9 +28,6 @@ public class IndexConstants {
 
   public static final String GENAI_EVALUATION_DEFAULT_ALIAS = "otel-v1-genai-evaluation";
   public static final String GENAI_EVALUATION_TEMPLATE_FILE = "otel-v1-genai-evaluation-index-template.json";
-  public static final String GENAI_EVALUATION_ISM_POLICY = "otel-v1-genai-evaluation-policy";
-  public static final String GENAI_EVALUATION_ISM_FILE_NO_ISM_TEMPLATE = "otel-v1-genai-evaluation-policy-no-ism-template.json";
-  public static final String GENAI_EVALUATION_ISM_FILE_WITH_ISM_TEMPLATE = "otel-v1-genai-evaluation-policy-with-ism-template.json";
 
   public static final String METRICS_DEFAULT_TEMPLATE_FILE = "metrics-otel-v1-index-template.json";
   public static final String METRICS_STANDARD_TEMPLATE_FILE = "metrics-otel-v1-index-standard-template.json";
@@ -67,7 +64,6 @@ public class IndexConstants {
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2, "otel-v2-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS, "logs-otel-v1");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS_PLAIN, "logs-otel-v1");
-    TYPE_TO_DEFAULT_ALIAS.put(IndexType.GENAI_EVALUATION, GENAI_EVALUATION_DEFAULT_ALIAS);
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.GENAI_EVALUATION_PLAIN, GENAI_EVALUATION_DEFAULT_ALIAS);
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS, "metrics-otel-v1");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS_PLAIN, "metrics-otel-v1");

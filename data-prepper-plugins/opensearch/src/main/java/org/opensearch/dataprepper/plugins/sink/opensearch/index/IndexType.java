@@ -20,14 +20,9 @@ public enum IndexType {
     LOG_ANALYTICS("log-analytics"),
     LOG_ANALYTICS_PLAIN("log-analytics-plain"),
     /**
-     * Experimental. Stores OpenTelemetry {@code gen_ai.evaluation.result} log events in
-     * {@code otel-v1-genai-evaluation-*} indices with an ISM policy. The mappings may change
-     * in a minor release.
-     */
-    GENAI_EVALUATION("genai-evaluation"),
-    /**
-     * Experimental. Same mappings as {@link #GENAI_EVALUATION}, written to a single
-     * {@code otel-v1-genai-evaluation} index without an ISM policy. The mappings may change
+     * Experimental. Stores OpenTelemetry {@code gen_ai.evaluation.result} log events, with
+     * attributes under their dotted OpenTelemetry names, in the
+     * {@code otel-v1-genai-evaluation} index, without an ISM policy. The mappings may change
      * in a minor release.
      */
     GENAI_EVALUATION_PLAIN("genai-evaluation-plain"),

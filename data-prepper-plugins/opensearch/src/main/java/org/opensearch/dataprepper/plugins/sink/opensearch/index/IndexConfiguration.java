@@ -545,7 +545,7 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_STANDARD_TEMPLATE_FILE);
-            } else if (indexType.equals(IndexType.GENAI_EVALUATION) || indexType.equals(IndexType.GENAI_EVALUATION_PLAIN)) {
+            } else if (indexType.equals(IndexType.GENAI_EVALUATION_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.GENAI_EVALUATION_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);

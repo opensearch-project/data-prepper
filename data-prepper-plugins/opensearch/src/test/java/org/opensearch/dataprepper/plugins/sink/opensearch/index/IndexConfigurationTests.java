@@ -223,7 +223,7 @@ public class IndexConfigurationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP", "GENAI_EVALUATION", "GENAI_EVALUATION_PLAIN"})
+    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP", "GENAI_EVALUATION_PLAIN"})
     public void testBuiltInIndexTypeWithComponentTemplates(final IndexType indexType) {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(indexType.getValue())
@@ -314,7 +314,7 @@ public class IndexConfigurationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = IndexType.class, names = {"GENAI_EVALUATION", "GENAI_EVALUATION_PLAIN"})
+    @EnumSource(value = IndexType.class, names = {"GENAI_EVALUATION_PLAIN"})
     public void testGenAIEvaluation_usesDefaultAliasAndTypedEvaluationMappings(final IndexType indexType) {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(indexType.getValue())
@@ -330,7 +330,7 @@ public class IndexConfigurationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = IndexType.class, names = {"GENAI_EVALUATION", "GENAI_EVALUATION_PLAIN"})
+    @EnumSource(value = IndexType.class, names = {"GENAI_EVALUATION_PLAIN"})
     public void testGenAIEvaluationWithIndexTemplates_usesTypedEvaluationMappings(final IndexType indexType) {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(indexType.getValue())
