@@ -150,6 +150,9 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(plainTextTopic.getRetryBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(plainTextTopic.getReconnectBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(plainTextTopic.getConnectionsMaxIdle()).thenReturn(Duration.ofMinutes(9));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         saslsslBootstrapServers = System.getProperty("tests.kafka.saslssl_bootstrap_servers");
         saslplainBootstrapServers = System.getProperty("tests.kafka.saslplain_bootstrap_servers");
