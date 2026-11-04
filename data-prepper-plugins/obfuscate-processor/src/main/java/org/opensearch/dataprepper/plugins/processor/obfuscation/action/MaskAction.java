@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.List;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 @DataPrepperPlugin(name = "mask", pluginType = ObfuscationAction.class, pluginConfigurationType = MaskActionConfig.class)
 public class MaskAction implements ObfuscationAction {
