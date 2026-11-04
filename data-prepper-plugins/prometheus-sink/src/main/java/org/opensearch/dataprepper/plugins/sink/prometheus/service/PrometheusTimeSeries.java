@@ -306,7 +306,10 @@ public class PrometheusTimeSeries {
 
         if (positiveBucketsPresent || negativeBucketsPresent) {
             if (positiveBucketsPresent) {
-                long cumulativeCount = 0;
+                long cumulativeCount = zeroCount != null ? zeroCount : 0;
+                if (negativeBucketCounts != null) {
+                    cumulativeCount += negativeBucketCounts.stream().mapToLong(Long::longValue).sum();
+                }
                 for (int i = 0; i < positiveBucketCounts.size(); i++) {
                     cumulativeCount += positiveBucketCounts.get(i);
                     double bound = calculateBucketBound(i + positiveOffset + 1, scale);
@@ -321,6 +324,7 @@ public class PrometheusTimeSeries {
                     addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) cumulativeCount);
                 }
             }
+            addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, PLUS_INF, (double) histogram.getCount());
         }
     }
 
