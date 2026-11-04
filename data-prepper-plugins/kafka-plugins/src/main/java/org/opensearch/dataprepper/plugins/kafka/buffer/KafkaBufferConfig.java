@@ -34,6 +34,8 @@ import java.util.Optional;
 class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
     static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofHours(Integer.MAX_VALUE);
+    static final int DEFAULT_BOUNDED_BUFFER_SIZE = 1000000;
+    static final int DEFAULT_BOUNDED_BATCH_SIZE = 250000;
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
@@ -65,6 +67,12 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
+
+    @JsonProperty("bounded_buffer_size")
+    private int boundedBufferSize = DEFAULT_BOUNDED_BUFFER_SIZE;
+
+    @JsonProperty("bounded_batch_size")
+    private int boundedBatchSize = DEFAULT_BOUNDED_BATCH_SIZE;
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
@@ -161,6 +169,14 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     @JsonIgnore
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
+    }
+
+    public int getBoundedBufferSize() {
+        return boundedBufferSize;
+    }
+
+    public int getBoundedBatchSize() {
+        return boundedBatchSize;
     }
 
 }

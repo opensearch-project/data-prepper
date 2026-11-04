@@ -23,15 +23,18 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.apache.commons.io.FileUtils.ONE_MB;
@@ -126,6 +129,77 @@ public class IndexConfigurationTests {
         assertThat(dynamicTemplates.size(), equalTo(2));
         assertThat(dynamicTemplates.get(0), hasKey("resource_attributes_map"));
         assertThat(dynamicTemplates.get(1), hasKey("span_attributes_map"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TemplateType.class)
+    public void testRawAPMSpanPlainV2AlwaysUsesComposedIndexTemplate(final TemplateType templateType) throws IOException {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue())
+                .withTemplateType(templateType.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.INDEX_TEMPLATE));
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v2-apm-span"));
+        assertThat(indexConfiguration.getDocumentId(), equalTo("${traceId}/${spanId}"));
+
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.get(COMPOSED_OF), equalTo(List.of("otel-v2-apm-span-plain", "otel-v2-apm-span-nested-keyword")));
+        assertThat(indexTemplate.get("template"), equalTo(Map.of("settings", Map.of("index.append_only.enabled", false))));
+
+        final Map<String, Map<String, Object>> componentTemplates = indexConfiguration.getManagedComponentTemplates();
+        assertThat(new ArrayList<>(componentTemplates.keySet()), equalTo(indexTemplate.get(COMPOSED_OF)));
+
+        // The plain component carries the plain span template's mappings and version unchanged.
+        final Map<String, Object> plainTemplate = new ObjectMapper().readValue(
+                getClass().getClassLoader().getResource("index-template/" + IndexConstants.RAW_STANDARD_TEMPLATE_FILE),
+                new TypeReference<Map<String, Object>>() {});
+        assertThat(componentTemplates.get("otel-v2-apm-span-plain"), equalTo(plainTemplate));
+
+        final Map<String, Object> nestedKeyword = componentTemplates.get("otel-v2-apm-span-nested-keyword");
+        assertThat(nestedKeyword.get("version"), equalTo(1));
+        final Map<String, Object> mappings = (Map<String, Object>) ((Map<String, Object>) nestedKeyword.get("template")).get("mappings");
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        assertThat(dynamicTemplates.size(), equalTo(2));
+        for (final String nestedField : List.of("events", "links")) {
+            final Map<String, Object> dynamicTemplate = dynamicTemplates.stream()
+                    .filter(entry -> entry.containsKey("string_" + nestedField + "_attributes"))
+                    .map(entry -> (Map<String, Object>) entry.get("string_" + nestedField + "_attributes"))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(dynamicTemplate.get("path_match"), equalTo(nestedField + ".attributes.*"));
+            assertThat(dynamicTemplate.get("match_mapping_type"), equalTo("string"));
+            assertThat(dynamicTemplate.get("mapping"), equalTo(Map.of("type", "keyword", "ignore_above", 256)));
+        }
+    }
+
+    @Test
+    public void testRawAPMSpanPlainV2AppendsConfiguredComponentTemplates() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue())
+                .withComponentTemplates(List.of("parquet-settings"))
+                .build();
+        assertThat(indexConfiguration.getIndexTemplate().get(COMPOSED_OF),
+                equalTo(List.of("otel-v2-apm-span-plain", "otel-v2-apm-span-nested-keyword", "parquet-settings")));
+        assertThat(indexConfiguration.getManagedComponentTemplates().keySet(),
+                equalTo(Set.of("otel-v2-apm-span-plain", "otel-v2-apm-span-nested-keyword")));
+    }
+
+    @Test
+    public void testRawAPMSpanPlainV2RejectsEs6() {
+        final IndexConfiguration.Builder builder = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2.getValue())
+                .withDistributionVersion(DistributionVersion.ES6.getVersion());
+        assertThrows(InvalidPluginConfigurationException.class, builder::build);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN_V2"}, mode = EnumSource.Mode.EXCLUDE)
+    public void testOtherIndexTypesHaveNoManagedComponentTemplates(final IndexType indexType) {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(indexType.getValue())
+                .withIndexAlias("my-index")
+                .build();
+        assertThat(indexConfiguration.getManagedComponentTemplates(), anEmptyMap());
     }
 
     @Test

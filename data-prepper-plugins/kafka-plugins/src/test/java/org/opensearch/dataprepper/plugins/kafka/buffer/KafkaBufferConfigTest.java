@@ -162,4 +162,28 @@ class KafkaBufferConfigTest {
         setField(KafkaBufferConfig.class, objectUnderTest, "customMetricPrefix", prefix);
         assertThat(objectUnderTest.getCustomMetricPrefix().get(), equalTo(prefix));
     }
+
+    @Test
+    void getBoundedBufferSize_returns_default_value() {
+        assertThat(createObjectUnderTest().getBoundedBufferSize(), equalTo(KafkaBufferConfig.DEFAULT_BOUNDED_BUFFER_SIZE));
+    }
+
+    @Test
+    void getBoundedBufferSize_returns_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        KafkaBufferConfig objectUnderTest = createObjectUnderTest();
+        setField(KafkaBufferConfig.class, objectUnderTest, "boundedBufferSize", 500000);
+        assertThat(objectUnderTest.getBoundedBufferSize(), equalTo(500000));
+    }
+
+    @Test
+    void getBoundedBatchSize_returns_default_value() {
+        assertThat(createObjectUnderTest().getBoundedBatchSize(), equalTo(KafkaBufferConfig.DEFAULT_BOUNDED_BATCH_SIZE));
+    }
+
+    @Test
+    void getBoundedBatchSize_returns_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        KafkaBufferConfig objectUnderTest = createObjectUnderTest();
+        setField(KafkaBufferConfig.class, objectUnderTest, "boundedBatchSize", 200000);
+        assertThat(objectUnderTest.getBoundedBatchSize(), equalTo(200000));
+    }
 }

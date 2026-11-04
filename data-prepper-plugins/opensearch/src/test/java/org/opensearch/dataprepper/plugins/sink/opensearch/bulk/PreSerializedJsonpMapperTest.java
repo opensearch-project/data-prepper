@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.StringReader;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -110,5 +112,17 @@ class PreSerializedJsonpMapperTest {
         final String expectedSerializedJson = objectMapper.writeValueAsString(document);
 
         assertThat(new String(outputStream.toByteArray()), equalTo(expectedSerializedJson));
+    }
+
+    @Test
+    void deserialize_parses_string_values_above_the_jackson_default_limit() {
+        final int length = 21 * 1024 * 1024;
+        final String json = "{\"largeField\":\"" + "a".repeat(length) + "\"}";
+        final PreSerializedJsonpMapper objectUnderTest = createObjectUnderTest();
+
+        try (final jakarta.json.stream.JsonParser parser = objectUnderTest.jsonProvider().createParser(new StringReader(json))) {
+            final ObjectNode result = objectUnderTest.deserialize(parser, ObjectNode.class);
+            assertThat(result.get("largeField").textValue().length(), equalTo(length));
+        }
     }
 }

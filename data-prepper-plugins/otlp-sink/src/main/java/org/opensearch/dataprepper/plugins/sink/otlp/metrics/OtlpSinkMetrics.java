@@ -35,6 +35,7 @@ public class OtlpSinkMetrics {
     private final Counter failedRecordsCounter;
     private final Counter recordsOutCounter;
     private final Counter errorsCounter;
+    private final Counter droppedSpansTransactionSearchDisabledCounter;
     private final Map<String, Counter> rejectedSignalCounters;
     private final Map<String, Counter> failedSignalCounters;
 
@@ -55,6 +56,7 @@ public class OtlpSinkMetrics {
         failedRecordsCounter = pluginMetrics.counter("failedRecordsCount");
         recordsOutCounter = pluginMetrics.counter("recordsOut");
         errorsCounter = pluginMetrics.counter("errorsCount");
+        droppedSpansTransactionSearchDisabledCounter = pluginMetrics.counter("droppedSpansTransactionSearchDisabledCount");
 
         rejectedSignalCounters = new HashMap<>();
         failedSignalCounters = new HashMap<>();
@@ -70,6 +72,10 @@ public class OtlpSinkMetrics {
 
     public void incrementErrorsCount() {
         errorsCounter.increment(1);
+    }
+
+    public void incrementDroppedSpansTransactionSearchDisabledCount(final long count) {
+        droppedSpansTransactionSearchDisabledCounter.increment(count);
     }
 
     public void incrementPayloadSize(final long bytes) {

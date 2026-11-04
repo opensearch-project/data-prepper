@@ -129,6 +129,10 @@ class OTelTraceRawProcessorTest {
 
         when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(false);
+        when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
+        // testGenAiEnrichmentRunsDuringDoExecute copies onto a non-GenAI root.
+        when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.ALL_ROOTS);
         when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
 
         oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
@@ -392,6 +396,26 @@ class OTelTraceRawProcessorTest {
     }
 
     @Test
+    void testMetricsOnGenAiCoverage() {
+        final ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
+        final ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(OTelTraceRawProcessor.GENAI_COVERAGE_COUNT_METRIC_NAME), gaugeObjectArgumentCaptor.capture(),
+                gaugeFunctionArgumentCaptor.capture());
+
+        assertThat(gaugeFunctionArgumentCaptor.getValue().applyAsDouble(gaugeObjectArgumentCaptor.getValue()), equalTo(0.0));
+    }
+
+    @Test
+    void testMetricsOnGenAiCoverageSpanIds() {
+        final ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
+        final ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(OTelTraceRawProcessor.GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME), gaugeObjectArgumentCaptor.capture(),
+                gaugeFunctionArgumentCaptor.capture());
+
+        assertThat(gaugeFunctionArgumentCaptor.getValue().applyAsDouble(gaugeObjectArgumentCaptor.getValue()), equalTo(0.0));
+    }
+
+    @Test
     void testMetricsOnSpanSet() {
         ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
         ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
@@ -441,6 +465,8 @@ class OTelTraceRawProcessorTest {
         reset(config);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
+        when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.AI_ROOT);
         when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofMillis(traceIdTtlMillis));
 
         oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);

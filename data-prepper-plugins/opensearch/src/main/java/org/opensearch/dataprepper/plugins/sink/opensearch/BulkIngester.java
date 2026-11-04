@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -55,6 +54,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndexDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,6 +136,8 @@ public class BulkIngester implements Ingester {
     private BulkRetryStrategy bulkRetryStrategy;
     private BulkApiWrapper bulkApiWrapper;
     private DataStreamIndex dataStreamIndex;
+    private TimeSeriesIndexDetector timeSeriesIndexDetector;
+    private TimeSeriesIndex timeSeriesIndex;
     private ExistingDocumentQueryManager existingDocumentQueryManager;
     private IndexManager indexManager;
     private String configuredIndexAlias;
@@ -175,7 +178,7 @@ public class BulkIngester implements Ingester {
         this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
         this.scriptManager = new ScriptManager(openSearchSinkConfig.getIndexConfiguration().getScriptConfiguration(),
                 expressionEvaluator);
-        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager, new ObjectMapper(),
+        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager,
                 isUsingDocumentFilters());
         this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME);
 
@@ -227,6 +230,12 @@ public class BulkIngester implements Ingester {
             queryExecutorService.submit(existingDocumentQueryManager);
         }
 
+        final IndexCache indexCache = new IndexCache();
+        if (openSearchSinkConfig.getConnectionConfiguration().isServerless()) {
+            this.timeSeriesIndexDetector = new TimeSeriesIndexDetector(openSearchClient, indexCache);
+            this.timeSeriesIndex = new TimeSeriesIndex(timeSeriesIndexDetector, bulkOperationFactory, isUsingDocumentFilters());
+        }
+
         bulkRetryStrategy = new BulkRetryStrategy(
                 bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
                 this::logFailureForBulkRequests,
@@ -237,9 +246,9 @@ public class BulkIngester implements Ingester {
                 pipeline,
                 PLUGIN_NAME,
                 openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
-                isExternalVersionType(versionType));
+                isExternalVersionType(versionType),
+                timeSeriesIndex);
 
-        final IndexCache indexCache = new IndexCache();
         final DataStreamDetector dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
         this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, openSearchSinkConfig.getIndexConfiguration());
 
@@ -316,7 +325,7 @@ public class BulkIngester implements Ingester {
                 continue;
             }
 
-            final SerializedJson document = getDocument(event);
+            SerializedJson document = getDocument(event);
 
             Long version = null;
             String versionExpressionEvaluationResult = null;
@@ -349,6 +358,11 @@ public class BulkIngester implements Ingester {
                 LOG.error("Unknown action {}, skipping the event", eventAction);
                 invalidActionErrorsCounter.increment();
                 continue;
+            }
+
+            if (timeSeriesIndex != null && (StringUtils.equals(eventAction, OpenSearchBulkActions.CREATE.toString()) ||
+                    StringUtils.equals(eventAction, OpenSearchBulkActions.INDEX.toString()))) {
+                document = timeSeriesIndex.ensureTimestamp(event, document, indexName);
             }
 
             SerializedJson serializedJsonNode = null;
@@ -483,6 +497,9 @@ public class BulkIngester implements Ingester {
                 LOG.debug("Sending data to OpenSearch");
                 bulkRetryStrategy.execute(accumulatingBulkRequest);
                 bulkRequestSizeBytesSummary.record(accumulatingBulkRequest.getEstimatedSizeInBytes());
+                if (timeSeriesIndexDetector != null) {
+                    timeSeriesIndexDetector.clearFailedLookups();
+                }
             } catch (final InterruptedException e) {
                 LOG.error("Unexpected Interrupt:", e);
                 bulkRequestErrorsCounter.increment();

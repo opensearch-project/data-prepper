@@ -402,4 +402,29 @@ class OtlpSinkConfigTest {
 
         assertEquals("my-service", config.getServiceName());
     }
+
+    @Test
+    void testIsDropTransactionSearchErrors_returnsFalseWhenNotSet() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertFalse(config.isDropTransactionSearchErrors());
+    }
+
+    @Test
+    void testIsDropTransactionSearchErrors_returnsConfiguredValue() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
+                "drop_transaction_search_errors: true"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertTrue(config.isDropTransactionSearchErrors());
+    }
 }

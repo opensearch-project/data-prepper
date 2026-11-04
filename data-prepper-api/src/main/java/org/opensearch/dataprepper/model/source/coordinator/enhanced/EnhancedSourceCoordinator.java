@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -74,6 +76,16 @@ public interface EnhancedSourceCoordinator {
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
      */
     <T> void saveProgressStateForPartition(EnhancedSourcePartition<T> partition, Duration ownershipTimeoutRenewal);
+
+    /**
+     * This method extends the ownership lease of a partition. It never writes the progress state.
+     * Callers must not call it concurrently with other updates to the same partition.
+     *
+     * @param partition The partition whose ownership should be renewed.
+     * @throws PartitionUpdateException when the partition was not updated successfully
+     * @since 2.17
+     */
+    void renewPartitionOwnership(EnhancedSourcePartition<?> partition);
 
     /**
      * This method is used to release the lease of a partition in the coordination store.
