@@ -47,7 +47,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -177,27 +176,37 @@ public class KafkaSinkTest {
     }
 
     @Test
-    public void doOutputReleasesLockWhenRecordsAreEmpty() {
+    public void doOutputFromAnotherThreadCompletesAfterEmptyRecords() throws InterruptedException {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
         final KafkaSink objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.doOutput(Arrays.asList());
 
-        assertThat(getLock(objectUnderTest).isLocked(), equalTo(false));
+        assertThat(doOutputCompletesOnAnotherThread(objectUnderTest, Arrays.asList(new Record(event))), equalTo(true));
     }
 
     @Test
-    public void doOutputReleasesLockWhenSubmitFails() {
+    public void doOutputFromAnotherThreadCompletesAfterSubmitFails() throws InterruptedException {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        when(executorService.submit(any(ProducerWorker.class)))
+                .thenThrow(new RuntimeException())
+                .thenReturn(futureTask);
         final Collection records = Arrays.asList(new Record(event));
-        when(executorService.submit(any(ProducerWorker.class))).thenThrow(new RuntimeException());
         final KafkaSink objectUnderTest = createObjectUnderTest();
 
         assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
 
-        assertThat(getLock(objectUnderTest).isLocked(), equalTo(false));
+        assertThat(doOutputCompletesOnAnotherThread(objectUnderTest, records), equalTo(true));
     }
 
-    private ReentrantLock getLock(final KafkaSink kafkaSink) {
-        return (ReentrantLock) ReflectionTestUtils.getField(kafkaSink, "reentrantLock");
+    private boolean doOutputCompletesOnAnotherThread(final KafkaSink kafkaSink, final Collection records)
+            throws InterruptedException {
+        final Thread otherThread = new Thread(() -> kafkaSink.doOutput(records));
+        otherThread.setDaemon(true);
+        otherThread.start();
+        otherThread.join(TimeUnit.SECONDS.toMillis(5));
+        return !otherThread.isAlive();
     }
 
     @Test
