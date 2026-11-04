@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -2435,6 +2436,104 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                 .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130))
                 .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130));
         return newProcessorCapturingEvents(dirPrefix, dependencyNodesConfig);
+    }
+
+    // ---- Platform detection and environment_source (RFC dashboards-observability#2940) ----
+
+    private OTelApmServiceMapProcessor newPlatformProcessor(final String dirPrefix,
+                                                            final EnvironmentSource environmentSource,
+                                                            final boolean detect) throws Exception {
+        when(clock.instant())
+                .thenReturn(testTime).thenReturn(testTime)
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130));
+        stubEventFactoryToBuildJacksonEvents();
+        final File dir = new File(tempDir, dirPrefix + System.nanoTime());
+        dir.mkdirs();
+        final PlatformDetectionConfig detection = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue("{\"enabled\": " + detect + "}", PlatformDetectionConfig.class);
+        return new OTelApmServiceMapProcessor(Duration.ofSeconds(60), dir, clock, 1, eventFactory, pluginMetrics,
+                Collections.emptyList(), MetricTimestampSource.SPAN_END_TIME, MetricTimestampGranularity.SECONDS,
+                enabledDependencyNodes(), environmentSource, detection);
+    }
+
+    private static Span withResource(final Span span, final Map<String, Object> resourceAttributes) {
+        final Map<String, Object> resource = new HashMap<>();
+        resource.put("attributes", resourceAttributes);
+        when(span.getResource()).thenReturn(resource);
+        return span;
+    }
+
+    private static Map<String, Object> eksResource(final String cluster) {
+        final Map<String, Object> attrs = new HashMap<>();
+        attrs.put("cloud.platform", "aws_eks");
+        attrs.put("deployment.environment.name", "prod");
+        attrs.put("k8s.cluster.name", cluster);
+        attrs.put("k8s.namespace.name", "retail");
+        attrs.put("k8s.deployment.name", "pricing");
+        attrs.put("k8s.pod.name", "pricing-abc");
+        return attrs;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> sourceKeyAttributes(final Event event) {
+        return event.get("sourceNode/keyAttributes", Map.class);
+    }
+
+    @Test
+    void platformDetection_deploymentFirst_recordsPlatformKeysAndDeploymentEnvironment() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-on-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Span server = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-1"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(server)));
+
+            assertThat(events.size(), equalTo(1));
+            final Map<String, Object> keys = sourceKeyAttributes(events.get(0));
+            assertThat(keys.get("environment"), equalTo("prod"));
+            assertThat(keys.get("name"), equalTo("pricing"));
+            assertThat(keys.get("apm.platform"), equalTo(List.of("eks")));
+            assertThat(keys.get("k8s.cluster.name"), equalTo(List.of("prod-1")));
+            assertThat(keys.get("k8s.deployment.name"), equalTo(List.of("pricing")));
+            // Pods are never stored on the node.
+            assertThat(keys.containsKey("k8s.pod.name"), equalTo(false));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_defaults_leaveTheNodeUnchanged() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-off-", EnvironmentSource.PLATFORM_FIRST, false);
+        try {
+            final Span server = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-1"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(server)));
+
+            final Map<String, Object> keys = sourceKeyAttributes(events.get(0));
+            assertThat(keys, equalTo(Map.of("environment", "eks:default", "name", "pricing")));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_serviceInTwoClusters_keepsBothClustersOnOneNode() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-multi-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Span inA = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-a"));
+            final Span inB = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "2222222222222222", "", "bbbbbbbbbbbbbbbb"), eksResource("prod-b"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(inA), new Record<>(inB)));
+
+            assertThat(events.size(), equalTo(1));
+            assertThat(sourceKeyAttributes(events.get(0)).get("k8s.cluster.name"), equalTo(List.of("prod-a", "prod-b")));
+        } finally {
+            proc.shutdown();
+        }
     }
 
     // Builds a processor whose emitted events are real JacksonEvents; the caller stubs the clock.

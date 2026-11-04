@@ -177,6 +177,21 @@ class NodeTest {
         }
 
         @Test
+        void descriptiveAttributes_doNotChangeIdentityOrHash() {
+            // Platform keys are descriptive: they must never move a nodeConnectionHash or split a node.
+            final Node.KeyAttributes plain = new Node.KeyAttributes("prod", "test-service");
+            final Node.KeyAttributes withKeys = new Node.KeyAttributes("prod", "test-service");
+            withKeys.addDescriptiveAttribute("apm.platform", "eks", 10);
+            withKeys.addDescriptiveAttribute("k8s.cluster.name", "prod-1", 10);
+            withKeys.addDescriptiveAttribute("k8s.cluster.name", "prod-2", 10);
+
+            assertEquals(plain, withKeys);
+            assertEquals(plain.hashCode(), withKeys.hashCode());
+            assertEquals(new Node("service", plain).hashCode(), new Node("service", withKeys).hashCode());
+            assertEquals(2, withKeys.getDescriptiveAttributes().get("k8s.cluster.name").size());
+        }
+
+        @Test
         void testToString() {
             Node.KeyAttributes keyAttributes = new Node.KeyAttributes("prod", "test-service");
 

@@ -15,6 +15,16 @@ import java.util.Map;
 
 class ServiceEnvironmentProviders {
     public static String getDeploymentEnvironment(final Map<String, Object> spanAttributes) {
+        final String env = getDeploymentEnvironmentOrNull(spanAttributes);
+        // Default: 'generic:default'
+        return env != null ? env : "generic:default";
+    }
+
+    /**
+     * {@code deployment.environment.name}, else {@code deployment.environment}, from the resource
+     * attributes; null when neither is set.
+     */
+    static String getDeploymentEnvironmentOrNull(final Map<String, Object> spanAttributes) {
         try {
             // Navigate: spanAttributes -> "resource" -> "attributes" -> deployment keys
             @SuppressWarnings("unchecked")
@@ -33,10 +43,9 @@ class ServiceEnvironmentProviders {
                 return env;
             }
         } catch (Exception ignored) {
-            // Any navigation failure falls through to default
+            // Any navigation failure falls through to the caller's default
         }
-        // Default: 'generic:default'
-        return "generic:default";
+        return null;
     }
 
     /**

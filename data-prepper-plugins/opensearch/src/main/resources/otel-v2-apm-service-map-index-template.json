@@ -31,6 +31,15 @@
         }
       },
       {
+        "string_key_attributes": {
+          "path_match": "*.keyAttributes.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      },
+      {
         "string_dependency_attributes": {
           "path_match": "*.dependencyAttributes.*",
           "match_mapping_type": "string",

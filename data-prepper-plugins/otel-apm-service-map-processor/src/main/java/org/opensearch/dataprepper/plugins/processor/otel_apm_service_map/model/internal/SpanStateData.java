@@ -14,8 +14,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
 import lombok.Getter;
 
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.opensearch.dataprepper.plugins.otel.common.RemoteOperationAndService;
+import org.opensearch.dataprepper.plugins.otel.common.ServicePlatformDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +77,8 @@ public class SpanStateData implements Serializable {
     private int fault;
     private String operationName;
     private String environment;
+    /** Platform and infrastructure keys of the span's service, when platform detection is enabled; else empty. */
+    private Map<String, String> platformKeys = Collections.emptyMap();
     private Map<String, String> groupByAttributes;
 
     /** Name of the dependency this span calls when it is not a traced service, or null. */
@@ -128,6 +132,29 @@ public class SpanStateData implements Serializable {
                          final Map<String, String> groupByAttributes,
                          final Map<String, Object> spanAttributes,
                          final DependencyNamingPolicy namingPolicy) {
+        this(serviceName, spanId, parentSpanId, traceId, spanKind, spanName, operation, durationInNanos, status,
+                endTime, groupByAttributes, spanAttributes, namingPolicy, EnvironmentSource.PLATFORM_FIRST, false);
+    }
+
+    /**
+     * @param environmentSource precedence for the derived environment
+     * @param detectPlatform    record the service's platform and infrastructure keys (see ServicePlatformDetector)
+     */
+    public SpanStateData(final String serviceName,
+                         final String spanId,
+                         final String parentSpanId,
+                         final String traceId,
+                         final String spanKind,
+                         final String spanName,
+                         final String operation,
+                         final Long durationInNanos,
+                         final String status,
+                         final String endTime,
+                         final Map<String, String> groupByAttributes,
+                         final Map<String, Object> spanAttributes,
+                         final DependencyNamingPolicy namingPolicy,
+                         final EnvironmentSource environmentSource,
+                         final boolean detectPlatform) {
         this.serviceName = serviceName;
         this.spanId = spanId;
         this.parentSpanId = parentSpanId;
@@ -146,7 +173,10 @@ public class SpanStateData implements Serializable {
 
         this.operationName = OTelSpanDerivationUtil.computeOperationName(spanName, spanAttributes);
 
-        this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes);
+        this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes, environmentSource);
+        if (detectPlatform) {
+            this.platformKeys = new LinkedHashMap<>(ServicePlatformDetector.detect(spanAttributes));
+        }
 
         // Derived remote-dependency identity is computed only for the span kinds that can target an
         // external dependency: CLIENT calls and messaging PRODUCER/CONSUMER spans. SERVER/INTERNAL
@@ -445,6 +475,10 @@ public class SpanStateData implements Serializable {
      *
      * @return Environment derived from resource attributes
      */
+    public Map<String, String> getPlatformKeys() {
+        return platformKeys != null ? platformKeys : Collections.emptyMap();
+    }
+
     public String getEnvironment() {
         return environment;
     }
