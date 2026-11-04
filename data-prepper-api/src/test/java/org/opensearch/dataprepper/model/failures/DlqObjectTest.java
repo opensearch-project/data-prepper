@@ -38,7 +38,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doAnswer;
@@ -288,7 +287,23 @@ public class DlqObjectTest {
                     .build();
             assertThat(testObject.getEvent(), equalTo(event));
             testObject.releaseEventHandle(true);
-            verify(eventHandle, times(0)).release(any(Boolean.class));
+            verify(eventHandle).release(true);
+        }
+
+        @Test
+        public void test_get_release_eventHandle_with_Event_false() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            Event event = mock(Event.class);
+            when(event.getEventHandle()).thenReturn(eventHandle);
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .withEvent(event)
+                    .build();
+            testObject.releaseEventHandle(false);
+            verify(eventHandle).release(false);
         }
 
 
@@ -316,7 +331,47 @@ public class DlqObjectTest {
                     .build();
             assertThat(testObject.getEvent(), equalTo(event));
             testObject.releaseEventHandles(true);
-            verify(eventHandle, times(0)).release(any(Boolean.class));
+            verify(eventHandle).release(true);
+        }
+
+        @Test
+        public void test_get_release_eventHandles_with_Event_false() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            Event event = mock(Event.class);
+            when(event.getEventHandle()).thenReturn(eventHandle);
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .withEvent(event)
+                    .build();
+            testObject.releaseEventHandles(false);
+            verify(eventHandle).release(false);
+        }
+
+        @Test
+        public void test_release_eventHandle_with_no_event_and_no_handles() {
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .build();
+            testObject.releaseEventHandle(true);
+            // No exception expected — silent no-op
+        }
+
+        @Test
+        public void test_release_eventHandles_with_no_event_and_no_handles() {
+            testObject = DlqObject.builder()
+                    .withPluginId(pluginId)
+                    .withPluginName(pluginName)
+                    .withPipelineName(pipelineName)
+                    .withFailedData(failedData)
+                    .build();
+            testObject.releaseEventHandles(true);
+            // No exception expected — silent no-op
         }
 
         @Test
