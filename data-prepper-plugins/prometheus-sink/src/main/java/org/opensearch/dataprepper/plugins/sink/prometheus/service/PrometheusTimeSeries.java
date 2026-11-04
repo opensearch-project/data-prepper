@@ -317,7 +317,10 @@ public class PrometheusTimeSeries {
                 }
             }
             if (negativeBucketsPresent) {
-                long cumulativeCount = 0;
+                long cumulativeCount = zeroCount != null ? zeroCount : 0;
+                if (positiveBucketCounts != null) {
+                    cumulativeCount += positiveBucketCounts.stream().mapToLong(Long::longValue).sum();
+                }
                 for (int i = 0; i < negativeBucketCounts.size(); i++) {
                     cumulativeCount += negativeBucketCounts.get(i);
                     double bound = -calculateBucketBound(i + negativeOffset + 1, scale);

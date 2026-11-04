@@ -245,7 +245,7 @@ public class PrometheusTimeSeriesTest {
     }
 
     @Test
-    public void testExponentialHistogramNegativeBucketsAreCumulative() throws Exception {
+    public void testExponentialHistogramGeBucketsCountEveryObservationAtOrAboveTheBound() throws Exception {
         final String name = RandomStringUtils.randomAlphabetic(10);
         final ExponentialHistogram histogram = createExponentialHistogramMetric(name, "s");
         final PrometheusTimeSeries timeSeries = new PrometheusTimeSeries(histogram, true, null, null);
@@ -254,10 +254,10 @@ public class PrometheusTimeSeriesTest {
                 .filter(series -> getLabels(series).containsKey("ge"))
                 .collect(Collectors.toMap(series -> getLabels(series).get("ge"), series -> series.getSamples(0).getValue()));
 
-        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 1.5))), equalTo(4.0));
-        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 2.0))), equalTo(12.0));
-        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 2.5))), equalTo(14.0));
-        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 3.0))), equalTo(20.0));
+        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 1.5))), equalTo(16.0));
+        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 2.0))), equalTo(24.0));
+        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 2.5))), equalTo(26.0));
+        assertThat(bucketValues.get(Double.toString(-Math.pow(2, 3.0))), equalTo(32.0));
     }
 
     @Test
