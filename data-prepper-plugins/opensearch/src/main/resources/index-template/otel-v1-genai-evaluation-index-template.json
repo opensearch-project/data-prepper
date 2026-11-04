@@ -216,41 +216,62 @@
             },
             "opensearch": {
               "properties": {
-                "evaluation": {
+                "gen_ai": {
                   "properties": {
-                    "score": {
+                    "evaluation": {
                       "properties": {
-                        "min": {
-                          "type": "double"
+                        "score": {
+                          "properties": {
+                            "min": {
+                              "type": "double"
+                            },
+                            "max": {
+                              "type": "double"
+                            },
+                            "threshold": {
+                              "type": "double"
+                            },
+                            "direction": {
+                              "type": "keyword"
+                            }
+                          }
                         },
-                        "max": {
-                          "type": "double"
+                        "evaluator": {
+                          "properties": {
+                            "name": {
+                              "type": "keyword"
+                            },
+                            "version": {
+                              "type": "keyword"
+                            },
+                            "type": {
+                              "type": "keyword"
+                            }
+                          }
                         },
-                        "direction": {
+                        "level": {
                           "type": "keyword"
+                        },
+                        "judge": {
+                          "properties": {
+                            "trace_id": {
+                              "type": "keyword"
+                            }
+                          }
                         }
                       }
-                    },
-                    "evaluator": {
+                    }
+                  }
+                },
+                "test": {
+                  "properties": {
+                    "case": {
                       "properties": {
-                        "name": {
-                          "type": "keyword"
+                        "expected": {
+                          "type": "text"
                         },
-                        "version": {
-                          "type": "keyword"
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "level": {
-                      "type": "keyword"
-                    },
-                    "judge": {
-                      "properties": {
-                        "trace_id": {
-                          "type": "keyword"
+                        "expected_truncated": {
+                          "type": "boolean"
                         }
                       }
                     }

@@ -85,6 +85,8 @@ The OpenSearch sink will reserve `metrics-otel-v1-*` as index pattern and `metri
 
 ### GenAI evaluation results
 
+The `genai-evaluation` and `genai-evaluation-plain` index types are experimental. Their mappings may change in a minor release.
+
 GenAI evaluation results are OpenTelemetry log records with the event name `gen_ai.evaluation.result`, as described in the
 [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/).
 Route them from the OTLP logs pipeline to a sink with `index_type: genai-evaluation`:
@@ -112,9 +114,11 @@ otlp-pipeline:
   and its index template matches only that index.
 
 The index template maps `traceId`, `spanId` and `eventName` as `keyword`, and `time` and `@timestamp` as `date_nanos`. The attributes
-`gen_ai.evaluation.score.value`, `opensearch.evaluation.score.min` and `opensearch.evaluation.score.max` are `double`, and
-`gen_ai.evaluation.explanation` is `text` with a `keyword` sub-field. Other known string attributes, such as `gen_ai.evaluation.name`,
-`gen_ai.evaluation.score.label`, `test.*`, `cicd.pipeline.*` and `opensearch.evaluation.*`, are `keyword`. Any other string attribute is mapped as `keyword`
+`gen_ai.evaluation.score.value`, `opensearch.gen_ai.evaluation.score.min`, `opensearch.gen_ai.evaluation.score.max` and
+`opensearch.gen_ai.evaluation.score.threshold` are `double`, and `gen_ai.evaluation.explanation` is `text` with a `keyword` sub-field.
+`opensearch.test.case.expected` is `text` without a `keyword` sub-field, so it is searchable but not aggregatable, and
+`opensearch.test.case.expected_truncated` is `boolean`. Other known string attributes, such as `gen_ai.evaluation.name`,
+`gen_ai.evaluation.score.label`, `test.*`, `cicd.pipeline.*` and `opensearch.gen_ai.evaluation.*`, are `keyword`. Any other string attribute is mapped as `keyword`
 and any other integer attribute as `double`.
 
 Do not combine these types with another index template or ISM policy that matches `otel-v1-genai-evaluation-*`, such as a custom template
@@ -171,7 +175,7 @@ Default is null.
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
 - `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-plain-raw-v2`, `trace-analytics-service-map`, `metric-analytics`, `log-analytics`, `genai-evaluation`, `genai-evaluation-plain`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
-  * `genai-evaluation` and `genai-evaluation-plain` write GenAI evaluation results. See [GenAI evaluation results](#genai-evaluation-results).
+  * `genai-evaluation` and `genai-evaluation-plain` (experimental) write GenAI evaluation results. See [GenAI evaluation results](#genai-evaluation-results).
   * `trace-analytics-plain-raw-v2` writes the same span documents as `trace-analytics-plain-raw`, to the `otel-v2-apm-span` alias with its own ISM policy `otel-v2-apm-span-policy`. Its index template is composed of two component templates that the sink creates or updates before the index template, each only when its `version` is higher than the one on the cluster: `otel-v2-apm-span-plain`, which holds the `trace-analytics-plain-raw` span mappings, and `otel-v2-apm-span-nested-keyword`, which maps string fields under the nested `events.attributes` and `links.attributes` to `keyword`. The index template itself sets `index.append_only.enabled` to `false` so that spans can be written with the document ID `${traceId}/${spanId}` on clusters where new indices are append-only by default. This type always uses `template_type` `index-template`, cannot be used with `distribution_version` `es6`, and requires OpenSearch 3.0 or later. Processors that read spans, such as `otel_trace_group`, default to `otel-v1-apm-span`, so set their `indices` to `otel-v2-apm-span`.
 
 - `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. For `distribution_version` set to `es6`, default value is `false`, otherwise default value is `true`.
