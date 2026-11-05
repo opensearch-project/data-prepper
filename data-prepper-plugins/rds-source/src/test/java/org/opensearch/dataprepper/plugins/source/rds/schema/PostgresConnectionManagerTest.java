@@ -61,7 +61,8 @@ class PostgresConnectionManagerTest {
 
         connectionManager.getConnection();
 
-        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(PostgresConnectionManager.JDBC_URL_FORMAT, endpoint, port, database)));
+        assertThat(jdbcUrlArgumentCaptor.getValue(),
+                is(String.format(PostgresConnectionManager.JDBC_URL_FORMAT, endpoint, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
         assertThat(PGProperty.USER.getOrDefault(properties), is(username));
         assertThat(PGProperty.PASSWORD.getOrDefault(properties), is(password));
@@ -70,6 +71,7 @@ class PostgresConnectionManagerTest {
         assertThat(PGProperty.PREFER_QUERY_MODE.getOrDefault(properties), is(SIMPLE_QUERY));
         assertThat(PGProperty.SSL.getOrDefault(properties), is(TRUE_VALUE));
         assertThat(PGProperty.SSL_MODE.getOrDefault(properties), is(REQUIRE_SSL));
+        assertThat(PGProperty.PG_DBNAME.getOrDefault(properties), is(database));
     }
 
     @Test
@@ -82,7 +84,8 @@ class PostgresConnectionManagerTest {
 
         connectionManager.getConnection();
 
-        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(PostgresConnectionManager.JDBC_URL_FORMAT, endpoint, port, database)));
+        assertThat(jdbcUrlArgumentCaptor.getValue(),
+                is(String.format(PostgresConnectionManager.JDBC_URL_FORMAT, endpoint, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
         assertThat(PGProperty.USER.getOrDefault(properties), is(username));
         assertThat(PGProperty.PASSWORD.getOrDefault(properties), is(password));
@@ -90,6 +93,9 @@ class PostgresConnectionManagerTest {
         assertThat(PGProperty.REPLICATION.getOrDefault(properties), is(DATABASE_REPLICATION));
         assertThat(PGProperty.PREFER_QUERY_MODE.getOrDefault(properties), is(SIMPLE_QUERY));
         assertThat(PGProperty.SSL.getOrDefault(properties), is(FALSE_VALUE));
+        assertThat(jdbcUrlArgumentCaptor.getValue(),
+                is(String.format(PostgresConnectionManager.JDBC_URL_FORMAT, endpoint, port)));
+        assertThat(PGProperty.PG_DBNAME.getOrDefault(properties), is(database));
     }
 
     private PostgresConnectionManager createObjectUnderTest() {
