@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriterConfig;
+import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSet;
+import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetMetrics;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -75,6 +77,10 @@ import java.util.Map;
 import java.util.List;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ExtendWith(MockitoExtension.class)
@@ -98,9 +104,6 @@ public class CloudWatchLogsIT {
 
     @Mock
     private ThresholdConfig thresholdConfig;
-
-    @Mock
-    private EventHandle eventHandle;
 
     @Mock
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
@@ -137,6 +140,7 @@ public class CloudWatchLogsIT {
     private ObjectMapper objectMapper;
     private AwsCredentialsProvider awsCredentialsProvider;
     private S3Client s3Client;
+    private List<EventHandle> eventHandles;
 
     @BeforeEach
     void setUp() {
@@ -148,7 +152,7 @@ public class CloudWatchLogsIT {
         requestsFailedCount = new AtomicInteger(0);
         dlqSuccessCount = new AtomicInteger(0);
         objectMapper = new ObjectMapper();
-        eventHandle = mock(EventHandle.class);
+        eventHandles = new ArrayList<>();
         pluginSetting = mock(PluginSetting.class);
         pluginFactory = mock(PluginFactory.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
@@ -227,8 +231,9 @@ public class CloudWatchLogsIT {
             if (s.contains("NumDlqSuccess")) {
                 return dlqSuccessCounter;
             }
-            return null;
+            return mock(Counter.class);
         }).when(pluginMetrics).counter(anyString());
+        lenient().when(pluginMetrics.counterWithTags(anyString(), any(String[].class))).thenAnswer(a -> mock(Counter.class));
         when(pluginMetrics.summary(anyString())).thenReturn(summary);
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn(logGroupName);
@@ -338,7 +343,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-        verify(eventHandle, times(NUM_RECORDS)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS, true);
     }
 
     @Test
@@ -382,7 +387,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-        verify(eventHandle, times(NUM_RECORDS)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS, true);
     }
 
     @Test
@@ -418,7 +423,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-        verify(eventHandle, times(NUM_RECORDS)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS, true);
 
     }
 
@@ -454,7 +459,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-        verify(eventHandle, times(NUM_RECORDS)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS, true);
 
     }
 
@@ -510,7 +515,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(1));
-        verify(eventHandle, times(NUM_RECORDS+1)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS+1, true);
 
     }
 
@@ -556,7 +561,7 @@ public class CloudWatchLogsIT {
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(largeEventsDroppedCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-        verify(eventHandle, times(NUM_RECORDS+1)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS+1, true);
 
     }
 
@@ -595,8 +600,43 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(0));
         assertThat(requestsSuccessCount.get(), equalTo(0));
         assertThat(dlqSuccessCount.get(), equalTo(NUM_RECORDS));
-        verify(eventHandle, times(NUM_RECORDS)).release(true);
+        verifyEachReleasedOnce(NUM_RECORDS, true);
 
+    }
+
+    @Test
+    void doOutput_putLogEventsAlwaysFails_acknowledgementCallbackFalseWithinTSend() throws Exception {
+        final int maxRetries = 3;
+        // (1 + max_retries) API calls plus the 0.5 s, 1 s and 2 s backoff caps; create_log_group and create_log_stream are false.
+        final Duration sendBound = CloudWatchLogsClientFactory.API_CALL_TIMEOUT.multipliedBy(1 + maxRetries).plusMillis(3500);
+        when(cloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(maxRetries);
+        when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn("CloudWatchLogsIT_missing_" + RandomStringUtils.randomAlphabetic(8));
+        when(thresholdConfig.getBatchSize()).thenReturn(NUM_RECORDS);
+        when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
+        final ScheduledExecutorService ackExecutor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            final CompletableFuture<Boolean> callback = new CompletableFuture<>();
+            final DefaultAcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(ackExecutor, callback::complete,
+                    Duration.ofMinutes(10), mock(DefaultAcknowledgementSetMetrics.class));
+            final Collection<Record<Event>> records = new ArrayList<>();
+            for (final HashMap data : generateRecords(NUM_RECORDS)) {
+                final Event event = JacksonLog.builder().withData(data).build();
+                acknowledgementSet.add(event.getEventHandle());
+                records.add(new Record<>(event));
+            }
+            acknowledgementSet.complete();
+            sink = createObjectUnderTest();
+
+            final long start = System.nanoTime();
+            sink.doOutput(records);
+            final long remaining = sendBound.toNanos() - (System.nanoTime() - start);
+
+            assertThat(callback.get(remaining, TimeUnit.NANOSECONDS), equalTo(false));
+            assertThat(eventsSuccessCount.get(), equalTo(0));
+        } finally {
+            ackExecutor.shutdownNow();
+        }
     }
 
     @Test
@@ -669,13 +709,24 @@ public class CloudWatchLogsIT {
         assertThat(dlqSuccessCount.get(), equalTo(0));
     }
 
+    // The sink releases each handle once by identity, so every event needs its own handle.
+    private EventHandle newEventHandle() {
+        final EventHandle handle = mock(EventHandle.class);
+        eventHandles.add(handle);
+        return handle;
+    }
+
+    private void verifyEachReleasedOnce(final int count, final boolean result) {
+        eventHandles.subList(0, count).forEach(handle -> verify(handle, times(1)).release(result));
+    }
+
     private Collection<Record<Event>> getRecordList(int numberOfRecords) {
         final Collection<Record<Event>> recordList = new ArrayList<>();
         List<HashMap> records = generateRecords(numberOfRecords);
         for (int i = 0; i < numberOfRecords; i++) {
             final Event event = JacksonLog.builder()
                                 .withData(records.get(i))
-                                .withEventHandle(eventHandle)
+                                .withEventHandle(newEventHandle())
                                 .build();
             recordList.add(new Record<>(event));
         }
@@ -685,7 +736,7 @@ public class CloudWatchLogsIT {
     private Record<Event> getLargeRecord(int size) {
         final Event event = JacksonLog.builder()
                             .withData(Map.of("key", RandomStringUtils.randomAlphabetic(size)))
-                            .withEventHandle(eventHandle)
+                            .withEventHandle(newEventHandle())
                             .build();
         return new Record<>(event);
     }

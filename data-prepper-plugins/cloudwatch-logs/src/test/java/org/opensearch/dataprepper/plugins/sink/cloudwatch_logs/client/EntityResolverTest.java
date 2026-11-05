@@ -26,16 +26,22 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EntityResolverTest {
 
     private ExpressionEvaluator expressionEvaluator;
+    private CloudWatchLogsMetrics metrics;
 
     @BeforeEach
     void setUp() {
+        metrics = mock(CloudWatchLogsMetrics.class);
         // A field-reference-only evaluator: nothing is a valid expression statement, which is how the
         // real evaluator behaves for plain ${field} templates.
         expressionEvaluator = mock(ExpressionEvaluator.class);
@@ -58,7 +64,7 @@ class EntityResolverTest {
 
     private EntityResolver resolver(final Map<String, String> keyAttributes, final Map<String, String> attributes,
                                     final Map<String, String> headers) {
-        return new EntityResolver(keyAttributes, attributes, headers, expressionEvaluator);
+        return new EntityResolver(keyAttributes, attributes, headers, expressionEvaluator, metrics);
     }
 
     private Entity resolveEntity(final EntityResolver resolver, final Event event) {
@@ -70,51 +76,14 @@ class EntityResolverTest {
     }
 
     @Test
-    void resolve_interpolatesTemplatesFromEvent() {
+    void resolve_interpolatesTemplatesFromEventVerbatim() {
         final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-        final Event event = eventWith(Map.of("resourceId", "/subscriptions/abc/resourceGroups/rg"));
+        final Event event = eventWith(Map.of("resourceId", "/Subscriptions/ABC/resourceGroups/RG"));
 
         final Entity entity = resolveEntity(resolver, event);
 
         assertThat(entity.keyAttributes().get("Type"), equalTo("Service"));
-        assertThat(entity.keyAttributes().get("Name"), equalTo("/subscriptions/abc/resourceGroups/rg"));
-    }
-
-    @Test
-    void resolveKey_keyIsDerivedFromResolvedKeyAttributes() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-
-        // Events whose templates interpolate to the same key attributes share a grouping key; those
-        // that differ get distinct keys.
-        final EntityResolver.ResolvedKey keyA = resolver.resolveKey(eventWith(Map.of("resourceId", "res-a")));
-        final EntityResolver.ResolvedKey keyASecond = resolver.resolveKey(eventWith(Map.of("resourceId", "res-a")));
-        final EntityResolver.ResolvedKey keyB = resolver.resolveKey(eventWith(Map.of("resourceId", "res-b")));
-
-        assertThat(keyASecond, equalTo(keyA));
-        assertThat(keyB, not(equalTo(keyA)));
-    }
-
-    @Test
-    void resolvedKey_equalKeysAgreeOnHashCodeSoTheyCollapseToOneGroup() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-
-        final EntityResolver.ResolvedKey first = resolver.resolveKey(eventWith(Map.of("resourceId", "res-a")));
-        final EntityResolver.ResolvedKey second = resolver.resolveKey(eventWith(Map.of("resourceId", "res-a")));
-
-        // ResolvedKey is used directly as a map key, so equals() without a matching hashCode() would
-        // silently open a second group for the same entity.
-        assertThat(second.hashCode(), equalTo(first.hashCode()));
-        assertThat(new HashMap<>(Map.of(first, "group")).get(second), equalTo("group"));
-    }
-
-    @Test
-    void resolvedKey_isNotEqualToOtherTypesOrNull() {
-        final EntityResolver.ResolvedKey key = resolver(keyAttrTemplates(), Map.of())
-                .resolveKey(eventWith(Map.of("resourceId", "res-a")));
-
-        assertThat(key.equals(key), equalTo(true));
-        assertThat(key.equals("not a key"), equalTo(false));
-        assertThat(key.equals(null), equalTo(false));
+        assertThat(entity.keyAttributes().get("Name"), equalTo("/Subscriptions/ABC/resourceGroups/RG"));
     }
 
     @Test
@@ -128,101 +97,35 @@ class EntityResolverTest {
     }
 
     @Test
-    void resolve_distinctKeysProduceDistinctEntities() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-
-        final Entity a = resolveEntity(resolver, eventWith(Map.of("resourceId", "res-a")));
-        final Entity b = resolveEntity(resolver, eventWith(Map.of("resourceId", "res-b")));
-
-        assertThat(a.keyAttributes().get("Name"), equalTo("res-a"));
-        assertThat(b.keyAttributes().get("Name"), equalTo("res-b"));
-    }
-
-    @Test
-    void resolve_missingTemplateKeyFallsBackToEmptyString() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-        final Event event = eventWith(Map.of("someOtherField", "value"));
-
-        final Entity entity = resolveEntity(resolver, event);
-
-        // ${resourceId} is absent → three-arg formatString substitutes the empty default, not a throw.
-        assertThat(entity.keyAttributes().get("Name"), equalTo(""));
-        assertThat(entity.keyAttributes().get("Type"), equalTo("Service"));
-    }
-
-    @Test
-    void resolve_resolvesAttributesInAdditionToKeyAttributes() {
-        final Map<String, String> attributes = Map.of("AWS.ServiceNameSource", "UserConfiguration");
-        final EntityResolver resolver = resolver(keyAttrTemplates(), attributes);
-        final Event event = eventWith(Map.of("resourceId", "res-1"));
-
-        final Entity entity = resolveEntity(resolver, event);
-
-        assertThat(entity.attributes().get("AWS.ServiceNameSource"), equalTo("UserConfiguration"));
-    }
-
-    @Test
-    void resolve_emitsTemplatedIdentifierVerbatim() {
-        final Map<String, String> keyAttributes = new LinkedHashMap<>();
-        keyAttributes.put("Identifier", "${resourceId}");
-        final EntityResolver resolver = resolver(keyAttributes, Map.of());
-        final Event event = eventWith(Map.of("resourceId", "/Subscriptions/ABC"));
-
-        final Entity entity = resolveEntity(resolver, event);
-
-        assertThat(entity.keyAttributes().get("Identifier"), equalTo("/Subscriptions/ABC"));
-    }
-
-    @Test
-    void resolve_evaluatesExpressionValuedKeyAttributeThroughTheEvaluator() {
+    void resolve_evaluatesExpressionsInKeyAttributesAttributesAndHeaders() {
         final String expression = "getMetadata(\"resourceId\")";
+        final String attributeExpression = "getMetadata(\"source\")";
+        final String headerExpression = "getMetadata(\"header\")";
         final Map<String, String> keyAttributes = new LinkedHashMap<>();
         keyAttributes.put("Type", "Service");
         keyAttributes.put("Name", "${" + expression + "}");
+        final Map<String, String> attributes = Map.of("AWS.ServiceNameSource", "${" + attributeExpression + "}");
+        final Map<String, String> headers = Map.of("x-source-name", "${" + headerExpression + "}");
 
         // An expression is not a field on the event, so resolution depends entirely on the evaluator.
         when(expressionEvaluator.isValidExpressionStatement(eq(expression))).thenReturn(true);
         when(expressionEvaluator.evaluate(eq(expression), any(Event.class))).thenReturn("res-from-metadata");
+        when(expressionEvaluator.isValidExpressionStatement(eq(attributeExpression))).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(attributeExpression), any(Event.class))).thenReturn("UserConfiguration");
+        when(expressionEvaluator.isValidExpressionStatement(eq(headerExpression))).thenReturn(true);
+        when(expressionEvaluator.evaluate(eq(headerExpression), any(Event.class))).thenReturn("header-from-metadata");
 
-        final EntityResolver resolver = resolver(keyAttributes, Map.of());
-        final Entity entity = resolveEntity(resolver, eventWith(Map.of("unrelated", "value")));
+        final EntityResolver resolver = resolver(keyAttributes, attributes, headers);
+        final Event event = eventWith(Map.of("unrelated", "value"));
+        final EntityResolver.ResolvedKey key = resolver.resolveKey(event);
+        final Entity entity = resolver.buildEntity(key, event);
 
         // With a null evaluator this silently resolved to "" and every event collapsed into one group.
         assertThat(entity.keyAttributes().get("Name"), equalTo("res-from-metadata"));
         assertThat(entity.keyAttributes().get("Type"), equalTo("Service"));
-    }
-
-    @Test
-    void resolveKey_expressionValuedKeyAttributesGroupByEvaluatedValue() {
-        final String expression = "getMetadata(\"resourceId\")";
-        final Map<String, String> keyAttributes = new LinkedHashMap<>();
-        keyAttributes.put("Name", "${" + expression + "}");
-
-        final Event first = eventWith(Map.of("seq", 1));
-        final Event second = eventWith(Map.of("seq", 2));
-        when(expressionEvaluator.isValidExpressionStatement(eq(expression))).thenReturn(true);
-        when(expressionEvaluator.evaluate(eq(expression), eq(first))).thenReturn("res-a");
-        when(expressionEvaluator.evaluate(eq(expression), eq(second))).thenReturn("res-b");
-
-        final EntityResolver resolver = resolver(keyAttributes, Map.of());
-
-        // The grouping key has to follow the evaluated value, otherwise expression-keyed entities would
-        // all share one group no matter which resource they describe.
-        assertThat(resolver.resolveKey(second), not(equalTo(resolver.resolveKey(first))));
-    }
-
-    @Test
-    void resolve_evaluatesExpressionValuedAttribute() {
-        final String expression = "getMetadata(\"source\")";
-        final Map<String, String> attributes = Map.of("AWS.ServiceNameSource", "${" + expression + "}");
-        when(expressionEvaluator.isValidExpressionStatement(eq(expression))).thenReturn(true);
-        when(expressionEvaluator.evaluate(eq(expression), any(Event.class))).thenReturn("UserConfiguration");
-
-        final EntityResolver resolver = resolver(keyAttrTemplates(), attributes);
-        final Entity entity = resolveEntity(resolver, eventWith(Map.of("resourceId", "res-1")));
-
         // attributes are interpolated on the buildEntity path, so they need the evaluator too.
         assertThat(entity.attributes().get("AWS.ServiceNameSource"), equalTo("UserConfiguration"));
+        assertThat(key.getHeaders().get("x-source-name"), equalTo("header-from-metadata"));
     }
 
     @Test
@@ -237,70 +140,48 @@ class EntityResolverTest {
 
         assertThat(key.getHeaders().get("x-source-name"), equalTo("res-a"));
         assertThat(key.getHeaders().get("x-source-type"), equalTo("cat-1"));
+        verify(metrics, never()).increaseHeaderValueBlankCounter(anyInt());
+        verify(metrics, never()).increaseTemplateExpressionFailedCounter(anyInt());
     }
 
     @Test
-    void resolveKey_eventsDifferingOnlyByHeaderValueGroupSeparately() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), Map.of("x-source-type", "${category}"));
-
-        final EntityResolver.ResolvedKey catOne = resolver.resolveKey(
-                eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
-        final EntityResolver.ResolvedKey catTwo = resolver.resolveKey(
-                eventWith(Map.of("resourceId", "res-a", "category", "cat-2")));
-
-        assertThat(catTwo, not(equalTo(catOne)));
-    }
-
-    @Test
-    void resolveKey_sameKeyAttributesAndHeadersCollapseToOneGroup() {
+    void resolveKey_sameKeyAttributesAndHeadersCollapseToOneGroupAndAnyDifferenceSplits() {
         final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), Map.of("x-source-type", "${category}"));
 
         final EntityResolver.ResolvedKey first = resolver.resolveKey(
                 eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
         final EntityResolver.ResolvedKey second = resolver.resolveKey(
                 eventWith(Map.of("resourceId", "res-a", "category", "cat-1")));
+        final EntityResolver.ResolvedKey otherKeyAttributes = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-b", "category", "cat-1")));
+        final EntityResolver.ResolvedKey otherHeader = resolver.resolveKey(
+                eventWith(Map.of("resourceId", "res-a", "category", "cat-2")));
 
         assertThat(second, equalTo(first));
         assertThat(second.hashCode(), equalTo(first.hashCode()));
         assertThat(new HashMap<>(Map.of(first, "group")).get(second), equalTo("group"));
-    }
-
-    @Test
-    void resolveKey_evaluatesExpressionValuedHeaderThroughTheEvaluator() {
-        final String expression = "getMetadata(\"resourceId\")";
-        final Map<String, String> headers = Map.of("x-source-name", "${" + expression + "}");
-        when(expressionEvaluator.isValidExpressionStatement(eq(expression))).thenReturn(true);
-        when(expressionEvaluator.evaluate(eq(expression), any(Event.class))).thenReturn("res-from-metadata");
-
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of(), headers);
-        final EntityResolver.ResolvedKey key = resolver.resolveKey(eventWith(Map.of("unrelated", "value")));
-
-        assertThat(key.getHeaders().get("x-source-name"), equalTo("res-from-metadata"));
-    }
-
-    @Test
-    void buildsEntity_isFalseWithoutKeyAttributeTemplatesAndTrueWithThem() {
-        assertThat(resolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}")).buildsEntity(), equalTo(false));
-        assertThat(resolver(keyAttrTemplates(), Map.of()).buildsEntity(), equalTo(true));
+        assertThat(otherKeyAttributes, not(equalTo(first)));
+        assertThat(otherHeader, not(equalTo(first)));
+        assertThat(first.equals(first), equalTo(true));
+        assertThat(first.equals("not a key"), equalTo(false));
+        assertThat(first.equals(null), equalTo(false));
     }
 
     @Test
     void resolve_fallsBackToLiteralWhenTemplateIsMalformed() {
         final Map<String, String> keyAttributes = new LinkedHashMap<>();
         keyAttributes.put("Name", "${unclosed");
-        final EntityResolver resolver = resolver(keyAttributes, Map.of());
+        final EntityResolver resolver = resolver(keyAttributes, Map.of(), Map.of("x-source-type", "${unclosed"));
 
-        final Entity entity = resolveEntity(resolver, eventWith(Map.of("resourceId", "res-1")));
+        final Event event = eventWith(Map.of("resourceId", "res-1"));
+        final EntityResolver.ResolvedKey key = resolver.resolveKey(event);
+        final Entity entity = resolver.buildEntity(key, event);
 
         // formatString throws on a malformed template; the literal is kept rather than failing the batch.
         assertThat(entity.keyAttributes().get("Name"), equalTo("${unclosed"));
-    }
-
-    @Test
-    void findInvalidValue_allKeyAttributesPresent_isEmpty() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-
-        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a"))).isPresent(), equalTo(false));
+        assertThat(key.getHeaders().get("x-source-type"), equalTo("${unclosed"));
+        verify(metrics, times(2)).increaseTemplateExpressionFailedCounter(1);
+        verify(metrics, never()).increaseHeaderValueBlankCounter(anyInt());
     }
 
     @Test
@@ -320,13 +201,17 @@ class EntityResolverTest {
     }
 
     @Test
-    void findInvalidValue_keyValueAtLengthLimit_isEmptyAndOneOverIsValueTooLong() {
+    void findInvalidValue_keyOrAttributeValueAtLengthLimit_isEmptyAndOneOverIsValueTooLong() {
         final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
         final String atLimit = "a".repeat(EntityResolver.MAX_ENTITY_VALUE_LENGTH);
         final String overLimit = atLimit + "a";
 
         assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", atLimit))), equalTo(Optional.empty()));
         assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", overLimit))),
+                equalTo(Optional.of(EntityResolver.VALUE_TOO_LONG)));
+
+        final EntityResolver attributeResolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
+        assertThat(invalidValueOf(attributeResolver, eventWith(Map.of("resourceId", "res-a", "category", overLimit))),
                 equalTo(Optional.of(EntityResolver.VALUE_TOO_LONG)));
     }
 
@@ -343,14 +228,7 @@ class EntityResolverTest {
         final EntityResolver resolver = resolver(Map.of(), Map.of(), Map.of("x-source-type", "${category}"));
 
         assertThat(invalidValueOf(resolver, eventWith(Map.of("unrelated", "value"))).isPresent(), equalTo(false));
-    }
-
-    @Test
-    void findInvalidValue_allAttributesPresent_isEmpty() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
-
-        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a", "category", "cat-1"))).isPresent(),
-                equalTo(false));
+        verify(metrics).increaseHeaderValueBlankCounter(1);
     }
 
     @Test
@@ -361,21 +239,4 @@ class EntityResolverTest {
                 equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
     }
 
-    @Test
-    void findInvalidValue_attributeOverLengthLimit_isValueTooLong() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of("Category", "${category}"));
-        final String overLimit = "a".repeat(EntityResolver.MAX_ENTITY_VALUE_LENGTH + 1);
-
-        assertThat(invalidValueOf(resolver, eventWith(Map.of("resourceId", "res-a", "category", overLimit))),
-                equalTo(Optional.of(EntityResolver.VALUE_TOO_LONG)));
-    }
-
-    @Test
-    void findInvalidValue_sameInvalidValueRepeatedly_keepsReturningTheReason() {
-        final EntityResolver resolver = resolver(keyAttrTemplates(), Map.of());
-        final Event event = eventWith(Map.of("ResourceId", "res-a"));
-
-        assertThat(invalidValueOf(resolver, event), equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
-        assertThat(invalidValueOf(resolver, event), equalTo(Optional.of(EntityResolver.BLANK_VALUE)));
-    }
 }

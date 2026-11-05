@@ -315,11 +315,29 @@ public final class BulkRetryStrategy {
             if (attemptNumber % 5 == 1) { 
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
+                    int throttledCount = 0;
+                    String sampleIndex = null;
+                    OperationType sampleOperation = null;
+                    String sampleError = null;
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
-                            final ErrorCause error = bulkItemResponse.error();
-                            LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
+                                if (throttledCount == 0) {
+                                    final ErrorCause error = bulkItemResponse.error();
+                                    sampleIndex = bulkItemResponse.index();
+                                    sampleOperation = bulkItemResponse.operationType();
+                                    sampleError = error != null ? error.reason() : "";
+                                }
+                                throttledCount++;
+                            } else {
+                                final ErrorCause error = bulkItemResponse.error();
+                                LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            }
                         }
+                    }
+                    if (throttledCount > 0) {
+                        LOG.warn("Bulk operation throttled for {} documents. Sample: index = {}, operation = {}, error = {}",
+                                throttledCount, sampleIndex, sampleOperation, sampleError);
                     }
                 }
             }

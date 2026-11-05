@@ -49,6 +49,10 @@ public class OtlpSinkConfig {
     @Min(value = 0)
     private int maxRetries = 5;
 
+    @Getter
+    @JsonProperty("drop_transaction_search_errors")
+    private boolean dropTransactionSearchErrors = false;
+
     /**
      * The threshold configuration for sending spans to the OTLP endpoint.
      * This field is kept private and its contents should be accessed via the generated getter methods.

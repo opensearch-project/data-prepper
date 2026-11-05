@@ -10,14 +10,17 @@
 package org.opensearch.dataprepper.plugins.source.s3.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class FolderPartitioningOptionsTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Test
     void defaults_have_expected_values() {
@@ -26,6 +29,7 @@ class FolderPartitioningOptionsTest {
         assertThat(options.getMaxObjectsPerOwnership(), equalTo(50));
         assertThat(options.getIdleScanMode(), equalTo(IdleScanMode.IDLE_OPTIMIZED));
         assertThat(options.isContinuousScanMode(), equalTo(false));
+        assertThat(options.getEmptyFolderRescanDelay(), equalTo(Duration.ZERO));
     }
 
     @Test
@@ -53,5 +57,19 @@ class FolderPartitioningOptionsTest {
     void isContinuousScanMode_returns_false_when_idle_scan_mode_is_null() {
         final FolderPartitioningOptions options = new FolderPartitioningOptions();
         assertThat(options.isContinuousScanMode(), equalTo(false));
+    }
+
+    @Test
+    void getEmptyFolderRescanDelay_returns_configured_value() throws Exception {
+        final String json = "{\"empty_folder_rescan_delay\": \"PT1M\"}";
+        final FolderPartitioningOptions options = objectMapper.readValue(json, FolderPartitioningOptions.class);
+        assertThat(options.getEmptyFolderRescanDelay(), equalTo(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    void getEmptyFolderRescanDelay_returns_zero_when_null() throws Exception {
+        final String json = "{\"empty_folder_rescan_delay\": null}";
+        final FolderPartitioningOptions options = objectMapper.readValue(json, FolderPartitioningOptions.class);
+        assertThat(options.getEmptyFolderRescanDelay(), equalTo(Duration.ZERO));
     }
 }
