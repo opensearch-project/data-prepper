@@ -13,6 +13,8 @@ When using Confluent Schema Registry, the Kafka source automatically detects and
 and Protobuf values registered under the `<topic>-value` subject.
 Protobuf values follow the ProtoJSON field mapping, except that 64-bit integer fields are emitted as numbers rather than
 strings so that numeric conditions in processors work as expected.
+Unsigned 64-bit values (`uint64` and `fixed64`) above `9223372036854775807` are represented as `BigInteger` and are not
+supported by numeric expressions such as `/hash > 5`.
 
 ## Developer guide
 
