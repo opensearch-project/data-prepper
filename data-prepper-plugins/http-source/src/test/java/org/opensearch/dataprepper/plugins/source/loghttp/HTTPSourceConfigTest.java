@@ -28,6 +28,7 @@ public class HTTPSourceConfigTest {
         assertEquals(HTTPSourceConfig.DEFAULT_PORT, sourceConfig.getDefaultPort());
         assertEquals(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, sourceConfig.getDefaultPath());
         assertEquals(sourceConfig.getMetadataHeaders(), Collections.emptyList());
+        assertEquals(sourceConfig.getAcceptSingleObject(), false);
     }
 
     @Test

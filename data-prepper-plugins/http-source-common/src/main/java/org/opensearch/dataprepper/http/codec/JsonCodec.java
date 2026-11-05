@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.CountingOutputStream;
 import com.linecorp.armeria.common.HttpData;
@@ -29,12 +30,23 @@ import java.util.function.Consumer;
  * TODO: replace output List&lt;String&gt; with List&lt;InternalModel&gt; type
  */
 public class JsonCodec implements Codec<List<String>> {
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
     private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
             new TypeReference<List<Map<String, Object>>>() {
             };
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
+    private final boolean acceptSingleObject;
 
+    public JsonCodec(final boolean acceptSingleObject) {
+        this.acceptSingleObject = acceptSingleObject;
+        if (acceptSingleObject) {
+            this.mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+        }
+    }
+
+    public JsonCodec() {
+        this(false);
+    }
 
     @Override
     public List<String> parse(final HttpData httpData) throws IOException {
@@ -71,11 +83,24 @@ public class JsonCodec implements Codec<List<String>> {
                                       final int splitLength) throws IOException {
 
         try (final JsonParser jsonParser = JSON_FACTORY.createParser(inputStream)) {
-            if (jsonParser.nextToken() != JsonToken.START_ARRAY) {
-                throw new RuntimeException("Input is not a valid JSON array.");
+            JsonArrayWriter jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
+
+            if (jsonParser.nextToken() == JsonToken.START_OBJECT && acceptSingleObject) {
+                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                final JsonGenerator objectJsonGenerator = JSON_FACTORY
+                        .createGenerator(outputStream, JsonEncoding.UTF8);
+                objectJsonGenerator.copyCurrentStructure(jsonParser);
+                objectJsonGenerator.close();
+
+                jsonArrayWriter.write(outputStream);
+                jsonArrayWriter.close();
+                return;
             }
 
-            JsonArrayWriter jsonArrayWriter = new JsonArrayWriter(splitLength, serializedBodyConsumer);
+            if (jsonParser.currentToken() != JsonToken.START_ARRAY) {
+                String messageEnd = (acceptSingleObject) ? "array or object." : "array.";
+                throw new RuntimeException("Input is not a valid JSON " + messageEnd);
+            }
 
             while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
                 final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -100,7 +125,7 @@ public class JsonCodec implements Codec<List<String>> {
 
 
     private static class JsonArrayWriter {
-        private static final JsonFactory JSON_FACTORY = new JsonFactory().setCodec(mapper);
+        private static final JsonFactory JSON_FACTORY = new JsonFactory().setCodec(new ObjectMapper());
         private static final int BUFFER_SIZE = 16 * 1024;
         private static final String NECESSARY_CHARACTERS_TO_WRITE = ",]";
         private final CountingOutputStream countingOutputStream;

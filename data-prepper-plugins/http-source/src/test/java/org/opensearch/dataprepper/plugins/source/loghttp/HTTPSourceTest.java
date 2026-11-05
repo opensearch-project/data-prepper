@@ -1074,6 +1074,33 @@ class HTTPSourceTest {
         assertNull(records.get(0).getData().getMetadata().getAttribute("headers/x-tenant-id"));
     }
 
+    @Test
+    public void testHTTPJsonResponse200WithSingleObject() {
+        final String testData = "{\"log\": \"somelog\"}";
+        when(sourceConfig.getAcceptSingleObject()).thenReturn(true);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        HTTPSourceUnderTest.start(testBuffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.POST)
+                        .path("/log/ingest")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        assertFalse(testBuffer.isEmpty());
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        assertEquals(1, records.size());
+        final Record<Log> record = records.get(0);
+        assertEquals("somelog", record.getData().get("log", String.class));
+    }
+
     private void assertCommonFields(Record<Log> record) {
         assertEquals("111111111111", record.getData().get("owner", String.class));
         assertEquals("CloudTrail/logs", record.getData().get("logGroup", String.class));

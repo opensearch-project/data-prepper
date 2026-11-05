@@ -68,6 +68,22 @@ class JsonCodecTest {
         assertEquals("{\"a5\":\"b5\"}", res.get(4));
     }
 
+    @Test
+    public void testParseSuccessWithSingleObject() throws IOException {
+        final JsonCodec jsonCodec = new JsonCodec(true);
+
+        // should parse single JSON object as array
+        List<String> res = jsonCodec.parse(badTestDataJsonLine);
+        assertEquals(1, res.size());
+        assertEquals("{\"a\":\"b\"}", res.get(0));
+
+        // should behave same as default for JSON array
+        res = jsonCodec.parse(GOOD_TEST_DATA);
+        assertEquals(2, res.size());
+        assertEquals("{\"a\":\"b\"}", res.get(0));
+        assertEquals("{\"c\":\"d\"}", res.get(1));
+    }
+
 
     @ParameterizedTest
     @ValueSource(ints = {-1, -2, Integer.MIN_VALUE})
@@ -214,6 +230,20 @@ class JsonCodecTest {
     }
 
     @Test
+    void serializeSplit_with_single_object() throws IOException {
+        final Consumer<String> serializedBodyConsumer = mock(Consumer.class);
+        final JsonCodec jsonCodec = new JsonCodec(true);
+        jsonCodec.serializeSplit(badTestDataJsonLine, serializedBodyConsumer, 1);
+
+        final ArgumentCaptor<String> actualSerializedBodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(serializedBodyConsumer, times(1)).accept(actualSerializedBodyCaptor.capture());
+
+        final List<String> allActualSerializedBodies = actualSerializedBodyCaptor.getAllValues();
+        assertThat(allActualSerializedBodies.size(), equalTo(1));
+        assertThat(allActualSerializedBodies.get(0), equalTo("[{\"a\":\"b\"}]"));
+    }
+
+    @Test
     public void testParseJsonLineFailure() {
         assertThrows(IOException.class, () -> objectUnderTest.parse(badTestDataJsonLine));
     }
@@ -226,6 +256,9 @@ class JsonCodecTest {
     @Test
     public void testParseNonJsonFailure() {
         assertThrows(IOException.class, () -> objectUnderTest.parse(badTestDataNonJson));
+
+        final JsonCodec jsonCodec = new JsonCodec(true);
+        assertThrows(IOException.class, () -> jsonCodec.parse(badTestDataNonJson));
     }
 
     static class GoodTestData implements ArgumentsProvider {
