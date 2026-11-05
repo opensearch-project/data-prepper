@@ -182,7 +182,7 @@ public class S3SinkIT {
         final S3ClientBuilder s3ClientBuilder = S3Client.builder()
                 .credentialsProvider(awsCredentialsProvider)
                 .region(region);
-        if (endpoint != null) {
+        if (endpoint != null && !endpoint.isEmpty()) {
             s3ClientBuilder.endpointOverride(URI.create(endpoint))
                     .forcePathStyle(forcePathStyle);
         }

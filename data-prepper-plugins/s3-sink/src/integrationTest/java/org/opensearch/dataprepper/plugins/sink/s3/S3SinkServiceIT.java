@@ -164,7 +164,7 @@ class S3SinkServiceIT {
         final boolean forcePathStyle = Boolean.getBoolean("tests.s3sink.force_path_style");
         final S3ClientBuilder s3ClientBuilder = S3Client.builder().region(Region.of(s3region));
         final S3AsyncClientBuilder s3AsyncClientBuilder = S3AsyncClient.builder().region(Region.of(s3region));
-        if (endpoint != null) {
+        if (endpoint != null && !endpoint.isEmpty()) {
             s3ClientBuilder.endpointOverride(URI.create(endpoint)).forcePathStyle(forcePathStyle);
             s3AsyncClientBuilder.endpointOverride(URI.create(endpoint)).forcePathStyle(forcePathStyle);
         }
