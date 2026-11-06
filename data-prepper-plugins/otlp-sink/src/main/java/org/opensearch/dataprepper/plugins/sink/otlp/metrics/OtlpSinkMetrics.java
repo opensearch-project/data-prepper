@@ -38,6 +38,8 @@ public class OtlpSinkMetrics {
     private final Counter droppedSpansTransactionSearchDisabledCounter;
     private final Map<String, Counter> rejectedSignalCounters;
     private final Map<String, Counter> failedSignalCounters;
+    private final Map<String, Counter> completeBatchRejectedSignalCounters;
+    private final Map<String, Counter> partialBatchRejectedSignalCounters;
 
     /**
      * Constructor for OtlpSinkMetrics
@@ -60,9 +62,13 @@ public class OtlpSinkMetrics {
 
         rejectedSignalCounters = new HashMap<>();
         failedSignalCounters = new HashMap<>();
+        completeBatchRejectedSignalCounters = new HashMap<>();
+        partialBatchRejectedSignalCounters = new HashMap<>();
         for (final OtlpSignalType type : OtlpSignalType.values()) {
             rejectedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("rejected" + type.getMetricsLabel() + "Count"));
             failedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("failed" + type.getMetricsLabel() + "Count"));
+            completeBatchRejectedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("completeBatchRejected" + type.getMetricsLabel() + "Count"));
+            partialBatchRejectedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("partialBatchRejected" + type.getMetricsLabel() + "Count"));
         }
     }
 
@@ -133,6 +139,26 @@ public class OtlpSinkMetrics {
      */
     public void incrementFailedSignalCount(final String signalType, final long count) {
         failedSignalCounters.get(signalType).increment(count);
+    }
+
+    /**
+     * Increments the per-signal counter of records rejected as a whole batch (non-2xx or transport failure).
+     *
+     * @param signalType The signal type (e.g., "Spans", "Metrics", "Logs").
+     * @param count The number of records rejected.
+     */
+    public void incrementCompleteBatchRejectedSignalCount(final String signalType, final long count) {
+        completeBatchRejectedSignalCounters.get(signalType).increment(count);
+    }
+
+    /**
+     * Increments the per-signal counter of records rejected in a 2xx OTLP partial-success response.
+     *
+     * @param signalType The signal type (e.g., "Spans", "Metrics", "Logs").
+     * @param count The number of records rejected.
+     */
+    public void incrementPartialBatchRejectedSignalCount(final String signalType, final long count) {
+        partialBatchRejectedSignalCounters.get(signalType).increment(count);
     }
 
     /**

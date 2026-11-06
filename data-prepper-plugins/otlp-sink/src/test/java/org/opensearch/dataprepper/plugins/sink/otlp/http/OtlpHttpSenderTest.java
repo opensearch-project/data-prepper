@@ -175,7 +175,9 @@ class OtlpHttpSenderTest {
         await().atMost(2, SECONDS).untilAsserted(() -> {
             verify(mockMetrics).incrementRejectedRecordsCount(1L);
             verify(mockMetrics).incrementRecordsOut(1L);
+            verify(mockMetrics).incrementPartialBatchRejectedSignalCount(OtlpSignalType.TRACE.getMetricsLabel(), 1L);
         });
+        verify(mockMetrics, never()).incrementCompleteBatchRejectedSignalCount(anyString(), anyLong());
     }
 
     @Test
@@ -214,8 +216,10 @@ class OtlpHttpSenderTest {
 
         await().atMost(2, SECONDS).untilAsserted(() -> {
             verify(mockMetrics).incrementRejectedRecordsCount(1);
+            verify(mockMetrics).incrementCompleteBatchRejectedSignalCount(OtlpSignalType.TRACE.getMetricsLabel(), 1);
             verify(handle).release(false);
         });
+        verify(mockMetrics, never()).incrementPartialBatchRejectedSignalCount(anyString(), anyLong());
     }
 
     @Test
@@ -319,9 +323,11 @@ class OtlpHttpSenderTest {
         await().atMost(2, SECONDS).untilAsserted(() -> {
             verify(mockMetrics).incrementRejectedRecordsCount(1);
             verify(mockMetrics).incrementRejectedSignalCount(signalType.getMetricsLabel(), 1);
+            verify(mockMetrics).incrementCompleteBatchRejectedSignalCount(signalType.getMetricsLabel(), 1);
             verify(handle).release(false);
         });
         verify(mockMetrics, never()).incrementDroppedSpansTransactionSearchDisabledCount(anyLong());
+        verify(mockMetrics, never()).incrementPartialBatchRejectedSignalCount(anyString(), anyLong());
     }
 
     @Test
@@ -339,6 +345,7 @@ class OtlpHttpSenderTest {
         verify(mockMetrics).recordResponseCode(400);
         verify(mockMetrics, never()).incrementRejectedRecordsCount(anyLong());
         verify(mockMetrics, never()).incrementRejectedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementCompleteBatchRejectedSignalCount(anyString(), anyLong());
         verify(mockMetrics, never()).incrementRecordsOut(anyLong());
         verify(handle1, never()).release(false);
         verify(handle2, never()).release(false);

@@ -108,6 +108,20 @@ class OtlpSinkMetricsTest {
     }
 
     @Test
+    void testIncrementCompleteBatchRejectedSignalCount() {
+        sinkMetrics.incrementCompleteBatchRejectedSignalCount("Metrics", 4);
+        verify(pluginMetrics).counter("completeBatchRejectedMetricsCount");
+        verify(counterMock).increment(4.0);
+    }
+
+    @Test
+    void testIncrementPartialBatchRejectedSignalCount() {
+        sinkMetrics.incrementPartialBatchRejectedSignalCount("Metrics", 3);
+        verify(pluginMetrics).counter("partialBatchRejectedMetricsCount");
+        verify(counterMock).increment(3.0);
+    }
+
+    @Test
     void testRecordResponseCodeCounters() {
         // 5xx
         sinkMetrics.recordResponseCode(503);
