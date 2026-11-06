@@ -218,15 +218,22 @@ sink call throws an `Error`, it runs on a sink thread, and core then waits its f
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.
 * `cloudWatchLogsEntityRejected` - The number of `PutLogEvents` responses where CloudWatch rejected the configured entity. The request itself still succeeds and events are released; this counter is the primary signal for misconfigured `entity` attributes.
 * `cloudWatchLogsUnhandledError` - The number of times an unexpected error escaped the normal retry/DLQ path, counted once per batch or sink call. Distinct from `cloudWatchLogsEventsFailed`; non-zero values indicate a logic bug, classpath linkage failure, or response-handling error rather than transient API failure.
-* `cloudWatchLogsThrottled` - The number of `PutLogEvents` attempts that failed due to throttling (HTTP 429). Each retry that receives a throttle response increments this counter independently.
-* `cloudWatchLogsAccessDenied` - The number of requests or resource-creation attempts that failed due to insufficient IAM permissions. Covers both `PutLogEvents` access-denied responses and `CreateLogGroup`/`CreateLogStream` permission failures when `create_log_group` or `create_log_stream` is enabled.
+* `cloudWatchLogsThrottled` - The number of `PutLogEvents` attempts that failed due to throttling (HTTP 429). Counted per attempt: each retry that receives a throttle response increments this counter independently.
+* `cloudWatchLogsAccessDenied` - The number of `PutLogEvents` or resource-creation attempts that failed due to insufficient IAM permissions, counted per attempt. Covers both `PutLogEvents` access-denied responses and `CreateLogGroup`/`CreateLogStream` permission failures when `create_log_group` or `create_log_stream` is enabled.
 * `cloudWatchLogsResourceNotFound` - The number of `PutLogEvents` attempts that failed because the target log group or log stream does not exist. Only incremented when `create_log_group` and `create_log_stream` are both disabled — if the sink is configured to create resources, a resource-not-found error is internal control flow rather than an actionable user signal.
+* `cloudWatchLogsInvalidRequest` - The number of batches that failed permanently with `InvalidParameterException` or HTTP 413, counted once per batch at its final outcome.
+* `cloudWatchLogsUnclassifiedFailures` - The number of batches that failed (retries exhausted or permanent failure) for a reason other than throttling, access denied, resource not found or an invalid request, e.g. 5xx or network errors, counted once per batch at its final outcome.
 * `cloudWatchLogsEntityGroupsCreated` - The number of buffer groups opened for a distinct resolved entity (dynamic entity mode only). Because idle groups are released and a returning entity opens a new group, this counts group churn over time; use `cloudWatchLogsEntityCardinality` for how many are active now. The shared overflow group is excluded so this stays a count of real entities.
 * `cloudWatchLogsEntityOverflowEvents` - The number of events that could not be given their own entity group because the concurrent-entity limit was already reached, and were sent in the shared fallback group with no entity instead. Any non-zero value means events are losing their per-resource entity attribution; reduce the cardinality of the templated `key_attributes`, or raise `max_cardinality`.
 * `cloudWatchLogsEntityDropped` - The number of events sent without an entity because a resolved value was blank or longer than 512 characters, tagged with `reason` (`blank_value` or `value_too_long`).
 
 The sink does not emit `cloudWatchLogsEventsRejected`, `cloudWatchLogsRequestsInRetry`, `cloudWatchLogsOldestRetryAgeSeconds`,
 `cloudWatchLogsUnretriedFailures` or `cloudWatchLogsEffectiveMaxRetries`.
+
+### Distribution summaries
+
+* `cloudWatchLogsRequestSize` - The attempted size of each batch, in bytes of event messages, recorded before `PutLogEvents`. Includes batches that later fail and events that are rejected.
+* `cloudWatchLogsDeliveredBytes` - The bytes of the events released as succeeded, recorded once per delivered batch. Events rejected as too old or too new are excluded.
 
 ### Gauges
 

@@ -200,13 +200,23 @@ public class OutcomeHandler {
         final Integer tooNewStartIndex = rejectedLogEventsInfo == null ? null : rejectedLogEventsInfo.tooNewLogEventStartIndex();
         final List<EventHandle> handles = batch.getEventHandles();
         final List<FailedEvent> rejected = new ArrayList<>();
+        long deliveredBytes = 0;
         for (int i = 0; i < handles.size(); i++) {
             final boolean isRejected = (tooOldEndIndex != null && i < tooOldEndIndex)
                     || (tooNewStartIndex != null && i >= tooNewStartIndex);
             if (isRejected) {
                 rejected.add(failedEvent(batch, i, TOO_OLD_FAILURE_MESSAGE));
             } else {
-                release(batch.getReleased(), handles.get(i), Disposition.SUCCEEDED, null);
+                if (release(batch.getReleased(), handles.get(i), Disposition.SUCCEEDED, null)) {
+                    deliveredBytes += batch.getMessages().get(i).length;
+                }
+            }
+        }
+        if (deliveredBytes > 0) {
+            try {
+                cloudWatchLogsMetrics.recordDeliveredBytes(deliveredBytes);
+            } catch (final Exception e) {
+                LOG.error(NOISY, "Failed to record delivered bytes", e);
             }
         }
         terminalStep(batch.getReleased(), Reason.REJECTED, rejected);

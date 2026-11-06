@@ -121,7 +121,11 @@ class BatchSenderTest {
     @ParameterizedTest
     @ValueSource(ints = {1, 5, 15})
     void send_alwaysFails_makesMaxRetriesPlusOneCallsWithSameRequestThenFailed(final int maxRetries) {
-        final CloudWatchLogsException failure = cloudWatchLogsException("InternalFailure");
+        final CloudWatchLogsException failure = (CloudWatchLogsException) CloudWatchLogsException.builder()
+                .message("internal failure")
+                .statusCode(500)
+                .awsErrorDetails(AwsErrorDetails.builder().errorCode("InternalFailure").build())
+                .build();
         when(client.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(failure);
 
         final BatchSender.Result result = createSender(maxRetries, false, false).send(request, false);
@@ -137,6 +141,8 @@ class BatchSenderTest {
         verify(metrics, times((maxRetries + 1) / 5)).increaseRequestMultiFailCounter(1);
         verify(metrics).increaseLogEventFailCounter(2);
         verify(metrics, never()).increaseRequestSuccessCounter(anyInt());
+        verify(metrics).increaseUnclassifiedFailuresCounter(1);
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
     }
 
     @ParameterizedTest
@@ -190,6 +196,8 @@ class BatchSenderTest {
         assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.SHUTDOWN));
         verify(client, times(3)).putLogEvents(any(PutLogEventsRequest.class));
         verify(metrics).increaseLogEventFailCounter(2);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
     }
 
     static Stream<Exception> permanentExceptions() {
@@ -211,6 +219,8 @@ class BatchSenderTest {
         }
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
+        verify(metrics, times(2)).increaseInvalidRequestCounter(1);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
     }
 
     @Test
@@ -244,6 +254,8 @@ class BatchSenderTest {
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(metrics).increaseRequestFailCounter(1);
         verify(metrics).increaseRequestSuccessCounter(1);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
     }
 
     @ParameterizedTest
@@ -304,6 +316,8 @@ class BatchSenderTest {
         }
         verify(client, times(2)).putLogEvents(any(PutLogEventsRequest.class));
         verify(metrics, times(2)).increaseResourceNotFoundCounter(1);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
         verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
         verify(client, never()).createLogGroup(any(CreateLogGroupRequest.class));
         verify(client, never()).createLogStream(any(CreateLogStreamRequest.class));
@@ -325,6 +339,8 @@ class BatchSenderTest {
         verify(client, times(2)).createLogStream(any(CreateLogStreamRequest.class));
         verify(client, never()).createLogGroup(any(CreateLogGroupRequest.class));
         verify(metrics, times(2)).increaseResourceNotFoundCounter(1);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
         verify(closedSignal, never()).await(anyLong(), any(TimeUnit.class));
     }
 
@@ -442,6 +458,8 @@ class BatchSenderTest {
         assertThat(interrupted, equalTo(true));
         verify(client, times(1)).putLogEvents(any(PutLogEventsRequest.class));
         verify(metrics).increaseLogEventFailCounter(2);
+        verify(metrics).increaseUnclassifiedFailuresCounter(1);
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
     }
 
     @Test
@@ -570,6 +588,22 @@ class BatchSenderTest {
 
         verify(metrics, times(3)).increaseThrottledCounter(1);
         verify(metrics, never()).increaseAccessDeniedCounter(anyInt());
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+    }
+
+    @Test
+    void send_throttledThenDelivered_countsThrottledOnceAndNoFinalFailure() {
+        when(client.putLogEvents(any(PutLogEventsRequest.class)))
+                .thenThrow(cloudWatchLogsException("ThrottlingException"))
+                .thenReturn(PutLogEventsResponse.builder().build());
+
+        final BatchSender.Result result = createSender(2, false, false).send(request, false);
+
+        assertThat(result.getStatus(), equalTo(BatchSender.Result.Status.DELIVERED));
+        verify(metrics, times(1)).increaseThrottledCounter(1);
+        verify(metrics).increaseRequestSuccessCounter(1);
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
+        verify(metrics, never()).increaseInvalidRequestCounter(anyInt());
     }
 
     @Test
@@ -580,6 +614,7 @@ class BatchSenderTest {
 
         verify(metrics, times(3)).increaseAccessDeniedCounter(1);
         verify(metrics, never()).increaseThrottledCounter(anyInt());
+        verify(metrics, never()).increaseUnclassifiedFailuresCounter(anyInt());
     }
 
     @Test
