@@ -1,0 +1,385 @@
+{
+  "version": 1,
+  "template": {
+    "mappings": {
+      "date_detection": false,
+      "_source": {
+        "enabled": true
+      },
+      "dynamic_templates": [
+        {
+          "long_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "long"
+          }
+        },
+        {
+          "double_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "double"
+          }
+        },
+        {
+          "string_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 1024
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
+          "long_resource_attributes": {
+            "mapping": {
+              "type": "long"
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "long"
+          }
+        },
+        {
+          "double_resource_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "double"
+          }
+        },
+        {
+          "string_resource_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
+          "long_scope_attributes": {
+            "mapping": {
+              "type": "long"
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "long"
+          }
+        },
+        {
+          "double_scope_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "double"
+          }
+        },
+        {
+          "string_scope_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "string"
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date_nanos"
+        },
+        "time": {
+          "type": "date_nanos"
+        },
+        "observedTimestamp": {
+          "type": "date_nanos"
+        },
+        "traceId": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "spanId": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "flags": {
+          "type": "long"
+        },
+        "eventName": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "severityNumber": {
+          "type": "integer"
+        },
+        "severityText": {
+          "type": "keyword"
+        },
+        "body": {
+          "type": "text"
+        },
+        "serviceName": {
+          "type": "keyword"
+        },
+        "schemaUrl": {
+          "type": "keyword"
+        },
+        "droppedAttributesCount": {
+          "type": "integer"
+        },
+        "instrumentationScope": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "schemaUrl": {
+              "type": "keyword"
+            },
+            "droppedAttributesCount": {
+              "type": "integer"
+            }
+          }
+        },
+        "resource": {
+          "properties": {
+            "schemaUrl": {
+              "type": "keyword"
+            },
+            "droppedAttributesCount": {
+              "type": "integer"
+            }
+          }
+        },
+        "attributes": {
+          "properties": {
+            "gen_ai": {
+              "properties": {
+                "evaluation": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    },
+                    "explanation": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "score": {
+                      "properties": {
+                        "value": {
+                          "type": "double"
+                        },
+                        "label": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "conversation": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "agent": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "response": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "opensearch": {
+              "properties": {
+                "gen_ai": {
+                  "properties": {
+                    "evaluation": {
+                      "properties": {
+                        "score": {
+                          "properties": {
+                            "min": {
+                              "type": "double"
+                            },
+                            "max": {
+                              "type": "double"
+                            },
+                            "threshold": {
+                              "type": "double"
+                            },
+                            "direction": {
+                              "type": "keyword"
+                            }
+                          }
+                        },
+                        "evaluator": {
+                          "properties": {
+                            "name": {
+                              "type": "keyword"
+                            },
+                            "version": {
+                              "type": "keyword"
+                            },
+                            "type": {
+                              "type": "keyword"
+                            }
+                          }
+                        },
+                        "level": {
+                          "type": "keyword"
+                        },
+                        "judge": {
+                          "properties": {
+                            "trace_id": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "test": {
+                  "properties": {
+                    "case": {
+                      "properties": {
+                        "expected": {
+                          "type": "text"
+                        },
+                        "expected_truncated": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "test": {
+              "properties": {
+                "suite": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    },
+                    "run": {
+                      "properties": {
+                        "id": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "case": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "session": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "error": {
+              "properties": {
+                "type": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "aws": {
+              "properties": {
+                "bedrock_agentcore": {
+                  "properties": {
+                    "evaluation_level": {
+                      "type": "keyword"
+                    },
+                    "online_evaluation_config": {
+                      "properties": {
+                        "name": {
+                          "type": "keyword"
+                        },
+                        "arn": {
+                          "type": "keyword"
+                        }
+                      }
+                    },
+                    "evaluator": {
+                      "properties": {
+                        "arn": {
+                          "type": "keyword"
+                        },
+                        "rating_scale": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "cicd": {
+              "properties": {
+                "pipeline": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    },
+                    "run": {
+                      "properties": {
+                        "id": {
+                          "type": "keyword"
+                        },
+                        "url": {
+                          "properties": {
+                            "full": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
