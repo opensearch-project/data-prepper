@@ -38,6 +38,9 @@ public class OtlpSinkMetrics {
     private final Counter droppedSpansTransactionSearchDisabledCounter;
     private final Map<String, Counter> rejectedSignalCounters;
     private final Map<String, Counter> failedSignalCounters;
+    private final Map<String, Counter> accessDeniedSignalCounters;
+    private final Map<String, Counter> throttledSignalCounters;
+    private final Map<String, Counter> payloadTooLargeSignalCounters;
 
     /**
      * Constructor for OtlpSinkMetrics
@@ -60,9 +63,16 @@ public class OtlpSinkMetrics {
 
         rejectedSignalCounters = new HashMap<>();
         failedSignalCounters = new HashMap<>();
+        accessDeniedSignalCounters = new HashMap<>();
+        throttledSignalCounters = new HashMap<>();
+        payloadTooLargeSignalCounters = new HashMap<>();
         for (final OtlpSignalType type : OtlpSignalType.values()) {
-            rejectedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("rejected" + type.getMetricsLabel() + "Count"));
-            failedSignalCounters.put(type.getMetricsLabel(), pluginMetrics.counter("failed" + type.getMetricsLabel() + "Count"));
+            final String label = type.getMetricsLabel();
+            rejectedSignalCounters.put(label, pluginMetrics.counter("rejected" + label + "Count"));
+            failedSignalCounters.put(label, pluginMetrics.counter("failed" + label + "Count"));
+            accessDeniedSignalCounters.put(label, pluginMetrics.counter("accessDenied" + label + "Count"));
+            throttledSignalCounters.put(label, pluginMetrics.counter("throttled" + label + "Count"));
+            payloadTooLargeSignalCounters.put(label, pluginMetrics.counter("payloadTooLarge" + label + "Count"));
         }
     }
 
@@ -78,10 +88,22 @@ public class OtlpSinkMetrics {
         droppedSpansTransactionSearchDisabledCounter.increment(count);
     }
 
+    /**
+     * Records the uncompressed protobuf size of a request the endpoint accepted with a 2xx response. On partial success the size is
+     * scaled by the fraction of records accepted, because OTLP does not say which records were rejected, so it is an approximation.
+     *
+     * @param bytes The delivered payload size in bytes.
+     */
     public void incrementPayloadSize(final long bytes) {
         payloadSize.record(bytes);
     }
 
+    /**
+     * Records the gzip-compressed size of a request the endpoint accepted with a 2xx response, scaled on partial success the same way
+     * as {@link #incrementPayloadSize(long)}.
+     *
+     * @param bytes The delivered compressed payload size in bytes.
+     */
     public void incrementPayloadGzipSize(final long bytes) {
         payloadGzipSize.record(bytes);
     }
@@ -113,6 +135,40 @@ public class OtlpSinkMetrics {
      */
     public void incrementRejectedSignalCount(final String signalType, final long count) {
         rejectedSignalCounters.get(signalType).increment(count);
+    }
+
+    /**
+     * Increments the per-signal count of records rejected with a final HTTP 401 or 403. These records are also counted by
+     * {@link #incrementRejectedRecordsCount(long)} and {@link #incrementRejectedSignalCount(String, long)}.
+     *
+     * @param signalType The signal type (e.g., "Spans", "Metrics", "Logs").
+     * @param count The number of records rejected.
+     */
+    public void incrementAccessDeniedSignalCount(final String signalType, final long count) {
+        accessDeniedSignalCounters.get(signalType).increment(count);
+    }
+
+    /**
+     * Increments the per-signal count of records rejected with HTTP 429 after retries were exhausted. These records are also counted
+     * by {@link #incrementRejectedRecordsCount(long)} and {@link #incrementRejectedSignalCount(String, long)}. A retry sequence that
+     * ends in a timeout or other transport error, rather than a final 429 response, is not counted here.
+     *
+     * @param signalType The signal type (e.g., "Spans", "Metrics", "Logs").
+     * @param count The number of records rejected.
+     */
+    public void incrementThrottledSignalCount(final String signalType, final long count) {
+        throttledSignalCounters.get(signalType).increment(count);
+    }
+
+    /**
+     * Increments the per-signal count of records rejected with HTTP 413. These records are also counted by
+     * {@link #incrementRejectedRecordsCount(long)} and {@link #incrementRejectedSignalCount(String, long)}.
+     *
+     * @param signalType The signal type (e.g., "Spans", "Metrics", "Logs").
+     * @param count The number of records rejected.
+     */
+    public void incrementPayloadTooLargeSignalCount(final String signalType, final long count) {
+        payloadTooLargeSignalCounters.get(signalType).increment(count);
     }
 
     /**
