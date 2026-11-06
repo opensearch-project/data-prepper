@@ -21,6 +21,8 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.TableConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.dynamodb.stream.StreamScheduler;
+import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -138,6 +140,38 @@ class DynamoDBServiceTest {
         final Field leaseIntervalField = LeaderScheduler.class.getDeclaredField("leaseInterval");
         leaseIntervalField.setAccessible(true);
         assertThat(leaseIntervalField.get(leaderScheduler), equalTo(configuredInterval));
+    }
+
+    @Test
+    void test_stream_scheduler_receives_configured_backoff_maxes() throws NoSuchFieldException, IllegalAccessException {
+        final Duration configuredNewShardAcquisitionBackoffMax = Duration.ofSeconds(2);
+        final Duration configuredShardDistributionBackoffMax = Duration.ofSeconds(5);
+        when(tableConfig.getStreamConfig()).thenReturn(streamConfig);
+        when(streamConfig.getNewShardAcquisitionBackoffMax()).thenReturn(configuredNewShardAcquisitionBackoffMax);
+        when(streamConfig.getShardDistributionBackoffMax()).thenReturn(configuredShardDistributionBackoffMax);
+        dynamoDBService = createObjectUnderTest();
+
+        final ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+        dynamoDBService.start(buffer);
+        verify(executorService, times(4)).submit(runnableArgumentCaptor.capture());
+
+        final StreamScheduler streamScheduler = runnableArgumentCaptor.getAllValues().stream()
+                .filter(runnable -> runnable instanceof StreamScheduler)
+                .map(runnable -> (StreamScheduler) runnable)
+                .findFirst()
+                .orElseThrow();
+
+        final Field backoffCalculatorField = StreamScheduler.class.getDeclaredField("backoffCalculator");
+        backoffCalculatorField.setAccessible(true);
+        final BackoffCalculator backoffCalculator = (BackoffCalculator) backoffCalculatorField.get(streamScheduler);
+
+        final Field newShardAcquisitionBackoffMaxField = BackoffCalculator.class.getDeclaredField("newShardAcquisitionBackoffMax");
+        newShardAcquisitionBackoffMaxField.setAccessible(true);
+        assertThat(newShardAcquisitionBackoffMaxField.get(backoffCalculator), equalTo(configuredNewShardAcquisitionBackoffMax));
+
+        final Field shardDistributionBackoffMaxField = BackoffCalculator.class.getDeclaredField("shardDistributionBackoffMax");
+        shardDistributionBackoffMaxField.setAccessible(true);
+        assertThat(shardDistributionBackoffMaxField.get(backoffCalculator), equalTo(configuredShardDistributionBackoffMax));
     }
 
     @Test
