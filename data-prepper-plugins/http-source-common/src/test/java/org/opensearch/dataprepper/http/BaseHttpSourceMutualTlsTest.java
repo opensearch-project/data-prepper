@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.armeria.authentication.MutualTlsAuthentication
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -44,6 +45,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -55,8 +57,18 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit test of the mutual TLS wiring in {@link BaseHttpSource}: the {@code tlsCustomizer} that applies
+ * the plugin's client-auth mode and trust manager, the 401 authentication decorator, and the runtime
+ * guard that rejects {@code mutual_tls} without SSL.
+ * <p>
+ * The source configuration and {@code PluginFactory} are mocked and a minimal {@link BaseHttpSource}
+ * subclass is used, so this is not an end-to-end test. End-to-end coverage with the real source
+ * configuration, bean validation and real sources lives in {@code HTTPSourceMutualTlsIT} (http-source)
+ * and {@code OpenSearchAPISourceMutualTlsIT} (opensearch-api-source).
+ */
 @ExtendWith(MockitoExtension.class)
-class MutualTlsIntegrationTest {
+class BaseHttpSourceMutualTlsTest {
 
     @TempDir
     static Path tempDir;
@@ -116,6 +128,8 @@ class MutualTlsIntegrationTest {
         lenient().when(sourceConfig.isSsl()).thenReturn(true);
         lenient().when(sourceConfig.getSslCertificateFile()).thenReturn(serverCertFile.toString());
         lenient().when(sourceConfig.getSslKeyFile()).thenReturn(serverKeyFile.toString());
+        lenient().when(sourceConfig.getAuthentication())
+                .thenReturn(new PluginModel("mutual_tls", Map.of("ssl_trust_certificate_file", caCertFile.toString())));
 
         MutualTlsAuthenticationConfig mtlsConfig = mock(MutualTlsAuthenticationConfig.class);
         when(mtlsConfig.getSslTrustCertificateFile()).thenReturn(caCertFile.toString());
@@ -165,7 +179,7 @@ class MutualTlsIntegrationTest {
     }
 
     @Test
-    void client_without_cert_fails_tls_handshake() throws Exception {
+    void client_without_cert_receives_401() throws Exception {
         source.start(buffer);
         actualPort = getActivePort(source);
 
@@ -173,22 +187,19 @@ class MutualTlsIntegrationTest {
                 .tlsNoVerify()
                 .build();
 
-        Exception exception = assertThrows(Exception.class, () -> {
-            WebClient.builder()
-                    .factory(factory)
-                    .build()
-                    .execute(RequestHeaders.builder()
-                            .scheme(SessionProtocol.HTTPS)
-                            .authority("127.0.0.1:" + actualPort)
-                            .method(HttpMethod.GET)
-                            .path("/health")
-                            .build())
-                    .aggregate()
-                    .join();
-        });
+        AggregatedHttpResponse response = WebClient.builder()
+                .factory(factory)
+                .build()
+                .execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTPS)
+                        .authority("127.0.0.1:" + actualPort)
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
+                .aggregate()
+                .join();
 
-        assertThat("Expected TLS/handshake failure in cause chain",
-                hasTlsException(exception), equalTo(true));
+        assertThat(response.status(), equalTo(HttpStatus.UNAUTHORIZED));
         factory.close();
     }
 
@@ -204,19 +215,6 @@ class MutualTlsIntegrationTest {
         serverField.setAccessible(true);
         Server server = (Server) serverField.get(source);
         return server.activeLocalPort();
-    }
-
-    private static boolean hasTlsException(Throwable throwable) {
-        Throwable current = throwable;
-        while (current != null) {
-            if (current instanceof javax.net.ssl.SSLHandshakeException ||
-                    current instanceof javax.net.ssl.SSLException ||
-                    current instanceof com.linecorp.armeria.common.ClosedSessionException) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
     }
 
     private static class TestHttpSource extends BaseHttpSource<Record<Event>> {

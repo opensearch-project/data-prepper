@@ -65,9 +65,21 @@ create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeri
 
 **Status: Experimental**
 
-The `mutual_tls` authentication plugin requires connecting clients to present a valid TLS certificate signed by a trusted Certificate Authority (CA). The server verifies the client certificate during the TLS handshake and rejects connections that do not present a valid certificate.
+The `mutual_tls` authentication plugin requires connecting clients to present a TLS client certificate signed by a trusted Certificate Authority (CA).
 
-This requires `ssl: true` to be configured on the source. If `mutual_tls` is configured without SSL enabled, the source will fail to start with an `IllegalStateException`.
+Supported sources: `http` and `opensearch_api`. The OTLP sources (`otlp`, `otlp_traces`, `otlp_metrics`, `otlp_logs`) do not support `mutual_tls`, and a pipeline that configures it on one of them fails to start.
+
+Requirements:
+
+* `ssl: true` on the source, with `ssl_certificate_file` and `ssl_key_file`. A pipeline that configures `mutual_tls` without `ssl: true` fails validation with `ssl must be true when mutual_tls authentication is used`.
+* Experimental plugins must be enabled in `data-prepper-config.yaml`. Use `enable_all`; `enabled_plugins` cannot be used for authentication plugins because they have no plugin type name.
+
+```yaml
+experimental:
+  enable_all: true
+```
+
+Pipeline configuration:
 
 ```yaml
 source:
@@ -82,14 +94,25 @@ source:
 
 Configuration options:
 
-* `ssl_trust_certificate_file` (Required): Path to the PEM file containing one or more trusted CA certificates used to verify client certificates. Multiple CA certificates can be concatenated in a single PEM file.
+* `ssl_trust_certificate_file` (Required): Path to a file containing one or more trusted CA certificates used to verify client certificates. It must be a readable regular file with at least one certificate, otherwise the source fails to start.
+  * Tested formats: PEM with one certificate, PEM with several certificates concatenated, and DER with a single certificate.
+  * Other formats accepted by the Java `CertificateFactory` (such as PKCS#7) may work but are not tested.
+
+Client behavior:
+
+| Client request | Result |
+|----------------|--------|
+| Certificate signed by a trusted CA | Request is processed normally |
+| No client certificate | `401 Unauthorized` |
+| Certificate not signed by a trusted CA | TLS handshake fails, no HTTP response |
+
+Health check: `health_check_service` and `unauthenticated_health_check` both default to `false`. With both set to `true`, `GET /health` returns `200` without a client certificate. With `unauthenticated_health_check: false`, `/health` requires a trusted client certificate like every other path and returns `401` without one.
 
 Limitations:
 
 * Only file paths are supported (inline PEM content is not supported in this version).
 * CRL/OCSP revocation checking is not yet supported. See [#6940](https://github.com/opensearch-project/data-prepper/issues/6940).
 * Handshake rejection logging/metrics are not yet available. See [#6942](https://github.com/opensearch-project/data-prepper/issues/6942).
-
 
 ### SSL
 

@@ -253,7 +253,18 @@ public class CreateServer {
             sb.https(serverConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
+            // Same wiring as BaseHttpSource: let the auth plugin request and verify client certificates.
+            authenticationProvider.getClientAuthConfiguration().ifPresent(clientAuthConfig ->
+                    sb.tlsCustomizer(sslContextBuilder -> {
+                        sslContextBuilder.clientAuth(clientAuthConfig.getClientAuth());
+                        sslContextBuilder.trustManager(clientAuthConfig.getTrustManagerFactory());
+                    }));
         } else {
+            if (authenticationProvider.getClientAuthConfiguration().isPresent()) {
+                throw new IllegalStateException(
+                        "mutual_tls authentication requires ssl: true. " +
+                        "Configure ssl: true with ssl_certificate_file and ssl_key_file.");
+            }
             LOG.warn("Creating " + sourceName + " without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the " + sourceName + ", go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
             sb.http(serverConfiguration.getPort());

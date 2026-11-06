@@ -26,12 +26,12 @@ public class MutualTlsAuthenticationConfig {
         return sslTrustCertificateFile;
     }
 
-    @AssertTrue(message = "ssl_trust_certificate_file must exist and be readable")
+    @AssertTrue(message = "ssl_trust_certificate_file must be a readable regular file")
     boolean isTrustCertificateFileValid() {
         if (sslTrustCertificateFile == null || sslTrustCertificateFile.isBlank()) {
             return true;
         }
         Path path = Path.of(sslTrustCertificateFile);
-        return Files.exists(path) && Files.isReadable(path);
+        return Files.isRegularFile(path) && Files.isReadable(path);
     }
 }
