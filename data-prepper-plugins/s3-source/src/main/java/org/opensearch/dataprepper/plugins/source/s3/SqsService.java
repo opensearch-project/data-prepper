@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
@@ -56,13 +57,16 @@ public class SqsService {
     }
 
     public void stop() {
+        final Duration shutdownTimeout = s3SourceConfig.getSqsOptions().getShutdownTimeout();
+        final long shutdownDeadlineNanos = System.nanoTime() + shutdownTimeout.toNanos();
         executorService.shutdown();
         sqsWorkers.forEach(SqsWorker::stop);
         try {
-            if (!executorService.awaitTermination(s3SourceConfig.getSqsOptions().getShutdownTimeout().getSeconds(), TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(shutdownTimeout.getSeconds(), TimeUnit.SECONDS)) {
                 LOG.warn("Failed to terminate SqsWorkers");
                 executorService.shutdownNow();
             }
+            waitForPendingAcknowledgements(shutdownDeadlineNanos);
         } catch (InterruptedException e) {
             if (e.getCause() instanceof InterruptedException) {
                 LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
@@ -71,6 +75,16 @@ public class SqsService {
             }
         }
 
+        sqsWorkers.forEach(SqsWorker::markSqsClientClosed);
         sqsClient.close();
+    }
+
+    private void waitForPendingAcknowledgements(final long shutdownDeadlineNanos) throws InterruptedException {
+        for (final SqsWorker sqsWorker : sqsWorkers) {
+            final Duration remainingTimeout = Duration.ofNanos(Math.max(0, shutdownDeadlineNanos - System.nanoTime()));
+            if (!sqsWorker.waitForPendingAcknowledgements(remainingTimeout)) {
+                LOG.warn("Timed out waiting for pending acknowledgments. Their SQS messages will not be deleted.");
+            }
+        }
     }
 }

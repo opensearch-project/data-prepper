@@ -828,6 +828,174 @@ class SqsWorkerTest {
         verify(sqsMessagesReceivedCounter).increment(1);
     }
 
+    private void stubSingleMessageWithAcknowledgements() {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
+        final Message message = mock(Message.class);
+        when(message.body()).thenReturn(createEventNotification("ObjectCreated:Put", Instant.now().minus(1, ChronoUnit.HOURS)));
+        final String testReceiptHandle = UUID.randomUUID().toString();
+        when(message.messageId()).thenReturn(testReceiptHandle);
+        when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+        final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+        when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+    }
+
+    private void stubSuccessfulDeletion() {
+        final DeleteMessageBatchResponse deleteMessageBatchResponse = mock(DeleteMessageBatchResponse.class);
+        when(deleteMessageBatchResponse.hasSuccessful()).thenReturn(true);
+        when(deleteMessageBatchResponse.successful()).thenReturn(Collections.singletonList(mock(DeleteMessageBatchResultEntry.class)));
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenReturn(deleteMessageBatchResponse);
+    }
+
+    private Consumer<Boolean> processMessageAndCaptureAcknowledgementCallback(final SqsWorker sqsWorker) {
+        assertThat(sqsWorker.processSqsMessages(), equalTo(1));
+        final ArgumentCaptor<Consumer<Boolean>> acknowledgementCallbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSetManager).create(acknowledgementCallbackCaptor.capture(), any(Duration.class));
+        verify(sqsMessagesReceivedCounter).increment(1);
+        verify(sqsMessageDelayTimer).record(any(Duration.class));
+        return acknowledgementCallbackCaptor.getValue();
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_returns_false_when_the_timeout_elapses_before_the_acknowledgement_completes() throws InterruptedException {
+        stubSingleMessageWithAcknowledgements();
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        assertThat(objectUnderTest.waitForPendingAcknowledgements(Duration.ofMillis(200)), equalTo(false));
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_returns_true_once_the_acknowledgement_callback_completes() throws InterruptedException {
+        stubSingleMessageWithAcknowledgements();
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final Consumer<Boolean> acknowledgementCallback = processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        final Thread sink = new Thread(() -> {
+            try {
+                Thread.sleep(300);
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            acknowledgementCallback.accept(false);
+        });
+        sink.start();
+
+        assertThat(objectUnderTest.waitForPendingAcknowledgements(Duration.ofSeconds(10)), equalTo(true));
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+        sink.join();
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_does_not_wait_for_an_acknowledgement_set_which_has_expired() throws InterruptedException {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        assertThat(objectUnderTest.waitForPendingAcknowledgements(Duration.ofSeconds(10)), equalTo(true));
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_waits_for_an_acknowledgement_set_which_has_not_expired() throws InterruptedException {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().plusSeconds(60));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        assertThat(objectUnderTest.waitForPendingAcknowledgements(Duration.ofMillis(200)), equalTo(false));
+    }
+
+    @Test
+    void acknowledgement_callback_deletes_the_message_when_it_completes_after_stop() {
+        stubSingleMessageWithAcknowledgements();
+        stubSuccessfulDeletion();
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final Consumer<Boolean> acknowledgementCallback = processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        objectUnderTest.stop();
+        acknowledgementCallback.accept(true);
+
+        verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesDeletedCounter).increment(1);
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+    }
+
+    @Test
+    void acknowledgement_callback_does_not_delete_the_message_after_the_sqs_client_is_marked_closed() {
+        stubSingleMessageWithAcknowledgements();
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final Consumer<Boolean> acknowledgementCallback = processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        objectUnderTest.stop();
+        objectUnderTest.markSqsClientClosed();
+        acknowledgementCallback.accept(true);
+
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+    }
+
+    @Test
+    void acknowledgement_set_is_no_longer_pending_when_the_callback_throws() {
+        stubSingleMessageWithAcknowledgements();
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenThrow(new IllegalStateException("Connection pool shut down"));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        final Consumer<Boolean> acknowledgementCallback = processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        assertThrows(IllegalStateException.class, () -> acknowledgementCallback.accept(true));
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+    }
+
+    @Test
+    void processSqsMessages_removes_pending_acknowledgement_sets_which_have_expired() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().build());
+        assertThat(objectUnderTest.processSqsMessages(), equalTo(0));
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(0));
+        verify(sqsMessageDelayTimer).record(Duration.ZERO);
+    }
+
+    @Test
+    void processSqsMessages_keeps_pending_acknowledgement_sets_which_have_not_expired() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().plusSeconds(60));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+        processMessageAndCaptureAcknowledgementCallback(objectUnderTest);
+
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().build());
+        assertThat(objectUnderTest.processSqsMessages(), equalTo(0));
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+        verify(sqsMessageDelayTimer).record(Duration.ZERO);
+    }
+
+    @Test
+    void processSqsMessages_does_not_accumulate_acknowledgement_sets_which_expire_without_invoking_the_callback() {
+        stubSingleMessageWithAcknowledgements();
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        final SqsWorker objectUnderTest = createObjectUnderTest();
+
+        for (int i = 0; i < 100; i++) {
+            assertThat(objectUnderTest.processSqsMessages(), equalTo(1));
+        }
+
+        assertThat(objectUnderTest.getPendingAcknowledgementSetCount(), equalTo(1));
+        verify(sqsMessagesReceivedCounter, times(100)).increment(1);
+        verify(sqsMessageDelayTimer, times(100)).record(any(Duration.class));
+    }
+
     @Test
     void processSqsMessages_should_record_zero_message_delay_when_no_messages_are_found_on_poll() {
         final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
