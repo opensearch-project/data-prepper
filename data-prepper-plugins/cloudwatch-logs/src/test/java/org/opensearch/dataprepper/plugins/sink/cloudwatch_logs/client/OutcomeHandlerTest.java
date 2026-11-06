@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.invocation.Invocation;
@@ -48,6 +49,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -71,7 +73,7 @@ class OutcomeHandlerTest {
 
     enum DlqMode { NONE, OK, FALSE, THROWS }
 
-    enum Outcome { DELIVERED, DELIVERED_TOO_OLD, DELIVERED_TOO_NEW, FAILED, SHUTDOWN }
+    enum Outcome { DELIVERED, DELIVERED_TOO_OLD, DELIVERED_TOO_NEW, DELIVERED_ALL_REJECTED, FAILED, SHUTDOWN }
 
     private CloudWatchLogsMetrics metrics;
     private DlqPushHandler dlqPushHandler;
@@ -114,7 +116,7 @@ class OutcomeHandlerTest {
     }
 
     private static String message(final int index) {
-        return "message-" + index;
+        return "m" + "x".repeat(index);
     }
 
     private static Batch batchOf(final List<EventHandle> handles) {
@@ -185,6 +187,9 @@ class OutcomeHandlerTest {
                 return BatchSender.Result.delivered(PutLogEventsResponse.builder().rejectedLogEventsInfo(rejected).build());
             case DELIVERED_TOO_NEW:
                 rejected = RejectedLogEventsInfo.builder().tooNewLogEventStartIndex(BATCH_SIZE - 1).build();
+                return BatchSender.Result.delivered(PutLogEventsResponse.builder().rejectedLogEventsInfo(rejected).build());
+            case DELIVERED_ALL_REJECTED:
+                rejected = RejectedLogEventsInfo.builder().tooOldLogEventEndIndex(BATCH_SIZE).build();
                 return BatchSender.Result.delivered(PutLogEventsResponse.builder().rejectedLogEventsInfo(rejected).build());
             case FAILED:
                 return BatchSender.Result.failed(new RuntimeException(LAST_EXCEPTION_MESSAGE));
@@ -265,6 +270,23 @@ class OutcomeHandlerTest {
                     ordered.stream().map(OutcomeHandlerTest::message).collect(Collectors.toList()), failureMessage);
         }
         verify(metrics, never()).increaseUnhandledErrorCounter(anyInt());
+    }
+
+    // Messages are 1, 2, 3 and 4 bytes long, so each expected sum identifies the excluded indexes.
+    @ParameterizedTest
+    @CsvSource({"DELIVERED, 10", "DELIVERED_TOO_OLD, 9", "DELIVERED_TOO_NEW, 6"})
+    void handleResult_delivered_recordsBytesOfSucceededEventsOnly(final Outcome outcome, final long expectedBytes) {
+        handlerFor(DlqMode.NONE).handleResult(batchOf(handles(BATCH_SIZE)), resultFor(outcome));
+
+        verify(metrics).recordDeliveredBytes(expectedBytes);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Outcome.class, names = {"DELIVERED_ALL_REJECTED", "FAILED", "SHUTDOWN"})
+    void handleResult_nothingDelivered_doesNotRecordDeliveredBytes(final Outcome outcome) {
+        handlerFor(DlqMode.NONE).handleResult(batchOf(handles(BATCH_SIZE)), resultFor(outcome));
+
+        verify(metrics, never()).recordDeliveredBytes(anyLong());
     }
 
     @Test
@@ -410,6 +432,18 @@ class OutcomeHandlerTest {
         outcomeHandler.handleResult(batchOf(handles), BatchSender.Result.failed(new RuntimeException("x")));
 
         handles.forEach(handle -> verify(handle, times(1)).release(false));
+    }
+
+    @Test
+    void handleResult_deliveredBytesMetricThrows_allHandlesStillReleased() {
+        final OutcomeHandler outcomeHandler = handlerFor(DlqMode.NONE);
+        final List<EventHandle> handles = handles(BATCH_SIZE);
+        doThrow(new RuntimeException("metric failed")).when(metrics).recordDeliveredBytes(anyLong());
+
+        outcomeHandler.handleResult(batchOf(handles), resultFor(Outcome.DELIVERED_TOO_OLD));
+
+        handles.forEach(handle -> verify(handle, times(1)).release(true));
+        assertThat(dispositions(), equalTo(Map.of("succeeded", BATCH_SIZE - 1, "releasedWithoutDelivery:" + REASON_REJECTED, 1)));
     }
 
     @Test

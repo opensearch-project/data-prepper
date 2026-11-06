@@ -31,11 +31,14 @@ public class CloudWatchLogsMetrics {
     public static final String CLOUDWATCH_LOGS_LARGE_EVENTS_DROPPED = "cloudWatchLogsLargeEventsDropped";
     public static final String CLOUDWATCH_LOGS_LOG_SIZE = "cloudWatchLogsLogSize";
     public static final String CLOUDWATCH_LOGS_REQUEST_SIZE = "cloudWatchLogsRequestSize";
+    public static final String CLOUDWATCH_LOGS_DELIVERED_BYTES = "cloudWatchLogsDeliveredBytes";
     public static final String CLOUDWATCH_LOGS_ENTITY_REJECTED = "cloudWatchLogsEntityRejected";
     public static final String CLOUDWATCH_LOGS_UNHANDLED_ERROR = "cloudWatchLogsUnhandledError";
     public static final String CLOUDWATCH_LOGS_ACCESS_DENIED = "cloudWatchLogsAccessDenied";
     public static final String CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND = "cloudWatchLogsResourceNotFound";
     public static final String CLOUDWATCH_LOGS_THROTTLED = "cloudWatchLogsThrottled";
+    public static final String CLOUDWATCH_LOGS_INVALID_REQUEST = "cloudWatchLogsInvalidRequest";
+    public static final String CLOUDWATCH_LOGS_UNCLASSIFIED_FAILURES = "cloudWatchLogsUnclassifiedFailures";
     public static final String CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED = "cloudWatchLogsEntityGroupsCreated";
     public static final String CLOUDWATCH_LOGS_ENTITY_CARDINALITY = "cloudWatchLogsEntityCardinality";
     public static final String CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS = "cloudWatchLogsEntityOverflowEvents";
@@ -77,10 +80,13 @@ public class CloudWatchLogsMetrics {
     private final Counter accessDeniedCounter;
     private final Counter resourceNotFoundCounter;
     private final Counter throttledCounter;
+    private final Counter invalidRequestCounter;
+    private final Counter unclassifiedFailuresCounter;
     private final Counter entityGroupsCreatedCounter;
     private final Counter entityOverflowEventsCounter;
     private final DistributionSummary logSizeMetric;
     private final DistributionSummary requestSizeMetric;
+    private final DistributionSummary deliveredBytesMetric;
     private final Counter templateExpressionFailedCounter;
     private final Counter headerValueBlankCounter;
     private final Counter resourceNotFoundAfterCreateCounter;
@@ -103,10 +109,13 @@ public class CloudWatchLogsMetrics {
         this.accessDeniedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ACCESS_DENIED);
         this.resourceNotFoundCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND);
         this.throttledCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_THROTTLED);
+        this.invalidRequestCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_INVALID_REQUEST);
+        this.unclassifiedFailuresCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_UNCLASSIFIED_FAILURES);
         this.entityGroupsCreatedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED);
         this.entityOverflowEventsCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS);
         this.logSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_LOG_SIZE);
         this.requestSizeMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_REQUEST_SIZE);
+        this.deliveredBytesMetric = pluginMetrics.summary(CLOUDWATCH_LOGS_DELIVERED_BYTES);
         this.templateExpressionFailedCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_TEMPLATE_EXPRESSION_FAILED);
         this.headerValueBlankCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_HEADER_VALUE_BLANK);
         this.resourceNotFoundAfterCreateCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_RESOURCE_NOT_FOUND_AFTER_CREATE);
@@ -242,6 +251,11 @@ public class CloudWatchLogsMetrics {
         unhandledErrorCounter.increment(value);
     }
 
+    /**
+     * Counts each PutLogEvents or resource-creation attempt that failed with AccessDenied, so one batch may count more than once.
+     *
+     * @param value the number of attempts
+     */
     public void increaseAccessDeniedCounter(int value) {
         accessDeniedCounter.increment(value);
     }
@@ -250,8 +264,34 @@ public class CloudWatchLogsMetrics {
         resourceNotFoundCounter.increment(value);
     }
 
+    /**
+     * Counts each PutLogEvents attempt that was throttled, so one batch may count more than once.
+     *
+     * @param value the number of attempts
+     */
     public void increaseThrottledCounter(int value) {
         throttledCounter.increment(value);
+    }
+
+    /**
+     * Counts batches that failed permanently because CloudWatch Logs rejected the request as invalid (InvalidParameterException or
+     * HTTP 413). Counted once per batch at its final outcome.
+     *
+     * @param value the number of batches
+     */
+    public void increaseInvalidRequestCounter(int value) {
+        invalidRequestCounter.increment(value);
+    }
+
+    /**
+     * Counts batches that failed (retries exhausted or permanent failure) with a last exception that was not throttling,
+     * AccessDenied, ResourceNotFound or an invalid request, e.g. 5xx or network errors. Counted once per batch at its final outcome;
+     * batches ended by shutdown are not counted.
+     *
+     * @param value the number of batches
+     */
+    public void increaseUnclassifiedFailuresCounter(int value) {
+        unclassifiedFailuresCounter.increment(value);
     }
 
     /**
@@ -289,7 +329,23 @@ public class CloudWatchLogsMetrics {
         logSizeMetric.record(value);
     }
 
+    /**
+     * Records the attempted size of a batch, in bytes of event messages, when it is cut from the buffer and before PutLogEvents.
+     * Includes batches that later fail and events CloudWatch Logs rejects; see {@link #recordDeliveredBytes(long)}.
+     *
+     * @param value the batch size in bytes
+     */
     public void recordRequestSize(int value) {
         requestSizeMetric.record(value);
+    }
+
+    /**
+     * Records, once per delivered batch, the bytes of events released as succeeded. Events rejected as too old or too new are
+     * excluded; expired events are counted, matching the success counter. A batch with no such bytes is not recorded.
+     *
+     * @param value the delivered bytes
+     */
+    public void recordDeliveredBytes(long value) {
+        deliveredBytesMetric.record(value);
     }
 }

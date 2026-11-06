@@ -86,6 +86,10 @@ public class BatchSender {
     /**
      * Makes at most {@code 1 + maxRetries} PutLogEvents calls, reusing the same request object for every retry. When
      * {@code retryUntilDelivered} is true, {@code maxRetries} does not apply.
+     *
+     * @param request the request to send
+     * @param retryUntilDelivered whether to retry until delivered, ignoring {@code maxRetries}
+     * @return the outcome of the last attempt
      */
     public Result send(final PutLogEventsRequest request, final boolean retryUntilDelivered) {
         Exception lastException = null;
@@ -194,6 +198,23 @@ public class BatchSender {
         return "unclassified";
     }
 
+    /** Counts once per batch at its final outcome, unlike the per-attempt throttled and AccessDenied counters. */
+    private void countFinalFailure(final Exception lastException) {
+        if (isPermanent(lastException)) {
+            cloudWatchLogsMetrics.increaseInvalidRequestCounter(1);
+        } else if (!(lastException instanceof ResourceNotFoundException) && !isThrottledOrAccessDenied(lastException)) {
+            cloudWatchLogsMetrics.increaseUnclassifiedFailuresCounter(1);
+        }
+    }
+
+    private static boolean isThrottledOrAccessDenied(final Exception e) {
+        if (!(e instanceof AwsServiceException)) {
+            return false;
+        }
+        final AwsServiceException ase = (AwsServiceException) e;
+        return ase.isThrottlingException() || isAccessDenied(ase);
+    }
+
     private static boolean isPermanent(final Exception e) {
         return e instanceof InvalidParameterException
                 || (e instanceof AwsServiceException && ((AwsServiceException) e).statusCode() == REQUEST_TOO_LARGE_STATUS);
@@ -265,11 +286,13 @@ public class BatchSender {
 
     private Result failed(final PutLogEventsRequest request, final Exception lastException) {
         cloudWatchLogsMetrics.increaseLogEventFailCounter(request.logEvents().size());
+        countFinalFailure(lastException);
         return Result.failed(lastException);
     }
 
     private Result permanentFailure(final PutLogEventsRequest request, final Exception lastException) {
         cloudWatchLogsMetrics.increaseLogEventFailCounter(request.logEvents().size());
+        countFinalFailure(lastException);
         return Result.permanentFailure(lastException);
     }
 
