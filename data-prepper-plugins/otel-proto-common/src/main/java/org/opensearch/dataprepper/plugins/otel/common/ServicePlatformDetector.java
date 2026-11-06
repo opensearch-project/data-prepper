@@ -25,6 +25,13 @@ import java.util.Map;
  */
 public final class ServicePlatformDetector {
     public static final String PLATFORM_KEY = "apm.platform";
+    /**
+     * One {@code cluster|namespace|kind|name} tuple per Kubernetes workload the service runs as. The
+     * individual {@code k8s.*} keys are independent sets, so a service in {@code prod-1/shop} and
+     * {@code prod-2/billing} would otherwise read back as four cluster x namespace combinations;
+     * this key keeps the real ones. Empty segments are kept (e.g. no cluster name, or no workload).
+     */
+    public static final String K8S_SCOPE_KEY = "apm.k8s.scope";
 
     static final List<String> CLOUD_KEYS = List.of("cloud.platform", "cloud.region", "cloud.account.id");
     static final List<String> K8S_KEYS = List.of(
@@ -34,6 +41,13 @@ public final class ServicePlatformDetector {
     static final List<String> ECS_KEYS = List.of("aws.ecs.cluster.arn", "aws.ecs.task.family", "aws.ecs.launchtype");
     static final List<String> LAMBDA_KEYS = List.of("faas.name");
     static final String HOST_ID = "host.id";
+    /** Workload keys in precedence order: a CronJob's pods also carry the per-run Job name. */
+    static final List<String[]> WORKLOADS = List.of(
+            new String[]{"k8s.deployment.name", "deployment"},
+            new String[]{"k8s.statefulset.name", "statefulset"},
+            new String[]{"k8s.daemonset.name", "daemonset"},
+            new String[]{"k8s.cronjob.name", "cronjob"},
+            new String[]{"k8s.job.name", "job"});
 
     private ServicePlatformDetector() {
     }
@@ -73,6 +87,11 @@ public final class ServicePlatformDetector {
             case "eks":
             case "kubernetes":
                 copy(spanAttributes, resource, K8S_KEYS, keys);
+                // A CronJob's Job name changes on every run (<cronjob>-<timestamp>): keep the CronJob.
+                if (keys.containsKey("k8s.cronjob.name")) {
+                    keys.remove("k8s.job.name");
+                }
+                keys.put(K8S_SCOPE_KEY, scope(keys));
                 break;
             case "ecs":
                 copy(spanAttributes, resource, ECS_KEYS, keys);
@@ -89,6 +108,24 @@ public final class ServicePlatformDetector {
                 break;
         }
         return keys;
+    }
+
+    private static String scope(final Map<String, String> keys) {
+        String kind = "";
+        String name = "";
+        for (final String[] workload : WORKLOADS) {
+            final String value = keys.get(workload[0]);
+            if (value != null) {
+                kind = workload[1];
+                name = value;
+                break;
+            }
+        }
+        return String.join("|",
+                keys.getOrDefault("k8s.cluster.name", ""),
+                keys.getOrDefault("k8s.namespace.name", ""),
+                kind,
+                name);
     }
 
     private static void copy(final Map<String, Object> span, final Map<String, Object> resource,

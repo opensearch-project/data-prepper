@@ -44,6 +44,39 @@ class ServicePlatformDetectorTest {
     }
 
     @Test
+    void kubernetes_scope_keeps_the_cluster_namespace_and_workload_together() {
+        final Map<String, String> keys = ServicePlatformDetector.detect(withResource(Map.of(
+                "cloud.platform", "aws_eks", "k8s.cluster.name", "prod-1", "k8s.namespace.name", "retail",
+                "k8s.deployment.name", "pricing")));
+        assertEquals("prod-1|retail|deployment|pricing", keys.get(ServicePlatformDetector.K8S_SCOPE_KEY));
+
+        final Map<String, String> noWorkload = ServicePlatformDetector.detect(withResource(Map.of(
+                "k8s.namespace.name", "shop")));
+        assertEquals("|shop||", noWorkload.get(ServicePlatformDetector.K8S_SCOPE_KEY));
+    }
+
+    @Test
+    void cronjob_pods_keep_the_cronjob_not_the_per_run_job() {
+        final Map<String, String> keys = ServicePlatformDetector.detect(withResource(Map.of(
+                "k8s.namespace.name", "batch", "k8s.cronjob.name", "nightly",
+                "k8s.job.name", "nightly-29012345")));
+        assertEquals("nightly", keys.get("k8s.cronjob.name"));
+        assertFalse(keys.containsKey("k8s.job.name"));
+        assertEquals("|batch|cronjob|nightly", keys.get(ServicePlatformDetector.K8S_SCOPE_KEY));
+
+        final Map<String, String> job = ServicePlatformDetector.detect(withResource(Map.of(
+                "k8s.namespace.name", "batch", "k8s.job.name", "migrate")));
+        assertEquals("migrate", job.get("k8s.job.name"));
+        assertEquals("|batch|job|migrate", job.get(ServicePlatformDetector.K8S_SCOPE_KEY));
+    }
+
+    @Test
+    void non_kubernetes_platforms_have_no_scope() {
+        assertFalse(ServicePlatformDetector.detect(withResource(Map.of("host.id", "h1")))
+                .containsKey(ServicePlatformDetector.K8S_SCOPE_KEY));
+    }
+
+    @Test
     void self_managed_kubernetes_without_cloud_platform() {
         final Map<String, String> keys = ServicePlatformDetector.detect(withResource(Map.of(
                 "k8s.namespace.name", "shop", "k8s.statefulset.name", "inventory")));

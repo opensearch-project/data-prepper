@@ -2531,6 +2531,9 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
 
             assertThat(events.size(), equalTo(1));
             assertThat(sourceKeyAttributes(events.get(0)).get("k8s.cluster.name"), equalTo(List.of("prod-a", "prod-b")));
+            // The joined scope keeps the real cluster / namespace / workload tuples.
+            assertThat(sourceKeyAttributes(events.get(0)).get("apm.k8s.scope"),
+                    equalTo(List.of("prod-a|retail|deployment|pricing", "prod-b|retail|deployment|pricing")));
         } finally {
             proc.shutdown();
         }
