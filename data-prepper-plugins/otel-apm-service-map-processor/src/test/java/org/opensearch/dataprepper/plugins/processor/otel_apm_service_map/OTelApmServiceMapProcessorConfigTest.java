@@ -125,4 +125,25 @@ public class OTelApmServiceMapProcessorConfigTest {
         assertThat(dependencyNodes.getMaxRemoteOperationsPerService(), equalTo(30));
         assertThat(dependencyNodes.getHostnameDenylistPatterns(), equalTo(List.of("^proxy$")));
     }
+
+    @Test
+    public void platformDetectionAndEnvironmentSource_defaults() {
+        final OTelApmServiceMapProcessorConfig config = createObjectUnderTest();
+        assertThat(config.getEnvironmentSource(), equalTo(org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource.PLATFORM_FIRST));
+        assertThat(config.getPlatformDetection().isEnabled(), equalTo(false));
+        assertThat(config.getPlatformDetection().maxValuesFor("k8s.cluster.name"), equalTo(PlatformDetectionConfig.DEFAULT_MAX_VALUES_PER_KEY));
+        assertThat(config.getPlatformDetection().maxValuesFor("host.id"), equalTo(PlatformDetectionConfig.DEFAULT_MAX_HOST_IDS));
+    }
+
+    @Test
+    public void platformDetectionAndEnvironmentSource_readFromConfig() throws Exception {
+        final OTelApmServiceMapProcessorConfig config = new ObjectMapper().readValue(
+                "{\"environment_source\": \"deployment_first\", " +
+                "\"platform_detection\": {\"enabled\": true, \"max_values_per_key\": 3, \"max_host_ids\": 7}}",
+                OTelApmServiceMapProcessorConfig.class);
+        assertThat(config.getEnvironmentSource(), equalTo(org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource.DEPLOYMENT_FIRST));
+        assertThat(config.getPlatformDetection().isEnabled(), equalTo(true));
+        assertThat(config.getPlatformDetection().maxValuesFor("k8s.namespace.name"), equalTo(3));
+        assertThat(config.getPlatformDetection().maxValuesFor("host.id"), equalTo(7));
+    }
 }

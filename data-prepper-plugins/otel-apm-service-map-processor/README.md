@@ -40,6 +40,10 @@ processor:
 | `dependency_nodes.max_dependencies_per_service` | Integer | `100` | Distinct dependency names a source service may hold (admission is sticky across windows; see [Cardinality](#external-dependency-nodes)). Further dependencies collapse into `OtherDatabase` / `OtherExternal` / `OtherMessaging`. |
 | `dependency_nodes.max_remote_operations_per_service` | Integer | `100` | Distinct dependency remote operations a source service may hold (sticky, like the dependency cap). Further operations collapse into `OtherRemoteOperation`. |
 | `dependency_nodes.hostname_denylist_patterns` | List\<String\> | IP-derived host names | Regular expressions (case-insensitive, full match) for peer host names that must not create a node. |
+| `environment_source` | String | `"platform_first"` | Precedence for the derived `environment`. `platform_first` uses the AWS platform (e.g. `eks:default`) before `deployment.environment.name` / `deployment.environment`; `deployment_first` uses the deployment environment first. See [Environment Derivation](#environment-derivation). |
+| `platform_detection.enabled` | Boolean | `false` | Record each service's platform and infrastructure keys on its service-map node. See [Platform Detection](#platform-detection). |
+| `platform_detection.max_values_per_key` | Integer | `10` | Distinct values kept per platform key on one service-map document. |
+| `platform_detection.max_host_ids` | Integer | `100` | Distinct `host.id` values kept on one service-map document (host platforms). |
 
 ### Advanced Configuration
 
@@ -90,6 +94,10 @@ Lookup precedence (first match wins):
 3. `deployment.environment` from `resource.attributes` (legacy OTel key).
 4. Default fallback: `generic:default`.
 
+With `environment_source: deployment_first`, steps 2 and 3 are checked before step 1. Set the same value on the `otel_traces` processor, which derives `attributes.derived.environment` with the same rules, so spans and their service agree.
+
+> **Changing `environment_source` changes the environment of services that set both a `deployment.environment` and an AWS `cloud.platform`** (for example `eks:default` becomes `production`). Their `keyAttributes.environment` and `nodeConnectionHash` change, the `environment` label on their RED metrics changes, and saved queries, dashboards and SLOs that filter on the old value stop matching new data. Enable it at a planned cut-over.
+
 For every AWS attribute the processor checks both span-level attributes and `resource.attributes` (since most OTel SDKs emit them in the resource).
 
 | Resource (or span) attributes | `environment` value |
@@ -110,6 +118,47 @@ For every AWS attribute the processor checks both span-level attributes and `res
 | (none of the above) | `generic:default` |
 
 Attribute names follow the OpenTelemetry semantic conventions for [cloud](https://opentelemetry.io/docs/specs/semconv/registry/attributes/cloud/) and [AWS](https://opentelemetry.io/docs/specs/semconv/registry/attributes/aws/).
+
+
+## Platform Detection
+
+With `platform_detection.enabled: true`, every service node gets the platform the service runs on and the low-cardinality keys that scope its infrastructure, copied from the resource (or span) attributes of its spans with their OpenTelemetry semantic-convention names. A UI can use them to find the service's infrastructure metrics (kubeletstats, k8s_cluster, hostmetrics, ...) without querying its spans.
+
+| Platform (`apm.platform`) | Detected from | Keys recorded |
+|---|---|---|
+| `eks` | `cloud.platform=aws_eks` | `k8s.cluster.name`, `k8s.namespace.name`, the workload name (`k8s.deployment.name` / `k8s.statefulset.name` / `k8s.daemonset.name` / `k8s.cronjob.name` / `k8s.job.name`), `apm.k8s.scope`, `cloud.*` |
+| `kubernetes` | `k8s.namespace.name` or `k8s.pod.name` without `aws_eks` | as `eks` |
+| `ecs` | `cloud.platform=aws_ecs` | `aws.ecs.cluster.arn`, `aws.ecs.task.family`, `aws.ecs.launchtype`, `cloud.*` |
+| `lambda` | `cloud.platform=aws_lambda` or `faas.name` | `faas.name`, `cloud.*` |
+| `ec2` / `elastic_beanstalk` | `cloud.platform=aws_ec2` / `aws_elastic_beanstalk` | `host.id`, `cloud.*` |
+| `host` | `host.id` without `cloud.platform` | `host.id` |
+| `generic` | none of the above | — |
+
+`cloud.*` is `cloud.platform`, `cloud.region` and `cloud.account.id`. `apm.platform` is always written when detection is enabled, so a consumer can tell "detection is off" from "the spans carry no platform attributes". Pods, pod UIDs, task ARNs and container ids are never recorded: they change on every restart.
+
+`apm.k8s.scope` holds one `cluster|namespace|kind|name` tuple per workload the service runs as (`kind` is `deployment`, `statefulset`, `daemonset`, `cronjob` or `job`; an unknown segment is empty). The other keys are independent sets, so a service in `prod-1/shop` and `prod-2/billing` would read back as four cluster x namespace combinations; the scope keeps the two real ones. For a CronJob's pods, `k8s.job.name` (one value per run) is dropped in favour of `k8s.cronjob.name`.
+
+The keys are **descriptive**: they are serialized next to `environment` and `name` in `keyAttributes`, as arrays of the observed values, but they are not part of the node identity. Enabling detection changes no `nodeConnectionHash`, environment or RED metric label. When a service is seen with several values in one window (two clusters, a canary workload), its node keeps each of them, up to `max_values_per_key` (`max_host_ids` for `host.id`).
+
+```json
+"sourceNode": {
+  "type": "service",
+  "keyAttributes": {
+    "environment": "production",
+    "name": "pricing",
+    "apm.platform": ["eks"],
+    "cloud.platform": ["aws_eks"],
+    "k8s.cluster.name": ["prod-1"],
+    "k8s.namespace.name": ["retail"],
+    "k8s.deployment.name": ["pricing"],
+    "apm.k8s.scope": ["prod-1|retail|deployment|pricing"]
+  }
+}
+```
+
+The service-map index template (version 2) maps every `*.keyAttributes.*` field as `keyword` (with a `.keyword` subfield, as for `dependencyAttributes`). An existing cluster with the version 1 template is updated on start-up; indices created before the update keep their dynamic `text` mapping until rollover.
+
+The attributes must be set where the service runs: by the SDK resource detectors, or by an agent OpenTelemetry Collector on the same node / host / task (`k8sattributes` on the traces pipeline for the Kubernetes keys, `resourcedetection` for `cloud.*` and `host.id`). A central gateway running these processors would record its own identity.
 
 ## Pipeline Examples
 

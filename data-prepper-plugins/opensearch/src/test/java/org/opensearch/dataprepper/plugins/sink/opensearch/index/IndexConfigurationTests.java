@@ -297,8 +297,11 @@ public class IndexConfigurationTests {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
                 IndexType.OTEL_APM_SERVICE_MAP.getValue()).build();
         final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
-        assertThat(indexTemplate.get("version"), equalTo(1));
+        // Version 2: platform keys (*.keyAttributes.*) mapped as keyword; bumped so upgrades apply it.
+        assertThat(indexTemplate.get("version"), equalTo(2));
         assertDependencyAttributesMapping((Map<String, Object>) indexTemplate.get("mappings"));
+        assertKeywordDynamicTemplate((Map<String, Object>) indexTemplate.get("mappings"),
+                "string_key_attributes", "*.keyAttributes.*");
     }
 
     @Test
@@ -308,9 +311,25 @@ public class IndexConfigurationTests {
                 .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
                 .build();
         final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
-        assertThat(indexTemplate.get("version"), equalTo(1));
+        assertThat(indexTemplate.get("version"), equalTo(2));
         final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
         assertDependencyAttributesMapping((Map<String, Object>) template.get("mappings"));
+        assertKeywordDynamicTemplate((Map<String, Object>) template.get("mappings"),
+                "string_key_attributes", "*.keyAttributes.*");
+    }
+
+    private void assertKeywordDynamicTemplate(final Map<String, Object> mappings, final String name,
+                                              final String pathMatch) {
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        final Map<String, Object> dynamicTemplate = dynamicTemplates.stream()
+                .filter(t -> t.containsKey(name))
+                .map(t -> (Map<String, Object>) t.get(name))
+                .findFirst()
+                .orElseThrow();
+        assertThat(dynamicTemplate.get("path_match"), equalTo(pathMatch));
+        final Map<String, Object> mapping = (Map<String, Object>) dynamicTemplate.get("mapping");
+        assertThat(mapping.get("type"), equalTo("keyword"));
+        assertThat(mapping.get("fields"), equalTo(Map.of("keyword", Map.of("type", "keyword"))));
     }
 
     private void assertDependencyAttributesMapping(final Map<String, Object> mappings) {
