@@ -168,6 +168,7 @@ public class OtlpHttpSender {
                     LOG.error("Failed to send {} events.", events, e);
                     sinkMetrics.incrementRejectedRecordsCount(events);
                     sinkMetrics.incrementRejectedSignalCount(metricsLabel, events);
+                    sinkMetrics.incrementCompleteBatchRejectedSignalCount(metricsLabel, events);
                     releaseAllEventHandle(immutableBatch, false);
                     return null;
                 });
@@ -220,6 +221,7 @@ public class OtlpHttpSender {
         LOG.error("Non-successful OTLP response. Status: {}, Response: {}", statusCode, responseBody);
         sinkMetrics.incrementRejectedRecordsCount(batch.size());
         sinkMetrics.incrementRejectedSignalCount(metricsLabel, batch.size());
+        sinkMetrics.incrementCompleteBatchRejectedSignalCount(metricsLabel, batch.size());
         releaseAllEventHandle(batch, false);
     }
 
@@ -249,6 +251,7 @@ public class OtlpHttpSender {
                 LOG.error("OTLP Partial Success: rejected={}, message={}", rejectedCount, errorMessage);
                 sinkMetrics.incrementRejectedRecordsCount(rejectedCount);
                 sinkMetrics.incrementRejectedSignalCount(metricsLabel, rejectedCount);
+                sinkMetrics.incrementPartialBatchRejectedSignalCount(metricsLabel, rejectedCount);
             }
 
             final long deliveredEvents = events - rejectedCount;
