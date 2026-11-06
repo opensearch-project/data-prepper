@@ -162,7 +162,7 @@ public class OtlpHttpSender {
 
                     final int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    handleResponse(statusCode, responseBytes, immutableBatch, signalHandler, metricsLabel);
+                    handleResponse(statusCode, responseBytes, immutableBatch, signalHandler, metricsLabel, payloadAndCompressedPayload);
                 })
                 .exceptionally(e -> {
                     LOG.error("Failed to send {} events.", events, e);
@@ -198,11 +198,13 @@ public class OtlpHttpSender {
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(compressedPayload));
     }
 
-    private <T> void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<T, EventHandle>> batch, final OtlpSignalHandler<T> signalHandler, final String metricsLabel) {
+    private <T> void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<T, EventHandle>> batch,
+                                    final OtlpSignalHandler<T> signalHandler, final String metricsLabel,
+                                    final Pair<byte[], byte[]> payloadAndCompressedPayload) {
         sinkMetrics.recordResponseCode(statusCode);
 
         if (statusCode >= 200 && statusCode < 300) {
-            handleSuccessfulResponse(responseBytes, batch, signalHandler, metricsLabel);
+            handleSuccessfulResponse(responseBytes, batch, signalHandler, metricsLabel, payloadAndCompressedPayload);
             return;
         }
 
@@ -222,7 +224,25 @@ public class OtlpHttpSender {
         sinkMetrics.incrementRejectedRecordsCount(batch.size());
         sinkMetrics.incrementRejectedSignalCount(metricsLabel, batch.size());
         sinkMetrics.incrementCompleteBatchRejectedSignalCount(metricsLabel, batch.size());
+        incrementRejectedByStatus(statusCode, metricsLabel, batch.size());
         releaseAllEventHandle(batch, false);
+    }
+
+    private void incrementRejectedByStatus(final int statusCode, final String metricsLabel, final long count) {
+        switch (statusCode) {
+            case 401:
+            case 403:
+                sinkMetrics.incrementAccessDeniedSignalCount(metricsLabel, count);
+                break;
+            case 413:
+                sinkMetrics.incrementPayloadTooLargeSignalCount(metricsLabel, count);
+                break;
+            case 429:
+                sinkMetrics.incrementThrottledSignalCount(metricsLabel, count);
+                break;
+            default:
+                break;
+        }
     }
 
     private static boolean isTransactionSearchDisabled(final int statusCode, final String responseBody, final String metricsLabel) {
@@ -234,10 +254,12 @@ public class OtlpHttpSender {
     /**
      * Handles a successful OTLP response with partial success.
      */
-    private <T> void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<T, EventHandle>> batch, final OtlpSignalHandler<T> signalHandler, final String metricsLabel) {
+    private <T> void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<T, EventHandle>> batch, final OtlpSignalHandler<T> signalHandler,
+                                              final String metricsLabel, final Pair<byte[], byte[]> payloadAndCompressedPayload) {
         final int events = batch.size();
         if (responseBytes == null || responseBytes.length == 0) {
             sinkMetrics.incrementRecordsOut(events);
+            recordDeliveredPayload(payloadAndCompressedPayload, events, events);
             releaseAllEventHandle(batch, true);
             return;
         }
@@ -254,8 +276,9 @@ public class OtlpHttpSender {
                 sinkMetrics.incrementPartialBatchRejectedSignalCount(metricsLabel, rejectedCount);
             }
 
-            final long deliveredEvents = events - rejectedCount;
+            final long deliveredEvents = Math.min(Math.max(0, events - rejectedCount), events);
             sinkMetrics.incrementRecordsOut(deliveredEvents);
+            recordDeliveredPayload(payloadAndCompressedPayload, deliveredEvents, events);
 
             // Optimistically release all as true, no per-event granularity
             releaseAllEventHandle(batch, true);
@@ -263,8 +286,19 @@ public class OtlpHttpSender {
             LOG.error("Could not parse OTLP response: {}", e.getMessage());
             sinkMetrics.incrementErrorsCount();
             sinkMetrics.incrementRecordsOut(events);
+            recordDeliveredPayload(payloadAndCompressedPayload, events, events);
             releaseAllEventHandle(batch, true);
         }
+    }
+
+    /** Scales by the delivered fraction because a partial success does not say which records were rejected. */
+    private void recordDeliveredPayload(final Pair<byte[], byte[]> payloadAndCompressedPayload, final long deliveredEvents, final int events) {
+        if (deliveredEvents == 0) {
+            return;
+        }
+        sinkMetrics.recordDeliveredPayloadSize(Math.round((double) payloadAndCompressedPayload.left().length * deliveredEvents / events));
+        sinkMetrics.recordDeliveredPayloadGzipSize(
+                Math.round((double) payloadAndCompressedPayload.right().length * deliveredEvents / events));
     }
 
     private void releaseAllEventHandle(@Nonnull final List<? extends Pair<?, EventHandle>> batch, final boolean success) {

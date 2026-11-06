@@ -10,9 +10,12 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalType;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -24,9 +27,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OtlpSinkMetricsTest {
@@ -91,6 +97,35 @@ class OtlpSinkMetricsTest {
         sinkMetrics.incrementDroppedSpansTransactionSearchDisabledCount(5);
         verify(pluginMetrics).counter("droppedSpansTransactionSearchDisabledCount");
         verify(counterMock).increment(5.0);
+    }
+
+    @ParameterizedTest
+    @EnumSource(OtlpSignalType.class)
+    void constructor_registersStatusSubsetCountersForEverySignalType(final OtlpSignalType type) {
+        verify(pluginMetrics).counter("accessDenied" + type.getMetricsLabel() + "Count");
+        verify(pluginMetrics).counter("throttled" + type.getMetricsLabel() + "Count");
+        verify(pluginMetrics).counter("payloadTooLarge" + type.getMetricsLabel() + "Count");
+    }
+
+    @Test
+    void incrementStatusSubsetSignalCounts_incrementOnlyTheMatchingCounter() {
+        final Counter accessDeniedSpans = mock(Counter.class);
+        final Counter throttledMetrics = mock(Counter.class);
+        final Counter payloadTooLargeLogs = mock(Counter.class);
+        when(pluginMetrics.counter("accessDeniedSpansCount")).thenReturn(accessDeniedSpans);
+        when(pluginMetrics.counter("throttledMetricsCount")).thenReturn(throttledMetrics);
+        when(pluginMetrics.counter("payloadTooLargeLogsCount")).thenReturn(payloadTooLargeLogs);
+        sinkMetrics = new OtlpSinkMetrics(pluginMetrics, pluginSetting);
+
+        sinkMetrics.incrementAccessDeniedSignalCount("Spans", 2);
+        sinkMetrics.incrementThrottledSignalCount("Metrics", 3);
+        sinkMetrics.incrementPayloadTooLargeSignalCount("Logs", 4);
+
+        verify(accessDeniedSpans).increment(2.0);
+        verify(throttledMetrics).increment(3.0);
+        verify(payloadTooLargeLogs).increment(4.0);
+        verifyNoMoreInteractions(accessDeniedSpans, throttledMetrics, payloadTooLargeLogs);
+        verify(counterMock, never()).increment(anyDouble());
     }
 
     @Test
@@ -187,6 +222,30 @@ class OtlpSinkMetricsTest {
         sinkMetrics.incrementPayloadGzipSize(77L);
 
         verify(summaryMock).record(77L);
+    }
+
+    @Test
+    void recordDeliveredPayloadSize_delegatesToSummary() throws Exception {
+        injectField("deliveredPayloadSize", summaryMock);
+
+        sinkMetrics.recordDeliveredPayloadSize(42L);
+
+        verify(summaryMock).record(42L);
+    }
+
+    @Test
+    void recordDeliveredPayloadGzipSize_delegatesToSummary() throws Exception {
+        injectField("deliveredPayloadGzipSize", summaryMock);
+
+        sinkMetrics.recordDeliveredPayloadGzipSize(21L);
+
+        verify(summaryMock).record(21L);
+    }
+
+    @Test
+    void constructor_registersDeliveredPayloadSummaries() {
+        verify(pluginMetrics).summary("deliveredPayloadSize");
+        verify(pluginMetrics).summary("deliveredPayloadGzipSize");
     }
 
     @Test

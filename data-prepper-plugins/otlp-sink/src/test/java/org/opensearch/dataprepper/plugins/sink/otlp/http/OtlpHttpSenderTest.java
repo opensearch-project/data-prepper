@@ -15,6 +15,9 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.otlp.OtlpSignalHandler;
@@ -32,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -134,6 +138,11 @@ class OtlpHttpSenderTest {
             verify(mockMetrics).incrementRecordsOut(1);
             verify(handle).release(true);
         });
+        verify(mockMetrics).recordHttpLatency(anyLong());
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics).recordDeliveredPayloadSize(3);
+        verify(mockMetrics).recordDeliveredPayloadGzipSize(2);
     }
 
     @Test
@@ -152,6 +161,14 @@ class OtlpHttpSenderTest {
             verify(mockMetrics).incrementRejectedRecordsCount(1);
             verify(handle).release(false);
         });
+        verify(mockMetrics).recordHttpLatency(anyLong());
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics, never()).recordDeliveredPayloadSize(anyLong());
+        verify(mockMetrics, never()).recordDeliveredPayloadGzipSize(anyLong());
+        verify(mockMetrics, never()).incrementAccessDeniedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementThrottledSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementPayloadTooLargeSignalCount(anyString(), anyLong());
     }
 
     @Test
@@ -176,8 +193,42 @@ class OtlpHttpSenderTest {
             verify(mockMetrics).incrementRejectedRecordsCount(1L);
             verify(mockMetrics).incrementRecordsOut(1L);
             verify(mockMetrics).incrementPartialBatchRejectedSignalCount(OtlpSignalType.TRACE.getMetricsLabel(), 1L);
+            verify(mockMetrics).incrementPayloadSize(3);
+            verify(mockMetrics).incrementPayloadGzipSize(2);
+            verify(mockMetrics).recordDeliveredPayloadSize(2);
+            verify(mockMetrics).recordDeliveredPayloadGzipSize(1);
         });
         verify(mockMetrics, never()).incrementCompleteBatchRejectedSignalCount(anyString(), anyLong());
+    }
+
+    @Test
+    void send_partialSuccessRejectingMoreThanSent_deliversZeroAndRecordsNoPayload() throws Exception {
+        final EventHandle handle = mock(EventHandle.class);
+
+        when(mockHandler.parsePartialSuccess(any())).thenReturn(Pair.of(5L, "rejected"));
+        sendWithResponse(false, HttpStatus.OK, new byte[]{1, 2}, OtlpSignalType.TRACE, handle);
+
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(handle).release(true));
+        verify(mockMetrics).incrementRecordsOut(0);
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics, never()).recordDeliveredPayloadSize(anyLong());
+        verify(mockMetrics, never()).recordDeliveredPayloadGzipSize(anyLong());
+    }
+
+    @Test
+    void send_partialSuccessWithNegativeRejectedCount_deliversWholeBatchAndRecordsFullPayload() throws Exception {
+        final EventHandle handle = mock(EventHandle.class);
+
+        when(mockHandler.parsePartialSuccess(any())).thenReturn(Pair.of(-3L, "rejected"));
+        sendWithResponse(false, HttpStatus.OK, new byte[]{1, 2}, OtlpSignalType.TRACE, handle);
+
+        await().atMost(2, SECONDS).untilAsserted(() -> verify(handle).release(true));
+        verify(mockMetrics).incrementRecordsOut(1);
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics).recordDeliveredPayloadSize(3);
+        verify(mockMetrics).recordDeliveredPayloadGzipSize(2);
     }
 
     @Test
@@ -200,6 +251,10 @@ class OtlpHttpSenderTest {
             verify(mockMetrics).incrementRecordsOut(1);
             verify(handle).release(true);
         });
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics).recordDeliveredPayloadSize(3);
+        verify(mockMetrics).recordDeliveredPayloadGzipSize(2);
     }
 
     @Test
@@ -220,6 +275,10 @@ class OtlpHttpSenderTest {
             verify(handle).release(false);
         });
         verify(mockMetrics, never()).incrementPartialBatchRejectedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementPayloadSize(anyLong());
+        verify(mockMetrics, never()).incrementPayloadGzipSize(anyLong());
+        verify(mockMetrics, never()).recordDeliveredPayloadSize(anyLong());
+        verify(mockMetrics, never()).recordDeliveredPayloadGzipSize(anyLong());
     }
 
     @Test
@@ -347,6 +406,9 @@ class OtlpHttpSenderTest {
         verify(mockMetrics, never()).incrementRejectedSignalCount(anyString(), anyLong());
         verify(mockMetrics, never()).incrementCompleteBatchRejectedSignalCount(anyString(), anyLong());
         verify(mockMetrics, never()).incrementRecordsOut(anyLong());
+        verify(mockMetrics, never()).incrementAccessDeniedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementThrottledSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementPayloadTooLargeSignalCount(anyString(), anyLong());
         verify(handle1, never()).release(false);
         verify(handle2, never()).release(false);
     }
@@ -391,6 +453,65 @@ class OtlpHttpSenderTest {
         sendWithResponse(true, HttpStatus.FORBIDDEN, TRANSACTION_SEARCH_DISABLED_BODY, OtlpSignalType.TRACE, handle);
 
         assertRejectedNotDropped(handle, OtlpSignalType.TRACE);
+        verify(mockMetrics).incrementAccessDeniedSignalCount(OtlpSignalType.TRACE.getMetricsLabel(), 1);
+    }
+
+    private static Stream<Arguments> withSignalTypes(final Integer... statuses) {
+        return Stream.of(statuses).flatMap(status -> Stream.of(OtlpSignalType.TRACE, OtlpSignalType.METRIC, OtlpSignalType.LOG)
+                .map(signalType -> Arguments.of(status, signalType)));
+    }
+
+    static Stream<Arguments> accessDeniedStatuses() {
+        return withSignalTypes(401, 403);
+    }
+
+    static Stream<Arguments> payloadTooLargeStatuses() {
+        return withSignalTypes(413);
+    }
+
+    static Stream<Arguments> throttledStatuses() {
+        return withSignalTypes(429);
+    }
+
+    private void sendRejectedAndAssertTotals(final int status, final OtlpSignalType signalType) {
+        final EventHandle handle = mock(EventHandle.class);
+        sendWithResponse(true, HttpStatus.valueOf(status), new byte[0], signalType, handle);
+        assertRejectedNotDropped(handle, signalType);
+        verify(mockMetrics).incrementPayloadSize(3);
+        verify(mockMetrics).incrementPayloadGzipSize(2);
+        verify(mockMetrics, never()).recordDeliveredPayloadSize(anyLong());
+        verify(mockMetrics, never()).recordDeliveredPayloadGzipSize(anyLong());
+    }
+
+    @ParameterizedTest
+    @MethodSource("accessDeniedStatuses")
+    void send_finalAccessDeniedStatus_incrementsAccessDeniedAndTotalRejectedCounters(final int status, final OtlpSignalType signalType) {
+        sendRejectedAndAssertTotals(status, signalType);
+
+        verify(mockMetrics).incrementAccessDeniedSignalCount(signalType.getMetricsLabel(), 1);
+        verify(mockMetrics, never()).incrementPayloadTooLargeSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementThrottledSignalCount(anyString(), anyLong());
+    }
+
+    @ParameterizedTest
+    @MethodSource("payloadTooLargeStatuses")
+    void send_finalPayloadTooLargeStatus_incrementsPayloadTooLargeAndTotalRejectedCounters(final int status,
+                                                                                          final OtlpSignalType signalType) {
+        sendRejectedAndAssertTotals(status, signalType);
+
+        verify(mockMetrics).incrementPayloadTooLargeSignalCount(signalType.getMetricsLabel(), 1);
+        verify(mockMetrics, never()).incrementAccessDeniedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementThrottledSignalCount(anyString(), anyLong());
+    }
+
+    @ParameterizedTest
+    @MethodSource("throttledStatuses")
+    void send_finalThrottledStatus_incrementsThrottledAndTotalRejectedCounters(final int status, final OtlpSignalType signalType) {
+        sendRejectedAndAssertTotals(status, signalType);
+
+        verify(mockMetrics).incrementThrottledSignalCount(signalType.getMetricsLabel(), 1);
+        verify(mockMetrics, never()).incrementAccessDeniedSignalCount(anyString(), anyLong());
+        verify(mockMetrics, never()).incrementPayloadTooLargeSignalCount(anyString(), anyLong());
     }
 
     @Test
