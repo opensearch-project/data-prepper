@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.kafka.source;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -128,6 +129,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(mock(Timer.class));
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
             doAnswer(args -> {
@@ -150,6 +152,9 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(plainTextTopic.getRetryBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(plainTextTopic.getReconnectBackoff()).thenReturn(Duration.ofSeconds(10));
+        when(plainTextTopic.getConnectionsMaxIdle()).thenReturn(Duration.ofMinutes(9));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         saslsslBootstrapServers = System.getProperty("tests.kafka.saslssl_bootstrap_servers");
         saslplainBootstrapServers = System.getProperty("tests.kafka.saslplain_bootstrap_servers");
