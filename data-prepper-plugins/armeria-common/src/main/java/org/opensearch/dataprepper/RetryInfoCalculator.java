@@ -10,36 +10,26 @@
 package org.opensearch.dataprepper;
 
 import com.google.rpc.RetryInfo;
+import org.opensearch.dataprepper.model.retry.RetryDelayCalculator;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Wraps {@link RetryDelayCalculator} and returns the retry delay as a gRPC {@link RetryInfo}.
+ */
 public class RetryInfoCalculator {
 
-    public static final Duration DEFAULT_MINIMUM_DELAY = Duration.ofMillis(100);
-    public static final Duration DEFAULT_MAXIMUM_DELAY = Duration.ofMillis(2000);
+    public static final Duration DEFAULT_MINIMUM_DELAY = RetryDelayCalculator.DEFAULT_MINIMUM_DELAY;
+    public static final Duration DEFAULT_MAXIMUM_DELAY = RetryDelayCalculator.DEFAULT_MAXIMUM_DELAY;
 
-    private final Duration minimumDelay;
-    private final Duration maximumDelay;
-
-    private final AtomicReference<Instant> lastTimeCalled;
-    private final AtomicReference<Duration> nextDelay;
+    private final RetryDelayCalculator retryDelayCalculator;
 
     public RetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
-        this.minimumDelay = minimumDelay;
-        this.maximumDelay = maximumDelay;
-        // Create a cushion so that the calculator treats a first quick exception (after prepper startup) as normal request (e.g. does not calculate a backoff)
-        this.lastTimeCalled = new AtomicReference<>(Instant.now().minus(maximumDelay));
-        this.nextDelay = new AtomicReference<>(minimumDelay);
+        this.retryDelayCalculator = new RetryDelayCalculator(minimumDelay, maximumDelay);
     }
 
     private static RetryInfo createProtoResult(Duration delay) {
         return RetryInfo.newBuilder().setRetryDelay(mapDuration(delay)).build();
-    }
-
-    private static Duration minDuration(Duration left, Duration right) {
-        return left.compareTo(right) <= 0 ? left : right;
     }
 
     private static com.google.protobuf.Duration.Builder mapDuration(Duration duration) {
@@ -47,15 +37,7 @@ public class RetryInfoCalculator {
     }
 
     public RetryInfo createRetryInfo() {
-        Instant now = Instant.now();
-        // Is the last time we got called longer ago than the next delay?
-        if (lastTimeCalled.getAndSet(now).isBefore(now.minus(nextDelay.get()))) {
-            // Use minimum delay and reset the saved delay
-            nextDelay.set(minimumDelay);
-            return createProtoResult(minimumDelay);
-        }
-        Duration delay = nextDelay.getAndUpdate(d -> minDuration(maximumDelay, d.multipliedBy(2)));
-        return createProtoResult(delay);
+        return createProtoResult(retryDelayCalculator.nextDelay());
     }
 
 }

@@ -17,7 +17,7 @@
 # the heap circuit breaker opens, rejects requests at the layers hardened by
 # the change (P1 decorator, P2 gRPC pre-parse check, P3 hysteresis, P4 peer
 # forwarder), and closes again. It also reports the garbage collections the
-# breaker requests before it opens and while it is open (P5): how many, and how
+# breaker requests when it opens and while it is open (P5): how many, and how
 # much each one freed.
 #
 # Usage:
@@ -30,9 +30,9 @@
 #   the P1 decorator rejection (HTTP 429, or gRPC RESOURCE_EXHAUSTED with retry
 #   info) on a parallel probe (HTTP/JSON for trace and logs, raw gRPC for
 #   metrics), the P2 check, the gRPC health check, the HTTP /health check (logs
-#   and metrics), hysteresis (P3) and recovery. Asserts that every trip comes
-#   after a garbage collection (P5) and lists every collection with the memory
-#   it freed.
+#   and metrics), hysteresis (P3) and recovery. Asserts that every trip is
+#   followed by a garbage collection unless one ran in the 5 s before (P5) and
+#   lists every collection with the memory it freed.
 #
 # Three nodes (--nodes 3, trace source only):
 #   dp1, dp2 and dp3 forward to each other through the peer forwarder
@@ -73,8 +73,8 @@
 #               OUT_DIR (/tmp/cb-test-<source>-n<nodes>[-<scenario>])
 #
 # Output (OUT_DIR): samples.tsv (every 0.5 s), events.tsv (timed log events;
-#   gc rows carry the freed bytes, gc_backoff rows the next interval in seconds,
-#   averted rows the heap after a collection that kept the breaker closed),
+#   gc rows carry the freed bytes, gc_backoff rows the next interval in
+#   seconds),
 #   one log per node, and the generated node configuration under nodes/.
 #
 # Exit code: 0 if every assertion PASSED, 1 if any FAILED, >1 on setup error.
@@ -710,10 +710,9 @@ phase_extract_events() {
             printf '%s\t%s\t%s\n' "$(awk -v a="$e" -v b="$T0" 'BEGIN{printf "%.2f", a-b}')" "$label" "$(event_value "$line")"
         done
     done <<EOF >> "$OUT_DIR/events.tsv"
+${NODES[$((NODE_COUNT - 1))]}.log|open|tripped and open
 ${NODES[$((NODE_COUNT - 1))]}.log|gc|Circuit breaker requested garbage collection
 ${NODES[$((NODE_COUNT - 1))]}.log|gc_backoff|Circuit breaker remains open after garbage collection
-${NODES[$((NODE_COUNT - 1))]}.log|averted|Circuit breaker did not trip
-${NODES[$((NODE_COUNT - 1))]}.log|open|tripped and open
 ${NODES[$((NODE_COUNT - 1))]}.log|closed|Circuit breaker closed
 ${NODES[$((NODE_COUNT - 1))]}.log|p4_reject|Rejecting peer forwarder request
 dp1.log|queue_full|Failed to add [0-9]+ records to the batching queue
@@ -729,30 +728,30 @@ EOF
 # =============================================================================
 
 # $1 node, $2 number of trips. Lists the garbage collections the breaker
-# requested (P5) and asserts that every trip came at most 5 s (plus one check
-# interval) after a requested garbage collection: the breaker collects before
-# it opens, unless it collected within the last 5 s.
+# requested (P5) and asserts that every trip was followed by a garbage
+# collection in the same check, unless the breaker had requested one in the
+# 5 s (plus one check interval) before the trip.
 report_garbage_collections() {
-    local node="$1" trips="$2" ev="$OUT_DIR/events.tsv" gcs before_trip averted backoffs freed late
-    read -r gcs before_trip averted backoffs freed late < <(awk -F'\t' '
-        $2=="gc"         { gcs++; freed += $3; last_gc = $1; pending = 1 }
-        $2=="averted"    { averted++; pending = 0 }
-        $2=="gc_backoff" { backoffs++; pending = 0 }
-        $2=="open"       { if (pending) before_trip++; pending = 0
-                           if (last_gc == "" || $1 - last_gc > 5.6) late++ }
-        $2=="closed"     { pending = 0 }
-        END { printf "%d %d %d %d %d %d\n", gcs, before_trip, averted, backoffs, freed, late }' "$ev")
-    log "P5: $node requested $gcs garbage collection(s): $before_trip before a trip, $averted averted a trip, $(( gcs - before_trip - averted )) while open ($backoffs followed by a backoff); freed $(mib "$freed") MiB in total"
+    local node="$1" trips="$2" ev="$OUT_DIR/events.tsv" gcs after_trip averted backoffs freed late
+    read -r gcs after_trip averted backoffs freed late < <(awk -F'\t' '
+        $2=="open"       { if (awaiting) late++
+                           awaiting = (last_gc == "" || $1 - last_gc > 5.6); trip_gc = 0 }
+        $2=="gc"         { gcs++; freed += $3; last_gc = $1
+                           trip_gc = awaiting; if (awaiting) after_trip++; awaiting = 0 }
+        $2=="gc_backoff" { if (!trip_gc) backoffs++; trip_gc = 0 }
+        $2=="closed"     { if (trip_gc) averted++; if (awaiting) late++; awaiting = 0; trip_gc = 0 }
+        END { if (awaiting) late++
+              printf "%d %d %d %d %d %d\n", gcs, after_trip, averted, backoffs, freed, late }' "$ev")
+    log "P5: $node requested $gcs garbage collection(s): $after_trip right after a trip ($averted of them closed the breaker again), $(( gcs - after_trip )) while open ($backoffs followed by a backoff); freed $(mib "$freed") MiB in total"
     awk -F'\t' '
         $2=="open"       { printf "    t=%7.2fs  breaker opened\n", $1 }
         $2=="gc"         { printf "    t=%7.2fs  garbage collection freed %.1f MiB\n", $1, $3 / 1048576 }
-        $2=="averted"    { printf "    t=%7.2fs  below usage after garbage collection, breaker stayed closed\n", $1 }
         $2=="gc_backoff" { printf "    t=%7.2fs  still above close threshold, next garbage collection in %d s\n", $1, $3 }
         $2=="closed"     { printf "    t=%7.2fs  breaker closed\n", $1 }' "$ev"
     if (( late == 0 )); then
-        pass "P5: every trip came after a garbage collection ($trips trip(s), $before_trip directly after one)."
+        pass "P5: every trip was followed by a garbage collection or came within 5 s of one ($trips trip(s), $after_trip followed by one)."
     else
-        fail "P5: $late of $trips trip(s) came without a garbage collection in the 5 s before."
+        fail "P5: $late of $trips trip(s) had no garbage collection, neither right after the trip nor in the 5 s before."
     fi
 }
 

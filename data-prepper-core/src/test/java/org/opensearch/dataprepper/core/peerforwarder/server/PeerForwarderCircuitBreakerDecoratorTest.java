@@ -22,10 +22,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.retry.RetryDelayCalculator;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -39,8 +44,13 @@ class PeerForwarderCircuitBreakerDecoratorTest {
     private AtomicInteger innerServiceCalls;
 
     @Test
-    void newDecorator_throws_if_circuitBreaker_is_null() {
+    void newDecorator_throws_if_an_argument_is_null() {
+        final RetryDelayCalculator retryDelayCalculator =
+                new RetryDelayCalculator(RetryDelayCalculator.DEFAULT_MINIMUM_DELAY, RetryDelayCalculator.DEFAULT_MAXIMUM_DELAY);
+
         assertThrows(NullPointerException.class, () -> PeerForwarderCircuitBreakerDecorator.newDecorator(null));
+        assertThrows(NullPointerException.class, () -> PeerForwarderCircuitBreakerDecorator.newDecorator(null, retryDelayCalculator));
+        assertThrows(NullPointerException.class, () -> PeerForwarderCircuitBreakerDecorator.newDecorator(circuitBreaker, null));
     }
 
     @Test
@@ -50,7 +60,7 @@ class PeerForwarderCircuitBreakerDecoratorTest {
         final AggregatedHttpResponse response = serveRequest();
 
         assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
-        assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo(PeerForwarderCircuitBreakerDecorator.RETRY_AFTER_SECONDS));
+        assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo("1"));
         assertThat(response.contentUtf8(), equalTo(PeerForwarderCircuitBreakerDecorator.REJECTION_MESSAGE));
         assertThat(innerServiceCalls.get(), equalTo(0));
     }
@@ -65,13 +75,35 @@ class PeerForwarderCircuitBreakerDecoratorTest {
         assertThat(innerServiceCalls.get(), equalTo(1));
     }
 
+    @Test
+    void serve_increases_retry_after_on_consecutive_rejections_up_to_the_maximum_delay() throws Exception {
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final HttpService decorated = PeerForwarderCircuitBreakerDecorator.newDecorator(circuitBreaker,
+                new RetryDelayCalculator(Duration.ofSeconds(1), Duration.ofSeconds(4))).apply(countingService());
+
+        final List<String> retryAfterValues = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            retryAfterValues.add(serveRequest(decorated).headers().get(HttpHeaderNames.RETRY_AFTER));
+        }
+
+        assertThat(retryAfterValues, contains("1", "1", "2", "4", "4"));
+        assertThat(innerServiceCalls.get(), equalTo(0));
+    }
+
     private AggregatedHttpResponse serveRequest() throws Exception {
+        final HttpService decorated = PeerForwarderCircuitBreakerDecorator.newDecorator(circuitBreaker).apply(countingService());
+        return serveRequest(decorated);
+    }
+
+    private HttpService countingService() {
         innerServiceCalls = new AtomicInteger();
-        final HttpService innerService = (ctx, request) -> {
+        return (ctx, request) -> {
             innerServiceCalls.incrementAndGet();
             return HttpResponse.of(HttpStatus.OK);
         };
-        final HttpService decorated = PeerForwarderCircuitBreakerDecorator.newDecorator(circuitBreaker).apply(innerService);
+    }
+
+    private static AggregatedHttpResponse serveRequest(final HttpService decorated) throws Exception {
         final HttpRequest request = HttpRequest.of(HttpMethod.POST, "/");
 
         return decorated.serve(ServiceRequestContext.of(request), request).aggregate().join();

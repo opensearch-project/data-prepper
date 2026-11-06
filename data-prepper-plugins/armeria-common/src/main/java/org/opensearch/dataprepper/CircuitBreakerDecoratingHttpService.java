@@ -23,6 +23,7 @@ import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.SimpleDecoratingHttpService;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.retry.RetryDelayCalculator;
 
 import java.time.Duration;
 import java.util.Base64;
@@ -180,8 +181,7 @@ public final class CircuitBreakerDecoratingHttpService extends SimpleDecoratingH
     }
 
     private static String retryAfterSeconds(final RetryInfo retryInfo) {
-        final com.google.protobuf.Duration delay = retryInfo.getRetryDelay();
-        final long seconds = delay.getSeconds() + (delay.getNanos() > 0 ? 1 : 0);
-        return String.valueOf(Math.max(1, seconds));
+        final Duration delay = Duration.ofSeconds(retryInfo.getRetryDelay().getSeconds(), retryInfo.getRetryDelay().getNanos());
+        return String.valueOf(RetryDelayCalculator.toRetryAfterSeconds(delay));
     }
 }

@@ -20,6 +20,7 @@ import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.SimpleDecoratingHttpService;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.retry.RetryDelayCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,25 +32,37 @@ import java.util.function.Function;
  * with HTTP 429 (Too Many Requests) and a {@code Retry-After} header while the circuit breaker is
  * open, before the request body is read or parsed.
  * <p>
+ * The {@code Retry-After} value comes from a {@link RetryDelayCalculator}: it starts at the minimum
+ * delay and doubles on consecutive rejections up to the maximum delay, rounded up to whole seconds.
+ * <p>
  * Register it as a server-level decorator so it runs before the peer forwarder service.
  */
 class PeerForwarderCircuitBreakerDecorator extends SimpleDecoratingHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderCircuitBreakerDecorator.class);
 
     static final String REJECTION_MESSAGE = "Circuit breaker is open. Request rejected before reading the body.";
-    static final String RETRY_AFTER_SECONDS = "1";
 
     private final CircuitBreaker circuitBreaker;
+    private final RetryDelayCalculator retryDelayCalculator;
 
     private PeerForwarderCircuitBreakerDecorator(final HttpService delegate,
-                                                final CircuitBreaker circuitBreaker) {
+                                                final CircuitBreaker circuitBreaker,
+                                                final RetryDelayCalculator retryDelayCalculator) {
         super(delegate);
         this.circuitBreaker = circuitBreaker;
+        this.retryDelayCalculator = retryDelayCalculator;
     }
 
     static Function<? super HttpService, ? extends HttpService> newDecorator(final CircuitBreaker circuitBreaker) {
+        return newDecorator(circuitBreaker, new RetryDelayCalculator(
+                RetryDelayCalculator.DEFAULT_MINIMUM_DELAY, RetryDelayCalculator.DEFAULT_MAXIMUM_DELAY));
+    }
+
+    static Function<? super HttpService, ? extends HttpService> newDecorator(final CircuitBreaker circuitBreaker,
+                                                                             final RetryDelayCalculator retryDelayCalculator) {
         Objects.requireNonNull(circuitBreaker, "circuitBreaker must not be null");
-        return service -> new PeerForwarderCircuitBreakerDecorator(service, circuitBreaker);
+        Objects.requireNonNull(retryDelayCalculator, "retryDelayCalculator must not be null");
+        return service -> new PeerForwarderCircuitBreakerDecorator(service, circuitBreaker, retryDelayCalculator);
     }
 
     @Override
@@ -58,7 +71,7 @@ class PeerForwarderCircuitBreakerDecorator extends SimpleDecoratingHttpService {
             LOG.debug("Rejecting peer forwarder request: circuit breaker is open.");
             final ResponseHeaders headers = ResponseHeaders.builder(HttpStatus.TOO_MANY_REQUESTS)
                     .contentType(MediaType.PLAIN_TEXT_UTF_8)
-                    .add(HttpHeaderNames.RETRY_AFTER, RETRY_AFTER_SECONDS)
+                    .add(HttpHeaderNames.RETRY_AFTER, String.valueOf(RetryDelayCalculator.toRetryAfterSeconds(retryDelayCalculator.nextDelay())))
                     .build();
             return HttpResponse.of(headers, HttpData.ofUtf8(REJECTION_MESSAGE));
         }
