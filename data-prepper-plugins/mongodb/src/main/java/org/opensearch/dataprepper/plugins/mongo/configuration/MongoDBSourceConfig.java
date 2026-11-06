@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.mongo.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -16,6 +17,7 @@ public class MongoDBSourceConfig {
     private static final String DEFAULT_READ_PREFERENCE = "primaryPreferred";
     private static final Boolean DEFAULT_DIRECT_CONNECT = true;
     private static final Duration DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
+    private static final Duration MAX_EMPTY_SCAN_DELAY = Duration.ofMinutes(30);
     @JsonProperty("host")
     private @NotNull String host;
     @JsonProperty("port")
@@ -68,6 +70,9 @@ public class MongoDBSourceConfig {
 
     @JsonProperty("scan_mode")
     private ScanMode scanMode = ScanMode.IDLE_OPTIMIZED;
+
+    @JsonProperty("empty_scan_delay")
+    private Duration emptyScanDelay = Duration.ZERO;
 
     public MongoDBSourceConfig() {
         this.readPreference = DEFAULT_READ_PREFERENCE;
@@ -152,6 +157,16 @@ public class MongoDBSourceConfig {
 
     public ScanMode getScanMode() {
         return this.scanMode;
+    }
+
+    public Duration getEmptyScanDelay() {
+        return emptyScanDelay != null ? emptyScanDelay : Duration.ZERO;
+    }
+
+    @AssertTrue(message = "empty_scan_delay must be between 0 seconds and 30 minutes")
+    boolean isEmptyScanDelayValid() {
+        final Duration delay = getEmptyScanDelay();
+        return !delay.isNegative() && delay.compareTo(MAX_EMPTY_SCAN_DELAY) <= 0;
     }
 
     public static class AuthenticationConfig {
