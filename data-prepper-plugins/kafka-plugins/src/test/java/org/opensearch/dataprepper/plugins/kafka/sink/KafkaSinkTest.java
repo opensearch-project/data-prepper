@@ -48,6 +48,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,6 +173,40 @@ public class KafkaSinkTest {
         objectUnderTest.doOutput(records);
         verify(objectUnderTest).doOutput(records);
 
+    }
+
+    @Test
+    public void doOutputFromAnotherThreadCompletesAfterEmptyRecords() throws InterruptedException {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.doOutput(Arrays.asList());
+
+        assertThat(doOutputCompletesOnAnotherThread(objectUnderTest, Arrays.asList(new Record(event))), equalTo(true));
+    }
+
+    @Test
+    public void doOutputFromAnotherThreadCompletesAfterSubmitFails() throws InterruptedException {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        when(executorService.submit(any(ProducerWorker.class)))
+                .thenThrow(new RuntimeException())
+                .thenReturn(futureTask);
+        final Collection records = Arrays.asList(new Record(event));
+        final KafkaSink objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
+
+        assertThat(doOutputCompletesOnAnotherThread(objectUnderTest, records), equalTo(true));
+    }
+
+    private boolean doOutputCompletesOnAnotherThread(final KafkaSink kafkaSink, final Collection records)
+            throws InterruptedException {
+        final Thread otherThread = new Thread(() -> kafkaSink.doOutput(records));
+        otherThread.setDaemon(true);
+        otherThread.start();
+        otherThread.join(TimeUnit.SECONDS.toMillis(5));
+        return !otherThread.isAlive();
     }
 
     @Test

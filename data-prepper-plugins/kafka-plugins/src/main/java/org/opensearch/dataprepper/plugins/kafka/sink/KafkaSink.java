@@ -116,10 +116,10 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doOutput(Collection<Record<Event>> records) {
-        reentrantLock.lock();
         if (records.isEmpty()) {
             return;
         }
+        reentrantLock.lock();
         try {
             // TODO: Looks like this call to prepareTopicAndSchema is unnecessary as it is 
             // done in createProducer().
@@ -133,8 +133,9 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         } catch (Exception e) {
             LOG.error("Failed to setup the Kafka sink Plugin.", e);
             throw new RuntimeException(e.getMessage());
+        } finally {
+            reentrantLock.unlock();
         }
-        reentrantLock.unlock();
     }
 
     private void prepareTopicAndSchema() {
