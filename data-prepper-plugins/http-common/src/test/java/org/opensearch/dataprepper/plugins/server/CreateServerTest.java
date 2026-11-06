@@ -3,24 +3,39 @@ package org.opensearch.dataprepper.plugins.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.rpc.RetryInfo;
+import com.google.rpc.Status;
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpHeaderNames;
+import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServiceRequestContext;
 
 import io.grpc.ServerInterceptor;
+import io.grpc.health.v1.HealthCheckRequest;
+import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.health.v1.HealthGrpc;
+import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.metric.Metric;
@@ -40,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -52,6 +68,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -88,6 +106,12 @@ public class CreateServerTest {
 
     @Mock
     private Certificate certificate;
+
+    @Mock
+    private CircuitBreaker circuitBreaker;
+
+    @Mock
+    private Counter requestsRejectedCounter;
 
     @Test
     void createGrpcServer_appliesKeepaliveSettingsWhenConfigured() throws JsonProcessingException {
@@ -208,6 +232,81 @@ public class CreateServerTest {
     }
 
     @Test
+    void createGRPCServer_with_open_circuit_breaker_rejects_grpc_requests_with_retry_delay_from_retry_info()
+            throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(false);
+
+        server.start().join();
+        try {
+            final RequestHeaders headers = RequestHeaders.builder(HttpMethod.POST, "/" + MetricsServiceGrpc.SERVICE_NAME + "/Export")
+                    .contentType(MediaType.parse("application/grpc"))
+                    .build();
+            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .execute(HttpRequest.of(headers))
+                    .aggregate()
+                    .join();
+
+            assertThat(response.headers().get("grpc-status"), equalTo("8"));
+            final Status status = Status.parseFrom(Base64.getDecoder().decode(response.headers().get("grpc-status-details-bin")));
+            assertThat(status.getDetails(0).unpack(RetryInfo.class).getRetryDelay().getSeconds(), equalTo(3L));
+            verify(requestsRejectedCounter).increment();
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
+    void createGRPCServer_with_open_circuit_breaker_rejects_http_requests_with_429_and_retry_after_from_retry_info()
+            throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(false);
+
+        server.start().join();
+        try {
+            final AggregatedHttpResponse response = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .post("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export", "{}")
+                    .aggregate()
+                    .join();
+
+            assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+            assertThat(response.headers().get(HttpHeaderNames.RETRY_AFTER), equalTo("3"));
+            verify(requestsRejectedCounter).increment();
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
+    void createGRPCServer_with_open_circuit_breaker_still_answers_grpc_and_http_health_checks() throws Exception {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+        final Server server = createGrpcServerWithCircuitBreaker(true);
+
+        server.start().join();
+        try {
+            final HealthGrpc.HealthBlockingStub healthClient = Clients.builder("gproto+http://127.0.0.1:" + server.activeLocalPort() + "/")
+                    .build(HealthGrpc.HealthBlockingStub.class);
+            final HealthCheckResponse grpcHealth = healthClient.check(HealthCheckRequest.getDefaultInstance());
+            final AggregatedHttpResponse httpHealth = WebClient.of("http://127.0.0.1:" + server.activeLocalPort())
+                    .get("/health")
+                    .aggregate()
+                    .join();
+
+            assertThat(grpcHealth.getStatus(), equalTo(HealthCheckResponse.ServingStatus.SERVING));
+            assertThat(httpHealth.status(), equalTo(HttpStatus.OK));
+            verify(circuitBreaker, never()).isOpen();
+            verify(requestsRejectedCounter, never()).increment();
+        } finally {
+            server.stop().join();
+        }
+    }
+
+    @Test
     void createHttpServerTest() throws IOException {
         final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
         final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
@@ -230,6 +329,26 @@ public class CreateServerTest {
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
         assertDoesNotThrow(() -> server.stop());
+    }
+
+    private Server createGrpcServerWithCircuitBreaker(final boolean healthCheck) throws JsonProcessingException {
+        final Map<String, Object> metadata = createGrpcMetadata(0, false, 10000, 10, 5, CompressionOption.NONE,
+                null);
+        metadata.put("healthCheck", healthCheck);
+        metadata.put("enableUnframedRequests", healthCheck);
+        metadata.put("retryInfo", Map.of(
+                "min_delay", "PT3S",
+                "max_delay", "PT5S"));
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME,
+                TEST_PIPELINE_NAME);
+        final Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
+        return createServer.createGRPCServer(
+                authenticationProvider,
+                getTestService(buffer),
+                certificateProvider,
+                MetricsServiceGrpc.getExportMethod(),
+                circuitBreaker);
     }
 
     private Map<String, Object> createGrpcMetadata(Integer port, Boolean ssl, Integer reqeustTimeoutInMillis,

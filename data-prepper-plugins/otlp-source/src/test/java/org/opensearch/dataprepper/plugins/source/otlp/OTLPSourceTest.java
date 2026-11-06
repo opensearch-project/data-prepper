@@ -46,6 +46,7 @@ import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthentication
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -843,6 +844,66 @@ class OTLPSourceTest {
                                 () -> logsClient.export(createExportLogsRequest()));
                 assertThat(logsActualException.getStatus(), notNullValue());
                 assertThat(logsActualException.getStatus().getCode(), equalTo(Status.Code.UNAUTHENTICATED));
+        }
+
+        @Test
+        void grpc_requests_are_rejected_with_resource_exhausted_while_circuit_breaker_is_open() {
+                final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+                when(circuitBreaker.isOpen()).thenReturn(true);
+                SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription,
+                                circuitBreaker);
+                SOURCE.start(buffer);
+
+                final TraceServiceGrpc.TraceServiceBlockingStub tracesClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+                final StatusRuntimeException tracesActualException = assertThrows(StatusRuntimeException.class,
+                                () -> tracesClient.export(createExportTraceRequest()));
+                assertThat(tracesActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                final MetricsServiceGrpc.MetricsServiceBlockingStub metricsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+                final StatusRuntimeException metricsActualException = assertThrows(StatusRuntimeException.class,
+                                () -> metricsClient.export(createExportMetricsRequest()));
+                assertThat(metricsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                final LogsServiceGrpc.LogsServiceBlockingStub logsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+                final StatusRuntimeException logsActualException = assertThrows(StatusRuntimeException.class,
+                                () -> logsClient.export(createExportLogsRequest()));
+                assertThat(logsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                verifyNoInteractions(buffer);
+        }
+
+        @Test
+        void requests_are_rejected_by_the_service_when_circuit_breaker_opens_after_the_decorator_check() {
+                final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+                // Each request checks the breaker twice: closed for the decorator, open for the service.
+                when(circuitBreaker.isOpen()).thenReturn(false, true, false, true, false, true);
+                SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription,
+                                circuitBreaker);
+                SOURCE.start(buffer);
+
+                final TraceServiceGrpc.TraceServiceBlockingStub tracesClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+                final StatusRuntimeException tracesActualException = assertThrows(StatusRuntimeException.class,
+                                () -> tracesClient.export(createExportTraceRequest()));
+                assertThat(tracesActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                final MetricsServiceGrpc.MetricsServiceBlockingStub metricsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+                final StatusRuntimeException metricsActualException = assertThrows(StatusRuntimeException.class,
+                                () -> metricsClient.export(createExportMetricsRequest()));
+                assertThat(metricsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                final LogsServiceGrpc.LogsServiceBlockingStub logsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+                final StatusRuntimeException logsActualException = assertThrows(StatusRuntimeException.class,
+                                () -> logsClient.export(createExportLogsRequest()));
+                assertThat(logsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
+
+                verify(circuitBreaker, times(6)).isOpen();
+                verifyNoInteractions(buffer);
         }
 
         @Test

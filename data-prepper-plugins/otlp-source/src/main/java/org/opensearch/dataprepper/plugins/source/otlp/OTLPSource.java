@@ -11,6 +11,7 @@ import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
@@ -52,15 +53,24 @@ public class OTLPSource implements Source<Record<Object>> {
   private final PluginMetrics pluginMetrics;
   private final GrpcAuthenticationProvider authenticationProvider;
   private final CertificateProviderFactory certificateProviderFactory;
+  private final CircuitBreaker circuitBreaker;
   private Server server;
 
   @DataPrepperPluginConstructor
   public OTLPSource(final OTLPSourceConfig otlpSourceConfig,
       final PluginMetrics pluginMetrics,
       final PluginFactory pluginFactory,
-      final PipelineDescription pipelineDescription) {
+      final PipelineDescription pipelineDescription,
+      final CircuitBreaker circuitBreaker) {
     this(otlpSourceConfig, pluginMetrics, pluginFactory,
-        new CertificateProviderFactory(otlpSourceConfig), pipelineDescription);
+        new CertificateProviderFactory(otlpSourceConfig), pipelineDescription, circuitBreaker);
+  }
+
+  public OTLPSource(final OTLPSourceConfig otlpSourceConfig,
+      final PluginMetrics pluginMetrics,
+      final PluginFactory pluginFactory,
+      final PipelineDescription pipelineDescription) {
+    this(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription, null);
   }
 
   // accessible only in the same package for unit test
@@ -69,12 +79,23 @@ public class OTLPSource implements Source<Record<Object>> {
       final PluginFactory pluginFactory,
       final CertificateProviderFactory certificateProviderFactory,
       final PipelineDescription pipelineDescription) {
+    this(otlpSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
+  }
+
+  // accessible only in the same package for unit test
+  OTLPSource(final OTLPSourceConfig otlpSourceConfig,
+      final PluginMetrics pluginMetrics,
+      final PluginFactory pluginFactory,
+      final CertificateProviderFactory certificateProviderFactory,
+      final PipelineDescription pipelineDescription,
+      final CircuitBreaker circuitBreaker) {
     otlpSourceConfig.validateAndInitializeCertAndKeyFileInS3();
     this.otlpSourceConfig = otlpSourceConfig;
     this.pluginMetrics = pluginMetrics;
     this.certificateProviderFactory = certificateProviderFactory;
     this.pipelineName = pipelineDescription.getPipelineName();
     this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+    this.circuitBreaker = circuitBreaker;
   }
 
   @Override
@@ -90,17 +111,17 @@ public class OTLPSource implements Source<Record<Object>> {
       final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getLogsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          buffer, pluginMetrics, "otlp.logs");
+          buffer, circuitBreaker, pluginMetrics, "otlp.logs");
 
       final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getMetricsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          metricBuffer, null, pluginMetrics, "otlp.metrics");
+          metricBuffer, circuitBreaker, null, pluginMetrics, "otlp.metrics");
 
       final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getTracesOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          buffer, pluginMetrics, "otlp.traces");
+          buffer, circuitBreaker, pluginMetrics, "otlp.traces");
 
       ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(otlpSourceConfig);
       CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, "otlp", pipelineName);
@@ -117,7 +138,7 @@ public class OTLPSource implements Source<Record<Object>> {
       serviceConfigs.add(new GRPCServiceConfig<>(oTelTraceGrpcService, otlpSourceConfig.getTracesPath(),
           TraceServiceGrpc.getExportMethod()));
 
-      server = createServer.createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider);
+      server = createServer.createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider, circuitBreaker);
 
       pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
     }
