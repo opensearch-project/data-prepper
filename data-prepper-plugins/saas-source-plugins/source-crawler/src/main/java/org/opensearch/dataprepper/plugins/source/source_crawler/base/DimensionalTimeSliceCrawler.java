@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import javax.inject.Named;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_PARTITION_CREATION_WAIT;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
 /**
@@ -41,19 +43,47 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
     private static final String WORKER_PARTITION_WAIT_TIME = "workerPartitionWaitTime";
     private static final String WORKER_PARTITION_PROCESS_LATENCY = "workerPartitionProcessLatency";
     private static final Duration HOUR_DURATION = Duration.ofHours(1);
-    static final Duration WAIT_BEFORE_PARTITION_CREATION = Duration.ofMinutes(5);
+    static final Duration MAX_PARTITION_CREATION_WAIT = Duration.ofMinutes(60);
 
     private final CrawlerClient client;
     private final Counter partitionsCreatedCounter;
     private final Timer partitionWaitTimeTimer;
     private final Timer partitionProcessLatencyTimer;
     private final AtomicLong localPartitionCounter = new AtomicLong(0);
+    private final Duration partitionCreationWait;
     private List<String> dimensionTypes;
     private static final String LAST_UPDATED_KEY = "last_updated|";
 
+    /**
+     * Creates a crawler that uses the partition creation wait from the source configuration.
+     *
+     * @param client        client used to execute partitions
+     * @param pluginMetrics plugin metrics
+     * @param sourceConfig  source configuration providing {@link CrawlerSourceConfig#getPartitionCreationWait()}
+     */
+    @Inject
+    public DimensionalTimeSliceCrawler(CrawlerClient client,
+                                       PluginMetrics pluginMetrics,
+                                       CrawlerSourceConfig sourceConfig) {
+        this(client, pluginMetrics, sourceConfig.getPartitionCreationWait());
+    }
+
+    /**
+     * Creates a crawler that uses {@link CrawlerSourceConfig#DEFAULT_PARTITION_CREATION_WAIT}.
+     *
+     * @param client        client used to execute partitions
+     * @param pluginMetrics plugin metrics
+     */
     public DimensionalTimeSliceCrawler(CrawlerClient client,
                                        PluginMetrics pluginMetrics) {
+        this(client, pluginMetrics, DEFAULT_PARTITION_CREATION_WAIT);
+    }
+
+    DimensionalTimeSliceCrawler(CrawlerClient client,
+                                PluginMetrics pluginMetrics,
+                                Duration partitionCreationWait) {
         this.client = client;
+        this.partitionCreationWait = validatePartitionCreationWait(partitionCreationWait);
         this.partitionsCreatedCounter = pluginMetrics.counter(DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED);
         this.partitionWaitTimeTimer = pluginMetrics.timer(WORKER_PARTITION_WAIT_TIME);
         this.partitionProcessLatencyTimer = pluginMetrics.timer(WORKER_PARTITION_PROCESS_LATENCY);
@@ -117,7 +147,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
         Instant initialTime = leaderProgressState.getLastPollTime();
-        Instant latestModifiedTime = initialTime.minus(WAIT_BEFORE_PARTITION_CREATION);
+        Instant latestModifiedTime = initialTime.minus(partitionCreationWait);
         Instant remainingDuration = leaderProgressState.getRemainingDuration();
         long remainingMinutes = Duration.between(remainingDuration, initialTime).toMinutes();
 
@@ -126,8 +156,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
             log.info("Creating partition for sub-hour historical pull: {} minutes", remainingMinutes);
             Instant startTime = initialTime.minus(Duration.ofMinutes(remainingMinutes));
             Instant endTime;
-            if (remainingMinutes <= WAIT_BEFORE_PARTITION_CREATION.toMinutes()) {
-                // For very small ranges, skip the 5-minute delay to create a valid partition
+            if (remainingMinutes <= partitionCreationWait.toMinutes()) {
+                // For very small ranges, skip the partition creation wait to create a valid partition
                 endTime = initialTime;
             } else {
                 endTime = latestModifiedTime;
@@ -176,7 +206,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
      */
     private Instant createPartitionsForIncrementalSync(LeaderPartition leaderPartition,
                                                     EnhancedSourceCoordinator coordinator) {
-        Instant latestModifiedTime = Instant.now().minus(WAIT_BEFORE_PARTITION_CREATION);
+        Instant latestModifiedTime = Instant.now().minus(partitionCreationWait);
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         Instant lastPollTime = leaderProgressState.getLastPollTime();
 
@@ -189,6 +219,18 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         }
 
         return lastPollTime;
+    }
+
+    private Duration validatePartitionCreationWait(Duration partitionCreationWait) {
+        Objects.requireNonNull(partitionCreationWait, "partitionCreationWait must not be null");
+        if (partitionCreationWait.isNegative()) {
+            throw new IllegalArgumentException("partitionCreationWait must not be negative, but was " + partitionCreationWait);
+        }
+        if (partitionCreationWait.compareTo(MAX_PARTITION_CREATION_WAIT) > 0) {
+            throw new IllegalArgumentException("partitionCreationWait must not exceed " + MAX_PARTITION_CREATION_WAIT
+                    + ", but was " + partitionCreationWait);
+        }
+        return partitionCreationWait;
     }
 
     void createWorkerPartitionsForDimensionTypes(Instant startTime, Instant endTime, EnhancedSourceCoordinator coordinator) {

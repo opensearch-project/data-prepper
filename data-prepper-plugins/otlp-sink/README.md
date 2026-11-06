@@ -180,6 +180,7 @@ logs_pipeline:
 | `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId.       |
 | `additional_headers`       | `Map`    | No       | `{}`                  | Custom HTTP headers added to every outgoing request. **Note:** These headers are added after SigV4 signing and are not included in the signature. |
 | `service_name`             | `String` | No       | `xray`                | AWS service name used for SigV4 signing. Override when sending to non-X-Ray endpoints (e.g., `logs`, `osis`). |
+| `drop_transaction_search_errors` | `boolean` | No | `false` | When `true`, spans rejected because CloudWatch Transaction Search is disabled are dropped and acknowledged as successful, so the source does not redeliver them. These spans are not retried. |
 
 **Additional Notes:**
 

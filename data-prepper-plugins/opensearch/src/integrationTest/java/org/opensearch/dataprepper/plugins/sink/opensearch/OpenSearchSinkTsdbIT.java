@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.Quantile;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
@@ -113,6 +114,9 @@ class OpenSearchSinkTsdbIT {
     private PluginSetting pluginSetting;
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private PluginFactory pluginFactory;
 
     @BeforeEach
     void setup() {
@@ -426,7 +430,7 @@ class OpenSearchSinkTsdbIT {
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         final OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier,
-                pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }

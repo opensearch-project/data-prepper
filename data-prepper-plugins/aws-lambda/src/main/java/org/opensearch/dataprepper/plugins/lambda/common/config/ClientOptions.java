@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import lombok.Getter;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Set;
 
 @Getter
 public class ClientOptions {
@@ -47,5 +49,9 @@ public class ClientOptions {
     @JsonPropertyDescription("Maximum backoff time for exponential backoff")
     @JsonProperty("max_backoff")
     private Duration maxBackoff = DEFAULT_MAX_BACKOFF;
+
+    @JsonPropertyDescription("HTTP status codes to retry in addition to retryable exceptions. Set only for idempotent functions")
+    @JsonProperty("retryable_status_codes")
+    private Set<Integer> retryableStatusCodes = Collections.emptySet();
 
 }

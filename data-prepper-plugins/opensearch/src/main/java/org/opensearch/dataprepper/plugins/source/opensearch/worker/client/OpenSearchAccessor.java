@@ -6,9 +6,11 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.FieldSort;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch._types.ScoreSort;
+import org.opensearch.client.opensearch._types.ShardStatistics;
 import org.opensearch.client.opensearch._types.SortOptions;
 import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch._types.Time;
@@ -42,6 +44,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchShardStatistics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SortingOptions;
 import org.slf4j.Logger;
@@ -50,12 +53,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -186,6 +191,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
                 .withCreationTime(Instant.now().toEpochMilli())
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                .withTotalHits(extractTotalHits(searchResponse))
                 .build();
     }
 
@@ -207,6 +214,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
         return SearchScrollResponse.builder()
                 .withScrollId(searchResponse.scrollId())
                 .withDocuments(getDocumentsFromResponse(searchResponse))
+                .withShardStatistics(toShardStatistics(searchResponse.shards()))
                 .build();
     }
 
@@ -284,6 +292,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
             return SearchWithSearchAfterResults.builder()
                     .withDocuments(documents)
                     .withNextSearchAfter(nextSearchAfter)
+                    .withShardStatistics(toShardStatistics(searchResponse.shards()))
+                    .withTotalHits(extractTotalHits(searchResponse))
                     .build();
         } catch (final OpenSearchException e) {
             LOG.error(e.getMessage());
@@ -298,14 +308,44 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory<
 
     private List<Event> getDocumentsFromResponse(final SearchResponse<ObjectNode> searchResponse) {
         return searchResponse.hits().hits().stream()
-                .map(hit -> JacksonEvent.builder()
-                        .withData(hit.source())
-                        .withEventMetadataAttributes(
-                                Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(),
-                                        INDEX_METADATA_ATTRIBUTE_NAME, hit.index(),
-                                        DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version()))
-                        .withEventType(EventType.DOCUMENT.toString()).build())
+                .map(hit -> {
+                    final Map<String, Object> eventMetadataAttributes = new HashMap<>();
+                    eventMetadataAttributes.put(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id());
+                    eventMetadataAttributes.put(INDEX_METADATA_ATTRIBUTE_NAME, hit.index());
+                    eventMetadataAttributes.put(DOCUMENT_VERSION_METADATA_ATTRIBUTE_NAME, hit.version());
+                    if (Objects.nonNull(hit.routing())) {
+                        eventMetadataAttributes.put(DOCUMENT_ROUTING_METADATA_ATTRIBUTE_NAME, hit.routing());
+                    }
+                    return JacksonEvent.builder()
+                            .withData(hit.source())
+                            .withEventMetadataAttributes(eventMetadataAttributes)
+                            .withEventType(EventType.DOCUMENT.toString()).build();
+                })
                 .collect(Collectors.toList());
+    }
+
+    private SearchShardStatistics toShardStatistics(final ShardStatistics shards) {
+        if (shards == null) {
+            return SearchShardStatistics.empty();
+        }
+        final List<String[]> failures = shards.failures() == null ? null :
+                shards.failures().stream()
+                        .map(f -> {
+                            final ErrorCause reason = f == null ? null : f.reason();
+                            return new String[]{
+                                    reason != null ? reason.type() : null,
+                                    reason != null ? reason.reason() : null
+                            };
+                        })
+                        .collect(Collectors.toList());
+        return SearchShardStatistics.fromShardCounts(shards.total(), shards.successful(), shards.failed(), shards.skipped(), failures);
+    }
+
+    private Long extractTotalHits(final SearchResponse<ObjectNode> searchResponse) {
+        if (searchResponse == null || searchResponse.hits() == null || searchResponse.hits().total() == null) {
+            return null;
+        }
+        return searchResponse.hits().total().value();
     }
 
     private List<SortOptions> buildSortOptions(final List<SortingOptions> sortingOptions) {

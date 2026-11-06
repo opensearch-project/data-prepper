@@ -41,11 +41,29 @@ public class AwsAuthenticationDecorator implements AuthenticationDecorator {
     private final String serviceName;
 
     public AwsAuthenticationDecorator(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier,
-                                      @Nonnull final AwsConfig awsConfig,
+                                      final AwsConfig awsConfig,
                                       @Nonnull final String serviceName) {
-        this.region = awsConfig.getAwsRegion();
         this.serviceName = serviceName;
-        this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig));
+        if (awsConfig != null && awsConfig.getConfiguration() != null) {
+            this.region = resolveRegion(awsConfig.getAwsRegion(), awsCredentialsSupplier);
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(awsConfig.getConfiguration());
+        } else if (awsConfig != null) {
+            this.region = awsConfig.getAwsRegion();
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig));
+        } else {
+            this.region = awsCredentialsSupplier.getDefaultRegion().orElse(null);
+            this.credentialsProvider = awsCredentialsSupplier.getProvider(
+                    AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider());
+        }
+    }
+
+    /**
+     * Resolves region using: 1) use the region provided 2) if no region provided, use the default
+     */
+    private static Region resolveRegion(final Region awsRegion, final AwsCredentialsSupplier awsCredentialsSupplier) {
+        if (awsRegion != null)
+            return awsRegion;
+        return awsCredentialsSupplier.getDefaultRegion().orElseGet(null);
     }
 
     private static AwsCredentialsOptions convertToCredentialOptions(final AwsConfig awsConfig) {

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 
 import java.time.Duration;
@@ -53,6 +54,12 @@ public class OTelApmServiceMapProcessorConfig {
             "'seconds' (default) truncates to second boundaries. 'minutes' truncates to minute boundaries.")
     private MetricTimestampGranularity metricTimestampGranularity = MetricTimestampGranularity.SECONDS;
 
+    @Valid
+    @JsonProperty("dependency_nodes")
+    @JsonPropertyDescription("Controls synthesis of typed database, external and messaging dependency nodes. " +
+            "Enabled by default.")
+    private DependencyNodesConfig dependencyNodes = new DependencyNodesConfig();
+
     public Duration getWindowDuration() {
         return windowDuration;
     }
@@ -71,5 +78,9 @@ public class OTelApmServiceMapProcessorConfig {
 
     public MetricTimestampGranularity getMetricTimestampGranularity() {
         return metricTimestampGranularity;
+    }
+
+    public DependencyNodesConfig getDependencyNodes() {
+        return dependencyNodes != null ? dependencyNodes : new DependencyNodesConfig();
     }
 }

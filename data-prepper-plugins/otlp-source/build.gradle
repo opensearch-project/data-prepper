@@ -18,7 +18,6 @@ dependencies {
     implementation project(':data-prepper-plugins:http-common')
     implementation libs.commons.codec
     implementation project(':data-prepper-plugins:armeria-common')
-    implementation libs.opentelemetry.proto
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:auth'
@@ -33,7 +32,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix
-    implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    implementation libs.hibernate.validator
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 

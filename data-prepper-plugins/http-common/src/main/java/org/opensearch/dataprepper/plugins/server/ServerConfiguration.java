@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
+import java.time.Duration;
+
 public class ServerConfiguration {
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
@@ -87,6 +89,14 @@ public class ServerConfiguration {
     @Getter
     @Setter
     private int bufferTimeoutInMillis;
+
+    @Getter
+    @Setter
+    private Duration maxConnectionAge;
+
+    @Getter
+    @Setter
+    private Duration connectionDrainDuration;
 
     public boolean hasHealthCheck() {
         return healthCheck;

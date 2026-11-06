@@ -17,6 +17,12 @@ public interface CrawlerSourceConfig {
     Duration DEFAULT_MAX_DURATION_TO_GIVEUP_RETRY = Duration.ofDays(30);
     Duration DEFAULT_MAX_DURATION_TO_DELAY_RETRY = Duration.ofDays(1);
 
+    /*
+     * Delay between the current time and the end of the newest time window a crawler creates partitions for.
+     * Gives the vendor API time to make late-arriving records visible before the window is queried.
+     */
+    Duration DEFAULT_PARTITION_CREATION_WAIT = Duration.ofMinutes(5);
+
     /**
      * Number of worker threads enabled for this source
      *
@@ -55,6 +61,18 @@ public interface CrawlerSourceConfig {
      */
     default Duration getLeaseInterval() {
         return Duration.ofMinutes(1);
+    }
+
+    /**
+     * Gets how far behind the current time partition creation lags. A time window is only
+     * crawled once its end is at least this far in the past. Only used by
+     * {@link DimensionalTimeSliceCrawler}, which accepts values from zero to 60 minutes.
+     * Defaults to 5 minutes if not overridden.
+     *
+     * @return Duration to wait before creating a partition for a time window
+     */
+    default Duration getPartitionCreationWait() {
+        return DEFAULT_PARTITION_CREATION_WAIT;
     }
 
     /**

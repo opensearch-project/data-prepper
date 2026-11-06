@@ -145,6 +145,27 @@ public class ParseXmlProcessorTest {
     }
 
     @Test
+    void test_when_topLevelArray_then_tagsAsFailure() {
+
+        final String tagOnFailure = UUID.randomUUID().toString();
+        when(processorConfig.getTagsOnFailure()).thenReturn(List.of(tagOnFailure));
+        when(handleFailedEventsOption.shouldLog()).thenReturn(true);
+
+        parseXmlProcessor = createObjectUnderTest();
+
+        // XML has no notion of a top-level array. This array-shaped input is not valid XML,
+        // so parse_xml must continue to fail on it even after arrays are supported for JSON/ION.
+        final String serializedMessage = "[{\"type\":\"foo1\",\"value\":\"bar1\"},{\"type\":\"foo2\",\"value\":\"bar2\"}]";
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.get(processorConfig.getSource(), String.class), equalTo(serializedMessage));
+        assertThat(parsedEvent.getMetadata().hasTags(List.of(tagOnFailure)), equalTo(true));
+
+        verify(parseErrorsCounter).increment();
+        verifyNoInteractions(processingFailuresCounter);
+    }
+
+    @Test
     void test_when_object_mapper_throws_other_exception_tags_correctly() throws JsonProcessingException, NoSuchFieldException, IllegalAccessException {
 
         final String tagOnFailure = UUID.randomUUID().toString();

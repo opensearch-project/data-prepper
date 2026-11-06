@@ -161,6 +161,34 @@ public interface Event extends Serializable {
     void merge(Event other, Collection<String> keys);
 
     /**
+     * Merges a map of fields into this Event, optionally under a destination key, resolving
+     * conflicts according to the supplied {@link MergeSettings}.
+     *
+     * <h2>Behavior</h2>
+     * <ul>
+     *   <li><b>Root write</b> when {@code destination} is {@code null} or empty, entries are
+     *       written to the event root and merged per-field. There is no single destination key
+     *       whose existence can be checked, so the conflict strategy collapses to its
+     *       {@link FieldConflictStrategy#isOverwrite()} flag: overwrite strategies replace
+     *       conflicting root fields, non-overwrite strategies preserve them. In particular
+     *       {@code SKIP} does not skip the write at the root, it merges while preserving existing
+     *       fields.</li>
+     *   <li><b>Destination does not exist</b> the whole map is written as the destination value.</li>
+     *   <li><b>Destination exists</b> resolved by the configured {@link FieldConflictStrategy};
+     *       see that enum for the per-strategy outcomes.</li>
+     * </ul>
+     *
+     * <p>Keys are interpreted as JSON Pointer paths (the {@code /} separator), so nested
+     * destinations such as {@code base/child} are created automatically.</p>
+     *
+     * @param destination   the destination key (JSON Pointer path), or {@code null}/empty for the root
+     * @param values        the parsed fields to merge
+     * @param mergeSettings the settings controlling conflict resolution and key handling
+     * @since 2.17
+     */
+    void mergeFields(String destination, Map<String, Object> values, MergeSettings mergeSettings);
+
+    /**
      * Generates a serialized Json string of the entire Event
      *
      * @return Json string of the event

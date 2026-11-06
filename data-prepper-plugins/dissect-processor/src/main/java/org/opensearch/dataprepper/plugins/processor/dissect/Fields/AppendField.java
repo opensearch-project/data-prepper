@@ -12,7 +12,7 @@ package org.opensearch.dataprepper.plugins.processor.dissect.Fields;
 public class AppendField extends Field implements Comparable<AppendField> {
     private int index;
     public AppendField(String key) {
-        this.setKey(key);
+        super(key);
     }
 
     public void setIndex(int index){

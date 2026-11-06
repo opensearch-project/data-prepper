@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.joda.time.DateTime;
@@ -84,6 +85,7 @@ public class S3EventNotification {
     }
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class S3ObjectEntity {
 
     private final String key;

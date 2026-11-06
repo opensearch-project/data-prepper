@@ -44,7 +44,7 @@ public class PrometheusSinkBufferEntryTest {
     private PrometheusSinkBufferEntry prometheusSinkBufferEntry;
 
     PrometheusSinkBufferEntry createObjectUnderTest(Event event)throws Exception {
-        return new PrometheusSinkBufferEntry(event, true);
+        return new PrometheusSinkBufferEntry(event, true, null, null);
     }
 
     @ParameterizedTest

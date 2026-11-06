@@ -7,6 +7,32 @@
 # compatible open source license.
 #
 
+# This workflow builds and validates the release artifacts, publishes the GitHub
+# pre-release, and opens the changelog pull request.
+#
+# The OpenSearch project does not permit this repository's workflows to push
+# branches and open pull requests against itself. Instead, the changelog PR
+# branch is pushed to a fork and the PR is opened from that fork against this
+# repository. This requires two settings to be configured:
+#
+#   vars.RELEASE_FORK_REPOSITORY  - the fork the PR branch is pushed to, as
+#                                   'owner/repo'. It must be a real GitHub fork
+#                                   of this repository (same fork network), as
+#                                   cross-repository PRs are only allowed within
+#                                   a fork network.
+#   secrets.OPENSEARCH_CI_BOT_TOKEN    - a classic personal access token with the
+#                                   'public_repo' (or 'repo' for private
+#                                   repositories) and 'workflow' scopes. The
+#                                   action uses it to push the branch to the
+#                                   fork and to open the PR against this
+#                                   repository, so its owner must have write
+#                                   access to the fork. The 'workflow' scope is
+#                                   required because the pushed branch may modify
+#                                   files under .github/workflows; GitHub rejects
+#                                   such pushes from a token without it. A
+#                                   fine-grained token does not work here because
+#                                   the single token must act on two repositories.
+
 name: Release Artifacts
 
 on:
@@ -30,9 +56,60 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Verifies the release preconditions
+  # 1. The release tag must already exist. A maintainer requests the tag via an issue in the
+  #    opensearch-project/.github repository before running this workflow.
+  # 2. The fork settings used to open the changelog pull request must be set.
+  verify-preconditions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Data Prepper
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Get Version
+        run:  grep '^version=' gradle.properties >> $GITHUB_ENV
+      - name: Verify release tag exists
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ github.TOKEN }}
+          script: |
+            const tag = '${{ env.version }}';
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`
+              });
+              core.info(`Found tag ${tag}.`);
+            } catch (error) {
+              if (error.status === 404) {
+                core.setFailed(
+                  `Release tag '${tag}' does not exist. Request the tag by opening an issue in the ` +
+                  `opensearch-project/.github repository before running this workflow.`
+                );
+              } else {
+                throw error;
+              }
+            }
+      - name: Validate fork configuration
+        run: |
+          if [ -z "${{ vars.RELEASE_FORK_REPOSITORY }}" ]; then
+            echo "::error::The RELEASE_FORK_REPOSITORY variable is not set."
+            echo "Set it to the 'owner/repo' of a fork of this repository that the changelog PR branch will be pushed to."
+            exit 1
+          fi
+          if [ -z "${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}" ]; then
+            echo "::error::The OPENSEARCH_CI_BOT_TOKEN secret is not set."
+            echo "Set it to a token with write access to ${{ vars.RELEASE_FORK_REPOSITORY }} and permission to create pull requests against this repository."
+            exit 1
+          fi
+          echo "Changelog pull request branch will be pushed to fork: ${{ vars.RELEASE_FORK_REPOSITORY }}"
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    needs: verify-preconditions
 
     steps:
     - name: Set up JDK
@@ -41,7 +118,7 @@ jobs:
         java-version: 11
         distribution: temurin
     - name: Checkout Data Prepper
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
       with:
@@ -52,7 +129,7 @@ jobs:
       run: ./gradlew --parallel --max-workers 2 build
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
       with:
         role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
         aws-region: us-east-1
@@ -71,7 +148,7 @@ jobs:
 
     - name: Log into Amazon ECR Public
       id: login-ecr
-      uses: docker/login-action@v4
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
       with:
         registry: public.ecr.aws
       env:
@@ -90,7 +167,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
@@ -119,7 +196,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
@@ -144,7 +221,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
         id: get_version
         run: |
@@ -155,7 +232,7 @@ jobs:
         id: get_approvers
         run: |
           echo "approvers=$(cat .github/CODEOWNERS | grep @ | tr -d '* ' | sed 's/@/,/g' | sed 's/,//1')" >> $GITHUB_OUTPUT
-      - uses: trstringer/manual-approval@v1
+      - uses: trstringer/manual-approval@74d99dff7380e3e4b122d4ededcbca2b6ce59367 # v1
         with:
           secret: ${{ github.TOKEN }}
           approvers: ${{ steps.get_approvers.outputs.approvers }}
@@ -181,26 +258,15 @@ jobs:
           echo 'release_major_tag: ${{ github.event.inputs.release-major-tag }}' >> release-description.yaml
           echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
 
-      - name: Create tag
-        uses: actions/github-script@v6
+      - name: Publish pre-release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
-          github-token: ${{ github.TOKEN }}
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'refs/tags/${{ env.version }}',
-              sha: context.sha
-            })
-
-      - name: Draft release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
+          immutableCreate: false
+          generateReleaseNotes: false
           name: '${{ env.version }}'
-          tag_name: 'refs/tags/${{ env.version }}'
-          files: |
-            release-description.yaml
+          tag: '${{ env.version }}'
+          artifacts: 'release-description.yaml'
+          prerelease: true
 
   generate-changelog:
     runs-on: ubuntu-latest
@@ -208,7 +274,7 @@ jobs:
 
     steps:
       - name: Checkout Data Prepper
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -217,7 +283,7 @@ jobs:
         run: git fetch origin --tags
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
 
@@ -227,17 +293,11 @@ jobs:
       - name: Generate Changelog
         run: release/script/changelog/generate-changelog.sh ${{ needs.promote.outputs.version }}
 
-      - name: GitHub App token
-        id: github_app_token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
-          token: ${{ steps.github_app_token.outputs.token }}
+          token: ${{ secrets.OPENSEARCH_CI_BOT_TOKEN }}
+          push-to-fork: ${{ vars.RELEASE_FORK_REPOSITORY }}
           add-paths: |
             release/release-notes/data-prepper.change-log-${{ needs.promote.outputs.version }}.md
           commit-message: 'Add Data Prepper ${{ needs.promote.outputs.version }} changelog.'

@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
@@ -113,6 +114,9 @@ public class OpenSearchSinkTest {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private PluginFactory pluginFactory;
+
     @BeforeEach
     void setup() {
         when(pipelineDescription.getPipelineName()).thenReturn(UUID.randomUUID().toString());
@@ -171,7 +175,7 @@ public class OpenSearchSinkTest {
             openSearchSinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfig, expressionEvaluator))
                     .thenReturn(openSearchSinkConfiguration);
             return new OpenSearchSink(
-                    pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                    pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, pluginFactory, openSearchSinkConfig);
         }
     }
 

@@ -1,4 +1,3 @@
-#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -11,3 +10,5 @@ plugin_name: "rds-joins"
 apply_when:
   - "$..source.rds"
   - "$..source.rds.joins"
+function_providers:
+  - "org.opensearch.dataprepper.plugins.aws.dataprepper_transformer.PipelineTransformFunctions"

@@ -11,12 +11,11 @@ package org.opensearch.dataprepper.plugins.processor.dissect.Fields;
 
 public abstract class Field {
     boolean stripTrailing = false;
-    private String key;
-    private String value;
+    private final String key;
     private Field next;
 
-    public String getValue() {
-        return value;
+    Field(String key) {
+        this.key = key;
     }
 
     public String getKey() {
@@ -27,16 +26,15 @@ public abstract class Field {
         return next;
     }
 
-    public void setKey(String key) {
-        this.key = key;
-    }
-
-    public void setNext(Field next) {
+    void setNext(Field next) {
+        if(this.next != null) {
+            throw new IllegalStateException("Field already has a next value set");
+        }
         this.next = next;
     }
 
-    public void setValue(String value) {
-        this.value = stripTrailing ? value.stripTrailing() : value;
+    public boolean isStripTrailing() {
+        return stripTrailing;
     }
 
 }

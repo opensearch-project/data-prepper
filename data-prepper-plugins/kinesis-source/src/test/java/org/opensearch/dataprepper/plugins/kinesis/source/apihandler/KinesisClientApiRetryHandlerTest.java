@@ -81,7 +81,7 @@ class KinesisClientApiRetryHandlerTest {
 
     @Test
     void executeWithRetry_successOnSecondAttempt_returnsResult() {
-        when(backoff.nextDelayMillis(0)).thenReturn(DELAY_MILLIS);
+        when(backoff.nextDelayMillis(1)).thenReturn(DELAY_MILLIS);
         AtomicInteger attempts = new AtomicInteger(0);
         String expectedResult = "success";
 
@@ -97,7 +97,7 @@ class KinesisClientApiRetryHandlerTest {
         );
 
         assertEquals(expectedResult, result);
-        verify(backoff, times(1)).nextDelayMillis(0);
+        verify(backoff, times(1)).nextDelayMillis(1);
         verify(exceptionHandler, times(1)).handle(any(), eq(0));
     }
 
@@ -125,7 +125,7 @@ class KinesisClientApiRetryHandlerTest {
 
     @Test
     void executeWithRetry_negativeBackoffDelay_throwsException() {
-        when(backoff.nextDelayMillis(0)).thenReturn(-1L);
+        when(backoff.nextDelayMillis(1)).thenReturn(-1L);
         RuntimeException testException = new RuntimeException("Test failure");
 
         KinesisRetriesExhaustedException exception = assertThrows(
@@ -141,13 +141,13 @@ class KinesisClientApiRetryHandlerTest {
                 "Retries exhausted. Make sure that configuration is valid and required permissions are present.",
                 exception.getMessage()
         );
-        verify(backoff, times(1)).nextDelayMillis(0);
+        verify(backoff, times(1)).nextDelayMillis(1);
         verify(exceptionHandler, times(1)).handle(any(), eq(0));
     }
 
     @Test
     void executeWithRetry_interruptedDuringSleep_throwsException() {
-        when(backoff.nextDelayMillis(0)).thenReturn(DELAY_MILLIS);
+        when(backoff.nextDelayMillis(1)).thenReturn(DELAY_MILLIS);
         RuntimeException testException = new RuntimeException("Test failure");
         Thread.currentThread().interrupt();
 
@@ -160,7 +160,7 @@ class KinesisClientApiRetryHandlerTest {
                 )
         );
 
-        verify(backoff, times(1)).nextDelayMillis(0);
+        verify(backoff, times(1)).nextDelayMillis(1);
         verify(exceptionHandler, times(1)).handle(any(), eq(0));
     }
 

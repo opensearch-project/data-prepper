@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.codec.event_json;
@@ -15,6 +19,7 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -39,8 +44,9 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "event_json", pluginType = InputCodec.class, pluginConfigurationType = EventJsonInputCodecConfig.class)
 public class EventJsonInputCodec implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    private final JsonFactory jsonFactory = new JsonFactory();
+
+    private final JsonFactory jsonFactory = JsonFactories.defaultJsonFactory();
+    private final ObjectMapper objectMapper = new ObjectMapper(jsonFactory).registerModule(new JavaTimeModule());
     private final Boolean overrideTimeReceived;
 
     @DataPrepperPluginConstructor

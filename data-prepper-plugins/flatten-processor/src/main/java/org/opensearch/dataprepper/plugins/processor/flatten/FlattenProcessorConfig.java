@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
@@ -81,6 +82,18 @@ public class FlattenProcessorConfig {
     })
     private String flattenWhen;
 
+    @JsonProperty("flatten_separator")
+    @JsonPropertyDescription("The character used to join nested key names into flattened keys. " +
+            "For example, if the separator is <code>\"_\"</code>, a nested field <code>{\"a\": {\"b\": 1}}</code> " +
+            "becomes <code>{\"a_b\": 1}</code>. Default is <code>\".\"</code>.")
+    @ExampleValues({
+        @Example(value = "_", description = "Uses underscore as the separator, producing keys like 'parent_child'."),
+        @Example(value = ".", description = "Default behavior, producing keys like 'parent.child'.")
+    })
+    @NotNull(message = "flatten_separator must not be null.")
+    @Size(min = 1, max = 1, message = "flatten_separator must be exactly one character.")
+    private String flattenSeparator = ".";
+
     public String getSource() {
         return source;
     }
@@ -107,6 +120,10 @@ public class FlattenProcessorConfig {
 
     public String getFlattenWhen() {
         return flattenWhen;
+    }
+
+    public String getFlattenSeparator() {
+        return flattenSeparator;
     }
 
     public List<String> getTagsOnFailure() {

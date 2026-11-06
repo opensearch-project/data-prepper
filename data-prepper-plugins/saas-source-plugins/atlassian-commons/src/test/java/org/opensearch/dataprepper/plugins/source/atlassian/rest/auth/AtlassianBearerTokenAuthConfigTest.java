@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 
@@ -22,7 +23,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +34,9 @@ class AtlassianBearerTokenAuthConfigTest {
 
     @Mock
     private AuthenticationConfig authenticationConfig;
+
+    @Mock
+    private PluginConfigVariable bearerTokenVariable;
 
     private String token;
 
@@ -45,7 +49,7 @@ class AtlassianBearerTokenAuthConfigTest {
     void testGetUrl() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
 
         AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
         assertThat(config.getUrl(), equalTo("https://confluence.opensearch.org/"));
@@ -55,7 +59,7 @@ class AtlassianBearerTokenAuthConfigTest {
     void testGetUrlWithTrailingSlash() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org/");
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
 
         AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
         assertThat(config.getUrl(), equalTo("https://confluence.opensearch.org/"));
@@ -65,19 +69,22 @@ class AtlassianBearerTokenAuthConfigTest {
     void testGetBearerToken() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
+        when(bearerTokenVariable.getValue()).thenReturn(token);
 
         AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
         assertThat(config.getBearerToken(), equalTo(token));
     }
 
     @Test
-    void testRenewCredentialsIsNoOp() {
+    void testRenewCredentials_calls_refresh() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://confluence.opensearch.org");
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
-        when(authenticationConfig.getBearerToken()).thenReturn(token);
+        when(authenticationConfig.getBearerToken()).thenReturn(bearerTokenVariable);
 
         AtlassianBearerTokenAuthConfig config = new AtlassianBearerTokenAuthConfig(sourceConfig);
-        assertDoesNotThrow(config::renewCredentials);
+        config.renewCredentials();
+
+        verify(bearerTokenVariable).refresh();
     }
 }

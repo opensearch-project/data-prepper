@@ -9,7 +9,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -55,6 +54,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndexDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,6 +136,8 @@ public class BulkIngester implements Ingester {
     private BulkRetryStrategy bulkRetryStrategy;
     private BulkApiWrapper bulkApiWrapper;
     private DataStreamIndex dataStreamIndex;
+    private TimeSeriesIndexDetector timeSeriesIndexDetector;
+    private TimeSeriesIndex timeSeriesIndex;
     private ExistingDocumentQueryManager existingDocumentQueryManager;
     private IndexManager indexManager;
     private String configuredIndexAlias;
@@ -175,7 +178,7 @@ public class BulkIngester implements Ingester {
         this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
         this.scriptManager = new ScriptManager(openSearchSinkConfig.getIndexConfiguration().getScriptConfiguration(),
                 expressionEvaluator);
-        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager, new ObjectMapper(),
+        this.bulkOperationFactory = new BulkOperationFactory(versionType, scriptManager,
                 isUsingDocumentFilters());
         this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME);
 
@@ -227,6 +230,12 @@ public class BulkIngester implements Ingester {
             queryExecutorService.submit(existingDocumentQueryManager);
         }
 
+        final IndexCache indexCache = new IndexCache();
+        if (openSearchSinkConfig.getConnectionConfiguration().isServerless()) {
+            this.timeSeriesIndexDetector = new TimeSeriesIndexDetector(openSearchClient, indexCache);
+            this.timeSeriesIndex = new TimeSeriesIndex(timeSeriesIndexDetector, bulkOperationFactory, isUsingDocumentFilters());
+        }
+
         bulkRetryStrategy = new BulkRetryStrategy(
                 bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
                 this::logFailureForBulkRequests,
@@ -237,9 +246,9 @@ public class BulkIngester implements Ingester {
                 pipeline,
                 PLUGIN_NAME,
                 openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null,
-                isExternalVersionType(versionType));
+                isExternalVersionType(versionType),
+                timeSeriesIndex);
 
-        final IndexCache indexCache = new IndexCache();
         final DataStreamDetector dataStreamDetector = new DataStreamDetector(openSearchClient, indexCache);
         this.dataStreamIndex = new DataStreamIndex(dataStreamDetector, openSearchSinkConfig.getIndexConfiguration());
 
@@ -316,7 +325,7 @@ public class BulkIngester implements Ingester {
                 continue;
             }
 
-            final SerializedJson document = getDocument(event);
+            SerializedJson document = getDocument(event);
 
             Long version = null;
             String versionExpressionEvaluationResult = null;
@@ -349,6 +358,11 @@ public class BulkIngester implements Ingester {
                 LOG.error("Unknown action {}, skipping the event", eventAction);
                 invalidActionErrorsCounter.increment();
                 continue;
+            }
+
+            if (timeSeriesIndex != null && (StringUtils.equals(eventAction, OpenSearchBulkActions.CREATE.toString()) ||
+                    StringUtils.equals(eventAction, OpenSearchBulkActions.INDEX.toString()))) {
+                document = timeSeriesIndex.ensureTimestamp(event, document, indexName);
             }
 
             SerializedJson serializedJsonNode = null;
@@ -483,6 +497,9 @@ public class BulkIngester implements Ingester {
                 LOG.debug("Sending data to OpenSearch");
                 bulkRetryStrategy.execute(accumulatingBulkRequest);
                 bulkRequestSizeBytesSummary.record(accumulatingBulkRequest.getEstimatedSizeInBytes());
+                if (timeSeriesIndexDetector != null) {
+                    timeSeriesIndexDetector.clearFailedLookups();
+                }
             } catch (final InterruptedException e) {
                 LOG.error("Unexpected Interrupt:", e);
                 bulkRequestErrorsCounter.increment();
@@ -514,25 +531,6 @@ public class BulkIngester implements Ingester {
 
     private void logFailureForDlqObjects(final HeadlessPipeline failurePipeline,
                                          final List<DlqObject> dlqObjects, final Throwable failure) {
-        if (failurePipeline != null) {
-            List<Record<Event>> records = new ArrayList<>();
-            for (DlqObject dlqObject : dlqObjects) {
-                Event event = dlqObject.getEvent();
-                if (event != null) {
-                    event.updateFailureMetadata()
-                            .withPluginId(dlqObject.getPluginId())
-                            .withPluginName(dlqObject.getPluginName())
-                            .withPipelineName(dlqObject.getPipelineName())
-                            .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
-                            .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
-                            .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
-                            .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
-                    records.add(new Record<>(event));
-                }
-            }
-            failurePipeline.sendEvents(records);
-            return;
-        }
         if (dlqFileWriter != null) {
             dlqObjects.forEach(dlqObject -> {
                 final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
@@ -551,17 +549,48 @@ public class BulkIngester implements Ingester {
                 dlqWriter.write(dlqObjects, pipeline, PLUGIN_NAME);
                 dlqObjects.forEach(dlqObject -> dlqObject.releaseEventHandle(true));
             } catch (final IOException e) {
-                dlqObjects.forEach(dlqObject -> {
-                    LOG.error(NOISY, "Failed to write a document to the DLQ", e);
-                    dlqObject.releaseEventHandle(false);
-                });
+                LOG.error(NOISY, "Failed to write to S3 DLQ, falling back to failure pipeline", e);
+                sendToFailurePipelineOrRelease(failurePipeline, dlqObjects, failure);
             }
+        } else if (failurePipeline != null) {
+            sendToFailurePipeline(failurePipeline, dlqObjects);
         } else {
             dlqObjects.forEach(dlqObject -> {
                 final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
                 final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
                 LOG.warn("Document failed to write to OpenSearch with error code {}. Configure a DLQ to save failed documents. Error: {}",
                         failedDlqData.getStatus(), message);
+                dlqObject.releaseEventHandle(false);
+            });
+        }
+    }
+
+    private void sendToFailurePipeline(final HeadlessPipeline failurePipeline, final List<DlqObject> dlqObjects) {
+        final List<Record<Event>> records = new ArrayList<>();
+        for (final DlqObject dlqObject : dlqObjects) {
+            final Event event = dlqObject.getEvent();
+            if (event != null) {
+                event.updateFailureMetadata()
+                        .withPluginId(dlqObject.getPluginId())
+                        .withPluginName(dlqObject.getPluginName())
+                        .withPipelineName(dlqObject.getPipelineName())
+                        .withErrorMessage(((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                        .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
+                        .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
+                        .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
+                records.add(new Record<>(event));
+            }
+        }
+        failurePipeline.sendEvents(records);
+    }
+
+    private void sendToFailurePipelineOrRelease(final HeadlessPipeline failurePipeline,
+                                                final List<DlqObject> dlqObjects, final Throwable failure) {
+        if (failurePipeline != null) {
+            sendToFailurePipeline(failurePipeline, dlqObjects);
+        } else {
+            dlqObjects.forEach(dlqObject -> {
+                LOG.error(NOISY, "Failed to write a document to the DLQ", failure);
                 dlqObject.releaseEventHandle(false);
             });
         }

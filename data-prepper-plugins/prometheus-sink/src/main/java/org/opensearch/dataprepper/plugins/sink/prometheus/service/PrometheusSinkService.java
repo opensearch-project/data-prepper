@@ -16,6 +16,8 @@ import org.opensearch.dataprepper.common.sink.SinkBufferEntry;
 import org.opensearch.dataprepper.common.sink.ReentrantLockStrategy;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.host.HostContext;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
@@ -24,6 +26,7 @@ import org.opensearch.dataprepper.plugins.sink.prometheus.PrometheusHttpSender;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     static final String PLUGIN_NAME = "prometheus";
@@ -34,6 +37,8 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     private final PipelineDescription pipelineDescription;
     private final List<Record<Event>> dlqRecords;
     private final boolean sanitizeNames;
+    private final String instanceLabelName;
+    private final String instanceLabelValue;
     private HeadlessPipeline dlqPipeline;
     private boolean dropIfNoDLQConfigured;
     private String pluginName;
@@ -42,6 +47,15 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
                                  final SinkMetrics sinkMetrics,
                                  final PrometheusHttpSender httpSender,
                                  final PipelineDescription pipelineDescription) {
+        this(prometheusSinkConfiguration, sinkMetrics, httpSender, pipelineDescription,
+                PrometheusSinkService::resolveInstanceId);
+    }
+
+    PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
+                          final SinkMetrics sinkMetrics,
+                          final PrometheusHttpSender httpSender,
+                          final PipelineDescription pipelineDescription,
+                          final Supplier<String> instanceIdSupplier) {
         super(new ReentrantLockStrategy(),
               new PrometheusSinkBuffer(prometheusSinkConfiguration.getThresholdConfig().getMaxEvents(),
                   prometheusSinkConfiguration.getThresholdConfig().getMaxRequestSizeBytes(),
@@ -50,10 +64,23 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
               new PrometheusSinkFlushContext(httpSender),
               sinkMetrics);
         sanitizeNames = prometheusSinkConfiguration.getSanitizeNames();
+        instanceLabelName = prometheusSinkConfiguration.getInstanceLabel();
+        instanceLabelValue = instanceLabelName == null ? null : instanceIdSupplier.get();
         this.dropIfNoDLQConfigured = false;
         this.dlqRecords = new ArrayList<>();
         this.httpSender = httpSender;
         this.pipelineDescription = pipelineDescription;
+    }
+
+    static String resolveInstanceId() {
+        if (!HostContext.isHostIdentityResolved()) {
+            throw new InvalidPluginConfigurationException(
+                    "Unable to resolve an identity for this host, so instance_label cannot produce a value " +
+                            "which distinguishes this instance from the others writing to the same endpoint. " +
+                            "Set the HOSTNAME environment variable, give this instance a resolvable hostname " +
+                            "or a routable address, or remove instance_label to write series without it.");
+        }
+        return HostContext.getStableHostId();
     }
 
     public void addFailedEventsToDLQ(final List<Event> events, final Throwable ex) {
@@ -63,7 +90,7 @@ public class PrometheusSinkService extends DefaultSinkOutputStrategy {
     }
 
     public SinkBufferEntry getSinkBufferEntry(final Event event) throws Exception {
-        return new PrometheusSinkBufferEntry(event, sanitizeNames);
+        return new PrometheusSinkBufferEntry(event, sanitizeNames, instanceLabelName, instanceLabelValue);
     }
 
     public void setDlqPipeline(HeadlessPipeline pipeline) {

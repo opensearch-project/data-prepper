@@ -160,4 +160,190 @@ class RuleEvaluatorTest {
 
         assertEquals("File not found", exception.getMessage());
     }
+
+    @Test
+    void test_validateFunctionProviders_rejects_invalid_package() {
+        // Create a rule YAML with a function_provider that doesn't contain 'dataprepper_transformer'
+        String invalidRuleYaml = "apply_when:\n" +
+                "  - \"$.test-pipeline.source.documentdb\"\n" +
+                "plugin_name: \"documentdb\"\n" +
+                "function_providers:\n" +
+                "  - \"com.example.invalid.SomeClass\"\n";
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        InputStream ruleStream = new java.io.ByteArrayInputStream(invalidRuleYaml.getBytes());
+        RuleStream ruleInputStream = new RuleStream("invalid-rule.yaml", ruleStream);
+        when(transformersFactory.loadRules()).thenReturn(Collections.singletonList(ruleInputStream));
+
+        // Build a pipeline that would match the rule's apply_when path
+        String pipelineName = "test-pipeline";
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("s3_bucket", "bucket-name");
+        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Validation happens when rules are loaded during isTransformationNeeded
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel));
+
+        assertTrue(exception.getMessage().contains("Invalid function_provider"),
+                "Expected package validation failure, got: " + exception.getMessage());
+        assertTrue(exception.getMessage().contains("dataprepper_transformer"),
+                "Expected message to mention required package segment");
+    }
+
+    @Test
+    void test_validateFunctionProviders_accepts_valid_package() throws IOException {
+        // Create a rule YAML with a valid function_provider containing 'dataprepper_transformer'
+        String validRuleYaml = "apply_when:\n" +
+                "  - \"$.test-pipeline.source.documentdb\"\n" +
+                "plugin_name: \"documentdb\"\n" +
+                "function_providers:\n" +
+                "  - \"org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.TestTransformFunctionProvider\"\n";
+
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        InputStream ruleStream = new java.io.ByteArrayInputStream(validRuleYaml.getBytes());
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        RuleStream ruleInputStream = new RuleStream("valid-rule.yaml", ruleStream);
+        when(transformersFactory.loadRules()).thenReturn(Collections.singletonList(ruleInputStream));
+        when(transformersFactory.getPluginTemplateFileStream("documentdb")).thenReturn(templateStream);
+
+        // Build a matching pipeline
+        String pipelineName = "test-pipeline";
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("s3_bucket", "bucket-name");
+        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Should NOT throw — valid package name
+        RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+        assertTrue(result.isEvaluatedResult());
+    }
+
+    @Test
+    void test_validateFunctionProviders_allows_null_providers() throws IOException {
+        // Rule YAML without function_providers field should be fine
+        String ruleYaml = "apply_when:\n" +
+                "  - \"$.test-pipeline.source.documentdb\"\n" +
+                "plugin_name: \"documentdb\"\n";
+
+        String templateDocDBFilePath = TestConfigurationProvider.TEMPLATE_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        InputStream ruleStream = new java.io.ByteArrayInputStream(ruleYaml.getBytes());
+        InputStream templateStream = new FileInputStream(templateDocDBFilePath);
+        RuleStream ruleInputStream = new RuleStream("no-providers-rule.yaml", ruleStream);
+        when(transformersFactory.loadRules()).thenReturn(Collections.singletonList(ruleInputStream));
+        when(transformersFactory.getPluginTemplateFileStream("documentdb")).thenReturn(templateStream);
+
+        // Build a matching pipeline
+        String pipelineName = "test-pipeline";
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("s3_bucket", "bucket-name");
+        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        // Should NOT throw — null function_providers is valid
+        RuleEvaluatorResult result = ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel);
+        assertTrue(result.isEvaluatedResult());
+    }
+
+    @Test
+    void test_validateFunctionProviders_rejects_class_not_implementing_interface() {
+        // NonProviderWithStaticInit is in dataprepper_transformer package but doesn't implement the interface
+        String ruleYaml = "apply_when:\n" +
+                "  - \"$.test-pipeline.source.documentdb\"\n" +
+                "plugin_name: \"documentdb\"\n" +
+                "function_providers:\n" +
+                "  - \"org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.NonProviderWithStaticInit\"\n";
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        InputStream ruleStream = new java.io.ByteArrayInputStream(ruleYaml.getBytes());
+        RuleStream ruleInputStream = new RuleStream("bad-interface-rule.yaml", ruleStream);
+        when(transformersFactory.loadRules()).thenReturn(Collections.singletonList(ruleInputStream));
+
+        String pipelineName = "test-pipeline";
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("s3_bucket", "bucket-name");
+        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel));
+
+        assertTrue(exception.getMessage().contains("does not implement PipelineTransformFunctionProvider"),
+                "Expected interface validation failure, got: " + exception.getMessage());
+    }
+
+    @Test
+    void test_validateFunctionProviders_rejects_class_with_no_annotated_methods() {
+        // ProviderWithNoAnnotatedMethods is in the dataprepper_transformer package
+        // and implements PipelineTransformFunctionProvider, but has NO methods
+        // annotated with @TransformationFunction.
+        String fqcn = "org.opensearch.dataprepper.pipeline.parser.transformer.dataprepper_transformer.ProviderWithNoAnnotatedMethods";
+        String ruleYaml = "apply_when:\n" +
+                "  - \"$.test-pipeline.source.documentdb\"\n" +
+                "plugin_name: \"documentdb\"\n" +
+                "function_providers:\n" +
+                "  - \"" + fqcn + "\"\n";
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+        InputStream ruleStream = new java.io.ByteArrayInputStream(ruleYaml.getBytes());
+        RuleStream ruleInputStream = new RuleStream("no-annotation-rule.yaml", ruleStream);
+        when(transformersFactory.loadRules()).thenReturn(Collections.singletonList(ruleInputStream));
+
+        String pipelineName = "test-pipeline";
+        Map<String, Object> sourceOptions = new HashMap<>();
+        sourceOptions.put("s3_bucket", "bucket-name");
+        final PluginModel source = new PluginModel("documentdb", sourceOptions);
+        final List<SinkModel> sinks = Collections.singletonList(
+                new SinkModel("testSink", Collections.emptyList(), null,
+                        Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(
+                source, null, Collections.emptyList(), null, sinks, 8, 50);
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                ruleEvaluator.isTransformationNeeded(pipelinesDataFlowModel));
+
+        assertTrue(exception.getMessage().contains("has no methods annotated with @TransformationFunction"),
+                "Expected annotation validation failure, got: " + exception.getMessage());
+    }
 }

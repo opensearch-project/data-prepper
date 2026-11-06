@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.model.codec;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.opensearch.dataprepper.model.event.Event;
@@ -29,8 +28,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 public class JsonDecoder implements ByteDecoder {
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final JsonFactory jsonFactory = new JsonFactory();
+    private final ObjectMapper objectMapper;
+    private final JsonFactory jsonFactory;
     private String keyName;
     private Collection<String> includeKeys;
     private Collection<String> includeKeysMetadata;
@@ -39,17 +38,17 @@ public class JsonDecoder implements ByteDecoder {
         this.keyName = keyName;
         this.includeKeys = includeKeys;
         this.includeKeysMetadata = includeKeysMetadata;
-        if (maxEventLength != null) {
-        jsonFactory.setStreamReadConstraints(StreamReadConstraints.builder()
-                .maxStringLength(maxEventLength)
-                .build());
-        }
+        this.jsonFactory = maxEventLength != null ?
+                JsonFactories.jsonFactory(maxEventLength) : JsonFactories.defaultJsonFactory();
+        this.objectMapper = new ObjectMapper(jsonFactory);
     }
 
     public JsonDecoder() {
         this.keyName = null;
         this.includeKeys = null;
         this.includeKeysMetadata = null;
+        this.jsonFactory = JsonFactories.defaultJsonFactory();
+        this.objectMapper = new ObjectMapper(jsonFactory);
     }
 
     public void parse(InputStream inputStream, Instant timeReceived, Consumer<Record<Event>> eventConsumer) throws IOException {

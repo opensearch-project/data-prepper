@@ -82,7 +82,7 @@ class ClientFactoryTest {
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(expectedCredentialsProvider);
 
         final S3AsyncClientBuilder s3AsyncClientBuilder = mock(S3AsyncClientBuilder.class);
         when(s3AsyncClientBuilder.region(region)).thenReturn(s3AsyncClientBuilder);

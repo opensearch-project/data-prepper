@@ -23,6 +23,9 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
+
+import io.micrometer.core.instrument.Counter;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -31,6 +34,7 @@ import java.util.function.Consumer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,6 +60,8 @@ public class WorkerCommonUtilsCompletionTest {
     @Mock
     private AcknowledgementSet acknowledgementSet;
 
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
     private String partitionKey;
 
     @BeforeEach
@@ -64,6 +70,8 @@ public class WorkerCommonUtilsCompletionTest {
         lenient().when(indexPartition.getPartitionKey()).thenReturn(partitionKey);
         lenient().when(openSearchSourceConfiguration.getSchedulingParameterConfiguration())
                 .thenReturn(schedulingParameterConfiguration);
+        openSearchSourcePluginMetrics = mock(OpenSearchSourcePluginMetrics.class);
+        lenient().when(openSearchSourcePluginMetrics.getIndicesCompletedWithFailuresCounter()).thenReturn(mock(Counter.class));
     }
 
     @Test
@@ -74,7 +82,7 @@ public class WorkerCommonUtilsCompletionTest {
         when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
 
         WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
-                indexPartition, sourceCoordinator);
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
 
         verify(sourceCoordinator).closePartition(eq(partitionKey), eq(Duration.ofHours(8)), eq(1), eq(false));
         verify(sourceCoordinator, never()).completePartition(eq(partitionKey), eq(false));
@@ -86,7 +94,7 @@ public class WorkerCommonUtilsCompletionTest {
         when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
 
         WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
-                indexPartition, sourceCoordinator);
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
 
         verify(sourceCoordinator).completePartition(eq(partitionKey), eq(false));
         verify(sourceCoordinator, never()).closePartition(eq(partitionKey), any(Duration.class), any(Integer.class), any(Boolean.class));
@@ -97,7 +105,7 @@ public class WorkerCommonUtilsCompletionTest {
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
 
         WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
-                indexPartition, sourceCoordinator);
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
 
         verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(eq(partitionKey), any(Duration.class));
         verify(acknowledgementSet).complete();
@@ -162,5 +170,62 @@ public class WorkerCommonUtilsCompletionTest {
         verify(sourceCoordinator).giveUpPartition(eq(partitionKey));
         verify(sourceCoordinator, never()).completePartition(eq(partitionKey), any(Boolean.class));
         verify(sourceCoordinator, never()).closePartition(eq(partitionKey), any(Duration.class), any(Integer.class), any(Boolean.class));
+    }
+
+    @Test
+    void completeIndexPartition_with_failures_recorded_in_progress_state_increments_completed_with_failures_counter() {
+        when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
+
+        final OpenSearchIndexProgressState progressState = new OpenSearchIndexProgressState();
+        progressState.setHadSearchFailures(true);
+        progressState.recordRequestFailure(new RuntimeException("boom"));
+        when(indexPartition.getPartitionState()).thenReturn(java.util.Optional.of(progressState));
+
+        final Counter indicesCompletedWithFailuresCounter = mock(Counter.class);
+        when(openSearchSourcePluginMetrics.getIndicesCompletedWithFailuresCounter())
+                .thenReturn(indicesCompletedWithFailuresCounter);
+
+        WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
+
+        verify(indicesCompletedWithFailuresCounter).increment();
+        verify(sourceCoordinator).completePartition(eq(partitionKey), eq(false));
+    }
+
+    @Test
+    void completeIndexPartition_without_failures_does_not_increment_completed_with_failures_counter() {
+        when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
+
+        final OpenSearchIndexProgressState progressState = new OpenSearchIndexProgressState();
+        when(indexPartition.getPartitionState()).thenReturn(java.util.Optional.of(progressState));
+
+        final Counter indicesCompletedWithFailuresCounter = mock(Counter.class);
+        lenient().when(openSearchSourcePluginMetrics.getIndicesCompletedWithFailuresCounter())
+                .thenReturn(indicesCompletedWithFailuresCounter);
+
+        WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
+
+        verify(indicesCompletedWithFailuresCounter, never()).increment();
+        verify(sourceCoordinator).completePartition(eq(partitionKey), eq(false));
+    }
+
+    @Test
+    void completeIndexPartition_without_progress_state_does_not_attempt_failure_summary() {
+        when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(openSearchSourceConfiguration.isSingleScanMode()).thenReturn(true);
+
+        when(indexPartition.getPartitionState()).thenReturn(java.util.Optional.empty());
+
+        final Counter indicesCompletedWithFailuresCounter = mock(Counter.class);
+        lenient().when(openSearchSourcePluginMetrics.getIndicesCompletedWithFailuresCounter())
+                .thenReturn(indicesCompletedWithFailuresCounter);
+
+        WorkerCommonUtils.completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
+                indexPartition, sourceCoordinator, openSearchSourcePluginMetrics);
+
+        verify(indicesCompletedWithFailuresCounter, never()).increment();
     }
 }

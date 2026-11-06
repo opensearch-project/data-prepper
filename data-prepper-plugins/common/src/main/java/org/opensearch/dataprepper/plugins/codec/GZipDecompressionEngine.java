@@ -10,25 +10,35 @@ import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PushbackInputStream;
 
 public class GZipDecompressionEngine implements DecompressionEngine {
+
+    private static final byte[] GZIP_MAGIC = {(byte) 0x1F, (byte) 0x8B};
+
     @Override
     public InputStream createInputStream(final InputStream inputStream) throws IOException {
-        final PushbackInputStream pushbackStream = new PushbackInputStream(inputStream, 2);
-        final byte[] signature = new byte[2];
-        //read the signature
-        final int len = pushbackStream.read(signature);
-        //push back the signature to the stream
-        pushbackStream.unread(signature, 0, len);
-        //check if matches standard gzip magic number
-        if(!GzipCompressorInputStream.matches(signature, len)) {
-            throw new IOException("GZIP encoding specified but data did contain gzip magic header");
+        final byte[] buffer = CompressionMagicDetector.bufferLookAhead(
+                inputStream, CompressionMagicDetector.SCAN_BUFFER_SIZE);
+
+        if (buffer.length < GZIP_MAGIC.length) {
+            throw new IOException("No valid gzip data found: stream too short");
         }
 
-        // We are using GzipCompressorInputStream here to decompress because GZIPInputStream doesn't decompress concatenated .gz files
-        // it stops after the first member and silently ignores the rest.
-        // It doesn't leave the read position to point to the beginning of the next member.
-        return new GzipCompressorInputStream(pushbackStream, true);
+        // Fast path: magic at offset 0
+        if (CompressionMagicDetector.matchesAt(buffer, 0, GZIP_MAGIC)) {
+            // We are using GzipCompressorInputStream here to decompress because GZIPInputStream doesn't decompress
+            // concatenated .gz files — it stops after the first member and silently ignores the rest.
+            return new GzipCompressorInputStream(
+                    CompressionMagicDetector.reconstructStream(buffer, 0, buffer.length, inputStream), true);
+        }
+
+        // Detection path: scan buffer for magic
+        final int offset = CompressionMagicDetector.findMagicOffset(buffer, buffer.length, GZIP_MAGIC);
+        if (offset >= 0) {
+            return new GzipCompressorInputStream(
+                    CompressionMagicDetector.reconstructStream(buffer, offset, buffer.length, inputStream), true);
+        }
+
+        throw new IOException("No valid gzip data found");
     }
 }

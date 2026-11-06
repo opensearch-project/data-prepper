@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 
 package org.opensearch.dataprepper.plugins.processor.parse.json;
@@ -34,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.UUID;
 
 import static java.util.Map.entry;
@@ -52,6 +57,7 @@ public class ParseJsonProcessorTest {
     private static final String DEEPLY_NESTED_KEY_NAME = "base";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Random random = new Random();
 
     protected CommonParseConfig processorConfig;
 
@@ -584,6 +590,166 @@ public class ParseJsonProcessorTest {
         final Event parsedEvent = createAndParseMessageEvent(testEvent);
 
         assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
+
+        verify(processingFailuresCounter).increment();
+        verifyNoInteractions(parseErrorsCounter);
+    }
+
+    @Test
+    void test_when_topLevelArrayWithDestination_then_parsesArrayIntoDestination() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String type0 = UUID.randomUUID().toString();
+        final String value0 = UUID.randomUUID().toString();
+        final String type1 = UUID.randomUUID().toString();
+        final String value1 = UUID.randomUUID().toString();
+        final String serializedMessage = String.format(
+                "[{\"type\":\"%s\",\"value\":\"%s\"},{\"type\":\"%s\",\"value\":\"%s\"}]", type0, value0, type1, value1);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        final List<Map<String, Object>> expected = List.of(
+                Map.of("type", type0, "value", value0),
+                Map.of("type", type1, "value", value1));
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination, List.class), equalTo(expected));
+        assertThat(parsedEvent.get(destination + "/0/type", String.class), equalTo(type0));
+        assertThat(parsedEvent.get(destination + "/1/value", String.class), equalTo(value1));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
+    void test_when_topLevelArrayWithPointerAndDestination_then_extractsPointerValue() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        when(processorConfig.getPointer()).thenReturn("/0/type");
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String type0 = UUID.randomUUID().toString();
+        final String value0 = UUID.randomUUID().toString();
+        final String serializedMessage = String.format("[{\"type\":\"%s\",\"value\":\"%s\"}]", type0, value0);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination + "/type", String.class), equalTo(type0));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
+    void test_when_topLevelStringScalarWithDestination_then_parsesScalarIntoDestination() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String scalarValue = UUID.randomUUID().toString();
+        final String serializedMessage = "\"" + scalarValue + "\"";
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination, String.class), equalTo(scalarValue));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
+    void test_when_topLevelIntegerScalarWithDestination_then_parsesScalarIntoDestination() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final int scalarValue = random.nextInt(10_000) + 10;
+        final String serializedMessage = Integer.toString(scalarValue);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination, Integer.class), equalTo(scalarValue));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void test_when_topLevelBooleanScalarWithDestination_then_parsesScalarIntoDestination(final boolean scalarValue) {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String serializedMessage = Boolean.toString(scalarValue);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(destination, Boolean.class), equalTo(scalarValue));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
+    void test_when_topLevelScalarAndNoDestination_then_failsAndTagsEvent() {
+        when(handleFailedEventsOption.shouldLog()).thenReturn(true);
+        final List<String> testTags = List.of("tag1", "tag2");
+        when(processorConfig.getTagsOnFailure()).thenReturn(testTags);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String serializedMessage = Integer.toString(random.nextInt(10_000) + 10);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThatKeyEquals(parsedEvent, processorConfig.getSource(), serializedMessage);
+        assertThat(parsedEvent.toMap().size(), equalTo(1));
+        assertTrue(parsedEvent.getMetadata().hasTags(testTags));
+
+        verify(processingFailuresCounter).increment();
+        verifyNoInteractions(parseErrorsCounter);
+    }
+
+    @Test
+    void test_when_topLevelArrayWithDestination_and_deleteSourceEnabled_then_deletesSource() {
+        final String destination = "destination_key";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        when(processorConfig.isDeleteSourceRequested()).thenReturn(true);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String type0 = UUID.randomUUID().toString();
+        final String value0 = UUID.randomUUID().toString();
+        final String serializedMessage = String.format("[{\"type\":\"%s\",\"value\":\"%s\"}]", type0, value0);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(false));
+        assertThat(parsedEvent.get(destination, List.class),
+                equalTo(List.of(Map.of("type", type0, "value", value0))));
+
+        verifyNoInteractions(processingFailuresCounter);
+        verifyNoInteractions(parseErrorsCounter);
+        verifyNoInteractions(handleFailedEventsOption);
+    }
+
+    @Test
+    void test_when_topLevelArrayAndNoDestination_then_failsAndTagsEvent() {
+        when(handleFailedEventsOption.shouldLog()).thenReturn(true);
+        final List<String> testTags = List.of("tag1", "tag2");
+        when(processorConfig.getTagsOnFailure()).thenReturn(testTags);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final String serializedMessage = String.format(
+                "[{\"type\":\"%s\",\"value\":\"%s\"}]", UUID.randomUUID(), UUID.randomUUID());
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThatKeyEquals(parsedEvent, processorConfig.getSource(), serializedMessage);
+        assertThat(parsedEvent.toMap().size(), equalTo(1));
+        assertTrue(parsedEvent.getMetadata().hasTags(testTags));
 
         verify(processingFailuresCounter).increment();
         verifyNoInteractions(parseErrorsCounter);

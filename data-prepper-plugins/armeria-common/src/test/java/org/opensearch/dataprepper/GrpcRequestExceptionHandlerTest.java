@@ -169,6 +169,51 @@ public class GrpcRequestExceptionHandlerTest {
     }
 
     @Test
+    public void testHandleInvalidProtobufReturnsInformativeBadRequest() {
+        // Mirrors what Armeria's GrpcMessageMarshaller throws on a protobuf UTF-8 failure:
+        // Status.INTERNAL.withDescription("Invalid protobuf byte sequence").withCause(InvalidProtocolBufferException).asRuntimeException()
+        final com.google.protobuf.InvalidProtocolBufferException protobufException =
+                new com.google.protobuf.InvalidProtocolBufferException("Protocol message had invalid UTF-8.");
+        final io.grpc.StatusRuntimeException invalidProtobuf = Status.INTERNAL
+                .withDescription("Invalid protobuf byte sequence")
+                .withCause(protobufException)
+                .asRuntimeException();
+
+        final Status resultStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INTERNAL, invalidProtobuf, metadata);
+
+        assertThat(resultStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
+        assertThat(resultStatus.getDescription(), equalTo(InvalidRequestExceptions.INVALID_PROTOBUF_MESSAGE));
+
+        verify(badRequestsCounter, times(1)).increment();
+    }
+
+    @Test
+    public void testHandleCompressedFrameReturnsInformativeBadRequest() {
+        final io.grpc.StatusRuntimeException compressedFrame =
+                Status.INTERNAL.withDescription("Can't decode compressed frame").asRuntimeException();
+
+        final Status resultStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INTERNAL, compressedFrame, metadata);
+
+        assertThat(resultStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
+        assertThat(resultStatus.getDescription(), equalTo(InvalidRequestExceptions.COMPRESSED_FRAME_MESSAGE));
+
+        verify(badRequestsCounter, times(1)).increment();
+    }
+
+    @Test
+    public void testHandleGenericStatusRuntimeExceptionPassesThroughUnchanged() {
+        // A StatusRuntimeException that is NOT a client-data problem must retain its original status,
+        // matching Armeria's default short-circuit behavior.
+        final io.grpc.StatusRuntimeException generic =
+                Status.INTERNAL.withDescription("some internal failure").asRuntimeException();
+
+        final Status resultStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INTERNAL, generic, metadata);
+
+        assertThat(resultStatus.getCode(), equalTo(Status.Code.INTERNAL));
+        verify(badRequestsCounter, times(0)).increment();
+    }
+
+    @Test
     public void testHandleInternalServerException() {
         final RuntimeException runtimeExceptionNoMessage = new RuntimeException();
         final String exceptionMessage = UUID.randomUUID().toString();

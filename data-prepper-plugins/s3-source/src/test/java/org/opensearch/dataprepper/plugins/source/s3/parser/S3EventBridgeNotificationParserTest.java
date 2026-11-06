@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.s3.parser;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class S3EventBridgeNotificationParserTest {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().disable(FAIL_ON_UNKNOWN_PROPERTIES);
     static final String EVENTBRIDGE_MESSAGE = "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"Object Created\"," +
             "\"source\":\"aws.s3\",\"account\":\"111122223333\",\"time\":\"2021-11-12T00:00:00Z\"," +
             "\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::DOC-EXAMPLE-BUCKET1\"]," +
@@ -26,7 +27,7 @@ class S3EventBridgeNotificationParserTest {
             "\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\"," +
             "\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"617f08299329d189\"}," +
             "\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\"," +
-            "\"reason\":\"PutObject\"}}";
+            "\"reason\":\"PutObject\",\"event-version\":\"1.0\"}}";
 
     private final String SECURITY_LAKE_MESSAGE = "{\"source\":\"aws.s3\",\"time\":\"2021-11-12T00:00:00Z\",\"account\":\"123456789012\",\"region\":\"ca-central-1\"," +
             "\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"bucket\":{\"name\":\"example-bucket\"}," +

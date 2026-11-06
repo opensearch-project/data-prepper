@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.integration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
@@ -26,6 +27,7 @@ import org.opensearch.dataprepper.plugins.SingleThreadEventsTrackingTestProcesso
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -223,12 +226,26 @@ class ProcessorValidationIT {
 
         List<SingleThreadEventsTrackingTestProcessor> singleThreadProcessors = SingleThreadEventsTrackingTestProcessor.getProcessors();
         assertThat(singleThreadProcessors.size(), equalTo(4));
-        assertAll(
-                () -> assertThat(singleThreadProcessors.get(0).getThreadsUsing().size(), equalTo(1)),
-                () -> assertThat(singleThreadProcessors.get(1).getThreadsUsing().size(), equalTo(1)),
-                () -> assertThat(singleThreadProcessors.get(2).getThreadsUsing().size(), equalTo(1)),
-                () -> assertThat(singleThreadProcessors.get(3).getThreadsUsing().size(), equalTo(1))
-        );
+
+        // The @SingleThread contract is that an instance is never shared between process workers. It does
+        // not promise that every worker receives work: a case such as multi-processor-pipeline/SingleBatch
+        // submits one batch, so some workers can legitimately finish without ever reading one. Asserting
+        // that each instance was used by exactly one thread therefore fails intermittently with
+        // "Expected: <1> but: was <0>". Assert the contract instead - no instance is used by more than one
+        // thread, and no thread is shared across instances - which also catches sharing the old assertion
+        // could not distinguish from an idle worker.
+        assertAll(singleThreadProcessors.stream()
+                .map(processor -> (Executable) () ->
+                        assertThat(processor.getThreadsUsing().size(), lessThanOrEqualTo(1)))
+                .collect(Collectors.toList()));
+
+        final List<?> threadsUsed = singleThreadProcessors.stream()
+                .flatMap(processor -> processor.getThreadsUsing().stream())
+                .collect(Collectors.toList());
+        assertThat("at least one process worker must have used a @SingleThread processor instance",
+                threadsUsed.isEmpty(), equalTo(false));
+        assertThat("a @SingleThread processor instance must not be shared between process workers",
+                new HashSet<>(threadsUsed).size(), equalTo(threadsUsed.size()));
 
         assertAll(
                 () -> assertThat(singleThreadProcessors.get(0).getNumberOfProcessWorkersFromPipelineDescription(), equalTo(4)),

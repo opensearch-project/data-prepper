@@ -36,4 +36,10 @@ public class SearchResults {
     @JsonProperty("issues")
     private List<IssueBean> issues = null;
 
+    @JsonProperty("nextPageToken")
+    private String nextPageToken = null;
+
+    @JsonProperty("isLast")
+    private Boolean isLast = null;
+
 }

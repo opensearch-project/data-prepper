@@ -48,12 +48,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
@@ -204,9 +205,9 @@ public class JiraServiceTest {
 
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(mockIssues.size());
+        when(mockSearchResults.getIsLast()).thenReturn(true);
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -228,16 +229,28 @@ public class JiraServiceTest {
             mockIssues.add(issue1);
         }
 
-        SearchResults mockSearchResults = mock(SearchResults.class);
-        when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(100);
+        SearchResults firstPage = mock(SearchResults.class);
+        when(firstPage.getIssues()).thenReturn(mockIssues);
+        when(firstPage.getIsLast()).thenReturn(false);
+        when(firstPage.getNextPageToken()).thenReturn("page2-token");
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        SearchResults secondPage = mock(SearchResults.class);
+        when(secondPage.getIssues()).thenReturn(mockIssues);
+        when(secondPage.getIsLast()).thenReturn(true);
+        when(secondPage.getNextPageToken()).thenReturn(null);
+
+        when(jiraRestClient.getAllIssues(any(StringBuilder.class), any()))
+                .thenReturn(firstPage)
+                .thenReturn(secondPage);
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
         assertTrue(itemInfoQueue.size() >= 100);
+
+        // Verify pagination token was read from each page
+        verify(firstPage, times(1)).getNextPageToken();
+        verify(secondPage, times(1)).getNextPageToken();
     }
 
     @Test
@@ -271,7 +284,7 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
 
-        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), any());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();

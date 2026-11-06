@@ -14,6 +14,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisConsumerNotFoundException;
 import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamConsumerRequest;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamConsumerResponse;
@@ -111,7 +112,7 @@ public class KinesisClientApiHandler {
 
     private void handleStreamSummaryException(CompletionException ex, String streamName) {
         Throwable cause = ex.getCause();
-        if (cause instanceof KinesisException || cause instanceof com.amazonaws.SdkClientException) {
+        if (cause instanceof KinesisException || cause instanceof SdkClientException) {
             log.error("AWS error while describing stream summary for stream {}: {}",
                     streamName, ex.getMessage());
         } else {
@@ -136,7 +137,7 @@ public class KinesisClientApiHandler {
 
     private void handleConsumerException(CompletionException ex, String streamArn, int attempt) {
         Throwable cause = ex.getCause();
-        if (cause instanceof KinesisException || cause instanceof com.amazonaws.SdkClientException) {
+        if (cause instanceof KinesisException || cause instanceof SdkClientException) {
             log.error("AWS error while describing stream consumer for stream {}: {}. Attempt {}.",
                     streamArn, ex.getMessage(), attempt + 1);
         } else {

@@ -10,6 +10,9 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 public class DataStreamIndex {
     private static final Logger LOG = LoggerFactory.getLogger(DataStreamIndex.class);
@@ -17,7 +20,12 @@ public class DataStreamIndex {
     
     private final DataStreamDetector dataStreamDetector;
     private final IndexConfiguration indexConfiguration;
-    
+
+    // These notices describe configured, expected behavior for a data stream rather than a
+    // per-record fault, so they are logged at most once per data stream instead of once per
+    // ingested document to avoid overwhelming the logs on high-volume pipelines.
+    private final Set<String> loggedNotices = ConcurrentHashMap.newKeySet();
+
     public DataStreamIndex(final DataStreamDetector dataStreamDetector, final IndexConfiguration indexConfiguration) {
         this.dataStreamDetector = dataStreamDetector;
         this.indexConfiguration = indexConfiguration;
@@ -31,7 +39,8 @@ public class DataStreamIndex {
             // Only warn if user explicitly configured a non-create action (excluding the default "index" action)
             if (configuredAction != null && 
                 !configuredAction.equals(OpenSearchBulkActions.CREATE.toString()) &&
-                !configuredAction.equals(OpenSearchBulkActions.INDEX.toString())) {
+                !configuredAction.equals(OpenSearchBulkActions.INDEX.toString()) &&
+                logNoticeOnce(indexName, "action:" + configuredAction)) {
                 LOG.warn("Data Stream '{}' requires 'create' action, but '{}' was configured. Using 'create' action.", 
                         indexName, configuredAction);
             }
@@ -48,12 +57,23 @@ public class DataStreamIndex {
     }
 
     private void validateConfigurationForDataStream(final String indexName) {
-        if (indexConfiguration.getDocumentIdField() != null || indexConfiguration.getDocumentId() != null) {
+        if ((indexConfiguration.getDocumentIdField() != null || indexConfiguration.getDocumentId() != null)
+                && logNoticeOnce(indexName, "documentId")) {
             LOG.warn("Data Stream '{}' with document ID configuration uses first-write-wins behavior. Subsequent writes to the same ID will be ignored.", indexName);
         }
-        if (indexConfiguration.getRoutingField() != null || indexConfiguration.getRouting() != null) {
+        if ((indexConfiguration.getRoutingField() != null || indexConfiguration.getRouting() != null)
+                && logNoticeOnce(indexName, "routing")) {
             LOG.warn("Data Stream '{}' does not support routing. Routing configuration will be ignored.", indexName);
         }
+    }
+
+    /**
+     * Returns {@code true} only the first time a given notice is seen for a data stream, so that
+     * configuration notices are logged once per data stream rather than once per ingested document.
+     * Package-private for testing.
+     */
+    boolean logNoticeOnce(final String indexName, final String noticeType) {
+        return loggedNotices.add(indexName + " " + noticeType);
     }
     
 

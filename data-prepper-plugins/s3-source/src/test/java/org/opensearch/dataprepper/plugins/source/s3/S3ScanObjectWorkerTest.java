@@ -78,6 +78,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.CHECKPOINT_OWNERSHIP_INTERVAL;
+import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.EMPTY_FOLDER_PARTITION_RESCAN_DELAYED;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.MAX_RETRIES;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION;
@@ -134,6 +135,9 @@ class S3ScanObjectWorkerTest {
     @Mock
     private Counter noObjectsFoundForFolderPartitionCounter;
 
+    @Mock
+    private Counter emptyFolderPartitionRescanDelayedCounter;
+
     private List<ScanOptions> scanOptionsList;
 
     @Mock
@@ -162,6 +166,7 @@ class S3ScanObjectWorkerTest {
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION)).thenReturn(noObjectsFoundForFolderPartitionCounter);
+        when(pluginMetrics.counter(EMPTY_FOLDER_PARTITION_RESCAN_DELAYED)).thenReturn(emptyFolderPartitionRescanDelayedCounter);
         when(pluginMetrics.counter(PARTITION_OWNERSHIP_UPDATE_ERRORS)).thenReturn(partitionOwnershipUpdateErrorCounter);
         lenient().when(processingConditionEvaluator.firstUnmetCondition(any(), any(), any())).thenReturn(Optional.empty());
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
@@ -553,6 +558,138 @@ class S3ScanObjectWorkerTest {
         assertThat(request.bucket(), equalTo(bucket));
         assertThat(request.fetchOwner(), equalTo(true));
         assertThat(request.prefix(), equalTo(folder));
+    }
+
+    @Test
+    void processing_with_folder_partitions_continuous_mode_with_no_objects_gives_up_with_max_retries() {
+
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.isContinuousScanMode()).thenReturn(true);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String folder = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + folder;
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class).withPartitionKey(partitionKey).build();
+        when(sourceCoordinator.getNextPartition(any(Function.class), eq(true))).thenReturn(Optional.of(partitionToProcess));
+
+        final ListObjectsV2Response listObjectsV2Response = mock(ListObjectsV2Response.class);
+        when(listObjectsV2Response.isTruncated()).thenReturn(false);
+        when(listObjectsV2Response.contents()).thenReturn(Collections.emptyList());
+
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
+        doNothing().when(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
+        doNothing().when(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
+
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
+        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
+        verify(sourceCoordinator, never()).deletePartition(anyString());
+        verify(noObjectsFoundForFolderPartitionCounter).increment();
+    }
+
+    private SourcePartition<S3SourceProgressState> setUpEmptyFolderPartition(final String partitionKey, final S3SourceProgressState progressState) {
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey)
+                .withPartitionState(progressState)
+                .build();
+        when(sourceCoordinator.getNextPartition(any(Function.class), eq(true))).thenReturn(Optional.of(partitionToProcess));
+
+        final ListObjectsV2Response listObjectsV2Response = mock(ListObjectsV2Response.class);
+        when(listObjectsV2Response.isTruncated()).thenReturn(false);
+        when(listObjectsV2Response.contents()).thenReturn(Collections.emptyList());
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
+        return partitionToProcess;
+    }
+
+    @Test
+    void processing_with_folder_partitions_with_no_objects_and_rescan_delay_holds_the_partition_instead_of_giving_it_up() {
+        final Duration rescanDelay = Duration.ofSeconds(60);
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.getEmptyFolderRescanDelay()).thenReturn(rescanDelay);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String partitionKey = bucket + "|" + UUID.randomUUID();
+        setUpEmptyFolderPartition(partitionKey, new S3SourceProgressState(Instant.now().toEpochMilli()));
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, rescanDelay);
+        verify(sourceCoordinator, never()).giveUpPartition(eq(partitionKey), any(Instant.class), anyInt());
+        verify(sourceCoordinator, never()).deletePartition(anyString());
+        verify(noObjectsFoundForFolderPartitionCounter).increment();
+        verify(emptyFolderPartitionRescanDelayedCounter).increment();
+    }
+
+    @Test
+    void processing_with_folder_partitions_continuous_mode_with_rescan_delay_holds_the_partition() {
+        final Duration rescanDelay = Duration.ofSeconds(30);
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.isContinuousScanMode()).thenReturn(true);
+        when(folderPartitioningOptions.getEmptyFolderRescanDelay()).thenReturn(rescanDelay);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String partitionKey = bucket + "|" + UUID.randomUUID();
+        setUpEmptyFolderPartition(partitionKey, new S3SourceProgressState(Instant.now()
+                .minus(NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION)
+                .minus(Duration.ofMinutes(1)).toEpochMilli()));
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, rescanDelay);
+        verify(sourceCoordinator, never()).giveUpPartition(eq(partitionKey), any(Instant.class), anyInt());
+        verify(sourceCoordinator, never()).deletePartition(anyString());
+    }
+
+    @Test
+    void processing_with_folder_partitions_with_no_objects_and_rescan_delay_gives_up_partition_when_hold_fails() {
+        final Duration rescanDelay = Duration.ofSeconds(60);
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.getEmptyFolderRescanDelay()).thenReturn(rescanDelay);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String partitionKey = bucket + "|" + UUID.randomUUID();
+        setUpEmptyFolderPartition(partitionKey, new S3SourceProgressState(Instant.now().toEpochMilli()));
+        doThrow(PartitionUpdateException.class).when(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, rescanDelay);
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
+        verify(emptyFolderPartitionRescanDelayedCounter, never()).increment();
+    }
+
+    @Test
+    void processing_with_folder_partitions_with_zero_rescan_delay_gives_up_partition_immediately() {
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        when(folderPartitioningOptions.getEmptyFolderRescanDelay()).thenReturn(Duration.ZERO);
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String partitionKey = bucket + "|" + UUID.randomUUID();
+        setUpEmptyFolderPartition(partitionKey, new S3SourceProgressState(Instant.now().toEpochMilli()));
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
+        verify(sourceCoordinator, never()).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
+    }
+
+    @Test
+    void processing_with_folder_partition_with_rescan_delay_still_deletes_partition_idle_for_too_long() {
+        final FolderPartitioningOptions folderPartitioningOptions = mock(FolderPartitioningOptions.class);
+        lenient().when(folderPartitioningOptions.getEmptyFolderRescanDelay()).thenReturn(Duration.ofSeconds(60));
+        when(s3ScanScanOptions.getPartitioningOptions()).thenReturn(folderPartitioningOptions);
+
+        final String partitionKey = bucket + "|" + UUID.randomUUID();
+        setUpEmptyFolderPartition(partitionKey, new S3SourceProgressState(Instant.now()
+                .minus(NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION)
+                .minus(Duration.ofMinutes(1)).toEpochMilli()));
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).deletePartition(partitionKey);
+        verify(sourceCoordinator, never()).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
     }
 
     @Test

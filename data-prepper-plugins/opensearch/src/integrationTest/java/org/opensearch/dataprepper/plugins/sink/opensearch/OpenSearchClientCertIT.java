@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
@@ -88,6 +89,7 @@ class OpenSearchClientCertIT {
     private PipelineDescription pipelineDescription;
     private PluginSetting pluginSetting;
     private PluginConfigObservable pluginConfigObservable;
+    private PluginFactory pluginFactory;
     private OpenSearchSink sink;
 
     @BeforeEach
@@ -100,6 +102,7 @@ class OpenSearchClientCertIT {
         pipelineDescription = mock(PipelineDescription.class);
         pluginSetting = mock(PluginSetting.class);
         pluginConfigObservable = mock(PluginConfigObservable.class);
+        pluginFactory = mock(PluginFactory.class);
 
         when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
@@ -171,7 +174,7 @@ class OpenSearchClientCertIT {
         when(sinkContext.getForwardToPipelines()).thenReturn(Map.of());
         final OpenSearchSink openSearchSink = new OpenSearchSink(
                 pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier,
-                pipelineDescription, pluginConfigObservable, config);
+                pipelineDescription, pluginConfigObservable, pluginFactory, config);
         openSearchSink.doInitialize();
         return openSearchSink;
     }

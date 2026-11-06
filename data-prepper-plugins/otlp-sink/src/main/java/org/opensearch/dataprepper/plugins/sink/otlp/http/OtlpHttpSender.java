@@ -36,6 +36,7 @@ import software.amazon.awssdk.utils.Pair;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -47,12 +48,15 @@ import java.util.function.Function;
 public class OtlpHttpSender {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpHttpSender.class);
     private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 502, 503, 504);
+    // shortcut: matches X-Ray message text because the response has no error code, switch to a code if X-Ray adds one
+    private static final String TRANSACTION_SEARCH_DISABLED_MESSAGE = "cloudwatch logs as a trace segment destination";
 
     private final SigV4Signer signer;
     private final WebClient webClient;
     private final OtlpSinkMetrics sinkMetrics;
     private final Function<byte[], byte[]> gzipCompressor;
     private final Map<String, String> additionalHeaders;
+    private final boolean dropTransactionSearchErrors;
 
     /**
      * Constructor for the OtlpHttpSender.
@@ -62,7 +66,8 @@ public class OtlpHttpSender {
      * @param sinkMetrics The metrics for the OTLP sink plugin.
      */
     public OtlpHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(awsCredentialsSupplier, config), buildWebClient(config), config.getAdditionalHeaders());
+        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(awsCredentialsSupplier, config), buildWebClient(config), config.getAdditionalHeaders(),
+                config.isDropTransactionSearchErrors());
     }
 
     /**
@@ -71,16 +76,18 @@ public class OtlpHttpSender {
     @VisibleForTesting
     OtlpHttpSender(@Nonnull final OtlpSinkMetrics sinkMetrics, @Nonnull final Function<byte[], byte[]> gzipCompressor,
                    final SigV4Signer signer, final WebClient webClient) {
-        this(sinkMetrics, gzipCompressor, signer, webClient, Map.of());
+        this(sinkMetrics, gzipCompressor, signer, webClient, Map.of(), false);
     }
 
     OtlpHttpSender(@Nonnull final OtlpSinkMetrics sinkMetrics, @Nonnull final Function<byte[], byte[]> gzipCompressor,
-                   final SigV4Signer signer, final WebClient webClient, final Map<String, String> additionalHeaders) {
+                   final SigV4Signer signer, final WebClient webClient, final Map<String, String> additionalHeaders,
+                   final boolean dropTransactionSearchErrors) {
         this.sinkMetrics = sinkMetrics;
         this.gzipCompressor = gzipCompressor;
         this.signer = signer;
         this.webClient = webClient;
         this.additionalHeaders = additionalHeaders != null ? additionalHeaders : Map.of();
+        this.dropTransactionSearchErrors = dropTransactionSearchErrors;
     }
 
     /**
@@ -202,10 +209,24 @@ public class OtlpHttpSender {
                 ? new String(responseBytes, StandardCharsets.UTF_8)
                 : "<no body>";
 
+        if (dropTransactionSearchErrors && isTransactionSearchDisabled(statusCode, responseBody, metricsLabel)) {
+            LOG.error("Dropping {} spans: the X-Ray OTLP traces endpoint requires CloudWatch Transaction Search to be enabled. " +
+                    "Enable it with the UpdateTraceSegmentDestination API to deliver traces.", batch.size());
+            sinkMetrics.incrementDroppedSpansTransactionSearchDisabledCount(batch.size());
+            releaseAllEventHandle(batch, true);
+            return;
+        }
+
         LOG.error("Non-successful OTLP response. Status: {}, Response: {}", statusCode, responseBody);
         sinkMetrics.incrementRejectedRecordsCount(batch.size());
         sinkMetrics.incrementRejectedSignalCount(metricsLabel, batch.size());
         releaseAllEventHandle(batch, false);
+    }
+
+    private static boolean isTransactionSearchDisabled(final int statusCode, final String responseBody, final String metricsLabel) {
+        return statusCode == 400
+                && OtlpSignalType.TRACE.getMetricsLabel().equals(metricsLabel)
+                && responseBody.toLowerCase(Locale.ROOT).contains(TRANSACTION_SEARCH_DISABLED_MESSAGE);
     }
 
     /**

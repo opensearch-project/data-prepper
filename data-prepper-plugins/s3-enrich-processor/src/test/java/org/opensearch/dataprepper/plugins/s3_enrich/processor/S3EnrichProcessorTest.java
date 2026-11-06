@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.expression.ExpressionParsingException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -140,7 +141,7 @@ class S3EnrichProcessorTest {
 
         // --- AWS credential stubs ---
         final AwsCredentialsProvider credentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(credentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(credentialsProvider);
 
         // --- Plugin factory stub ---
         when(pluginFactory.loadPlugin(any(), any())).thenReturn(mock(org.opensearch.dataprepper.model.codec.InputCodec.class));

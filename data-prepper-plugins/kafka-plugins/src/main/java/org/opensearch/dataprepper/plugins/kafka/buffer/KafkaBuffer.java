@@ -60,8 +60,6 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaBuffer.class);
     static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 30L;
-    public static final int INNER_BUFFER_CAPACITY = 1000000;
-    public static final int INNER_BUFFER_BATCH_SIZE = 250000;
     static final String WRITE = "Write";
     static final String READ = "Read";
     static final String MDC_KAFKA_PLUGIN_VALUE = "buffer";
@@ -102,7 +100,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false, customCompressionOption);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
-        innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
+        innerBuffer = new BlockingBuffer<>(kafkaBufferConfig.getBoundedBufferSize(), kafkaBufferConfig.getBoundedBatchSize(), pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         this.consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),

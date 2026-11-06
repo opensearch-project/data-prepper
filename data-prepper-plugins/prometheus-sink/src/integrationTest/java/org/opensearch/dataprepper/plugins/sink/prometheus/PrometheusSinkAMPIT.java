@@ -54,6 +54,7 @@ import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.AuthTypeOptions;
@@ -215,8 +216,8 @@ public class PrometheusSinkAMPIT {
         queryRangeUrl = "api/v1/query_range";
         String remoteWriteUrl = url + "api/v1/remote_write";
         queryUrl = url + "api/v1/query";
-        when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
-        lenient().when(awsQueryCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenAnswer(options -> DefaultCredentialsProvider.create());
+        lenient().when(awsQueryCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenAnswer(options -> DefaultCredentialsProvider.create());
         thresholdConfig = mock(PrometheusSinkThresholdConfig.class);
         when(thresholdConfig.getMaxEvents()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(100000L);
@@ -984,7 +985,7 @@ public class PrometheusSinkAMPIT {
     void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
 
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(provider);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
         when(thresholdConfig.getMaxEvents()).thenReturn(1);
         PrometheusSink sink = createObjectUnderTest();

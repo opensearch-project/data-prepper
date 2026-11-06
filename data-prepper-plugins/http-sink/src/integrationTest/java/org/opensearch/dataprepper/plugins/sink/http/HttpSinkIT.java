@@ -25,6 +25,7 @@ import static org.awaitility.Awaitility.await;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -165,7 +166,7 @@ class HttpSinkIT {
         when(pluginSetting.getName()).thenReturn("name");
         pipelineDescription = mock(PipelineDescription.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenAnswer(options -> DefaultCredentialsProvider.create());
         
         when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
     }
@@ -550,7 +551,7 @@ class HttpSinkIT {
     @Test
     public void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(provider);
         sigv4Server.createContext("/success", exchange -> {
             String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
             if (authHeader == null || !authHeader.contains("AWS4-HMAC-SHA256")) {

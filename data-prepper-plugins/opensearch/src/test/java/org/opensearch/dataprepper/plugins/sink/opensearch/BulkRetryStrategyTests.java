@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.ErrorResponse;
 import org.opensearch.client.opensearch._types.OpenSearchException;
@@ -19,6 +20,7 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.OperationType;
@@ -32,10 +34,14 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumul
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCache;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndex;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndexDetector;
 import org.opensearch.rest.RestStatus;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -145,7 +151,8 @@ public class BulkRetryStrategyTests {
                 PIPELINE_NAME,
                 PLUGIN_NAME,
                 null,
-                false);
+                false,
+                null);
     }
 
     public BulkRetryStrategy createObjectUnderTest(
@@ -173,7 +180,8 @@ public class BulkRetryStrategyTests {
                 PIPELINE_NAME,
                 PLUGIN_NAME,
                 null,
-                false);
+                false,
+                null);
     }
 
     public BulkRetryStrategy createObjectUnderTest(
@@ -202,7 +210,8 @@ public class BulkRetryStrategyTests {
                 PIPELINE_NAME,
                 PLUGIN_NAME,
                 existingDocumentQueryManager,
-                false);
+                false,
+                null);
     }
 
     public BulkRetryStrategy createObjectUnderTestWithExternalVersioning(
@@ -229,7 +238,8 @@ public class BulkRetryStrategyTests {
                 PIPELINE_NAME,
                 PLUGIN_NAME,
                 null,
-                true);
+                true,
+                null);
     }
 
     @Test
@@ -716,6 +726,63 @@ public class BulkRetryStrategyTests {
                         .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
         assertEquals(1, documentErrorsMeasurements.size());
         assertEquals(3.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testExecuteRetryWithThrottledItems_aggregatesThrottledLogs() throws Exception {
+        final String testIndex = "throttle-test-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                requestFunction, logFailureConsumer, bulkRequestSupplier);
+
+        final IndexOperation<SerializedJson> indexOp1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOp4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
+
+        final BulkOperationWrapper wrapper1 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp1).build(), eventHandle1);
+        final BulkOperationWrapper wrapper2 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp2).build(), eventHandle2);
+        final BulkOperationWrapper wrapper3 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp3).build(), eventHandle3);
+        final BulkOperationWrapper wrapper4 = new BulkOperationWrapper(new BulkOperation.Builder().index(indexOp4).build(), eventHandle4);
+
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(wrapper1);
+        accumulatingBulkRequest.addOperation(wrapper2);
+        accumulatingBulkRequest.addOperation(wrapper3);
+        accumulatingBulkRequest.addOperation(wrapper4);
+
+        // First response: 1 success, 2 throttled (429), 1 bad request (non-retryable)
+        final BulkResponseItem successItem = successItemResponse(testIndex);
+        final BulkResponseItem throttledItem1 = tooManyRequestItemResponse(testIndex);
+        final BulkResponseItem throttledItem2 = tooManyRequestItemResponse(testIndex);
+        final BulkResponseItem badRequestItem = badRequestItemResponse(testIndex);
+        final List<BulkResponseItem> firstResponseItems = Arrays.asList(successItem, throttledItem1, throttledItem2, badRequestItem);
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        when(firstResponse.items()).thenReturn(firstResponseItems);
+
+        // Second response: both throttled items succeed on retry
+        final BulkResponseItem retrySuccess1 = successItemResponse(testIndex);
+        final BulkResponseItem retrySuccess2 = successItemResponse(testIndex);
+        final List<BulkResponseItem> secondResponseItems = Arrays.asList(retrySuccess1, retrySuccess2);
+
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(false);
+        when(secondResponse.items()).thenReturn(secondResponseItems);
+
+        when(requestFunction.apply(any())).thenReturn(firstResponse).thenReturn(secondResponse);
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        // 1 success on first attempt + 2 throttled items succeed on retry = 3 succeeded
+        assertEquals(3, numEventsSucceeded);
+        // 1 bad request = 1 failed (non-retryable)
+        assertEquals(1, numEventsFailed);
     }
 
     @Test
@@ -1292,7 +1359,7 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
-    void execute_with_duplicate_documents_increments_metrics() throws Exception {
+    void execute_with_updated_documents_increments_duplicates_metric() throws Exception {
         final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
         final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = mock(Supplier.class);
 
@@ -1309,8 +1376,7 @@ public class BulkRetryStrategyTests {
             operations.add(bulkOperationWrapper);
 
             final BulkResponseItem responseItem = mock(BulkResponseItem.class);
-            when(responseItem.seqNo()).thenReturn(1L);
-
+            when(responseItem.result()).thenReturn("updated");
             when(responseItem.status()).thenReturn(200);
             responseItems.add(responseItem);
         }
@@ -1335,10 +1401,263 @@ public class BulkRetryStrategyTests {
         assertThat(documentsDuplicatesMeasurements.get(0).getValue(), equalTo(5.0));
     }
 
+    @Test
+    void execute_with_created_documents_and_positive_sequence_numbers_does_not_increment_duplicates_metric() throws Exception {
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = mock(Supplier.class);
+
+        final BulkRetryStrategy objectUnderTest = createObjectUnderTest(
+                requestFunction, logFailureConsumer, 3, bulkRequestSupplier);
+
+        final List<BulkOperationWrapper> operations = new ArrayList<>();
+        final List<BulkResponseItem> responseItems = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+            operations.add(mock(BulkOperationWrapper.class));
+
+            final BulkResponseItem responseItem = mock(BulkResponseItem.class);
+            when(responseItem.result()).thenReturn("created");
+            lenient().when(responseItem.seqNo()).thenReturn((long) i + 1);
+            responseItems.add(responseItem);
+        }
+
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = mock(AccumulatingBulkRequest.class);
+        when(bulkRequest.getOperationsCount()).thenReturn(operations.size());
+        when(bulkRequest.getOperations()).thenReturn(operations);
+
+        final BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.items()).thenReturn(responseItems);
+        when(requestFunction.apply(bulkRequest)).thenReturn(bulkResponse);
+
+        objectUnderTest.execute(bulkRequest);
+
+        final List<Measurement> documentsDuplicatesMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_DUPLICATES).toString());
+        assertThat(documentsDuplicatesMeasurements.size(), equalTo(1));
+        assertThat(documentsDuplicatesMeasurements.get(0).getValue(), equalTo(0.0));
+    }
+
     private static BulkResponseItem successItemResponse(final String index) {
         final BulkResponseItem response = mock(BulkResponseItem.class);
         lenient().when(response.status()).thenReturn(200);
         return response;
+    }
+
+    private static BulkResponseItem missingTimestampItemResponse(final String index, final String timestampField) {
+        return bulkFailureWithReason(index, "document is missing required timestamp field [" + timestampField + "]");
+    }
+
+    private static BulkResponseItem bulkFailureWithReason(final String index, final String reason) {
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        lenient().when(errorCause.reason()).thenReturn(reason);
+        final BulkResponseItem badResponse = mock(BulkResponseItem.class);
+        lenient().when(badResponse.status()).thenReturn(RestStatus.BAD_REQUEST.getStatus());
+        lenient().when(badResponse.index()).thenReturn(index);
+        lenient().when(badResponse.error()).thenReturn(errorCause);
+        return badResponse;
+    }
+
+    private TimeSeriesIndex createTimeSeriesIndex() {
+        return new TimeSeriesIndex(
+                new TimeSeriesIndexDetector(mock(OpenSearchClient.class), new IndexCache()),
+                new BulkOperationFactory(null, mock(ScriptManager.class), false),
+                false);
+    }
+
+    private BulkRetryStrategy createObjectUnderTestWithTimeSeriesIndex(
+            final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
+            final Supplier<AccumulatingBulkRequest> bulkRequestSupplier) {
+        return new BulkRetryStrategy(
+                requestFunction,
+                logFailureConsumer,
+                (operations) -> operations.forEach(operation -> operation.releaseEventHandle(true)),
+                pluginMetrics,
+                5,
+                bulkRequestSupplier,
+                PIPELINE_NAME,
+                PLUGIN_NAME,
+                null,
+                false,
+                createTimeSeriesIndex());
+    }
+
+    private static BulkOperationWrapper createOperation(final String index, final String json, final EventHandle eventHandle) {
+        return new BulkOperationWrapper(new BulkOperation.Builder()
+                .create(new CreateOperation.Builder<Object>().index(index)
+                        .document(SerializedJson.fromStringAndOptionals(json, null, null, null)).build())
+                .build(), eventHandle);
+    }
+
+    private static String documentAt(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final int position) {
+        return new String(((SerializedJson) request.getOperationAt(position).getDocument()).getSerializedJson(), StandardCharsets.UTF_8);
+    }
+
+    @Test
+    public void testExecute_MissingTimestamp_RetriesWithTimestampField() throws Exception {
+        final String testIndex = "timeseries-index";
+        final String timestampField = "event-time";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTestWithTimeSeriesIndex(requestFunction, bulkRequestSupplier);
+
+        final AccumulatingBulkRequest initialRequest = bulkRequestSupplier.get();
+        initialRequest.addOperation(createOperation(testIndex, "{\"message\":\"a\"}", eventHandle1));
+        initialRequest.addOperation(createOperation(testIndex, "{\"message\":\"b\",\"@timestamp\":\"2026-10-30T10:00:00Z\"}", eventHandle2));
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> firstItems = Arrays.asList(
+                missingTimestampItemResponse(testIndex, timestampField), missingTimestampItemResponse(testIndex, timestampField));
+        when(firstResponse.items()).thenReturn(firstItems);
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(false);
+        final ArgumentCaptor<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> requestCaptor = ArgumentCaptor.forClass(AccumulatingBulkRequest.class);
+        when(requestFunction.apply(requestCaptor.capture())).thenReturn(firstResponse).thenReturn(secondResponse);
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+
+        bulkRetryStrategy.execute(initialRequest);
+
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> retryRequest = requestCaptor.getAllValues().get(1);
+        assertThat(retryRequest.getOperationsCount(), equalTo(2));
+        assertTrue(documentAt(retryRequest, 0).contains("\"" + timestampField + "\":"));
+        assertTrue(documentAt(retryRequest, 1).contains("\"" + timestampField + "\":\"2026-10-30T10:00:00Z\""));
+        assertFalse(documentAt(retryRequest, 1).contains("@timestamp"));
+        verify(logFailureConsumer, times(0)).accept(any(), any());
+        assertThat(numEventsSucceeded, equalTo(2));
+        assertThat(numEventsFailed, equalTo(0));
+    }
+
+    @Test
+    public void testExecute_MixedBatch_RetriesMissingTimestampAndSendsInvalidTimestampToDlq() throws Exception {
+        final String testIndex = "timeseries-index";
+        final String timestampField = "event-time";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTestWithTimeSeriesIndex(requestFunction, bulkRequestSupplier);
+
+        final BulkOperationWrapper missingTimestamp = createOperation(testIndex, "{\"message\":\"a\"}", eventHandle1);
+        final BulkOperationWrapper invalidTimestamp = createOperation(testIndex, "{\"" + timestampField + "\":\"not-a-date\"}", eventHandle2);
+        final AccumulatingBulkRequest initialRequest = bulkRequestSupplier.get();
+        initialRequest.addOperation(missingTimestamp);
+        initialRequest.addOperation(invalidTimestamp);
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> firstItems = Arrays.asList(
+                missingTimestampItemResponse(testIndex, timestampField),
+                bulkFailureWithReason(testIndex, "failed to parse field [" + timestampField + "] of type [date]"));
+        when(firstResponse.items()).thenReturn(firstItems);
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(false);
+        final ArgumentCaptor<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> requestCaptor = ArgumentCaptor.forClass(AccumulatingBulkRequest.class);
+        when(requestFunction.apply(requestCaptor.capture())).thenReturn(firstResponse).thenReturn(secondResponse);
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+
+        bulkRetryStrategy.execute(initialRequest);
+
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> retryRequest = requestCaptor.getAllValues().get(1);
+        assertThat(retryRequest.getOperationsCount(), equalTo(1));
+        assertTrue(documentAt(retryRequest, 0).contains("\"" + timestampField + "\":"));
+        final ArgumentCaptor<List<FailedBulkOperation>> failedOperationsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(logFailureConsumer, times(1)).accept(failedOperationsCaptor.capture(), eq(null));
+        assertThat(failedOperationsCaptor.getValue().size(), equalTo(1));
+        assertThat(failedOperationsCaptor.getValue().get(0).getBulkOperation(), equalTo(invalidTimestamp));
+        assertThat(numEventsSucceeded, equalTo(1));
+        assertThat(numEventsFailed, equalTo(1));
+    }
+
+    @Test
+    public void testExecute_MissingTimestamp_FixedDocumentHasInvalidTimestamp_SendsToDlq() throws Exception {
+        final String testIndex = "timeseries-index";
+        final String timestampField = "event-time";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTestWithTimeSeriesIndex(requestFunction, bulkRequestSupplier);
+
+        final AccumulatingBulkRequest initialRequest = bulkRequestSupplier.get();
+        initialRequest.addOperation(createOperation(testIndex, "{\"message\":\"a\",\"@timestamp\":\"not-a-date\"}", eventHandle1));
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> firstItems = List.of(missingTimestampItemResponse(testIndex, timestampField));
+        when(firstResponse.items()).thenReturn(firstItems);
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> secondItems = List.of(
+                bulkFailureWithReason(testIndex, "failed to parse field [" + timestampField + "] of type [date]"));
+        when(secondResponse.items()).thenReturn(secondItems);
+        final ArgumentCaptor<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> requestCaptor = ArgumentCaptor.forClass(AccumulatingBulkRequest.class);
+        when(requestFunction.apply(requestCaptor.capture())).thenReturn(firstResponse).thenReturn(secondResponse);
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+
+        bulkRetryStrategy.execute(initialRequest);
+
+        verify(requestFunction, times(2)).apply(any());
+        assertTrue(documentAt(requestCaptor.getAllValues().get(1), 0).contains("\"" + timestampField + "\":\"not-a-date\""));
+        final ArgumentCaptor<List<FailedBulkOperation>> failedOperationsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(logFailureConsumer, times(1)).accept(failedOperationsCaptor.capture(), eq(null));
+        assertThat(failedOperationsCaptor.getValue().get(0).getBulkOperation().getEventHandle(), equalTo(eventHandle1));
+        assertThat(numEventsSucceeded, equalTo(0));
+        assertThat(numEventsFailed, equalTo(1));
+    }
+
+    @Test
+    public void testExecute_RetryableError_WithTimeSeriesIndex_RetriesUnchangedOperation() throws Exception {
+        final String testIndex = "timeseries-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTestWithTimeSeriesIndex(requestFunction, bulkRequestSupplier);
+
+        final BulkOperationWrapper operation = createOperation(testIndex, "{\"message\":\"a\"}", eventHandle1);
+        final AccumulatingBulkRequest initialRequest = bulkRequestSupplier.get();
+        initialRequest.addOperation(operation);
+
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> firstItems = List.of(tooManyRequestItemResponse(testIndex));
+        when(firstResponse.items()).thenReturn(firstItems);
+        final BulkResponse secondResponse = mock(BulkResponse.class);
+        when(secondResponse.errors()).thenReturn(false);
+        final ArgumentCaptor<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> requestCaptor = ArgumentCaptor.forClass(AccumulatingBulkRequest.class);
+        when(requestFunction.apply(requestCaptor.capture())).thenReturn(firstResponse).thenReturn(secondResponse);
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+
+        bulkRetryStrategy.execute(initialRequest);
+
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> retryRequest = requestCaptor.getAllValues().get(1);
+        assertThat(retryRequest.getOperationsCount(), equalTo(1));
+        assertThat(retryRequest.getOperationAt(0), equalTo(operation));
+        verify(logFailureConsumer, times(0)).accept(any(), any());
+        assertThat(numEventsSucceeded, equalTo(1));
+    }
+
+    @Test
+    public void testExecute_MissingTimestamp_WithoutTimeSeriesIndex_SendsToDlq() throws Exception {
+        final String testIndex = "timeseries-index";
+        final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction = mock(RequestFunction.class);
+        final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(requestFunction, logFailureConsumer, 2, bulkRequestSupplier);
+
+        final AccumulatingBulkRequest initialRequest = bulkRequestSupplier.get();
+        initialRequest.addOperation(createOperation(testIndex, "{\"message\":\"a\"}", eventHandle1));
+        final BulkResponse firstResponse = mock(BulkResponse.class);
+        when(firstResponse.errors()).thenReturn(true);
+        final List<BulkResponseItem> firstItems = List.of(missingTimestampItemResponse(testIndex, "event-time"));
+        when(firstResponse.items()).thenReturn(firstItems);
+        when(requestFunction.apply(any())).thenReturn(firstResponse);
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+
+        bulkRetryStrategy.execute(initialRequest);
+
+        verify(requestFunction, times(1)).apply(any());
+        verify(logFailureConsumer, times(1)).accept(any(), eq(null));
+        assertThat(numEventsFailed, equalTo(1));
     }
 
     private static BulkResponseItem badRequestItemResponse(final String index) {

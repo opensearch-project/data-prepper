@@ -31,6 +31,7 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
     private static final String RATE_LIMIT_REMAINING = "X-RateLimit-Remaining";
     private static final String RATE_LIMIT_RESET = "X-RateLimit-Reset";
     private static final String RETRY_AFTER = "Retry-After";
+    private static final int MAX_RETRY_AFTER_SECONDS = 86400; // ceiling guards against int overflow in the sleep calculation
     private static final List<HttpStatus> DEFAULT_RATE_LIMIT_STATUS_CODES = Arrays.asList(HttpStatus.TOO_MANY_REQUESTS);
 
     private final List<Integer> retryAttemptSleepTime;
@@ -127,8 +128,12 @@ public class RetryAfterHeaderStrategy implements RetryStrategy {
             if (headers != null && headers.containsKey(RETRY_AFTER)) {
                 String retryAfter = headers.getFirst(RETRY_AFTER);
                 if (retryAfter != null) {
-                    int seconds = Integer.parseInt(retryAfter);
-                    return Optional.of(Math.max(seconds, 1));
+                    // Some services send a fractional Retry-After (e.g. 299.997); round up so we never wait less than requested.
+                    final double parsedSeconds = Double.parseDouble(retryAfter);
+                    if (Double.isFinite(parsedSeconds)) {
+                        final int seconds = (int) Math.min(Math.ceil(parsedSeconds), MAX_RETRY_AFTER_SECONDS);
+                        return Optional.of(Math.max(seconds, 1));
+                    }
                 }
             }
             if (headers != null && headers.containsKey(RATE_LIMIT_REMAINING) && headers.containsKey(RATE_LIMIT_RESET)) {

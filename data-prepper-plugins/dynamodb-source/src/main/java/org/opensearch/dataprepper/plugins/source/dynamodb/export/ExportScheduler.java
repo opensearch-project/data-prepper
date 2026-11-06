@@ -197,7 +197,7 @@ public class ExportScheduler implements Runnable {
 
         // Currently, we need to maintain a global state to track the overall progress.
         // So that we can easily tell if all the export files are loaded
-        LoadStatus loadStatus = new LoadStatus(totalFiles.get(), 0, totalRecords.get(), 0);
+        LoadStatus loadStatus = new LoadStatus(dataFileInfo.size(), 0, totalRecords.get(), 0);
         enhancedSourceCoordinator.createPartition(new GlobalState(exportArn, Optional.of(loadStatus.toMap())));
 
         dataFileInfo.forEach((key, size) -> {

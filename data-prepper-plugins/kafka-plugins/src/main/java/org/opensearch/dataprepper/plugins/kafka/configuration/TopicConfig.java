@@ -28,4 +28,6 @@ public interface TopicConfig {
     Duration getRetryBackoff();
 
     Duration getReconnectBackoff();
+
+    Duration getMetadataMaxAge();
 }

@@ -223,7 +223,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                 ));
             }
         } catch (Exception ex) {
-            LOG.error(NOISY, "Exception occured during error handling: {}", ex.getMessage());
+            LOG.error(NOISY, "Exception occurred during error handling: {}", ex.getMessage());
         }
     }
 

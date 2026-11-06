@@ -12,8 +12,13 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
+import software.amazon.awssdk.core.retry.conditions.OrRetryCondition;
+import software.amazon.awssdk.core.retry.conditions.RetryCondition;
+import software.amazon.awssdk.core.retry.conditions.RetryOnStatusCodeCondition;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+
+import java.util.Set;
 
 public final class LambdaClientFactory {
 
@@ -55,8 +60,14 @@ public final class LambdaClientFactory {
             .maxBackoffTime(clientOptions.getMaxBackoff())
             .build();
 
+    final Set<Integer> retryableStatusCodes = clientOptions.getRetryableStatusCodes();
+    final RetryCondition retryCondition = retryableStatusCodes.isEmpty()
+            ? new CustomLambdaRetryCondition()
+            : OrRetryCondition.create(new CustomLambdaRetryCondition(),
+                    RetryOnStatusCodeCondition.create(retryableStatusCodes));
+
     final RetryPolicy customRetryPolicy = RetryPolicy.builder()
-            .retryCondition(new CustomLambdaRetryCondition())
+            .retryCondition(retryCondition)
             .numRetries(clientOptions.getMaxConnectionRetries())
             .backoffStrategy(backoffStrategy)
             .build();

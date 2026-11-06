@@ -20,6 +20,8 @@ public class ConvertConfiguration {
         serverConfiguration.setRetryInfo(otlpSourceConfig.getRetryInfo());
         serverConfiguration.setThreadCount(otlpSourceConfig.getThreadCount());
         serverConfiguration.setMaxConnectionCount(otlpSourceConfig.getMaxConnectionCount());
+        serverConfiguration.setMaxConnectionAge(otlpSourceConfig.getMaxConnectionAge());
+        serverConfiguration.setConnectionDrainDuration(otlpSourceConfig.getConnectionDrainDuration());
 
         return serverConfiguration;
     }

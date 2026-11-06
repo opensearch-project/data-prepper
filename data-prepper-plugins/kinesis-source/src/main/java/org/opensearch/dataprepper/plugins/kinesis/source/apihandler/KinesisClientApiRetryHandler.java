@@ -51,7 +51,7 @@ public class KinesisClientApiRetryHandler {
     }
 
     private void applyBackoff(int attempt) {
-        final long delayMillis = backoff.nextDelayMillis(attempt);
+        final long delayMillis = backoff.nextDelayMillis(attempt + 1);
         if (delayMillis < 0) {
             throw new KinesisRetriesExhaustedException(
                     "Retries exhausted. Make sure that configuration is valid and required permissions are present.");

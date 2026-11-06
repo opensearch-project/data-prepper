@@ -12,7 +12,9 @@ public class SearchWithSearchAfterResults {
 
     private final List<Event> documents;
     private final List<String> nextSearchAfter;
-   
+    private final SearchShardStatistics shardStatistics;
+    private final Long totalHits;
+
     public List<Event> getDocuments() {
         return documents;
     }
@@ -21,9 +23,19 @@ public class SearchWithSearchAfterResults {
         return nextSearchAfter;
     }
 
+    public SearchShardStatistics getShardStatistics() {
+        return shardStatistics == null ? SearchShardStatistics.empty() : shardStatistics;
+    }
+
+    public Long getTotalHits() {
+        return totalHits;
+    }
+
     private SearchWithSearchAfterResults(final SearchWithSearchAfterResults.Builder builder) {
         this.documents = builder.documents;
         this.nextSearchAfter = builder.nextSearchAfter;
+        this.shardStatistics = builder.shardStatistics;
+        this.totalHits = builder.totalHits;
     }
 
     public static SearchWithSearchAfterResults.Builder builder() {
@@ -34,6 +46,8 @@ public class SearchWithSearchAfterResults {
 
         private List<Event> documents;
         private List<String> nextSearchAfter;
+        private SearchShardStatistics shardStatistics;
+        private Long totalHits;
 
         public Builder() {
 
@@ -49,6 +63,15 @@ public class SearchWithSearchAfterResults {
             return this;
         }
 
+        public SearchWithSearchAfterResults.Builder withShardStatistics(final SearchShardStatistics shardStatistics) {
+            this.shardStatistics = shardStatistics;
+            return this;
+        }
+
+        public SearchWithSearchAfterResults.Builder withTotalHits(final Long totalHits) {
+            this.totalHits = totalHits;
+            return this;
+        }
 
         public SearchWithSearchAfterResults build() {
             return new SearchWithSearchAfterResults(this);

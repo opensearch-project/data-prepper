@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +40,31 @@ class RdsSourceConfigTest {
     void test_default_RdsSourceConfig_returns_default_values() {
         assertThat(objectUnderTest.isAcknowledgmentsEnabled(), equalTo(true));
         assertThat(objectUnderTest.isDisableS3ReadForLeader(), equalTo(false));
+        assertThat(objectUnderTest.getEmptyScanDelay(), equalTo(Duration.ZERO));
+        assertThat(objectUnderTest.isEmptyScanDelayValid(), equalTo(true));
+    }
+
+    @Test
+    void test_empty_scan_delay_returns_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        setField(RdsSourceConfig.class, objectUnderTest, "emptyScanDelay", Duration.ofSeconds(60));
+        assertThat(objectUnderTest.getEmptyScanDelay(), equalTo(Duration.ofSeconds(60)));
+        assertThat(objectUnderTest.isEmptyScanDelayValid(), equalTo(true));
+    }
+
+    @Test
+    void test_empty_scan_delay_returns_zero_when_null() throws NoSuchFieldException, IllegalAccessException {
+        setField(RdsSourceConfig.class, objectUnderTest, "emptyScanDelay", null);
+        assertThat(objectUnderTest.getEmptyScanDelay(), equalTo(Duration.ZERO));
+    }
+
+    @Test
+    void test_empty_scan_delay_validation_boundaries() throws NoSuchFieldException, IllegalAccessException {
+        setField(RdsSourceConfig.class, objectUnderTest, "emptyScanDelay", Duration.ofMinutes(30));
+        assertThat(objectUnderTest.isEmptyScanDelayValid(), equalTo(true));
+        setField(RdsSourceConfig.class, objectUnderTest, "emptyScanDelay", Duration.ofMinutes(30).plusSeconds(1));
+        assertThat(objectUnderTest.isEmptyScanDelayValid(), equalTo(false));
+        setField(RdsSourceConfig.class, objectUnderTest, "emptyScanDelay", Duration.ofSeconds(-1));
+        assertThat(objectUnderTest.isEmptyScanDelayValid(), equalTo(false));
     }
 
     @Test

@@ -37,6 +37,8 @@ import static org.opensearch.dataprepper.plugins.source.opensearch.worker.Worker
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.hasMorePages;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.recordShardFailuresIfAny;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -103,7 +105,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                     openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet));
 
                     completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet,
-                            indexPartition.get(), sourceCoordinator);
+                            indexPartition.get(), sourceCoordinator, openSearchSourcePluginMetrics);
 
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
                     LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
@@ -178,15 +180,19 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
             openSearchIndexProgressState.setSearchAfter(searchWithSearchAfterResults.getNextSearchAfter());
 
+            recordShardFailuresIfAny(indexName, searchWithSearchAfterResults.getShardStatistics(), openSearchIndexProgressState, openSearchSourcePluginMetrics);
+
             if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
                 LOG.debug("Renew ownership of index {}", indexName);
                 sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
                 lastCheckpointTime = System.currentTimeMillis();
             }
-        } while (searchWithSearchAfterResults.getDocuments().size() == searchConfiguration.getBatchSize());
+        } while (hasMorePages(searchWithSearchAfterResults));
 
-        LOG.info("Received {} documents in latest search request, and batch size is {}, exiting pagination",
-                searchWithSearchAfterResults.getDocuments().size(), searchConfiguration.getBatchSize());
+        LOG.info("Reached end of index '{}' (last page returned {} documents, nextSearchAfter present: {}).",
+                indexName,
+                searchWithSearchAfterResults.getDocuments().size(),
+                searchWithSearchAfterResults.getNextSearchAfter() != null);
 
         try {
             bufferAccumulator.flush();

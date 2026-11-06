@@ -10,12 +10,14 @@
 
 package org.opensearch.dataprepper.plugins.processor.splitevent;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -34,11 +36,21 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
 
     private final String field;
     private final Function<String, String[]> splitter;
+    private final String splitWhen;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public SplitEventProcessor(final PluginMetrics pluginMetrics, final SplitEventProcessorConfig config) {
+    public SplitEventProcessor(final PluginMetrics pluginMetrics, final SplitEventProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.field = config.getField();
+        this.splitWhen = config.getSplitWhen();
+        this.expressionEvaluator = expressionEvaluator;
+
+        if (splitWhen != null && !expressionEvaluator.isValidExpressionStatement(splitWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("split_when \"%s\" is not a valid expression statement. " +
+                            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", splitWhen));
+        }
 
         final String delimiter = config.getDelimiter();
         final String delimiterRegex = config.getDelimiterRegex();
@@ -66,6 +78,11 @@ public class SplitEventProcessor extends AbstractProcessor<Record<Event>, Record
         final Collection<Record<Event>> newRecords = new ArrayList<>();
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
+
+            if (splitWhen != null && !expressionEvaluator.evaluateConditional(splitWhen, recordEvent)) {
+                newRecords.add(record);
+                continue;
+            }
 
             if (!recordEvent.containsKey(field)) {
                 newRecords.add(record);

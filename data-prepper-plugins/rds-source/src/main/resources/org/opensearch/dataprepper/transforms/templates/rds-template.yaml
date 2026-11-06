@@ -73,6 +73,8 @@
         folder_partitions:
           depth: "<<FUNCTION_NAME:calculateDepthForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"
           max_objects_per_ownership: 50
+          idle_scan_mode: "<<$.<<pipeline-name>>.source.rds.scan_mode>>"
+          empty_folder_rescan_delay: "<<$.<<pipeline-name>>.source.rds.empty_scan_delay>>"
         buckets:
           - bucket:
               name: "<<$.<<pipeline-name>>.source.rds.s3_bucket>>"

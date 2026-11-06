@@ -147,7 +147,8 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     }
 
     private SearchRequest createSearchRequest(final Collection<String> traceIds) {
-        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupProcessorConfig.RAW_INDEX_ALIAS);
+        final List<String> indices = otelTraceGroupProcessorConfig.getIndices();
+        final SearchRequest searchRequest = new SearchRequest(indices.toArray(new String[0]));
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()

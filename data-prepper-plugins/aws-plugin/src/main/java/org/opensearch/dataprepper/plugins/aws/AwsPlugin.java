@@ -32,7 +32,9 @@ public class AwsPlugin implements ExtensionPlugin {
 
         this.awsPluginConfig = awsPluginConfig;
 
-        final CredentialsProviderFactory credentialsProviderFactory = new CredentialsProviderFactory(awsPluginConfig != null ? awsPluginConfig.getDefaultStsConfiguration() : new AwsStsConfiguration());
+        final CredentialsProviderFactory credentialsProviderFactory = new CredentialsProviderFactory(
+                awsPluginConfig != null ? awsPluginConfig.getDefaultStsConfiguration() : new AwsStsConfiguration(),
+                awsPluginConfig);
         final CredentialsCache credentialsCache = new CredentialsCache();
         defaultAwsCredentialsSupplier = new DefaultAwsCredentialsSupplier(credentialsProviderFactory, credentialsCache);
     }

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.sqs;
 
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -98,7 +99,7 @@ public class SqsSinkTest {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
         when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("us-west-2")));
         when(sqsSinkConfig.getDlq()).thenReturn(null);
         codecConfig = mock(PluginModel.class);

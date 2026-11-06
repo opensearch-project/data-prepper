@@ -1,0 +1,281 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+package org.opensearch.dataprepper.plugin.osgi;
+
+import org.apache.felix.framework.FrameworkFactory;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.Constants;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.launch.Framework;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Manages the embedded Apache Felix OSGi framework lifecycle.
+ * Handles init, start, stop, and destroy of the Felix container.
+ */
+public class FelixPluginManager implements AutoCloseable {
+    private static final Logger LOG = LoggerFactory.getLogger(FelixPluginManager.class);
+
+    static final String DATA_PREPPER_DIR_PROPERTY = "data-prepper.dir";
+    static final String CACHE_DIR_NAME = "felix-cache";
+
+    /**
+     * Matches only the {@code felix-cache-<pid>} directories earlier versions of this class created,
+     * so that purging cannot reach a directory this class never owned.
+     */
+    private static final Pattern STALE_CACHE_DIR_PATTERN =
+            Pattern.compile(Pattern.quote(CACHE_DIR_NAME) + "-\\d+");
+
+    private final Framework framework;
+
+    public FelixPluginManager() {
+        this(createDefaultConfig());
+    }
+
+    public FelixPluginManager(final Map<String, String> felixConfig) {
+        Objects.requireNonNull(felixConfig, "felixConfig must not be null");
+        this.framework = new FrameworkFactory().newFramework(felixConfig);
+    }
+
+    /**
+     * Initializes and starts the Felix framework.
+     *
+     * @throws BundleException if the framework fails to start
+     */
+    public void start() throws BundleException {
+        LOG.info("Starting embedded Felix OSGi framework");
+        framework.start();
+        LOG.info("Felix OSGi framework started. State: {}", StaticBundleLoader.getStateString(framework.getState()));
+    }
+
+    /**
+     * Stops the Felix framework and waits for it to fully stop.
+     *
+     * @throws BundleException if the framework fails to stop
+     * @throws InterruptedException if interrupted while waiting for shutdown
+     */
+    public void stop() throws BundleException, InterruptedException {
+        LOG.info("Stopping embedded Felix OSGi framework");
+        framework.stop();
+        final FrameworkEvent stopEvent = framework.waitForStop(30_000);
+        if (stopEvent.getType() == FrameworkEvent.WAIT_TIMEDOUT) {
+            LOG.warn("Felix OSGi framework did not stop within 30 seconds (WAIT_TIMEDOUT)");
+        } else if (stopEvent.getType() == FrameworkEvent.ERROR) {
+            LOG.error("Felix OSGi framework stop encountered an error", stopEvent.getThrowable());
+        } else {
+            LOG.info("Felix OSGi framework stopped");
+        }
+    }
+
+    /**
+     * Returns the BundleContext for the system bundle.
+     *
+     * @return the system BundleContext, or null if framework is not started
+     */
+    public BundleContext getBundleContext() {
+        return framework.getBundleContext();
+    }
+
+    /**
+     * Installs a bundle from the given location.
+     *
+     * @param location the bundle location (file URI or URL)
+     * @return the installed Bundle
+     * @throws BundleException if installation fails
+     */
+    public Bundle installBundle(final String location) throws BundleException {
+        Objects.requireNonNull(location, "Bundle location must not be null");
+        final BundleContext context = getBundleContext();
+        if (context == null) {
+            throw new IllegalStateException("Framework is not started");
+        }
+        final Bundle bundle = context.installBundle(location);
+        LOG.debug("Installed bundle: {} [{}]", bundle.getSymbolicName(), bundle.getBundleId());
+        return bundle;
+    }
+
+    /**
+     * Returns the current state of the framework.
+     *
+     * @return the framework state as an integer constant from {@link Bundle}
+     */
+    public int getFrameworkState() {
+        return framework.getState();
+    }
+
+    /**
+     * Returns whether the framework is currently active.
+     *
+     * @return true if the framework is in ACTIVE state
+     */
+    public boolean isActive() {
+        return framework.getState() == Bundle.ACTIVE;
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (framework.getState() == Bundle.ACTIVE) {
+            try {
+                stop();
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (final BundleException e) {
+                LOG.warn("Error stopping OSGi framework during close", e);
+            }
+        }
+    }
+
+    Framework getFramework() {
+        return framework;
+    }
+
+    private static Map<String, String> createDefaultConfig() {
+        final Map<String, String> config = new HashMap<>();
+        final String cacheDir = resolveCacheDirectory();
+        LOG.info("Felix OSGi cache directory: {}", cacheDir);
+        config.put(Constants.FRAMEWORK_STORAGE, cacheDir);
+        config.put(Constants.FRAMEWORK_STORAGE_CLEAN, Constants.FRAMEWORK_STORAGE_CLEAN_ONFIRSTINIT);
+        config.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA,
+                DataPrepperOsgiPackages.buildSystemPackagesExtra());
+        // Provide the osgi.ee capability so bundles with Require-Capability for JavaSE resolve.
+        // Use "extra" to append to defaults rather than replace them.
+        config.put("org.osgi.framework.system.capabilities.extra",
+                buildExecutionEnvironmentCapability());
+        return config;
+    }
+
+    /**
+     * Builds the osgi.ee system capability string for the current JVM.
+     * Advertises JavaSE versions from 1.0 up to the current runtime version.
+     */
+    private static String buildExecutionEnvironmentCapability() {
+        final int javaVersion = Runtime.version().feature();
+        final StringBuilder versions = new StringBuilder();
+        // Advertise 1.x versions (1.0 through 1.8)
+        for (int v = 0; v <= 8; v++) {
+            if (versions.length() > 0) {
+                versions.append(", ");
+            }
+            versions.append("1.").append(v);
+        }
+        // Advertise 9+ versions up to current
+        for (int v = 9; v <= javaVersion; v++) {
+            versions.append(", ").append(v).append(".0");
+        }
+        return "osgi.ee; osgi.ee=\"JavaSE\"; version:List<Version>=\"" + versions + "\"";
+    }
+
+    /**
+     * Resolves the Felix bundle-cache directory.
+     * <p>
+     * Under {@code data-prepper.dir} (production) the cache uses a <em>fixed</em> directory name so that
+     * {@link Constants#FRAMEWORK_STORAGE_CLEAN_ONFIRSTINIT} actually reclaims it on the next start. A
+     * process-unique name would orphan one cache directory per restart and grow without bound on a
+     * long-lived host or a container with a persistent data volume. A fixed name is safe because the
+     * framework lifecycle is static — a single framework instance owns the directory for the life of the
+     * process — and any cache left behind by an unclean shutdown is cleaned on the next first init.
+     * <p>
+     * When {@code data-prepper.dir} is not set we are running outside a real installation (unit tests),
+     * so the cache falls back to {@code java.io.tmpdir} with a process-unique name to keep concurrently
+     * forked test JVMs from contending on one cache lock.
+     */
+    private static String resolveCacheDirectory() {
+        final String dataPrepperDir = System.getProperty(DATA_PREPPER_DIR_PROPERTY);
+        if (dataPrepperDir != null && !dataPrepperDir.isEmpty()) {
+            LOG.debug("Using data-prepper.dir for OSGi storage: {}", dataPrepperDir);
+            final Path osgiDir = Paths.get(dataPrepperDir, "data", "osgi");
+            purgeStaleCaches(osgiDir);
+            return osgiDir.resolve(CACHE_DIR_NAME).toString();
+        }
+        final String tmpDir = System.getProperty("java.io.tmpdir");
+        LOG.debug("data-prepper.dir not set; falling back to java.io.tmpdir for OSGi storage: {}", tmpDir);
+        return Paths.get(tmpDir, "data", "osgi",
+                CACHE_DIR_NAME + "-" + ProcessHandle.current().pid()).toString();
+    }
+
+    /**
+     * Deletes process-suffixed bundle caches ({@code felix-cache-<pid>}) orphaned by earlier versions
+     * that named the cache per process. Best-effort: a cache we cannot remove is logged and skipped.
+     * <p>
+     * Deletion is deliberately narrow, because {@code data-prepper.dir} is caller-supplied and this
+     * runs at startup. A candidate is removed only when all of the following hold, so that no path
+     * outside the caches this class itself created can be reached:
+     * <ul>
+     *   <li>it is a direct child of {@code <data-prepper.dir>/data/osgi};</li>
+     *   <li>its name matches {@code felix-cache-<digits>} exactly — not merely the prefix, so an
+     *       unrelated directory such as {@code felix-cache-backup} is left alone;</li>
+     *   <li>it is a real directory rather than a symbolic link, so a link planted under the OSGi
+     *       directory cannot redirect the walk outside of it.</li>
+     * </ul>
+     */
+    private static void purgeStaleCaches(final Path osgiDir) {
+        if (!Files.isDirectory(osgiDir, LinkOption.NOFOLLOW_LINKS)) {
+            return;
+        }
+        try (Stream<Path> children = Files.list(osgiDir)) {
+            final List<Path> stale = children
+                    .filter(FelixPluginManager::isStaleProcessSuffixedCache)
+                    .collect(Collectors.toList());
+            for (final Path staleCache : stale) {
+                deleteRecursively(osgiDir, staleCache);
+            }
+            if (!stale.isEmpty()) {
+                LOG.info("Removed {} stale Felix OSGi bundle cache directories under {}", stale.size(), osgiDir);
+            }
+        } catch (final IOException e) {
+            LOG.warn("Could not scan {} for stale Felix OSGi bundle caches: {}", osgiDir, e.getMessage());
+        }
+    }
+
+    private static boolean isStaleProcessSuffixedCache(final Path candidate) {
+        return Files.isDirectory(candidate, LinkOption.NOFOLLOW_LINKS)
+                && STALE_CACHE_DIR_PATTERN.matcher(candidate.getFileName().toString()).matches();
+    }
+
+    /**
+     * Recursively deletes {@code root}, refusing anything that is not a direct child of
+     * {@code osgiDir} and skipping symbolic links rather than following them.
+     */
+    private static void deleteRecursively(final Path osgiDir, final Path root) {
+        if (!osgiDir.equals(root.getParent())) {
+            LOG.warn("Refusing to delete {}: it is not directly under {}", root, osgiDir);
+            return;
+        }
+        // Files.walk does not follow symbolic links unless FOLLOW_LINKS is passed, and the caller has
+        // already established that root itself is not a link, so the walk cannot escape root.
+        try (Stream<Path> paths = Files.walk(root)) {
+            final List<Path> ordered = paths.sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+            for (final Path path : ordered) {
+                Files.deleteIfExists(path);
+            }
+        } catch (final IOException e) {
+            LOG.warn("Could not delete stale Felix OSGi bundle cache {}: {}", root, e.getMessage());
+        }
+    }
+}

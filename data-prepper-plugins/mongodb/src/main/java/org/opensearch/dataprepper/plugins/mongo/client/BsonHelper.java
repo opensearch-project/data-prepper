@@ -186,7 +186,7 @@ public class BsonHelper {
         }
     }
 
-    private static boolean isClassNumber(final String className) {
+    public static boolean isClassNumber(final String className) {
         return className.equals("java.lang.Integer") || className.equals("java.lang.Long") || className.equals("java.lang.Double")
                 || className.equals("org.bson.types.Decimal128");
     }

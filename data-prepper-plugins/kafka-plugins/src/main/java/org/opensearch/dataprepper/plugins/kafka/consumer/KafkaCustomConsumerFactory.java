@@ -56,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +91,7 @@ public class KafkaCustomConsumerFactory {
                                                              final CompressionOption compressionConfig,
                                                              final boolean invokeCallbackOnExpiry) {
         Properties authProperties = new Properties();
-        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
+        KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, awsCredentialsSupplier, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
 
         Properties consumerProperties = getConsumerProperties(kafkaConsumerConfig, topic, authProperties);
@@ -181,11 +182,18 @@ public class KafkaCustomConsumerFactory {
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
         properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int)topicConfig.getFetchMinBytes());
         properties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName());
+        if (Objects.nonNull(topicConfig.getMetadataMaxAge())) {
+            properties.put(ConsumerConfig.METADATA_MAX_AGE_CONFIG, topicConfig.getMetadataMaxAge().toMillis());
+        }
         if (topicConfig instanceof KafkaIsolationLevelConfig) {
             IsolationLevel isolationLevel = ((KafkaIsolationLevelConfig) topicConfig).getIsolationLevel();
             if (isolationLevel != null) {
                 properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
             }
+        }
+        final Duration connectionsMaxIdle = topicConfig.getConnectionsMaxIdle();
+        if (connectionsMaxIdle != null) {
+            properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, connectionsMaxIdle.toMillis());
         }
     }
 

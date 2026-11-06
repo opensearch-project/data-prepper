@@ -14,10 +14,10 @@ import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.processor.Processor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -29,7 +29,9 @@ public class SingleThreadEventsTrackingTestProcessor extends BaseEventsTrackingP
     private static final String PLUGIN_NAME = "single_thread_events_tracking_test";
     private static final Map<String, AtomicInteger> PROCESSED_EVENTS_MAP = new ConcurrentHashMap<>();
 
-    private static final List<SingleThreadEventsTrackingTestProcessor> PROCESSORS = new ArrayList<>();
+    // Instances are constructed on the process worker threads, one per worker, and read from the test
+    // thread, so this must be concurrent for the same reason PROCESSED_EVENTS_MAP is.
+    private static final List<SingleThreadEventsTrackingTestProcessor> PROCESSORS = new CopyOnWriteArrayList<>();
 
     @DataPrepperPluginConstructor
     public SingleThreadEventsTrackingTestProcessor(final PipelineDescription pipelineDescription) {

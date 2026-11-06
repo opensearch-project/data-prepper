@@ -291,8 +291,12 @@ public class SqsWorker implements Runnable {
                         }
                         if (result == true) {
                             final boolean successfullyDeletedAllMessages = deleteSqsMessages(waitingForAcknowledgements);
-                            if (successfullyDeletedAllMessages && s3SourceConfig.isDeleteS3ObjectsOnRead()) {
-                                deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                            if (successfullyDeletedAllMessages) {
+                                LOG.info("Deleted SQS message for S3 object s3://{}/{}, sqsMessageId={}",
+                                    parsedMessage.getBucketName(), parsedMessage.getObjectKey(), parsedMessage.getMessage().messageId());
+                                if (s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                                    deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                                }
                             }
                         }
                     },
@@ -392,10 +396,12 @@ public class SqsWorker implements Runnable {
             if (deleteMessageBatchResponse.hasSuccessful()) {
                 final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
                 if (deletedMessagesCount > 0) {
-                    final String successfullyDeletedMessages = deleteMessageBatchResponse.successful().stream()
-                            .map(DeleteMessageBatchResultEntry::id)
-                            .collect(Collectors.joining(", "));
-                    LOG.info("Deleted {} messages from SQS. [{}]", deletedMessagesCount, successfullyDeletedMessages);
+                    if (!endToEndAcknowledgementsEnabled) {
+                        final String successfullyDeletedMessages = deleteMessageBatchResponse.successful().stream()
+                                .map(DeleteMessageBatchResultEntry::id)
+                                .collect(Collectors.joining(", "));
+                        LOG.info("Deleted {} messages from SQS. [{}]", deletedMessagesCount, successfullyDeletedMessages);
+                    }
                     sqsMessagesDeletedCounter.increment(deletedMessagesCount);
                 }
             }

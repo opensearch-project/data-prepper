@@ -5,7 +5,6 @@
  * The OpenSearch Contributors require contributions made to
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
- *
  */
 
  package org.opensearch.dataprepper.plugins.source.sqs;
@@ -14,10 +13,6 @@
  import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
  import org.opensearch.dataprepper.metrics.PluginMetrics;
  import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
- import org.opensearch.dataprepper.model.codec.InputCodec;
- import org.opensearch.dataprepper.model.configuration.PluginModel;
- import org.opensearch.dataprepper.model.configuration.PluginSetting;
- import org.opensearch.dataprepper.model.plugin.PluginFactory;
  import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
  import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
  import org.opensearch.dataprepper.plugins.source.sqs.common.SqsWorkerCommon;
@@ -45,7 +40,6 @@
      static final long SHUTDOWN_TIMEOUT = 30L;
      private final SqsSourceConfig sqsSourceConfig;
      private final PluginMetrics pluginMetrics;
-     private final PluginFactory pluginFactory;
      private final AcknowledgementSetManager acknowledgementSetManager;
      private final List<ExecutorService> allSqsUrlExecutorServices;
      private final List<SqsWorker> sqsWorkers;
@@ -58,12 +52,10 @@
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final SqsSourceConfig sqsSourceConfig,
                        final PluginMetrics pluginMetrics,
-                       final PluginFactory pluginFactory,
                        final AwsCredentialsProvider credentialsProvider) {
-                        
+
         this.sqsSourceConfig = sqsSourceConfig;
         this.pluginMetrics = pluginMetrics;
-        this.pluginFactory = pluginFactory;
         this.credentialsProvider = credentialsProvider;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.allSqsUrlExecutorServices = new ArrayList<>();
@@ -85,10 +77,7 @@
             SqsEventProcessor sqsEventProcessor;
             MessageFieldStrategy strategy;
             if (queueConfig.getCodec() != null) {
-                final PluginModel codecConfiguration = queueConfig.getCodec();
-                final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-                final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-                strategy = new CodecBulkMessageFieldStrategy(codec);
+                strategy = new CodecBulkMessageFieldStrategy(queueConfig.getCodec());
             } else {
                 strategy = new StandardMessageFieldStrategy();
             }

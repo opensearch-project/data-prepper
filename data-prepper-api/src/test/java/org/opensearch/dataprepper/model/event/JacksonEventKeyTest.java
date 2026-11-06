@@ -182,7 +182,12 @@ class JacksonEventKeyTest {
                     arguments("a/b", List.of("a", "b")),
                     arguments("a/b/", List.of("a", "b")),
                     arguments("a/b/c", List.of("a", "b", "c")),
-                    arguments("a/b/c/", List.of("a", "b", "c"))
+                    arguments("a/b/c/", List.of("a", "b", "c")),
+                    // JSON Pointer escape sequences: ~1 → /, ~0 → ~
+                    arguments("z~1y", List.of("z/y")),
+                    arguments("a~0b", List.of("a~b")),
+                    arguments("parent/z~1y", List.of("parent", "z/y")),
+                    arguments("a~0b~1c", List.of("a~b/c"))
             );
         }
     }
@@ -303,5 +308,26 @@ class JacksonEventKeyTest {
         final JacksonEventKey objectUnderTest = new JacksonEventKey(testKey, eventAction);
 
         assertThat(objectUnderTest.toString(), equalTo(testKey));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            // plain token — no escapes, returned unchanged
+            "foo,          foo",
+            // ~1 → /
+            "z~1y,         z/y",
+            // ~0 → ~
+            "a~0b,         a~b",
+            // ordering: ~1 applied before ~0, so ~01 → ~1 (not /)
+            "~01,          ~1",
+            // combined: ~0 and ~1 in same token
+            "a~0b~1c,      a~b/c",
+            // multiple ~1 in one token
+            "a~1b~1c,      a/b/c",
+            // multiple ~0 in one token
+            "a~0~0b,       a~~b",
+    }, ignoreLeadingAndTrailingWhitespace = true)
+    void unescapeJsonPointerToken_returns_expected_result(final String token, final String expected) {
+        assertThat(JacksonEventKey.unescapeJsonPointerToken(token), equalTo(expected));
     }
 }

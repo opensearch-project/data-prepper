@@ -58,6 +58,7 @@ class FlattenProcessorTest {
         lenient().when(mockConfig.getFlattenWhen()).thenReturn(null);
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
+        lenient().when(mockConfig.getFlattenSeparator()).thenReturn(".");
     }
 
     @Test
@@ -471,5 +472,54 @@ class FlattenProcessorTest {
 
         assertThat(resultData.containsKey("list1[0].list2[1].value"), is(true));
         assertThat(resultData.get("list1[0].list2[1].value"), is("value2"));
+    }
+
+    @Test
+    void testFlattenWithCustomSeparator() {
+        when(mockConfig.getFlattenSeparator()).thenReturn("_");
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> testData = Map.of(
+                "key1", "val1",
+                "key2", Map.of("key3", "val2", "key4", Map.of("key5", "val3"))
+        );
+
+        final Record<Event> testRecord = createTestRecord(testData);
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        Map<String, Object> resultData = resultEvent.get("", Map.class);
+
+        assertThat(resultData.containsKey("key1"), is(true));
+        assertThat(resultData.get("key1"), is("val1"));
+
+        assertThat(resultData.containsKey("key2_key3"), is(true));
+        assertThat(resultData.get("key2_key3"), is("val2"));
+
+        assertThat(resultData.containsKey("key2_key4_key5"), is(true));
+        assertThat(resultData.get("key2_key4_key5"), is("val3"));
+    }
+
+    @Test
+    void testFlattenWithDefaultSeparatorProducesDotSeparatedKeys() {
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> testData = Map.of(
+                "parent", Map.of("child", "value")
+        );
+
+        final Record<Event> testRecord = createTestRecord(testData);
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        Map<String, Object> resultData = resultEvent.get("", Map.class);
+
+        assertThat(resultData.containsKey("parent.child"), is(true));
+        assertThat(resultData.get("parent.child"), is("value"));
     }
 }

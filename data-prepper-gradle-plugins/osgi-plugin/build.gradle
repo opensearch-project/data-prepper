@@ -1,0 +1,49 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+plugins {
+    id 'java-gradle-plugin'
+}
+
+group = 'org.opensearch.dataprepper.gradle'
+
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation gradleApi()
+    // bnd (bndtools/bnd, Apache-2.0 OR EPL-2.0) is the only third-party build-time dependency added
+    // for OSGi support, and it is confined to this included build: DataPrepperOsgiPlugin compiles
+    // against aQute.bnd.gradle.BundleTaskExtension and applies biz.aQute.bnd.builder on the projects
+    // that opt in, so no bnd plugin is declared in the root settings.gradle.
+    //
+    // Pinned to the latest 6.x rather than 7.x on purpose: 7.x is compiled to Java 17 bytecode, and
+    // Data Prepper builds on a Java 11 Gradle JVM, which cannot load it. Revisit only when the
+    // minimum Gradle JVM moves to 17.
+    implementation 'biz.aQute.bnd:biz.aQute.bnd.gradle:6.4.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.8.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+}
+
+gradlePlugin {
+    plugins {
+        dataPrepperOsgi {
+            id = 'org.opensearch.dataprepper.plugin'
+            implementationClass = 'org.opensearch.dataprepper.gradle.plugin.osgi.DataPrepperOsgiPlugin'
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}

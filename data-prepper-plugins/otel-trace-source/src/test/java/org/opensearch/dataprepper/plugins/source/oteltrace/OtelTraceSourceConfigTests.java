@@ -328,6 +328,23 @@ class OtelTraceSourceConfigTests {
         assertThat(otelTraceSourceConfig.getRetryInfo().getMinDelay(), equalTo(Duration.ofMillis(50)));
     }
 
+    @Test
+    void maxConnectionAge_defaultsToNull() {
+        final OTelTraceSourceConfig config = new OTelTraceSourceConfig();
+        assertNull(config.getMaxConnectionAge());
+        assertNull(config.getConnectionDrainDuration());
+    }
+
+    @Test
+    void maxConnectionAge_deserializesFromYaml() {
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put("max_connection_age", "PT20M");
+        settings.put("connection_drain_duration", "PT8S");
+        final OTelTraceSourceConfig config = OBJECT_MAPPER.convertValue(settings, OTelTraceSourceConfig.class);
+        assertThat(config.getMaxConnectionAge(), equalTo(Duration.ofMinutes(20)));
+        assertThat(config.getConnectionDrainDuration(), equalTo(Duration.ofSeconds(8)));
+    }
+
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
                                                                   final int port,
                                                                   final String path,

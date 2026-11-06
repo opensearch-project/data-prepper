@@ -22,17 +22,15 @@ public class S3EventNotificationParser implements S3NotificationParser {
             final S3EventNotification s3EventNotification = objectMapper.treeToValue(eventNode, S3EventNotification.class);
             if (s3EventNotification != null && s3EventNotification.getRecords() != null) {
                 return new ParsedMessage(message, s3EventNotification.getRecords());
+            } else if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
+                LOG.info("Received s3:TestEvent message. Deleting from SQS queue.");
+                return new ParsedMessage(message, false);
             } else {
                 LOG.debug("SQS message with ID:{} does not have any S3 event notification records.", message.messageId());
                 return new ParsedMessage(message, true);
             }
         } catch (final JsonProcessingException e) {
-            if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
-                LOG.info("Received s3:TestEvent message. Deleting from SQS queue.");
-                return new ParsedMessage(message, false);
-            } else {
-                LOG.error("SQS message with message ID:{} has invalid body which cannot be parsed into S3EventNotification. {}.", message.messageId(), e.getMessage());
-            }
+            LOG.error("SQS message with message ID:{} has invalid body which cannot be parsed into S3EventNotification. {}.", message.messageId(), e.getMessage());
         }
         return new ParsedMessage(message, true);
     }

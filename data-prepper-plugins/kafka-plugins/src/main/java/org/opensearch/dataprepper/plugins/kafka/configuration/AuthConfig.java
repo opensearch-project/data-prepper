@@ -32,11 +32,19 @@ public class AuthConfig {
         @JsonProperty("aws_msk_iam")
         private AwsIamAuthConfig awsIamAuthConfig;
 
+        @Valid
+        @JsonProperty("azure_federated")
+        private AzureFederatedAuthConfig azureFederatedAuthConfig;
+
         @JsonProperty("ssl_endpoint_identification_algorithm")
         private String sslEndpointAlgorithm;
 
         public AwsIamAuthConfig getAwsIamAuthConfig() {
             return awsIamAuthConfig;
+        }
+
+        public AzureFederatedAuthConfig getAzureFederatedAuthConfig() {
+            return azureFederatedAuthConfig;
         }
 
         public PlainTextAuthConfig getPlainTextAuthConfig() {
@@ -55,9 +63,10 @@ public class AuthConfig {
             return sslEndpointAlgorithm;
         }
 
-        @AssertTrue(message = "Only one of AwsIam or oAuth or SCRAM or PlainText auth config must be specified")
+        @AssertTrue(message = "Only one of AwsIam, oAuth, SCRAM, PlainText or azure_federated auth config must be specified")
         public boolean hasOnlyOneConfig() {
-            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig, scramAuthConfig).filter(n -> n != null).count() == 1;
+            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig, scramAuthConfig, azureFederatedAuthConfig)
+                    .filter(n -> n != null).count() == 1;
         }
 
     }

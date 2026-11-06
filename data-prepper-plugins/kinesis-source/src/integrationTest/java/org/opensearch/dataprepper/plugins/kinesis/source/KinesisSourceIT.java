@@ -194,6 +194,7 @@ public class KinesisSourceIT {
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
         when(kinesisSourceConfig.getBufferTimeout()).thenReturn(BUFFER_TIMEOUT);
         when(kinesisSourceConfig.getMaxInitializationAttempts()).thenReturn(MAX_INITIALIZATION_ATTEMPTS);
+        when(kinesisSourceConfig.getInitializationBackoffTime()).thenReturn(Duration.ofMillis(1000));
 
         kinesisClientFactory = mock(KinesisClientFactory.class);
         when(kinesisClientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(DynamoDbAsyncClient.builder()
@@ -249,7 +250,7 @@ public class KinesisSourceIT {
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any()))
                 .thenReturn(new NdjsonInputCodec(new NdjsonInputConfig(), TestEventFactory.getTestEventFactory()));
 
-        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        final List<Record<?>> actualRecordsWritten = Collections.synchronizedList(new ArrayList<>());
         doAnswer(a -> actualRecordsWritten.addAll(a.getArgument(0, Collection.class)))
                 .when(buffer).writeAll(anyCollection(), anyInt());
 

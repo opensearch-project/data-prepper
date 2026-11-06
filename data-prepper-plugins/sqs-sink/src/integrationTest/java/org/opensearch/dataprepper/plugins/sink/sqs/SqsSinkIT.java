@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import io.micrometer.core.instrument.Counter;
@@ -251,7 +252,7 @@ public class SqsSinkIT {
         when(awsConfig.getAwsStsRoleArn()).thenReturn(awsRole);
         when(awsConfig.getAwsStsExternalId()).thenReturn(null);
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(null);
-        when(awsCredentialsSupplier.getProvider(any())).thenAnswer(options -> DefaultCredentialsProvider.create());
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenAnswer(options -> DefaultCredentialsProvider.create());
         sqsClient = SqsClientFactory.createSqsClient(Region.of(awsRegion), DefaultCredentialsProvider.create());
         queueUrl = System.getProperty("tests.sqs.queue_url");
         sqsSinkConfig = mock(SqsSinkConfig.class);
@@ -679,7 +680,7 @@ public class SqsSinkIT {
     @Test
     public void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(provider);
         when(thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
         sink = createObjectUnderTest();

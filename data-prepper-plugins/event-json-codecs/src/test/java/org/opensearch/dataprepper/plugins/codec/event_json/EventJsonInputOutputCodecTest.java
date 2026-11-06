@@ -1,6 +1,10 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
  */
 package org.opensearch.dataprepper.plugins.codec.event_json;
 
@@ -153,6 +157,35 @@ public class EventJsonInputOutputCodecTest {
         }
     }
 
+
+    @Test
+    public void roundTrip_with_string_value_larger_than_jackson_default_limit_succeeds() throws Exception {
+        // Jackson's default maximum string length is 20 MB. An event holding a larger string
+        // value (e.g. from a large database JSONB column) is written by the output codec
+        // without any constraint, so the input codec must be able to read it back.
+        final String key = UUID.randomUUID().toString();
+        final int largeValueLength = 30 * 1024 * 1024;
+        final StringBuilder valueBuilder = new StringBuilder(largeValueLength);
+        while (valueBuilder.length() < largeValueLength) {
+            valueBuilder.append('a');
+        }
+        final String largeValue = valueBuilder.toString();
+        Map<String, Object> data = Map.of(key, largeValue);
+
+        Instant startTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Event event = createEvent(data, startTime);
+        outputCodec = createOutputCodec();
+        inputCodec = createInputCodec();
+        outputCodec.start(outputStream, null, null);
+        outputCodec.writeEvent(event, outputStream);
+        outputCodec.complete(outputStream);
+        List<Record<Event>> records = new LinkedList<>();
+        inputCodec.parse(new ByteArrayInputStream(outputStream.toByteArray()), records::add);
+
+        assertThat(records.size(), equalTo(1));
+        Event resultEvent = records.get(0).getData();
+        assertThat(resultEvent.get(key, String.class), equalTo(largeValue));
+    }
 
     private Event createEvent(final Map<String, Object> json, final Instant timeReceived) {
         final JacksonLog.Builder logBuilder = JacksonLog.builder()

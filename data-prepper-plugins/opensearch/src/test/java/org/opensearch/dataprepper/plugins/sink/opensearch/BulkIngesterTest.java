@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -22,11 +24,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.json.JsonData;
+import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.VersionType;
+import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventFailureMetadata;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.failures.DlqObject;
@@ -34,12 +40,17 @@ import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndexDetector;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,10 +63,14 @@ import java.util.stream.Stream;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -477,8 +492,13 @@ public class BulkIngesterTest {
     }
 
     private void initializeIngester(final BulkIngester ingester) throws IOException {
+        initializeIngester(ingester, false);
+    }
+
+    private void initializeIngester(final BulkIngester ingester, final boolean serverless) throws IOException {
         final ConnectionConfiguration connectionConfiguration = mock(ConnectionConfiguration.class);
         lenient().when(connectionConfiguration.isRequestCompressionEnabled()).thenReturn(false);
+        lenient().when(connectionConfiguration.isServerless()).thenReturn(serverless);
         lenient().when(openSearchSinkConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
         lenient().when(indexManager.isIndexAlias(anyString())).thenReturn(false);
         ingester.initialize();
@@ -489,5 +509,213 @@ public class BulkIngesterTest {
         java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         return (T) field.get(target);
+    }
+
+    private static void setField(final Object target, final String fieldName, final Object value) throws Exception {
+        java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private void invokeLogFailureForDlqObjects(final BulkIngester ingester, final HeadlessPipeline failurePipeline,
+                                                final List<DlqObject> dlqObjects, final Throwable failure) throws Exception {
+        java.lang.reflect.Method method = BulkIngester.class.getDeclaredMethod(
+                "logFailureForDlqObjects", HeadlessPipeline.class, List.class, Throwable.class);
+        method.setAccessible(true);
+        method.invoke(ingester, failurePipeline, dlqObjects, failure);
+    }
+
+    @Test
+    void logFailureForDlqObjects_uses_dlqWriter_when_both_dlqWriter_and_failurePipeline_exist() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+
+        final DlqWriter mockDlqWriter = mock(DlqWriter.class);
+        setField(objectUnderTest, "dlqWriter", mockDlqWriter);
+
+        final HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        lenient().when(dlqObject.getFailedData()).thenReturn(mock(FailedDlqData.class));
+
+        invokeLogFailureForDlqObjects(objectUnderTest, failurePipeline, List.of(dlqObject), null);
+
+        verify(mockDlqWriter).write(any(List.class), anyString(), anyString());
+        verify(dlqObject).releaseEventHandle(true);
+        verify(failurePipeline, times(0)).sendEvents(any());
+    }
+
+    @Test
+    void logFailureForDlqObjects_falls_back_to_failurePipeline_when_dlqWriter_fails() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+
+        final DlqWriter mockDlqWriter = mock(DlqWriter.class);
+        doThrow(new IOException("S3 write failed")).when(mockDlqWriter).write(any(List.class), anyString(), anyString());
+        setField(objectUnderTest, "dlqWriter", mockDlqWriter);
+
+        final HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+
+        final Event event = mock(JacksonEvent.class);
+        when(event.updateFailureMetadata()).thenReturn(mock(EventFailureMetadata.class, org.mockito.Answers.RETURNS_SELF));
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        final FailedDlqData failedDlqData = mock(FailedDlqData.class);
+        lenient().when(failedDlqData.getMessage()).thenReturn("test error");
+        lenient().when(failedDlqData.getStatus()).thenReturn(400);
+        lenient().when(failedDlqData.getIndex()).thenReturn("test-index");
+        lenient().when(failedDlqData.getIndexId()).thenReturn(null);
+        when(dlqObject.getFailedData()).thenReturn(failedDlqData);
+        when(dlqObject.getEvent()).thenReturn(event);
+        when(dlqObject.getPluginId()).thenReturn("opensearch");
+        when(dlqObject.getPluginName()).thenReturn("opensearch");
+        when(dlqObject.getPipelineName()).thenReturn(pipeline);
+        when(event.updateFailureMetadata()).thenReturn(mock(EventFailureMetadata.class, org.mockito.Answers.RETURNS_SELF));
+
+        invokeLogFailureForDlqObjects(objectUnderTest, failurePipeline, List.of(dlqObject), null);
+
+        verify(mockDlqWriter).write(any(List.class), anyString(), anyString());
+        verify(failurePipeline).sendEvents(any());
+    }
+
+    @Test
+    void logFailureForDlqObjects_uses_failurePipeline_when_no_dlqWriter_configured() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+
+        final HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+
+        final Event event = mock(JacksonEvent.class);
+        when(event.updateFailureMetadata()).thenReturn(mock(EventFailureMetadata.class, org.mockito.Answers.RETURNS_SELF));
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        final FailedDlqData failedDlqData = mock(FailedDlqData.class);
+        when(failedDlqData.getMessage()).thenReturn("test error");
+        when(failedDlqData.getStatus()).thenReturn(400);
+        when(failedDlqData.getIndex()).thenReturn("test-index");
+        when(failedDlqData.getIndexId()).thenReturn(null);
+        when(dlqObject.getFailedData()).thenReturn(failedDlqData);
+        when(dlqObject.getEvent()).thenReturn(event);
+        when(dlqObject.getPluginId()).thenReturn("opensearch");
+        when(dlqObject.getPluginName()).thenReturn("opensearch");
+        when(dlqObject.getPipelineName()).thenReturn(pipeline);
+
+        invokeLogFailureForDlqObjects(objectUnderTest, failurePipeline, List.of(dlqObject), null);
+
+        verify(failurePipeline).sendEvents(any());
+    }
+
+    @Test
+    void logFailureForDlqObjects_releases_false_when_no_dlqWriter_and_no_failurePipeline() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+
+        final DlqObject dlqObject = mock(DlqObject.class);
+        final FailedDlqData failedDlqData = mock(FailedDlqData.class);
+        when(failedDlqData.getStatus()).thenReturn(400);
+        when(failedDlqData.getMessage()).thenReturn("test error");
+        when(dlqObject.getFailedData()).thenReturn(failedDlqData);
+
+        invokeLogFailureForDlqObjects(objectUnderTest, null, List.of(dlqObject), null);
+
+        verify(dlqObject).releaseEventHandle(false);
+    }
+
+    @Test
+    void initialize_sets_up_time_series_support_when_serverless() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+        initializeIngester(objectUnderTest, true);
+
+        assertThat(getField(objectUnderTest, "timeSeriesIndex"), notNullValue());
+    }
+
+    @Test
+    void initialize_does_not_set_up_time_series_support_when_not_serverless() throws Exception {
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+        initializeIngester(objectUnderTest);
+
+        assertThat(getField(objectUnderTest, "timeSeriesIndex"), nullValue());
+    }
+
+    @Test
+    void output_adds_timestamp_field_to_document_without_modifying_event_for_time_series_index() throws Exception {
+        final String index = UUID.randomUUID().toString();
+        final String timestampField = UUID.randomUUID().toString();
+        final String timestamp = "2026-10-30T10:00:00Z";
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Map.of("message", UUID.randomUUID().toString(), "@timestamp", timestamp))
+                .build();
+
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+        final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchTransport.performRequest(isNull(), any(), any()))
+                .thenReturn(toJsonData("{\"" + index + "\":{\"settings\":{\"index.timestamp_field\":\"" + timestampField + "\"}}}"));
+        initializeIngester(objectUnderTest, true);
+        when(indexManager.getIndexName(any())).thenReturn(index);
+        when(eventActionResolver.resolveAction(event, index)).thenReturn("index");
+        when(eventActionResolver.isValidAction("index")).thenReturn(true);
+
+        objectUnderTest.output(List.of(new Record<>(event)));
+
+        final Map<Long, AccumulatingBulkRequest<BulkOperationWrapper, ?>> bulkRequestMap = getField(objectUnderTest, "bulkRequestMap");
+        final AccumulatingBulkRequest<BulkOperationWrapper, ?> bulkRequest = bulkRequestMap.values().iterator().next();
+        assertThat(bulkRequest.getOperationsCount(), equalTo(1));
+        final JsonNode sentDocument = new ObjectMapper().readTree(
+                ((SerializedJson) bulkRequest.getOperationAt(0).getDocument()).getSerializedJson());
+        assertThat(sentDocument.get(timestampField).textValue(), equalTo(timestamp));
+        assertThat(sentDocument.has("@timestamp"), equalTo(false));
+        assertThat(event.get("@timestamp", String.class), equalTo(timestamp));
+        assertThat(event.containsKey(timestampField), equalTo(false));
+    }
+
+    @Test
+    void output_does_not_look_up_time_series_index_for_delete_action() throws Exception {
+        final String index = UUID.randomUUID().toString();
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Map.of("message", UUID.randomUUID().toString()))
+                .build();
+
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+        final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
+        lenient().when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        initializeIngester(objectUnderTest, true);
+        when(indexManager.getIndexName(any())).thenReturn(index);
+        when(eventActionResolver.resolveAction(event, index)).thenReturn("delete");
+        when(eventActionResolver.isValidAction("delete")).thenReturn(true);
+
+        objectUnderTest.output(List.of(new Record<>(event)));
+
+        verify(openSearchTransport, times(0)).performRequest(any(), any(), any());
+    }
+
+    @Test
+    void flushBatch_allows_failed_time_series_lookups_to_be_retried() throws Exception {
+        final String index = UUID.randomUUID().toString();
+        final BulkIngester objectUnderTest = createObjectUnderTest();
+        final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchTransport.performRequest(isNull(), any(), any())).thenThrow(new IOException(UUID.randomUUID().toString()));
+        initializeIngester(objectUnderTest, true);
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }).when(bulkRequestTimer).record(any(Runnable.class));
+        setField(objectUnderTest, "bulkRetryStrategy", mock(BulkRetryStrategy.class));
+        final TimeSeriesIndexDetector timeSeriesIndexDetector = getField(objectUnderTest, "timeSeriesIndexDetector");
+
+        timeSeriesIndexDetector.getTimestampField(index);
+        timeSeriesIndexDetector.getTimestampField(index);
+        verify(openSearchTransport, times(1)).performRequest(isNull(), any(), any());
+
+        final java.lang.reflect.Method flushBatch = BulkIngester.class.getDeclaredMethod("flushBatch", AccumulatingBulkRequest.class);
+        flushBatch.setAccessible(true);
+        flushBatch.invoke(objectUnderTest, mock(AccumulatingBulkRequest.class));
+        timeSeriesIndexDetector.getTimestampField(index);
+
+        verify(openSearchTransport, times(2)).performRequest(isNull(), any(), any());
+    }
+
+    private static JsonData toJsonData(final String json) {
+        final JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+        return JsonData._DESERIALIZER.deserialize(mapper.jsonProvider().createParser(new StringReader(json)), mapper);
     }
 }

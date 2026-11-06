@@ -26,8 +26,25 @@ public class SqsSourceConfig {
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
+    /**
+     * Controls whether end-to-end delivery acknowledgment is enabled.
+     * <p>
+     * When {@code true} (default), messages are only deleted from SQS after the entire
+     * pipeline confirms successful delivery to the sink. This prevents data loss when
+     * the downstream sink is unavailable, a processor fails, or the worker crashes.
+     * <p>
+     * When {@code false}, messages are deleted from SQS immediately after being written
+     * to the pipeline buffer. <strong>WARNING: This risks permanent data loss.</strong>
+     * If the pipeline fails after buffering but before sink delivery, the message cannot
+     * be recovered.
+     * <p>
+     * When using acknowledgments, ensure the SQS queue's visibility timeout exceeds the
+     * expected end-to-end processing time. If processing takes longer than the visibility
+     * timeout, messages may be redelivered, resulting in duplicates. Configure a
+     * Dead Letter Queue (DLQ) to handle messages that repeatedly fail processing.
+     */
     @JsonProperty("acknowledgments")
-    private boolean acknowledgments = false;
+    private boolean acknowledgments = true;
 
     @JsonProperty("buffer_timeout")
     private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;

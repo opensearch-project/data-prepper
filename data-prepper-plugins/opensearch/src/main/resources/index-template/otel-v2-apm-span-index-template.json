@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "composed_of": [
+    "otel-v2-apm-span-plain",
+    "otel-v2-apm-span-nested-keyword"
+  ],
+  "template": {
+    "settings": {
+      "index.append_only.enabled": false
+    }
+  }
+}

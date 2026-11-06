@@ -40,7 +40,7 @@ public class EventActionResolver {
         this.dataStreamIndex = dataStreamIndex;
     }
 
-    String resolveAction(final Event event, final String indexName) {
+    public String resolveAction(final Event event, final String indexName) {
         String eventAction = defaultAction;
         if (actions != null) {
             for (final ActionConfiguration actionEntry : actions) {

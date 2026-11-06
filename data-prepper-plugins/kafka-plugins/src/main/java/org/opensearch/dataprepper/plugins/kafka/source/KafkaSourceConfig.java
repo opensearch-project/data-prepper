@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
@@ -36,6 +37,7 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     private List<String> bootStrapServers;
 
     @JsonProperty("topics")
+    @Valid
     @NotNull
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
     private List<SourceTopicConfig> topics;
@@ -61,6 +63,9 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @JsonProperty("acknowledgments_timeout")
     private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
+    @JsonProperty("acknowledgments_expiry_reset")
+    private Boolean acknowledgementsExpiryResetEnabled = false;
+
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
 
@@ -76,6 +81,11 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
     @Override
     public Duration getAcknowledgementsTimeout() {
         return acknowledgementsTimeout;
+    }
+
+    @Override
+    public boolean getAcknowledgementsExpiryResetEnabled() {
+        return acknowledgementsExpiryResetEnabled;
     }
 
     public List<? extends TopicConsumerConfig> getTopics() {
@@ -134,5 +144,14 @@ public class KafkaSourceConfig implements KafkaConsumerConfig {
 
     public void setAwsConfig(AwsConfig awsConfig) {
         this.awsConfig = awsConfig;
+    }
+
+    @AssertTrue(message = "azure_federated authentication requires aws.region to be set")
+    public boolean isAzureFederatedAwsConfigValid() {
+        if (authConfig == null || authConfig.getSaslAuthConfig() == null
+                || authConfig.getSaslAuthConfig().getAzureFederatedAuthConfig() == null) {
+            return true;
+        }
+        return awsConfig != null && awsConfig.getRegion() != null;
     }
 }

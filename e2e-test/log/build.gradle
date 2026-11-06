@@ -170,7 +170,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
-    integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${targetOpenTelemetryVersion}"
+    integrationTestImplementation project(':data-prepper-plugins:otel-proto-common')
     integrationTestImplementation libs.armeria.core
     integrationTestImplementation libs.armeria.grpc
     integrationTestImplementation testLibs.awaitility

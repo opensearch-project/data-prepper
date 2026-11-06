@@ -98,8 +98,15 @@ When run, the processor will parse the message into the following output:
   * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
   * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
   * While `recursive` is `true`, `whitespace` will always be `"strict"`.
-* `overwrite_if_destination_exists` - Specify whether to overwrite existing fields if there are key conflicts when writing parsed fields to the event. 
-  * Default: `true` 
+* `destination_conflict_strategy` - Defines how a key conflict is resolved when a non-null `destination` already exists on the event. One of:
+  * `skip` - Skip the write entirely, leaving the existing destination untouched.
+  * `overwrite` - Replace the entire destination with the newly parsed map.
+  * `merge_preserve_existing_keys` - Merge the parsed fields into the existing destination map per-field, keeping the existing value on a key conflict.
+  * `merge_overwrite_existing_keys` - Merge the parsed fields into the existing destination map per-field, overwriting the existing value on a key conflict.
+  * Default: `overwrite`
+  * Cannot be set together with `overwrite_if_destination_exists`.
+
+* `overwrite_if_destination_exists` - **Deprecated.** Use `destination_conflict_strategy` instead. Specify whether to overwrite existing fields if there are key conflicts when writing parsed fields to the event. When unset, the behavior is governed by `destination_conflict_strategy` (default `overwrite`). Setting this to `false` is equivalent to `destination_conflict_strategy: skip`.
 
 * `tags_on_failure` - When a kv operation causes a runtime exception to be thrown within the processor, the operation is safely aborted without crashing the processor, and the event is tagged with the provided tags.
   * Example: if `tags_on_failure` is set to `["keyvalueprocessor_failure"]`, in the case of a runtime exception, `{"tags": ["keyvalueprocessor_failure"]}` will be added to the event's metadata.

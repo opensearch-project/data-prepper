@@ -9,12 +9,18 @@ import json
 import os
 import sys
 
+# Bot accounts registered as regular users, so not excluded by the account type.
+known_bot_logins = {'opensearch-ci-bot', 'opensearch-trigger-bot'}
+
 authors = []
 for author in sys.stdin:
     authors.append(author)
 
 
 for author in sorted(authors, key=str.lower):
+    if author.strip() in known_bot_logins:
+        continue
+
     user = json.loads(os.popen(f"gh api users/{author}").read())
 
     if user['type'] == 'Bot':

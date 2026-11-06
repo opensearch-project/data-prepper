@@ -14,6 +14,7 @@ package org.opensearch.dataprepper.plugins.source.otellogs.http;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
+import org.opensearch.dataprepper.InvalidRequestExceptions;
 import org.opensearch.dataprepper.RetryInfoCalculator;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
@@ -38,7 +39,6 @@ import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
 
 import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Counter;
 
 public class HttpExceptionHandler implements ExceptionHandlerFunction {
@@ -101,9 +101,14 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
         } else if (e instanceof BadRequestException) {
             badRequestsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.INVALID_ARGUMENT), createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
-        } else if ((e instanceof StatusRuntimeException) && (e.getMessage().contains("Invalid protobuf byte sequence") || e.getMessage().contains("Can't decode compressed frame"))) {
+        } else if (InvalidRequestExceptions.isInvalidProtobuf(e)) {
             badRequestsCounter.increment();
-            return new StatusHolder(createStatus(e, Status.Code.INVALID_ARGUMENT), createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
+            return new StatusHolder(createStatus(Status.Code.INVALID_ARGUMENT, InvalidRequestExceptions.INVALID_PROTOBUF_MESSAGE),
+                    createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
+        } else if (InvalidRequestExceptions.isUndecodableCompressedFrame(e)) {
+            badRequestsCounter.increment();
+            return new StatusHolder(createStatus(Status.Code.INVALID_ARGUMENT, InvalidRequestExceptions.COMPRESSED_FRAME_MESSAGE),
+                    createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
         } else if (e instanceof RequestCancelledException) {
             requestTimeoutsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.CANCELLED), createHttpStatusFromProtoBufStatus(Status.Code.CANCELLED));
@@ -125,12 +130,16 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
     }
 
     private com.google.rpc.Status createStatus(final Throwable e, final Status.Code code) {
-        com.google.rpc.Status.Builder builder = com.google.rpc.Status.newBuilder().setCode(code.value());
-        if (e instanceof RequestTimeoutException) {
-            builder.setMessage(ARMERIA_REQUEST_TIMEOUT_MESSAGE);
-        } else {
-            builder.setMessage(e.getMessage() == null ? code.name() :e.getMessage());
-        }
+        final String message = e instanceof RequestTimeoutException
+                ? ARMERIA_REQUEST_TIMEOUT_MESSAGE
+                : (e.getMessage() == null ? code.name() : e.getMessage());
+        return createStatus(code, message);
+    }
+
+    private com.google.rpc.Status createStatus(final Status.Code code, final String message) {
+        com.google.rpc.Status.Builder builder = com.google.rpc.Status.newBuilder()
+                .setCode(code.value())
+                .setMessage(message);
         if (code == Status.Code.RESOURCE_EXHAUSTED) {
             builder.addDetails(Any.pack(retryInfoCalculator.createRetryInfo()));
         }

@@ -108,6 +108,7 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getCertPath());
         assertNull(connectionConfiguration.getConnectTimeout());
         assertNull(connectionConfiguration.getSocketTimeout());
+        assertNull(connectionConfiguration.getPathPrefix());
         assertTrue(connectionConfiguration.isRequestCompressionEnabled());
     }
 
@@ -144,6 +145,17 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testReadConnectionConfigurationWithPathPrefix() throws JsonProcessingException {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        configMetadata.put("path_prefix", "/os");
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertEquals("/os", connectionConfiguration.getPathPrefix());
+    }
+
+    @Test
     void testCreateOpenSearchClientDefault() throws IOException {
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
@@ -168,7 +180,7 @@ class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
@@ -410,7 +422,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -435,7 +447,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final OpenSearchClient openSearchClient;
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
@@ -473,7 +485,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -509,7 +521,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
@@ -549,7 +561,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
         connectionConfiguration.createClient(awsCredentialsSupplier);
 
@@ -584,7 +596,7 @@ class ConnectionConfigurationTests {
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
 
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);

@@ -68,7 +68,7 @@ class SnsClientFactoryTest {
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(any())).thenReturn(expectedCredentialsProvider);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(expectedCredentialsProvider);
 
         final SnsClientBuilder snsClientBuilder = mock(SnsClientBuilder.class);
         when(snsClientBuilder.region(region)).thenReturn(snsClientBuilder);

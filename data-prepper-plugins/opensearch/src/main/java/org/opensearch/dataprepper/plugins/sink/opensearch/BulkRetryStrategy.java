@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.Counter;
 import jakarta.json.stream.JsonParsingException;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.opensearch.client.opensearch._types.Result;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
@@ -20,6 +21,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TimeSeriesIndex;
 import org.opensearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,6 +139,7 @@ public final class BulkRetryStrategy {
     private final Counter documentsDuplicates;
     private final ExistingDocumentQueryManager existingDocumentQueryManager;
     private final boolean isExternalVersioning;
+    private final TimeSeriesIndex timeSeriesIndex;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
     static class BulkOperationRequestResponse {
@@ -169,9 +172,11 @@ public final class BulkRetryStrategy {
                              final String pipelineName,
                              final String pluginName,
                              final ExistingDocumentQueryManager existingDocumentQueryManager,
-                             final boolean isExternalVersioning) {
+                             final boolean isExternalVersioning,
+                             final TimeSeriesIndex timeSeriesIndex) {
         this.existingDocumentQueryManager = existingDocumentQueryManager;
         this.isExternalVersioning = isExternalVersioning;
+        this.timeSeriesIndex = timeSeriesIndex;
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.successfulOperationsHandler = successfulOperationsHandler;
@@ -247,11 +252,15 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
-            if (isItemInError(bulkItemResponse) && canRetryItem(bulkItemResponse)) {
+            if (isItemInError(bulkItemResponse) && (canRetryItem(bulkItemResponse) || isMissingTimestampError(bulkItemResponse))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean isMissingTimestampError(final BulkResponseItem bulkItemResponse) {
+        return timeSeriesIndex != null && timeSeriesIndex.isMissingTimestampError(bulkItemResponse);
     }
 
     public static boolean canRetry(final Exception e) {
@@ -306,11 +315,29 @@ public final class BulkRetryStrategy {
             if (attemptNumber % 5 == 1) { 
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", attemptNumber - 1, exceptionFromRequest);
                 if (exceptionFromRequest == null) {
+                    int throttledCount = 0;
+                    String sampleIndex = null;
+                    OperationType sampleOperation = null;
+                    String sampleError = null;
                     for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                         if(isItemInError(bulkItemResponse)) {
-                            final ErrorCause error = bulkItemResponse.error();
-                            LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            if (bulkItemResponse.status() == RestStatus.TOO_MANY_REQUESTS.getStatus()) {
+                                if (throttledCount == 0) {
+                                    final ErrorCause error = bulkItemResponse.error();
+                                    sampleIndex = bulkItemResponse.index();
+                                    sampleOperation = bulkItemResponse.operationType();
+                                    sampleError = error != null ? error.reason() : "";
+                                }
+                                throttledCount++;
+                            } else {
+                                final ErrorCause error = bulkItemResponse.error();
+                                LOG.warn("index = {} operation = {}, error = {}", bulkItemResponse.index(), bulkItemResponse.operationType(), error != null ? error.reason() : "");
+                            }
                         }
+                    }
+                    if (throttledCount > 0) {
+                        LOG.warn("Bulk operation throttled for {} documents. Sample: index = {}, operation = {}, error = {}",
+                                throttledCount, sampleIndex, sampleOperation, sampleError);
                     }
                 }
             }
@@ -367,6 +394,13 @@ public final class BulkRetryStrategy {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
             sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
+            if (LOG.isDebugEnabled()) {
+                for (int i = 0; i < bulkRequestForRetry.getOperationsCount(); i++) {
+                    final BulkOperationWrapper op = (BulkOperationWrapper) bulkRequestForRetry.getOperationAt(i);
+                    final BulkResponseItem item = bulkResponse.items().get(i);
+                    LOG.debug("Document indexed successfully: id={}, index={}, status={}", op.getId(), op.getIndex(), item.status());
+                }
+            }
             List<BulkOperationWrapper> successfulOperations = new ArrayList<>(bulkRequestForRetry.getOperations());
             successfulOperationsHandler.accept(successfulOperations);
             final int totalDuplicateDocuments = bulkResponse.items().stream().filter(this::isDuplicateDocument).mapToInt(i -> 1).sum();
@@ -396,6 +430,16 @@ public final class BulkRetryStrategy {
                 BulkOperationWrapper bulkOperation =
                         (BulkOperationWrapper)request.getOperationAt(index);
                 if (isItemInError(bulkItemResponse)) {
+                    if (isMissingTimestampError(bulkItemResponse)) {
+                        final BulkOperationWrapper operationWithTimestamp =
+                                timeSeriesIndex.addMissingTimestamp(bulkOperation, bulkItemResponse);
+                        if (operationWithTimestamp != null) {
+                            requestToReissue.addOperation(operationWithTimestamp);
+                            index++;
+                            continue;
+                        }
+                    }
+
                     if (existingDocumentQueryManager != null && POTENTIAL_DUPLICATES_ERRORS.contains(bulkItemResponse.status())) {
                         existingDocumentQueryManager.addBulkOperation(bulkOperation);
                         index++;
@@ -423,6 +467,7 @@ public final class BulkRetryStrategy {
                     if(isDuplicateDocument(bulkItemResponse)) {
                         documentsDuplicates.increment();
                     }
+                    LOG.debug("Document indexed successfully (retry path): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
                     successfulOperations.add(bulkOperation);
                 }
                 index++;
@@ -463,6 +508,7 @@ public final class BulkRetryStrategy {
                 if(isDuplicateDocument(bulkItemResponse)) {
                     documentsDuplicates.increment();
                 }
+                LOG.debug("Document indexed successfully (final attempt): id={}, index={}, status={}", bulkOperation.getId(), bulkOperation.getIndex(), bulkItemResponse.status());
                 successfulOperations.add(bulkOperation);
             }
         }
@@ -490,7 +536,7 @@ public final class BulkRetryStrategy {
     }
 
     private boolean isDuplicateDocument(final BulkResponseItem item) {
-        return item.seqNo() != null && item.seqNo() > 0;
+        return Result.Updated.jsonValue().equals(item.result());
     }
 
     private Counter getDocumentStatusCounter(final int status) {

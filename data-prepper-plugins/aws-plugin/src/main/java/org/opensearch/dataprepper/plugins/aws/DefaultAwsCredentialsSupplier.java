@@ -32,6 +32,12 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     }
 
     @Override
+    public AwsCredentialsProvider getProvider(final String configurationName) {
+        final AwsCredentialsOptions options = credentialsProviderFactory.resolveNamedConfiguration(configurationName);
+        return getProvider(options);
+    }
+
+    @Override
     public Optional<Region> getDefaultRegion() {
         return Optional.ofNullable(credentialsProviderFactory.getDefaultRegion());
     }

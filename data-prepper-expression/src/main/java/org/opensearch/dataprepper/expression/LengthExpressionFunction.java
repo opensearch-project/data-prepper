@@ -13,7 +13,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import javax.inject.Named;
+import java.lang.reflect.Array;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 @Named
@@ -28,23 +30,29 @@ public class LengthExpressionFunction implements ExpressionFunction {
         }
         final Object arg = args.get(0);
         if (arg instanceof String) {
-            return getLength((String) arg);
+            return ((String) arg).length();
         } else if (arg instanceof EventKey) {
             final EventKey eventKey = (EventKey) arg;
             final Object value = event.get(eventKey, Object.class);
             if (value == null) {
                 return null;
             }
-            if (!(value instanceof String)) {
-                throw new RuntimeException(eventKey.getKey() + " is not String type");
-            }
-            return getLength((String) value);
+            return getLength(value, eventKey.getKey());
         } else {
             throw new RuntimeException("Unexpected argument type: " + arg.getClass());
         }
     }
 
-    private static Integer getLength(final String value) {
-        return value.length();
+    private static Integer getLength(final Object value, final String key) {
+        if (value instanceof String) {
+            return ((String) value).length();
+        } else if (value instanceof Map) {
+            return ((Map<?, ?>) value).size();
+        } else if (value instanceof List) {
+            return ((List<?>) value).size();
+        } else if (value.getClass().isArray()) {
+            return Array.getLength(value);
+        }
+        throw new RuntimeException(key + " is not a supported type for length(). Supported: String, Map, List, Array");
     }
 }

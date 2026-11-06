@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
 import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -89,6 +90,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
         lenient().when(mockConfig.getRecursive()).thenReturn(defaultConfig.getRecursive());
         lenient().when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(defaultConfig.getOverwriteIfDestinationExists());
+        lenient().when(mockConfig.getFieldConflictStrategy()).thenReturn(null);
         lenient().when(mockConfig.getValueGrouping()).thenReturn(false);
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(false);
 
@@ -363,6 +365,137 @@ public class KeyValueProcessorTests {
 
         assertThat(event.containsKey("parsed_message"), is(true));
         assertThat(event.get("parsed_message", Object.class), is("value will not be overwritten"));
+    }
+
+    @Test
+    void testWriteToDestinationPerFieldMerge_withOverwriteDisabled_doesNotOverwriteExistingFields() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("key1", "existing_value");
+        existingMap.put("existing_key", "should_remain");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/key1", Object.class), is("existing_value"));
+        assertThat(event.get("parsed_message/key2", Object.class), is("value2"));
+        assertThat(event.get("parsed_message/existing_key", Object.class), is("should_remain"));
+    }
+
+    @Test
+    void testWriteToDestinationPerFieldMerge_withOverwriteEnabled_overwritesConflictingFields() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("key1", "existing_value");
+        existingMap.put("existing_key", "should_remain");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/key1", Object.class), is("value1"));
+        assertThat(event.get("parsed_message/key2", Object.class), is("value2"));
+        assertThat(event.get("parsed_message/existing_key", Object.class), is("should_remain"));
+    }
+
+    @Test
+    void testWriteToDestinationWithOverwriteEnabled_nonMapDestination_replacesEntireValue() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("parsed_message", "a plain string value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testWriteToDestination_withSkipStrategy_skipsWhenDestinationExists() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.SKIP);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("existing_key", "existing_value");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/existing_key", Object.class), is("existing_value"));
+        assertThat(event.containsKey("parsed_message/key1"), is(false));
+        assertThat(event.containsKey("parsed_message/key2"), is(false));
+    }
+
+    @Test
+    void testWriteToDestination_withOverwriteStrategy_replacesEntireDestination() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.OVERWRITE);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("existing_key", "existing_value");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testMergePreserveExistingKeys_nonMapDestination_skipsWrite() {
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("parsed_message", "a plain string value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message", Object.class), is("a plain string value"));
+    }
+
+    @Test
+    void testBothOverwriteAndStrategySetThrowsException() {
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void testLegacyOverwriteFalse_withNoStrategy_resolvesToSkipBehavior() {
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(null);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("existing_key", "existing_value");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/existing_key", Object.class), is("existing_value"));
+        assertThat(event.containsKey("parsed_message/key1"), is(false));
+        assertThat(event.containsKey("parsed_message/key2"), is(false));
+    }
+
+    @Test
+    void testLegacyOverwriteTrue_withNoStrategy_resolvesToOverwriteBehavior() {
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(true);
+        when(mockConfig.getFieldConflictStrategy()).thenReturn(null);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Map<String, Object> existingMap = new HashMap<>();
+        existingMap.put("existing_key", "existing_value");
+        record.getData().put("parsed_message", existingMap);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message/key1", Object.class), is("value1"));
+        assertThat(event.get("parsed_message/key2", Object.class), is("value2"));
+        assertThat(event.containsKey("parsed_message/existing_key"), is(false));
     }
 
     @Test

@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.common.TransformOption;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
+import org.opensearch.dataprepper.model.event.MergeSettings;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -64,7 +66,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
     private final String keyPrefix;
-    private final boolean normalizeKeys;
+    private final MergeSettings mergeSettings;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -76,8 +78,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
-
-        this.normalizeKeys = keyValueProcessorConfig.getNormalizeKeys();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -197,6 +197,35 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         keyPrefix = keyValueProcessorConfig.getPrefix() != null ? keyValueProcessorConfig.getPrefix() : "";
+
+        final FieldConflictStrategy fieldConflictStrategy = resolveFieldConflictStrategy(keyValueProcessorConfig);
+        final boolean normalizeKeys = keyValueProcessorConfig.getNormalizeKeys();
+        this.mergeSettings = new MergeSettings(fieldConflictStrategy, normalizeKeys);
+    }
+
+    private static FieldConflictStrategy resolveFieldConflictStrategy(final KeyValueProcessorConfig config) {
+        final FieldConflictStrategy conflictStrategy = config.getFieldConflictStrategy();
+        final Boolean overwriteIfDestinationExists = config.getOverwriteIfDestinationExists();
+
+        if (conflictStrategy != null && overwriteIfDestinationExists != null) {
+            throw new InvalidPluginConfigurationException(
+                    "overwrite_if_destination_exists and destination_conflict_strategy cannot both be set. " +
+                            "Use destination_conflict_strategy only.");
+        }
+
+        if (conflictStrategy != null) {
+            return conflictStrategy;
+        }
+
+        if (Boolean.FALSE.equals(overwriteIfDestinationExists)) {
+            LOG.warn("overwrite_if_destination_exists is deprecated. Use destination_conflict_strategy: skip instead.");
+            return FieldConflictStrategy.SKIP;
+        }
+
+        if (overwriteIfDestinationExists != null) {
+            LOG.warn("overwrite_if_destination_exists is deprecated. Use destination_conflict_strategy: overwrite instead.");
+        }
+        return FieldConflictStrategy.OVERWRITE;
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -352,7 +381,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             try {
-
                 if (keyValueProcessorConfig.getKeyValueWhen() != null && !expressionEvaluator.evaluateConditional(keyValueProcessorConfig.getKeyValueWhen(), recordEvent)) {
                     continue;
                 }
@@ -386,15 +414,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
 
                 final Map<String, Object> processedMap = executeConfigs(outputMap);
-
-                if (Objects.isNull(keyValueProcessorConfig.getDestination())) {
-                    writeToRoot(recordEvent, processedMap);
-                } else {
-                    if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
-                            !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
-                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap, normalizeKeys);
-                    }
-                }
+                recordEvent.mergeFields(keyValueProcessorConfig.getDestination(), processedMap, mergeSettings);
             } catch (final Exception e) {
                 LOG.error(EVENT, "There was an exception while processing on Event [{}]: ", recordEvent, e);
                 recordEvent.getMetadata().addTags(tagsOnFailure);
@@ -688,15 +708,4 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
-    private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
-        for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
-            try {
-                if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
-                    event.put(entry.getKey(), entry.getValue(), normalizeKeys);
-                }
-            } catch (IllegalArgumentException e) {
-                LOG.warn("Failed to put key: "+entry.getKey()+" value : "+entry.getValue()+" into event. ", e);
-            }
-        }
-    }
 }

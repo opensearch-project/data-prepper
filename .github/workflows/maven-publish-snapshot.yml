@@ -21,7 +21,7 @@ jobs:
           java-version: 11
 
       - name: Checkout Data Prepper
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
@@ -29,7 +29,7 @@ jobs:
           add-job-summary: on-failure
 
       - name: Load secret
-        uses: 1password/load-secrets-action@v2
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
         with:
           # Export loaded secrets as environment variables
           export-env: true
@@ -39,7 +39,7 @@ jobs:
           MAVEN_SNAPSHOTS_S3_ROLE: op://opensearch-infra-secrets/maven-snapshots-s3/role
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
         with:
           role-to-assume: ${{ env.MAVEN_SNAPSHOTS_S3_ROLE }}
           aws-region: us-east-1

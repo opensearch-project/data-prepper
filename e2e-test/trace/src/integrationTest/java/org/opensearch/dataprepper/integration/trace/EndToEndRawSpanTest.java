@@ -47,6 +47,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import org.assertj.core.api.SoftAssertions;
+
 import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -113,15 +115,18 @@ public class EndToEndRawSpanTest {
          *
          * TODO: Can we do better?
          */
+        final SoftAssertions softly = new SoftAssertions();
         expectedDocuments.forEach(expectedDoc -> {
             Set<Map.Entry<String, Object>> foundEntrySet = foundDocuments.stream()
                     .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
                     .findFirst().get()
                     .entrySet();
 
-            assertThat(foundEntrySet).containsAll(expectedDoc.entrySet());
+            softly.assertThat(foundEntrySet)
+                    .as("Document for spanId %s", expectedDoc.get("spanId"))
+                    .containsAll(expectedDoc.entrySet());
         });
-
+        softly.assertAll();
     }
 
     private SearchSourceBuilder createSearchSourceBuilder() {

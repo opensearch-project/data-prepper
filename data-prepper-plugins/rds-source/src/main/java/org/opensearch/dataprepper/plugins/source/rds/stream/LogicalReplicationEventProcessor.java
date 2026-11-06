@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -374,7 +375,7 @@ public class LogicalReplicationEventProcessor {
 
     private boolean isPrimaryKeyChanged(Map<String, Object> oldRowDataMap, Map<String, Object> newRowDataMap, List<String> primaryKeys) {
         for (String primaryKey : primaryKeys) {
-            if (!oldRowDataMap.get(primaryKey).equals(newRowDataMap.get(primaryKey))) {
+            if (!Objects.equals(oldRowDataMap.get(primaryKey), newRowDataMap.get(primaryKey))) {
                 return true;
             }
         }

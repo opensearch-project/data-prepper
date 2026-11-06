@@ -133,4 +133,13 @@ public interface OpenTelemetryLog extends Log {
      */
     Map<String, Object> getResource();
 
+    /**
+     * Gets the event name of this log event as defined in the OTel LogRecord spec.
+     * Added in OpenTelemetry proto v1.5.0 as a top-level field replacing the {@code event.name} attribute.
+     *
+     * @return the event name, or null if not set
+     * @since 2.17
+     */
+    String getEventName();
+
 }

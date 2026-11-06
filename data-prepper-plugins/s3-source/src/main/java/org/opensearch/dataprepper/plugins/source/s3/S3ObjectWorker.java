@@ -214,7 +214,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                         saveStateCounter.getAndIncrement();
                     }
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
+                    LOG.error("Failed writing S3 objects to buffer.", e);
                 }
             });
 
@@ -234,6 +234,8 @@ class S3ObjectWorker implements S3ObjectHandler {
         if (recordsWritten == 0) {
             LOG.warn("Failed to find any records in S3 object: s3ObjectReference={}.", s3ObjectReference);
             s3ObjectPluginMetrics.getS3ObjectNoRecordsFound().increment();
+        } else {
+            LOG.info("Completed reading S3 object: s3ObjectReference={}, records={}", s3ObjectReference, recordsWritten);
         }
         s3ObjectPluginMetrics.getS3ObjectSizeSummary().record(s3ObjectSize);
         s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(recordsWritten);

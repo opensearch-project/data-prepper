@@ -16,11 +16,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.given;
@@ -56,6 +60,18 @@ class PluginCreatorTest {
     public static class AlwaysThrowingPluginClass {
         public AlwaysThrowingPluginClass(@SuppressWarnings("UnusedParameters") final PluginSetting pluginSetting) {
             throw new RuntimeException("This always throws");
+        }
+    }
+
+    /**
+     * Captures the thread context classloader in effect while the plugin is being constructed, which is
+     * what {@code ServiceLoader.load(Class)} inside a real plugin constructor would resolve against.
+     */
+    public static class ContextClassLoaderRecordingPluginClass {
+        static final AtomicReference<ClassLoader> OBSERVED_CONTEXT_CLASS_LOADER = new AtomicReference<>();
+
+        public ContextClassLoaderRecordingPluginClass(@SuppressWarnings("UnusedParameters") final PluginSetting pluginSetting) {
+            OBSERVED_CONTEXT_CLASS_LOADER.set(Thread.currentThread().getContextClassLoader());
         }
     }
 
@@ -163,6 +179,74 @@ class PluginCreatorTest {
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
         assertThat(instance.alternatePluginConfig, equalTo(alternatePluginConfig));
         assertThat(instance.obj, equalTo(obj));
+    }
+
+    @Test
+    void newPluginInstance_sets_the_context_classloader_to_the_plugin_classes_classloader_during_construction() {
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
+                .willReturn(new Object[] { pluginSetting });
+        ContextClassLoaderRecordingPluginClass.OBSERVED_CONTEXT_CLASS_LOADER.set(null);
+
+        final Thread currentThread = Thread.currentThread();
+        final ClassLoader originalContextClassLoader = currentThread.getContextClassLoader();
+        // Stand in for the OSGi case, where the classloader running the framework is not the one which
+        // defined the plugin class. Without that difference the assertion below would prove nothing.
+        final ClassLoader unrelatedContextClassLoader = new URLClassLoader(new URL[0], null);
+        currentThread.setContextClassLoader(unrelatedContextClassLoader);
+        try {
+            createObjectUnderTest(pluginConfigurationObservableRegister).newPluginInstance(
+                    ContextClassLoaderRecordingPluginClass.class, pluginConstructionContext, pluginName);
+
+            assertThat(ContextClassLoaderRecordingPluginClass.OBSERVED_CONTEXT_CLASS_LOADER.get(),
+                    sameInstance(ContextClassLoaderRecordingPluginClass.class.getClassLoader()));
+            assertThat(currentThread.getContextClassLoader(), sameInstance(unrelatedContextClassLoader));
+        } finally {
+            currentThread.setContextClassLoader(originalContextClassLoader);
+        }
+    }
+
+    @Test
+    void newPluginInstance_restores_the_context_classloader_when_the_plugin_constructor_throws() {
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
+                .willReturn(new Object[] { pluginSetting });
+
+        final Thread currentThread = Thread.currentThread();
+        final ClassLoader originalContextClassLoader = currentThread.getContextClassLoader();
+        final ClassLoader unrelatedContextClassLoader = new URLClassLoader(new URL[0], null);
+        currentThread.setContextClassLoader(unrelatedContextClassLoader);
+        try {
+            assertThrows(PluginInvocationException.class,
+                    () -> createObjectUnderTest(pluginConfigurationObservableRegister).newPluginInstance(
+                            AlwaysThrowingPluginClass.class, pluginConstructionContext, pluginName));
+
+            assertThat(currentThread.getContextClassLoader(), sameInstance(unrelatedContextClassLoader));
+        } finally {
+            currentThread.setContextClassLoader(originalContextClassLoader);
+        }
+    }
+
+    @Test
+    void newPluginInstance_leaves_the_context_classloader_alone_when_it_already_defined_the_plugin_class() {
+        given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
+                .willReturn(new Object[] { pluginSetting });
+        ContextClassLoaderRecordingPluginClass.OBSERVED_CONTEXT_CLASS_LOADER.set(null);
+
+        final Thread currentThread = Thread.currentThread();
+        final ClassLoader originalContextClassLoader = currentThread.getContextClassLoader();
+        // The classpath plugin framework: plugin classes come from the application classloader, which is
+        // already the context classloader, so no switch happens at all.
+        final ClassLoader applicationClassLoader = ContextClassLoaderRecordingPluginClass.class.getClassLoader();
+        currentThread.setContextClassLoader(applicationClassLoader);
+        try {
+            createObjectUnderTest(pluginConfigurationObservableRegister).newPluginInstance(
+                    ContextClassLoaderRecordingPluginClass.class, pluginConstructionContext, pluginName);
+
+            assertThat(ContextClassLoaderRecordingPluginClass.OBSERVED_CONTEXT_CLASS_LOADER.get(),
+                    sameInstance(applicationClassLoader));
+            assertThat(currentThread.getContextClassLoader(), sameInstance(applicationClassLoader));
+        } finally {
+            currentThread.setContextClassLoader(originalContextClassLoader);
+        }
     }
 
     @Test
