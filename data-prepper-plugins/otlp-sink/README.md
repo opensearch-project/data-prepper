@@ -266,8 +266,9 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
      * recordsIn, recordsOut (applies to all signal types: traces, metrics, logs)
      * httpLatency, HTTP codes
      * errorCount, rejectedRecordsCount, failedRecordsCount, retriesCount (applies to all signal types)
+     * accessDenied<Signal>Count (401, 403), throttled<Signal>Count (429 after retries), payloadTooLarge<Signal>Count (413): subsets of the rejected totals, by final HTTP status
      * queueSize, queueCapacity
-     * payloadSize, payloadGzipSize
+     * payloadSize, payloadGzipSize (recorded only for 2xx responses; scaled by the fraction of records accepted on partial success)
      * JVM stats if configured (e.g., heap usage, GC pauses)
 
 ---
