@@ -118,6 +118,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying: {} ", e.getMessage());
+        closeClients();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
         this.shutdown();
@@ -128,6 +129,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         throw e;
     } catch (Exception e) {
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
+        closeClients();
     }
   }
 
@@ -147,9 +149,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     };
     openSearchClientRefresher = new OpenSearchClientRefresher(
             pluginMetrics, connectionConfiguration, clientFunction);
-
-    pluginConfigObservable.addPluginConfigObserver(
-            newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
 
     final String configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     final IndexTemplateAPIWrapper indexTemplateAPIWrapper = IndexTemplateAPIWrapperFactory.getWrapper(
@@ -204,6 +203,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     ingester.initialize();
 
+    pluginConfigObservable.addPluginConfigObserver(
+            newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
+
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
   }
@@ -228,15 +230,27 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     if (ingester != null) {
       ingester.shutdown();
     }
+    closeClients();
+  }
+
+  // Each RestHighLevelClient starts I/O reactor threads on construction, so clients from a
+  // failed initialization attempt must be closed before the next retry creates new ones.
+  private void closeClients() {
     if (restHighLevelClient != null) {
       try {
         restHighLevelClient.close();
       } catch (final IOException e) {
-        throw new RuntimeException(e.getMessage(), e);
+        LOG.error("Failed to close the RestHighLevelClient.", e);
       }
+      restHighLevelClient = null;
     }
     if (openSearchClient != null) {
-      openSearchClient.shutdown();
+      try {
+        openSearchClient._transport().close();
+      } catch (final IOException e) {
+        LOG.error("Failed to close the OpenSearchClient transport.", e);
+      }
+      openSearchClient = null;
     }
   }
 

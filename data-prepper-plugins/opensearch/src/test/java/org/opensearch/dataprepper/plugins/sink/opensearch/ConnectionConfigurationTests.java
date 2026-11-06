@@ -198,6 +198,31 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testCreateOpenSearchClientAwsSigv4_transportClose_closesSdkHttpClient() throws IOException {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+
+        final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
+
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
+        final OpenSearchClient openSearchClient;
+        try (final MockedStatic<ApacheHttpClient> apacheHttpClientMockedStatic = mockStatic(ApacheHttpClient.class)) {
+            apacheHttpClientMockedStatic.when(ApacheHttpClient::builder).thenReturn(apacheHttpClientBuilder);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
+        }
+
+        openSearchClient._transport().close();
+
+        verify(apacheHttpClient).close();
+        client.close();
+    }
+
+    @Test
     void testReadConnectionConfigurationWithDeprecatedBasicCredentialsAndNoCert() throws JsonProcessingException {
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
