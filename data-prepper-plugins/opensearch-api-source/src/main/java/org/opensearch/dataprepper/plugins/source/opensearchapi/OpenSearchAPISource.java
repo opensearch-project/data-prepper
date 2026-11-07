@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -37,5 +38,10 @@ public class OpenSearchAPISource extends BaseHttpSource<Record<Event>> {
     @Override
     public String getHttpHealthCheckPath() {
         return HTTP_HEALTH_CHECK_PATH;
+    }
+
+    @Override
+    public ByteDecoder getDecoder() {
+        return new OpenSearchBulkByteDecoder();
     }
 }
