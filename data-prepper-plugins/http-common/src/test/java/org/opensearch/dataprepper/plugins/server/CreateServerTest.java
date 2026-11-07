@@ -10,6 +10,7 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServiceRequestContext;
 
 import io.grpc.ServerInterceptor;
+import io.netty.handler.ssl.ClientAuth;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.ClientAuthConfiguration;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -34,10 +36,15 @@ import org.opensearch.dataprepper.plugins.server.CreateServer.GRPCServiceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.TrustManagerFactory;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +58,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -230,6 +238,64 @@ public class CreateServerTest {
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
         assertDoesNotThrow(() -> server.stop());
+    }
+
+    @Test
+    void createHttpServer_applies_client_auth_configuration_when_ssl_enabled() throws Exception {
+        final String certAsString = Files.readString(new File(TEST_SSL_CERTIFICATE_FILE).toPath());
+        final String keyAsString = Files.readString(new File(TEST_SSL_KEY_FILE).toPath());
+        when(certificate.getCertificate()).thenReturn(certAsString);
+        when(certificate.getPrivateKey()).thenReturn(keyAsString);
+        when(certificateProvider.getCertificate()).thenReturn(certificate);
+        when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+
+        final ClientAuthConfiguration clientAuthConfiguration = mock(ClientAuthConfiguration.class);
+        when(clientAuthConfiguration.getClientAuth()).thenReturn(ClientAuth.OPTIONAL);
+        when(clientAuthConfiguration.getTrustManagerFactory()).thenReturn(trustManagerFactoryFor(certAsString));
+        when(armeriaAuthenticationProvider.getClientAuthConfiguration()).thenReturn(Optional.of(clientAuthConfiguration));
+
+        final Map<String, Object> metadata = createHttpMetadata(0, "/log/ingest", 10_000, 200, 500, 1024, true,
+                CompressionOption.NONE);
+        metadata.put("ssl", true);
+        final CreateServer createServer = new CreateServer(createServerConfig(metadata), LOG, pluginMetrics,
+                TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+
+        final Server server = createServer.createHTTPServer(new BlockingBuffer<Record<Log>>(TEST_PIPELINE_NAME),
+                certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler, "placeholder");
+
+        assertNotNull(server);
+        verify(clientAuthConfiguration).getClientAuth();
+        verify(clientAuthConfiguration).getTrustManagerFactory();
+        assertDoesNotThrow(() -> server.start().join());
+        assertDoesNotThrow(() -> server.stop().join());
+    }
+
+    @Test
+    void createHttpServer_throws_when_client_auth_configured_without_ssl() throws Exception {
+        when(armeriaAuthenticationProvider.getClientAuthConfiguration())
+                .thenReturn(Optional.of(mock(ClientAuthConfiguration.class)));
+
+        final Map<String, Object> metadata = createHttpMetadata(0, "/log/ingest", 10_000, 200, 500, 1024, true,
+                CompressionOption.NONE);
+        // ServerConfiguration defaults ssl to true, so set it false explicitly to exercise the non-SSL branch.
+        metadata.put("ssl", false);
+        final CreateServer createServer = new CreateServer(createServerConfig(metadata), LOG, pluginMetrics,
+                TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+
+        assertThrows(IllegalStateException.class, () -> createServer.createHTTPServer(
+                new BlockingBuffer<Record<Log>>(TEST_PIPELINE_NAME), certificateProviderFactory,
+                armeriaAuthenticationProvider, httpRequestExceptionHandler, "placeholder"));
+    }
+
+    private static TrustManagerFactory trustManagerFactoryFor(final String pemCertificate) throws Exception {
+        final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        trustStore.load(null, null);
+        trustStore.setCertificateEntry("ca", CertificateFactory.getInstance("X.509")
+                .generateCertificate(new ByteArrayInputStream(pemCertificate.getBytes(StandardCharsets.UTF_8))));
+        final TrustManagerFactory trustManagerFactory =
+                TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(trustStore);
+        return trustManagerFactory;
     }
 
     private Map<String, Object> createGrpcMetadata(Integer port, Boolean ssl, Integer reqeustTimeoutInMillis,

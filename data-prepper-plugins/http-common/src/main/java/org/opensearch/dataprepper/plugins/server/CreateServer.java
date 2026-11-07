@@ -24,6 +24,7 @@ import io.netty.handler.ssl.ClientAuth;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.ClientAuthConfiguration;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
@@ -245,6 +246,11 @@ public class CreateServer {
 
         sb.disableServerHeader();
 
+        // The provider can be null when a caller does not load an authentication plugin.
+        final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider == null
+                ? Optional.empty()
+                : authenticationProvider.getClientAuthConfiguration();
+
         if (serverConfiguration.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -253,7 +259,18 @@ public class CreateServer {
             sb.https(serverConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
+            // Same wiring as BaseHttpSource: let the auth plugin request and verify client certificates.
+            clientAuthConfiguration.ifPresent(clientAuthConfig ->
+                    sb.tlsCustomizer(sslContextBuilder -> {
+                        sslContextBuilder.clientAuth(clientAuthConfig.getClientAuth());
+                        sslContextBuilder.trustManager(clientAuthConfig.getTrustManagerFactory());
+                    }));
         } else {
+            if (clientAuthConfiguration.isPresent()) {
+                throw new IllegalStateException(
+                        "mutual_tls authentication requires ssl: true. " +
+                        "Configure ssl: true with ssl_certificate_file and ssl_key_file.");
+            }
             LOG.warn("Creating " + sourceName + " without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the " + sourceName + ", go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
             sb.http(serverConfiguration.getPort());
