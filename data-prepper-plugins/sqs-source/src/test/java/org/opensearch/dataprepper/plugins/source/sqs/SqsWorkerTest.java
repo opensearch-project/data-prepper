@@ -230,6 +230,41 @@ class SqsWorkerTest {
     }
 
     @Test
+    void waitForPendingAcknowledgements_waits_until_the_callback_finishes_and_removes_the_set() throws IOException, InterruptedException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
+        final SqsWorker worker = createObjectUnderTest();
+
+        worker.processSqsMessages();
+
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(1));
+        assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(false));
+
+        callbackCaptor.getValue().accept(true);
+
+        assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(true));
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
+        verify(sqsWorkerCommon).deleteSqsMessages(anyString(), eq(sqsClient), anyList());
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_ignores_expired_sets() throws IOException, InterruptedException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        final SqsWorker worker = createObjectUnderTest();
+
+        worker.processSqsMessages();
+
+        assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(true));
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
+    }
+
+    @Test
     void processSqsMessages_should_return_zero_messages_with_backoff_when_a_SqsException_is_thrown() {
         when(sqsWorkerCommon.pollSqsMessages(
                 anyString(),

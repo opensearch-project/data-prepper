@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
@@ -42,6 +45,7 @@ public class SqsWorker implements Runnable {
     private final Timer sqsMessageDelayTimer;
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
     static final String SQS_MESSAGES_DELETED_WITHOUT_ACK_METRIC_NAME = "sqsMessagesDeletedWithoutAcknowledgment";
+    private static final Duration PENDING_ACKNOWLEDGEMENTS_POLL_INTERVAL = Duration.ofMillis(100);
     private final SqsWorkerCommon sqsWorkerCommon;
     private final SqsEventProcessor sqsEventProcessor;
     private final SqsClient sqsClient;
@@ -55,6 +59,7 @@ public class SqsWorker implements Runnable {
     private int failedAttemptCount;
     private volatile boolean isStopped = false;
     private final Map<Message, Integer> messageVisibilityTimesMap;
+    private final Set<PendingAcknowledgement> pendingAcknowledgementSets = ConcurrentHashMap.newKeySet();
 
     public SqsWorker(final Buffer<Record<Event>> buffer,
                      final AcknowledgementSetManager acknowledgementSetManager,
@@ -104,6 +109,7 @@ public class SqsWorker implements Runnable {
     }
 
     int processSqsMessages() {
+        removeExpiredAcknowledgementSets();
         try {
             List<Message> messages = sqsWorkerCommon.pollSqsMessages(
                     queueConfig.getUrl(),
@@ -143,18 +149,30 @@ public class SqsWorker implements Runnable {
             final int maxVisibilityTimeout = (int) queueConfig.getVisibilityDuplicateProtectionTimeout().getSeconds();
             final int progressCheckInterval = visibilityTimeout / 2 - 1;
             if (endToEndAcknowledgementsEnabled) {
-                int expiryTimeout = queueConfig.getVisibilityDuplicateProtection()
+                final PendingAcknowledgement pendingAcknowledgement = new PendingAcknowledgement();
+                pendingAcknowledgementSets.add(pendingAcknowledgement);
+                final int expiryTimeout = queueConfig.getVisibilityDuplicateProtection()
                         ? maxVisibilityTimeout
                         : visibilityTimeout - 2;
-                acknowledgementSet = acknowledgementSetManager.create(result -> {
-                    acknowledgementSetCallbackCounter.increment();
-                    if (queueConfig.getVisibilityDuplicateProtection()) {
-                        messageVisibilityTimesMap.remove(message);
-                    }
-                    if (result) {
-                        sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), sqsClient, waitingForAcknowledgements);
-                    }
-                }, Duration.ofSeconds(expiryTimeout));
+                try {
+                    acknowledgementSet = acknowledgementSetManager.create(result -> {
+                        try {
+                            acknowledgementSetCallbackCounter.increment();
+                            if (queueConfig.getVisibilityDuplicateProtection()) {
+                                messageVisibilityTimesMap.remove(message);
+                            }
+                            if (result) {
+                                sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), sqsClient, waitingForAcknowledgements);
+                            }
+                        } finally {
+                            pendingAcknowledgementSets.remove(pendingAcknowledgement);
+                        }
+                    }, Duration.ofSeconds(expiryTimeout));
+                    pendingAcknowledgement.acknowledgementSet = acknowledgementSet;
+                } catch (final RuntimeException e) {
+                    pendingAcknowledgementSets.remove(pendingAcknowledgement);
+                    throw e;
+                }
                 if (queueConfig.getVisibilityDuplicateProtection()) {
                     acknowledgementSet.addProgressCheck(ratio -> {
                         int newValue = messageVisibilityTimesMap.getOrDefault(message, visibilityTimeout) + progressCheckInterval;
@@ -220,5 +238,48 @@ public class SqsWorker implements Runnable {
     void stop() {
         isStopped = true;
         sqsWorkerCommon.stop();
+    }
+
+    boolean waitForPendingAcknowledgements(final Duration timeout) throws InterruptedException {
+        final long deadlineNanos = System.nanoTime() + timeout.toNanos();
+        while (hasPendingAcknowledgementSets()) {
+            final long remainingNanos = deadlineNanos - System.nanoTime();
+            if (remainingNanos <= 0) {
+                return false;
+            }
+            TimeUnit.NANOSECONDS.sleep(Math.min(remainingNanos, PENDING_ACKNOWLEDGEMENTS_POLL_INTERVAL.toNanos()));
+        }
+        return true;
+    }
+
+    int getPendingAcknowledgementSetCount() {
+        removeExpiredAcknowledgementSets();
+        return pendingAcknowledgementSets.size();
+    }
+
+    private boolean hasPendingAcknowledgementSets() {
+        removeExpiredAcknowledgementSets();
+        return !pendingAcknowledgementSets.isEmpty();
+    }
+
+    /** Expired acknowledgement sets never invoke their callback, so discard them during polling. */
+    private void removeExpiredAcknowledgementSets() {
+        final Instant now = Instant.now();
+        pendingAcknowledgementSets.removeIf(pendingAcknowledgement -> {
+            final AcknowledgementSet acknowledgementSet = pendingAcknowledgement.acknowledgementSet;
+            if (acknowledgementSet == null) {
+                return false;
+            }
+            final Instant expirationTime = acknowledgementSet.getExpirationTime();
+            return expirationTime != null && now.isAfter(expirationTime);
+        });
+    }
+
+    void markSqsClientClosed() {
+        sqsWorkerCommon.markSqsClientClosed();
+    }
+
+    private static class PendingAcknowledgement {
+        private volatile AcknowledgementSet acknowledgementSet;
     }
 }

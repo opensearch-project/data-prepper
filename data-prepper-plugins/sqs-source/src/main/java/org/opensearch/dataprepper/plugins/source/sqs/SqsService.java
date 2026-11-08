@@ -29,12 +29,13 @@
  import java.util.HashMap;
  import java.util.List;
  import java.util.Map;
- import java.util.concurrent.TimeUnit;
+ import java.time.Duration;
+import java.util.concurrent.TimeUnit;
  import java.util.concurrent.Executors;
  import java.util.concurrent.ExecutorService;
  import java.util.stream.Collectors;
  import java.util.stream.IntStream;
- 
+
  public class SqsService {
      private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
      static final long SHUTDOWN_TIMEOUT = 30L;
@@ -106,22 +107,33 @@
 
 
      public void stop() {
+        final long shutdownDeadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT);
         allSqsUrlExecutorServices.forEach(ExecutorService::shutdown);
         sqsWorkers.forEach(SqsWorker::stop);
-        allSqsUrlExecutorServices.forEach(executorService -> {
-            try {
-                if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
-                    LOG.warn("Failed to terminate SqsWorkers");
+        try {
+            for (final ExecutorService executorService : allSqsUrlExecutorServices) {
+                final long remainingNanos = Math.max(0, shutdownDeadlineNanos - System.nanoTime());
+                if (!executorService.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS)) {
+                    LOG.warn("Failed to terminate SqsWorkers before the shutdown timeout");
                     executorService.shutdownNow();
                 }
-            } catch (InterruptedException e) {
-                LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
             }
-        });
 
-        sqsClientMap.values().forEach(SqsClient::close);
+            for (final SqsWorker sqsWorker : sqsWorkers) {
+                final long remainingNanos = Math.max(0, shutdownDeadlineNanos - System.nanoTime());
+                if (!sqsWorker.waitForPendingAcknowledgements(Duration.ofNanos(remainingNanos))) {
+                    LOG.warn("Timed out waiting for pending SQS acknowledgments. Their messages may be redelivered.");
+                }
+            }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
+            allSqsUrlExecutorServices.forEach(ExecutorService::shutdownNow);
+            Thread.currentThread().interrupt();
+        } finally {
+            sqsWorkers.forEach(SqsWorker::markSqsClientClosed);
+            sqsClientMap.values().forEach(SqsClient::close);
+        }
+
         LOG.info("SqsService shutdown completed.");
     }
 
@@ -131,4 +143,3 @@
      }
     
  }
- 
