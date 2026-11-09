@@ -300,9 +300,7 @@ public class SqsWorker implements Runnable {
         }
 
         private boolean markExpired() {
-            return state.compareAndSet(State.PENDING, State.EXPIRED)
-                    || state.get() == State.EXPIRED
-                    || state.get() == State.COMPLETED;
+            return state.compareAndSet(State.PENDING, State.EXPIRED);
         }
     }
 
