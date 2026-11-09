@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -69,6 +70,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCons
 
 @SuppressWarnings("unchecked")
 public class IndexConfigurationTests {
+    private static final Map<String, Object> KEYWORD_256 = Map.of("type", "keyword", "ignore_above", 256);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final String DEFAULT_TEMPLATE_FILE = "test-template-withshards.json";
@@ -223,7 +225,7 @@ public class IndexConfigurationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP"})
+    @EnumSource(value = IndexType.class, names = {"TRACE_ANALYTICS_RAW_PLAIN", "LOG_ANALYTICS_PLAIN", "OTEL_APM_SERVICE_MAP", "GENAI_EVALUATION_PLAIN"})
     public void testBuiltInIndexTypeWithComponentTemplates(final IndexType indexType) {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexType(indexType.getValue())
@@ -311,6 +313,156 @@ public class IndexConfigurationTests {
         assertThat(indexTemplate.get("version"), equalTo(1));
         final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
         assertDependencyAttributesMapping((Map<String, Object>) template.get("mappings"));
+    }
+
+    @Test
+    public void testGenAIEvaluation_defaultsToIndexTemplateWithFixedAlias() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .withIndexAlias("ignored-index-alias")
+                .build();
+        assertThat(indexConfiguration.getIndexType(), equalTo(IndexType.GENAI_EVALUATION_PLAIN));
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v1-genai-evaluation"));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.INDEX_TEMPLATE));
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.keySet(), equalTo(Set.of("version", "priority", "template")));
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        assertThat(indexTemplate.get("priority"), equalTo(100));
+        final Map<String, Object> template = (Map<String, Object>) indexTemplate.get("template");
+        assertThat(template.keySet(), equalTo(Set.of("mappings")));
+        assertGenAIEvaluationMappings((Map<String, Object>) template.get("mappings"));
+    }
+
+    @Test
+    public void testGenAIEvaluationFromSinkConfigWithoutTemplateType_usesIndexTemplate() throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.GENAI_EVALUATION_PLAIN.getValue(), null, null, null, null, null, null);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(getOpenSearchSinkConfig(metadata));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.INDEX_TEMPLATE));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("template"));
+    }
+
+    @Test
+    public void testGenAIEvaluationFromSinkConfigWithV1TemplateType_usesV1() throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.GENAI_EVALUATION_PLAIN.getValue(), null, null, null, null, null, null);
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(getOpenSearchSinkConfig(metadata));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("mappings"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = IndexType.class, names = {"LOG_ANALYTICS_PLAIN", "TRACE_ANALYTICS_RAW_PLAIN", "CUSTOM"})
+    public void testOtherIndexTypesFromSinkConfigWithoutTemplateType_stillUseV1(final IndexType indexType) throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                indexType.getValue(), "my-index", null, null, null, null, null);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(getOpenSearchSinkConfig(metadata));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
+    }
+
+    @Test
+    public void testGenAIEvaluationWithV1Template_usesLegacyTemplateShape() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .withTemplateType(TemplateType.V1.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v1-genai-evaluation"));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
+        final Map<String, Object> indexTemplate = indexConfiguration.getIndexTemplate();
+        assertThat(indexTemplate.keySet(), equalTo(Set.of("version", "mappings")));
+        assertThat(indexTemplate.get("version"), equalTo(1));
+        assertGenAIEvaluationMappings((Map<String, Object>) indexTemplate.get("mappings"));
+    }
+
+    @Test
+    public void testGenAIEvaluationWithEs6_usesV1Template() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .withDistributionVersion(DistributionVersion.ES6.getVersion())
+                .build();
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
+    }
+
+    @Test
+    public void testGenAIEvaluationOnServerless_usesIndexTemplate() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .withTemplateType(TemplateType.V1.getTypeName())
+                .withServerless(true)
+                .build();
+        assertThat(indexConfiguration.getServerless(), equalTo(true));
+        assertThat(indexConfiguration.getIndexAlias(), equalTo("otel-v1-genai-evaluation"));
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.INDEX_TEMPLATE));
+    }
+
+    @Test
+    public void testGenAIEvaluationMappings_extendTheLogAnalyticsPlainTemplate() {
+        final Map<String, Object> genAIEvaluationMappings = (Map<String, Object>) ((Map<String, Object>) new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .build().getIndexTemplate().get("template")).get("mappings");
+        final Map<String, Object> logsMappings = (Map<String, Object>) ((Map<String, Object>) new IndexConfiguration.Builder()
+                .withIndexType(IndexType.LOG_ANALYTICS_PLAIN.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build().getIndexTemplate().get("template")).get("mappings");
+
+        assertThat(genAIEvaluationMappings.get("dynamic_templates"), equalTo(logsMappings.get("dynamic_templates")));
+        assertThat(genAIEvaluationMappings.get("date_detection"), equalTo(logsMappings.get("date_detection")));
+        final Map<String, Object> properties = (Map<String, Object>) genAIEvaluationMappings.get("properties");
+        final Map<String, Object> logsProperties = (Map<String, Object>) logsMappings.get("properties");
+        assertThat(logsProperties, not(hasKey("attributes")));
+        final Set<String> expectedFields = new HashSet<>(logsProperties.keySet());
+        expectedFields.add("attributes");
+        assertThat(properties.keySet(), equalTo(expectedFields));
+        for (final String field : logsProperties.keySet()) {
+            assertThat(field, properties.get(field), equalTo(logsProperties.get(field)));
+        }
+    }
+
+    private void assertGenAIEvaluationMappings(final Map<String, Object> mappings) {
+        assertThat(mappings.get("date_detection"), equalTo(false));
+        final Map<String, Object> properties = (Map<String, Object>) mappings.get("properties");
+        assertThat(properties.get("@timestamp"), equalTo(Map.of("type", "date_nanos")));
+        assertThat(properties.get("time"), equalTo(Map.of("type", "date_nanos")));
+        assertThat(properties.get("observedTime"), equalTo(Map.of("type", "date_nanos")));
+        assertThat(getProperties(properties, "severity").get("text"), equalTo(Map.of("type", "keyword", "ignore_above", 32)));
+        assertThat(properties, not(hasKey("eventName")));
+
+        final Map<String, Object> attributes = getProperties(properties, "attributes");
+        assertThat(attributes.keySet(), equalTo(Set.of("gen_ai", "opensearch", "test")));
+        final Map<String, Object> genAI = getProperties(attributes, "gen_ai");
+        assertThat(genAI.keySet(), equalTo(Set.of("evaluation", "agent", "prompt")));
+        final Map<String, Object> evaluation = getProperties(genAI, "evaluation");
+        assertThat(evaluation.keySet(), equalTo(Set.of("score", "explanation")));
+        assertThat(getProperties(evaluation, "score"), equalTo(Map.of("value", Map.of("type", "double"))));
+        assertThat(evaluation.get("explanation"), equalTo(Map.of("type", "text")));
+        assertThat(getProperties(genAI, "agent"), equalTo(Map.of("version", KEYWORD_256)));
+        assertThat(getProperties(genAI, "prompt"), equalTo(Map.of("version", KEYWORD_256)));
+
+        final Map<String, Object> opensearchEvaluation = getProperties(getProperties(getProperties(attributes, "opensearch"), "gen_ai"), "evaluation");
+        assertThat(opensearchEvaluation.keySet(), equalTo(Set.of("score", "evaluator")));
+        assertThat(getProperties(opensearchEvaluation, "score"), equalTo(Map.of(
+                "min", Map.of("type", "double"),
+                "max", Map.of("type", "double"),
+                "threshold", Map.of("type", "double"))));
+        assertThat(getProperties(opensearchEvaluation, "evaluator"), equalTo(Map.of("version", KEYWORD_256)));
+
+        final Map<String, Object> test = getProperties(attributes, "test");
+        assertThat(getProperties(test, "case"), equalTo(Map.of("id", KEYWORD_256)));
+        assertThat(getProperties(getProperties(test, "suite"), "run"), equalTo(Map.of("id", KEYWORD_256)));
+
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
+        final Map<String, Object> stringAttributes = dynamicTemplates.stream()
+                .filter(dynamicTemplate -> dynamicTemplate.containsKey("string_attributes"))
+                .map(dynamicTemplate -> (Map<String, Object>) dynamicTemplate.get("string_attributes"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(stringAttributes.get("path_match"), equalTo("attributes.*"));
+        assertThat(stringAttributes.get("mapping"), equalTo(KEYWORD_256));
+    }
+
+    private Map<String, Object> getProperties(final Map<String, Object> properties, final String field) {
+        return (Map<String, Object>) ((Map<String, Object>) properties.get(field)).get("properties");
     }
 
     private void assertDependencyAttributesMapping(final Map<String, Object> mappings) {

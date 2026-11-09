@@ -260,6 +260,11 @@ public class IndexConfiguration {
             templateType = TemplateType.INDEX_TEMPLATE;
         } else if (builder.serverless) {
             templateType = TemplateType.INDEX_TEMPLATE;
+        } else if (indexType == IndexType.GENAI_EVALUATION_PLAIN && builder.templateType == null
+                && !DistributionVersion.ES6.equals(builder.distributionVersion)) {
+            // The evaluation index type defaults to a composable index template so that it converges with
+            // the template installed by other tools under the same name and version. v1 is still selectable.
+            templateType = TemplateType.INDEX_TEMPLATE;
         } else {
             templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
                     (builder.templateType != null ? builder.templateType : TemplateType.V1);
@@ -545,6 +550,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_STANDARD_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.GENAI_EVALUATION_PLAIN)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.GENAI_EVALUATION_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS_PLAIN)) {

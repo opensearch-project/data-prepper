@@ -83,6 +83,91 @@ pipeline:
 
 The OpenSearch sink will reserve `metrics-otel-v1-*` as index pattern and `metrics-otel-v1` as index alias for record ingestion.
 
+### GenAI evaluation results
+
+The `genai-evaluation-plain` index type is experimental. Its mappings may change in a minor release.
+
+GenAI evaluation results are OpenTelemetry log records with the event name `gen_ai.evaluation.result`, as described in the
+[OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/).
+Route only those records to a sink with `index_type: genai-evaluation-plain`, and send all other logs to the logs sink with the
+inverse route, so that each evaluation result is stored once:
+
+```
+genai-evaluation-otlp-pipeline:
+  source:
+    otel_logs_source:
+      port: 21892
+      ssl: false
+      http_path: /v1/logs
+      output_format: otel
+  route:
+    - genai-evaluation: '/eventName == "gen_ai.evaluation.result"'
+    - logs: '/eventName != "gen_ai.evaluation.result"'
+  sink:
+    - opensearch:
+        hosts: ["https://localhost:9200"]
+        username: YOUR_USERNAME_HERE
+        password: YOUR_PASSWORD_HERE
+        index_type: genai-evaluation-plain
+        routes: [genai-evaluation]
+    - opensearch:
+        hosts: ["https://localhost:9200"]
+        username: YOUR_USERNAME_HERE
+        password: YOUR_PASSWORD_HERE
+        index_type: log-analytics-plain
+        routes: [logs]
+```
+
+The route matches on the log record's `eventName` field only, not on an `event.name` attribute.
+
+Set `output_format: otel` on the source. It keeps attributes under their OpenTelemetry names, which this template maps. With the default
+`opensearch` output format, attributes are written as `log.attributes.*` fields and the evaluation mappings do not apply.
+
+`genai-evaluation-plain` stores attributes under their dotted OpenTelemetry names (for example `attributes.gen_ai.evaluation.name`).
+
+#### Index, alias and rollover
+
+On clusters with ISM, the sink writes to the alias `otel-v1-genai-evaluation`, and creates the first index `otel-v1-genai-evaluation-000001`
+with that alias as its write index. It creates the ISM policy `otel-v1-genai-evaluation-policy`, which rolls the write index over at 50 GB
+or after 24 hours and never deletes indices. The policy attaches itself to new `otel-v1-genai-evaluation-*` indices through its `ism_template`,
+and the index template sets the rollover alias. Add a delete state to the policy, or replace the policy, to set a retention period.
+These names are fixed: `index` is ignored for this index type, as for `log-analytics-plain`.
+
+On Amazon OpenSearch Serverless (`serverless: true` in [AWS Configuration](#aws_configuration)), which has neither ISM nor aliases,
+the sink creates no ISM policy and writes to a plain index named `otel-v1-genai-evaluation`, with the same index template matching
+exactly that index name.
+
+#### Index template
+
+The sink creates the index template `otel-v1-genai-evaluation-index-template` with `version` 1, and with `priority` 100 when
+`template_type` is `index-template`. This index type defaults to `template_type` `index-template` (composable); `v1` can still be selected.
+The sink creates the template only when no template with that name exists, or when the existing one has a lower `version`. Tools that install
+the same template under the same name and `version` therefore converge on one template, and a newer `version` from the sink replaces an older one.
+
+The mappings are those of the `log-analytics-plain` index template (`date_detection` is `false`, `time`, `observedTime` and `@timestamp` are
+`date_nanos`, string attributes are `keyword` with `ignore_above` 256, and other numeric attributes are mapped dynamically as `long` or `double`), with these additions:
+
+* `double`: `attributes.gen_ai.evaluation.score.value`, `attributes.opensearch.gen_ai.evaluation.score.min`,
+  `attributes.opensearch.gen_ai.evaluation.score.max` and `attributes.opensearch.gen_ai.evaluation.score.threshold`, so that a whole-number
+  score such as `4` does not map the field as `long`.
+* `text`: `attributes.gen_ai.evaluation.explanation`, so that long explanations are searchable.
+* `keyword` with `ignore_above` 256: `attributes.test.case.id`, `attributes.test.suite.run.id`, `attributes.gen_ai.agent.version`,
+  `attributes.opensearch.gen_ai.evaluation.evaluator.version` and `attributes.gen_ai.prompt.version`, so that a numeric value such as
+  version `2` does not map the field as `long`.
+
+Every other attribute is mapped dynamically. A string attribute longer than 256 characters, such as an expected output, is kept in `_source`
+and returned in full, but is not indexed.
+
+Each new attribute adds a field to the index. OpenSearch limits an index to 1000 fields by default (`index.mapping.total_fields.limit`).
+To raise the limit, update the setting on the current write index, and add it to the template for future indices, for example with
+a component template listed in [`component_templates`](#component_templates):
+
+```
+PUT otel-v1-genai-evaluation/_settings
+{ "index.mapping.total_fields.limit": 2000 }
+```
+
+Do not combine this type with another index template that matches `otel-v1-genai-evaluation-*`.
 
 ### Amazon OpenSearch Service
 
@@ -132,7 +217,8 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-plain-raw-v2`, `trace-analytics-service-map`, `metric-analytics`, `log-analytics`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-plain-raw-v2`, `trace-analytics-service-map`, `metric-analytics`, `log-analytics`, `genai-evaluation-plain`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
+  * `genai-evaluation-plain` (experimental) writes GenAI evaluation results. See [GenAI evaluation results](#genai-evaluation-results).
   * `trace-analytics-plain-raw-v2` writes the same span documents as `trace-analytics-plain-raw`, to the `otel-v2-apm-span` alias with its own ISM policy `otel-v2-apm-span-policy`. Its index template is composed of two component templates that the sink creates or updates before the index template, each only when its `version` is higher than the one on the cluster: `otel-v2-apm-span-plain`, which holds the `trace-analytics-plain-raw` span mappings, and `otel-v2-apm-span-nested-keyword`, which maps string fields under the nested `events.attributes` and `links.attributes` to `keyword`. The index template itself sets `index.append_only.enabled` to `false` so that spans can be written with the document ID `${traceId}/${spanId}` on clusters where new indices are append-only by default. This type always uses `template_type` `index-template`, cannot be used with `distribution_version` `es6`, and requires OpenSearch 3.0 or later. Processors that read spans, such as `otel_trace_group`, default to `otel-v1-apm-span`, so set their `indices` to `otel-v2-apm-span`.
 
 - `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. For `distribution_version` set to `es6`, default value is `false`, otherwise default value is `true`.
@@ -174,7 +260,7 @@ Default is null.
   * This index name can also be a formatted string (with or without date-time pattern suffix), such as `my-${index}-name`. When OpenSearchSink is sending data to OpenSearch, the format portion "${index}" will be replaced by it's value in the event that is being processed. The format may also be like "${index1/index2/index3}" in which case the field "index1/index2/index3" is searched in the event and replaced by its value.
     - Additionally, the formatted string can include expressions to evaluate to format the index name. For example, `my-${index}-${getMetadata(\"some_metadata_key\")}-name` will inject both the `index` value from the Event, as well as the value of `some_metadata_key` from the Event metadata to construct the index name.
 - `normalize_index` (optional): If true, the plugin will try to make dynamic index names (index names with format options specified in `${}`) valid according to [index naming restrictions](https://opensearch.org/docs/2.11/api-reference/index-apis/create-index/#index-naming-restrictions). Any invalid characters will be removed. Default value is false. 
-- <a name="template_type"></a>`template_type`(optional): Defines what type of OpenSearch template to use. The available options are `v1` and `index-template`. The default value is `v1`, which uses the original OpenSearch templates available at the `_template` API endpoints. Select `index-template` to use composable index templates which are available at OpenSearch's `_index_template` endpoint. Note: when `distribution_version` is `es6`, `template_type` is enforced into `v1`. When `index_type` is `trace-analytics-plain-raw-v2`, `template_type` is enforced into `index-template`.
+- <a name="template_type"></a>`template_type`(optional): Defines what type of OpenSearch template to use. The available options are `v1` and `index-template`. The default value is `v1`, which uses the original OpenSearch templates available at the `_template` API endpoints. Select `index-template` to use composable index templates which are available at OpenSearch's `_index_template` endpoint. Note: when `distribution_version` is `es6`, `template_type` is enforced into `v1`. When `index_type` is `trace-analytics-plain-raw-v2`, `template_type` is enforced into `index-template`. When `index_type` is `genai-evaluation-plain`, the default value is `index-template`.
 
 - <a name="template_file"></a>`template_file`(optional): A json file path or AWS S3 URI to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of OpenSearch [Index templates API](https://opensearch.org/docs/latest/opensearch/index-templates/),
