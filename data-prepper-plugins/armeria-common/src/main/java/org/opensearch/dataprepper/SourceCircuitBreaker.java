@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
  * never open, so callers use the result without checks.
  * <p>
  * This class intentionally does not implement {@link CircuitBreaker}.
+ *
+ * @since 2.18
  */
 public final class SourceCircuitBreaker {
     private static final Logger LOG = LoggerFactory.getLogger(SourceCircuitBreaker.class);

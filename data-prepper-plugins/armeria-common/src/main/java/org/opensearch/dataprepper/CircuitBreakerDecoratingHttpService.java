@@ -55,7 +55,7 @@ import static org.opensearch.dataprepper.RetryInfoCalculator.DEFAULT_MINIMUM_DEL
  * serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(circuitBreaker));
  * }</pre>
  *
- * @since 2.17
+ * @since 2.18
  */
 public final class CircuitBreakerDecoratingHttpService extends SimpleDecoratingHttpService {
 

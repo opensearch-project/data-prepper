@@ -72,7 +72,7 @@ public class HeapCircuitBreakerConfig {
      * is used for both opening and closing (no hysteresis).
      *
      * @return The close usage threshold, or {@code null} if not configured
-     * @since 2.17
+     * @since 2.18
      */
     public ByteCount getCloseUsage() {
         return closeUsage;

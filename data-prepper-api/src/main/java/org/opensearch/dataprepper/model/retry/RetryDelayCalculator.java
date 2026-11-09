@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Protocol-specific callers convert the returned {@link Duration}, for example into a gRPC
  * {@code RetryInfo} or an HTTP {@code Retry-After} header.
  *
- * @since 2.17
+ * @since 2.18
  */
 public class RetryDelayCalculator {
     public static final Duration DEFAULT_MINIMUM_DELAY = Duration.ofMillis(100);
