@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
 import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
+import org.opensearch.dataprepper.plugins.otel.common.ServicePlatformDetector;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Node;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.NodeOperationDetail;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Operation;
@@ -112,6 +113,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static volatile MapDbProcessorState<Collection<SpanStateData>> previousWindow;
     private static volatile MapDbProcessorState<Collection<SpanStateData>> currentWindow;
     private static volatile MapDbProcessorState<Collection<SpanStateData>> nextWindow;
+    /** Platform keys per service, rotated with the windows; null when platform detection is disabled. */
+    private static volatile ServicePlatformRegistry platformRegistry;
     private static File dbPath;
     private static Clock clock;
 
@@ -260,6 +263,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
             previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + "-previous", processWorkers);
             nextWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + "-next", processWorkers);
+            platformRegistry = platformDetection.isEnabled()
+                    ? new ServicePlatformRegistry(platformDetection::maxValuesFor) : null;
 
             allThreadsCyclicBarrier = new CyclicBarrier(processWorkers);
         }
@@ -323,6 +328,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         currentWindow.delete();
         if (nextWindow != null) {
             nextWindow.delete();
+        }
+        if (platformRegistry != null) {
+            platformRegistry.clear();
         }
         processorsCreated.set(0);
         allThreadsCyclicBarrier.reset();
@@ -392,8 +400,11 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         groupByAttrs,
                         spanAttributes,
                         dependencyNamingPolicy,
-                        environmentSource,
-                        platformDetection.isEnabled());
+                        environmentSource);
+                if (platformRegistry != null) {
+                    platformRegistry.record(spanStateData.getEnvironment(), serviceName,
+                            ServicePlatformDetector.detect(spanAttributes));
+                }
 
                 Collection<SpanStateData> spansForTrace = batchStateData.computeIfAbsent(Hex.decodeHex(traceId),
                         k -> new HashSet<>());
@@ -569,9 +580,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      */
     private Node.KeyAttributes serviceKeyAttributes(final SpanStateData span) {
         final Node.KeyAttributes keyAttributes = new Node.KeyAttributes(span.getEnvironment(), span.getServiceName());
-        if (platformDetection.isEnabled()) {
-            span.getPlatformKeys().forEach((key, value) ->
-                    keyAttributes.addDescriptiveAttribute(key, value, platformDetection.maxValuesFor(key)));
+        if (platformRegistry != null) {
+            platformRegistry.addTo(keyAttributes);
         }
         return keyAttributes;
     }
@@ -652,6 +662,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         currentWindow = nextWindow;
         nextWindow = tempWindow;
         nextWindow.clear();
+        if (platformRegistry != null) {
+            platformRegistry.rotate();
+        }
 
         previousTimestamp = clock.instant();
         LOG.debug("Done rotating APM service map windows - All metrics cleared for new window");

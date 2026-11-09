@@ -122,7 +122,7 @@ Attribute names follow the OpenTelemetry semantic conventions for [cloud](https:
 
 ## Platform Detection
 
-With `platform_detection.enabled: true`, every service node gets the platform the service runs on and the low-cardinality keys that scope its infrastructure, copied from the resource (or span) attributes of its spans with their OpenTelemetry semantic-convention names. A UI can use them to find the service's infrastructure metrics (kubeletstats, k8s_cluster, hostmetrics, ...) without querying its spans.
+With `platform_detection.enabled: true`, every service node gets the platform the service runs on and the low-cardinality keys that scope its infrastructure, copied from the resource (or span) attributes of its spans with their OpenTelemetry semantic-convention names. A UI can use them to find the service's infrastructure metrics (kubeletstats, k8s_cluster, hostmetrics, ...) without querying its spans. The keys are held once per service and window, not on each stored span, so turning detection on does not grow the span state.
 
 | Platform (`apm.platform`) | Detected from | Keys recorded |
 |---|---|---|
@@ -136,7 +136,7 @@ With `platform_detection.enabled: true`, every service node gets the platform th
 
 `cloud.*` is `cloud.platform`, `cloud.region` and `cloud.account.id`. `apm.platform` is always written when detection is enabled, so a consumer can tell "detection is off" from "the spans carry no platform attributes". Pods, pod UIDs, task ARNs and container ids are never recorded: they change on every restart.
 
-`apm.k8s.scope` holds one `cluster|namespace|kind|name` tuple per workload the service runs as (`kind` is `deployment`, `statefulset`, `daemonset`, `cronjob` or `job`; an unknown segment is empty). The other keys are independent sets, so a service in `prod-1/shop` and `prod-2/billing` would read back as four cluster x namespace combinations; the scope keeps the two real ones. For a CronJob's pods, `k8s.job.name` (one value per run) is dropped in favour of `k8s.cronjob.name`.
+`apm.k8s.scope` holds one `cluster|namespace|kind|name` tuple per workload the service runs as (`kind` is `deployment`, `statefulset`, `daemonset`, `cronjob` or `job`; an unknown segment is empty). The other keys are independent sets, so a service in `prod-1/shop` and `prod-2/billing` would read back as four cluster x namespace combinations; the scope keeps the two real ones. For a CronJob's pods, `k8s.job.name` (one value per run) is dropped in favour of `k8s.cronjob.name`. A `|` or `\` inside a segment (possible only in `k8s.cluster.name`, which is free-form) is escaped with a backslash.
 
 The keys are **descriptive**: they are serialized next to `environment` and `name` in `keyAttributes`, as arrays of the observed values, but they are not part of the node identity. Enabling detection changes no `nodeConnectionHash`, environment or RED metric label. When a service is seen with several values in one window (two clusters, a canary workload), its node keeps each of them, up to `max_values_per_key` (`max_host_ids` for `host.id`).
 

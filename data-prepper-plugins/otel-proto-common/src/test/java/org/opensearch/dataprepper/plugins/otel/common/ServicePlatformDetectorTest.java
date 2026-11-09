@@ -71,6 +71,14 @@ class ServicePlatformDetectorTest {
     }
 
     @Test
+    void kubernetes_scope_escapes_separators_inside_a_cluster_name() {
+        final Map<String, String> keys = ServicePlatformDetector.detect(withResource(Map.of(
+                "k8s.cluster.name", "east|1\\a", "k8s.namespace.name", "retail", "k8s.deployment.name", "pricing")));
+        assertEquals("east\\|1\\\\a|retail|deployment|pricing", keys.get(ServicePlatformDetector.K8S_SCOPE_KEY));
+        assertEquals("east|1\\a", keys.get("k8s.cluster.name"));
+    }
+
+    @Test
     void non_kubernetes_platforms_have_no_scope() {
         assertFalse(ServicePlatformDetector.detect(withResource(Map.of("host.id", "h1")))
                 .containsKey(ServicePlatformDetector.K8S_SCOPE_KEY));

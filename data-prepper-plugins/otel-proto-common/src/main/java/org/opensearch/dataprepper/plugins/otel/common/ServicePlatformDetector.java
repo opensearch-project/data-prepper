@@ -30,6 +30,8 @@ public final class ServicePlatformDetector {
      * individual {@code k8s.*} keys are independent sets, so a service in {@code prod-1/shop} and
      * {@code prod-2/billing} would otherwise read back as four cluster x namespace combinations;
      * this key keeps the real ones. Empty segments are kept (e.g. no cluster name, or no workload).
+     * A {@code |} or {@code \} inside a segment is escaped with a backslash; Kubernetes object names
+     * cannot contain either, but {@code k8s.cluster.name} is a free-form resource attribute.
      */
     public static final String K8S_SCOPE_KEY = "apm.k8s.scope";
 
@@ -53,7 +55,7 @@ public final class ServicePlatformDetector {
     }
 
     /**
-     * @param spanAttributes span attributes, with the resource under {@code "resource"} -> {@code "attributes"}
+     * @param spanAttributes span attributes, with the resource under {@code "resource" -> "attributes"}
      * @return the platform keys (insertion-ordered), always including {@value #PLATFORM_KEY}
      */
     public static Map<String, String> detect(final Map<String, Object> spanAttributes) {
@@ -122,10 +124,14 @@ public final class ServicePlatformDetector {
             }
         }
         return String.join("|",
-                keys.getOrDefault("k8s.cluster.name", ""),
-                keys.getOrDefault("k8s.namespace.name", ""),
+                escapeScopeSegment(keys.getOrDefault("k8s.cluster.name", "")),
+                escapeScopeSegment(keys.getOrDefault("k8s.namespace.name", "")),
                 kind,
-                name);
+                escapeScopeSegment(name));
+    }
+
+    private static String escapeScopeSegment(final String segment) {
+        return segment.replace("\\", "\\\\").replace("|", "\\|");
     }
 
     private static void copy(final Map<String, Object> span, final Map<String, Object> resource,
