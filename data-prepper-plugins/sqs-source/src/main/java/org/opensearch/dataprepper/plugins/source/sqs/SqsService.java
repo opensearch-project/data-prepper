@@ -109,10 +109,9 @@ import java.util.concurrent.TimeUnit;
 
 
      public void stop() {
-        final long shutdownDeadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT);
-        final long executorShutdownDeadlineNanos = getExecutorShutdownDeadlineNanos(shutdownDeadlineNanos);
         allSqsUrlExecutorServices.forEach(ExecutorService::shutdown);
         sqsWorkers.forEach(SqsWorker::stop);
+        final long executorShutdownDeadlineNanos = System.nanoTime() + getExecutorShutdownTimeoutNanos();
         try {
             for (final ExecutorService executorService : allSqsUrlExecutorServices) {
                 final long remainingNanos = Math.max(0, executorShutdownDeadlineNanos - System.nanoTime());
@@ -122,8 +121,10 @@ import java.util.concurrent.TimeUnit;
                 }
             }
 
+            final long acknowledgementShutdownDeadlineNanos = System.nanoTime()
+                    + TimeUnit.SECONDS.toNanos(ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
             for (final SqsWorker sqsWorker : sqsWorkers) {
-                final long remainingNanos = Math.max(0, shutdownDeadlineNanos - System.nanoTime());
+                final long remainingNanos = Math.max(0, acknowledgementShutdownDeadlineNanos - System.nanoTime());
                 if (!sqsWorker.waitForPendingAcknowledgements(Duration.ofNanos(remainingNanos))) {
                     LOG.warn("Timed out waiting for pending SQS acknowledgments. Their messages may be redelivered.");
                 }
@@ -140,8 +141,8 @@ import java.util.concurrent.TimeUnit;
         LOG.info("SqsService shutdown completed.");
     }
 
-     static long getExecutorShutdownDeadlineNanos(final long shutdownDeadlineNanos) {
-        return shutdownDeadlineNanos - TimeUnit.SECONDS.toNanos(ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
+     static long getExecutorShutdownTimeoutNanos() {
+        return TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT - ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
     }
 
      private String extractRegionFromQueueUrl(final String queueUrl) {

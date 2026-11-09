@@ -70,11 +70,10 @@ class SqsServiceTest {
     }
 
     @Test
-    void getExecutorShutdownDeadlineNanos_reserves_a_third_of_shutdown_budget_for_acknowledgements() {
-        final long shutdownDeadlineNanos = TimeUnit.SECONDS.toNanos(100);
-
-        assertThat(SqsService.getExecutorShutdownDeadlineNanos(shutdownDeadlineNanos),
-                equalTo(TimeUnit.SECONDS.toNanos(100 - SqsService.ACKNOWLEDGEMENT_SHUTDOWN_RESERVE)));
+    void getExecutorShutdownTimeoutNanos_leaves_the_acknowledgement_reserve_available() {
+        assertThat(SqsService.getExecutorShutdownTimeoutNanos()
+                        + TimeUnit.SECONDS.toNanos(SqsService.ACKNOWLEDGEMENT_SHUTDOWN_RESERVE),
+                equalTo(TimeUnit.SECONDS.toNanos(SqsService.SHUTDOWN_TIMEOUT)));
     }
 
 }
