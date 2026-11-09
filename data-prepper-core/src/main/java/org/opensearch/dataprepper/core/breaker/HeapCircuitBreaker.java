@@ -175,11 +175,18 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
     }
 
     private void checkMemory() {
-        final Instant now = clock.instant();
-        if(open) {
-            checkMemoryWhileOpen(now);
-        } else {
-            checkMemoryWhileClosed(now);
+        try {
+            final Instant now = clock.instant();
+            if(open) {
+                checkMemoryWhileOpen(now);
+            } else {
+                checkMemoryWhileClosed(now);
+            }
+        } catch(final RuntimeException e) {
+            // An exception would cancel all further runs of scheduleAtFixedRate and freeze the breaker state.
+            LOG.error("Circuit breaker heap check failed, the breaker stays {} until the next check.",
+                    open ? "open" : "closed",
+                    e);
         }
     }
 

@@ -847,7 +847,7 @@ class OTLPSourceTest {
         }
 
         @Test
-        void grpc_requests_are_rejected_with_resource_exhausted_while_circuit_breaker_is_open() {
+        void grpc_requests_are_rejected_with_resource_exhausted_while_circuit_breaker_is_open() throws Exception {
                 final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
                 when(circuitBreaker.isOpen()).thenReturn(true);
                 SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription,
@@ -872,11 +872,34 @@ class OTLPSourceTest {
                                 () -> logsClient.export(createExportLogsRequest()));
                 assertThat(logsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
 
-                verifyNoInteractions(buffer);
+                verify(buffer, never()).writeAll(any(), anyInt());
         }
 
         @Test
-        void requests_are_rejected_by_the_service_when_circuit_breaker_opens_after_the_decorator_check() {
+        void circuit_breaker_is_not_applied_when_the_buffer_is_written_off_heap_only() {
+                when(buffer.isWrittenOffHeapOnly()).thenReturn(true);
+                final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+                SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription,
+                                circuitBreaker);
+                SOURCE.start(buffer);
+
+                final TraceServiceGrpc.TraceServiceBlockingStub tracesClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+                assertThat(tracesClient.export(createExportTraceRequest()), notNullValue());
+
+                final MetricsServiceGrpc.MetricsServiceBlockingStub metricsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+                assertThat(metricsClient.export(createExportMetricsRequest()), notNullValue());
+
+                final LogsServiceGrpc.LogsServiceBlockingStub logsClient = Clients.builder(GRPC_ENDPOINT)
+                                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+                assertThat(logsClient.export(createExportLogsRequest()), notNullValue());
+
+                verifyNoInteractions(circuitBreaker);
+        }
+
+        @Test
+        void requests_are_rejected_by_the_service_when_circuit_breaker_opens_after_the_decorator_check() throws Exception {
                 final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
                 // Each request checks the breaker twice: closed for the decorator, open for the service.
                 when(circuitBreaker.isOpen()).thenReturn(false, true, false, true, false, true);
@@ -903,7 +926,7 @@ class OTLPSourceTest {
                 assertThat(logsActualException.getStatus().getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
 
                 verify(circuitBreaker, times(6)).isOpen();
-                verifyNoInteractions(buffer);
+                verify(buffer, never()).writeAll(any(), anyInt());
         }
 
         @Test
@@ -1357,7 +1380,8 @@ class OTLPSourceTest {
                 }
 
                 verify(serverBuilder).service(isA(GrpcService.class));
-                verify(serverBuilder, never()).decorator(isA(Function.class));
+                // Only the circuit breaker decorator, which is always installed.
+                verify(serverBuilder, times(1)).decorator(isA(Function.class));
         }
 
         @Test
@@ -1417,7 +1441,8 @@ class OTLPSourceTest {
                 }
 
                 verify(serverBuilder).service(isA(GrpcService.class));
-                verify(serverBuilder).decorator(isA(Function.class));
+                // The authentication decorator and the circuit breaker decorator, which is always installed.
+                verify(serverBuilder, times(2)).decorator(isA(Function.class));
         }
 
         @Test

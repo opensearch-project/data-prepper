@@ -69,6 +69,7 @@ class HeapCircuitBreakerTest {
     private List<Instant> garbageCollectionTimes;
     private List<Boolean> openDuringGarbageCollection;
     private Long bytesAfterGarbageCollection;
+    private RuntimeException garbageCollectionFailure;
 
     private HeapCircuitBreaker objectUnderTest;
 
@@ -81,6 +82,7 @@ class HeapCircuitBreakerTest {
         garbageCollectionTimes = new ArrayList<>();
         openDuringGarbageCollection = new ArrayList<>();
         bytesAfterGarbageCollection = null;
+        garbageCollectionFailure = null;
     }
 
     @AfterEach
@@ -106,6 +108,9 @@ class HeapCircuitBreakerTest {
     private void collectGarbage() {
         garbageCollectionTimes.add(clock.instant());
         openDuringGarbageCollection.add(objectUnderTest.isOpen());
+        if(garbageCollectionFailure != null) {
+            throw garbageCollectionFailure;
+        }
         if(bytesAfterGarbageCollection != null) {
             memoryMXBean.setUsedBytes(bytesAfterGarbageCollection);
         }
@@ -256,9 +261,40 @@ class HeapCircuitBreakerTest {
             memoryMXBean.failure = new RuntimeException("heap usage not available");
             createValidObjectUnderTest();
 
-            assertThrows(RuntimeException.class, scheduler::tick);
+            scheduler.tick();
 
             assertThat(objectUnderTest.isOpen(), equalTo(false));
+        }
+
+        @Test
+        void check_does_not_throw_and_next_check_runs_if_MemoryMXBean_throws() {
+            memoryMXBean.failure = new RuntimeException("heap usage not available");
+            memoryMXBean.setUsedBytes(byteUsage + 1);
+            createValidObjectUnderTest();
+            scheduler.tick();
+
+            memoryMXBean.failure = null;
+            clock.advance(CHECK_INTERVAL);
+            scheduler.tick();
+
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+        }
+
+        @Test
+        void breaker_stays_open_and_retries_garbage_collection_if_garbage_collection_throws() {
+            memoryMXBean.setUsedBytes(byteUsage + 1);
+            garbageCollectionFailure = new RuntimeException("garbage collection failed");
+            createValidObjectUnderTest();
+            scheduler.tick();
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            garbageCollectionFailure = null;
+            bytesAfterGarbageCollection = byteUsage - 1;
+            clock.advance(INITIAL_GARBAGE_COLLECTION_INTERVAL);
+            scheduler.tick();
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+            assertThat(garbageCollectionTimes.size(), equalTo(2));
         }
 
         @Test

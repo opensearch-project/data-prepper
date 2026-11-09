@@ -13,6 +13,7 @@ import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.SourceCircuitBreaker;
 import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -58,7 +59,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final PluginFactory pluginFactory;
     private final CertificateProviderFactory certificateProviderFactory;
     private final String pipelineName;
-    private final CircuitBreaker circuitBreaker;
+    private final SourceCircuitBreaker sourceCircuitBreaker;
     private Server server;
     private final ByteDecoder byteDecoder;
 
@@ -103,7 +104,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.pluginFactory = pluginFactory;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
-        this.circuitBreaker = circuitBreaker;
+        this.sourceCircuitBreaker = new SourceCircuitBreaker(circuitBreaker);
         this.byteDecoder = new OTelTraceDecoder(oTelTraceSourceConfig.getOutputFormat());
     }
 
@@ -119,6 +120,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
 
         if (server == null) {
+            final CircuitBreaker circuitBreaker = sourceCircuitBreaker.forBuffer(buffer);
             ServerBuilder serverBuilder = Server.builder().port(oTelTraceSourceConfig.getPort(), inferProtocolFromConfig());
 
             configureHeadersAndHealthCheck(serverBuilder);
@@ -128,10 +130,10 @@ public class OTelTraceSource implements Source<Record<Object>> {
             // the gRPC service and the additional HTTP service registered on the same builder.
             // When the circuit breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or
             // HTTP 429) before any request body is read, decompressed, or parsed.
-            configureCircuitBreaker(serverBuilder);
+            configureCircuitBreaker(serverBuilder, circuitBreaker);
 
             final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder = (oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH) ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
-            configureGrpcService(serverBuilder, oTelProtoDecoder, buffer);
+            configureGrpcService(serverBuilder, oTelProtoDecoder, buffer, circuitBreaker);
 
             // needed until clarified if unframedRequests should survive
             if (!oTelTraceSourceConfig.enableUnframedRequests()) {
@@ -169,8 +171,13 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder, Buffer<Record<Object>> buffer) {
-        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, otelProtoDecoder, oTelTraceSourceConfig, pluginMetrics, pipelineName, circuitBreaker).create(buffer, serverBuilder);
+    private void configureGrpcService(final ServerBuilder serverBuilder,
+                                      final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder,
+                                      final Buffer<Record<Object>> buffer,
+                                      final CircuitBreaker circuitBreaker) {
+        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(
+                pluginFactory, otelProtoDecoder, oTelTraceSourceConfig, pluginMetrics, pipelineName, circuitBreaker)
+                .create(buffer, serverBuilder);
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.service(grpcService);
@@ -226,11 +233,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
         serverBuilder.blockingTaskExecutor(blockingTaskExecutor, true);
     }
 
-    private void configureCircuitBreaker(ServerBuilder serverBuilder) {
-        if (circuitBreaker == null) {
-            return;
-        }
-        LOG.debug("Installing circuit-breaker HTTP decorator for otel_trace_source");
+    private void configureCircuitBreaker(final ServerBuilder serverBuilder,
+                                         final CircuitBreaker circuitBreaker) {
         // Server-level decorator: wraps every service registered on this ServerBuilder
         // (gRPC service + optional HTTP service). The authentication decorator is registered
         // later and therefore runs first; both run before decompression and the handlers.

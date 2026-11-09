@@ -115,6 +115,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OtelLogsSourceConfigFixture.createBuilderForConfigWithAcmeSsl;
@@ -238,6 +239,26 @@ class OTelLogsSourceGrpcTest {
 
         assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
         source.stop();
+    }
+
+    @Test
+    void circuit_breaker_is_not_applied_when_the_buffer_is_written_off_heap_only() {
+        when(buffer.isWrittenOffHeapOnly()).thenReturn(true);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        SOURCE = new OTelLogsSource(
+                createDefaultConfig(),
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+
+        assertThat(client.export(createExportLogsRequest()), notNullValue());
+        verifyNoInteractions(circuitBreaker);
     }
 
     @Test

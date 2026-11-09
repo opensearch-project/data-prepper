@@ -40,13 +40,12 @@ class RetryDelayCalculatorTest {
     }
 
     @Test
-    void constructor_throws_if_minimumDelay_is_null() {
+    void constructor_throws_if_a_delay_is_null_and_starts_at_minimum_delay_otherwise() {
         assertThrows(NullPointerException.class, () -> new RetryDelayCalculator(null, MAXIMUM_DELAY));
-    }
-
-    @Test
-    void constructor_throws_if_maximumDelay_is_null() {
         assertThrows(NullPointerException.class, () -> new RetryDelayCalculator(MINIMUM_DELAY, null));
+
+        final RetryDelayCalculator objectUnderTest = new RetryDelayCalculator(MINIMUM_DELAY, MAXIMUM_DELAY);
+        assertThat(objectUnderTest.nextDelay(), equalTo(MINIMUM_DELAY));
     }
 
     @Test

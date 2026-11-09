@@ -20,6 +20,7 @@ import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
+import org.opensearch.dataprepper.SourceCircuitBreaker;
 import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
@@ -79,7 +80,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final CertificateProviderFactory certificateProviderFactory;
     private final ByteDecoder byteDecoder;
     private final PluginFactory pluginFactory;
-    private final CircuitBreaker circuitBreaker;
+    private final SourceCircuitBreaker sourceCircuitBreaker;
     final Counter requestsTooLargeCounter;
     private Server server;
 
@@ -124,7 +125,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.pluginFactory = pluginFactory;
-        this.circuitBreaker = circuitBreaker;
+        this.sourceCircuitBreaker = new SourceCircuitBreaker(circuitBreaker);
         this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOutputFormat());
         this.requestsTooLargeCounter = pluginMetrics.counter(HttpExceptionHandler.REQUESTS_TOO_LARGE);
     }
@@ -161,6 +162,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     }
 
     private Server createServer(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+        final CircuitBreaker circuitBreaker = sourceCircuitBreaker.forBuffer(buffer);
         serverBuilder.disableServerHeader();
         if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
@@ -186,7 +188,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         // gRPC LogsService and the optional HTTP service. Armeria runs server-level decorators
         // in reverse order of registration, so the authentication decorator registered below
         // runs before it; both run before decompression and the service handlers.
-        configureCircuitBreaker(serverBuilder);
+        configureCircuitBreaker(serverBuilder, circuitBreaker);
 
         final GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
         authProvider.getHttpAuthenticationService().ifPresent(serverBuilder::decorator);
@@ -213,7 +215,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
             serverBuilder.service(HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        configureGrpcService(serverBuilder, buffer, authProvider);
+        configureGrpcService(serverBuilder, buffer, authProvider, circuitBreaker);
         if (oTelLogsSourceConfig.getHttpPath() != null) {
             configureHttpService(serverBuilder, buffer, executor.getQueue());
         }
@@ -245,8 +247,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer,
-            GrpcAuthenticationProvider authProvider) {
+    private void configureGrpcService(final ServerBuilder serverBuilder,
+                                      final Buffer<Record<Object>> buffer,
+                                      final GrpcAuthenticationProvider authProvider,
+                                      final CircuitBreaker circuitBreaker) {
         LOG.info("Configuring gRPC service");
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -305,11 +309,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
         return oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
     }
 
-    private void configureCircuitBreaker(ServerBuilder serverBuilder) {
-        if (circuitBreaker == null) {
-            return;
-        }
-        LOG.debug("Installing circuit-breaker HTTP decorator for otel_logs_source");
+    private void configureCircuitBreaker(final ServerBuilder serverBuilder,
+                                         final CircuitBreaker circuitBreaker) {
         final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
                 ? oTelLogsSourceConfig.getRetryInfo()
                 : new RetryInfoConfig();

@@ -10,6 +10,7 @@ import io.grpc.MethodDescriptor;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import org.opensearch.dataprepper.SourceCircuitBreaker;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -51,7 +52,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final CircuitBreaker circuitBreaker;
+    private final SourceCircuitBreaker sourceCircuitBreaker;
     private final ByteDecoder byteDecoder;
     private Server server;
 
@@ -96,7 +97,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.circuitBreaker = circuitBreaker;
+        this.sourceCircuitBreaker = new SourceCircuitBreaker(circuitBreaker);
         this.byteDecoder = new OTelMetricDecoder(oTelMetricsSourceConfig.getOutputFormat());
     }
 
@@ -112,6 +113,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         }
 
         if (server == null) {
+            final CircuitBreaker circuitBreaker = sourceCircuitBreaker.forBuffer(buffer);
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH

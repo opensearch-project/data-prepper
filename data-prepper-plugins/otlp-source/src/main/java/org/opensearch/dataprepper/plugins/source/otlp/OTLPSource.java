@@ -11,6 +11,7 @@ import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 
+import org.opensearch.dataprepper.SourceCircuitBreaker;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
@@ -53,7 +54,7 @@ public class OTLPSource implements Source<Record<Object>> {
   private final PluginMetrics pluginMetrics;
   private final GrpcAuthenticationProvider authenticationProvider;
   private final CertificateProviderFactory certificateProviderFactory;
-  private final CircuitBreaker circuitBreaker;
+  private final SourceCircuitBreaker sourceCircuitBreaker;
   private Server server;
 
   @DataPrepperPluginConstructor
@@ -95,7 +96,7 @@ public class OTLPSource implements Source<Record<Object>> {
     this.certificateProviderFactory = certificateProviderFactory;
     this.pipelineName = pipelineDescription.getPipelineName();
     this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-    this.circuitBreaker = circuitBreaker;
+    this.sourceCircuitBreaker = new SourceCircuitBreaker(circuitBreaker);
   }
 
   @Override
@@ -105,6 +106,7 @@ public class OTLPSource implements Source<Record<Object>> {
     }
 
     if (server == null) {
+      final CircuitBreaker circuitBreaker = sourceCircuitBreaker.forBuffer(buffer);
       @SuppressWarnings("unchecked")
       Buffer<Record<? extends Metric>> metricBuffer = (Buffer<Record<? extends Metric>>) (Object) buffer;
 

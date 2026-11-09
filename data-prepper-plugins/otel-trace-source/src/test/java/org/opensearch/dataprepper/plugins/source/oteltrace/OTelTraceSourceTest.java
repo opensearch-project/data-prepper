@@ -120,6 +120,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -669,7 +670,8 @@ class OTelTraceSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder, never()).decorator(isA(Function.class));
+        // Only the circuit breaker decorator, which is always installed.
+        verify(serverBuilder, times(1)).decorator(isA(Function.class));
     }
 
     @Test
@@ -703,6 +705,26 @@ class OTelTraceSourceTest {
         assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
         verify(circuitBreaker, times(1)).isOpen();
         source.stop();
+    }
+
+    @Test
+    void circuit_breaker_is_not_applied_when_the_buffer_is_written_off_heap_only() {
+        when(buffer.isWrittenOffHeapOnly()).thenReturn(true);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        SOURCE = new OTelTraceSource(
+                oTelTraceSourceConfig,
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+
+        assertThat(client.export(createExportTraceRequest()), notNullValue());
+        verifyNoInteractions(circuitBreaker);
     }
 
     @Test
