@@ -39,6 +39,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -254,13 +256,50 @@ class SqsWorkerTest {
     void waitForPendingAcknowledgements_ignores_expired_sets() throws IOException, InterruptedException {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
         when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
         final SqsWorker worker = createObjectUnderTest();
 
         worker.processSqsMessages();
 
         assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(true));
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
+
+        callbackCaptor.getValue().accept(true);
+
+        verify(sqsWorkerCommon, never()).deleteSqsMessages(anyString(), eq(sqsClient), anyList());
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_keeps_expired_set_while_callback_is_running() throws IOException, InterruptedException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
+        final CountDownLatch deleteStarted = new CountDownLatch(1);
+        final CountDownLatch allowDeleteToFinish = new CountDownLatch(1);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            deleteStarted.countDown();
+            allowDeleteToFinish.await(5, TimeUnit.SECONDS);
+            return null;
+        }).when(sqsWorkerCommon).deleteSqsMessages(anyString(), eq(sqsClient), anyList());
+        final SqsWorker worker = createObjectUnderTest();
+
+        worker.processSqsMessages();
+
+        final Thread callbackThread = new Thread(() -> callbackCaptor.getValue().accept(true));
+        callbackThread.start();
+        assertThat(deleteStarted.await(5, TimeUnit.SECONDS), equalTo(true));
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(1));
+
+        allowDeleteToFinish.countDown();
+        callbackThread.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertThat(callbackThread.isAlive(), equalTo(false));
         assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
     }
 
