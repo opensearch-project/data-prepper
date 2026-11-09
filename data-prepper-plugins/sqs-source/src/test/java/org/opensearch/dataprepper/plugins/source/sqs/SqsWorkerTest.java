@@ -203,7 +203,7 @@ class SqsWorkerTest {
     void processSqsMessages_should_not_delete_messages_if_acknowledgements_enabled_until_acknowledged() throws IOException {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(any(), any(), eq(true))).thenReturn(acknowledgementSet);
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         int messagesProcessed = createObjectUnderTest().processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
@@ -225,9 +225,9 @@ class SqsWorkerTest {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         when(queueConfig.getVisibilityDuplicateProtection()).thenReturn(true);
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(any(), any(), eq(true))).thenReturn(acknowledgementSet);
         createObjectUnderTest().processSqsMessages();
-        verify(acknowledgementSetManager).create(any(), any());
+        verify(acknowledgementSetManager).create(any(), any(), eq(true));
         verify(acknowledgementSet).addProgressCheck(any(), any());
     }
 
@@ -237,7 +237,7 @@ class SqsWorkerTest {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         @SuppressWarnings("unchecked")
         final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
-        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any(), eq(true))).thenReturn(acknowledgementSet);
         final SqsWorker worker = createObjectUnderTest();
 
         worker.processSqsMessages();
@@ -253,33 +253,50 @@ class SqsWorkerTest {
     }
 
     @Test
-    void waitForPendingAcknowledgements_ignores_expired_sets() throws IOException, InterruptedException {
+    void waitForPendingAcknowledgements_waits_for_expiry_callback_without_deleting_message() throws IOException, InterruptedException {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         @SuppressWarnings("unchecked")
         final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
-        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
-        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any(), eq(true))).thenReturn(acknowledgementSet);
         final SqsWorker worker = createObjectUnderTest();
 
         worker.processSqsMessages();
 
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(1));
+        callbackCaptor.getValue().accept(false);
+
         assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(true));
         assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
-
-        callbackCaptor.getValue().accept(true);
-
         verify(sqsWorkerCommon, never()).deleteSqsMessages(anyString(), eq(sqsClient), anyList());
     }
 
     @Test
-    void waitForPendingAcknowledgements_keeps_expired_set_while_callback_is_running() throws IOException, InterruptedException {
+    void waitForPendingAcknowledgements_keeps_successful_callback_pending_until_it_finishes() throws IOException, InterruptedException {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         @SuppressWarnings("unchecked")
         final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
-        when(acknowledgementSet.getExpirationTime()).thenReturn(Instant.now().minusSeconds(1));
-        when(acknowledgementSetManager.create(callbackCaptor.capture(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any(), eq(true))).thenReturn(acknowledgementSet);
+        final SqsWorker worker = createObjectUnderTest();
+
+        worker.processSqsMessages();
+
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(1));
+        callbackCaptor.getValue().accept(true);
+
+        assertThat(worker.waitForPendingAcknowledgements(Duration.ZERO), equalTo(true));
+        assertThat(worker.getPendingAcknowledgementSetCount(), equalTo(0));
+        verify(sqsWorkerCommon).deleteSqsMessages(anyString(), eq(sqsClient), anyList());
+    }
+
+    @Test
+    void waitForPendingAcknowledgements_keeps_set_while_callback_is_running() throws IOException, InterruptedException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Consumer<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Consumer.class);
+        when(acknowledgementSetManager.create(callbackCaptor.capture(), any(), eq(true))).thenReturn(acknowledgementSet);
         final CountDownLatch deleteStarted = new CountDownLatch(1);
         final CountDownLatch allowDeleteToFinish = new CountDownLatch(1);
         org.mockito.Mockito.doAnswer(invocation -> {
@@ -326,7 +343,7 @@ class SqsWorkerTest {
         when(queueConfig.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(30));
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(acknowledgementSetManager.create(any(), any(Duration.class)))
+        when(acknowledgementSetManager.create(any(), any(Duration.class), eq(true)))
                 .thenReturn(acknowledgementSet);
         final String testMessageId = "msg-1";
         final String testReceiptHandle = "rh-1";
@@ -342,7 +359,7 @@ class SqsWorkerTest {
                 eq(bufferTimeoutMillis),
                 eq(acknowledgementSet)
         );
-        verify(acknowledgementSetManager).create(any(), any(Duration.class));
+        verify(acknowledgementSetManager).create(any(), any(Duration.class), eq(true));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Consumer<ProgressCheck>> progressConsumerCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -472,7 +489,7 @@ class SqsWorkerTest {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         when(queueConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(any(), any(), eq(true))).thenReturn(acknowledgementSet);
         doThrow(new RuntimeException("Simulated processing failure"))
                 .when(sqsEventProcessor).addSqsObject(any(), anyString(), any(), anyInt(), any());
         when(sqsWorkerCommon.getSqsMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
@@ -501,7 +518,7 @@ class SqsWorkerTest {
     void processSqsMessages_withAcknowledgmentsEnabled_successfulProcessing_doesNotIncrementDeletedWithoutAckCounter() throws IOException {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
+        when(acknowledgementSetManager.create(any(), any(), eq(true))).thenReturn(acknowledgementSet);
 
         SqsWorker worker = createObjectUnderTest();
         int messagesProcessed = worker.processSqsMessages();

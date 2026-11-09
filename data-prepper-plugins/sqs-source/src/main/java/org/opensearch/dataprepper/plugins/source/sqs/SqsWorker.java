@@ -110,7 +110,6 @@ public class SqsWorker implements Runnable {
     }
 
     int processSqsMessages() {
-        removeExpiredAcknowledgementSets();
         try {
             List<Message> messages = sqsWorkerCommon.pollSqsMessages(
                     queueConfig.getUrl(),
@@ -172,8 +171,7 @@ public class SqsWorker implements Runnable {
                             pendingAcknowledgement.completeCallback();
                             pendingAcknowledgementSets.remove(pendingAcknowledgement);
                         }
-                    }, Duration.ofSeconds(expiryTimeout));
-                    pendingAcknowledgement.acknowledgementSet = acknowledgementSet;
+                    }, Duration.ofSeconds(expiryTimeout), true);
                 } catch (final RuntimeException e) {
                     pendingAcknowledgementSets.remove(pendingAcknowledgement);
                     throw e;
@@ -258,29 +256,11 @@ public class SqsWorker implements Runnable {
     }
 
     int getPendingAcknowledgementSetCount() {
-        removeExpiredAcknowledgementSets();
         return pendingAcknowledgementSets.size();
     }
 
     private boolean hasPendingAcknowledgementSets() {
-        removeExpiredAcknowledgementSets();
         return !pendingAcknowledgementSets.isEmpty();
-    }
-
-    /**
-     * Expired acknowledgement sets do not invoke their callback, so discard them during polling unless the callback
-     * has already started. A running callback must finish before shutdown closes the SQS client.
-     */
-    private void removeExpiredAcknowledgementSets() {
-        final Instant now = Instant.now();
-        pendingAcknowledgementSets.removeIf(pendingAcknowledgement -> {
-            final AcknowledgementSet acknowledgementSet = pendingAcknowledgement.acknowledgementSet;
-            if (acknowledgementSet == null) {
-                return false;
-            }
-            final Instant expirationTime = acknowledgementSet.getExpirationTime();
-            return expirationTime != null && now.isAfter(expirationTime) && pendingAcknowledgement.markExpired();
-        });
     }
 
     void markSqsClientClosed() {
@@ -289,8 +269,6 @@ public class SqsWorker implements Runnable {
 
     private static class PendingAcknowledgement {
         private final AtomicReference<State> state = new AtomicReference<>(State.PENDING);
-        private volatile AcknowledgementSet acknowledgementSet;
-
         private boolean beginCallback() {
             return state.compareAndSet(State.PENDING, State.CALLBACK_RUNNING);
         }
@@ -298,16 +276,11 @@ public class SqsWorker implements Runnable {
         private void completeCallback() {
             state.compareAndSet(State.CALLBACK_RUNNING, State.COMPLETED);
         }
-
-        private boolean markExpired() {
-            return state.compareAndSet(State.PENDING, State.EXPIRED);
-        }
     }
 
     private enum State {
         PENDING,
         CALLBACK_RUNNING,
-        COMPLETED,
-        EXPIRED
+        COMPLETED
     }
 }

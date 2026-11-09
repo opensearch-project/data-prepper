@@ -39,6 +39,8 @@ import java.util.concurrent.TimeUnit;
  public class SqsService {
      private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
      static final long SHUTDOWN_TIMEOUT = 30L;
+     // Reserve one third of the shutdown window to drain pending acknowledgement callbacks.
+     static final long ACKNOWLEDGEMENT_SHUTDOWN_RESERVE = SHUTDOWN_TIMEOUT / 3;
      private final SqsSourceConfig sqsSourceConfig;
      private final PluginMetrics pluginMetrics;
      private final AcknowledgementSetManager acknowledgementSetManager;
@@ -108,11 +110,12 @@ import java.util.concurrent.TimeUnit;
 
      public void stop() {
         final long shutdownDeadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT);
+        final long executorShutdownDeadlineNanos = getExecutorShutdownDeadlineNanos(shutdownDeadlineNanos);
         allSqsUrlExecutorServices.forEach(ExecutorService::shutdown);
         sqsWorkers.forEach(SqsWorker::stop);
         try {
             for (final ExecutorService executorService : allSqsUrlExecutorServices) {
-                final long remainingNanos = Math.max(0, shutdownDeadlineNanos - System.nanoTime());
+                final long remainingNanos = Math.max(0, executorShutdownDeadlineNanos - System.nanoTime());
                 if (!executorService.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS)) {
                     LOG.warn("Failed to terminate SqsWorkers before the shutdown timeout");
                     executorService.shutdownNow();
@@ -135,6 +138,10 @@ import java.util.concurrent.TimeUnit;
         }
 
         LOG.info("SqsService shutdown completed.");
+    }
+
+     static long getExecutorShutdownDeadlineNanos(final long shutdownDeadlineNanos) {
+        return shutdownDeadlineNanos - TimeUnit.SECONDS.toNanos(ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
     }
 
      private String extractRegionFromQueueUrl(final String queueUrl) {
