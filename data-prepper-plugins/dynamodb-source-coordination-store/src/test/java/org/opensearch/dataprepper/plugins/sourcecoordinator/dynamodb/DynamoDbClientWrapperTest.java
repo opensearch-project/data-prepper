@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
@@ -112,7 +113,7 @@ public class DynamoDbClientWrapperTest {
 
         try (final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
             dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
-            return DynamoDbClientWrapper.create(dynamoDbClient);
+            return DynamoDbClientWrapper.create(dynamoDbClient, PluginMetrics.fromNames("dynamodb", "source-coordinator"));
         }
     }
 

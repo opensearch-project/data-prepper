@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 
 import com.amazonaws.services.dynamodbv2.local.embedded.DynamoDBEmbedded;
 import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
+import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 import java.time.Duration;
@@ -59,6 +61,11 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbClientWrapper.SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
@@ -108,7 +115,9 @@ class DynamoDbSourceCoordinationStoreIT {
         when(dynamoStoreSettings.getProvisionedReadCapacityUnits()).thenReturn(10L);
         when(dynamoStoreSettings.getProvisionedWriteCapacityUnits()).thenReturn(10L);
 
-        when(dynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, stsExternalId)).thenReturn(dynamoDbClient);
+        when(dynamoDbClientFactory.provideDynamoDbClient(eq(region), eq(stsRoleArn), eq(stsExternalId), any(MetricPublisher.class)))
+                .thenReturn(dynamoDbClient);
+        lenient().when(pluginMetrics.counterWithTags(anyString(), any(String[].class))).thenReturn(mock(Counter.class));
 
         final DynamoDbEnhancedClient dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
         table = dynamoDbEnhancedClient.table(tableName, TableSchema.fromBean(DynamoDbSourcePartitionItem.class));

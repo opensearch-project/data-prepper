@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
@@ -74,13 +75,13 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(dynamoStoreSettings.getStsRoleArn()).willReturn(stsRoleArn);
         given(dynamoStoreSettings.getStsExternalId()).willReturn(stsExternalId);
 
-        when(dynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, stsExternalId))
+        when(dynamoDbClientFactory.provideDynamoDbClient(eq(region), eq(stsRoleArn), eq(stsExternalId), any(MetricPublisher.class)))
                 .thenReturn(dynamoDbClient);
     }
 
     private DynamoDbSourceCoordinationStore createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientWrapper> dynamoDbClientWrapperMockedStatic = mockStatic(DynamoDbClientWrapper.class)) {
-            dynamoDbClientWrapperMockedStatic.when(() -> dynamoDbClientWrapper.create(dynamoDbClient))
+            dynamoDbClientWrapperMockedStatic.when(() -> dynamoDbClientWrapper.create(dynamoDbClient, pluginMetrics))
                 .thenReturn(dynamoDbClientWrapper);
             return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, dynamoDbClientFactory, pluginMetrics);
         }

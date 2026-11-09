@@ -10,6 +10,7 @@
 package org.opensearch.dataprepper.core.sourcecoordination.enhanced;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,10 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
     static final String PARTITIONS_COMPLETED_COUNT = "partitionsComplete";
     static final String PARTITION_CREATED_COUNT = "partitionsCreated";
+    static final String ACQUIRE_PARTITION_LATENCY = "acquirePartitionLatency";
+    static final String SAVE_PROGRESS_LATENCY = "saveProgressLatency";
+    static final String RENEW_OWNERSHIP_LATENCY = "renewOwnershipLatency";
+    static final String COMPLETE_PARTITION_LATENCY = "completePartitionLatency";
 
     /**
      * Default time out duration for lease.
@@ -73,6 +79,9 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
     private final Counter partitionsCreatedCounter;
     private final Counter partitionsCompletedCounter;
+    private final Timer saveProgressLatencyTimer;
+    private final Timer renewOwnershipLatencyTimer;
+    private final Timer completePartitionLatencyTimer;
 
     /**
      * Use host name of the node as the default ownerId
@@ -103,6 +112,9 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         this.partitionPrefix = sourceCoordinationConfig.getPartitionPrefix();
         this.partitionsCreatedCounter = pluginMetrics.counter(PARTITION_CREATED_COUNT);
         this.partitionsCompletedCounter = pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT);
+        this.saveProgressLatencyTimer = pluginMetrics.timer(SAVE_PROGRESS_LATENCY);
+        this.renewOwnershipLatencyTimer = pluginMetrics.timer(RENEW_OWNERSHIP_LATENCY);
+        this.completePartitionLatencyTimer = pluginMetrics.timer(COMPLETE_PARTITION_LATENCY);
     }
 
     @Override
@@ -138,7 +150,10 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Not available for global state.
         Objects.requireNonNull(partitionType);
         LOG.debug("Try to acquire an available {} partition", partitionType);
+        final long startNanos = System.nanoTime();
         Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, DEFAULT_LEASE_TIMEOUT);
+        pluginMetrics.timerWithTags(ACQUIRE_PARTITION_LATENCY, "partitionType", partitionType, "result", sourceItem.isEmpty() ? "none" : "acquired")
+                .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
         if (sourceItem.isEmpty()) {
             LOG.debug("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
             return Optional.empty();
@@ -200,7 +215,12 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         }
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        final long startNanos = System.nanoTime();
+        try {
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        } finally {
+            saveProgressLatencyTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        }
         LOG.debug("Progress for for partition {} (Type {}) was saved", partition.getPartitionKey(), partitionType);
     }
 
@@ -225,7 +245,12 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Ownership only: progress state belongs to the processing thread, which may not be this one.
         updateItem.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
 
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        final long startNanos = System.nanoTime();
+        try {
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        } finally {
+            renewOwnershipLatencyTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        }
         LOG.debug("Ownership for partition {} (Type {}) was renewed", partition.getPartitionKey(), partitionType);
     }
 
@@ -272,7 +297,12 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
         // Throws UpdateException if update failed.
-        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        final long startNanos = System.nanoTime();
+        try {
+            coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        } finally {
+            completePartitionLatencyTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        }
         partitionsCompletedCounter.increment();
     }
 
