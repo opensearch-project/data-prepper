@@ -12,36 +12,50 @@ package org.opensearch.dataprepper.plugins.lambda.common;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.opensearch.dataprepper.plugins.lambda.common.config.StreamingOptions;
 
 
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.async.SdkPublisher;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamRequest;
+import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseEvent;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseHandler;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -127,6 +141,70 @@ class StreamingLambdaHandlerTest {
 
         // Then
         assertNotNull(handler);
+    }
+
+    @Test
+    void testInvokeWithStreaming_InvokeCompleteWithErrorCode_CompletesExceptionally() {
+        final CompletableFuture<List<Record<Event>>> result = streamResponse(
+                InvokeWithResponseStreamResponseEvent.payloadChunkBuilder()
+                        .payload(SdkBytes.fromUtf8String("{\"errorMessage\":\"Task timed out after 3.00 seconds\"}"))
+                        .build(),
+                InvokeWithResponseStreamResponseEvent.invokeCompleteBuilder()
+                        .errorCode("Sandbox.Timedout")
+                        .errorDetails("Task timed out after 3.00 seconds")
+                        .build());
+
+        final ExecutionException exception = assertThrows(ExecutionException.class, result::get);
+        assertThat(exception.getCause(), instanceOf(StreamingLambdaInvocationException.class));
+        assertThat(((StreamingLambdaInvocationException) exception.getCause()).getErrorCode(), equalTo("Sandbox.Timedout"));
+    }
+
+    @Test
+    void testInvokeWithStreaming_InvokeCompleteWithoutErrorCode_ReconstructsDocument() throws Exception {
+        final CompletableFuture<List<Record<Event>>> result = streamResponse(
+                InvokeWithResponseStreamResponseEvent.payloadChunkBuilder()
+                        .payload(SdkBytes.fromUtf8String("[{\"transformed\":\"yes\"}]"))
+                        .build(),
+                InvokeWithResponseStreamResponseEvent.invokeCompleteBuilder().build());
+
+        final List<Record<Event>> records = result.get();
+        assertThat(records.size(), equalTo(1));
+        assertThat(records.get(0).getData().get("transformed", String.class), equalTo("yes"));
+    }
+
+    /**
+     * Invokes with one input event, then drives the SDK response handler with the given stream events and completes it.
+     */
+    @SuppressWarnings("unchecked")
+    private CompletableFuture<List<Record<Event>>> streamResponse(final InvokeWithResponseStreamResponseEvent... events) {
+        when(streamingOptions.getResponseHandling()).thenReturn(ResponseHandling.RECONSTRUCT_DOCUMENT);
+        final Record<Event> input = new Record<>(JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Map.of("original", "value"))
+                .build());
+        when(inputBuffer.getRecords()).thenReturn(List.of(input));
+        when(inputBuffer.getRequestPayload(eq("test-function"), eq("RequestResponse"))).thenReturn(
+                InvokeRequest.builder().functionName("test-function").payload(SdkBytes.fromUtf8String("{}")).build());
+        final StreamingLambdaHandler handler = new StreamingLambdaHandler(lambdaAsyncClient, pluginFactory,
+                new JsonInputCodec(new JsonInputCodecConfig()), "test-function", streamingOptions);
+
+        final CompletableFuture<List<Record<Event>>> result = handler.invokeWithStreaming(inputBuffer);
+
+        final ArgumentCaptor<InvokeWithResponseStreamResponseHandler> responseHandler =
+                ArgumentCaptor.forClass(InvokeWithResponseStreamResponseHandler.class);
+        verify(lambdaAsyncClient).invokeWithResponseStream(any(InvokeWithResponseStreamRequest.class),
+                responseHandler.capture());
+        final SdkPublisher<InvokeWithResponseStreamResponseEvent> publisher = mock(SdkPublisher.class);
+        when(publisher.subscribe(any(Consumer.class))).thenAnswer(invocation -> {
+            final Consumer<InvokeWithResponseStreamResponseEvent> consumer = invocation.getArgument(0);
+            for (final InvokeWithResponseStreamResponseEvent event : events) {
+                consumer.accept(event);
+            }
+            return CompletableFuture.completedFuture(null);
+        });
+        responseHandler.getValue().onEventStream(publisher);
+        responseHandler.getValue().complete();
+        return result;
     }
 
     @Test
