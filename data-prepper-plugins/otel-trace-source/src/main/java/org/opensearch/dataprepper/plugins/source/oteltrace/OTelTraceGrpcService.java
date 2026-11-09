@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -60,20 +61,12 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
                                 final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                 final Buffer<Record<Object>> buffer,
-                                final PluginMetrics pluginMetrics,
-                                final String metricsPrefix) {
-        this(bufferWriteTimeoutInMillis, oTelProtoDecoder, buffer, null, pluginMetrics, metricsPrefix);
-    }
-
-    public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
-                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                                final Buffer<Record<Object>> buffer,
                                 final CircuitBreaker circuitBreaker,
                                 final PluginMetrics pluginMetrics,
                                 final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.circuitBreaker = circuitBreaker;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
 
         if (metricsPrefix != null) {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
@@ -108,7 +101,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     }
 
     private void processRequest(final ExportTraceServiceRequest request, final StreamObserver<ExportTraceServiceResponse> responseObserver) {
-        if (circuitBreaker != null && circuitBreaker.isOpen()) {
+        if (circuitBreaker.isOpen()) {
             throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
         }
 

@@ -386,9 +386,9 @@ public class OTelTraceGrpcServiceTest {
     }
 
     private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
-        return new OTelTraceGrpcService(
-                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
+        return generateOTelTraceGrpcService(decoder, () -> false);
     }
+
 
     private ExportTraceServiceRequest createFullTraceRequest() {
 

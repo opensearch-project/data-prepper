@@ -81,4 +81,27 @@ class PeerForwarderHttpServerProviderTest {
         }
     }
 
+    @Test
+    void get_without_circuit_breaker_passes_requests_to_the_service() throws Exception {
+        when(peerForwarderConfiguration.getMaxConnectionCount()).thenReturn(500);
+        when(peerForwarderHttpService.doPost(any())).thenReturn(
+                com.linecorp.armeria.common.HttpResponse.of(com.linecorp.armeria.common.HttpStatus.OK));
+        final Server server = new PeerForwarderHttpServerProvider(
+                peerForwarderConfiguration, certificateProviderFactory, peerForwarderHttpService, null).get();
+
+        server.start().join();
+        try {
+            final HttpRequest request = HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + server.activeLocalPort() + PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI))
+                    .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                    .build();
+            final HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertThat(response.statusCode(), equalTo(200));
+            verify(peerForwarderHttpService).doPost(any());
+        } finally {
+            server.stop().join();
+        }
+    }
+
 }

@@ -441,9 +441,9 @@ public class OTelLogsGrpcServiceTest {
     }
 
     private OTelLogsGrpcService generateOTelLogsGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
-        return new OTelLogsGrpcService(
-                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
+        return generateOTelLogsGrpcService(decoder, () -> false);
     }
+
 
     private OTelLogsGrpcService generateOTelLogsGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder,
                                                             final CircuitBreaker circuitBreaker) {

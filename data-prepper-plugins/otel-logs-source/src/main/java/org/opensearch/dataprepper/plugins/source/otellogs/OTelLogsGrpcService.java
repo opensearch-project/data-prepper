@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -56,20 +57,12 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                final Buffer<Record<Object>> buffer,
-                               final PluginMetrics pluginMetrics,
-                               final String metricsPrefix) {
-        this(bufferWriteTimeoutInMillis, oTelProtoDecoder, buffer, null, pluginMetrics, metricsPrefix);
-    }
-
-    public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
-                               final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                               final Buffer<Record<Object>> buffer,
                                final CircuitBreaker circuitBreaker,
                                final PluginMetrics pluginMetrics,
                                final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.circuitBreaker = circuitBreaker;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
 
         if (metricsPrefix != null) {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
@@ -105,7 +98,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     }
 
     private void processRequest(final ExportLogsServiceRequest request, final StreamObserver<ExportLogsServiceResponse> responseObserver) {
-        if (circuitBreaker != null && circuitBreaker.isOpen()) {
+        if (circuitBreaker.isOpen()) {
             throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
         }
 

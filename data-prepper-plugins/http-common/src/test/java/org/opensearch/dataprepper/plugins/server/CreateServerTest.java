@@ -25,6 +25,7 @@ import io.grpc.health.v1.HealthGrpc;
 import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -112,6 +113,12 @@ public class CreateServerTest {
 
     @Mock
     private Counter requestsRejectedCounter;
+
+    @BeforeEach
+    void setUp() {
+        // CreateServer always installs the circuit breaker decorator, which registers this counter.
+        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
+    }
 
     @Test
     void createGrpcServer_appliesKeepaliveSettingsWhenConfigured() throws JsonProcessingException {
@@ -236,7 +243,6 @@ public class CreateServerTest {
             throws Exception {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         when(circuitBreaker.isOpen()).thenReturn(true);
-        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
         final Server server = createGrpcServerWithCircuitBreaker(false);
 
         server.start().join();
@@ -263,7 +269,6 @@ public class CreateServerTest {
             throws Exception {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         when(circuitBreaker.isOpen()).thenReturn(true);
-        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
         final Server server = createGrpcServerWithCircuitBreaker(false);
 
         server.start().join();
@@ -284,7 +289,6 @@ public class CreateServerTest {
     @Test
     void createGRPCServer_with_open_circuit_breaker_still_answers_grpc_and_http_health_checks() throws Exception {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
-        lenient().when(pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED)).thenReturn(requestsRejectedCounter);
         final Server server = createGrpcServerWithCircuitBreaker(true);
 
         server.start().join();

@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.oteltrace.grpc;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -58,7 +59,7 @@ public class GrpcService {
                        final PluginMetrics pluginMetrics,
                        final String pipelineName,
                        final CircuitBreaker circuitBreaker) {
-        this.circuitBreaker = circuitBreaker;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.otelProtoDecoder = otelProtoDecoder;
         this.pluginMetrics = pluginMetrics;

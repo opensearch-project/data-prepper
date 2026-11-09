@@ -46,6 +46,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Function;
@@ -62,6 +63,8 @@ public class CreateServer {
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
+
+    private static final CircuitBreaker INACTIVE_CIRCUIT_BREAKER = () -> false;
 
     public CreateServer(final ServerConfiguration serverConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
         this.serverConfiguration = serverConfiguration;
@@ -119,13 +122,13 @@ public class CreateServer {
             final GrpcAuthenticationProvider authenticationProvider,
             final List<GRPCServiceConfig<?, ?>> grpcServiceConfigs,
             final CertificateProvider certificateProvider) {
-        return createGRPCServer(authenticationProvider, grpcServiceConfigs, certificateProvider, null);
+        return createGRPCServer(authenticationProvider, grpcServiceConfigs, certificateProvider, INACTIVE_CIRCUIT_BREAKER);
     }
 
     /**
      * Creates a GRPC server with multiple services and an optional circuit breaker.
      *
-     * <p>When {@code circuitBreaker} is non-null, a server-level decorator is installed. It runs after
+     * <p>A server-level decorator for the circuit breaker is always installed. It runs after
      * HTTP authentication and before decompression and the gRPC handler.
      * When the circuit breaker is open, incoming requests are rejected before any request body is
      * read or parsed: gRPC requests with RESOURCE_EXHAUSTED, other requests with HTTP 429, both with
@@ -134,7 +137,7 @@ public class CreateServer {
      * @param authenticationProvider Provider for authentication
      * @param grpcServiceConfigs List of service configurations
      * @param certificateProvider Provider for SSL/TLS certificates
-     * @param circuitBreaker optional circuit breaker; may be {@code null} to disable the decorator
+     * @param circuitBreaker the circuit breaker; must not be {@code null}, pass one that is never open to disable rejections
      * @return Configured server
      */
     public Server createGRPCServer(
@@ -142,7 +145,7 @@ public class CreateServer {
             final List<GRPCServiceConfig<?, ?>> grpcServiceConfigs,
             final CertificateProvider certificateProvider,
             final CircuitBreaker circuitBreaker) {
-            
+        Objects.requireNonNull(circuitBreaker);
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -195,15 +198,7 @@ public class CreateServer {
         // authentication decorator registered below runs before this one. Both run before
         // decompression and the gRPC handler. When the breaker is open, requests are rejected (gRPC RESOURCE_EXHAUSTED or HTTP 429,
         // both with a retry delay) before any request body is read, decompressed, or parsed.
-        if (circuitBreaker != null) {
-            LOG.debug("Installing circuit-breaker HTTP decorator for {}", sourceName);
-            final RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
-                    ? serverConfiguration.getRetryInfo()
-                    : DEFAULT_RETRY_INFO;
-            final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
-            sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
-                    circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
-        }
+        configureCircuitBreaker(sb, circuitBreaker);
 
         if(serverConfiguration.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
@@ -269,7 +264,7 @@ public class CreateServer {
             final BindableService grpcService,
             final CertificateProvider certificateProvider,
             final MethodDescriptor<K, V> methodDescriptor) {
-        return createGRPCServer(authenticationProvider, grpcService, certificateProvider, methodDescriptor, null);
+        return createGRPCServer(authenticationProvider, grpcService, certificateProvider, methodDescriptor, INACTIVE_CIRCUIT_BREAKER);
     }
 
     /**
@@ -282,7 +277,7 @@ public class CreateServer {
      * @param grpcService Service to be added
      * @param certificateProvider Provider for SSL/TLS certificates
      * @param methodDescriptor Method descriptor for the service
-     * @param circuitBreaker optional circuit breaker; may be {@code null} to disable the decorator
+     * @param circuitBreaker the circuit breaker; must not be {@code null}, pass one that is never open to disable rejections
      * @return Configured server
      */
     public <K, V> Server createGRPCServer(
@@ -302,6 +297,16 @@ public class CreateServer {
         return createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider, circuitBreaker);
     }
 
+
+    private void configureCircuitBreaker(final ServerBuilder sb,
+                                         final CircuitBreaker circuitBreaker) {
+        final RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
+                ? serverConfiguration.getRetryInfo()
+                : DEFAULT_RETRY_INFO;
+        final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
+        sb.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
+    }
 
     public Server createHTTPServer(final Buffer<Record<Log>> buffer,
             final CertificateProviderFactory certificateProviderFactory,

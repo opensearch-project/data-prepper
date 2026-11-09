@@ -210,11 +210,11 @@ public class OTelMetricsGrpcServiceTest {
     }
 
     OTelMetricsGrpcService createObjectUnderTestWithKeys(final OTelProtoCodec.OTelProtoDecoder decoder, final Set<String> keys) {
-        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, keys, mockPluginMetrics, null);
+        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, () -> false, keys, mockPluginMetrics, null);
     }
 
     OTelMetricsGrpcService createObjectUnderTest(OTelProtoCodec.OTelProtoDecoder decoder) {
-        return new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, decoder, buffer, null, mockPluginMetrics, null);
+        return createObjectUnderTestWithKeys(decoder, null);
     }
 
     OTelMetricsGrpcService createObjectUnderTestWithCircuitBreaker(
@@ -269,22 +269,6 @@ public class OTelMetricsGrpcServiceTest {
         verify(successRequestsCounter, times(1)).increment();
     }
 
-    @ParameterizedTest
-    @MethodSource("getDecoderArguments")
-    public void export_nullCircuitBreaker_proceedsNormally(
-            final OTelProtoCodec.OTelProtoDecoder decoder) throws Exception {
-        // Backward compat: the (older) constructor without a breaker passes null.
-        sut = createObjectUnderTestWithCircuitBreaker(decoder, null);
-
-        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
-            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
-            sut.export(METRICS_REQUEST, responseObserver);
-        }
-
-        verifyNoInteractions(circuitBreaker);
-        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
-        verify(successRequestsCounter, times(1)).increment();
-    }
 
     @ParameterizedTest
     @MethodSource("getDecoderArguments")

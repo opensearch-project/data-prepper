@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,22 +60,13 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
-                                  final Set<String> bufferPartitionKeys,
-                                  final PluginMetrics pluginMetrics,
-                                  final String metricsPrefix) {
-        this(bufferWriteTimeoutInMillis, oTelProtoDecoder, buffer, null, bufferPartitionKeys, pluginMetrics, metricsPrefix);
-    }
-
-    public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
-                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                                  Buffer<Record<? extends Metric>> buffer,
                                   final CircuitBreaker circuitBreaker,
                                   final Set<String> bufferPartitionKeys,
                                   final PluginMetrics pluginMetrics,
                                   final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.circuitBreaker = circuitBreaker;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
 
         this.bufferPartitionKeys = bufferPartitionKeys;
         if (metricsPrefix != null) {
@@ -113,7 +105,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     }
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
-        if (circuitBreaker != null && circuitBreaker.isOpen()) {
+        if (circuitBreaker.isOpen()) {
             throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
         }
 
