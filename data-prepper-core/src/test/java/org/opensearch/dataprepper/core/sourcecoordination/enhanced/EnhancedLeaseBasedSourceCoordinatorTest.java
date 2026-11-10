@@ -84,7 +84,6 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         lenient().when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceIdentifier + "|" + DEFAULT_PARTITION_TYPE);
         when(pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT)).thenReturn(partitionsCompletedCounter);
         when(pluginMetrics.counter(PARTITION_CREATED_COUNT)).thenReturn(partitonsCreatedCounter);
-        when(pluginMetrics.timer(any(String.class))).thenReturn(latencyTimer);
     }
 
     private EnhancedLeaseBasedSourceCoordinator createObjectUnderTest() {
