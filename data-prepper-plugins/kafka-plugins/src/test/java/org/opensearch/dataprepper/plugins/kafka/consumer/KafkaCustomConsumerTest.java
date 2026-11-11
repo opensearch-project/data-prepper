@@ -62,6 +62,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -181,6 +182,9 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfRebalances()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfPartitionsRevoked()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfCommitFailures()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfOffsetResetFailures()).thenReturn(counter);
+        lenient().when(topicMetrics.getNumberOfBufferWriteFailures()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -732,6 +736,8 @@ public class KafkaCustomConsumerTest {
 
         doThrow(new RebalanceInProgressException("Rebalance in progress"))
             .when(kafkaConsumer).commitSync(anyMap());
+        final Counter commitFailures = mock(Counter.class);
+        when(topicMetrics.getNumberOfCommitFailures()).thenReturn(commitFailures);
 
         consumer.consumeRecords();
 
@@ -757,6 +763,7 @@ public class KafkaCustomConsumerTest {
         assertEquals(offsetsBeforeCommit.get(topicPartition).offset(),
             offsetsAfterFailedCommit.get(topicPartition).offset(),
             "Offset value should remain unchanged for retry after rebalance completes");
+        verify(commitFailures).increment();
     }
 
     @Test
@@ -775,6 +782,8 @@ public class KafkaCustomConsumerTest {
 
         doThrow(new RuntimeException("Generic commit failure"))
             .when(kafkaConsumer).commitSync(anyMap());
+        final Counter commitFailures = mock(Counter.class);
+        when(topicMetrics.getNumberOfCommitFailures()).thenReturn(commitFailures);
 
         consumer.consumeRecords();
 
@@ -795,6 +804,38 @@ public class KafkaCustomConsumerTest {
         Map<TopicPartition, OffsetAndMetadata> offsetsAfterFailedCommit = consumer.getOffsetsToCommit();
         assertTrue(offsetsAfterFailedCommit.isEmpty(),
             "Offsets should be cleared after non-rebalance exception");
+        verify(commitFailures).increment();
+    }
+
+    private static Stream<Arguments> provideOffsetResetFailures() {
+        return Stream.of(
+                Arguments.of(true),
+                Arguments.of(false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideOffsetResetFailures")
+    public void testResetOffsets_LookupOrSeekFails_IncrementsOffsetResetFailures(final boolean lookupFails) throws Exception {
+        final TopicPartition topicPartition = new TopicPartition(topicConfig.getName(), testPartition);
+        when(topicConfig.getCommitInterval()).thenReturn(Duration.ofMillis(0));
+        if (lookupFails) {
+            when(kafkaConsumer.committed(any(TopicPartition.class))).thenThrow(new RuntimeException("lookup failed"));
+        } else {
+            when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(new OffsetAndMetadata(5L));
+            doThrow(new IllegalStateException("not assigned")).when(kafkaConsumer).seek(any(TopicPartition.class), any(OffsetAndMetadata.class));
+        }
+        final Counter offsetResetFailures = mock(Counter.class);
+        when(topicMetrics.getNumberOfOffsetResetFailures()).thenReturn(offsetResetFailures);
+        consumer = createObjectUnderTest("plaintext", false);
+
+        final java.lang.reflect.Field partitionsToReset = consumer.getClass().getDeclaredField("partitionsToReset");
+        partitionsToReset.setAccessible(true);
+        ((Set<TopicPartition>) partitionsToReset.get(consumer)).add(topicPartition);
+        final java.lang.reflect.Method resetOffsets = consumer.getClass().getDeclaredMethod("resetOffsets");
+        resetOffsets.setAccessible(true);
+        resetOffsets.invoke(consumer);
+
+        verify(offsetResetFailures).increment();
     }
 
     @Test
@@ -946,9 +987,13 @@ public class KafkaCustomConsumerTest {
         consumer = createObjectUnderTestWithMockBuffer("plaintext");
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
 
+        final Counter bufferWriteFailures = mock(Counter.class);
+        when(topicMetrics.getNumberOfBufferWriteFailures()).thenReturn(bufferWriteFailures);
+
         consumer.consumeRecords();
 
         assertTrue(paused, "Consumer should have been paused on first writeAll failure");
+        verify(bufferWriteFailures, times(bufferException instanceof SizeOverflowException ? 0 : 2)).increment();
         assertTrue(pollCount[0] >= 3, "doPoll() should have been called at least 3 times (1 initial + 2 retries)");
     }
 
