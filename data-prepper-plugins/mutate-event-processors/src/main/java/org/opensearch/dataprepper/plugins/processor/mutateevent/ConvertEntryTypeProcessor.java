@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -259,19 +260,21 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                             iterateOn, e.getMessage()), e);
         }
         if (iterateOnList != null) {
-            int listIndex = 0;
-            for (final Map<String, Object> item : iterateOnList) {
+            for (int listIndex = 0; listIndex < iterateOnList.size(); listIndex++) {
                 Object value = null;
                 try {
-                    value = item.get(key);
+                    final Event context = JacksonEvent.builder()
+                            .withEventType("event")
+                            .withData(iterateOnList.get(listIndex))
+                            .build();
+                    value = context.get(key, Object.class);
                     if (value != null) {
-                        item.put(key, converter.convert(value, converterArguments));
+                        context.put(key, converter.convert(value, converterArguments));
+                        iterateOnList.set(listIndex, context.toMap());
                     }
                 } catch (final RuntimeException e) {
                     LOG.error(EVENT, "Unable to convert element {} with key: {} with value: {} to {}", listIndex, key, value, type, e);
                 }
-
-                listIndex++;
             }
 
             recordEvent.put(iterateOn, iterateOnList);
