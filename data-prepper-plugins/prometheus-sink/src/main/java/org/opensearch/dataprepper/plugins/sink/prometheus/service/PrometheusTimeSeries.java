@@ -299,24 +299,35 @@ public class PrometheusTimeSeries {
         List<Long> positiveBucketCounts = histogram.getPositive();
         Integer positiveOffset = histogram.getPositiveOffset();
         List<Long> negativeBucketCounts = histogram.getNegative();
-        Integer negativeOffset = histogram.getPositiveOffset();
+        Integer negativeOffset = histogram.getNegativeOffset();
 
         boolean positiveBucketsPresent = (positiveBucketCounts != null) && (positiveOffset != null);
         boolean negativeBucketsPresent = (negativeBucketCounts != null) && (negativeOffset != null);
 
         if (positiveBucketsPresent || negativeBucketsPresent) {
             if (positiveBucketsPresent) {
+                long cumulativeCount = zeroCount != null ? zeroCount : 0;
+                if (negativeBucketCounts != null) {
+                    cumulativeCount += negativeBucketCounts.stream().mapToLong(Long::longValue).sum();
+                }
                 for (int i = 0; i < positiveBucketCounts.size(); i++) {
+                    cumulativeCount += positiveBucketCounts.get(i);
                     double bound = calculateBucketBound(i + positiveOffset + 1, scale);
-                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, Double.toString(bound), (double) positiveBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, Double.toString(bound), (double) cumulativeCount);
                 }
             }
             if (negativeBucketsPresent) {
+                long cumulativeCount = zeroCount != null ? zeroCount : 0;
+                if (positiveBucketCounts != null) {
+                    cumulativeCount += positiveBucketCounts.stream().mapToLong(Long::longValue).sum();
+                }
                 for (int i = 0; i < negativeBucketCounts.size(); i++) {
+                    cumulativeCount += negativeBucketCounts.get(i);
                     double bound = -calculateBucketBound(i + negativeOffset + 1, scale);
-                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) negativeBucketCounts.get(i));
+                    addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, GE_LABEL, Double.toString(bound), (double) cumulativeCount);
                 }
             }
+            addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, PLUS_INF, (double) histogram.getCount());
         }
     }
 
