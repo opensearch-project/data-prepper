@@ -38,6 +38,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
+/**
+ * The plugin for mutual TLS (client certificate) authentication on Armeria HTTP servers.
+ *
+ * @since 2.18
+ */
 @Experimental
 @DataPrepperPlugin(name = "mutual_tls",
         pluginType = ArmeriaHttpAuthenticationProvider.class,

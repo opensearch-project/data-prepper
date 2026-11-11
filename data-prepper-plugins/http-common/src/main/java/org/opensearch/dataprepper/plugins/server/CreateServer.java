@@ -246,10 +246,7 @@ public class CreateServer {
 
         sb.disableServerHeader();
 
-        // The provider can be null when a caller does not load an authentication plugin.
-        final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider == null
-                ? Optional.empty()
-                : authenticationProvider.getClientAuthConfiguration();
+        final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider.getClientAuthConfiguration();
 
         if (serverConfiguration.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");

@@ -16,6 +16,11 @@ import jakarta.validation.constraints.NotBlank;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Configuration for the {@code mutual_tls} authentication plugin.
+ *
+ * @since 2.18
+ */
 public class MutualTlsAuthenticationConfig {
 
     @JsonProperty("ssl_trust_certificate_file")

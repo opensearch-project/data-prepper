@@ -9,14 +9,22 @@
 
 package org.opensearch.dataprepper.plugins;
 
+import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.netty.handler.ssl.ClientAuth;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.ClientAuthConfiguration;
 import org.opensearch.dataprepper.armeria.authentication.MutualTlsAuthenticationConfig;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
@@ -44,12 +52,39 @@ class MutualTlsArmeriaHttpAuthenticationProviderTest {
     static Path tempDir;
 
     private static Path caCertFile;
+    private static Path serverCertFile;
+    private static Path serverKeyFile;
+    private static Path clientCertFile;
+    private static Path clientKeyFile;
 
     @BeforeAll
     static void generateCerts() throws Exception {
         KeyPair caKeyPair = TestCertificateGenerator.generateKeyPair();
         X509Certificate caCert = TestCertificateGenerator.generateCaCertificate(caKeyPair);
         caCertFile = TestCertificateGenerator.writeCertificateToPem(caCert, tempDir.resolve("ca.crt"));
+
+        final KeyPair serverKeyPair = TestCertificateGenerator.generateKeyPair();
+        final X509Certificate serverCert = TestCertificateGenerator.generateSignedCertificate(
+                serverKeyPair, caKeyPair, caCert, "localhost");
+        serverCertFile = TestCertificateGenerator.writeCertificateToPem(serverCert, tempDir.resolve("server.crt"));
+        serverKeyFile = TestCertificateGenerator.writePrivateKeyToPem(serverKeyPair, tempDir.resolve("server.key"));
+
+        final KeyPair clientKeyPair = TestCertificateGenerator.generateKeyPair();
+        final X509Certificate clientCert = TestCertificateGenerator.generateSignedCertificate(
+                clientKeyPair, caKeyPair, caCert, "trusted-client");
+        clientCertFile = TestCertificateGenerator.writeCertificateToPem(clientCert, tempDir.resolve("client.crt"));
+        clientKeyFile = TestCertificateGenerator.writePrivateKeyToPem(clientKeyPair, tempDir.resolve("client.key"));
+    }
+
+    @Test
+    void plugin_annotation_declares_mutual_tls_contract() {
+        final DataPrepperPlugin annotation =
+                MutualTlsArmeriaHttpAuthenticationProvider.class.getAnnotation(DataPrepperPlugin.class);
+
+        assertThat(annotation, is(notNullValue()));
+        assertThat(annotation.name(), equalTo("mutual_tls"));
+        assertThat(annotation.pluginType(), equalTo(ArmeriaHttpAuthenticationProvider.class));
+        assertThat(annotation.pluginConfigurationType(), equalTo(MutualTlsAuthenticationConfig.class));
     }
 
     @Test
@@ -167,6 +202,42 @@ class MutualTlsArmeriaHttpAuthenticationProviderTest {
         MutualTlsArmeriaHttpAuthenticationProvider provider = new MutualTlsArmeriaHttpAuthenticationProvider(config);
 
         assertThat(provider.getAuthenticationDecorator().isPresent(), is(true));
+    }
+
+    /**
+     * A server that applies only the authentication decorator, without the TLS client-auth wiring
+     * from getClientAuthConfiguration(), never requests a client certificate. The decorator must
+     * then reject every request, even from a client holding a certificate signed by the trusted CA.
+     */
+    @Test
+    void decorator_without_client_auth_wiring_returns_401_for_trusted_client_certificate() {
+        final MutualTlsAuthenticationConfig config = mock(MutualTlsAuthenticationConfig.class);
+        when(config.getSslTrustCertificateFile()).thenReturn(caCertFile.toString());
+        final MutualTlsArmeriaHttpAuthenticationProvider provider = new MutualTlsArmeriaHttpAuthenticationProvider(config);
+
+        final Server server = Server.builder()
+                .https(0)
+                .tls(serverCertFile.toFile(), serverKeyFile.toFile())
+                .service("/", (ctx, req) -> HttpResponse.of(HttpStatus.OK))
+                .decorator(provider.getAuthenticationDecorator().orElseThrow())
+                .build();
+        server.start().join();
+
+        try (ClientFactory clientFactory = ClientFactory.builder()
+                .tlsNoVerify()
+                .tls(clientCertFile.toFile(), clientKeyFile.toFile())
+                .build()) {
+            final AggregatedHttpResponse response = WebClient.builder("https://127.0.0.1:" + server.activeLocalPort())
+                    .factory(clientFactory)
+                    .build()
+                    .get("/")
+                    .aggregate()
+                    .join();
+
+            assertThat(response.status(), equalTo(HttpStatus.UNAUTHORIZED));
+        } finally {
+            server.stop().join();
+        }
     }
 
     @Test

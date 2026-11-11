@@ -44,6 +44,7 @@ public interface ArmeriaHttpAuthenticationProvider {
      * Gets client authentication (mTLS) configuration.
      * Called during server setup when SSL is enabled to configure client certificate verification.
      *
+     * @since 2.18
      * @return an optional client auth configuration for mTLS
      */
     default Optional<ClientAuthConfiguration> getClientAuthConfiguration() {

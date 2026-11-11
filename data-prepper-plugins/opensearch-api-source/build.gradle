@@ -25,7 +25,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:armeria-common').sourceSets.test.output
     testImplementation libs.bouncycastle.bcprov
     testImplementation libs.bouncycastle.bcpkix
-    testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    testImplementation libs.hibernate.validator
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 }

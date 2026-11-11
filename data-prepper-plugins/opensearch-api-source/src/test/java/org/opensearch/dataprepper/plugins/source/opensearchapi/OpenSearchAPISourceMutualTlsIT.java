@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
@@ -47,7 +46,9 @@ import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +58,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -97,6 +99,7 @@ class OpenSearchAPISourceMutualTlsIT {
     private static Path untrustedClientKeyFile;
 
     private OpenSearchAPISource source;
+    private BlockingBuffer<Record<Event>> buffer;
 
     @BeforeAll
     static void generateCertificates() throws Exception {
@@ -140,6 +143,10 @@ class OpenSearchAPISourceMutualTlsIT {
         try (ClientFactory factory = clientWithCertificate(trustedClientCertFile, trustedClientKeyFile)) {
             final AggregatedHttpResponse response = post(factory, port, "/_bulk", BULK_BODY);
             assertThat(response.status(), equalTo(HttpStatus.OK));
+
+            final List<Record<Event>> records = new ArrayList<>(buffer.read(1000).getKey());
+            assertThat(records, hasSize(1));
+            assertThat(records.get(0).getData().get("log", String.class), equalTo("mtls"));
         }
     }
 
@@ -157,11 +164,30 @@ class OpenSearchAPISourceMutualTlsIT {
     void untrusted_client_certificate_fails_tls_handshake() throws Exception {
         final int port = startSource(false);
 
-        try (ClientFactory factory = clientWithCertificate(untrustedClientCertFile, untrustedClientKeyFile)) {
+        // TLS 1.2: the server rejects the client certificate inside the handshake, so the client must
+        // see an SSLException. Under TLS 1.3 the rejection can arrive after the client considers the
+        // handshake done and surface only as a closed session, which this test must not accept.
+        try (ClientFactory factory = tls12ClientWithCertificate(untrustedClientCertFile, untrustedClientKeyFile)) {
             final Exception exception = assertThrows(Exception.class,
                     () -> post(factory, port, "/_bulk", BULK_BODY));
-            assertThat("Expected a TLS failure in the cause chain", hasTlsFailure(exception), is(true));
+            assertThat("Expected an SSLException in the cause chain", hasSslException(exception), is(true));
         }
+
+        assertThat(buffer.read(100).getKey(), is(empty()));
+    }
+
+    @Test
+    void untrusted_client_certificate_over_tls13_is_rejected_and_nothing_is_buffered() throws Exception {
+        final int port = startSource(false);
+
+        // Under TLS 1.3 the rejection may surface as an SSLException or as a closed session,
+        // so only the outcome is asserted: the request fails and no record reaches the buffer.
+        try (ClientFactory factory = tls13ClientWithCertificate(untrustedClientCertFile, untrustedClientKeyFile)) {
+            assertThrows(Exception.class,
+                    () -> post(factory, port, "/_bulk", BULK_BODY));
+        }
+
+        assertThat(buffer.read(100).getKey(), is(empty()));
     }
 
     // No health-check cases: OpenSearchAPISourceConfig.hasHealthCheckService() always returns false,
@@ -220,7 +246,8 @@ class OpenSearchAPISourceMutualTlsIT {
                 .thenAnswer(invocation -> loadAuthenticationPlugin(invocation.getArgument(1)));
 
         source = new OpenSearchAPISource(config, PluginMetrics.fromNames("opensearch_api", pipelineName), pluginFactory, pipelineDescription);
-        source.start(new BlockingBuffer<Record<Event>>(10, 8, pipelineName));
+        buffer = new BlockingBuffer<>(10, 8, pipelineName);
+        source.start(buffer);
         return activePort(source);
     }
 
@@ -236,6 +263,22 @@ class OpenSearchAPISourceMutualTlsIT {
         return ClientFactory.builder()
                 .tlsNoVerify()
                 .tls(certFile.toFile(), keyFile.toFile())
+                .build();
+    }
+
+    private static ClientFactory tls12ClientWithCertificate(final Path certFile, final Path keyFile) {
+        return ClientFactory.builder()
+                .tlsNoVerify()
+                .tls(certFile.toFile(), keyFile.toFile())
+                .tlsCustomizer(sslContextBuilder -> sslContextBuilder.protocols("TLSv1.2"))
+                .build();
+    }
+
+    private static ClientFactory tls13ClientWithCertificate(final Path certFile, final Path keyFile) {
+        return ClientFactory.builder()
+                .tlsNoVerify()
+                .tls(certFile.toFile(), keyFile.toFile())
+                .tlsCustomizer(sslContextBuilder -> sslContextBuilder.protocols("TLSv1.3"))
                 .build();
     }
 
@@ -265,10 +308,10 @@ class OpenSearchAPISourceMutualTlsIT {
         return ((Server) serverField.get(apiSource)).activeLocalPort();
     }
 
-    private static boolean hasTlsFailure(final Throwable throwable) {
+    private static boolean hasSslException(final Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
-            if (current instanceof SSLException || current instanceof ClosedSessionException) {
+            if (current instanceof SSLException) {
                 return true;
             }
             current = current.getCause();

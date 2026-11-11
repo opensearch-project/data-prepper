@@ -18,6 +18,8 @@ import javax.net.ssl.TrustManagerFactory;
  * This interface restricts what authentication plugins can configure
  * on the TLS context, preventing plugins from modifying server keys,
  * protocols, or ciphers.
+ *
+ * @since 2.18
  */
 public interface ClientAuthConfiguration {
 

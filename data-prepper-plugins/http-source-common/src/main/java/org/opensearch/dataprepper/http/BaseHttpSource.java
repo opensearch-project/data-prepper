@@ -93,10 +93,7 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
 
             sb.disableServerHeader();
 
-            // The provider can be null when a subclass or test does not load an authentication plugin.
-            final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider == null
-                    ? Optional.empty()
-                    : authenticationProvider.getClientAuthConfiguration();
+            final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider.getClientAuthConfiguration();
 
             if (sourceConfig.isSsl()) {
                 logger.info("Creating {} source with SSL/TLS enabled.", sourceName);
