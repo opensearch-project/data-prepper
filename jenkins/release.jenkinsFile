@@ -7,6 +7,21 @@ def VERSION = ''
 def DATA_PREPPER_BUILD_NUMBER = ''
 def RELEASE_MAJOR_TAG = ''
 def RELEASE_LATEST_TAG = ''
+def secret_github_bot = [
+    [envVar: 'GITHUB_USER', secretRef: 'op://opensearch-release-secrets/github-bot/ci-bot-username'],
+    [envVar: 'GITHUB_TOKEN', secretRef: 'op://opensearch-release-secrets/github-bot/ci-bot-token']
+]
+def secret_data_prepper_artifact_staging = [
+    [envVar: 'DATA_PREPPER_ARTIFACT_STAGING_SITE', secretRef: 'op://opensearch-release-secrets/data-prepper/jenkins-data-prepper-artifact-staging-site']
+]
+def secret_data_prepper_container_staging = [
+    [envVar: 'DATA_PREPPER_STAGING_CONTAINER_REPOSITORY', secretRef: 'op://opensearch-release-secrets/data-prepper/jenkins-data-prepper-staging-container-repository']
+]
+def secret_data_prepper_aws_s3 = [
+    [envVar: 'DP_AWS_ACCOUNT_NUMBER', secretRef: 'op://opensearch-release-secrets/aws-accounts/data-prepper-aws-account-number'],
+    [envVar: 'DP_S3_ROLE_NAME', secretRef: 'op://opensearch-release-secrets/data-prepper/data-prepper-s3-role'],
+    [envVar: 'DP_S3_BUCKET_NAME', secretRef: 'op://opensearch-release-secrets/data-prepper/data-prepper-s3-bucket-name']
+]
 
 pipeline {
     options {
@@ -31,10 +46,6 @@ pipeline {
             regexpFilterExpression: ('^true published$')
         )
     }
-    environment {
-        DATA_PREPPER_ARTIFACT_STAGING_SITE = credentials('jenkins-data-prepper-artifact-staging-site')
-        DATA_PREPPER_STAGING_CONTAINER_REPOSITORY = credentials('jenkins-data-prepper-staging-container-repository')
-    }
     stages {
         stage('Get release paramters') {
             agent {
@@ -49,7 +60,7 @@ pipeline {
             steps {
                 script {
                     if ("$assets_url" != '') {
-                        withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                        withSecrets(secrets: secret_github_bot) {
                             String assets = sh(
                                 script: "curl -s --fail -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${assets_url}",
                                 returnStdout: true
@@ -100,13 +111,15 @@ pipeline {
                 stage('Download Archives') {
                     steps {
                         script {
-                            archivePath = "${DATA_PREPPER_ARTIFACT_STAGING_SITE}/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/archive"
+                            withSecrets(secrets: secret_data_prepper_artifact_staging) {
+                                archivePath = "${DATA_PREPPER_ARTIFACT_STAGING_SITE}/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/archive"
 
-                            dir('archive') {
-                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-x64.tar.gz"
-                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz"
-                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz"
-                                sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz"
+                                dir('archive') {
+                                    sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-x64.tar.gz"
+                                    sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-x64.tar.gz"
+                                    sh "curl -sSL ${archivePath}/opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-${VERSION}-linux-arm64.tar.gz"
+                                    sh "curl -sSL ${archivePath}/opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz -o opensearch-data-prepper-jdk-${VERSION}-linux-arm64.tar.gz"
+                                }
                             }
                         }
                     }
@@ -147,36 +160,38 @@ pipeline {
                 stage('Copy Docker Image to DockerHub') {
                     steps {
                         script {
-                            def dockerCopyHub =
-                                build job: 'docker-copy',
-                                parameters: [
-                                    string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
-                                    string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
-                                    string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'opensearchproject'),
-                                    string(name: 'DESTINATION_IMAGE', value: "data-prepper:${VERSION}")
-                                ]
-
-                            if (RELEASE_MAJOR_TAG) {
-                                def majorVersion = VERSION.tokenize('.')[0].trim()
-                                def dockerCopyHubMajor =
+                            withSecrets(secrets: secret_data_prepper_container_staging) {
+                                def dockerCopyHub =
                                     build job: 'docker-copy',
                                     parameters: [
                                         string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
                                         string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
                                         string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'opensearchproject'),
-                                        string(name: 'DESTINATION_IMAGE', value: "data-prepper:${majorVersion}")
+                                        string(name: 'DESTINATION_IMAGE', value: "data-prepper:${VERSION}")
                                     ]
-                            }
 
-                            if (RELEASE_LATEST_TAG) {
-                                def dockerCopyHubLatest =
-                                    build job: 'docker-copy',
-                                    parameters: [
-                                        string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
-                                        string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
-                                        string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'opensearchproject'),
-                                        string(name: 'DESTINATION_IMAGE', value: 'data-prepper:latest')
-                                    ]
+                                if (RELEASE_MAJOR_TAG) {
+                                    def majorVersion = VERSION.tokenize('.')[0].trim()
+                                    def dockerCopyHubMajor =
+                                        build job: 'docker-copy',
+                                        parameters: [
+                                            string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
+                                            string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
+                                            string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'opensearchproject'),
+                                            string(name: 'DESTINATION_IMAGE', value: "data-prepper:${majorVersion}")
+                                        ]
+                                }
+
+                                if (RELEASE_LATEST_TAG) {
+                                    def dockerCopyHubLatest =
+                                        build job: 'docker-copy',
+                                        parameters: [
+                                            string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
+                                            string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
+                                            string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'opensearchproject'),
+                                            string(name: 'DESTINATION_IMAGE', value: 'data-prepper:latest')
+                                        ]
+                                }
                             }
                         }
                     }
@@ -184,36 +199,38 @@ pipeline {
                 stage('Copy Docker Image to ECR') {
                     steps {
                         script {
-                            def dockerCopyECR =
-                                build job: 'docker-copy',
-                                parameters: [
-                                    string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
-                                    string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
-                                    string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'public.ecr.aws/opensearchproject'),
-                                    string(name: 'DESTINATION_IMAGE', value: "data-prepper:${VERSION}")
-                                ]
-
-                            if (RELEASE_MAJOR_TAG) {
-                                def majorVersion = VERSION.tokenize('.')[0].trim()
-                                def dockerCopyECRMajor =
+                            withSecrets(secrets: secret_data_prepper_container_staging) {
+                                def dockerCopyECR =
                                     build job: 'docker-copy',
                                     parameters: [
                                         string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
                                         string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
                                         string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'public.ecr.aws/opensearchproject'),
-                                        string(name: 'DESTINATION_IMAGE', value: "data-prepper:${majorVersion}")
+                                        string(name: 'DESTINATION_IMAGE', value: "data-prepper:${VERSION}")
                                     ]
-                            }
 
-                            if (RELEASE_LATEST_TAG) {
-                                def dockerCopyECRLatest =
-                                    build job: 'docker-copy',
-                                    parameters: [
-                                        string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
-                                        string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
-                                        string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'public.ecr.aws/opensearchproject'),
-                                        string(name: 'DESTINATION_IMAGE', value: 'data-prepper:latest')
-                                    ]
+                                if (RELEASE_MAJOR_TAG) {
+                                    def majorVersion = VERSION.tokenize('.')[0].trim()
+                                    def dockerCopyECRMajor =
+                                        build job: 'docker-copy',
+                                        parameters: [
+                                            string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
+                                            string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
+                                            string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'public.ecr.aws/opensearchproject'),
+                                            string(name: 'DESTINATION_IMAGE', value: "data-prepper:${majorVersion}")
+                                        ]
+                                }
+
+                                if (RELEASE_LATEST_TAG) {
+                                    def dockerCopyECRLatest =
+                                        build job: 'docker-copy',
+                                        parameters: [
+                                            string(name: 'SOURCE_IMAGE_REGISTRY', value: "${DATA_PREPPER_STAGING_CONTAINER_REPOSITORY}"),
+                                            string(name: 'SOURCE_IMAGE', value: "data-prepper:${VERSION}-${DATA_PREPPER_BUILD_NUMBER}"),
+                                            string(name: 'DESTINATION_IMAGE_REGISTRY', value: 'public.ecr.aws/opensearchproject'),
+                                            string(name: 'DESTINATION_IMAGE', value: 'data-prepper:latest')
+                                        ]
+                                }
                             }
                         }
                     }
@@ -242,15 +259,12 @@ pipeline {
                     steps {
                         script {
                             def downloadPath = "${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven/"
-                            withCredentials([
-                                string(credentialsId: 'data-prepper-s3-role', variable: 'DP_S3_ROLE_NAME'),
-                                string(credentialsId: 'data-prepper-aws-account-number', variable: 'DP_AWS_ACCOUNT_NUMBER'),
-                                string(credentialsId: 'data-prepper-s3-bucket-name', variable: 'DP_S3_BUCKET_NAME'),]) {
-                                    echo 'Downloading artifacts from S3'
-                                    withAWS(role: "${DP_S3_ROLE_NAME}", roleAccount: "${DP_AWS_ACCOUNT_NUMBER}", duration: 900, roleSessionName: 'dp-jenkins-session', region: 'us-east-1') {
-                                        s3Download(file: "${WORKSPACE}/maven", bucket: "${DP_S3_BUCKET_NAME}", path: "${downloadPath}", force: true)
-                                    }
+                            withSecrets(secrets: secret_data_prepper_aws_s3) {
+                                echo 'Downloading artifacts from S3'
+                                withAWS(role: "${DP_S3_ROLE_NAME}", roleAccount: "${DP_AWS_ACCOUNT_NUMBER}", duration: 900, roleSessionName: 'dp-jenkins-session', region: 'us-east-1') {
+                                    s3Download(file: "${WORKSPACE}/maven", bucket: "${DP_S3_BUCKET_NAME}", path: "${downloadPath}", force: true)
                                 }
+                            }
                         }
                     }
                 }
@@ -282,13 +296,13 @@ pipeline {
                     // The OpenSearch project no longer supports bot tokens with write access
                     // to publish releases automatically. Instead, open an issue asking
                     // maintainers to convert the pre-release into a full release.
-                    withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                    withSecrets(secrets: secret_github_bot) {
                         def repository = 'opensearch-project/data-prepper'
                         def codeOwners = sh(
                             script: "GH_TOKEN=${GITHUB_TOKEN} gh api repos/${repository}/contents/.github/CODEOWNERS --jq '.content' 2>/dev/null | tr -d '\\n' | base64 -d | grep -oP '@[\\w/-]+' | sort -u | tr '\\n' ' ' || echo ''",
                             returnStdout: true
                         ).trim()
-                        def issueBody = "The release workflow for tag `${TAG}` completed successfully.\n\nBuild: ${env.BUILD_URL}\n\nPlease publish the release on GitHub by converting the pre-release to a full release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners}"
+                        def issueBody = "The release workflow for tag '${TAG}' completed successfully.\n\nBuild: ${env.BUILD_URL}\n\nPlease publish the release on GitHub by converting the pre-release to a full release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners}"
                         sh "GH_TOKEN=${GITHUB_TOKEN} gh issue create --title \"[Release - Action Required] Publish release for tag ${TAG}\" --body \"${issueBody}\" --repo ${repository}"
                     }
                 }
@@ -298,13 +312,13 @@ pipeline {
             node('Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host') {
                 script {
                     // Notify maintainers so a broken release pipeline is not missed.
-                    withCredentials([usernamePassword(credentialsId: 'jenkins-github-bot-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                    withSecrets(secrets: secret_github_bot) {
                         def repository = 'opensearch-project/data-prepper'
                         def codeOwners = sh(
                             script: "GH_TOKEN=${GITHUB_TOKEN} gh api repos/${repository}/contents/.github/CODEOWNERS --jq '.content' 2>/dev/null | tr -d '\\n' | base64 -d | grep -oP '@[\\w/-]+' | sort -u | tr '\\n' ' ' || echo ''",
                             returnStdout: true
                         ).trim()
-                        def issueBody = "The release workflow for tag `${TAG}` failed.\n\nBuild: ${env.BUILD_URL}\n\nPlease investigate the failure and retry the release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners} @opensearch-project/engineering-effectiveness"
+                        def issueBody = "The release workflow for tag '${TAG}' failed.\n\nBuild: ${env.BUILD_URL}\n\nPlease investigate the failure and retry the release.\n\nRelease: https://github.com/${repository}/releases/tag/${TAG}\n\ncc: ${codeOwners} @opensearch-project/engineering-effectiveness"
                         sh "GH_TOKEN=${GITHUB_TOKEN} gh issue create --title \"[RELEASE] Failed: release for tag ${TAG}\" --body \"${issueBody}\" --repo ${repository}"
                     }
                 }
