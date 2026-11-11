@@ -145,6 +145,18 @@ public class PluginMetricsTest {
     }
 
     @Test
+    public void testSummaryWithTags() {
+        final DistributionSummary summary = objectUnderTest.summaryWithTags("summary", TAG_KEY, TAG_VALUE);
+        assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("summary").toString(),
+                summary.getId().getName());
+
+        assertEquals(TAG_VALUE, summary.getId().getTag(TAG_KEY));
+    }
+
+    @Test
     public void testSummaryWithMetricsPrefix() {
         final DistributionSummary summary = objectUnderTest.summary("summary", PIPELINE_NAME);
         assertEquals(
