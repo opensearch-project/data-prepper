@@ -27,6 +27,7 @@ public enum IndexType {
      * {@code otel-v1-genai-evaluation-000001}, rolled over by the
      * {@code otel-v1-genai-evaluation-policy} ISM policy. On Amazon OpenSearch Serverless, which
      * has no ISM or aliases, it writes to a plain index named {@code otel-v1-genai-evaluation}.
+     * The index pattern {@code otel-v1-genai-evaluation*} covers both layouts.
      * Defaults to the {@code index-template} template type. The mappings may change in a minor
      * release.
      */

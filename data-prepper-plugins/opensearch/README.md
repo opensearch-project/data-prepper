@@ -120,6 +120,51 @@ genai-evaluation-otlp-pipeline:
 
 The route matches on the log record's `eventName` field only, not on an `event.name` attribute.
 
+#### Pipelines that already have routes
+
+Data Prepper sends an event to every sink whose routes match it, and to every sink that has no `routes`. In a pipeline that already routes
+logs, either split the evaluation results off before the existing routes, or keep one pipeline and exclude them from the existing routes.
+
+Split them off in an entry pipeline, and leave the existing routes and sinks unchanged in a logs sub-pipeline:
+
+```
+otlp-pipeline:
+  source:
+    otel_logs_source:
+      output_format: otel
+  route:
+    - genai-evaluation: '/eventName == "gen_ai.evaluation.result"'
+    - logs: '/eventName != "gen_ai.evaluation.result"'
+  sink:
+    - pipeline:
+        name: genai-evaluation-pipeline
+        routes: [genai-evaluation]
+    - pipeline:
+        name: logs-pipeline
+        routes: [logs]
+
+genai-evaluation-pipeline:
+  source:
+    pipeline:
+      name: otlp-pipeline
+  sink:
+    - opensearch:
+        hosts: ["https://localhost:9200"]
+        index_type: genai-evaluation-plain
+
+logs-pipeline:
+  source:
+    pipeline:
+      name: otlp-pipeline
+  # The existing routes and sinks, unchanged.
+```
+
+To keep one pipeline, add the `genai-evaluation` route and its sink, then:
+
+- Append `and /eventName != "gen_ai.evaluation.result"` to every existing route condition that can also match an evaluation result.
+- Give every sink that has no `routes` a `routes` list. A sink with no `routes` receives all events, including evaluation results.
+  Use `routes: [_default]` for a sink that should receive only the events that match no route.
+
 Set `output_format: otel` on the source. It keeps attributes under their OpenTelemetry names, which this template maps. With the default
 `opensearch` output format, attributes are written as `log.attributes.*` fields and the evaluation mappings do not apply.
 
@@ -136,6 +181,10 @@ These names are fixed: `index` is ignored for this index type, as for `log-analy
 On Amazon OpenSearch Serverless (`serverless: true` in [AWS Configuration](#aws_configuration)), which has neither ISM nor aliases,
 the sink creates no ISM policy and writes to a plain index named `otel-v1-genai-evaluation`, with the same index template matching
 exactly that index name.
+
+To query the results on either kind of cluster, use the index pattern `otel-v1-genai-evaluation*`. With ISM it matches the rollover indices
+behind the alias, and on Serverless it matches the single index, in the same way that `logs-otel-v1*` covers the logs written by
+`log-analytics-plain` and a single `logs-otel-v1` index on Serverless.
 
 #### Index template
 
