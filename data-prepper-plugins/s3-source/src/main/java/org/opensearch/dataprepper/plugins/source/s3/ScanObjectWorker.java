@@ -475,8 +475,6 @@ public class ScanObjectWorker implements Runnable {
             objectIndex++;
         }
 
-        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), acknowledgmentSetTimeout);
-
         if (acknowledgementSet != null) {
             acknowledgementSet.complete();
         }
