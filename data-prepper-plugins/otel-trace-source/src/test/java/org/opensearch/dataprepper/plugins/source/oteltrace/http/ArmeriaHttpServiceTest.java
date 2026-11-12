@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -184,6 +185,20 @@ class ArmeriaHttpServiceTest {
             assertThrows(BufferWriteException.class, () -> armeriaHttpService.exportTrace(request));
         }
         verify(requestsReceivedCounter).increment();
+    }
+
+    @Test
+    void testExportTraceBufferWriteFailureDoesNotCallToStringOnRequest() throws Exception {
+        try (MockedStatic<ServiceRequestContext> mocked = mockStatic(ServiceRequestContext.class)) {
+            mocked.when(ServiceRequestContext::current).thenReturn(staticServiceRequestContext);
+            armeriaHttpService = new ArmeriaHttpService(buffer, new OTelProtoOpensearchCodec.OTelProtoDecoder(), pluginMetrics, 5000);
+            final ExportTraceServiceRequest request = mock(ExportTraceServiceRequest.class);
+            lenient().when(request.toString()).thenThrow(new AssertionError("toString() must not be called on the request"));
+            when(buffer.isByteBuffer()).thenReturn(false);
+            doThrow(new RuntimeException("Buffer error")).when(buffer).writeAll(any(), anyInt());
+
+            assertThrows(BufferWriteException.class, () -> armeriaHttpService.exportTrace(request));
+        }
     }
 
     @ParameterizedTest

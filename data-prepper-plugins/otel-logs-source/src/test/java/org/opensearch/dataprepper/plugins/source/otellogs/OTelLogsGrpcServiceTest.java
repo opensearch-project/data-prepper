@@ -71,6 +71,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -328,6 +329,21 @@ public class OTelLogsGrpcServiceTest {
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+    }
+
+    @Test
+    public void export_BufferTimeout_does_not_call_toString_on_request() throws Exception {
+        final ExportLogsServiceRequest request = mock(ExportLogsServiceRequest.class);
+        lenient().when(request.toString()).thenThrow(new AssertionError("toString() must not be called on the request"));
+        objectUnderTest = generateOTelLogsGrpcService(new OTelProtoOpensearchCodec.OTelProtoDecoder());
+        doThrow(new TimeoutException()).when(buffer).writeAll(any(Collection.class), anyInt());
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BufferWriteException.class, () -> objectUnderTest.export(request, responseObserver));
+        }
+
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
     }
 
     @Test
