@@ -88,12 +88,18 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
 
         final long usedMemoryBytes = getUsedMemoryBytes();
         if(usedMemoryBytes >  usageBytes) {
-            open = true;
             if(!previousOpen) {
                 System.gc();
+                final long usedMemoryBytesAfterGc = getUsedMemoryBytes();
+                if(usedMemoryBytesAfterGc <= usageBytes) {
+                    LOG.info("Heap usage of {} bytes exceeded {} configured, but garbage collection reduced it to {} bytes. Circuit breaker remains closed.",
+                            usedMemoryBytes, usageBytes, usedMemoryBytesAfterGc);
+                    return;
+                }
+                open = true;
                 resetTime = Instant.now().plus(resetPeriod);
                 openGauge.set(OPEN_METRIC_VALUE);
-                LOG.info("Circuit breaker tripped and open. {} used memory bytes > {} configured", usedMemoryBytes, usageBytes);
+                LOG.info("Circuit breaker tripped and open. {} used memory bytes after garbage collection > {} configured", usedMemoryBytesAfterGc, usageBytes);
             }
         } else {
             open = false;

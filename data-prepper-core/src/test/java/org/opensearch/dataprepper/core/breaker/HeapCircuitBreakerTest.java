@@ -29,6 +29,7 @@ import java.util.Random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -155,6 +156,29 @@ class HeapCircuitBreakerTest {
 
             objectUnderTest = createObjectUnderTest();
             Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+        }
+
+        @Test
+        void isOpen_returns_false_if_garbage_collection_brings_used_bytes_under_configured_bytes() throws InterruptedException {
+            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1, byteUsage - 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
+            verify(memoryMXBean, atLeast(2)).getHeapMemoryUsage();
+        }
+
+        @Test
+        void isOpen_returns_true_if_used_bytes_remain_greater_than_configured_bytes_after_garbage_collection() throws InterruptedException {
+            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 2, byteUsage + 1);
+
+            objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
             assertThat(objectUnderTest.isOpen(), equalTo(true));
         }
 
