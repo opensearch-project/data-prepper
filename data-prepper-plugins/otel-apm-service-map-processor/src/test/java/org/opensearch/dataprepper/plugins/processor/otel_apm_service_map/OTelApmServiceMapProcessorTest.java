@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -136,6 +137,9 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                 .thenReturn(dependencyCallsOverflowedCounter);
         lenient().when(pluginMetrics.counter(OTelApmServiceMapProcessor.REMOTE_OPERATION_CALLS_OVERFLOWED_METRIC))
                 .thenReturn(remoteOperationCallsOverflowedCounter);
+        final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        lenient().when(pluginMetrics.timer(anyString())).thenAnswer(a -> meterRegistry.timer(a.getArgument(0)));
+        lenient().when(pluginMetrics.summary(anyString())).thenAnswer(a -> meterRegistry.summary(a.getArgument(0)));
     }
 
     @AfterEach
