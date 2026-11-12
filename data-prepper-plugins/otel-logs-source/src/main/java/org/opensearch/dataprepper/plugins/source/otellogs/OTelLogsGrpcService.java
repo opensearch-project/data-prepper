@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelDecodingException;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,8 +103,11 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
             final long startParsingTime = System.currentTimeMillis();
             logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
             requestParsingDuration.record(System.currentTimeMillis() - startParsingTime, TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
+        } catch (final OTelDecodingException e) {
             LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse the request with error '{}'. Request body: {}", e.getMessage(), request);
+            throw new BadRequestException(e.getMessage(), e);
+        } catch (final Exception e) {
+            LOG.error(DataPrepperMarkers.SENSITIVE, "Unexpected error while parsing the request: '{}'. Request body: {}", e.getMessage(), request, e);
             throw new BadRequestException(e.getMessage(), e);
         }
 
