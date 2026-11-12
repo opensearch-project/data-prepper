@@ -17,6 +17,7 @@ import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
+import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
@@ -102,7 +103,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
             logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
             requestParsingDuration.record(System.currentTimeMillis() - startParsingTime, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
-            LOG.error("Failed to parse the request {} due to:", request, e);
+            LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse the request with error '{}'. Request body: {}", e.getMessage(), request);
             throw new BadRequestException(e.getMessage(), e);
         }
 
