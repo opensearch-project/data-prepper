@@ -25,6 +25,8 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.time.Duration;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -169,6 +171,35 @@ class HeapCircuitBreakerTest {
 
             assertThat(objectUnderTest.isOpen(), equalTo(false));
             verify(memoryMXBean, atLeast(2)).getHeapMemoryUsage();
+        }
+
+        @Test
+        void isOpen_returns_true_while_garbage_collection_runs_and_false_after_it_reclaims_memory() throws InterruptedException {
+            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
+            final AtomicReference<HeapCircuitBreaker> breakerHolder = new AtomicReference<>();
+            final AtomicReference<Boolean> openDuringGarbageCollection = new AtomicReference<>();
+            final AtomicInteger callsAfterCreation = new AtomicInteger();
+            when(memoryUsage.getUsed()).thenAnswer(invocation -> {
+                final HeapCircuitBreaker breaker = breakerHolder.get();
+                if(breaker == null) {
+                    return byteUsage - 1;
+                }
+                final int call = callsAfterCreation.incrementAndGet();
+                if(call == 1) {
+                    return byteUsage + 1;
+                }
+                if(call == 2) {
+                    openDuringGarbageCollection.set(breaker.isOpen());
+                }
+                return byteUsage - 1;
+            });
+
+            objectUnderTest = createObjectUnderTest();
+            breakerHolder.set(objectUnderTest);
+            Thread.sleep(SLEEP_MILLIS * 2);
+
+            assertThat(openDuringGarbageCollection.get(), equalTo(true));
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
 
         @Test
