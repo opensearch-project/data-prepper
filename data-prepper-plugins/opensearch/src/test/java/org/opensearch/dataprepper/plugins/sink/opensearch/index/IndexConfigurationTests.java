@@ -71,6 +71,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexCons
 @SuppressWarnings("unchecked")
 public class IndexConfigurationTests {
     private static final Map<String, Object> KEYWORD_256 = Map.of("type", "keyword", "ignore_above", 256);
+    private static final Map<String, Object> EVENT_NAME_MAPPING = Map.of("type", "text", "fields", Map.of("keyword", KEYWORD_256));
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final String DEFAULT_TEMPLATE_FILE = "test-template-withshards.json";
@@ -411,8 +412,10 @@ public class IndexConfigurationTests {
         final Map<String, Object> properties = (Map<String, Object>) genAIEvaluationMappings.get("properties");
         final Map<String, Object> logsProperties = (Map<String, Object>) logsMappings.get("properties");
         assertThat(logsProperties, not(hasKey("attributes")));
+        assertThat(logsProperties, not(hasKey("eventName")));
         final Set<String> expectedFields = new HashSet<>(logsProperties.keySet());
         expectedFields.add("attributes");
+        expectedFields.add("eventName");
         assertThat(properties.keySet(), equalTo(expectedFields));
         for (final String field : logsProperties.keySet()) {
             assertThat(field, properties.get(field), equalTo(logsProperties.get(field)));
@@ -426,30 +429,40 @@ public class IndexConfigurationTests {
         assertThat(properties.get("time"), equalTo(Map.of("type", "date_nanos")));
         assertThat(properties.get("observedTime"), equalTo(Map.of("type", "date_nanos")));
         assertThat(getProperties(properties, "severity").get("text"), equalTo(Map.of("type", "keyword", "ignore_above", 32)));
-        assertThat(properties, not(hasKey("eventName")));
+        // The default dynamic mapping of a top-level string, so indices created before and after the pin agree.
+        assertThat(properties.get("eventName"), equalTo(EVENT_NAME_MAPPING));
 
         final Map<String, Object> attributes = getProperties(properties, "attributes");
-        assertThat(attributes.keySet(), equalTo(Set.of("gen_ai", "opensearch", "test")));
+        assertThat(attributes.keySet(), equalTo(Set.of("gen_ai", "opensearch", "test", "error")));
+        assertThat(getProperties(attributes, "error"), equalTo(Map.of("type", KEYWORD_256)));
         final Map<String, Object> genAI = getProperties(attributes, "gen_ai");
-        assertThat(genAI.keySet(), equalTo(Set.of("evaluation", "agent", "prompt")));
+        assertThat(genAI.keySet(), equalTo(Set.of("evaluation", "agent", "prompt", "conversation")));
         final Map<String, Object> evaluation = getProperties(genAI, "evaluation");
-        assertThat(evaluation.keySet(), equalTo(Set.of("score", "explanation")));
-        assertThat(getProperties(evaluation, "score"), equalTo(Map.of("value", Map.of("type", "double"))));
+        assertThat(evaluation.keySet(), equalTo(Set.of("score", "explanation", "name")));
+        assertThat(getProperties(evaluation, "score"), equalTo(Map.of(
+                "value", Map.of("type", "double"),
+                "label", KEYWORD_256)));
         assertThat(evaluation.get("explanation"), equalTo(Map.of("type", "text")));
-        assertThat(getProperties(genAI, "agent"), equalTo(Map.of("version", KEYWORD_256)));
+        assertThat(evaluation.get("name"), equalTo(KEYWORD_256));
+        assertThat(getProperties(genAI, "agent"), equalTo(Map.of("version", KEYWORD_256, "name", KEYWORD_256)));
         assertThat(getProperties(genAI, "prompt"), equalTo(Map.of("version", KEYWORD_256)));
+        assertThat(getProperties(genAI, "conversation"), equalTo(Map.of("id", KEYWORD_256)));
 
         final Map<String, Object> opensearchEvaluation = getProperties(getProperties(getProperties(attributes, "opensearch"), "gen_ai"), "evaluation");
-        assertThat(opensearchEvaluation.keySet(), equalTo(Set.of("score", "evaluator")));
+        assertThat(opensearchEvaluation.keySet(), equalTo(Set.of("score", "evaluator", "level")));
         assertThat(getProperties(opensearchEvaluation, "score"), equalTo(Map.of(
                 "min", Map.of("type", "double"),
                 "max", Map.of("type", "double"),
-                "threshold", Map.of("type", "double"))));
+                "threshold", Map.of("type", "double"),
+                "direction", KEYWORD_256)));
         assertThat(getProperties(opensearchEvaluation, "evaluator"), equalTo(Map.of("version", KEYWORD_256)));
+        assertThat(opensearchEvaluation.get("level"), equalTo(KEYWORD_256));
 
         final Map<String, Object> test = getProperties(attributes, "test");
         assertThat(getProperties(test, "case"), equalTo(Map.of("id", KEYWORD_256)));
-        assertThat(getProperties(getProperties(test, "suite"), "run"), equalTo(Map.of("id", KEYWORD_256)));
+        assertThat(getProperties(test, "suite"), equalTo(Map.of(
+                "name", KEYWORD_256,
+                "run", Map.of("properties", Map.of("id", KEYWORD_256)))));
 
         final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) mappings.get("dynamic_templates");
         final Map<String, Object> stringAttributes = dynamicTemplates.stream()
@@ -459,6 +472,56 @@ public class IndexConfigurationTests {
                 .orElseThrow();
         assertThat(stringAttributes.get("path_match"), equalTo("attributes.*"));
         assertThat(stringAttributes.get("mapping"), equalTo(KEYWORD_256));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TemplateType.class)
+    public void testGenAIEvaluationMappings_mapEveryFieldTheAgentEvaluationsUiQueries(final TemplateType templateType) {
+        final Map<String, Object> indexTemplate = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.GENAI_EVALUATION_PLAIN.getValue())
+                .withTemplateType(templateType.getTypeName())
+                .build().getIndexTemplate();
+        final Map<String, Object> mappings = templateType == TemplateType.INDEX_TEMPLATE
+                ? (Map<String, Object>) ((Map<String, Object>) indexTemplate.get("template")).get("mappings")
+                : (Map<String, Object>) indexTemplate.get("mappings");
+        final Map<String, Object> fields = new HashMap<>();
+        flattenProperties("", (Map<String, Object>) mappings.get("properties"), fields);
+
+        // Every field the Agent Evaluations UI names in PPL is mapped from index creation, so a new
+        // rollover index or a fresh install can be queried before the first document carries it.
+        final Map<String, Object> uiQueriedFields = new HashMap<>();
+        uiQueriedFields.put("@timestamp", Map.of("type", "date_nanos"));
+        uiQueriedFields.put("eventName", EVENT_NAME_MAPPING);
+        uiQueriedFields.put("traceId", Map.of("type", "keyword", "ignore_above", 32));
+        uiQueriedFields.put("spanId", Map.of("type", "keyword", "ignore_above", 16));
+        uiQueriedFields.put("attributes.error.type", KEYWORD_256);
+        uiQueriedFields.put("attributes.gen_ai.evaluation.name", KEYWORD_256);
+        uiQueriedFields.put("attributes.gen_ai.evaluation.score.label", KEYWORD_256);
+        uiQueriedFields.put("attributes.gen_ai.evaluation.score.value", Map.of("type", "double"));
+        uiQueriedFields.put("attributes.gen_ai.evaluation.explanation", Map.of("type", "text"));
+        uiQueriedFields.put("attributes.gen_ai.agent.name", KEYWORD_256);
+        uiQueriedFields.put("attributes.gen_ai.agent.version", KEYWORD_256);
+        uiQueriedFields.put("attributes.gen_ai.conversation.id", KEYWORD_256);
+        uiQueriedFields.put("attributes.test.suite.name", KEYWORD_256);
+        uiQueriedFields.put("attributes.test.suite.run.id", KEYWORD_256);
+        uiQueriedFields.put("attributes.test.case.id", KEYWORD_256);
+        uiQueriedFields.put("attributes.opensearch.gen_ai.evaluation.level", KEYWORD_256);
+        uiQueriedFields.put("attributes.opensearch.gen_ai.evaluation.score.direction", KEYWORD_256);
+        for (final Map.Entry<String, Object> field : uiQueriedFields.entrySet()) {
+            assertThat(field.getKey(), fields.get(field.getKey()), equalTo(field.getValue()));
+        }
+    }
+
+    private void flattenProperties(final String prefix, final Map<String, Object> properties, final Map<String, Object> out) {
+        for (final Map.Entry<String, Object> entry : properties.entrySet()) {
+            final Map<String, Object> mapping = (Map<String, Object>) entry.getValue();
+            final String path = prefix + entry.getKey();
+            if (mapping.containsKey("properties")) {
+                flattenProperties(path + ".", (Map<String, Object>) mapping.get("properties"), out);
+            } else {
+                out.put(path, mapping);
+            }
+        }
     }
 
     private Map<String, Object> getProperties(final Map<String, Object> properties, final String field) {

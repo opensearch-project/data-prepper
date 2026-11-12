@@ -203,6 +203,15 @@ The mappings are those of the `log-analytics-plain` index template (`date_detect
 * `keyword` with `ignore_above` 256: `attributes.test.case.id`, `attributes.test.suite.run.id`, `attributes.gen_ai.agent.version`,
   `attributes.opensearch.gen_ai.evaluation.evaluator.version` and `attributes.gen_ai.prompt.version`, so that a numeric value such as
   version `2` does not map the field as `long`.
+* `keyword` with `ignore_above` 256, the mapping the `string_attributes` dynamic template already gives them: `attributes.gen_ai.evaluation.name`,
+  `attributes.gen_ai.evaluation.score.label`, `attributes.error.type`, `attributes.gen_ai.agent.name`, `attributes.gen_ai.conversation.id`,
+  `attributes.test.suite.name`, `attributes.opensearch.gen_ai.evaluation.level` and `attributes.opensearch.gen_ai.evaluation.score.direction`.
+* `text` with a `keyword` subfield (`ignore_above` 256): `eventName`, the mapping OpenSearch gives a top-level string dynamically.
+
+Every field the Agent Evaluations UI in OpenSearch Dashboards queries is mapped from index creation, so a new rollover index and a fresh
+install can be queried before the first document carries each field. A query that names a field no index maps fails, and a computed
+expression over a field that only some indices map does not count the documents of the other indices. The pinned mappings are the
+same as the dynamic ones, so indices created before and after the pins have the same field types.
 
 Every other attribute is mapped dynamically. A string attribute longer than 256 characters, such as an expected output, is kept in `_source`
 and returned in full, but is not indexed.
