@@ -47,6 +47,7 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelDecodingException;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -344,6 +345,24 @@ public class OTelLogsGrpcServiceTest {
         }
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+    }
+
+    @Test
+    public void export_DecodingException_responseObserverOnError() {
+        final OTelDecodingException testException = new OTelDecodingException("Unknown case");
+        when(mockOTelProtoDecoder.parseExportLogsServiceRequest(any(), any(Instant.class))).thenThrow(testException);
+        objectUnderTest = generateOTelLogsGrpcService(mockOTelProtoDecoder);
+
+        final BadRequestException actual;
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            actual = assertThrows(BadRequestException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
+
+        assertThat(actual.getCause(), equalTo(testException));
+        verifyNoInteractions(buffer);
+        verifyNoInteractions(responseObserver);
+        verifyNoInteractions(successRequestsCounter);
     }
 
     @Test
