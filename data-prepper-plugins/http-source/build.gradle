@@ -24,6 +24,10 @@ dependencies {
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:armeria-common').sourceSets.test.output
+    testImplementation libs.bouncycastle.bcprov
+    testImplementation libs.bouncycastle.bcpkix
+    testImplementation libs.hibernate.validator
 }
 
 jacocoTestCoverageVerification {
