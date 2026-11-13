@@ -31,6 +31,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.model.source.SourceCompleteness;
+import java.util.Optional;
+import static org.mockito.Mockito.never;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -87,6 +90,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.lenient;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.mockito.Mockito.reset;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.doNothing;
@@ -121,6 +128,8 @@ public class KafkaCustomConsumerTest {
 
     @Mock
     private KafkaTopicConsumerMetrics topicMetrics;
+    @Mock
+    private SourceCompleteness sourceCompleteness;
 
     @Mock
     private PipelineDescription  pipelineDescription;
@@ -876,6 +885,209 @@ public class KafkaCustomConsumerTest {
         verify(consumer, times(3)).sleepMillis(sleepCaptor.capture());
         List<Long> sleepValues = sleepCaptor.getAllValues();
         assertThat(sleepValues.get(2), is(KafkaCustomConsumer.INITIAL_BACKOFF.toMillis()));
+    }
+
+    @Test
+    public void completeness_is_reported_at_the_commit_position_when_acknowledgements_are_disabled() throws Exception {
+        final String topic = topicConfig.getName();
+        final long firstTimestamp = 1_700_000_000_000L;
+        final long lastTimestamp = firstTimestamp + 5_000L;
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, firstTimestamp, lastTimestamp));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+
+        verify(sourceCompleteness).update(new TopicPartition(topic, testPartition).toString(), Instant.ofEpochMilli(lastTimestamp));
+        verify(sourceCompleteness, never()).markCaughtUp(any());
+    }
+
+    @Test
+    public void completeness_is_reported_only_after_acknowledgement_when_acknowledgements_are_enabled() throws Exception {
+        final String topic = topicConfig.getName();
+        final long firstTimestamp = 1_700_000_000_000L;
+        final long lastTimestamp = firstTimestamp + 5_000L;
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, firstTimestamp, lastTimestamp));
+        consumer = createObjectUnderTest("plaintext", true);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+
+        verify(sourceCompleteness, never()).update(any(), any());
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        for (final Record<Event> record : bufferRecords.getKey()) {
+            record.getData().getEventHandle().release(true);
+        }
+        await().atMost(delayTime.plusMillis(5000))
+                .until(() -> consumer.getTopicMetrics().getNumberOfPositiveAcknowledgements().count() == 1.0);
+        consumer.processAcknowledgedOffsets();
+
+        verify(sourceCompleteness).update(new TopicPartition(topic, testPartition).toString(), Instant.ofEpochMilli(lastTimestamp));
+    }
+
+    @Test
+    public void revoked_partition_is_released_from_completeness() {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.onPartitionsRevoked(List.of(topicPartition));
+
+        verify(sourceCompleteness).release(topicPartition.toString());
+    }
+
+    @Test
+    public void owned_partition_with_zero_lag_and_nothing_pending_is_marked_caught_up() {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(topicMetrics.getPartitionLag(testPartition)).thenReturn(Optional.of(0.0));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.reportCaughtUpPartitions();
+
+        verify(sourceCompleteness).markCaughtUp(topicPartition.toString());
+    }
+
+    @Test
+    public void owned_partition_with_lag_is_not_marked_caught_up() {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(topicMetrics.getPartitionLag(testPartition)).thenReturn(Optional.of(12.0));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.reportCaughtUpPartitions();
+
+        verify(sourceCompleteness, never()).markCaughtUp(any());
+    }
+
+    @Test
+    public void partition_with_uncommitted_offsets_is_not_marked_caught_up_even_at_zero_lag() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(topicMetrics.getPartitionLag(testPartition)).thenReturn(Optional.of(0.0));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, 1_700_000_000_000L, 1_700_000_001_000L));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.consumeRecords();
+        consumer.reportCaughtUpPartitions();
+
+        verify(sourceCompleteness, never()).markCaughtUp(any());
+    }
+
+    @Test
+    public void completeness_is_a_no_op_when_not_configured() throws Exception {
+        final String topic = topicConfig.getName();
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, 1_700_000_000_000L, 1_700_000_001_000L));
+        consumer = createObjectUnderTest("plaintext", false);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+        consumer.reportCaughtUpPartitions();
+
+        assertEquals(1, consumer.getOffsetsToCommit().size());
+    }
+
+
+    @Test
+    public void new_data_clears_caught_up_state_so_stall_is_detected() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(topicMetrics.getPartitionLag(testPartition)).thenReturn(Optional.of(0.0));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, 1_700_000_000_000L, 1_700_000_001_000L));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        // First: mark caught up
+        consumer.reportCaughtUpPartitions();
+        verify(sourceCompleteness).markCaughtUp(topicPartition.toString());
+        reset(sourceCompleteness);
+
+        // Second: poll new data - should clear caught-up state
+        consumer.consumeRecords();
+
+        // Third: report again - should NOT mark caught up because there's uncommitted data
+        consumer.reportCaughtUpPartitions();
+        verify(sourceCompleteness, never()).markCaughtUp(any());
+    }
+
+
+    @Test
+    public void late_ack_after_revoke_does_not_corrupt_pending_count() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, 1_700_000_000_000L, 1_700_000_001_000L));
+        consumer = createObjectUnderTest("plaintext", true);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.consumeRecords();
+
+        // Revoke before ack arrives
+        consumer.onPartitionsRevoked(List.of(topicPartition));
+        verify(sourceCompleteness).release(topicPartition.toString());
+
+        // Late ack arrives - should not cause negative pending count
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        for (final Record<Event> record : bufferRecords.getKey()) {
+            record.getData().getEventHandle().release(true);
+        }
+        await().atMost(delayTime.plusMillis(5000))
+                .until(() -> consumer.getTopicMetrics().getNumberOfPositiveAcknowledgements().count() == 1.0);
+
+        // Re-assign partition and check it can be marked caught up correctly
+        when(topicMetrics.getPartitionLag(testPartition)).thenReturn(Optional.of(0.0));
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.reportCaughtUpPartitions();
+        // Should be able to mark caught up without negative pending count blocking it
+        verify(sourceCompleteness).markCaughtUp(topicPartition.toString());
+    }
+
+
+    @Test
+    public void future_timestamp_is_capped_at_current_time() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        final long futureTimestamp = System.currentTimeMillis() + 3_600_000L; // 1 hour in future
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(createPlainTextRecordsWithTimestamps(topic, 0L, futureTimestamp, futureTimestamp));
+        consumer = createObjectUnderTest("plaintext", false);
+        consumer.setSourceCompleteness(sourceCompleteness);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        final long beforePoll = System.currentTimeMillis();
+        consumer.consumeRecords();
+        final long afterPoll = System.currentTimeMillis();
+
+        // Capture the timestamp passed to update()
+        ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(sourceCompleteness).update(eq(topicPartition.toString()), instantCaptor.capture());
+        final long reportedTimestamp = instantCaptor.getValue().toEpochMilli();
+
+        // Should be capped at roughly current time, not the future timestamp
+        assertThat(reportedTimestamp, lessThanOrEqualTo(afterPoll));
+        assertThat(reportedTimestamp, greaterThanOrEqualTo(beforePoll - 1000)); // allow 1s tolerance
+    }
+
+    private ConsumerRecords createPlainTextRecordsWithTimestamps(final String topic, final long startOffset,
+                                                                 final long firstTimestamp, final long lastTimestamp) {
+        final Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        final ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, startOffset, firstTimestamp,
+                TimestampType.LOG_APPEND_TIME, testKey1.length(), testValue1.length(), testKey1, testValue1, new RecordHeaders(), Optional.empty());
+        final ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, startOffset + 1, lastTimestamp,
+                TimestampType.LOG_APPEND_TIME, testKey2.length(), testValue2.length(), testKey2, testValue2, new RecordHeaders(), Optional.empty());
+        records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1, record2));
+        return new ConsumerRecords(records);
     }
 
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {

@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.source.SourceCompleteness;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
@@ -48,6 +49,9 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         }
 
         typedArgumentsSuppliers.put(PluginMetrics.class, () -> PluginMetrics.fromPluginSetting(builder.pluginSetting));
+
+        typedArgumentsSuppliers.put(SourceCompleteness.class,
+                () -> new DefaultSourceCompleteness(PluginMetrics.fromPluginSetting(builder.pluginSetting)));
 
         if (builder.pipelineDescription != null) {
             typedArgumentsSuppliers.put(PipelineDescription.class, () -> builder.pipelineDescription);
