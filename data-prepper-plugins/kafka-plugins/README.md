@@ -9,9 +9,38 @@ For usage and configuration, please refer to the documentation [here] (https://o
 The `azure_federated` SASL/OAUTHBEARER mechanism additionally lets the Kafka source consume from an Azure
 Event Hubs Kafka endpoint using AWS to Azure Entra workload-identity federation, with no stored secret.
 
+When using Confluent Schema Registry, the Kafka source automatically detects and deserializes Avro, JSON Schema,
+and Protobuf values registered under the `<topic>-value` subject.
+Protobuf values follow the ProtoJSON field mapping, except that 64-bit integer fields are emitted as numbers rather than
+strings so that numeric conditions in processors work as expected.
+Unsigned 64-bit values (`uint64` and `fixed64`) above `9223372036854775807` are represented as `BigInteger` and are not
+supported by numeric expressions such as `/hash > 5`.
+
 ## Developer guide
 
 ### Integration tests
+
+#### Run Confluent Schema Registry integration tests
+
+These tests use real Kafka and Schema Registry containers with the plugin's Confluent 8.0.7 libraries and Kafka client 3.9.1.
+They cover Avro, JSON Schema, and Protobuf with latest and explicit schema-version lookups, event fields, numeric 64-bit
+values, Kafka keys, and committed offsets. No AWS or Confluent Cloud credentials are required.
+
+```bash
+export COMPOSE_PROJECT_NAME=kafka-schema-registry-it
+export CONFLUENT_VERSION=7.9.1
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/schema-registry up -d --wait --wait-timeout 180
+./gradlew :data-prepper-plugins:kafka-plugins:integrationTest --rerun \
+  -Dtests.kafka.bootstrap_servers=localhost:19092 \
+  -Dtests.kafka.schema_registry_url=http://localhost:18081 \
+  --tests '*ConfluentKafkaProducerConsumerWithSchemaRegistryIT'
+docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/schema-registry down --volumes
+```
+
+Use JDK 11 for Gradle; the Schema Registry server runs in its own container and does not share the test JVM.
+The credential-free `Kafka Schema Registry integration tests` workflow runs this suite against Confluent Platform
+7.9.1 and 8.0.7. To run the second configuration locally, stop the first fixture, set `CONFLUENT_VERSION=8.0.7`, and repeat.
+The fixture exposes only localhost ports 19092 and 18081. Tests create and delete uniquely named topics and schema subjects.
 
 #### Run Kafka
 
@@ -127,76 +156,12 @@ bin/kafka-server-start.sh config/server.properties
 ./gradlew    data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtests.kafka.topic_name=<topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*KafkaProducerConsumerIT*"
 ```
 
-9. Command to run confluent integration tests with schema registry
-Before issuing the command, make sure the `json-topic-name` and `avro-topic-name` are already created on the Confluent cloud and schemas are correctly set
+9. Command to run Confluent integration tests with an external Schema Registry
+
+The same Avro, JSON Schema, and Protobuf suite can use an external SASL/SSL Kafka cluster and authenticated Schema Registry.
+The supplied credentials must allow creating and deleting test topics and registering and deleting schema subjects.
+Tests provision their own schemas; preconfigured topics and schemas are no longer required.
 
 ```
-./gradlew      data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtests.kafka.schema_registry_url=<confluent-schema-reg-url> -Dtests.kafka.schema_registry_userinfo="<confluent-schema-reg-api-key>:<confluent-schema-reg-secret>" -Dtests.kafka.json_topic_name=<json-topic-name> -Dtests.kafka.avro_topic_name=<avro-topic-name> -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*ConfluentKafkaProducerConsumerWithSchemaRegistryIT*"
-```
-
-Schema for `json-topic-name-value` should be
-```
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
-  "properties": {
-    "id": {
-      "oneOf": [
-        {
-          "title": "Not included",
-          "type": "null"
-        },
-        {
-          "type": "integer"
-        }
-      ]
-    },
-    "name": {
-      "oneOf": [
-        {
-          "title": "Not included",
-          "type": "null"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "value": {
-      "oneOf": [
-        {
-          "title": "Not included",
-          "type": "null"
-        },
-        {
-          "type": "number"
-        }
-      ]
-    }
-  },
-  "title": "User Record",
-  "type": "object"
-}
-```
-
-Schema for `avro-topic-name-value` should be
-```
-{
-  "fields": [
-    {
-      "name": "message",
-      "type": "string"
-    },
-    {
-      "name": "ident",
-      "type": "int"
-    },
-    {
-      "name": "score",
-      "type": "double"
-    }
-  ],
-  "name": "sampleAvroRecord",
-  "type": "record"
-}
+./gradlew      data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<confluent-bootstrap-servers> -Dtests.kafka.schema_registry_url=<confluent-schema-reg-url> -Dtests.kafka.schema_registry_userinfo="<confluent-schema-reg-api-key>:<confluent-schema-reg-secret>" -Dtests.kafka.username=<confluent-cloud-api-key> -Dtests.kafka.password=<confluent-cloud-api-secret> --tests "*ConfluentKafkaProducerConsumerWithSchemaRegistryIT*"
 ```

@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +28,8 @@ import java.io.StringReader;
 import java.util.Map;
 import java.util.Properties;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mockStatic;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,7 +86,10 @@ public class SinkPropertyConfigurerTest {
         ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
         // Assertions.assertThrows(RuntimeException.class, () -> SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
         ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", schemaConfig);
-        Assertions.assertEquals("30000", SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig).getProperty("session.timeout.ms"));
+        final Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
+        assertThat(properties.getProperty("session.timeout.ms"), equalTo("30000"));
+        assertThat(properties.getProperty(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY),
+                equalTo(TopicNameStrategy.class.getName()));
 
     }
 
