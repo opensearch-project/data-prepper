@@ -20,6 +20,10 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -63,6 +67,13 @@ class SqsServiceTest {
         SqsService sqsService = new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, pluginMetrics, credentialsProvider) {};
         sqsService.start();
         sqsService.stop();
+    }
+
+    @Test
+    void getExecutorShutdownTimeoutNanos_leaves_the_acknowledgement_reserve_available() {
+        assertThat(SqsService.getExecutorShutdownTimeoutNanos()
+                        + TimeUnit.SECONDS.toNanos(SqsService.ACKNOWLEDGEMENT_SHUTDOWN_RESERVE),
+                equalTo(TimeUnit.SECONDS.toNanos(SqsService.SHUTDOWN_TIMEOUT)));
     }
 
 }

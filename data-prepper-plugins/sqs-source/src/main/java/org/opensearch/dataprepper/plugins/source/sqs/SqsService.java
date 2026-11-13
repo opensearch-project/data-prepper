@@ -29,15 +29,18 @@
  import java.util.HashMap;
  import java.util.List;
  import java.util.Map;
- import java.util.concurrent.TimeUnit;
+ import java.time.Duration;
+import java.util.concurrent.TimeUnit;
  import java.util.concurrent.Executors;
  import java.util.concurrent.ExecutorService;
  import java.util.stream.Collectors;
  import java.util.stream.IntStream;
- 
+
  public class SqsService {
      private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
      static final long SHUTDOWN_TIMEOUT = 30L;
+     // Reserve one third of the shutdown window to drain pending acknowledgement callbacks.
+     static final long ACKNOWLEDGEMENT_SHUTDOWN_RESERVE = SHUTDOWN_TIMEOUT / 3;
      private final SqsSourceConfig sqsSourceConfig;
      private final PluginMetrics pluginMetrics;
      private final AcknowledgementSetManager acknowledgementSetManager;
@@ -108,21 +111,38 @@
      public void stop() {
         allSqsUrlExecutorServices.forEach(ExecutorService::shutdown);
         sqsWorkers.forEach(SqsWorker::stop);
-        allSqsUrlExecutorServices.forEach(executorService -> {
-            try {
-                if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
-                    LOG.warn("Failed to terminate SqsWorkers");
+        final long executorShutdownDeadlineNanos = System.nanoTime() + getExecutorShutdownTimeoutNanos();
+        try {
+            for (final ExecutorService executorService : allSqsUrlExecutorServices) {
+                final long remainingNanos = Math.max(0, executorShutdownDeadlineNanos - System.nanoTime());
+                if (!executorService.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS)) {
+                    LOG.warn("Failed to terminate SqsWorkers before the shutdown timeout");
                     executorService.shutdownNow();
                 }
-            } catch (InterruptedException e) {
-                LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
             }
-        });
 
-        sqsClientMap.values().forEach(SqsClient::close);
+            final long acknowledgementShutdownDeadlineNanos = System.nanoTime()
+                    + TimeUnit.SECONDS.toNanos(ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
+            for (final SqsWorker sqsWorker : sqsWorkers) {
+                final long remainingNanos = Math.max(0, acknowledgementShutdownDeadlineNanos - System.nanoTime());
+                if (!sqsWorker.waitForPendingAcknowledgements(Duration.ofNanos(remainingNanos))) {
+                    LOG.warn("Timed out waiting for pending SQS acknowledgments. Their messages may be redelivered.");
+                }
+            }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted during shutdown, exiting uncleanly...", e);
+            allSqsUrlExecutorServices.forEach(ExecutorService::shutdownNow);
+            Thread.currentThread().interrupt();
+        } finally {
+            sqsWorkers.forEach(SqsWorker::markSqsClientClosed);
+            sqsClientMap.values().forEach(SqsClient::close);
+        }
+
         LOG.info("SqsService shutdown completed.");
+    }
+
+     static long getExecutorShutdownTimeoutNanos() {
+        return TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT - ACKNOWLEDGEMENT_SHUTDOWN_RESERVE);
     }
 
      private String extractRegionFromQueueUrl(final String queueUrl) {
@@ -131,4 +151,3 @@
      }
     
  }
- 

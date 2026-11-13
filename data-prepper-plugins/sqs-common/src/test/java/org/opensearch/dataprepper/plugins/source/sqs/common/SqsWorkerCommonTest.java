@@ -50,6 +50,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -139,11 +140,17 @@ class SqsWorkerCommonTest {
         sqsWorkerCommon.deleteSqsMessages(queueUrl, sqsClient, Collections.emptyList());
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
 
-        sqsWorkerCommon.stop();
         DeleteMessageBatchRequestEntry entry = DeleteMessageBatchRequestEntry.builder()
                 .id("id").receiptHandle("rh").build();
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class)))
+                .thenReturn(DeleteMessageBatchResponse.builder().build());
+        sqsWorkerCommon.stop();
         sqsWorkerCommon.deleteSqsMessages(queueUrl, sqsClient, Collections.singletonList(entry));
-        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+
+        sqsWorkerCommon.markSqsClientClosed();
+        sqsWorkerCommon.deleteSqsMessages(queueUrl, sqsClient, Collections.singletonList(entry));
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
