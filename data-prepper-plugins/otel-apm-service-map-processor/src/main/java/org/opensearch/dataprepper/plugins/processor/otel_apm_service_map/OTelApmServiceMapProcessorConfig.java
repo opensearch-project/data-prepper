@@ -16,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -59,6 +60,27 @@ public class OTelApmServiceMapProcessorConfig {
     @JsonPropertyDescription("Controls synthesis of typed database, external and messaging dependency nodes. " +
             "Enabled by default.")
     private DependencyNodesConfig dependencyNodes = new DependencyNodesConfig();
+
+    @JsonProperty("environment_source")
+    @JsonPropertyDescription("Precedence for the derived environment. 'platform_first' (default, today's behaviour) " +
+            "uses the AWS platform (e.g. eks:default) before deployment.environment.name / deployment.environment. " +
+            "'deployment_first' uses deployment.environment.name / deployment.environment first. Changing it changes " +
+            "the environment of services that set both, and so their node identity and RED metric labels.")
+    private EnvironmentSource environmentSource = EnvironmentSource.PLATFORM_FIRST;
+
+    @Valid
+    @JsonProperty("platform_detection")
+    @JsonPropertyDescription("Records the platform and infrastructure keys of each service on its service-map node. " +
+            "Disabled by default.")
+    private PlatformDetectionConfig platformDetection = new PlatformDetectionConfig();
+
+    public EnvironmentSource getEnvironmentSource() {
+        return environmentSource != null ? environmentSource : EnvironmentSource.PLATFORM_FIRST;
+    }
+
+    public PlatformDetectionConfig getPlatformDetection() {
+        return platformDetection != null ? platformDetection : new PlatformDetectionConfig();
+    }
 
     public Duration getWindowDuration() {
         return windowDuration;

@@ -28,6 +28,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
+import org.opensearch.dataprepper.plugins.otel.common.ServicePlatformDetector;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Node;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.NodeOperationDetail;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.Operation;
@@ -42,6 +44,7 @@ import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.i
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.MetricKey;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model.internal.MetricAggregationState;
 import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.utils.ApmServiceMapMetricsUtil;
+import org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.utils.MergingNodeDetailSet;
 import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,6 +113,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private static volatile MapDbProcessorState<Collection<SpanStateData>> previousWindow;
     private static volatile MapDbProcessorState<Collection<SpanStateData>> currentWindow;
     private static volatile MapDbProcessorState<Collection<SpanStateData>> nextWindow;
+    /** Platform keys per service, rotated with the windows; null when platform detection is disabled. */
+    private static volatile ServicePlatformRegistry platformRegistry;
     private static File dbPath;
     private static Clock clock;
 
@@ -120,6 +125,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
     private final MetricTimestampGranularity metricTimestampGranularity;
     private final EventFactory eventFactory;
     private final boolean dependencyNodesEnabled;
+    private final EnvironmentSource environmentSource;
+    private final PlatformDetectionConfig platformDetection;
     /** Null when dependency nodes are disabled, so spans skip dependency derivation entirely. */
     private final DependencyNamingPolicy dependencyNamingPolicy;
     private final int maxDependenciesPerService;
@@ -149,7 +156,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 config.getGroupByAttributes(),
                 config.getMetricTimestampSource(),
                 config.getMetricTimestampGranularity(),
-                config.getDependencyNodes());
+                config.getDependencyNodes(),
+                config.getEnvironmentSource(),
+                config.getPlatformDetection());
     }
 
     OTelApmServiceMapProcessor(final Duration windowDuration,
@@ -208,7 +217,27 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                final MetricTimestampSource metricTimestampSource,
                                final MetricTimestampGranularity metricTimestampGranularity,
                                final DependencyNodesConfig dependencyNodesConfig) {
+        this(windowDuration, databasePath, clock, processWorkers, eventFactory, pluginMetrics,
+                groupByAttributes, metricTimestampSource, metricTimestampGranularity, dependencyNodesConfig,
+                EnvironmentSource.PLATFORM_FIRST, new PlatformDetectionConfig());
+    }
+
+    OTelApmServiceMapProcessor(final Duration windowDuration,
+                               final File databasePath,
+                               final Clock clock,
+                               final int processWorkers,
+                               final EventFactory eventFactory,
+                               final PluginMetrics pluginMetrics,
+                               final List<String> groupByAttributes,
+                               final MetricTimestampSource metricTimestampSource,
+                               final MetricTimestampGranularity metricTimestampGranularity,
+                               final DependencyNodesConfig dependencyNodesConfig,
+                               final EnvironmentSource environmentSource,
+                               final PlatformDetectionConfig platformDetectionConfig) {
         super(pluginMetrics);
+
+        this.environmentSource = environmentSource != null ? environmentSource : EnvironmentSource.PLATFORM_FIRST;
+        this.platformDetection = platformDetectionConfig != null ? platformDetectionConfig : new PlatformDetectionConfig();
 
         this.hostId = HostContext.getStableHostId();
         this.groupByAttributes = groupByAttributes != null ? Collections.unmodifiableList(groupByAttributes) : Collections.emptyList();
@@ -234,6 +263,8 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
             currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
             previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + "-previous", processWorkers);
             nextWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + "-next", processWorkers);
+            platformRegistry = platformDetection.isEnabled()
+                    ? new ServicePlatformRegistry(platformDetection::maxValuesFor) : null;
 
             allThreadsCyclicBarrier = new CyclicBarrier(processWorkers);
         }
@@ -297,6 +328,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         currentWindow.delete();
         if (nextWindow != null) {
             nextWindow.delete();
+        }
+        if (platformRegistry != null) {
+            platformRegistry.clear();
         }
         processorsCreated.set(0);
         allThreadsCyclicBarrier.reset();
@@ -365,7 +399,12 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                         endTime,
                         groupByAttrs,
                         spanAttributes,
-                        dependencyNamingPolicy);
+                        dependencyNamingPolicy,
+                        environmentSource);
+                if (platformRegistry != null) {
+                    platformRegistry.record(spanStateData.getEnvironment(), serviceName,
+                            ServicePlatformDetector.detect(spanAttributes));
+                }
 
                 Collection<SpanStateData> spansForTrace = batchStateData.computeIfAbsent(Hex.decodeHex(traceId),
                         k -> new HashSet<>());
@@ -477,7 +516,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
         final Map<MetricKey, MetricAggregationState> sumStateByKey = new HashMap<>();
         final Map<MetricKey, MetricAggregationState> histogramStateByKey = new HashMap<>();
-        final Set<NodeOperationDetail> dedupedNodeDetails = new HashSet<>();
+        final Set<NodeOperationDetail> dedupedNodeDetails = new MergingNodeDetailSet(platformDetection::maxValuesFor);
 
         final Map<String, Collection<SpanStateData>> previousSpansByTraceId = buildSpansByTraceIdMap(previousWindow);
         final Map<String, Collection<SpanStateData>> currentSpansByTraceId = buildSpansByTraceIdMap(currentWindow);
@@ -535,6 +574,18 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
      * @param span The span to extract resource attributes from
      * @return Map of configured resource attributes or empty map if none configured/found
      */
+    /**
+     * Identity keyAttributes of the span's service, plus its platform keys as descriptive values when
+     * platform detection is enabled (they are not identity; see Node.KeyAttributes).
+     */
+    private Node.KeyAttributes serviceKeyAttributes(final SpanStateData span) {
+        final Node.KeyAttributes keyAttributes = new Node.KeyAttributes(span.getEnvironment(), span.getServiceName());
+        if (platformRegistry != null) {
+            platformRegistry.addTo(keyAttributes);
+        }
+        return keyAttributes;
+    }
+
     private Map<String, String> extractGroupByAttributes(final Span span) {
         if (groupByAttributes == null || groupByAttributes.isEmpty()) {
             return Collections.emptyMap();
@@ -611,6 +662,9 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         currentWindow = nextWindow;
         nextWindow = tempWindow;
         nextWindow.clear();
+        if (platformRegistry != null) {
+            platformRegistry.rotate();
+        }
 
         previousTimestamp = clock.instant();
         LOG.debug("Done rotating APM service map windows - All metrics cleared for new window");
@@ -923,7 +977,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                 if (decoration == null || decoration.getClientDescendants().isEmpty()) {
                     final Node sourceNode = new Node(
                             NODE_TYPE_SERVICE,
-                            new Node.KeyAttributes(serverSpan.getEnvironment(), serverSpan.getServiceName()),
+                            serviceKeyAttributes(serverSpan),
                             serverSpan.getGroupByAttributes()
                     );
 
@@ -992,7 +1046,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                 final Set<NodeOperationDetail> dedupedNodeDetails) {
         final Node sourceNode = new Node(
                 NODE_TYPE_SERVICE,
-                new Node.KeyAttributes(clientSpan.getEnvironment(), clientSpan.getServiceName()),
+                serviceKeyAttributes(clientSpan),
                 clientSpan.getGroupByAttributes()
         );
 
@@ -1037,7 +1091,7 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
                                    final Set<NodeOperationDetail> dedupedNodeDetails) {
         final Node serviceNode = new Node(
                 NODE_TYPE_SERVICE,
-                new Node.KeyAttributes(messagingSpan.getEnvironment(), messagingSpan.getServiceName()),
+                serviceKeyAttributes(messagingSpan),
                 messagingSpan.getGroupByAttributes()
         );
         final Node brokerNode = new Node(

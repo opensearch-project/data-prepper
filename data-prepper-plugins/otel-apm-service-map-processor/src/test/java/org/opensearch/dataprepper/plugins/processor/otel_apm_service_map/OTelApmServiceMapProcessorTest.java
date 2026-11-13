@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map;
 
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -2435,6 +2436,170 @@ class OTelApmServiceMapProcessorTest extends BaseDataPrepperPluginStandardTestSu
                 .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130))
                 .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130));
         return newProcessorCapturingEvents(dirPrefix, dependencyNodesConfig);
+    }
+
+    // ---- Platform detection and environment_source (RFC dashboards-observability#2940) ----
+
+    private OTelApmServiceMapProcessor newPlatformProcessor(final String dirPrefix,
+                                                            final EnvironmentSource environmentSource,
+                                                            final boolean detect) throws Exception {
+        when(clock.instant())
+                .thenReturn(testTime).thenReturn(testTime)
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(65)).thenReturn(testTime.plusSeconds(65))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130))
+                .thenReturn(testTime.plusSeconds(130)).thenReturn(testTime.plusSeconds(130));
+        stubEventFactoryToBuildJacksonEvents();
+        final File dir = new File(tempDir, dirPrefix + System.nanoTime());
+        dir.mkdirs();
+        final PlatformDetectionConfig detection = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue("{\"enabled\": " + detect + "}", PlatformDetectionConfig.class);
+        return new OTelApmServiceMapProcessor(Duration.ofSeconds(60), dir, clock, 1, eventFactory, pluginMetrics,
+                Collections.emptyList(), MetricTimestampSource.SPAN_END_TIME, MetricTimestampGranularity.SECONDS,
+                enabledDependencyNodes(), environmentSource, detection);
+    }
+
+    private static Span withResource(final Span span, final Map<String, Object> resourceAttributes) {
+        final Map<String, Object> resource = new HashMap<>();
+        resource.put("attributes", resourceAttributes);
+        when(span.getResource()).thenReturn(resource);
+        return span;
+    }
+
+    private static Map<String, Object> eksResource(final String cluster) {
+        final Map<String, Object> attrs = new HashMap<>();
+        attrs.put("cloud.platform", "aws_eks");
+        attrs.put("deployment.environment.name", "prod");
+        attrs.put("k8s.cluster.name", cluster);
+        attrs.put("k8s.namespace.name", "retail");
+        attrs.put("k8s.deployment.name", "pricing");
+        attrs.put("k8s.pod.name", "pricing-abc");
+        return attrs;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> sourceKeyAttributes(final Event event) {
+        return event.get("sourceNode/keyAttributes", Map.class);
+    }
+
+    @Test
+    void platformDetection_deploymentFirst_recordsPlatformKeysAndDeploymentEnvironment() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-on-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Span server = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-1"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(server)));
+
+            assertThat(events.size(), equalTo(1));
+            final Map<String, Object> keys = sourceKeyAttributes(events.get(0));
+            assertThat(keys.get("environment"), equalTo("prod"));
+            assertThat(keys.get("name"), equalTo("pricing"));
+            assertThat(keys.get("apm.platform"), equalTo(List.of("eks")));
+            assertThat(keys.get("k8s.cluster.name"), equalTo(List.of("prod-1")));
+            assertThat(keys.get("k8s.deployment.name"), equalTo(List.of("pricing")));
+            // Pods are never stored on the node.
+            assertThat(keys.containsKey("k8s.pod.name"), equalTo(false));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_defaults_leaveTheNodeUnchanged() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-off-", EnvironmentSource.PLATFORM_FIRST, false);
+        try {
+            final Span server = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-1"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(server)));
+
+            final Map<String, Object> keys = sourceKeyAttributes(events.get(0));
+            assertThat(keys, equalTo(Map.of("environment", "eks:default", "name", "pricing")));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_serviceInTwoClusters_keepsBothClustersOnOneNode() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-multi-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Span inA = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-a"));
+            final Span inB = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "2222222222222222", "", "bbbbbbbbbbbbbbbb"), eksResource("prod-b"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(inA), new Record<>(inB)));
+
+            assertThat(events.size(), equalTo(1));
+            assertThat(sourceKeyAttributes(events.get(0)).get("k8s.cluster.name"), equalTo(List.of("prod-a", "prod-b")));
+            // The joined scope keeps the real cluster / namespace / workload tuples.
+            assertThat(sourceKeyAttributes(events.get(0)).get("apm.k8s.scope"),
+                    equalTo(List.of("prod-a|retail|deployment|pricing", "prod-b|retail|deployment|pricing")));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_clientSpanToDatabase_recordsPlatformKeysOnTheSourceNode() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-client-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Map<String, Object> dbAttributes = new HashMap<>();
+            dbAttributes.put("db.system.name", "postgresql");
+            dbAttributes.put("server.address", "postgresql");
+            final Span dbClient = withResource(withAttributes(createMockSpanWithIds("pricing", "query", "SPAN_KIND_CLIENT",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), dbAttributes), eksResource("prod-1"));
+            final Event edge = flushServiceMapEvents(proc, List.of(new Record<>(dbClient))).stream()
+                    .filter(e -> "database".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a database edge"));
+
+            final Map<String, Object> keys = sourceKeyAttributes(edge);
+            assertThat(keys.get("apm.platform"), equalTo(List.of("eks")));
+            assertThat(keys.get("apm.k8s.scope"), equalTo(List.of("prod-1|retail|deployment|pricing")));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_producerSpan_recordsPlatformKeysOnTheServiceNode() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-producer-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            final Span producer = withResource(withAttributes(createMockSpanWithIds("pricing", "orders publish",
+                    "SPAN_KIND_PRODUCER", "1111111111111111", "", "aaaaaaaaaaaaaaaa"), kafkaAttributes("publish")),
+                    eksResource("prod-1"));
+            final Event edge = flushServiceMapEvents(proc, List.of(new Record<>(producer))).stream()
+                    .filter(e -> "messaging".equals(e.get("targetNode/type", String.class)))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a messaging edge"));
+
+            final Map<String, Object> keys = sourceKeyAttributes(edge);
+            assertThat(keys.get("name"), equalTo("pricing"));
+            assertThat(keys.get("k8s.cluster.name"), equalTo(List.of("prod-1")));
+            // The broker node is not a service and gets no platform keys.
+            assertThat(edge.get("targetNode/keyAttributes", Map.class).containsKey("apm.platform"), equalTo(false));
+        } finally {
+            proc.shutdown();
+        }
+    }
+
+    @Test
+    void platformDetection_keysFromAnotherTrace_areMergedOntoTheServiceNode() throws Exception {
+        final OTelApmServiceMapProcessor proc = newPlatformProcessor("platform-service-", EnvironmentSource.DEPLOYMENT_FIRST, true);
+        try {
+            // Only the server span in trace a forms a node; the internal span of the same service in
+            // trace b (another cluster) forms none, but its keys are still recorded for the service.
+            final Span server = withResource(createMockSpanWithIds("pricing", "GET /", "SPAN_KIND_SERVER",
+                    "1111111111111111", "", "aaaaaaaaaaaaaaaa"), eksResource("prod-a"));
+            final Span internal = withResource(createMockSpanWithIds("pricing", "work", "SPAN_KIND_INTERNAL",
+                    "2222222222222222", "", "bbbbbbbbbbbbbbbb"), eksResource("prod-b"));
+            final List<Event> events = flushServiceMapEvents(proc, List.of(new Record<>(server), new Record<>(internal)));
+
+            assertThat(events.size(), equalTo(1));
+            assertThat(sourceKeyAttributes(events.get(0)).get("k8s.cluster.name"), equalTo(List.of("prod-a", "prod-b")));
+        } finally {
+            proc.shutdown();
+        }
     }
 
     // Builds a processor whose emitted events are real JacksonEvents; the caller stubs the clock.

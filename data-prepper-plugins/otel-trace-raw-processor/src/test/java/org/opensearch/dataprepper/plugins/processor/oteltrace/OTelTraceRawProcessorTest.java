@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 
 import java.io.IOException;
@@ -348,6 +349,22 @@ class OTelTraceRawProcessorTest {
         assertThat("Generic span name HTTP derivation", attrs.get(OTelSpanDerivationUtil.DERIVED_OPERATION_ATTRIBUTE), equalTo("GET /api"));
         assertThat("Generic span fault", attrs.get(OTelSpanDerivationUtil.DERIVED_FAULT_ATTRIBUTE), equalTo("0"));
         assertThat("Generic span error", attrs.get(OTelSpanDerivationUtil.DERIVED_ERROR_ATTRIBUTE), equalTo("0"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"PLATFORM_FIRST, eks:default", "DEPLOYMENT_FIRST, production"})
+    void doExecute_environmentSource_setsTheDerivedEnvironmentPrecedence(final EnvironmentSource environmentSource,
+                                                                       final String expectedEnvironment) {
+        when(config.getEnvironmentSource()).thenReturn(environmentSource);
+        oTelTraceRawProcessor.shutdown();
+        oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
+
+        final Collection<Record<Span>> processed = oTelTraceRawProcessor.doExecute(Arrays.asList(
+                new Record<>(buildSpanFromJsonFile("eks-env-root-span.json")),
+                new Record<>(buildSpanFromJsonFile("eks-env-child-span.json"))));
+
+        assertThat(findServerSpan(processed).getAttributes().get(OTelSpanDerivationUtil.DERIVED_ENVIRONMENT_ATTRIBUTE),
+                equalTo(expectedEnvironment));
     }
 
     private Span findServerSpan(Collection<Record<Span>> records) {
