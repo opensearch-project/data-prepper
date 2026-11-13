@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
@@ -57,22 +58,28 @@ class DynamoDbClientWrapper {
     private static final int DEFAULT_QUERY_LIMIT = 1000;
     static final String SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX = "source-status";
     static final String TTL_ATTRIBUTE_NAME = "expirationTime";
+    static final String ACQUIRE_QUERY_PAGES = "acquireQueryPages";
+    static final String ACQUIRE_WRITE_FAILURES = "acquireWriteFailures";
+    private static final String STATUS_TAG = "status";
 
     static final String ITEM_DOES_NOT_EXIST_EXPRESSION = "attribute_not_exists(sourceIdentifier) or attribute_not_exists(sourcePartitionKey)";
     static final String ITEM_EXISTS_AND_HAS_LATEST_VERSION = "attribute_exists(sourceIdentifier) and attribute_exists(sourcePartitionKey) and version = :v";
 
     private final DynamoDbEnhancedClient dynamoDbEnhancedClient;
     private final DynamoDbClient dynamoDbClient;
+    private final PluginMetrics pluginMetrics;
     private DynamoDbTable<DynamoDbSourcePartitionItem> table;
 
-    private DynamoDbClientWrapper(final DynamoDbClient dynamoDbClient, final DynamoDbEnhancedClient dynamoDbEnhancedClient) {
+    private DynamoDbClientWrapper(final DynamoDbClient dynamoDbClient, final DynamoDbEnhancedClient dynamoDbEnhancedClient,
+                                  final PluginMetrics pluginMetrics) {
         this.dynamoDbClient = dynamoDbClient;
         this.dynamoDbEnhancedClient = dynamoDbEnhancedClient;
+        this.pluginMetrics = pluginMetrics;
     }
 
-    static DynamoDbClientWrapper create(final DynamoDbClient dynamoDbClient) {
+    static DynamoDbClientWrapper create(final DynamoDbClient dynamoDbClient, final PluginMetrics pluginMetrics) {
         final DynamoDbEnhancedClient dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
-        return new DynamoDbClientWrapper(dynamoDbClient, dynamoDbEnhancedClient);
+        return new DynamoDbClientWrapper(dynamoDbClient, dynamoDbEnhancedClient, pluginMetrics);
     }
 
     public void initializeTable(final DynamoStoreSettings dynamoStoreSettings,
@@ -239,6 +246,8 @@ class DynamoDbClientWrapper {
                                                                     final String sourceStatusCombinationKey,
                                                                     final int pageLimit,
                                                                     final Duration ttl) {
+        final long startNanos = System.nanoTime();
+        int lostRaces = 0;
         try {
 
             final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX);
@@ -251,6 +260,7 @@ class DynamoDbClientWrapper {
             final SdkIterable<Page<DynamoDbSourcePartitionItem>> availableItems = sourceStatusIndex.query(queryEnhancedRequest);
 
             for (final Page<DynamoDbSourcePartitionItem> page : availableItems) {
+                pluginMetrics.counterWithTags(ACQUIRE_QUERY_PAGES, STATUS_TAG, sourcePartitionStatus.name()).increment();
                 for (final DynamoDbSourcePartitionItem item : page.items()) {
 
                     // For ASSIGNED partitions we are sorting based on partitionOwnershipTimeout, so if any item has partitionOwnershipTimeout
@@ -280,8 +290,12 @@ class DynamoDbClientWrapper {
 
                     final boolean acquired = this.tryAcquirePartitionItem(item);
                     if (acquired) {
+                        LOG.debug("Acquired {} partition {} after {} lost races in {} ms", sourcePartitionStatus, item.getSourcePartitionKey(),
+                                lostRaces, (System.nanoTime() - startNanos) / 1_000_000);
                         return Optional.of(item);
                     }
+                    lostRaces++;
+                    pluginMetrics.counterWithTags(ACQUIRE_WRITE_FAILURES, STATUS_TAG, sourcePartitionStatus.name()).increment();
                 }
             }
         } catch (final Exception e) {

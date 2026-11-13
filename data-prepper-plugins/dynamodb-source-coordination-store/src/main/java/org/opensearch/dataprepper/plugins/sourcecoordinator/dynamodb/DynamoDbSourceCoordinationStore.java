@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -52,8 +53,9 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         final DynamoDbClient dynamoDbClient = dynamoDbClientFactory.provideDynamoDbClient(
                 dynamoStoreSettings.getRegion(),
                 dynamoStoreSettings.getStsRoleArn(),
-                dynamoStoreSettings.getStsExternalId());
-        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoDbClient);
+                dynamoStoreSettings.getStsExternalId(),
+                new MicrometerMetricPublisher(pluginMetrics));
+        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoDbClient, pluginMetrics);
     }
 
     @Override
