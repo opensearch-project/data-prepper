@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -36,6 +38,64 @@ class S3SinkConfigTest {
     @Test
     void default_max_upload_retries_test() {
         assertThat(new S3SinkConfig().getMaxUploadRetries(), equalTo(MAX_UPLOAD_RETRIES));
+    }
+
+    @Test
+    void default_endpoint_test() {
+        assertNull(new S3SinkConfig().getEndpoint());
+    }
+
+    @Test
+    void default_force_path_style_test() {
+        assertThat(new S3SinkConfig().getForcePathStyle(), equalTo(false));
+    }
+
+    @Test
+    void default_legacy_md5_checksum_test() {
+        assertThat(new S3SinkConfig().getLegacyMd5Checksum(), equalTo(false));
+    }
+
+    @Test
+    void get_endpoint_test() throws NoSuchFieldException, IllegalAccessException {
+        final String endpoint = "http://localhost:9000";
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.getEndpoint(), equalTo(endpoint));
+    }
+
+    @Test
+    void get_force_path_style_test() throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "forcePathStyle", true);
+        assertThat(objectUnderTest.getForcePathStyle(), equalTo(true));
+    }
+
+    @Test
+    void get_legacy_md5_checksum_test() throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "legacyMd5Checksum", true);
+        assertThat(objectUnderTest.getLegacyMd5Checksum(), equalTo(true));
+    }
+
+    @Test
+    void isValidEndpoint_returns_true_when_endpoint_is_not_set() {
+        assertThat(new S3SinkConfig().isValidEndpoint(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://localhost:9000", "https://minio.example.com", "https://minio.example.com:9000/path"})
+    void isValidEndpoint_returns_true_for_http_and_https_urls(final String endpoint) throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.isValidEndpoint(), equalTo(true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"minio:9000", "localhost:9000", "ftp://minio.example.com", "http://", "not a url"})
+    void isValidEndpoint_returns_false_for_invalid_urls(final String endpoint) throws NoSuchFieldException, IllegalAccessException {
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "endpoint", endpoint);
+        assertThat(objectUnderTest.isValidEndpoint(), equalTo(false));
     }
 
     @Test
