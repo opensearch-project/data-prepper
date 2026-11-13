@@ -113,7 +113,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   @Override
-  public void doInitialize() {
+  public synchronized void doInitialize() {
+    if (initialized) {
+        return;
+    }
     try {
         doInitializeInternal();
     } catch (IOException e) {

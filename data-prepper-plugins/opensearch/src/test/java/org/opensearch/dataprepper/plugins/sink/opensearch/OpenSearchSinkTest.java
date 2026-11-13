@@ -40,13 +40,19 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -206,6 +212,60 @@ public class OpenSearchSinkTest {
             objectUnderTest.initialize();
         }
         verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void doInitialize_when_already_initialized_does_not_expose_uninitialized_ingester_to_doOutput() throws IOException {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        final AtomicReference<Throwable> outputFailure = new AtomicReference<>();
+        when(indexManager.isIndexAlias(anyString())).thenReturn(false).thenAnswer(invocation -> {
+            try {
+                objectUnderTest.doOutput(Collections.emptyList());
+            } catch (final Throwable e) {
+                outputFailure.set(e);
+            }
+            return false;
+        });
+
+        objectUnderTest.doInitialize();
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+
+        objectUnderTest.doInitialize();
+
+        assertThat(outputFailure.get(), nullValue());
+    }
+
+    @Test
+    void doInitialize_when_called_concurrently_runs_initialization_once() throws Exception {
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        final CountDownLatch firstInitializationStarted = new CountDownLatch(1);
+        final CountDownLatch firstInitializationMayFinish = new CountDownLatch(1);
+        when(indexManager.isIndexAlias(anyString())).thenAnswer(invocation -> {
+            firstInitializationStarted.countDown();
+            firstInitializationMayFinish.await();
+            return false;
+        });
+        final Thread firstCaller = new Thread(objectUnderTest::doInitialize);
+        final Thread secondCaller = new Thread(objectUnderTest::doInitialize);
+
+        try {
+            firstCaller.start();
+            assertThat(firstInitializationStarted.await(10, TimeUnit.SECONDS), equalTo(true));
+            secondCaller.start();
+            await().atMost(Duration.ofSeconds(10))
+                    .untilAsserted(() -> assertThat(secondCaller.getState(), equalTo(Thread.State.BLOCKED)));
+        } finally {
+            firstInitializationMayFinish.countDown();
+        }
+        firstCaller.join(10_000);
+        secondCaller.join(10_000);
+
+        assertThat(objectUnderTest.isReady(), equalTo(true));
+        verify(pluginConfigObservable, times(1)).addPluginConfigObserver(any());
     }
 
     @Test
