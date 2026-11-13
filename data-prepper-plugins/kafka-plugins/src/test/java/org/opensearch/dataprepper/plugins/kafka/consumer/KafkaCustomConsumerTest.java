@@ -75,6 +75,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -243,6 +244,20 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
+    public void testGetRecordTimeStamp_does_not_reuse_earlier_timestamp_for_future_record() {
+        consumer = createObjectUnderTest("json", false);
+        ConsumerRecord<String, Object> validRecord = mock(ConsumerRecord.class);
+        ConsumerRecord<String, Object> futureRecord = mock(ConsumerRecord.class);
+        when(validRecord.timestamp()).thenReturn(1000L);
+        when(validRecord.partition()).thenReturn(1);
+        when(futureRecord.timestamp()).thenReturn(2001L);
+        when(futureRecord.partition()).thenReturn(1);
+
+        assertThat(consumer.getRecordTimeStamp(validRecord, 1000L), equalTo(1000L));
+        assertThat(consumer.getRecordTimeStamp(futureRecord, 2000L), equalTo(2000L));
+    }
+
+    @Test
     public void testGetRecordTimeStamp() {
         ConsumerRecord<String, Object> consumerRecord1 = mock(ConsumerRecord.class);
         ConsumerRecord<String, Object> consumerRecord2 = mock(ConsumerRecord.class);
@@ -256,7 +271,7 @@ public class KafkaCustomConsumerTest {
         long timestamp2 = nowMs + 5;
         when(consumerRecord2.timestamp()).thenReturn(timestamp2);
         when(consumerRecord2.partition()).thenReturn(1);
-        assertThat(consumer.getRecordTimeStamp(consumerRecord2, nowMs), equalTo(timestamp1));
+        assertThat(consumer.getRecordTimeStamp(consumerRecord2, nowMs), equalTo(nowMs));
         long timestamp3 = nowMs + 10;
         when(consumerRecord3.timestamp()).thenReturn(timestamp3);
         when(consumerRecord3.partition()).thenReturn(2);
@@ -391,6 +406,25 @@ public class KafkaCustomConsumerTest {
         consumer.closeConsumer();
 
         verify(topicMetrics).deregister(kafkaConsumer);
+    }
+
+    @Test
+    public void testFutureRecordKeepsKafkaTimestampAndClampsOriginationTime() throws Exception {
+        final String topic = topicConfig.getName();
+        final long futureTimestamp = Instant.now().plusSeconds(3600).toEpochMilli();
+        final ConsumerRecord<String, String> futureRecord = new ConsumerRecord<>(topic, testPartition, 0L, futureTimestamp,
+                TimestampType.CREATE_TIME, 0L, 0, 0, testKey1, testValue1, new RecordHeaders());
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(
+                new ConsumerRecords(Map.of(new TopicPartition(topic, testPartition), List.of(futureRecord))));
+        consumer = createObjectUnderTest("plaintext", false);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+
+        final Event event = new ArrayList<>(buffer.read(1000).getKey()).get(0).getData();
+        assertThat(event.getMetadata().getAttributes().get("kafka_timestamp"), equalTo(futureTimestamp));
+        assertThat(event.getMetadata().getExternalOriginationTime().toEpochMilli(), lessThan(futureTimestamp));
+        assertThat(event.getEventHandle().getExternalOriginationTime().toEpochMilli(), lessThan(futureTimestamp));
     }
 
     @Test
