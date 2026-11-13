@@ -85,14 +85,28 @@ public class LambdaCommonHandler {
         return batchedBuffers;
     }
 
+    /**
+     * Splits the records into request buffers by the batch thresholds, without invoking the function.
+     *
+     * @param records the records to send
+     * @param config the Lambda configuration with the batch thresholds
+     * @param outputCodecContext the codec context for the request payloads
+     * @return the buffers, one per request
+     */
+    public static List<Buffer> createBuffers(
+            final Collection<Record<Event>> records,
+            final LambdaCommonConfig config,
+            final OutputCodecContext outputCodecContext) {
+        return createBufferBatches(records, config.getKeys(), config.getBatchOptions(), outputCodecContext);
+    }
+
     public static Map<Buffer, CompletableFuture<InvokeResponse>> sendRecords(
             Collection<Record<Event>> records,
             LambdaCommonConfig config,
             LambdaAsyncClient lambdaAsyncClient,
             final OutputCodecContext outputCodecContext) {
 
-        List<Buffer> batchedBuffers = createBufferBatches(records, config.getKeys(), config.getBatchOptions(),
-                outputCodecContext);
+        List<Buffer> batchedBuffers = createBuffers(records, config, outputCodecContext);
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = invokeLambdaAndGetFutureMap(config, lambdaAsyncClient, batchedBuffers);
         return bufferToFutureMap;

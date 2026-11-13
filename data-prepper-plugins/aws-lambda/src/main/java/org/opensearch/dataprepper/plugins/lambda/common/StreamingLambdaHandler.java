@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
+import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamCompleteEvent;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseHandler;
 import software.amazon.awssdk.services.lambda.model.ResponseStreamingInvocationType;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Handles actual streaming Lambda invocations using AWS SDK streaming API
@@ -63,6 +65,9 @@ public class StreamingLambdaHandler {
 
         CompletableFuture<List<Record<Event>>> resultFuture = new CompletableFuture<>();
         ByteArrayOutputStream responseStream = new ByteArrayOutputStream();
+        // A function error on a streamed invocation arrives as an error code on the InvokeComplete event,
+        // not as an exception, so it has to be checked before the response is treated as a success.
+        AtomicReference<InvokeWithResponseStreamCompleteEvent> invokeComplete = new AtomicReference<>();
 
         // Get the InvokeRequest from buffer and extract payload
         InvokeRequest invokeRequest = inputBuffer.getRequestPayload(functionName, "RequestResponse");
@@ -98,13 +103,22 @@ public class StreamingLambdaHandler {
                                 LOG.error("Error writing chunk to response stream", e);
                                 resultFuture.completeExceptionally(e);
                             }
+                        } else if (event instanceof InvokeWithResponseStreamCompleteEvent) {
+                            // Checked in onComplete()
+                            invokeComplete.set((InvokeWithResponseStreamCompleteEvent) event);
                         } else {
-                            // Other events (e.g., InvokeComplete) are handled by onComplete()
                             LOG.debug("Ignoring non-payload Lambda stream event: {}", event.getClass().getSimpleName());
                         }
                     });
                 })
                 .onComplete(() -> {
+                    InvokeWithResponseStreamCompleteEvent complete = invokeComplete.get();
+                    if (complete != null && complete.errorCode() != null) {
+                        // StreamingLambdaInvoker logs this when it fails the events.
+                        resultFuture.completeExceptionally(new StreamingLambdaInvocationException(
+                                complete.errorCode(), complete.errorDetails()));
+                        return;
+                    }
                     try {
                         byte[] completeResponse = responseStream.toByteArray();
                         LOG.debug("Streaming response complete. Total size: {} bytes", completeResponse.length);

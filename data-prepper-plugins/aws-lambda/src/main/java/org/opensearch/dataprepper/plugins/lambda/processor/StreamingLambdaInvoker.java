@@ -16,20 +16,20 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.StreamingLambdaHandler;
+import org.opensearch.dataprepper.plugins.lambda.common.StreamingLambdaInvocationException;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException;
 
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -65,13 +65,12 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
 
     @Override
     public Collection<Record<Event>> invoke(List<Record<Event>> recordsToLambda, List<Record<Event>> resultRecords) {
-        // Create buffers for streaming
-        Map<Buffer, CompletableFuture<InvokeResponse>> bufferMap;
+        // Build the request buffers only. The streaming call below is the only invocation.
+        List<Buffer> buffers;
         try {
-            bufferMap = LambdaCommonHandler.sendRecords(
-                    recordsToLambda, 
-                    processor.lambdaProcessorConfig, 
-                    processor.lambdaAsyncClient, 
+            buffers = LambdaCommonHandler.createBuffers(
+                    recordsToLambda,
+                    processor.lambdaProcessorConfig,
                     new OutputCodecContext());
         } catch (Exception e) {
             LOG.error(NOISY, "Error creating buffers for streaming", e);
@@ -82,9 +81,8 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
         }
         
         // Process each buffer with streaming
-        for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferMap.entrySet()) {
-            Buffer inputBuffer = entry.getKey();
-            
+        for (Buffer inputBuffer : buffers) {
+
             try {
                 CompletableFuture<List<Record<Event>>> streamingFuture = streamingHandler.invokeWithStreaming(
                         inputBuffer
@@ -105,33 +103,43 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
                 processor.numberOfRequestsSuccessCounter.increment();
                 processor.lambdaResponseRecordsCounter.increment(streamingRecords.size());
                 
-            } catch (ResourceNotFoundException e) {
-                // Expected exception: Lambda function not found
-                LOG.error(NOISY, "Lambda function not found: {}", e.getMessage());
-                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                processor.numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
-            } catch (LambdaException e) {
-                // Expected exception: Access denied, invalid parameters, throttling, etc.
-                LOG.error(NOISY, "Lambda invocation failed: {}", e.getMessage());
-                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                processor.numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
-            } catch (AwsServiceException e) {
-                // Expected exception: General AWS service errors (credentials, permissions, etc.)
-                LOG.error(NOISY, "AWS service error during Lambda invocation: {}", e.getMessage());
-                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                processor.numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
-            } catch (Exception e) {
-                // Unexpected exception: Coding issues, null pointers, parsing errors, etc.
-                LOG.error(NOISY, "Unexpected error processing streaming Lambda response.", e);
-                processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                processor.numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
+            } catch (final ExecutionException e) {
+                failBuffer(e.getCause() != null ? e.getCause() : e, inputBuffer, resultRecords);
+            } catch (final InterruptedException e) {
+                // Keep the interrupt so the pipeline can shut down
+                Thread.currentThread().interrupt();
+                failBuffer(e, inputBuffer, resultRecords);
+            } catch (final Exception e) {
+                failBuffer(e, inputBuffer, resultRecords);
             }
         }
         
         return resultRecords;
+    }
+
+    /**
+     * Logs why a buffer's invocation failed, counts it and returns its records tagged as failed. The streaming call
+     * reports failures through its future, so the cause arrives wrapped in an ExecutionException.
+     */
+    private void failBuffer(final Throwable failure, final Buffer inputBuffer, final List<Record<Event>> resultRecords) {
+        if (failure instanceof StreamingLambdaInvocationException) {
+            // Expected exception: the function failed, for example by timing out
+            LOG.error(NOISY, "Lambda function error during streaming invocation: {}", failure.getMessage());
+        } else if (failure instanceof ResourceNotFoundException) {
+            // Expected exception: Lambda function not found
+            LOG.error(NOISY, "Lambda function not found: {}", failure.getMessage());
+        } else if (failure instanceof LambdaException) {
+            // Expected exception: Access denied, invalid parameters, throttling, etc.
+            LOG.error(NOISY, "Lambda invocation failed: {}", failure.getMessage());
+        } else if (failure instanceof AwsServiceException) {
+            // Expected exception: General AWS service errors (credentials, permissions, etc.)
+            LOG.error(NOISY, "AWS service error during Lambda invocation: {}", failure.getMessage());
+        } else {
+            // Unexpected exception: Coding issues, null pointers, parsing errors, etc.
+            LOG.error(NOISY, "Unexpected error processing streaming Lambda response.", failure);
+        }
+        processor.numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+        processor.numberOfRequestsFailedCounter.increment();
+        resultRecords.addAll(processor.addFailureTags(inputBuffer.getRecords()));
     }
 }

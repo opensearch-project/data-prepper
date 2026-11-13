@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -72,6 +74,20 @@ class LambdaCommonHandlerTest {
         LambdaCommonHandler.waitForFutures(futureList);
 
         assertFalse(futureList.isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    void testCreateBuffers_SplitsRecordsByBatchSize(String configFilePath) {
+        LambdaProcessorConfig lambdaConfiguration = createLambdaConfigurationFromYaml(configFilePath);
+        int recordCount = 25;
+        List<Record<Event>> records = getSampleEventRecords(recordCount);
+
+        List<Buffer> buffers = LambdaCommonHandler.createBuffers(records, lambdaConfiguration, outputCodecContext);
+
+        int batchSize = lambdaConfiguration.getBatchOptions().getThresholdOptions().getEventCount();
+        assertThat(buffers.size(), equalTo((int) Math.ceil((1.0 * recordCount) / batchSize)));
+        assertThat(buffers.stream().mapToInt(Buffer::getEventCount).sum(), equalTo(recordCount));
     }
 
     @ParameterizedTest
