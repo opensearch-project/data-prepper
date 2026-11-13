@@ -20,6 +20,8 @@ import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
+import org.opensearch.dataprepper.SourceCircuitBreaker;
+import org.opensearch.dataprepper.CircuitBreakerDecoratingHttpService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
@@ -27,6 +29,7 @@ import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -77,6 +80,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final CertificateProviderFactory certificateProviderFactory;
     private final ByteDecoder byteDecoder;
     private final PluginFactory pluginFactory;
+    private final SourceCircuitBreaker sourceCircuitBreaker;
     final Counter requestsTooLargeCounter;
     private Server server;
 
@@ -84,19 +88,44 @@ public class OTelLogsSource implements Source<Record<Object>> {
     public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
+                          final PipelineDescription pipelineDescription,
+                          final CircuitBreaker circuitBreaker) {
+        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig),
+                pipelineDescription, circuitBreaker);
+    }
+
+    // Legacy public constructor kept for backwards compatibility with existing unit tests.
+    public OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
+                          final PluginMetrics pluginMetrics,
+                          final PluginFactory pluginFactory,
                           final PipelineDescription pipelineDescription) {
-        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig), pipelineDescription);
+        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelLogsSourceConfig),
+                pipelineDescription, null);
     }
 
     // accessible only in the same package for unit test
-    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-                   final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
+    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
+                   final PluginMetrics pluginMetrics,
+                   final PluginFactory pluginFactory,
+                   final CertificateProviderFactory certificateProviderFactory,
+                   final PipelineDescription pipelineDescription) {
+        this(oTelLogsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription, null);
+    }
+
+    // accessible only in the same package for unit test - allows passing a CircuitBreaker
+    OTelLogsSource(final OTelLogsSourceConfig oTelLogsSourceConfig,
+                   final PluginMetrics pluginMetrics,
+                   final PluginFactory pluginFactory,
+                   final CertificateProviderFactory certificateProviderFactory,
+                   final PipelineDescription pipelineDescription,
+                   final CircuitBreaker circuitBreaker) {
         oTelLogsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelLogsSourceConfig = oTelLogsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.pluginFactory = pluginFactory;
+        this.sourceCircuitBreaker = new SourceCircuitBreaker(circuitBreaker);
         this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOutputFormat());
         this.requestsTooLargeCounter = pluginMetrics.counter(HttpExceptionHandler.REQUESTS_TOO_LARGE);
     }
@@ -133,6 +162,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     }
 
     private Server createServer(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+        final CircuitBreaker circuitBreaker = sourceCircuitBreaker.forBuffer(buffer);
         serverBuilder.disableServerHeader();
         if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
@@ -153,6 +183,12 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 requestsTooLargeCounter.increment();
             }
         }, true);
+
+        // Server-level decorator: it wraps every service on the builder, so it gates both the
+        // gRPC LogsService and the optional HTTP service. Armeria runs server-level decorators
+        // in reverse order of registration, so the authentication decorator registered below
+        // runs before it; both run before decompression and the service handlers.
+        configureCircuitBreaker(serverBuilder, circuitBreaker);
 
         final GrpcAuthenticationProvider authProvider = createGrpcAuthenticationProvider(pluginFactory);
         authProvider.getHttpAuthenticationService().ifPresent(serverBuilder::decorator);
@@ -179,7 +215,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
             serverBuilder.service(HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        configureGrpcService(serverBuilder, buffer, authProvider);
+        configureGrpcService(serverBuilder, buffer, authProvider, circuitBreaker);
         if (oTelLogsSourceConfig.getHttpPath() != null) {
             configureHttpService(serverBuilder, buffer, executor.getQueue());
         }
@@ -211,8 +247,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
         }
     }
 
-    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer,
-            GrpcAuthenticationProvider authProvider) {
+    private void configureGrpcService(final ServerBuilder serverBuilder,
+                                      final Buffer<Record<Object>> buffer,
+                                      final GrpcAuthenticationProvider authProvider,
+                                      final CircuitBreaker circuitBreaker) {
         LOG.info("Configuring gRPC service");
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -224,6 +262,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                 createOtelProtoDecoder(),
                 buffer,
+                circuitBreaker,
                 pluginMetrics,
                 null
         );
@@ -268,6 +307,16 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
     private OTelProtoCodec.OTelProtoDecoder createOtelProtoDecoder() {
         return oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
+    }
+
+    private void configureCircuitBreaker(final ServerBuilder serverBuilder,
+                                         final CircuitBreaker circuitBreaker) {
+        final RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
+                ? oTelLogsSourceConfig.getRetryInfo()
+                : new RetryInfoConfig();
+        final Counter requestsRejectedCounter = pluginMetrics.counter(CircuitBreakerDecoratingHttpService.REQUESTS_REJECTED);
+        serverBuilder.decorator(CircuitBreakerDecoratingHttpService.newDecorator(
+                circuitBreaker, retryInfo.getMinDelay(), retryInfo.getMaxDelay(), requestsRejectedCounter::increment));
     }
 
     @Override

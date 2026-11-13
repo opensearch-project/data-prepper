@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -27,7 +28,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
@@ -40,10 +43,9 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     public static final String REQUEST_PARSING_DURATION = "requestParsingDuration";
 
     private final int bufferWriteTimeoutInMillis;
-
     private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
-
     private final Buffer<Record<Object>> buffer;
+    private final CircuitBreaker circuitBreaker;
 
     private final Counter requestsReceivedCounter;
 
@@ -55,10 +57,12 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                final Buffer<Record<Object>> buffer,
+                               final CircuitBreaker circuitBreaker,
                                final PluginMetrics pluginMetrics,
                                final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
 
         if (metricsPrefix != null) {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
@@ -66,7 +70,6 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
             payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
             requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
             requestParsingDuration = pluginMetrics.timer(REQUEST_PARSING_DURATION, metricsPrefix);
-
         } else {
             requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
             successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
@@ -95,6 +98,10 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     }
 
     private void processRequest(final ExportLogsServiceRequest request, final StreamObserver<ExportLogsServiceResponse> responseObserver) {
+        if (circuitBreaker.isOpen()) {
+            throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
+        }
+
         final List<OpenTelemetryLog> logs;
 
         try {

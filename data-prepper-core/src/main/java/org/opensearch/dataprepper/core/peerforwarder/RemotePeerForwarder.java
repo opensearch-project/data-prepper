@@ -48,6 +48,8 @@ class RemotePeerForwarder implements PeerForwarder {
     static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
     static final String RECORDS_SUCCESSFULLY_FORWARDED = "recordsSuccessfullyForwarded";
     static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
+    static final String RECORDS_REJECTED_BY_PEER = "recordsRejectedByPeer";
+    static final String RECORDS_DROPPED_AFTER_FAILED_FORWARDING = "recordsDroppedAfterFailedForwarding";
     static final String RECORDS_MISSING_IDENTIFICATION_KEYS = "recordsMissingIdentificationKeys";
     static final String REQUESTS_FAILED = "requestsFailed";
     static final String REQUESTS_SUCCESSFUL = "requestsSuccessful";
@@ -66,6 +68,8 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Counter recordsToBeForwardedCounter;
     private final Counter recordsSuccessfullyForwardedCounter;
     private final Counter recordsFailedForwardingCounter;
+    private final Counter recordsRejectedByPeerCounter;
+    private final Counter recordsDroppedAfterFailedForwardingCounter;
     private final Counter recordsMissingIdentificationKeys;
     private final Counter requestsFailedCounter;
     private final Counter requestsSuccessfulCounter;
@@ -109,6 +113,8 @@ class RemotePeerForwarder implements PeerForwarder {
         recordsToBeForwardedCounter = pluginMetrics.counter(RECORDS_TO_BE_FORWARDED);
         recordsSuccessfullyForwardedCounter = pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED);
         recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
+        recordsRejectedByPeerCounter = pluginMetrics.counter(RECORDS_REJECTED_BY_PEER);
+        recordsDroppedAfterFailedForwardingCounter = pluginMetrics.counter(RECORDS_DROPPED_AFTER_FAILED_FORWARDING);
         recordsMissingIdentificationKeys = pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS);
         requestsFailedCounter = pluginMetrics.counter(REQUESTS_FAILED);
         requestsSuccessfulCounter = pluginMetrics.counter(REQUESTS_SUCCESSFUL);
@@ -308,10 +314,15 @@ class RemotePeerForwarder implements PeerForwarder {
 
     void processFailedRequestsLocally(final AggregatedHttpResponse httpResponse, final Collection<Record<Event>> records) {
         if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
+            if (httpResponse != null && httpResponse.status() == HttpStatus.TOO_MANY_REQUESTS) {
+                // The peer's circuit breaker is open. The records are processed on this node instead.
+                recordsRejectedByPeerCounter.increment(records.size());
+            }
             try {
                 peerForwarderReceiveBuffer.writeAll(records, failedForwardingRequestLocalWriteTimeout);
                 recordsActuallyProcessedLocallyCounter.increment(records.size());
             } catch (final Exception e) {
+                recordsDroppedAfterFailedForwardingCounter.increment(records.size());
                 LOG.error("Unable to write failed records to local peer forwarder receive buffer due to {}. Dropping {} records.", e.getMessage(), records.size());
             }
 

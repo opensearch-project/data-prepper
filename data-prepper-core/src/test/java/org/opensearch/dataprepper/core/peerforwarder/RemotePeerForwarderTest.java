@@ -58,8 +58,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_ACTUALLY_PROCESSED_LOCALLY;
+import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_DROPPED_AFTER_FAILED_FORWARDING;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_FAILED_FORWARDING;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
+import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_REJECTED_BY_PEER;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
@@ -105,6 +107,12 @@ class RemotePeerForwarderTest {
     private Counter recordsFailedForwardingCounter;
 
     @Mock
+    private Counter recordsRejectedByPeerCounter;
+
+    @Mock
+    private Counter recordsDroppedAfterFailedForwardingCounter;
+
+    @Mock
     private Counter recordsMissingIdentificationKeys;
 
     @Mock
@@ -130,6 +138,8 @@ class RemotePeerForwarderTest {
         when(pluginMetrics.counter(RECORDS_TO_BE_FORWARDED)).thenReturn(recordsToBeForwardedCounter);
         when(pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED)).thenReturn(recordsSuccessfullyForwardedCounter);
         when(pluginMetrics.counter(RECORDS_FAILED_FORWARDING)).thenReturn(recordsFailedForwardingCounter);
+        when(pluginMetrics.counter(RECORDS_REJECTED_BY_PEER)).thenReturn(recordsRejectedByPeerCounter);
+        when(pluginMetrics.counter(RECORDS_DROPPED_AFTER_FAILED_FORWARDING)).thenReturn(recordsDroppedAfterFailedForwardingCounter);
         when(pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS)).thenReturn(recordsMissingIdentificationKeys);
         when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
         when(pluginMetrics.counter(REQUESTS_SUCCESSFUL)).thenReturn(requestsSuccessfulCounter);
@@ -143,6 +153,8 @@ class RemotePeerForwarderTest {
                 recordsToBeForwardedCounter,
                 recordsSuccessfullyForwardedCounter,
                 recordsFailedForwardingCounter,
+                recordsRejectedByPeerCounter,
+                recordsDroppedAfterFailedForwardingCounter,
                 requestsFailedCounter,
                 requestsSuccessfulCounter
         );
@@ -490,6 +502,7 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
 
         validateFailedForwardingRecords(receivedRecords, inputRecords, 0);
+        verify(recordsDroppedAfterFailedForwardingCounter).increment(recordCount);
         verify(recordsFailedForwardingCounter).increment(recordCount);
         verify(requestsFailedCounter).increment();
     }
@@ -515,6 +528,44 @@ class RemotePeerForwarderTest {
         for (Record<Event> recivedRecord : receivedRecords) {
             assertThat(inputRecords, hasItem(recivedRecord));
         }
+    }
+
+    @Test
+    void processFailedRequestsLocally_counts_records_rejected_by_peer_circuit_breaker() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> records = generateBatchRecords(TEST_BUFFER_CAPACITY);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.TOO_MANY_REQUESTS), records);
+
+        verify(recordsRejectedByPeerCounter).increment(TEST_BUFFER_CAPACITY);
+        validateFailedForwardingMetrics(TEST_BUFFER_CAPACITY);
+        assertThat(peerForwarderReceiveBuffer.read(TEST_LOCAL_WRITE_TIMEOUT).getKey().size(), equalTo(TEST_BUFFER_CAPACITY));
+    }
+
+    @Test
+    void processFailedRequestsLocally_does_not_count_other_failures_as_rejected_by_peer() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> records = generateBatchRecords(TEST_BUFFER_CAPACITY);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR), records);
+
+        verifyNoInteractions(recordsRejectedByPeerCounter);
+        validateFailedForwardingMetrics(TEST_BUFFER_CAPACITY);
+    }
+
+    @Test
+    void processFailedRequestsLocally_counts_records_dropped_when_local_buffer_write_fails() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final int recordCount = TEST_BUFFER_CAPACITY + 1;
+        final Collection<Record<Event>> records = generateBatchRecords(recordCount);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.TOO_MANY_REQUESTS), records);
+
+        verify(recordsRejectedByPeerCounter).increment(recordCount);
+        verify(recordsDroppedAfterFailedForwardingCounter).increment(recordCount);
+        verify(recordsFailedForwardingCounter).increment(recordCount);
+        verify(requestsFailedCounter).increment();
+        verifyNoInteractions(recordsActuallyProcessedLocallyCounter);
     }
 
     private void validateFailedForwardingMetrics(final int expectedRecordCount) {

@@ -61,6 +61,25 @@ class CircuitBreakerAppConfigTest {
         final CircuitBreakerConfig circuitBreakerConfig = mock(CircuitBreakerConfig.class);
         when(circuitBreakerConfig.getHeapConfig()).thenReturn(heapCircuitBreakerConfig);
         when(dataPrepperConfiguration.getCircuitBreakerConfig())
+            .thenReturn(circuitBreakerConfig);
+
+        assertThat(createObjectUnderTest().heapCircuitBreaker(dataPrepperConfiguration),
+                instanceOf(HeapCircuitBreaker.class));
+    }
+
+    @Test
+    void heapCircuitBreaker_returns_HeapCircuitBreaker_if_HeapCircuitBreakerConfig_has_closeUsage() {
+        final ByteCount byteCount = mock(ByteCount.class);
+        when(byteCount.getBytes()).thenReturn(2L);
+        final ByteCount closeUsageByteCount = mock(ByteCount.class);
+        when(closeUsageByteCount.getBytes()).thenReturn(1L);
+        final HeapCircuitBreakerConfig heapCircuitBreakerConfig = mock(HeapCircuitBreakerConfig.class);
+        when(heapCircuitBreakerConfig.getUsage()).thenReturn(byteCount);
+        when(heapCircuitBreakerConfig.getCloseUsage()).thenReturn(closeUsageByteCount);
+        when(heapCircuitBreakerConfig.getCheckInterval()).thenReturn(Duration.ofSeconds(1));
+        final CircuitBreakerConfig circuitBreakerConfig = mock(CircuitBreakerConfig.class);
+        when(circuitBreakerConfig.getHeapConfig()).thenReturn(heapCircuitBreakerConfig);
+        when(dataPrepperConfiguration.getCircuitBreakerConfig())
                 .thenReturn(circuitBreakerConfig);
 
         assertThat(createObjectUnderTest().heapCircuitBreaker(dataPrepperConfiguration),
