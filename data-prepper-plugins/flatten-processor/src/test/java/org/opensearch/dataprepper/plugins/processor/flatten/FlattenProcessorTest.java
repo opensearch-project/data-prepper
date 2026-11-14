@@ -16,12 +16,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,7 @@ class FlattenProcessorTest {
         lenient().when(mockConfig.getTagsOnFailure()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
         lenient().when(mockConfig.getFlattenSeparator()).thenReturn(".");
+        lenient().when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.OVERWRITE);
     }
 
     @Test
@@ -521,5 +524,408 @@ class FlattenProcessorTest {
 
         assertThat(resultData.containsKey("parent.child"), is(true));
         assertThat(resultData.get("parent.child"), is("value"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_overwrite_replacesEntireTargetMap() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.OVERWRITE);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+        existingAttributes.put("obs_body_length", 397);
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access", "method", "GET");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.get("attributes/method", Object.class), is("GET"));
+        assertThat(event.containsKey("attributes/cluster_name"), is(false));
+        assertThat(event.containsKey("attributes/obs_body_length"), is(false));
+    }
+
+    @Test
+    void testTargetConflictStrategy_mergePreserveExistingKeys_mergesAndPreservesConflicts() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+        existingAttributes.put("method", "POST");
+        existingAttributes.put("obs_body_length", 397);
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access", "method", "GET", "uri", "/health");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/cluster_name", Object.class), is("my-cluster"));
+        assertThat(event.get("attributes/obs_body_length", Object.class), is(397));
+        assertThat(event.get("attributes/method", Object.class), is("POST"));
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.get("attributes/uri", Object.class), is("/health"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_mergeOverwriteExistingKeys_mergesAndOverwritesConflicts() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+        existingAttributes.put("method", "POST");
+        existingAttributes.put("obs_body_length", 397);
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access", "method", "GET", "uri", "/health");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/cluster_name", Object.class), is("my-cluster"));
+        assertThat(event.get("attributes/obs_body_length", Object.class), is(397));
+        assertThat(event.get("attributes/method", Object.class), is("GET"));
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.get("attributes/uri", Object.class), is("/health"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_skip_skipsWhenTargetExists() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.SKIP);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/cluster_name", Object.class), is("my-cluster"));
+        assertThat(event.containsKey("attributes/logtype"), is(false));
+    }
+
+    @Test
+    void testTargetConflictStrategy_targetDoesNotExist_writesMapRegardlessOfStrategy() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access", "method", "GET");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.get("attributes/method", Object.class), is("GET"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_withRemoveProcessedFields() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.isRemoveProcessedFields()).thenReturn(true);
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+        existingAttributes.put("method", "POST");
+
+        final Map<String, Object> kvParsed = new HashMap<>();
+        kvParsed.put("logtype", "ws:access");
+        kvParsed.put("method", "GET");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/cluster_name", Object.class), is("my-cluster"));
+        assertThat(event.get("attributes/method", Object.class), is("POST"));
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.containsKey("kv_parsed/logtype"), is(false));
+        assertThat(event.containsKey("kv_parsed/method"), is(false));
+    }
+
+    @Test
+    void testTargetConflictStrategy_rootTarget_mergePreserveExistingKeys() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("key1", "original");
+        initialData.put("existing_field", "keep");
+        initialData.put("nested", Map.of("key1", "new", "key2", "value2"));
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("existing_field", String.class), is("keep"));
+        assertThat(event.get("key1", String.class), is("original"));
+        assertThat(event.get("key2", String.class), is("value2"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_rootTarget_skip_mergesAndPreservesExistingFields() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.SKIP);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("key1", "original");
+        initialData.put("existing_field", "keep");
+        initialData.put("nested", Map.of("key1", "new", "key2", "value2"));
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        // At root, SKIP merges without overwriting conflicting fields
+        assertThat(event.get("existing_field", String.class), is("keep"));
+        assertThat(event.get("key1", String.class), is("original"));
+        assertThat(event.get("key2", String.class), is("value2"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_rootTarget_mergeOverwriteExistingKeys_overwritesConflictingRootFields() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("key1", "original");
+        initialData.put("existing_field", "keep");
+        initialData.put("nested", Map.of("key1", "new", "key2", "value2"));
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("existing_field", String.class), is("keep"));
+        assertThat(event.get("key1", String.class), is("new"));
+        assertThat(event.get("key2", String.class), is("value2"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_nestedMapConflict() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("meta.env", "prod");
+        existingAttributes.put("meta.version", 1);
+
+        final Map<String, Object> kvParsed = Map.of("meta", Map.of("version", 2, "region", "us-east-1"));
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/meta.env", String.class), is("prod"));
+        assertThat(event.get("attributes/meta.version", Integer.class), is(1));
+        assertThat(event.get("attributes/meta.region", String.class), is("us-east-1"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_flattenedKeysWithSlashAndTilde_whenTargetExists() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("existing", "keep");
+
+        final Map<String, Object> nested = Map.of("user/name", "Reshmi", "key~name", "val");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("nested", nested);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/existing", String.class), is("keep"));
+        // mergeFields interprets keys as JSON Pointer paths where '/' traverses nested segments
+        assertThat(event.get("attributes/user/name", String.class), is("Reshmi"));
+        assertThat(event.get("attributes/key~0name", String.class), is("val"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_flattenedKeysWithSlashAndTilde_whenTargetAbsent() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> nested = Map.of("user/name", "Reshmi", "key~name", "val");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("nested", nested);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        // When target is absent, JacksonEvent puts the map directly so keys are literal map entries
+        assertThat(event.get("attributes/user~1name", String.class), is("Reshmi"));
+        assertThat(event.get("attributes/key~0name", String.class), is("val"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_flattenSeparatorDot_preservesLiteralKeysInTargetMap() {
+        when(mockConfig.getSource()).thenReturn("nested");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("existing_key", "existing_value");
+
+        final Map<String, Object> nested = Map.of("parent", Map.of("child", "nested_val"));
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("nested", nested);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/existing_key", String.class), is("existing_value"));
+        assertThat(event.get("attributes/parent.child", String.class), is("nested_val"));
+
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> attributesMap = event.get("attributes", Map.class);
+        assertThat(attributesMap.containsKey("existing_key"), is(true));
+        assertThat(attributesMap.containsKey("parent.child"), is(true));
+        assertThat(attributesMap.get("parent.child"), is("nested_val"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_nonMapTarget_mergePreserveSkips() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_PRESERVE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", "plain_string");
+        initialData.put("kv_parsed", Map.of("logtype", "ws:access"));
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes", String.class), is("plain_string"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_nonMapTarget_mergeOverwriteReplaces() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(FieldConflictStrategy.MERGE_OVERWRITE_EXISTING_KEYS);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", "plain_string");
+        initialData.put("kv_parsed", Map.of("logtype", "ws:access"));
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/logtype", String.class), is("ws:access"));
+    }
+
+    @Test
+    void testTargetConflictStrategy_nullInConfigDefaultsToOverwrite() {
+        when(mockConfig.getSource()).thenReturn("kv_parsed");
+        when(mockConfig.getTarget()).thenReturn("attributes");
+        when(mockConfig.getTargetConflictStrategy()).thenReturn(null);
+
+        final FlattenProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> existingAttributes = new HashMap<>();
+        existingAttributes.put("cluster_name", "my-cluster");
+
+        final Map<String, Object> kvParsed = Map.of("logtype", "ws:access");
+
+        final Map<String, Object> initialData = new HashMap<>();
+        initialData.put("attributes", existingAttributes);
+        initialData.put("kv_parsed", kvParsed);
+
+        final Record<Event> record = createTestRecord(initialData);
+        final List<Record<Event>> results = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Event event = results.get(0).getData();
+
+        assertThat(event.get("attributes/logtype", Object.class), is("ws:access"));
+        assertThat(event.containsKey("attributes/cluster_name"), is(false));
     }
 }
