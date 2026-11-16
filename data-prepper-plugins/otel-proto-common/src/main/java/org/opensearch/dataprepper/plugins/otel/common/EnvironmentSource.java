@@ -17,12 +17,15 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * Which signal wins when deriving a service's environment.
  */
 public enum EnvironmentSource {
-    /** Today's behaviour: the AWS platform ({@code eks:default}, {@code ec2:default}, ...) first, then
-     * {@code deployment.environment.name} / {@code deployment.environment}. */
+    /** The default, which preserves existing behaviour: the AWS platform ({@code eks:default},
+     * {@code ec2:default}, ...) first, then {@code deployment.environment.name} / {@code deployment.environment}.
+     * Keep this when upgrading so the environment, service-map node identity and RED metric labels do not change. */
     PLATFORM_FIRST("platform_first"),
-    /** {@code deployment.environment.name} / {@code deployment.environment} first; the platform-derived
-     * value is the fallback. Changes the environment (and so the service-map node identity and the RED
-     * metric labels) of services that set both. */
+    /** Recommended. {@code deployment.environment.name} (the OpenTelemetry semantic convention; the older
+     * {@code deployment.environment} is deprecated) first, with the platform-derived value as the fallback.
+     * An explicitly configured environment wins over an inferred one.
+     * For services that set both, this changes the environment, and so the service-map node identity and
+     * the RED metric labels, a one-time change that existing dashboards and alerts must account for. */
     DEPLOYMENT_FIRST("deployment_first");
 
     private final String value;
@@ -39,7 +42,7 @@ public enum EnvironmentSource {
     @JsonCreator
     public static EnvironmentSource fromValue(final String value) {
         for (final EnvironmentSource source : values()) {
-            if (source.value.equalsIgnoreCase(value)) {
+            if (source.value.equals(value)) {
                 return source;
             }
         }

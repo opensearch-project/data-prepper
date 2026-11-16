@@ -569,12 +569,6 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
 
 
     /**
-     * Extract groupByAttributes from a span's resource attributes
-     *
-     * @param span The span to extract resource attributes from
-     * @return Map of configured resource attributes or empty map if none configured/found
-     */
-    /**
      * Identity keyAttributes of the span's service, plus its platform keys as descriptive values when
      * platform detection is enabled (they are not identity; see Node.KeyAttributes).
      */
@@ -586,6 +580,12 @@ public class OTelApmServiceMapProcessor extends AbstractProcessor<Record<Event>,
         return keyAttributes;
     }
 
+    /**
+     * Extract groupByAttributes from a span's resource attributes
+     *
+     * @param span The span to extract resource attributes from
+     * @return Map of configured resource attributes or empty map if none configured/found
+     */
     private Map<String, String> extractGroupByAttributes(final Span span) {
         if (groupByAttributes == null || groupByAttributes.isEmpty()) {
             return Collections.emptyMap();

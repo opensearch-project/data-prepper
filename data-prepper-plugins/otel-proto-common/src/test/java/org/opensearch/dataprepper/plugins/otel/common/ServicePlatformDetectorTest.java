@@ -145,7 +145,9 @@ class ServicePlatformDetectorTest {
     @Test
     void environment_source_parses_config_values() {
         assertEquals(EnvironmentSource.DEPLOYMENT_FIRST, EnvironmentSource.fromValue("deployment_first"));
-        assertEquals(EnvironmentSource.PLATFORM_FIRST, EnvironmentSource.fromValue("PLATFORM_FIRST"));
+        assertEquals(EnvironmentSource.PLATFORM_FIRST, EnvironmentSource.fromValue("platform_first"));
+        assertThrows(IllegalArgumentException.class, () -> EnvironmentSource.fromValue("PLATFORM_FIRST"));
+        assertThrows(IllegalArgumentException.class, () -> EnvironmentSource.fromValue("PlatForm_First"));
         assertThrows(IllegalArgumentException.class, () -> EnvironmentSource.fromValue("other"));
     }
 }
