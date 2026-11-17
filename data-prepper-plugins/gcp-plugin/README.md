@@ -12,7 +12,8 @@ through the `@DataPrepperPluginConstructor`:
 final GoogleCredentials credentials = gcpCredentialsSupplier.getCredentials(config.getGcpConfig().toCredentialsOptions());
 ```
 
-Credentials are built when the plugin is constructed, so configuration errors fail pipeline startup.
+Call `getCredentials` in your plugin constructor so malformed configuration fails at startup. Building credentials does
+not fetch a token, so authentication failures (missing permissions, an unreachable token endpoint) surface on first use.
 
 ## Configuration
 
@@ -46,4 +47,11 @@ gcp:
 * `token_uri` must be `https://oauth2.googleapis.com` on the default port. This guard comes from the ml-commons
   `google_cloud` connector, and stops the signed JWT from being sent anywhere else.
 * Values under `extensions.gcp.configurations` cannot use `${{...}}` references. A plugin's own `gcp:` block can.
+  Using `service_account_key` in the extension default therefore means a plaintext private key in
+  `data-prepper-config.yaml`. Prefer `adc` there, with `GOOGLE_APPLICATION_CREDENTIALS` or Workload Identity.
+* A plugin's `scopes` and `project_id` are kept when its credentials come from the extension default or ADC.
+* `getDefaultProjectId()` returns the extension default's `project_id`. If none is set, it returns the ADC project, except
+  when the extension default uses `service_account_key`, where you should set `project_id` explicitly.
+* A `service_account_key` extension default is built at startup, so a bad key or `token_uri` fails fast.
+* `token_uri` is only valid with `service_account_key`, and must not contain user info.
 * Named configurations are not supported yet. Only `default` is accepted.

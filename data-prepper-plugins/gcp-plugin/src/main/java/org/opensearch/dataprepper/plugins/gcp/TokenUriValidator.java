@@ -32,6 +32,9 @@ class TokenUriValidator {
         if (!"https".equalsIgnoreCase(scheme) || host == null) {
             throw new IllegalArgumentException("token_uri must be an https Google endpoint, got: " + tokenUri);
         }
+        if (uri.getRawUserInfo() != null) {
+            throw new IllegalArgumentException("token_uri must not contain user info");
+        }
         if (!OAUTH2_TOKEN_HOST.equals(host.toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException("token_uri host must be " + OAUTH2_TOKEN_HOST + ", got: " + host);
         }

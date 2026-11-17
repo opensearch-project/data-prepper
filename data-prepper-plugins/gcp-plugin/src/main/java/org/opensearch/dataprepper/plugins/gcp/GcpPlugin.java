@@ -11,7 +11,9 @@
 package org.opensearch.dataprepper.plugins.gcp;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import org.opensearch.dataprepper.gcp.api.GcpAuthMode;
 import org.opensearch.dataprepper.gcp.api.GcpConfig;
+import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -29,13 +31,20 @@ public class GcpPlugin implements ExtensionPlugin {
 
     @DataPrepperPluginConstructor
     public GcpPlugin(final GcpPluginConfig gcpPluginConfig) {
+        this(gcpPluginConfig, GoogleCredentials::getApplicationDefault);
+    }
+
+    GcpPlugin(final GcpPluginConfig gcpPluginConfig, final ApplicationDefaultCredentialsLoader applicationDefaultCredentialsLoader) {
         final GcpConfig defaultConfig = gcpPluginConfig != null ? gcpPluginConfig.getDefaultConfig() : null;
-        final ApplicationDefaultCredentialsLoader applicationDefaultCredentialsLoader = GoogleCredentials::getApplicationDefault;
+        final GcpCredentialsOptions defaultOptions = defaultConfig != null ? defaultConfig.toCredentialsOptions() : null;
         gcpCredentialsSupplier = new DefaultGcpCredentialsSupplier(
-                defaultConfig != null ? defaultConfig.toCredentialsOptions() : null,
+                defaultOptions,
                 new GoogleCredentialsFactory(applicationDefaultCredentialsLoader, new TokenUriValidator()),
                 new CredentialsCache(),
                 applicationDefaultCredentialsLoader);
+        if (defaultOptions != null && defaultOptions.getAuthMode() == GcpAuthMode.SERVICE_ACCOUNT_KEY) {
+            gcpCredentialsSupplier.getCredentials(defaultOptions);
+        }
     }
 
     @Override

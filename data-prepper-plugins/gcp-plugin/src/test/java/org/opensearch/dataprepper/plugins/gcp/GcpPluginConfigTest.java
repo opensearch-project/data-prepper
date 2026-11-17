@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.gcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.gcp.api.GcpAuthMode;
 
 import java.io.IOException;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -55,7 +57,11 @@ class GcpPluginConfigTest {
         final GcpPluginConfig objectUnderTest = objectMapper.readValue(
                 "default:\n  auth_mode: adc\n  client_email: sa@p.iam.gserviceaccount.com\n", GcpPluginConfig.class);
 
-        assertThat(VALIDATOR.validate(objectUnderTest).size(), equalTo(1));
+        final Set<ConstraintViolation<GcpPluginConfig>> violations = VALIDATOR.validate(objectUnderTest);
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(),
+                equalTo("auth_mode adc cannot be combined with private_key, client_email or token_uri"));
     }
 
     @Test

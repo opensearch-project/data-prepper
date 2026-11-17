@@ -65,4 +65,37 @@ class TokenUriValidatorTest {
 
         assertThat(exception.getMessage(), containsString("Invalid token_uri"));
     }
+
+    @Test
+    void validate_rejects_fragment_that_hides_another_host() {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.validate("https://evil.example.com#@oauth2.googleapis.com/token"));
+
+        assertThat(exception.getMessage(), containsString("token_uri host must be oauth2.googleapis.com"));
+    }
+
+    @Test
+    void validate_rejects_backslash_authority_trick() {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.validate("https://evil.example.com\\@oauth2.googleapis.com/token"));
+
+        assertThat(exception.getMessage(), containsString("Invalid token_uri"));
+    }
+
+    @Test
+    void validate_rejects_user_info_even_with_google_host() {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.validate("https://x@oauth2.googleapis.com/token"));
+
+        assertThat(exception.getMessage(), equalTo("token_uri must not contain user info"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://142.250.1.1/token", "https://[::1]/token"})
+    void validate_rejects_ip_literal_hosts(final String tokenUri) {
+        final IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> objectUnderTest.validate(tokenUri));
+
+        assertThat(exception.getMessage(), containsString("token_uri host must be oauth2.googleapis.com"));
+    }
 }

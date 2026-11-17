@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -130,6 +131,51 @@ class DefaultGcpCredentialsSupplierTest {
     void getDefaultProjectId_when_adc_unavailable_returns_empty() {
         assertThat(createObjectUnderTest(null, () -> {
             throw new IOException("no ADC");
+        }).getDefaultProjectId(), equalTo(Optional.empty()));
+    }
+
+    @Test
+    void getCredentials_without_plugin_mode_keeps_plugin_scopes_and_project_with_default_identity() {
+        when(factory.create(any())).thenReturn(credentials);
+        final GcpCredentialsOptions pluginOptions =
+                GcpCredentialsOptions.builder().withScopes(List.of("devstorage.read_only")).withProjectId("plugin-project").build();
+
+        createObjectUnderTest(PLUGIN_KEY_OPTIONS).getCredentials(pluginOptions);
+
+        final ArgumentCaptor<GcpCredentialsOptions> captor = ArgumentCaptor.forClass(GcpCredentialsOptions.class);
+        verify(factory).create(captor.capture());
+        assertThat(captor.getValue().getAuthMode(), equalTo(GcpAuthMode.SERVICE_ACCOUNT_KEY));
+        assertThat(captor.getValue().getClientEmail(), equalTo(PLUGIN_KEY_OPTIONS.getClientEmail()));
+        assertThat(captor.getValue().getScopes(), equalTo(List.of("devstorage.read_only")));
+        assertThat(captor.getValue().getProjectId(), equalTo("plugin-project"));
+    }
+
+    @Test
+    void getCredentials_with_null_options_uses_default_options() {
+        when(factory.create(DEFAULT_ADC_OPTIONS)).thenReturn(credentials);
+
+        assertThat(createObjectUnderTest(DEFAULT_ADC_OPTIONS).getCredentials(null), sameInstance(credentials));
+    }
+
+    @Test
+    void getDefaultProjectId_loads_application_default_credentials_once() {
+        final AtomicInteger loads = new AtomicInteger();
+        when(applicationDefaultCredentials.getProjectId()).thenReturn("adc-project");
+        final DefaultGcpCredentialsSupplier objectUnderTest = createObjectUnderTest(null, () -> {
+            loads.incrementAndGet();
+            return applicationDefaultCredentials;
+        });
+
+        objectUnderTest.getDefaultProjectId();
+        objectUnderTest.getDefaultProjectId();
+
+        assertThat(loads.get(), equalTo(1));
+    }
+
+    @Test
+    void getDefaultProjectId_with_service_account_key_default_and_no_project_does_not_use_adc_project() {
+        assertThat(createObjectUnderTest(PLUGIN_KEY_OPTIONS, () -> {
+            throw new IllegalStateException("ADC must not be loaded");
         }).getDefaultProjectId(), equalTo(Optional.empty()));
     }
 }

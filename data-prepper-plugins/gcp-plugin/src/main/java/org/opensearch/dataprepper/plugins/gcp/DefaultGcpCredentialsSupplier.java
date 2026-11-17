@@ -22,14 +22,18 @@ import java.util.Optional;
 
 /**
  * Resolves which credentials a plugin gets: its own options, then the extension default, then Application Default Credentials.
+ * The plugin's scopes and project are kept whichever credentials identity is used.
  */
 class DefaultGcpCredentialsSupplier implements GcpCredentialsSupplier {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultGcpCredentialsSupplier.class);
+    private static final GcpCredentialsOptions APPLICATION_DEFAULT_IDENTITY =
+            GcpCredentialsOptions.builder().withAuthMode(GcpAuthMode.ADC).build();
 
     private final GcpCredentialsOptions defaultOptions;
     private final GoogleCredentialsFactory googleCredentialsFactory;
     private final CredentialsCache credentialsCache;
     private final ApplicationDefaultCredentialsLoader applicationDefaultCredentialsLoader;
+    private Optional<String> applicationDefaultProjectId;
 
     DefaultGcpCredentialsSupplier(final GcpCredentialsOptions defaultOptions,
                                   final GoogleCredentialsFactory googleCredentialsFactory,
@@ -52,6 +56,20 @@ class DefaultGcpCredentialsSupplier implements GcpCredentialsSupplier {
         if (defaultOptions != null && defaultOptions.getProjectId() != null) {
             return Optional.of(defaultOptions.getProjectId());
         }
+        if (defaultOptions != null && defaultOptions.getAuthMode() == GcpAuthMode.SERVICE_ACCOUNT_KEY) {
+            return Optional.empty();
+        }
+        return getApplicationDefaultProjectId();
+    }
+
+    private synchronized Optional<String> getApplicationDefaultProjectId() {
+        if (applicationDefaultProjectId == null) {
+            applicationDefaultProjectId = loadApplicationDefaultProjectId();
+        }
+        return applicationDefaultProjectId;
+    }
+
+    private Optional<String> loadApplicationDefaultProjectId() {
         try {
             return Optional.ofNullable(applicationDefaultCredentialsLoader.load().getProjectId());
         } catch (final IOException e) {
@@ -64,13 +82,8 @@ class DefaultGcpCredentialsSupplier implements GcpCredentialsSupplier {
         if (options != null && options.getAuthMode() != null) {
             return options;
         }
-        if (defaultOptions != null && defaultOptions.getAuthMode() != null) {
-            return defaultOptions;
-        }
-        return GcpCredentialsOptions.builder()
-                .withAuthMode(GcpAuthMode.ADC)
-                .withScopes(options != null ? options.getScopes() : null)
-                .withProjectId(options != null ? options.getProjectId() : null)
-                .build();
+        final GcpCredentialsOptions identity = defaultOptions != null && defaultOptions.getAuthMode() != null
+                ? defaultOptions : APPLICATION_DEFAULT_IDENTITY;
+        return options != null ? options.withIdentityFrom(identity) : identity;
     }
 }

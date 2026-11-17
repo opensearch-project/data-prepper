@@ -14,6 +14,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -40,5 +41,26 @@ class CredentialsCacheTest {
         assertThat(first, sameInstance(credentials));
         assertThat(second, sameInstance(credentials));
         assertThat(creations.get(), equalTo(1));
+    }
+
+    @Test
+    void getOrCreate_creates_separate_credentials_for_different_options() {
+        final CredentialsCache objectUnderTest = new CredentialsCache();
+        final AtomicInteger creations = new AtomicInteger();
+        final GoogleCredentials firstCredentials = mock(GoogleCredentials.class);
+        final GoogleCredentials secondCredentials = mock(GoogleCredentials.class);
+
+        final GoogleCredentials first = objectUnderTest.getOrCreate(GcpCredentialsOptions.builder().withProjectId("p").build(), () -> {
+            creations.incrementAndGet();
+            return firstCredentials;
+        });
+        final GoogleCredentials second = objectUnderTest.getOrCreate(GcpCredentialsOptions.builder().withScopes(List.of("other")).build(), () -> {
+            creations.incrementAndGet();
+            return secondCredentials;
+        });
+
+        assertThat(first, sameInstance(firstCredentials));
+        assertThat(second, sameInstance(secondCredentials));
+        assertThat(creations.get(), equalTo(2));
     }
 }
