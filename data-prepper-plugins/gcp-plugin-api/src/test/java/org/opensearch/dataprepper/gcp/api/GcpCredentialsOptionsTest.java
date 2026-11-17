@@ -11,8 +11,12 @@
 package org.opensearch.dataprepper.gcp.api;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -104,5 +108,28 @@ class GcpCredentialsOptionsTest {
 
         assertThat(objectUnderTest.toString(), containsString(CLIENT_EMAIL));
         assertThat(objectUnderTest.toString(), not(containsString("PRIVATE KEY")));
+    }
+
+    private static GcpCredentialsOptions.Builder keyBuilder() {
+        return GcpCredentialsOptions.builder().withAuthMode(GcpAuthMode.SERVICE_ACCOUNT_KEY)
+                .withPrivateKey(PRIVATE_KEY).withClientEmail(CLIENT_EMAIL).withTokenUri("https://oauth2.googleapis.com/token")
+                .withScopes(List.of("scope-a")).withProjectId("p");
+    }
+
+    static Stream<Arguments> optionsDifferingInOneField() {
+        return Stream.of(
+                Arguments.of(GcpCredentialsOptions.builder().withAuthMode(GcpAuthMode.ADC).withScopes(List.of("scope-a"))
+                        .withTokenUri("https://oauth2.googleapis.com/token").withProjectId("p").build()),
+                Arguments.of(keyBuilder().withPrivateKey("other-key").build()),
+                Arguments.of(keyBuilder().withClientEmail("other@p.iam.gserviceaccount.com").build()),
+                Arguments.of(keyBuilder().withTokenUri("https://oauth2.googleapis.com/other").build()),
+                Arguments.of(keyBuilder().withScopes(List.of("scope-b")).build()),
+                Arguments.of(keyBuilder().withProjectId("q").build()));
+    }
+
+    @ParameterizedTest
+    @MethodSource("optionsDifferingInOneField")
+    void equals_is_false_when_any_single_field_differs(final GcpCredentialsOptions other) {
+        assertThat(keyBuilder().build(), not(equalTo(other)));
     }
 }
