@@ -30,6 +30,7 @@ sqs-pipeline:
           visibility_duplication_protection: true
           visibility_duplicate_protection_timeout: "PT1H"
           on_error: "retain_messages"
+          maximum_backoff: "PT5M"
           codec:
             json:
               key_name: "events"
@@ -52,6 +53,10 @@ sqs-pipeline:
 
 - **Error Handling:**  
   Use an `on_error` option to control behavior on errors (e.g., delete or retain messages)
+
+
+- **Configurable Backoff:**  
+  Tune the exponential retry delay ceiling with `maximum_backoff`. Default is 5 minutes.
 
 
 - **Codec Support:**  
