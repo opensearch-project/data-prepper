@@ -34,11 +34,18 @@ public enum GcpAuthMode {
         this.optionValue = optionValue;
     }
 
+    /**
+     * @return the value used in YAML configuration
+     */
     @JsonValue
     public String getOptionValue() {
         return optionValue;
     }
 
+    /**
+     * @param optionValue the value used in YAML configuration
+     * @return the matching mode, or null if the value is unknown
+     */
     @JsonCreator
     public static GcpAuthMode fromOptionValue(final String optionValue) {
         return OPTIONS_MAP.get(optionValue);
