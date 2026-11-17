@@ -18,6 +18,14 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    constraints {
+        api('com.google.guava:guava') {
+            version {
+                require '33.7.2-jre'
+            }
+            because 'Fixes CVE-2026-102554.'
+        }
+    }
 }
 
 test {
