@@ -19,11 +19,13 @@ import java.util.Optional;
  */
 public interface GcpCredentialsSupplier {
     /**
-     * Gets credentials for the given options. When the options do not set an auth mode, the
-     * extension default is used, and Application Default Credentials after that.
+     * Gets credentials for the given options. When the options do not set an auth mode, the extension default's
+     * credentials are used, then Application Default Credentials, keeping the options' scopes and project when set.
      *
-     * @param options the plugin's credentials options
+     * @param options the plugin's credentials options; null means the extension default, then Application Default Credentials
      * @return the credentials
+     * @throws GcpCredentialsException  if the credentials cannot be constructed
+     * @throws IllegalArgumentException if a service-account key's token_uri is not the Google OAuth2 token endpoint
      */
     GoogleCredentials getCredentials(GcpCredentialsOptions options);
 

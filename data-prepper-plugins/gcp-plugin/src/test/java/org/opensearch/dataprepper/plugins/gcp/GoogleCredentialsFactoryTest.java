@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.gcp.api.GcpAuthMode;
+import org.opensearch.dataprepper.gcp.api.GcpCredentialsException;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 
 import java.io.IOException;
@@ -130,11 +131,8 @@ class GoogleCredentialsFactoryTest {
                 .withPrivateKey(generatePkcs8PrivateKey()).withTokenUri("https://evil.example.com/token").build();
         final GoogleCredentialsFactory objectUnderTest = createObjectUnderTest();
 
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.create(options));
-    }
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> objectUnderTest.create(options));
 
-    @Test
-    void default_constructor_creates_factory() {
-        assertThat(new GoogleCredentialsFactory(), instanceOf(GoogleCredentialsFactory.class));
+        assertThat(exception.getMessage(), containsString("token_uri host must be oauth2.googleapis.com"));
     }
 }

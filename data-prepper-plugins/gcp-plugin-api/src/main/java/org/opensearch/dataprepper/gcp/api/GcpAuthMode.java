@@ -44,7 +44,8 @@ public enum GcpAuthMode {
 
     /**
      * @param optionValue the value used in YAML configuration
-     * @return the matching mode, or null if the value is unknown
+     * @return the matching mode, or null if the value is unknown. Data Prepper's enum deserialization rejects an
+     *         unknown value at startup and lists the valid values.
      */
     @JsonCreator
     public static GcpAuthMode fromOptionValue(final String optionValue) {

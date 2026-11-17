@@ -8,12 +8,16 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.gcp;
+package org.opensearch.dataprepper.gcp.api;
 
 /**
- * Thrown when Google credentials cannot be constructed.
+ * Thrown by {@link GcpCredentialsSupplier#getCredentials(GcpCredentialsOptions)} when Google credentials cannot be constructed.
  */
 public class GcpCredentialsException extends RuntimeException {
+    /**
+     * @param message the failure message, naming the auth mode
+     * @param cause   the underlying failure
+     */
     public GcpCredentialsException(final String message, final Throwable cause) {
         super(message, cause);
     }

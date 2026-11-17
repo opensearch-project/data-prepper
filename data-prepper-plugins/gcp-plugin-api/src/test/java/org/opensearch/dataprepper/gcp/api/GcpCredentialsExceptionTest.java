@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.gcp;
+package org.opensearch.dataprepper.gcp.api;
 
 import org.junit.jupiter.api.Test;
 

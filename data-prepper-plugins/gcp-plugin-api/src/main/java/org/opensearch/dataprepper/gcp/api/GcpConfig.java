@@ -77,27 +77,27 @@ public class GcpConfig {
     }
 
     /**
-     * @return false when auth_mode adc is combined with private_key or client_email
+     * @return false when auth_mode adc is combined with private_key, client_email or token_uri
      */
-    @AssertTrue(message = "auth_mode adc cannot be combined with private_key or client_email")
+    @AssertTrue(message = GcpCredentialsRules.ADC_WITH_KEY_FIELDS)
     public boolean isValidAdcConfiguration() {
-        return authMode != GcpAuthMode.ADC || !hasKeyFields();
+        return GcpCredentialsRules.isValidAdc(authMode, privateKey, clientEmail, tokenUri);
     }
 
     /**
-     * @return false when private_key or client_email is set without an auth_mode
+     * @return false when private_key, client_email or token_uri is set without an auth_mode
      */
-    @AssertTrue(message = "private_key and client_email require auth_mode service_account_key")
+    @AssertTrue(message = GcpCredentialsRules.KEY_FIELDS_WITHOUT_MODE)
     public boolean isValidKeyFieldsConfiguration() {
-        return authMode != null || !hasKeyFields();
+        return GcpCredentialsRules.isValidWithoutMode(authMode, privateKey, clientEmail, tokenUri);
     }
 
     /**
-     * @return false when auth_mode service_account_key is missing private_key or client_email
+     * @return false when auth_mode service_account_key is missing a non-blank private_key or client_email
      */
-    @AssertTrue(message = "auth_mode service_account_key requires private_key and client_email")
+    @AssertTrue(message = GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY)
     public boolean isValidServiceAccountKeyConfiguration() {
-        return authMode != GcpAuthMode.SERVICE_ACCOUNT_KEY || (privateKey != null && clientEmail != null);
+        return GcpCredentialsRules.isCompleteServiceAccountKey(authMode, privateKey, clientEmail);
     }
 
     /**
@@ -112,9 +112,5 @@ public class GcpConfig {
                 .withScopes(scopes)
                 .withProjectId(projectId)
                 .build();
-    }
-
-    private boolean hasKeyFields() {
-        return privateKey != null || clientEmail != null;
     }
 }

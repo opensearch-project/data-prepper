@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.gcp;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import org.opensearch.dataprepper.gcp.api.GcpAuthMode;
+import org.opensearch.dataprepper.gcp.api.GcpCredentialsException;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 
 import java.io.IOException;
@@ -23,10 +24,6 @@ import java.io.IOException;
 class GoogleCredentialsFactory {
     private final ApplicationDefaultCredentialsLoader applicationDefaultCredentialsLoader;
     private final TokenUriValidator tokenUriValidator;
-
-    GoogleCredentialsFactory() {
-        this(GoogleCredentials::getApplicationDefault, new TokenUriValidator());
-    }
 
     GoogleCredentialsFactory(final ApplicationDefaultCredentialsLoader applicationDefaultCredentialsLoader,
                              final TokenUriValidator tokenUriValidator) {

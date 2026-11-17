@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.gcp.api;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.TreeSet;
 
 /**
  * Immutable options describing which Google credentials a plugin needs. Also used as the credentials cache key.
@@ -29,6 +30,8 @@ public final class GcpCredentialsOptions {
     private final GcpAuthMode authMode;
     private final String privateKey;
     private final String clientEmail;
+    private final String configuredTokenUri;
+    private final List<String> configuredScopes;
     private final String tokenUri;
     private final List<String> scopes;
     private final String projectId;
@@ -37,23 +40,44 @@ public final class GcpCredentialsOptions {
         this.authMode = builder.authMode;
         this.privateKey = builder.privateKey;
         this.clientEmail = builder.clientEmail;
-        this.tokenUri = builder.tokenUri != null ? builder.tokenUri : DEFAULT_TOKEN_URI;
-        this.scopes = builder.scopes == null || builder.scopes.isEmpty() ? List.of(DEFAULT_SCOPE) : List.copyOf(builder.scopes);
+        this.configuredTokenUri = builder.tokenUri;
+        this.configuredScopes = builder.scopes == null || builder.scopes.isEmpty()
+                ? null : List.copyOf(new TreeSet<>(builder.scopes));
+        this.tokenUri = configuredTokenUri != null ? configuredTokenUri : DEFAULT_TOKEN_URI;
+        this.scopes = configuredScopes != null ? configuredScopes : List.of(DEFAULT_SCOPE);
         this.projectId = builder.projectId;
         validate();
     }
 
     private void validate() {
-        final boolean hasKeyFields = privateKey != null || clientEmail != null;
-        if (authMode == GcpAuthMode.ADC && hasKeyFields) {
-            throw new IllegalArgumentException("auth_mode adc cannot be combined with private_key or client_email");
+        if (!GcpCredentialsRules.isValidAdc(authMode, privateKey, clientEmail, configuredTokenUri)) {
+            throw new IllegalArgumentException(GcpCredentialsRules.ADC_WITH_KEY_FIELDS);
         }
-        if (authMode == null && hasKeyFields) {
-            throw new IllegalArgumentException("private_key and client_email require auth_mode service_account_key");
+        if (!GcpCredentialsRules.isValidWithoutMode(authMode, privateKey, clientEmail, configuredTokenUri)) {
+            throw new IllegalArgumentException(GcpCredentialsRules.KEY_FIELDS_WITHOUT_MODE);
         }
-        if (authMode == GcpAuthMode.SERVICE_ACCOUNT_KEY && (privateKey == null || clientEmail == null)) {
-            throw new IllegalArgumentException("auth_mode service_account_key requires private_key and client_email");
+        if (!GcpCredentialsRules.isCompleteServiceAccountKey(authMode, privateKey, clientEmail)) {
+            throw new IllegalArgumentException(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY);
         }
+    }
+
+    /**
+     * Combines these options with the credentials identity of another set of options, typically the extension
+     * default. The result uses the identity's auth mode, private key, client email and token URI, and keeps these
+     * options' scopes and project when they were set, falling back to the identity's otherwise.
+     *
+     * @param identity the options that supply the credentials identity
+     * @return the combined options
+     */
+    public GcpCredentialsOptions withIdentityFrom(final GcpCredentialsOptions identity) {
+        return builder()
+                .withAuthMode(identity.authMode)
+                .withPrivateKey(identity.privateKey)
+                .withClientEmail(identity.clientEmail)
+                .withTokenUri(identity.configuredTokenUri)
+                .withScopes(configuredScopes != null ? configuredScopes : identity.configuredScopes)
+                .withProjectId(projectId != null ? projectId : identity.projectId)
+                .build();
     }
 
     /**
@@ -92,7 +116,7 @@ public final class GcpCredentialsOptions {
     }
 
     /**
-     * @return the OAuth2 scopes; defaults to {@link #DEFAULT_SCOPE}
+     * @return the OAuth2 scopes, sorted and without duplicates; defaults to {@link #DEFAULT_SCOPE}
      */
     public List<String> getScopes() {
         return scopes;

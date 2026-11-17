@@ -66,7 +66,7 @@ class GcpConfigTest {
 
     @Test
     void deserialize_service_account_key_block_maps_to_options() throws IOException {
-        final GcpConfig objectUnderTest = read(KEY_BLOCK + "token_uri: https://oauth2.googleapis.com/token\nscopes:\n  - a\n  - b\n");
+        final GcpConfig objectUnderTest = read(KEY_BLOCK + "token_uri: https://oauth2.googleapis.com/custom\nscopes:\n  - b\n  - a\n");
 
         assertThat(VALIDATOR.validate(objectUnderTest).isEmpty(), is(true));
         final GcpCredentialsOptions options = objectUnderTest.toCredentialsOptions();
@@ -74,6 +74,7 @@ class GcpConfigTest {
         assertThat(options.getClientEmail(), equalTo("sa@p.iam.gserviceaccount.com"));
         assertThat(options.getPrivateKey().startsWith("-----BEGIN PRIVATE KEY-----"), is(true));
         assertThat(options.getScopes(), equalTo(List.of("a", "b")));
+        assertThat(options.getTokenUri(), equalTo("https://oauth2.googleapis.com/custom"));
     }
 
     @Test
@@ -83,7 +84,7 @@ class GcpConfigTest {
 
         assertThat(violations.size(), equalTo(1));
         assertThat(violations.iterator().next().getMessage(),
-                equalTo("auth_mode adc cannot be combined with private_key or client_email"));
+                equalTo(GcpCredentialsRules.ADC_WITH_KEY_FIELDS));
     }
 
     @Test
@@ -92,7 +93,7 @@ class GcpConfigTest {
 
         assertThat(violations.size(), equalTo(1));
         assertThat(violations.iterator().next().getMessage(),
-                equalTo("private_key and client_email require auth_mode service_account_key"));
+                equalTo(GcpCredentialsRules.KEY_FIELDS_WITHOUT_MODE));
     }
 
     @Test
@@ -102,7 +103,7 @@ class GcpConfigTest {
 
         assertThat(violations.size(), equalTo(1));
         assertThat(violations.iterator().next().getMessage(),
-                equalTo("auth_mode service_account_key requires private_key and client_email"));
+                equalTo(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY));
     }
 
     @Test
@@ -111,11 +112,15 @@ class GcpConfigTest {
                 VALIDATOR.validate(read("auth_mode: service_account_key\nprivate_key: abc\n"));
 
         assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY));
     }
 
     @Test
     void validate_empty_project_id_has_violation() throws IOException {
-        assertThat(VALIDATOR.validate(read("project_id: \"\"\n")).size(), equalTo(1));
+        final Set<ConstraintViolation<GcpConfig>> violations = VALIDATOR.validate(read("project_id: \"\"\n"));
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo("project_id cannot be empty"));
     }
 
     @Test
@@ -124,6 +129,24 @@ class GcpConfigTest {
 
         assertThat(violations.size(), equalTo(1));
         assertThat(violations.iterator().next().getMessage(),
-                equalTo("private_key and client_email require auth_mode service_account_key"));
+                equalTo(GcpCredentialsRules.KEY_FIELDS_WITHOUT_MODE));
+    }
+
+    @Test
+    void validate_adc_with_token_uri_has_violation() throws IOException {
+        final Set<ConstraintViolation<GcpConfig>> violations =
+                VALIDATOR.validate(read("auth_mode: adc\ntoken_uri: https://oauth2.googleapis.com/token\n"));
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.ADC_WITH_KEY_FIELDS));
+    }
+
+    @Test
+    void validate_service_account_key_with_blank_private_key_has_violation() throws IOException {
+        final Set<ConstraintViolation<GcpConfig>> violations = VALIDATOR.validate(read(
+                "auth_mode: service_account_key\nclient_email: sa@p.iam.gserviceaccount.com\nprivate_key: \" \"\n"));
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY));
     }
 }
