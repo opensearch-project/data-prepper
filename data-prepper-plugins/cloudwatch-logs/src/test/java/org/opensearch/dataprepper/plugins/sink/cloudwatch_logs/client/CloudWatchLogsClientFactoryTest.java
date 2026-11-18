@@ -7,6 +7,9 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
@@ -16,13 +19,14 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.SdkHttpClient;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
 import java.net.URI;
-
+import java.time.Duration;
 
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class CloudWatchLogsClientFactoryTest {
@@ -136,7 +141,7 @@ class CloudWatchLogsClientFactoryTest {
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
-        
+
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
@@ -147,43 +152,13 @@ class CloudWatchLogsClientFactoryTest {
             // Assert
             final ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(ClientOverrideConfiguration.class);
             verify(cloudWatchLogsClientBuilder).overrideConfiguration(configCaptor.capture());
-            
+
             final ClientOverrideConfiguration actualConfig = configCaptor.getValue();
             assertNotNull(actualConfig);
-            
+
             // Verify that headers are configured
             assertThat(actualConfig.headers().get("X-Custom-Header"), equalTo(List.of("custom-value")));
             assertThat(actualConfig.headers().get("X-Request-ID"), equalTo(List.of("request-123")));
-        }
-    }
-
-    @Test
-    void GIVEN_empty_custom_headers_SHOULD_create_client_without_custom_headers() {
-        // Arrange
-        final Map<String, String> emptyHeaders = new HashMap<>();
-        when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
-
-        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
-        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
-        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
-        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
-        
-        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
-            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
-                    .thenReturn(cloudWatchLogsClientBuilder);
-
-            // Act
-            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, emptyHeaders, null);
-
-            // Assert
-            final ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(ClientOverrideConfiguration.class);
-            verify(cloudWatchLogsClientBuilder).overrideConfiguration(configCaptor.capture());
-            
-            final ClientOverrideConfiguration actualConfig = configCaptor.getValue();
-            assertNotNull(actualConfig);
-            
-            // Verify that no custom headers are configured
-            assertThat(actualConfig.headers().isEmpty(), is(true));
         }
     }
 
@@ -198,7 +173,7 @@ class CloudWatchLogsClientFactoryTest {
         when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.endpointOverride(any(URI.class))).thenReturn(cloudWatchLogsClientBuilder);
-        
+
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
@@ -209,14 +184,16 @@ class CloudWatchLogsClientFactoryTest {
             // Assert
             final ArgumentCaptor<URI> endpointCaptor = ArgumentCaptor.forClass(URI.class);
             verify(cloudWatchLogsClientBuilder).endpointOverride(endpointCaptor.capture());
-            
+
             final URI actualEndpoint = endpointCaptor.getValue();
             assertThat(actualEndpoint.toString(), equalTo(customEndpoint));
         }
     }
 
-    @Test
-    void GIVEN_null_endpoint_SHOULD_create_client_without_endpoint_override() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"  "})
+    void GIVEN_null_empty_or_blank_endpoint_SHOULD_create_client_without_endpoint_override(final String endpoint) {
         // Arrange
         when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
@@ -224,38 +201,49 @@ class CloudWatchLogsClientFactoryTest {
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
-        
+
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
 
             // Act
-            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), endpoint);
 
             // Assert - verify endpointOverride is never called
-            verify(cloudWatchLogsClientBuilder, org.mockito.Mockito.never()).endpointOverride(any(URI.class));
+            verify(cloudWatchLogsClientBuilder, never()).endpointOverride(any(URI.class));
         }
     }
 
+    // The sink owns retries, so the SDK client must make a single attempt.
     @Test
-    void GIVEN_empty_endpoint_SHOULD_create_client_without_endpoint_override() {
-        // Arrange
+    void createOverrideConfiguration_default_singleAttemptWithTimeouts() {
+        final ClientOverrideConfiguration configuration =
+                CloudWatchLogsClientFactory.createOverrideConfiguration(Map.of("X-Test-Header", "test-value"));
+
+        assertThat(configuration.retryStrategy().isPresent(), is(true));
+        assertThat(configuration.retryStrategy().get().maxAttempts(), equalTo(1));
+        assertThat(configuration.retryPolicy().isPresent(), is(false));
+        assertThat(configuration.apiCallAttemptTimeout(), equalTo(Optional.of(Duration.ofSeconds(10))));
+        assertThat(configuration.apiCallTimeout(), equalTo(Optional.of(Duration.ofSeconds(15))));
+        assertThat(configuration.headers().get("X-Test-Header"), equalTo(List.of("test-value")));
+    }
+
+    @Test
+    void createCwlClient_default_setsNoHttpClient() {
         when(mockAwsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(mockAwsCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
         when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
-        
-        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
-            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
-                    .thenReturn(cloudWatchLogsClientBuilder);
 
-            // Act
-            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), "");
+        try (final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder).thenReturn(cloudWatchLogsClientBuilder);
 
-            // Assert - verify endpointOverride is never called
-            verify(cloudWatchLogsClientBuilder, org.mockito.Mockito.never()).endpointOverride(any(URI.class));
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
+
+            verify(cloudWatchLogsClientBuilder, never()).httpClient(any(SdkHttpClient.class));
+            verify(cloudWatchLogsClientBuilder, never()).httpClientBuilder(any(SdkHttpClient.Builder.class));
         }
     }
 }

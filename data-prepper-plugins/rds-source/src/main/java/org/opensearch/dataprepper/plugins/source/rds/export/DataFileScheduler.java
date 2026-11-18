@@ -175,7 +175,7 @@ public class DataFileScheduler implements Runnable {
                 dataFilePartition, codec, buffer, objectReader, recordConverter, pluginMetrics,
                 sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout(),
                 getDBTableMetadata(), pluginSetting, pipelineDescription, failurePipeline);
-        CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
+        CompletableFuture<Void> runLoader = CompletableFuture.runAsync(loader, executor);
 
         if (isAcknowledgmentsEnabled) {
             runLoader.whenComplete((v, ex) -> {
@@ -187,7 +187,10 @@ public class DataFileScheduler implements Runnable {
                 numOfWorkers.decrementAndGet();
             });
         } else {
-            runLoader.whenComplete(completeDataLoader(dataFilePartition));
+            runLoader.whenComplete((v, ex) -> {
+                completeDataLoader(dataFilePartition).accept(v, ex);
+                numOfWorkers.decrementAndGet();
+            });
         }
         numOfWorkers.incrementAndGet();
     }
@@ -247,7 +250,6 @@ public class DataFileScheduler implements Runnable {
                 LOG.error("There was an exception while processing an S3 data file", ex);
                 sourceCoordinator.giveUpPartition(dataFilePartition);
             }
-            numOfWorkers.decrementAndGet();
         };
     }
 

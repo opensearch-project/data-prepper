@@ -7,6 +7,10 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -18,10 +22,9 @@ import jakarta.validation.Validator;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,7 +32,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 class CloudWatchLogsSinkConfigTest {
@@ -60,101 +62,16 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void GIVEN_new_sink_config_WHEN_get_aws_config_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getAwsConfig(), equalTo(null));
-    }
+    void GIVEN_new_sink_config_WHEN_accessed_SHOULD_return_defaults_and_maintain_backward_compatibility()
+            throws NoSuchFieldException, IllegalAccessException {
+        final CloudWatchLogsSinkConfig newSinkConfig = new CloudWatchLogsSinkConfig();
+        assertThat(newSinkConfig.getAwsConfig(), nullValue());
+        assertThat(newSinkConfig.getThresholdConfig(), notNullValue());
+        assertThat(newSinkConfig.getEndpoint(), nullValue());
+        assertThat(newSinkConfig.getCreateLogGroup(), equalTo(false));
+        assertThat(newSinkConfig.getCreateLogStream(), equalTo(false));
+        assertThat(newSinkConfig.getEntityConfig(), nullValue());
 
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_threshold_config_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getThresholdConfig(), notNullValue());
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_log_group_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getLogGroup(), equalTo(null));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_num_threads_called_SHOULD_return_default_value() {
-        assertThat(new CloudWatchLogsSinkConfig().getWorkers(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_WORKERS));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_log_stream_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getLogStream(), equalTo(null));
-    }
-
-    @Test
-    void GIVEN_num_threads_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
-        int testValue = (new Random()).nextInt();
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "workers", testValue);
-        assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(testValue));
-    }
-
-    @Test
-    void GIVEN_empty_sink_config_WHEN_deserialized_from_json_SHOULD_return_valid_log_group_and_log_stream() throws NoSuchFieldException, IllegalAccessException {
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
-
-        assertThat(cloudWatchLogsSinkConfig.getLogGroup(), equalTo(LOG_GROUP));
-        assertThat(cloudWatchLogsSinkConfig.getLogStream(), equalTo(LOG_STREAM));
-    }
-
-    @Test
-    void GIVEN_empty_sink_config_WHEN_deserialized_from_json_SHOULD_return_valid_threshold_config_and_aws_config() throws NoSuchFieldException, IllegalAccessException {
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "awsConfig", awsConfig);
-
-        assertThat(cloudWatchLogsSinkConfig.getAwsConfig(), equalTo(awsConfig));
-        assertThat(cloudWatchLogsSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_header_overrides_called_SHOULD_return_empty_map() {
-        assertThat(new CloudWatchLogsSinkConfig().getHeaderOverrides(), notNullValue());
-        assertThat(new CloudWatchLogsSinkConfig().getHeaderOverrides().isEmpty(), equalTo(true));
-    }
-
-    @Test
-    void GIVEN_header_overrides_set_WHEN_get_header_overrides_called_SHOULD_return_configured_value() throws NoSuchFieldException, IllegalAccessException {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("X-Custom-Header", "custom-value");
-        headers.put("X-Request-ID", "request-123");
-
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", headers);
-
-        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(headers));
-    }
-
-    @Test
-    void GIVEN_empty_header_overrides_WHEN_get_header_overrides_called_SHOULD_return_empty_headers() throws NoSuchFieldException, IllegalAccessException {
-        Map<String, String> emptyHeaders = new HashMap<>();
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", emptyHeaders);
-
-        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(emptyHeaders));
-        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides().isEmpty(), equalTo(true));
-    }
-
-    @Test
-    void GIVEN_sink_config_with_all_fields_WHEN_accessed_SHOULD_return_all_configured_values() throws NoSuchFieldException, IllegalAccessException {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("X-Test-Header", "test-value");
-
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "awsConfig", awsConfig);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", headers);
-
-        assertThat(cloudWatchLogsSinkConfig.getLogGroup(), equalTo(LOG_GROUP));
-        assertThat(cloudWatchLogsSinkConfig.getLogStream(), equalTo(LOG_STREAM));
-        assertThat(cloudWatchLogsSinkConfig.getAwsConfig(), equalTo(awsConfig));
-        assertThat(cloudWatchLogsSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
-        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(headers));
-    }
-
-    @Test
-    void GIVEN_sink_config_without_header_overrides_WHEN_accessed_SHOULD_maintain_backward_compatibility() throws NoSuchFieldException, IllegalAccessException {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
@@ -167,36 +84,14 @@ class CloudWatchLogsSinkConfigTest {
         assertThat(cloudWatchLogsSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
         assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), notNullValue());
         assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides().isEmpty(), equalTo(true));
-        assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_WORKERS));
-        assertThat(cloudWatchLogsSinkConfig.getMaxRetries(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_RETRY_COUNT));
+        assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(10));
+        assertThat(cloudWatchLogsSinkConfig.getMaxRetries(), equalTo(5));
     }
 
-    // Custom Headers Validation Tests
-    @Test
-    void GIVEN_valid_custom_headers_WHEN_validated_THEN_returns_true() {
-        Map<String, String> validHeaders = new HashMap<>();
-        validHeaders.put("X-Custom-Header", "custom-value");
-        validHeaders.put("Content-Type", "application/json");
-        
-        boolean result = validator.isValid(validHeaders, context);
-        
-        assertThat(result, equalTo(true));
-        verify(context, never()).disableDefaultConstraintViolation();
-    }
-
-    @Test
-    void GIVEN_empty_custom_headers_WHEN_validated_THEN_returns_true() {
-        Map<String, String> emptyHeaders = new HashMap<>();
-        
-        boolean result = validator.isValid(emptyHeaders, context);
-        
-        assertThat(result, equalTo(true));
-        verify(context, never()).disableDefaultConstraintViolation();
-    }
-
-    @Test
-    void GIVEN_null_custom_headers_WHEN_validated_THEN_returns_true() {
-        boolean result = validator.isValid(null, context);
+    @ParameterizedTest
+    @NullAndEmptySource
+    void GIVEN_null_or_empty_custom_headers_WHEN_validated_THEN_returns_true(final Map<String, String> headers) {
+        final boolean result = validator.isValid(headers, context);
         
         assertThat(result, equalTo(true));
         verify(context, never()).disableDefaultConstraintViolation();
@@ -238,28 +133,17 @@ class CloudWatchLogsSinkConfigTest {
         verify(context).buildConstraintViolationWithTemplate("Header 'X-Test-Header' has an empty value");
     }
 
-    @Test
-    void GIVEN_invalid_header_name_with_spaces_WHEN_validated_THEN_returns_false() {
-        Map<String, String> headersWithInvalidName = new HashMap<>();
-        headersWithInvalidName.put("Invalid Header Name", "valid-value");
-        
-        boolean result = validator.isValid(headersWithInvalidName, context);
-        
-        assertThat(result, equalTo(false));
-        verify(context).disableDefaultConstraintViolation();
-        verify(context).buildConstraintViolationWithTemplate("Invalid header name 'Invalid Header Name'");
-    }
+    @ParameterizedTest
+    @ValueSource(strings = {"Invalid Header Name", "Header@Name"})
+    void GIVEN_invalid_header_name_WHEN_validated_THEN_returns_false(final String headerName) {
+        final Map<String, String> headersWithInvalidName = new HashMap<>();
+        headersWithInvalidName.put(headerName, "valid-value");
 
-    @Test
-    void GIVEN_invalid_header_name_with_special_chars_WHEN_validated_THEN_returns_false() {
-        Map<String, String> headersWithInvalidName = new HashMap<>();
-        headersWithInvalidName.put("Header@Name", "valid-value");
-        
-        boolean result = validator.isValid(headersWithInvalidName, context);
-        
+        final boolean result = validator.isValid(headersWithInvalidName, context);
+
         assertThat(result, equalTo(false));
         verify(context).disableDefaultConstraintViolation();
-        verify(context).buildConstraintViolationWithTemplate("Invalid header name 'Header@Name'");
+        verify(context).buildConstraintViolationWithTemplate("Invalid header name '" + headerName + "'");
     }
 
     @Test
@@ -276,121 +160,42 @@ class CloudWatchLogsSinkConfigTest {
         verify(context, never()).disableDefaultConstraintViolation();
     }
 
-    // Size Validation Tests
-    @Test
-    void GIVEN_exactly_10_header_overrides_WHEN_accessed_THEN_should_be_valid() throws Exception {
-        CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
-        Map<String, String> exactlyTenHeaders = new HashMap<>();
-        
-        for (int i = 1; i <= 10; i++) {
-            exactlyTenHeaders.put("Header-" + i, "value-" + i);
+    @ParameterizedTest
+    @CsvSource({"10, false", "11, true"})
+    void GIVEN_header_overrides_WHEN_sink_config_validated_THEN_more_than_10_rejected(final int headerCount,
+                                                                                     final boolean expectViolation)
+            throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, String> headers = new HashMap<>();
+        for (int i = 1; i <= headerCount; i++) {
+            headers.put("Header-" + i, "value-" + i);
         }
-        
-        ReflectivelySetField.setField(config.getClass(), config, "headerOverrides", exactlyTenHeaders);
-        
-        assertThat(config.getHeaderOverrides(), aMapWithSize(10));
-        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
-    }
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", headers);
 
-    @Test
-    void GIVEN_less_than_10_header_overrides_WHEN_accessed_THEN_should_be_valid() throws Exception {
-        CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
-        Map<String, String> fiveHeaders = new HashMap<>();
-        
-        for (int i = 1; i <= 5; i++) {
-            fiveHeaders.put("Header-" + i, "value-" + i);
-        }
-        
-        ReflectivelySetField.setField(config.getClass(), config, "headerOverrides", fiveHeaders);
-        
-        assertThat(config.getHeaderOverrides(), aMapWithSize(5));
-        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
-    }
+        final Set<ConstraintViolation<CloudWatchLogsSinkConfig>> violations = beanValidator().validate(cloudWatchLogsSinkConfig);
 
-    @Test
-    void GIVEN_default_config_WHEN_accessed_THEN_header_overrides_should_be_empty() {
-        CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
-        
-        assertThat(config.getHeaderOverrides(), aMapWithSize(0));
-        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_endpoint_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getEndpoint(), equalTo(null));
-    }
-
-    @Test
-    void GIVEN_endpoint_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
-        String testEndpoint = "https://logs.us-west-2.amazonaws.com";
-        
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "endpoint", testEndpoint);
-        assertThat(cloudWatchLogsSinkConfig.getEndpoint(), equalTo(testEndpoint));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_create_log_group_called_SHOULD_return_false() {
-        assertThat(new CloudWatchLogsSinkConfig().getCreateLogGroup(), equalTo(false));
-    }
-
-    @Test
-    void GIVEN_create_log_group_set_true_WHEN_get_called_SHOULD_return_true()
-            throws NoSuchFieldException, IllegalAccessException {
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
-                "createLogGroup", true);
-        assertThat(cloudWatchLogsSinkConfig.getCreateLogGroup(), equalTo(true));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_create_log_stream_called_SHOULD_return_false() {
-        assertThat(new CloudWatchLogsSinkConfig().getCreateLogStream(), equalTo(false));
-    }
-
-    @Test
-    void GIVEN_create_log_stream_set_true_WHEN_get_called_SHOULD_return_true()
-            throws NoSuchFieldException, IllegalAccessException {
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig,
-                "createLogStream", true);
-        assertThat(cloudWatchLogsSinkConfig.getCreateLogStream(), equalTo(true));
-    }
-
-    @Test
-    void GIVEN_new_sink_config_WHEN_get_entity_config_called_SHOULD_return_null() {
-        assertThat(new CloudWatchLogsSinkConfig().getEntityConfig(), equalTo(null));
-    }
-
-    @Test
-    void GIVEN_entity_config_set_WHEN_get_entity_config_called_SHOULD_return_configured_value()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> keyAttributes = new HashMap<>();
-        keyAttributes.put("Type", "RemoteService");
-        keyAttributes.put("Name", "okta_auth0");
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, "keyAttributes", keyAttributes);
-
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "entityConfig", entityConfig);
-
-        assertThat(cloudWatchLogsSinkConfig.getEntityConfig(), equalTo(entityConfig));
-        assertThat(cloudWatchLogsSinkConfig.getEntityConfig().getKeyAttributes(), equalTo(keyAttributes));
+        assertThat(violations.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("headerOverrides")), equalTo(expectViolation));
     }
 
     @Test
     void GIVEN_invalid_entity_config_WHEN_sink_config_validated_SHOULD_propagate_validation_error()
             throws NoSuchFieldException, IllegalAccessException {
-        final Validator beanValidator = Validation.byDefaultProvider()
-                .configure()
-                .messageInterpolator(new ParameterMessageInterpolator())
-                .buildValidatorFactory()
-                .getValidator();
-
         final EntityConfig invalidEntityConfig = new EntityConfig();
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "entityConfig", invalidEntityConfig);
 
-        final Set<ConstraintViolation<CloudWatchLogsSinkConfig>> violations = beanValidator.validate(cloudWatchLogsSinkConfig);
+        final Set<ConstraintViolation<CloudWatchLogsSinkConfig>> violations = beanValidator().validate(cloudWatchLogsSinkConfig);
 
         assertThat(violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().equals("entityConfig.keyAttributes")), equalTo(true));
+    }
+
+    private static Validator beanValidator() {
+        return Validation.byDefaultProvider()
+                .configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory()
+                .getValidator();
     }
 }

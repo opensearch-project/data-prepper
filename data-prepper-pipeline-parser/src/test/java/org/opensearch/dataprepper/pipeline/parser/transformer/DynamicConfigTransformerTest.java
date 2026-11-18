@@ -622,6 +622,52 @@ class DynamicConfigTransformerTest {
                 .isEqualTo("continuous");
     }
 
+    @Test
+    void test_transformation_with_rds_empty_scan_delay_propagates_empty_folder_rescan_delay() throws IOException {
+        // Use the REAL rds template from the rds-source plugin
+        String userConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_RDS_EMPTY_SCAN_DELAY_CONFIG_FILE;
+        String realTemplatePath = "../data-prepper-plugins/rds-source/src/main/resources/org/opensearch/dataprepper/transforms/templates/rds-template.yaml";
+        String ruleFilePath = "src/test/resources/transformation/rules/rds-rule.yaml";
+        String pluginName = "rds";
+
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(userConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+
+        InputStream ruleStream = new FileInputStream(ruleFilePath);
+        InputStream templateStream = new FileInputStream(realTemplatePath);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        // The s3 sub-pipeline should be named "rds-pipeline-s3"
+        Map<String, Object> s3Pipeline = (Map<String, Object>) transformedMap.get("rds-pipeline-s3");
+        assertThat(s3Pipeline).as("s3 sub-pipeline should exist").isNotNull();
+
+        Map<String, Object> source = (Map<String, Object>) s3Pipeline.get("source");
+        Map<String, Object> s3Source = (Map<String, Object>) source.get("s3");
+        Map<String, Object> scan = (Map<String, Object>) s3Source.get("scan");
+        Map<String, Object> folderPartitions = (Map<String, Object>) scan.get("folder_partitions");
+
+        assertThat(folderPartitions).as("folder_partitions should exist").isNotNull();
+        assertThat(folderPartitions.get("empty_folder_rescan_delay"))
+                .as("empty_folder_rescan_delay should be set from the rds empty_scan_delay")
+                .isEqualTo("60s");
+    }
+
     public static class ValidProviderNoAnnotation implements org.opensearch.dataprepper.model.plugin.PipelineTransformFunctionProvider {
         public static String unannotatedMethod(String input) {
             return input;
@@ -673,5 +719,49 @@ class DynamicConfigTransformerTest {
         assertThat(folderPartitions.get("idle_scan_mode"))
                 .as("idle_scan_mode should be 'continuous' when scan_mode is set to continuous")
                 .isEqualTo("continuous");
+    }
+
+    @Test
+    void test_transformation_with_documentdb_empty_scan_delay_propagates_empty_folder_rescan_delay() throws IOException {
+        String userConfig = TestConfigurationProvider.USER_CONFIG_TRANSFORMATION_DOCUMENTDB_EMPTY_SCAN_DELAY_CONFIG_FILE;
+        String realTemplatePath = "../data-prepper-plugins/mongodb/src/main/resources/org/opensearch/dataprepper/transforms/templates/documentdb-template.yaml";
+        String ruleFilePath = TestConfigurationProvider.RULES_TRANSFORMATION_DOCDB1_CONFIG_FILE;
+        String pluginName = "documentdb";
+
+        PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(userConfig);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+
+        TransformersFactory transformersFactory = mock(TransformersFactory.class);
+
+        InputStream ruleStream = new FileInputStream(ruleFilePath);
+        InputStream templateStream = new FileInputStream(realTemplatePath);
+        RuleStream ruleInputStream = new RuleStream(Paths.get(ruleFilePath).getFileName().toString(), ruleStream);
+
+        List<RuleStream> ruleStreams = Collections.singletonList(ruleInputStream);
+        when(transformersFactory.loadRules()).thenReturn(ruleStreams);
+        when(transformersFactory.getPluginTemplateFileStream(pluginName)).thenReturn(templateStream);
+
+        RuleEvaluator ruleEvaluator = new RuleEvaluator(transformersFactory);
+
+        PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        PipelinesDataFlowModel transformedModel = transformer.transformConfiguration(pipelinesDataFlowModel);
+        String transformedYaml = yamlMapper.writeValueAsString(transformedModel);
+
+        Map<String, Object> transformedMap = yamlMapper.readValue(transformedYaml, Map.class);
+
+        Map<String, Object> s3Pipeline = (Map<String, Object>) transformedMap.get("documentdb-pipeline-s3");
+        assertThat(s3Pipeline).as("s3 sub-pipeline should exist").isNotNull();
+
+        Map<String, Object> source = (Map<String, Object>) s3Pipeline.get("source");
+        Map<String, Object> s3Source = (Map<String, Object>) source.get("s3");
+        Map<String, Object> scan = (Map<String, Object>) s3Source.get("scan");
+        Map<String, Object> folderPartitions = (Map<String, Object>) scan.get("folder_partitions");
+
+        assertThat(folderPartitions).as("folder_partitions should exist").isNotNull();
+        assertThat(folderPartitions.get("empty_folder_rescan_delay"))
+                .as("empty_folder_rescan_delay should be set from the documentdb empty_scan_delay")
+                .isEqualTo("60s");
     }
 }

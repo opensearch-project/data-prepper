@@ -180,6 +180,7 @@ logs_pipeline:
 | `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId.       |
 | `additional_headers`       | `Map`    | No       | `{}`                  | Custom HTTP headers added to every outgoing request. **Note:** These headers are added after SigV4 signing and are not included in the signature. |
 | `service_name`             | `String` | No       | `xray`                | AWS service name used for SigV4 signing. Override when sending to non-X-Ray endpoints (e.g., `logs`, `osis`). |
+| `drop_transaction_search_errors` | `boolean` | No | `false` | When `true`, spans rejected because CloudWatch Transaction Search is disabled are dropped and acknowledged as successful, so the source does not redeliver them. These spans are not retried. |
 
 **Additional Notes:**
 
@@ -265,8 +266,10 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
      * recordsIn, recordsOut (applies to all signal types: traces, metrics, logs)
      * httpLatency, HTTP codes
      * errorCount, rejectedRecordsCount, failedRecordsCount, retriesCount (applies to all signal types)
+     * accessDenied<Signal>Count (401, 403), throttled<Signal>Count (429 after retries), payloadTooLarge<Signal>Count (413): subsets of the rejected totals, by final HTTP status
      * queueSize, queueCapacity
      * payloadSize, payloadGzipSize
+     * deliveredPayloadSize, deliveredPayloadGzipSize (recorded only for 2xx responses; scaled by the fraction of records accepted on partial success)
      * JVM stats if configured (e.g., heap usage, GC pauses)
 
 ---

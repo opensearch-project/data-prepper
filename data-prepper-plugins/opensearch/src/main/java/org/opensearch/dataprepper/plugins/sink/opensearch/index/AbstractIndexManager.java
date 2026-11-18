@@ -49,6 +49,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected ClusterSettingsParser clusterSettingsParser;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     private final TemplateStrategy templateStrategy;
+    private final ComponentTemplateAPIWrapper componentTemplateAPIWrapper;
     private final String configuredIndexAlias;
     protected String indexPrefix;
     private Boolean isIndexAlias;
@@ -84,6 +85,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         this.openSearchClient = openSearchClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
         this.clusterSettingsParser = clusterSettingsParser;
+        this.componentTemplateAPIWrapper = new ComponentTemplateAPIWrapper(openSearchClient);
         if (indexAlias == null) {
             indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         }
@@ -231,7 +233,22 @@ public abstract class AbstractIndexManager implements IndexManager {
                 ismPolicyManagementStrategy.checkAndCreatePolicy() :
                 Optional.empty();
         if (!openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate().isEmpty()) {
+            // The index template can only be created once the component templates it is composed of exist.
+            checkAndCreateComponentTemplates();
             checkAndCreateIndexTemplate(isISMEnabled, policyIdOptional.orElse(null));
+        }
+    }
+
+    final void checkAndCreateComponentTemplates() throws IOException {
+        final Map<String, Map<String, Object>> componentTemplates = openSearchSinkConfiguration.getIndexConfiguration()
+                .getManagedComponentTemplates();
+        for (final Map.Entry<String, Map<String, Object>> componentTemplate : componentTemplates.entrySet()) {
+            final String name = componentTemplate.getKey();
+            final Number version = (Number) componentTemplate.getValue().get(IndexConfiguration.VERSION);
+            final Optional<Long> existingVersion = componentTemplateAPIWrapper.getComponentTemplateVersion(name);
+            if (shouldCreateTemplate("Component template", name, existingVersion, version != null ? version.longValue() : 0L)) {
+                componentTemplateAPIWrapper.putComponentTemplate(name, componentTemplate.getValue());
+            }
         }
     }
 
@@ -289,29 +306,36 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     private boolean shouldCreateTemplate(final String templateName, final IndexTemplate indexTemplate) throws IOException {
-        final Optional<Long> optionalExistingVersion = templateStrategy.getExistingTemplateVersion(templateName);
+        return shouldCreateTemplate("Index template", templateName,
+                templateStrategy.getExistingTemplateVersion(templateName), indexTemplate.getVersion().orElse(0L));
+    }
+
+    private static boolean shouldCreateTemplate(final String templateKind,
+                                                final String templateName,
+                                                final Optional<Long> optionalExistingVersion,
+                                                final long newTemplateVersion) {
         if (optionalExistingVersion.isPresent()) {
             final Long existingTemplateVersion = optionalExistingVersion.get();
-            LOG.info("Found version {} for existing index template {}", existingTemplateVersion, templateName);
-
-            final Long newTemplateVersion = indexTemplate.getVersion().orElse(0L);
+            LOG.info("Found version {} for existing {} {}", existingTemplateVersion, templateKind.toLowerCase(), templateName);
 
             if (existingTemplateVersion >= newTemplateVersion) {
-                LOG.info("Index template {} should not be updated, current version {} >= existing version {}",
+                LOG.info("{} {} should not be updated, current version {} >= existing version {}",
+                        templateKind,
                         templateName,
                         existingTemplateVersion,
                         newTemplateVersion);
                 return false;
 
             } else {
-                LOG.info("Index template {} should be updated from version {} to version {}",
+                LOG.info("{} {} should be updated from version {} to version {}",
+                        templateKind,
                         templateName,
                         existingTemplateVersion,
                         newTemplateVersion);
                 return true;
             }
         } else {
-            LOG.info("Index template {} does not exist and should be created", templateName);
+            LOG.info("{} {} does not exist and should be created", templateKind, templateName);
             return true;
         }
     }

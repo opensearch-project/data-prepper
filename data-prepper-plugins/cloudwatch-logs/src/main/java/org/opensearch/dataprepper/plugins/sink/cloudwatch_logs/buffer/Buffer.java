@@ -39,8 +39,6 @@ public interface Buffer {
 
     List<EventHandle> getEventHandles();
 
-    byte[] popEvent();
-
     List<byte[]> getBufferedData();
 
     void clearBuffer();

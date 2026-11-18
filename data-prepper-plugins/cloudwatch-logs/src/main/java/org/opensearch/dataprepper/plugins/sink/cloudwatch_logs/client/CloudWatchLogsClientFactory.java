@@ -10,14 +10,14 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
 import java.net.URI;
-
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -25,6 +25,8 @@ import java.util.Map;
  * client for interfacing with CloudWatchLogs services.
  */
 public final class CloudWatchLogsClientFactory {
+    public static final Duration ATTEMPT_TIMEOUT = Duration.ofSeconds(10);
+    public static final Duration API_CALL_TIMEOUT = Duration.ofSeconds(15);
 
     private CloudWatchLogsClientFactory() {
     }
@@ -64,13 +66,11 @@ public final class CloudWatchLogsClientFactory {
         return clientBuilder.build();
     }
 
-    private static ClientOverrideConfiguration createOverrideConfiguration(final Map<String, String> customHeaders) {
-        final RetryPolicy retryPolicy = RetryPolicy.builder()
-                .numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS)
-                .build();
-
+    static ClientOverrideConfiguration createOverrideConfiguration(final Map<String, String> customHeaders) {
         final ClientOverrideConfiguration.Builder configBuilder = ClientOverrideConfiguration.builder()
-                .retryPolicy(retryPolicy);
+                .retryStrategy(AwsRetryStrategy.doNotRetry())
+                .apiCallAttemptTimeout(ATTEMPT_TIMEOUT)
+                .apiCallTimeout(API_CALL_TIMEOUT);
 
         customHeaders.forEach(configBuilder::putHeader);
 

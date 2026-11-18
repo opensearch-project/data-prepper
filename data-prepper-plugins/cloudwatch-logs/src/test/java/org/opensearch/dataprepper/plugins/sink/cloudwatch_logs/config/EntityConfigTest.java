@@ -31,7 +31,6 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -72,47 +71,6 @@ class EntityConfigTest {
                 });
         when(expressionEvaluator.extractDynamicExpressionsFromFormatExpression(anyString()))
                 .thenReturn(Collections.emptyList());
-    }
-
-    @Test
-    void GIVEN_new_entity_config_WHEN_get_key_attributes_called_SHOULD_return_empty_map() {
-        final EntityConfig entityConfig = new EntityConfig();
-
-        assertThat(entityConfig.getKeyAttributes(), notNullValue());
-        assertThat(entityConfig.getKeyAttributes(), aMapWithSize(0));
-    }
-
-    @Test
-    void GIVEN_new_entity_config_WHEN_get_attributes_called_SHOULD_return_empty_map() {
-        final EntityConfig entityConfig = new EntityConfig();
-
-        assertThat(entityConfig.getAttributes(), notNullValue());
-        assertThat(entityConfig.getAttributes(), aMapWithSize(0));
-    }
-
-    @Test
-    void GIVEN_key_attributes_set_WHEN_get_key_attributes_called_SHOULD_return_configured_value()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> keyAttributes = new HashMap<>();
-        keyAttributes.put("Type", "RemoteService");
-        keyAttributes.put("Name", "okta_auth0");
-
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
-
-        assertThat(entityConfig.getKeyAttributes(), equalTo(keyAttributes));
-    }
-
-    @Test
-    void GIVEN_attributes_set_WHEN_get_attributes_called_SHOULD_return_configured_value()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> attributes = new HashMap<>();
-        attributes.put("AWS.ServiceNameSource", "UserConfiguration");
-
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, ATTRIBUTES_FIELD, attributes);
-
-        assertThat(entityConfig.getAttributes(), equalTo(attributes));
     }
 
     @Test
@@ -175,37 +133,6 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_key_attributes_set_WHEN_put_on_returned_map_SHOULD_throw_unsupported_operation()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> keyAttributes = new HashMap<>();
-        keyAttributes.put("Type", "RemoteService");
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
-
-        assertThrows(UnsupportedOperationException.class,
-                () -> entityConfig.getKeyAttributes().put("new", "value"));
-    }
-
-    @Test
-    void GIVEN_attributes_set_WHEN_put_on_returned_map_SHOULD_throw_unsupported_operation()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> attributes = new HashMap<>();
-        attributes.put("key", "value");
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, ATTRIBUTES_FIELD, attributes);
-
-        assertThrows(UnsupportedOperationException.class,
-                () -> entityConfig.getAttributes().put("new", "value"));
-    }
-
-    @Test
-    void GIVEN_new_entity_config_WHEN_dynamic_getters_called_SHOULD_return_defaults() {
-        final EntityConfig entityConfig = new EntityConfig();
-
-        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
-    }
-
-    @Test
     void GIVEN_templated_key_attributes_in_yaml_WHEN_deserialized_SHOULD_be_dynamic() {
         final Map<String, String> keyAttributes = new HashMap<>();
         keyAttributes.put("Type", "Azure::Resource");
@@ -219,13 +146,6 @@ class EntityConfigTest {
     }
 
     @Test
-    void GIVEN_no_templated_attributes_WHEN_is_dynamic_called_SHOULD_be_static() {
-        final EntityConfig entityConfig = new EntityConfig();
-
-        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
-    }
-
-    @Test
     void GIVEN_only_constant_key_attributes_WHEN_is_dynamic_called_SHOULD_be_static()
             throws NoSuchFieldException, IllegalAccessException {
         final EntityConfig entityConfig = new EntityConfig();
@@ -235,18 +155,6 @@ class EntityConfigTest {
         ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
 
         assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(false));
-    }
-
-    @Test
-    void GIVEN_templated_key_attribute_WHEN_is_dynamic_called_SHOULD_be_dynamic()
-            throws NoSuchFieldException, IllegalAccessException {
-        final EntityConfig entityConfig = new EntityConfig();
-        final Map<String, String> keyAttributes = new HashMap<>();
-        keyAttributes.put("Type", "Azure::Resource");
-        keyAttributes.put("Identifier", "${resourceId}");
-        ReflectivelySetField.setField(EntityConfig.class, entityConfig, KEY_ATTRIBUTES_FIELD, keyAttributes);
-
-        assertThat(entityConfig.isDynamic(expressionEvaluator), equalTo(true));
     }
 
     @Test

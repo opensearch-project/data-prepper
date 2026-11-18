@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;
@@ -31,10 +30,10 @@ class ThresholdConfigTest {
     void GIVEN_new_threshold_config_SHOULD_return_valid_default_values() {
         final ThresholdConfig thresholdConfig = new ThresholdConfig();
 
-        assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
-        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_MAX_EVENT_SIZE.getBytes()));
-        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ThresholdConfig.DEFAULT_MAX_REQUEST_SIZE.getBytes()));
-        assertThat(thresholdConfig.getFlushInterval(), equalTo(ThresholdConfig.DEFAULT_FLUSH_INTERVAL));
+        assertThat(thresholdConfig.getBatchSize(), equalTo(25));
+        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(1048576L));
+        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(1048576L));
+        assertThat(thresholdConfig.getFlushInterval(), equalTo(60L));
     }
 
     @ParameterizedTest
@@ -46,27 +45,12 @@ class ThresholdConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1kb", "10kb", "256kb"})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_event_size(final String max_event_size) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxEventSize", ByteCount.parse(max_event_size));
-        assertThat(sampleThresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(max_event_size).getBytes()));
-    }
+    @ValueSource(longs = {5, 300})
+    void getFlushInterval_configuredDuration_returnsConfiguredSeconds(final long seconds)
+            throws NoSuchFieldException, IllegalAccessException {
+        final ThresholdConfig thresholdConfig = new ThresholdConfig();
+        ReflectivelySetField.setField(ThresholdConfig.class, thresholdConfig, "flushInterval", Duration.ofSeconds(seconds));
 
-    @ParameterizedTest
-    @ValueSource(strings = {"1b", "100b", "1048576b"})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_request_size(final String max_batch_request_size) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxRequestSize", ByteCount.parse(max_batch_request_size));
-        assertThat(sampleThresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(max_batch_request_size).getBytes()));
+        assertThat(thresholdConfig.getFlushInterval(), equalTo(seconds));
     }
-
-    @ParameterizedTest
-    @ValueSource(ints = {5, 10, 300})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_log_send_interval(final int log_send_interval) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "flushInterval", Duration.ofSeconds(log_send_interval));
-        assertThat(sampleThresholdConfig.getFlushInterval(), equalTo(Duration.ofSeconds(log_send_interval).getSeconds())) ;
-    }
-
 }

@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
 import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
 import org.opensearch.dataprepper.plugins.mongo.coordination.partition.DataQueryPartition;
@@ -177,12 +179,19 @@ public class ExportWorker implements Runnable {
                 activeExportPartitionConsumerGauge.decrementAndGet();
             }
             if (ex == null) {
+                // Complete the partition before counting it. If its lease expired while the acknowledgment was
+                // pending, another owner may already have loaded and completed it; this owner's completion then
+                // fails on the stale version, and counting it again would push loadedPartitions past the total.
+                try {
+                    sourceCoordinator.completePartition(dataQueryPartition);
+                } catch (final PartitionUpdateException | PartitionNotOwnedException e) {
+                    LOG.warn("Data query partition {} was not completed by this owner, it was likely re-acquired " +
+                            "after its lease expired. Not counting it again.", dataQueryPartition.getPartitionKey());
+                    return;
+                }
                 successPartitionCounter.increment();
-                // Update global state
                 updateState(dataQueryPartition.getCollection(),
                     dataQueryPartition.getProgressState().get().getLoadedRecords());
-                // After global state is updated, mask the partition as completed.
-                sourceCoordinator.completePartition(dataQueryPartition);
 
             } else {
                 giveUpPartition(dataQueryPartition, ex);
@@ -248,9 +257,10 @@ public class ExportWorker implements Runnable {
 
             try {
                 sourceCoordinator.saveProgressStateForPartition(globalState, null);
-                // if all load are completed.
+                // if all load are completed. ">=" rather than "==": a count that has already passed the total
+                // would otherwise never match again and the stream would never start.
                 if (exportLoadStatus.isTotalParitionsComplete() &&
-                        exportLoadStatus.getLoadedPartitions() == exportLoadStatus.getTotalPartitions()) {
+                        exportLoadStatus.getLoadedPartitions() >= exportLoadStatus.getTotalPartitions()) {
                     LOG.info("All Exports are done, streaming can continue...");
                     final StreamLoadStatus streamLoadStatus = new StreamLoadStatus(Instant.now().toEpochMilli());
                     sourceCoordinator.createPartition(new GlobalState(STREAM_PREFIX + collection, streamLoadStatus.toMap()));

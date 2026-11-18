@@ -135,7 +135,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                 return;
             }
 
-            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
+            LOG.error("Failed to write the request of size {} bytes due to:", request.getSerializedSize(), e);
             throw new BufferWriteException(e.getMessage(), e);
         }
 

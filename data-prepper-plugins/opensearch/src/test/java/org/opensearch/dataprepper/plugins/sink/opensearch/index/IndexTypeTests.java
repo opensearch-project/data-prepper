@@ -27,6 +27,7 @@ public class IndexTypeTests {
         assertEquals(Optional.of(IndexType.MANAGEMENT_DISABLED), IndexType.getByValue("management_disabled"));
         assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW), IndexType.getByValue("trace-analytics-raw"));
         assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW_PLAIN), IndexType.getByValue("trace-analytics-plain-raw"));
+        assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2), IndexType.getByValue("trace-analytics-plain-raw-v2"));
         assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_SERVICE_MAP), IndexType.getByValue("trace-analytics-service-map"));
         assertEquals(Optional.of(IndexType.OTEL_APM_SERVICE_MAP), IndexType.getByValue("otel-v2-apm-service-map"));
         assertEquals(Optional.of(IndexType.LOG_ANALYTICS), IndexType.getByValue("log-analytics"));
@@ -38,7 +39,7 @@ public class IndexTypeTests {
 
     @Test
     public void getIndexTypeValues() {
-        assertEquals("[trace-analytics-raw, trace-analytics-plain-raw, trace-analytics-service-map, otel-v2-apm-service-map, log-analytics, log-analytics-plain, metric-analytics, metric-analytics-plain, tsdb, custom, management_disabled]", IndexType.getIndexTypeValues());
+        assertEquals("[trace-analytics-raw, trace-analytics-plain-raw, trace-analytics-plain-raw-v2, trace-analytics-service-map, otel-v2-apm-service-map, log-analytics, log-analytics-plain, metric-analytics, metric-analytics-plain, tsdb, custom, management_disabled]", IndexType.getIndexTypeValues());
     }
 
     @ParameterizedTest

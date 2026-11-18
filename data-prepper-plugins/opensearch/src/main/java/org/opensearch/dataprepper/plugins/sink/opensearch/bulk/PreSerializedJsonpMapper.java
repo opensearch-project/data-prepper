@@ -12,6 +12,7 @@ import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.json.jackson.JacksonJsonProvider;
 import org.opensearch.client.json.jackson.JacksonJsonpGenerator;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,7 +30,7 @@ public class PreSerializedJsonpMapper implements JsonpMapper {
 
     public PreSerializedJsonpMapper() {
         innerMapper = new JacksonJsonpMapper();
-        jsonProvider = new PreSerializedJsonProvider();
+        jsonProvider = new PreSerializedJsonProvider(JsonFactories.defaultJsonFactory());
     }
 
     @Override
@@ -71,7 +72,15 @@ public class PreSerializedJsonpMapper implements JsonpMapper {
     }
 
 
+    /**
+     * The opensearch-java transports parse responses with parsers created from this provider,
+     * so its JsonFactory carries Data Prepper's maximum JSON string length.
+     */
     private static class PreSerializedJsonProvider extends JacksonJsonProvider {
+        PreSerializedJsonProvider(final com.fasterxml.jackson.core.JsonFactory jsonFactory) {
+            super(jsonFactory);
+        }
+
         @Override
         public JsonGenerator createGenerator(OutputStream out) {
             try {

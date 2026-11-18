@@ -31,7 +31,7 @@ public class BulkOperationFactoryTest {
     @BeforeEach
     void setUp() {
         final ScriptManager scriptManager = new ScriptManager(null, null);
-        factory = new BulkOperationFactory(VersionType.External, scriptManager, objectMapper, false);
+        factory = new BulkOperationFactory(VersionType.External, scriptManager, false);
     }
 
     @Test
@@ -126,7 +126,7 @@ public class BulkOperationFactoryTest {
     @Test
     void update_with_document_filters_deserializes_from_serialized_json() {
         final ScriptManager scriptManager = new ScriptManager(null, null);
-        final BulkOperationFactory filterFactory = new BulkOperationFactory(null, scriptManager, objectMapper, true);
+        final BulkOperationFactory filterFactory = new BulkOperationFactory(null, scriptManager, true);
         final ObjectNode jsonNode = objectMapper.createObjectNode().put("name", "original");
         final SerializedJson document = SerializedJson.fromStringAndOptionals("{\"name\":\"filtered\"}", "doc-1", null, null);
 
@@ -157,5 +157,19 @@ public class BulkOperationFactoryTest {
 
         assertThat(result.isIndex(), is(true));
         assertThat(result.index().pipeline(), equalTo("my-pipeline"));
+    }
+
+    @Test
+    void update_with_document_filters_parses_string_values_above_the_jackson_default_limit() {
+        final int length = 21 * 1024 * 1024;
+        final BulkOperationFactory filterFactory = new BulkOperationFactory(null, new ScriptManager(null, null), true);
+        final SerializedJson document = SerializedJson.fromStringAndOptionals(
+                "{\"largeField\":\"" + "a".repeat(length) + "\"}", "doc-1", null, null);
+
+        final BulkOperation result = filterFactory.create(
+                OpenSearchBulkActions.UPSERT.toString(), document, null, "test-index", objectMapper.createObjectNode());
+
+        assertThat(result.isUpdate(), is(true));
+        assertThat(result.update().id(), equalTo("doc-1"));
     }
 }

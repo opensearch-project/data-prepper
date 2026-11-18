@@ -39,7 +39,7 @@ public class OpenSearchSinkScriptTest {
 
     private BulkOperationFactory createFactory(final ScriptConfiguration scriptConfig) {
         final ScriptManager scriptManager = new ScriptManager(scriptConfig, null);
-        return new BulkOperationFactory(null, scriptManager, new ObjectMapper(), false);
+        return new BulkOperationFactory(null, scriptManager, false);
     }
 
     private ScriptConfiguration mockScript(final String source, final Map<String, Object> params) {

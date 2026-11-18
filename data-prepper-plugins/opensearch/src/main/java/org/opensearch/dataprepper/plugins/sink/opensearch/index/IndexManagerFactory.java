@@ -55,6 +55,10 @@ public class IndexManagerFactory {
                 indexManager = new TraceAnalyticsRawIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
+            case TRACE_ANALYTICS_RAW_PLAIN_V2:
+                indexManager = new OTelAPMSpanIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+                break;
             case TRACE_ANALYTICS_SERVICE_MAP:
                 indexManager = new TraceAnalyticsServiceMapIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
@@ -140,6 +144,24 @@ public class IndexManagerFactory {
                     IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE);
         }
 
+    }
+
+    private static class OTelAPMSpanIndexManager extends AbstractIndexManager {
+
+        public OTelAPMSpanIndexManager(final RestHighLevelClient restHighLevelClient,
+                                       final OpenSearchClient openSearchClient,
+                                       final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                       final ClusterSettingsParser clusterSettingsParser,
+                                       final TemplateStrategy templateStrategy,
+                                       final String indexAlias) {
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
+            this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                    openSearchClient,
+                    restHighLevelClient,
+                    IndexConstants.OTEL_APM_SPAN_ISM_POLICY,
+                    IndexConstants.OTEL_APM_SPAN_ISM_FILE_WITH_ISM_TEMPLATE,
+                    IndexConstants.OTEL_APM_SPAN_ISM_FILE_NO_ISM_TEMPLATE);
+        }
     }
 
     private static class TraceAnalyticsServiceMapIndexManager extends AbstractIndexManager {

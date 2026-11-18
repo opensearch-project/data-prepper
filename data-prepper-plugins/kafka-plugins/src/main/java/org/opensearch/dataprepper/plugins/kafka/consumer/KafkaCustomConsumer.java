@@ -104,7 +104,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private long numRecordsCommitted = 0;
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
-    private final long maxRetriesOnException;
     private final ExponentialBackoff exponentialBackoff;
     private long authFailureAttempts;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
@@ -132,7 +131,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.byteDecoder = byteDecoder;
         this.invokeCallbackOnExpiry = invokeCallbackOnExpiry;
         this.topicMetrics = topicMetrics;
-        this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * (RETRY_ON_EXCEPTION_SLEEP_MS + BUFFER_WRITE_TIMEOUT));
         this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
@@ -428,6 +426,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     LOG.debug("Pause and skip consuming from Kafka topic due to an external condition: {}", pauseConsumePredicate);
                     paused = true;
                     consumer.pause(consumer.assignment());
+                    doPoll();
                     Thread.sleep(1000);
                     continue;
                 } else if(paused) {
@@ -528,18 +527,15 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         if (acknowledgementSet != null) {
             eventRecords.forEach(record -> acknowledgementSet.add(record.getData()));
         }
-        long numRetries = 0;
         while (true) {
             LOG.debug("In while loop for processing records, paused = {}", paused);
             try {
                 buffer.writeAll(eventRecords, BUFFER_WRITE_TIMEOUT);
                 break;
             } catch (Exception e) {
-                if (!paused && numRetries++ > maxRetriesOnException) {
+                if (!paused) {
                     paused = true;
-                    LOG.debug("Preparing to call pause");
                     consumer.pause(consumer.assignment());
-                    LOG.debug("Pause was called");
                 }
                 if (e instanceof SizeOverflowException) {
                     topicMetrics.getNumberOfBufferSizeOverflows().increment();
@@ -547,10 +543,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     LOG.debug("Error while adding record to buffer, retrying ", e);
                 }
                 try {
-                    LOG.debug("Sleeping due to exception");
                     Thread.sleep(RETRY_ON_EXCEPTION_SLEEP_MS);
-                    if (paused) {
-                        LOG.debug("Calling doPoll()");
+                    if (paused && !shutdownInProgress.get()) {
                         ConsumerRecords<String, ?> records = doPoll();
                         if (records.count() > 0) {
                             LOG.warn("Unexpected records received while the consumer is paused. Resetting the partitions to retry from last read pointer");
@@ -565,7 +559,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         }
 
         if (paused) {
-            LOG.debug("Resuming consumption");
             consumer.resume(consumer.assignment());
             paused = false;
         }

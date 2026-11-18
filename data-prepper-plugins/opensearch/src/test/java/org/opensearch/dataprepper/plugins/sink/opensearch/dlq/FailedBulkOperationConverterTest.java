@@ -179,5 +179,26 @@ public class FailedBulkOperationConverterTest {
         document = SerializedJson.fromStringAndOptionals(jsonString, null, null, null);
     }
 
+    @Test
+    public void testConvertToDlqObjectWithStringValueAboveTheJacksonDefaultLimit() {
+        final int length = 21 * 1024 * 1024;
+        final SerializedJson largeDocument = SerializedJson.fromStringAndOptionals(
+                "{\"largeField\":\"" + "a".repeat(length) + "\"}", null, null, null);
+        final IndexOperation indexOperation = mock(IndexOperation.class);
+        when(indexOperation.index()).thenReturn(testIndex);
+        when(indexOperation.id()).thenReturn(testId);
+        when(indexOperation.document()).thenReturn(largeDocument);
+        when(bulkOperation.index()).thenReturn(indexOperation);
 
+        final FailedBulkOperation testData = FailedBulkOperation.builder()
+                .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+                .withBulkResponseItem(bulkResponseItem)
+                .withFailure(failure)
+                .build();
+
+        final DlqObject result = converter.convertToDlqObject(testData);
+
+        final Map<String, Object> doc = (Map<String, Object>) ((FailedDlqData) result.getFailedData()).getDocument();
+        assertThat(((String) doc.get("largeField")).length(), is(equalTo(length)));
+    }
 }

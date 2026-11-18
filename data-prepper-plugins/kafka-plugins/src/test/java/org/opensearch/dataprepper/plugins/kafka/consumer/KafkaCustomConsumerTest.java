@@ -90,6 +90,8 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -286,6 +288,7 @@ public class KafkaCustomConsumerTest {
         } catch (Exception e){}
         assertTrue(paused);
         assertTrue(resumed);
+        verify(kafkaConsumer, atLeast(2)).poll(any(Duration.class));
 
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
@@ -913,6 +916,87 @@ public class KafkaCustomConsumerTest {
         ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
         records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideExceptionsFromBufferWrite")
+    public void testWriteAllFailurePausesImmediatelyAndCallsPoll(final Exception bufferException) throws Exception {
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(600000));
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        final int[] writeAttempts = {0};
+        doAnswer((i) -> {
+            if (writeAttempts[0]++ < 2) {
+                throw bufferException;
+            }
+            buffer.writeAll(i.getArgument(0), i.getArgument(1));
+            return null;
+        }).when(mockBuffer).writeAll(any(), anyInt());
+
+        final int[] pollCount = {0};
+        ConsumerRecords<String, Object> emptyRecords = new ConsumerRecords<>(new HashMap<>());
+        doAnswer((i) -> {
+            pollCount[0]++;
+            if (pollCount[0] == 1) {
+                return consumerRecords;
+            }
+            return emptyRecords;
+        }).when(kafkaConsumer).poll(any(Duration.class));
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        consumer.consumeRecords();
+
+        assertTrue(paused, "Consumer should have been paused on first writeAll failure");
+        assertTrue(pollCount[0] >= 3, "doPoll() should have been called at least 3 times (1 initial + 2 retries)");
+    }
+
+    @Test
+    public void testPauseConsumePredicateCallsPoll() throws Exception {
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+        String topic = topicConfig.getName();
+        when(pauseConsumePredicate.pauseConsuming()).thenReturn(true);
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        shutdownInProgress.set(false);
+        Thread testThread = new Thread(() -> consumer.run());
+        testThread.start();
+        Thread.sleep(2000);
+        shutdownInProgress.set(true);
+        testThread.join(5000);
+
+        verify(kafkaConsumer, atLeast(1)).poll(any(Duration.class));
+        assertTrue(paused, "Consumer should have been paused when predicate returns true");
+    }
+
+    @Test
+    public void testPauseConsumingResumesAfterPredicateReturnsFalse() throws Exception {
+        when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
+        String topic = topicConfig.getName();
+
+        when(pauseConsumePredicate.pauseConsuming())
+                .thenReturn(true)
+                .thenReturn(false);
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        when(kafkaConsumer.assignment()).thenReturn(java.util.Collections.singleton(new TopicPartition(topic, testPartition)));
+
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+
+        Thread consumerThread = new Thread(() -> consumer.run());
+        consumerThread.start();
+        Thread.sleep(2500);
+        shutdownInProgress.set(true);
+        consumerThread.join(5000);
+
+        verify(kafkaConsumer, atLeastOnce()).pause(any());
+        verify(kafkaConsumer, atLeastOnce()).resume(any());
     }
 
     private static Stream<Arguments> provideExceptionsFromBufferWrite() {

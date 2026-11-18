@@ -19,6 +19,7 @@ import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
+import org.opensearch.dataprepper.model.codec.JsonFactories;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 
@@ -36,11 +37,10 @@ public class BulkOperationFactory {
 
     public BulkOperationFactory(final VersionType versionType,
                                 final ScriptManager scriptManager,
-                                final ObjectMapper objectMapper,
                                 final boolean usingDocumentFilters) {
         this.versionType = versionType;
         this.scriptManager = scriptManager;
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper(JsonFactories.defaultJsonFactory());
         this.usingDocumentFilters = usingDocumentFilters;
     }
 

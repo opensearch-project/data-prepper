@@ -48,6 +48,7 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelDecodingException;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -73,6 +74,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -332,6 +334,39 @@ public class OTelLogsGrpcServiceTest {
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+    }
+
+    @Test
+    public void export_BufferTimeout_does_not_call_toString_on_request() throws Exception {
+        final ExportLogsServiceRequest request = mock(ExportLogsServiceRequest.class);
+        lenient().when(request.toString()).thenThrow(new AssertionError("toString() must not be called on the request"));
+        objectUnderTest = generateOTelLogsGrpcService(new OTelProtoOpensearchCodec.OTelProtoDecoder());
+        doThrow(new TimeoutException()).when(buffer).writeAll(any(Collection.class), anyInt());
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BufferWriteException.class, () -> objectUnderTest.export(request, responseObserver));
+        }
+
+        verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
+    }
+
+    @Test
+    public void export_DecodingException_responseObserverOnError() {
+        final OTelDecodingException testException = new OTelDecodingException("Unknown case");
+        when(mockOTelProtoDecoder.parseExportLogsServiceRequest(any(), any(Instant.class))).thenThrow(testException);
+        objectUnderTest = generateOTelLogsGrpcService(mockOTelProtoDecoder);
+
+        final BadRequestException actual;
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            actual = assertThrows(BadRequestException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
+
+        assertThat(actual.getCause(), equalTo(testException));
+        verifyNoInteractions(buffer);
+        verifyNoInteractions(responseObserver);
+        verifyNoInteractions(successRequestsCounter);
     }
 
     @Test

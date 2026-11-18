@@ -205,6 +205,31 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     }
 
     @Override
+    public void renewPartitionOwnership(final EnhancedSourcePartition<?> partition) {
+        final String partitionType = partition.getPartitionType() == null
+                ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
+        LOG.debug("Try to renew ownership for partition {} (Type {})", partition.getPartitionKey(), partitionType);
+
+        if (partition.getSourcePartitionStoreItem() == null) {
+            LOG.error("Unable to renew ownership, the item was not found.");
+            return;
+        }
+
+        final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
+        // A null ownership timeout means the partition was already completed, given up or closed.
+        if (updateItem.getPartitionOwnershipTimeout() == null) {
+            LOG.debug("Not renewing ownership for partition {}, the lease has already been released.", partition.getPartitionKey());
+            return;
+        }
+
+        // Ownership only: progress state belongs to the processing thread, which may not be this one.
+        updateItem.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+
+        coordinationStore.tryUpdateSourcePartitionItem(updateItem);
+        LOG.debug("Ownership for partition {} (Type {}) was renewed", partition.getPartitionKey(), partitionType);
+    }
+
+    @Override
     public <T> void giveUpPartition(EnhancedSourcePartition<T> partition) {
         Objects.requireNonNull(partition.getPartitionType());
 

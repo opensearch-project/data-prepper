@@ -17,8 +17,6 @@ import java.util.Map;
  * and resources.
  */
 public class AwsConfig {
-    public static final int DEFAULT_CONNECTION_ATTEMPTS = 5;
-
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
