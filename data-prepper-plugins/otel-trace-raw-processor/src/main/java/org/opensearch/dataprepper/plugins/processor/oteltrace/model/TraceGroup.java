@@ -18,9 +18,12 @@ public class TraceGroup {
 
     private final TraceGroupFields traceGroupFields;
 
-    private TraceGroup(final String traceGroup, final TraceGroupFields traceGroupFields) {
+    private final String rootSpanId;
+
+    private TraceGroup(final String traceGroup, final TraceGroupFields traceGroupFields, final String rootSpanId) {
         this.traceGroup = traceGroup;
         this.traceGroupFields = traceGroupFields;
+        this.rootSpanId = rootSpanId;
     }
 
     public String getTraceGroup() {
@@ -31,7 +34,17 @@ public class TraceGroup {
         return traceGroupFields;
     }
 
+    /**
+     * The span id of the trace's root span, so a span's ancestor chain can be known to end at the
+     * root without keeping state for traces that have no GenAI data.
+     *
+     * @return the root span id
+     */
+    public String getRootSpanId() {
+        return rootSpanId;
+    }
+
     public static TraceGroup fromSpan(final Span span) {
-        return new TraceGroup(span.getTraceGroup(), span.getTraceGroupFields());
+        return new TraceGroup(span.getTraceGroup(), span.getTraceGroupFields(), span.getSpanId());
     }
 }

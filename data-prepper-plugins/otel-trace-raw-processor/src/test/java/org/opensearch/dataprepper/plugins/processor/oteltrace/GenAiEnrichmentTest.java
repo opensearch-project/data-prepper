@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,7 +48,7 @@ class GenAiEnrichmentTest {
         final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(180L);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofSeconds(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC));
         when(config.isGenAiEnrichmentDisabled()).thenReturn(false);
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         // These fixtures have non-GenAI roots (e.g. LangGraph.workflow) and test copying onto them.
