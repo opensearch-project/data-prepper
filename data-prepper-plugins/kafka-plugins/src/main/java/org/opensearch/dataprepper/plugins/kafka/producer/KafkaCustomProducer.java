@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
@@ -250,6 +251,15 @@ public class KafkaCustomProducer<T> {
             record.put(key, event.toMap().get(key));
         }
         return record;
+    }
+
+    /**
+     * Closes the underlying producer. Without this the sink has no way to
+     * release a producer it created, so every producer it ever built leaks its
+     * network thread.
+     */
+    public void close() {
+        producer.close(Duration.ofSeconds(30));
     }
 
     private void releaseEventHandles(final boolean result) {
