@@ -1,0 +1,84 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+
+name: Kafka Schema Registry integration tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data-prepper-plugins/kafka-plugins/**'
+      - '**/*.gradle'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - '.github/workflows/kafka-schema-registry-integration-tests.yml'
+  pull_request:
+    paths:
+      - 'data-prepper-plugins/kafka-plugins/**'
+      - '**/*.gradle'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - '.github/workflows/kafka-schema-registry-integration-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        confluent: ['7.9.1', '8.0.7']
+      fail-fast: false
+    env:
+      CONFLUENT_VERSION: ${{ matrix.confluent }}
+      COMPOSE_PROJECT_NAME: kafka-schema-registry-it
+
+    steps:
+      - name: Checkout Data Prepper
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Set up JDK 11
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 11
+          distribution: temurin
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          add-job-summary: on-failure
+      - name: Start Kafka and Schema Registry
+        run: >-
+          docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/schema-registry
+          up -d --wait --wait-timeout 180
+      - name: Run Avro, JSON Schema, and Protobuf integration tests
+        run: |
+          ./gradlew :data-prepper-plugins:kafka-plugins:integrationTest --rerun \
+            -Dtests.kafka.bootstrap_servers=localhost:19092 \
+            -Dtests.kafka.schema_registry_url=http://localhost:18081 \
+            --tests '*ConfluentKafkaProducerConsumerWithSchemaRegistryIT' --console=plain
+      - name: Collect container logs
+        if: always()
+        run: >-
+          docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/schema-registry
+          logs --no-color > schema-registry-containers.log
+      - name: Upload test results and container logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kafka-schema-registry-tests-${{ matrix.confluent }}
+          path: |
+            **/test-results/**/*.xml
+            schema-registry-containers.log
+      - name: Stop Kafka and Schema Registry
+        if: always()
+        run: >-
+          docker compose --project-directory data-prepper-plugins/kafka-plugins/src/integrationTest/resources/kafka/schema-registry
+          down --volumes
