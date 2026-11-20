@@ -149,4 +149,33 @@ class GcpConfigTest {
         assertThat(violations.size(), equalTo(1));
         assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY));
     }
+
+    @Test
+    void validate_token_uri_without_mode_has_violation() throws IOException {
+        final Set<ConstraintViolation<GcpConfig>> violations =
+                VALIDATOR.validate(read("token_uri: https://oauth2.googleapis.com/token\n"));
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.KEY_FIELDS_WITHOUT_MODE));
+    }
+
+    @Test
+    void validate_service_account_key_with_blank_client_email_has_violation() throws IOException {
+        final Set<ConstraintViolation<GcpConfig>> violations = VALIDATOR.validate(read(
+                "auth_mode: service_account_key\nclient_email: \" \"\nprivate_key: abc\n"));
+
+        assertThat(violations.size(), equalTo(1));
+        assertThat(violations.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INCOMPLETE_SERVICE_ACCOUNT_KEY));
+    }
+
+    @Test
+    void validate_null_or_blank_scope_has_violation() throws IOException {
+        final Set<ConstraintViolation<GcpConfig>> nullScope = VALIDATOR.validate(read("scopes: [ ~ ]\n"));
+        final Set<ConstraintViolation<GcpConfig>> blankScope = VALIDATOR.validate(read("scopes: [ \" \" ]\n"));
+
+        assertThat(nullScope.size(), equalTo(1));
+        assertThat(nullScope.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INVALID_SCOPES));
+        assertThat(blankScope.size(), equalTo(1));
+        assertThat(blankScope.iterator().next().getMessage(), equalTo(GcpCredentialsRules.INVALID_SCOPES));
+    }
 }

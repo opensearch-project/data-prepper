@@ -52,6 +52,7 @@ gcp:
 * A plugin's `scopes` and `project_id` are kept when its credentials come from the extension default or ADC.
 * `getDefaultProjectId()` returns the extension default's `project_id`. If none is set, it returns the ADC project, except
   when the extension default uses `service_account_key`, where you should set `project_id` explicitly.
+  The ADC project is looked up once and cached until restart, including when ADC is unavailable.
 * A `service_account_key` extension default is built at startup, so a bad key or `token_uri` fails fast.
 * `token_uri` is only valid with `service_account_key`, and must not contain user info.
 * Named configurations are not supported yet. Only `default` is accepted.

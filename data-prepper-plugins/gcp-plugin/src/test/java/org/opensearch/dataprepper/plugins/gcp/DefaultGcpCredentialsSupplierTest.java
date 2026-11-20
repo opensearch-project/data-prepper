@@ -34,9 +34,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultGcpCredentialsSupplierTest {
-    private static final GcpCredentialsOptions PLUGIN_KEY_OPTIONS = GcpCredentialsOptions.builder()
-            .withAuthMode(GcpAuthMode.SERVICE_ACCOUNT_KEY).withClientEmail("plugin@p.iam.gserviceaccount.com")
-            .withPrivateKey("key").build();
+    private static final GcpCredentialsOptions KEY_OPTIONS = GcpCredentialsOptions.builder()
+            .withAuthMode(GcpAuthMode.SERVICE_ACCOUNT_KEY).withClientEmail("sa@p.iam.gserviceaccount.com")
+            .withPrivateKey("key").withTokenUri("https://oauth2.googleapis.com/custom").build();
     private static final GcpCredentialsOptions DEFAULT_ADC_OPTIONS = GcpCredentialsOptions.builder()
             .withAuthMode(GcpAuthMode.ADC).withProjectId("default-project").build();
 
@@ -60,9 +60,9 @@ class DefaultGcpCredentialsSupplierTest {
 
     @Test
     void getCredentials_with_plugin_mode_uses_plugin_options() {
-        when(factory.create(PLUGIN_KEY_OPTIONS)).thenReturn(credentials);
+        when(factory.create(KEY_OPTIONS)).thenReturn(credentials);
 
-        assertThat(createObjectUnderTest(DEFAULT_ADC_OPTIONS).getCredentials(PLUGIN_KEY_OPTIONS), sameInstance(credentials));
+        assertThat(createObjectUnderTest(DEFAULT_ADC_OPTIONS).getCredentials(KEY_OPTIONS), sameInstance(credentials));
     }
 
     @Test
@@ -96,13 +96,13 @@ class DefaultGcpCredentialsSupplierTest {
 
     @Test
     void getCredentials_caches_by_resolved_options() {
-        when(factory.create(PLUGIN_KEY_OPTIONS)).thenReturn(credentials);
+        when(factory.create(KEY_OPTIONS)).thenReturn(credentials);
         final DefaultGcpCredentialsSupplier objectUnderTest = createObjectUnderTest(null);
 
-        objectUnderTest.getCredentials(PLUGIN_KEY_OPTIONS);
-        objectUnderTest.getCredentials(PLUGIN_KEY_OPTIONS);
+        objectUnderTest.getCredentials(KEY_OPTIONS);
+        objectUnderTest.getCredentials(KEY_OPTIONS);
 
-        verify(factory, times(1)).create(PLUGIN_KEY_OPTIONS);
+        verify(factory, times(1)).create(KEY_OPTIONS);
     }
 
     @Test
@@ -140,12 +140,14 @@ class DefaultGcpCredentialsSupplierTest {
         final GcpCredentialsOptions pluginOptions =
                 GcpCredentialsOptions.builder().withScopes(List.of("devstorage.read_only")).withProjectId("plugin-project").build();
 
-        createObjectUnderTest(PLUGIN_KEY_OPTIONS).getCredentials(pluginOptions);
+        createObjectUnderTest(KEY_OPTIONS).getCredentials(pluginOptions);
 
         final ArgumentCaptor<GcpCredentialsOptions> captor = ArgumentCaptor.forClass(GcpCredentialsOptions.class);
         verify(factory).create(captor.capture());
         assertThat(captor.getValue().getAuthMode(), equalTo(GcpAuthMode.SERVICE_ACCOUNT_KEY));
-        assertThat(captor.getValue().getClientEmail(), equalTo(PLUGIN_KEY_OPTIONS.getClientEmail()));
+        assertThat(captor.getValue().getClientEmail(), equalTo(KEY_OPTIONS.getClientEmail()));
+        assertThat(captor.getValue().getPrivateKey(), equalTo(KEY_OPTIONS.getPrivateKey()));
+        assertThat(captor.getValue().getTokenUri(), equalTo("https://oauth2.googleapis.com/custom"));
         assertThat(captor.getValue().getScopes(), equalTo(List.of("devstorage.read_only")));
         assertThat(captor.getValue().getProjectId(), equalTo("plugin-project"));
     }
@@ -166,15 +168,29 @@ class DefaultGcpCredentialsSupplierTest {
             return applicationDefaultCredentials;
         });
 
-        objectUnderTest.getDefaultProjectId();
-        objectUnderTest.getDefaultProjectId();
+        assertThat(objectUnderTest.getDefaultProjectId(), equalTo(Optional.of("adc-project")));
+        assertThat(objectUnderTest.getDefaultProjectId(), equalTo(Optional.of("adc-project")));
+
+        assertThat(loads.get(), equalTo(1));
+    }
+
+    @Test
+    void getDefaultProjectId_when_adc_unavailable_loads_once_and_keeps_returning_empty() {
+        final AtomicInteger loads = new AtomicInteger();
+        final DefaultGcpCredentialsSupplier objectUnderTest = createObjectUnderTest(null, () -> {
+            loads.incrementAndGet();
+            throw new IOException("no ADC");
+        });
+
+        assertThat(objectUnderTest.getDefaultProjectId(), equalTo(Optional.empty()));
+        assertThat(objectUnderTest.getDefaultProjectId(), equalTo(Optional.empty()));
 
         assertThat(loads.get(), equalTo(1));
     }
 
     @Test
     void getDefaultProjectId_with_service_account_key_default_and_no_project_does_not_use_adc_project() {
-        assertThat(createObjectUnderTest(PLUGIN_KEY_OPTIONS, () -> {
+        assertThat(createObjectUnderTest(KEY_OPTIONS, () -> {
             throw new IllegalStateException("ADC must not be loaded");
         }).getDefaultProjectId(), equalTo(Optional.empty()));
     }

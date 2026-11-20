@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.gcp.api;
 
+import java.util.List;
+
 /**
  * The credentials validation rules shared by {@link GcpConfig} and {@link GcpCredentialsOptions}.
  */
@@ -20,6 +22,7 @@ final class GcpCredentialsRules {
             "private_key, client_email and token_uri require auth_mode service_account_key";
     static final String INCOMPLETE_SERVICE_ACCOUNT_KEY =
             "auth_mode service_account_key requires a non-blank private_key and client_email";
+    static final String INVALID_SCOPES = "scopes must not contain null or blank values";
 
     private GcpCredentialsRules() {
     }
@@ -36,6 +39,10 @@ final class GcpCredentialsRules {
 
     static boolean isCompleteServiceAccountKey(final GcpAuthMode authMode, final String privateKey, final String clientEmail) {
         return authMode != GcpAuthMode.SERVICE_ACCOUNT_KEY || (!isBlank(privateKey) && !isBlank(clientEmail));
+    }
+
+    static boolean isValidScopes(final List<String> scopes) {
+        return scopes == null || scopes.stream().noneMatch(GcpCredentialsRules::isBlank);
     }
 
     private static boolean hasKeyFields(final String privateKey, final String clientEmail, final String tokenUri) {

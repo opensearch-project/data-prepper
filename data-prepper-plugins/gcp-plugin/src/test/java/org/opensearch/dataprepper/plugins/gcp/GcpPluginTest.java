@@ -13,11 +13,13 @@ package org.opensearch.dataprepper.plugins.gcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.gcp.api.GcpCredentialsException;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsOptions;
 import org.opensearch.dataprepper.gcp.api.GcpCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
@@ -120,12 +122,22 @@ class GcpPluginTest {
     }
 
     @Test
-    void constructor_with_service_account_key_default_builds_its_credentials_at_startup() throws Exception {
+    void constructor_with_malformed_service_account_key_default_fails_at_startup() throws Exception {
+        final GcpPluginConfig config = readConfig(serviceAccountDefault(
+                "-----BEGIN PRIVATE KEY-----\nbm90IGEga2V5\n-----END PRIVATE KEY-----\n", GcpCredentialsOptions.DEFAULT_TOKEN_URI));
+
+        final GcpCredentialsException exception =
+                assertThrows(GcpCredentialsException.class, () -> new GcpPlugin(config, () -> applicationDefaultCredentials));
+
+        assertThat(exception.getMessage(), containsString("service-account key"));
+    }
+
+    @Test
+    void constructor_with_valid_service_account_key_default_succeeds() throws Exception {
         final GcpPluginConfig config = readConfig(serviceAccountDefault(generatePkcs8PrivateKey(), GcpCredentialsOptions.DEFAULT_TOKEN_URI));
 
-        final GcpCredentialsSupplier supplier = applyAndGetSupplier(new GcpPlugin(config, () -> applicationDefaultCredentials));
-
-        assertThat(supplier.getCredentials(null), sameInstance(supplier.getCredentials(config.getDefaultConfig().toCredentialsOptions())));
+        assertThat(applyAndGetSupplier(new GcpPlugin(config, () -> applicationDefaultCredentials)).getCredentials(null),
+                instanceOf(ServiceAccountCredentials.class));
     }
 
     @Test

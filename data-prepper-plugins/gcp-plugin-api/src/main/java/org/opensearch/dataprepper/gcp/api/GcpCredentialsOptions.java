@@ -41,6 +41,9 @@ public final class GcpCredentialsOptions {
         this.privateKey = builder.privateKey;
         this.clientEmail = builder.clientEmail;
         this.configuredTokenUri = builder.tokenUri;
+        if (!GcpCredentialsRules.isValidScopes(builder.scopes)) {
+            throw new IllegalArgumentException(GcpCredentialsRules.INVALID_SCOPES);
+        }
         this.configuredScopes = builder.scopes == null || builder.scopes.isEmpty()
                 ? null : List.copyOf(new TreeSet<>(builder.scopes));
         this.tokenUri = configuredTokenUri != null ? configuredTokenUri : DEFAULT_TOKEN_URI;

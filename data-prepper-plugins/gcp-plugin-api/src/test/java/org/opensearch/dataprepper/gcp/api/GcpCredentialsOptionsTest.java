@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -197,5 +198,16 @@ class GcpCredentialsOptionsTest {
                 .withIdentityFrom(GcpCredentialsOptions.builder().withAuthMode(GcpAuthMode.ADC).build());
 
         assertThat(result, equalTo(GcpCredentialsOptions.builder().withAuthMode(GcpAuthMode.ADC).withProjectId("plugin").build()));
+    }
+
+    @Test
+    void build_with_null_or_blank_scope_throws_clear_message() {
+        final IllegalArgumentException nullScope = assertThrows(IllegalArgumentException.class,
+                () -> GcpCredentialsOptions.builder().withScopes(Arrays.asList("a", null)).build());
+        final IllegalArgumentException blankScope = assertThrows(IllegalArgumentException.class,
+                () -> GcpCredentialsOptions.builder().withScopes(List.of("a", " ")).build());
+
+        assertThat(nullScope.getMessage(), equalTo(GcpCredentialsRules.INVALID_SCOPES));
+        assertThat(blankScope.getMessage(), equalTo(GcpCredentialsRules.INVALID_SCOPES));
     }
 }

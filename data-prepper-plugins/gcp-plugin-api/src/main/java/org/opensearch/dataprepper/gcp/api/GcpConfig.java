@@ -101,6 +101,14 @@ public class GcpConfig {
     }
 
     /**
+     * @return false when scopes contains a null or blank value
+     */
+    @AssertTrue(message = GcpCredentialsRules.INVALID_SCOPES)
+    public boolean isValidScopesConfiguration() {
+        return GcpCredentialsRules.isValidScopes(scopes);
+    }
+
+    /**
      * @return the credentials options described by this block
      */
     public GcpCredentialsOptions toCredentialsOptions() {

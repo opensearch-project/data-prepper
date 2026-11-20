@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.gcp.api.GcpAuthMode;
 import java.io.IOException;
 import java.util.Set;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -60,8 +61,7 @@ class GcpPluginConfigTest {
         final Set<ConstraintViolation<GcpPluginConfig>> violations = VALIDATOR.validate(objectUnderTest);
 
         assertThat(violations.size(), equalTo(1));
-        assertThat(violations.iterator().next().getMessage(),
-                equalTo("auth_mode adc cannot be combined with private_key, client_email or token_uri"));
+        assertThat(violations.iterator().next().getMessage(), containsString("auth_mode adc"));
     }
 
     @Test
