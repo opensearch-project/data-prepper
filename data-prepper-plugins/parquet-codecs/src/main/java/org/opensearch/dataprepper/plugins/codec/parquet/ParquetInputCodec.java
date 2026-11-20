@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED;
+import static org.apache.parquet.avro.AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS;
 
 /**
  * An implementation of {@link InputCodec} which parses parquet records into fields.
@@ -55,6 +56,7 @@ public class ParquetInputCodec implements InputCodec {
         this.eventFactory = eventFactory;
         configuration = new PlainParquetConfiguration();
         configuration.setBoolean(READ_INT96_AS_FIXED, true);
+        configuration.setBoolean(ADD_LIST_ELEMENT_RECORDS, false);
     }
 
     @Override

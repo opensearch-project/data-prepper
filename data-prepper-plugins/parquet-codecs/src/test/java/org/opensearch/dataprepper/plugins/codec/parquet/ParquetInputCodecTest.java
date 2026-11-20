@@ -17,6 +17,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.junit.jupiter.api.BeforeAll;
@@ -228,6 +229,28 @@ public class ParquetInputCodecTest {
         }
     }
 
+    @Test
+    public void parseInputFile_parsesListsAsFlatArrays_when_file_has_no_avro_schema() throws IOException {
+        final File testDataFile = File.createTempFile(FILE_PREFIX + "-list-", FILE_SUFFIX);
+        testDataFile.deleteOnExit();
+        generateTestDataWithListsWithoutAvroSchema(testDataFile);
+        final InputFile inputFile = new LocalInputFile(testDataFile);
+
+        parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(), mockConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(mockConsumer, times(10)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+        for (int i = 0; i < actualRecords.size(); i++) {
+            final Event event = actualRecords.get(i).getData();
+            assertThat(event.get("id", String.class), equalTo("id" + i));
+            assertThat(event.get("embedding", List.class), equalTo(List.of(0.1 + i, 0.2 + i, 0.3 + i)));
+            assertThat(event.get("tags", List.class), equalTo(List.of("science", "ai")));
+            assertThat(event.get("authors", List.class), equalTo(List.of(Map.of("name", "author" + i, "age", i))));
+        }
+    }
+
     private static void generateTestData(final File file) throws IOException {
         Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
 
@@ -272,6 +295,63 @@ public class ParquetInputCodecTest {
         for (int i = 0; i < 10; i++) {
             final Group group = new SimpleGroup(schema);
             group.add("my_timestamp_value", createInt96());
+
+            writer.write(group);
+        }
+        writer.close();
+    }
+
+    /**
+     * Generates a Parquet file with standard 3-level list columns and no Avro schema
+     * in the file metadata, as written by non-Avro writers such as pyarrow. This must
+     * use the example schema rather than Avro, or the file would contain the Avro schema.
+     *
+     * @param file The file for Parquet
+     */
+    private static void generateTestDataWithListsWithoutAvroSchema(final File file) throws IOException {
+        final MessageType schema = MessageTypeParser.parseMessageType(
+                "message schema {" +
+                        "  optional binary id (STRING);" +
+                        "  optional group embedding (LIST) {" +
+                        "    repeated group list {" +
+                        "      optional double element;" +
+                        "    }" +
+                        "  }" +
+                        "  optional group tags (LIST) {" +
+                        "    repeated group list {" +
+                        "      optional binary element (STRING);" +
+                        "    }" +
+                        "  }" +
+                        "  optional group authors (LIST) {" +
+                        "    repeated group list {" +
+                        "      optional group element {" +
+                        "        optional binary name (STRING);" +
+                        "        optional int32 age;" +
+                        "      }" +
+                        "    }" +
+                        "  }" +
+                        "}");
+        final PlainParquetConfiguration conf = new PlainParquetConfiguration();
+        conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+        final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(file))
+                .withConf(conf)
+                .withEncryption(null)
+                .build();
+
+        for (int i = 0; i < 10; i++) {
+            final Group group = new SimpleGroup(schema);
+            group.add("id", "id" + i);
+            final Group embedding = group.addGroup("embedding");
+            for (final double value : List.of(0.1 + i, 0.2 + i, 0.3 + i)) {
+                embedding.addGroup("list").add("element", value);
+            }
+            final Group tags = group.addGroup("tags");
+            for (final String value : List.of("science", "ai")) {
+                tags.addGroup("list").add("element", value);
+            }
+            final Group author = group.addGroup("authors").addGroup("list").addGroup("element");
+            author.add("name", "author" + i);
+            author.add("age", i);
 
             writer.write(group);
         }
