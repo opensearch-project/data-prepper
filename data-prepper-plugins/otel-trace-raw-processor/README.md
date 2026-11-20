@@ -14,7 +14,7 @@ processor:
 ## Configuration
 
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
-* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
+* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to the value of `trace_flush_interval` (180 seconds unless configured), so that child spans arriving while orphaned spans are still held can be completed with trace group information.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
 * `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation` and `genai_coverage_cache_max_size` cannot be set.
 * `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
@@ -76,9 +76,9 @@ Agents usually run behind a service: the trace's root is an HTTP or RPC span, su
 
 Spans of a trace can arrive in several batches. A span that arrives after its agent was processed is enriched without its ancestors, so it would look outermost and be marked as a second agent run. To prevent this, the processor remembers, per trace, which span ids are already covered by a GenAI span or a marker, and checks there when a parent is not in the batch.
 
-* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (375 seconds at defaults), so they outlive the flush of spans that arrive without their root.
+* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (540 seconds at defaults), so they outlive the flush of spans that arrive without their root.
 * The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
-* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 1,300 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
+* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 900 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
 * The covered-span lookup, the marking and the update run atomically per trace, so pipeline workers processing spans of one trace at the same time do not both mark one.
 
 Known limits:
