@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "priority": 100,
+  "composed_of": [
+    "otel-v1-genai-evaluation-logs-plain",
+    "otel-v1-genai-evaluation-fields"
+  ]
+}

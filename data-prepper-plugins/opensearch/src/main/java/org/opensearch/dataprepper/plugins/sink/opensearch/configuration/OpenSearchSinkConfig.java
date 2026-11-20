@@ -17,7 +17,6 @@ import lombok.Getter;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryForExistingDocumentConfiguration;
 
 import java.util.List;
@@ -105,9 +104,14 @@ public class OpenSearchSinkConfig {
     @JsonProperty("index_type")
     private String indexType = null;
 
+    /**
+     * Null when not configured, so that the index type can choose its default. Most index types default to
+     * {@code v1}, while index types composed from component templates require {@code index-template}; see
+     * {@code IndexConfiguration}.
+     */
     @Getter
     @JsonProperty("template_type")
-    private String templateType = TemplateType.V1.getTypeName();
+    private String templateType = null;
 
     @Getter
     @JsonProperty("template_file")
