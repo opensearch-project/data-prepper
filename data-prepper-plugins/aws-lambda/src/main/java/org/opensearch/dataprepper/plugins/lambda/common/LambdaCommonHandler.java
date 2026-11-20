@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
@@ -88,7 +88,7 @@ public class LambdaCommonHandler {
     public static Map<Buffer, CompletableFuture<InvokeResponse>> sendRecords(
             Collection<Record<Event>> records,
             LambdaCommonConfig config,
-            LambdaAsyncClient lambdaAsyncClient,
+            BoundedLambdaAsyncClient lambdaAsyncClient,
             final OutputCodecContext outputCodecContext) {
 
         List<Buffer> batchedBuffers = createBufferBatches(records, config.getKeys(), config.getBatchOptions(),
@@ -98,7 +98,23 @@ public class LambdaCommonHandler {
         return bufferToFutureMap;
     }
 
-    public static Map<Buffer, CompletableFuture<InvokeResponse>> invokeLambdaAndGetFutureMap(LambdaCommonConfig config, LambdaAsyncClient lambdaAsyncClient, List<Buffer> batchedBuffers) {
+    /**
+     * Invokes Lambda with the contents of a single buffer.
+     *
+     * @param config the Lambda configuration providing the function name and invocation type
+     * @param lambdaAsyncClient the client to invoke with
+     * @param buffer the buffer to send
+     * @return the pending invocation
+     */
+    public static CompletableFuture<InvokeResponse> invokeSingleBuffer(final LambdaCommonConfig config,
+                                                                       final BoundedLambdaAsyncClient lambdaAsyncClient,
+                                                                       final Buffer buffer) {
+        final InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
+                config.getInvocationType().getAwsLambdaValue());
+        return lambdaAsyncClient.invoke(requestPayload);
+    }
+
+    public static Map<Buffer, CompletableFuture<InvokeResponse>> invokeLambdaAndGetFutureMap(LambdaCommonConfig config, BoundedLambdaAsyncClient lambdaAsyncClient, List<Buffer> batchedBuffers) {
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         LOG.debug("Batch Chunks created after threshold check: {}", batchedBuffers.size());
         for (Buffer buffer : batchedBuffers) {

@@ -17,10 +17,11 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.StreamingLambdaHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
+import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException;
@@ -51,7 +52,7 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
 
     public StreamingLambdaInvoker(
             final LambdaProcessorConfig lambdaProcessorConfig,
-            final LambdaAsyncClient lambdaAsyncClient,
+            final BoundedLambdaAsyncClient lambdaAsyncClient,
             final InputCodec responseCodec,
             final LambdaProcessor processor) {
         this.processor = processor;
@@ -89,8 +90,12 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
                 CompletableFuture<List<Record<Event>>> streamingFuture = streamingHandler.invokeWithStreaming(
                         inputBuffer
                 );
-                
-                List<Record<Event>> streamingRecords = streamingFuture.get();
+
+                List<Record<Event>> streamingRecords = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        streamingFuture,
+                        () -> streamingHandler.invokeWithStreaming(inputBuffer),
+                        processor.getClientOptions(),
+                        processor.connectionPoolExhaustionCounter);
                 resultRecords.addAll(streamingRecords);
                 
                 Duration latency = inputBuffer.stopLatencyWatch();
