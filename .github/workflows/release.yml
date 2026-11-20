@@ -166,6 +166,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 11
+          distribution: temurin
       - name: Checkout Data Prepper
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
@@ -195,6 +200,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 11
+          distribution: temurin
       - name: Checkout Data Prepper
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get Version
