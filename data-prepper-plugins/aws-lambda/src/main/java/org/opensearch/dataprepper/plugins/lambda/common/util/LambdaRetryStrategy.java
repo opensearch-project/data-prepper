@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.lambda.common.util;
 
+import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -37,6 +39,12 @@ public final class LambdaRetryStrategy {
      * occur from this client and this path exists only as a backup.
      */
     private static final int CONNECTION_POOL_BACKOFF_MAX_RETRIES = 10;
+
+    /**
+     * Maximum shift applied when computing the exponential backoff ceiling. Caps
+     * {@code 1L << attempt} so the multiplication cannot overflow a long.
+     */
+    private static final int MAX_BACKOFF_SHIFT = 20;
 
     /**
      * Message used by the AWS SDK Netty HTTP client when a request times out waiting to
@@ -174,30 +182,58 @@ public final class LambdaRetryStrategy {
     }
 
     /**
+     * Joins a Lambda invocation future, retrying with backoff if it failed because the
+     * HTTP client's connection pool was exhausted. Such a failure occurs before the request
+     * leaves the host, so the Lambda function was never invoked and retrying cannot
+     * double-invoke it, even for non-idempotent functions. Any other failure is rethrown
+     * for the caller's normal failure handling.
+     *
+     * <p>The counter is incremented once for each invocation attempt which fails due to
+     * pool exhaustion, including the initial attempt.
+     *
+     * @param future the in-flight invocation to join
+     * @param retryOperation supplies a new invocation attempt; a supplier is used rather
+     *                       than a future so each attempt re-acquires a connection permit
+     * @param clientOptions source of the backoff delays
+     * @param poolExhaustionCounter incremented per attempt which fails with pool exhaustion
+     * @param <T> the response type of the invocation
+     * @return the result of the original future or of a successful retry
+     * @throws CompletionException the failure, if the future failed for another reason or
+     *                             all retries were exhausted
+     */
+    public static <T> T joinWithConnectionPoolBackoff(final CompletableFuture<T> future,
+                                                      final Supplier<CompletableFuture<T>> retryOperation,
+                                                      final ClientOptions clientOptions,
+                                                      final Counter poolExhaustionCounter) {
+        try {
+            return future.join();
+        } catch (final CompletionException e) {
+            if (!isConnectionPoolAcquireFailure(e)) {
+                throw e;
+            }
+            poolExhaustionCounter.increment();
+            return retryOnConnectionPoolExhaustion(retryOperation, clientOptions, poolExhaustionCounter);
+        }
+    }
+
+    /**
      * Retries an operation with equal-jitter exponential backoff for as long as it keeps
-     * failing with connection pool exhaustion. The operation supplies a new future per
-     * attempt; a supplier is used rather than a future so each attempt re-acquires a
-     * connection permit. Sleeping happens without holding a permit, letting the pool drain.
+     * failing with connection pool exhaustion. Sleeping happens without holding a
+     * connection permit, letting the pool drain.
      *
      * <p>The loop stops as soon as an attempt fails for any other reason, because a failure
      * that reached the service is no longer known to be safe to retry.
-     *
-     * @param operation supplies a new invocation attempt
-     * @param baseDelay base delay for exponential backoff
-     * @param maxBackoff maximum backoff between attempts
-     * @param onRetry invoked with the attempt number before each retry, for metrics
-     * @param <T> the response type of the operation
-     * @return the successful result of a retried attempt
-     * @throws CompletionException the failure of the final attempt, if no attempt succeeded
      */
-    public static <T> T retryOnConnectionPoolExhaustion(final Supplier<CompletableFuture<T>> operation,
-                                                        final Duration baseDelay,
-                                                        final Duration maxBackoff,
-                                                        final Runnable onRetry) {
+    private static <T> T retryOnConnectionPoolExhaustion(final Supplier<CompletableFuture<T>> operation,
+                                                         final ClientOptions clientOptions,
+                                                         final Counter poolExhaustionCounter) {
+        final Duration baseDelay = clientOptions.getBaseDelay();
+        final Duration maxBackoff = clientOptions.getMaxBackoff();
         CompletionException lastFailure = null;
         for (int attempt = 1; attempt <= CONNECTION_POOL_BACKOFF_MAX_RETRIES; attempt++) {
-            final long ceilingMillis = Math.min(maxBackoff.toMillis(),
-                    baseDelay.toMillis() * (1L << Math.min(attempt, 20)));
+            // Floor of 1ms so a zero base delay cannot collapse into a sleepless retry loop.
+            final long ceilingMillis = Math.max(1L, Math.min(maxBackoff.toMillis(),
+                    baseDelay.toMillis() * (1L << Math.min(attempt, MAX_BACKOFF_SHIFT))));
             final long delayMillis = ceilingMillis / 2
                     + ThreadLocalRandom.current().nextLong(ceilingMillis / 2 + 1);
             LOG.warn(NOISY, "Lambda connection pool exhausted. Backing off {}ms before retry {}/{}.",
@@ -209,13 +245,13 @@ public final class LambdaRetryStrategy {
                 throw lastFailure != null ? lastFailure : new CompletionException(e);
             }
 
-            onRetry.run();
             try {
                 return operation.get().join();
             } catch (final CompletionException e) {
                 if (!isConnectionPoolAcquireFailure(e)) {
                     throw e;
                 }
+                poolExhaustionCounter.increment();
                 lastFailure = e;
             }
         }

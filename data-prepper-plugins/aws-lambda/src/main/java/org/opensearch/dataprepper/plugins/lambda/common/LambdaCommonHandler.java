@@ -98,6 +98,22 @@ public class LambdaCommonHandler {
         return bufferToFutureMap;
     }
 
+    /**
+     * Invokes Lambda with the contents of a single buffer.
+     *
+     * @param config the Lambda configuration providing the function name and invocation type
+     * @param lambdaAsyncClient the client to invoke with
+     * @param buffer the buffer to send
+     * @return the pending invocation
+     */
+    public static CompletableFuture<InvokeResponse> invokeSingleBuffer(final LambdaCommonConfig config,
+                                                                       final BoundedLambdaAsyncClient lambdaAsyncClient,
+                                                                       final Buffer buffer) {
+        final InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
+                config.getInvocationType().getAwsLambdaValue());
+        return lambdaAsyncClient.invoke(requestPayload);
+    }
+
     public static Map<Buffer, CompletableFuture<InvokeResponse>> invokeLambdaAndGetFutureMap(LambdaCommonConfig config, BoundedLambdaAsyncClient lambdaAsyncClient, List<Buffer> batchedBuffers) {
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         LOG.debug("Batch Chunks created after threshold check: {}", batchedBuffers.size());

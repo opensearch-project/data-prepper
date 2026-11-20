@@ -45,7 +45,7 @@ public class BoundedLambdaAsyncClient {
         try {
             return delegate.invoke(invokeRequest)
                     .whenComplete((response, throwable) -> concurrencyPermits.release());
-        } catch (final RuntimeException e) {
+        } catch (final Throwable e) {
             concurrencyPermits.release();
             throw e;
         }
@@ -58,7 +58,7 @@ public class BoundedLambdaAsyncClient {
         try {
             return delegate.invokeWithResponseStream(request, responseHandler)
                     .whenComplete((response, throwable) -> concurrencyPermits.release());
-        } catch (final RuntimeException e) {
+        } catch (final Throwable e) {
             concurrencyPermits.release();
             throw e;
         }

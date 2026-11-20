@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.lambda.utils;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -130,57 +134,119 @@ public class LambdaRetryStrategyTest {
         assertFalse(LambdaRetryStrategy.isConnectionPoolAcquireFailure(null));
     }
 
-    @Test
-    void retryOnConnectionPoolExhaustion_returns_result_of_successful_retry() {
-        final InvokeResponse expectedResponse = InvokeResponse.builder().statusCode(200).build();
-        final AtomicInteger attempts = new AtomicInteger();
-        final AtomicInteger retryCallbacks = new AtomicInteger();
+    private ClientOptions fastBackoffClientOptions() {
+        final ClientOptions clientOptions = mock(ClientOptions.class);
+        when(clientOptions.getBaseDelay()).thenReturn(Duration.ofMillis(1));
+        when(clientOptions.getMaxBackoff()).thenReturn(Duration.ofMillis(5));
+        return clientOptions;
+    }
 
-        final InvokeResponse actualResponse = LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
-                () -> attempts.incrementAndGet() < 3
-                        ? CompletableFuture.failedFuture(createAcquireTimeoutFailure())
-                        : CompletableFuture.completedFuture(expectedResponse),
-                Duration.ofMillis(1),
-                Duration.ofMillis(5),
-                retryCallbacks::incrementAndGet);
+    @Test
+    void joinWithConnectionPoolBackoff_returns_result_without_retrying_on_success() {
+        final InvokeResponse expectedResponse = InvokeResponse.builder().statusCode(200).build();
+        final Counter poolExhaustionCounter = mock(Counter.class);
+
+        final InvokeResponse actualResponse = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                CompletableFuture.completedFuture(expectedResponse),
+                () -> {
+                    throw new IllegalStateException("retry should not run on success");
+                },
+                fastBackoffClientOptions(),
+                poolExhaustionCounter);
 
         assertThat(actualResponse, sameInstance(expectedResponse));
-        assertThat(attempts.get(), equalTo(3));
-        assertThat(retryCallbacks.get(), equalTo(3));
+        verifyNoInteractions(poolExhaustionCounter);
     }
 
     @Test
-    void retryOnConnectionPoolExhaustion_rethrows_when_failure_is_not_pool_exhaustion() {
+    void joinWithConnectionPoolBackoff_rethrows_when_failure_is_not_pool_exhaustion() {
         final RuntimeException otherFailure = new RuntimeException("not pool exhaustion");
+        final Counter poolExhaustionCounter = mock(Counter.class);
 
         final CompletionException actualException = assertThrows(CompletionException.class,
-                () -> LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
-                        () -> CompletableFuture.failedFuture(otherFailure),
-                        Duration.ofMillis(1),
-                        Duration.ofMillis(5),
+                () -> LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        CompletableFuture.failedFuture(otherFailure),
                         () -> {
-                        }));
+                            throw new IllegalStateException("retry should not run for other failures");
+                        },
+                        fastBackoffClientOptions(),
+                        poolExhaustionCounter));
 
         assertThat(actualException.getCause(), sameInstance(otherFailure));
+        verifyNoInteractions(poolExhaustionCounter);
     }
 
     @Test
-    void retryOnConnectionPoolExhaustion_throws_last_failure_after_exhausting_retries() {
-        final AtomicInteger attempts = new AtomicInteger();
+    void joinWithConnectionPoolBackoff_returns_result_of_successful_retry_and_counts_each_failed_attempt() {
+        final InvokeResponse expectedResponse = InvokeResponse.builder().statusCode(200).build();
+        final Counter poolExhaustionCounter = mock(Counter.class);
+        final AtomicInteger retryAttempts = new AtomicInteger();
+
+        final InvokeResponse actualResponse = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                CompletableFuture.failedFuture(createAcquireTimeoutFailure()),
+                () -> retryAttempts.incrementAndGet() < 3
+                        ? CompletableFuture.failedFuture(createAcquireTimeoutFailure())
+                        : CompletableFuture.completedFuture(expectedResponse),
+                fastBackoffClientOptions(),
+                poolExhaustionCounter);
+
+        assertThat(actualResponse, sameInstance(expectedResponse));
+        assertThat(retryAttempts.get(), equalTo(3));
+        // One count for the initial failure and one for each of the two failed retries.
+        verify(poolExhaustionCounter, times(3)).increment();
+    }
+
+    @Test
+    void joinWithConnectionPoolBackoff_stops_retrying_when_failure_changes_type() {
+        final RuntimeException otherFailure = new RuntimeException("not pool exhaustion");
+        final Counter poolExhaustionCounter = mock(Counter.class);
 
         final CompletionException actualException = assertThrows(CompletionException.class,
-                () -> LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
+                () -> LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        CompletableFuture.failedFuture(createAcquireTimeoutFailure()),
+                        () -> CompletableFuture.failedFuture(otherFailure),
+                        fastBackoffClientOptions(),
+                        poolExhaustionCounter));
+
+        assertThat(actualException.getCause(), sameInstance(otherFailure));
+        verify(poolExhaustionCounter, times(1)).increment();
+    }
+
+    @Test
+    void joinWithConnectionPoolBackoff_throws_last_failure_after_exhausting_retries() {
+        final Counter poolExhaustionCounter = mock(Counter.class);
+        final AtomicInteger retryAttempts = new AtomicInteger();
+
+        final CompletionException actualException = assertThrows(CompletionException.class,
+                () -> LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        CompletableFuture.failedFuture(createAcquireTimeoutFailure()),
                         () -> {
-                            attempts.incrementAndGet();
+                            retryAttempts.incrementAndGet();
                             return CompletableFuture.failedFuture(createAcquireTimeoutFailure());
                         },
-                        Duration.ofMillis(1),
-                        Duration.ofMillis(2),
-                        () -> {
-                        }));
+                        fastBackoffClientOptions(),
+                        poolExhaustionCounter));
 
         assertTrue(LambdaRetryStrategy.isConnectionPoolAcquireFailure(actualException));
-        assertThat(attempts.get(), equalTo(10));
+        assertThat(retryAttempts.get(), equalTo(10));
+        verify(poolExhaustionCounter, times(11)).increment();
+    }
+
+    @Test
+    void joinWithConnectionPoolBackoff_retries_with_a_delay_when_base_delay_is_zero() {
+        final ClientOptions clientOptions = mock(ClientOptions.class);
+        when(clientOptions.getBaseDelay()).thenReturn(Duration.ZERO);
+        when(clientOptions.getMaxBackoff()).thenReturn(Duration.ZERO);
+        final Counter poolExhaustionCounter = mock(Counter.class);
+        final InvokeResponse expectedResponse = InvokeResponse.builder().statusCode(200).build();
+
+        final InvokeResponse actualResponse = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                CompletableFuture.failedFuture(createAcquireTimeoutFailure()),
+                () -> CompletableFuture.completedFuture(expectedResponse),
+                clientOptions,
+                poolExhaustionCounter);
+
+        assertThat(actualResponse, sameInstance(expectedResponse));
     }
 
 }

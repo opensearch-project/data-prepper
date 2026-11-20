@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -92,22 +91,11 @@ public class StreamingLambdaInvoker implements LambdaInvoker {
                         inputBuffer
                 );
 
-                List<Record<Event>> streamingRecords;
-                try {
-                    streamingRecords = streamingFuture.join();
-                } catch (CompletionException e) {
-                    if (!LambdaRetryStrategy.isConnectionPoolAcquireFailure(e)) {
-                        throw e;
-                    }
-                    // The request never left this host, so retrying cannot double-invoke
-                    // the function. Back off to let in-flight calls release connections.
-                    processor.connectionPoolExhaustionCounter.increment();
-                    streamingRecords = LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
-                            () -> streamingHandler.invokeWithStreaming(inputBuffer),
-                            processor.getClientOptions().getBaseDelay(),
-                            processor.getClientOptions().getMaxBackoff(),
-                            processor.connectionPoolExhaustionCounter::increment);
-                }
+                List<Record<Event>> streamingRecords = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        streamingFuture,
+                        () -> streamingHandler.invokeWithStreaming(inputBuffer),
+                        processor.getClientOptions(),
+                        processor.connectionPoolExhaustionCounter);
                 resultRecords.addAll(streamingRecords);
                 
                 Duration latency = inputBuffer.stopLatencyWatch();

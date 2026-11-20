@@ -36,7 +36,6 @@ import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqDat
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.net.HttpURLConnection;
@@ -47,7 +46,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -325,22 +323,12 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             CompletableFuture<InvokeResponse> future = entry.getValue();
 
             try {
-                InvokeResponse response;
-                try {
-                    response = future.join();
-                } catch (CompletionException e) {
-                    if (!LambdaRetryStrategy.isConnectionPoolAcquireFailure(e)) {
-                        throw e;
-                    }
-                    // The request never left this host, so retrying cannot double-invoke
-                    // the function. Back off to let in-flight calls release connections.
-                    connectionPoolExhaustionCounter.increment();
-                    response = LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
-                            () -> retryBuffer(inputBuffer),
-                            clientOptions.getBaseDelay(),
-                            clientOptions.getMaxBackoff(),
-                            connectionPoolExhaustionCounter::increment);
-                }
+                InvokeResponse response = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        future,
+                        () -> LambdaCommonHandler.invokeSingleBuffer(lambdaSinkConfig,
+                                lambdaAsyncClient, inputBuffer),
+                        clientOptions,
+                        connectionPoolExhaustionCounter);
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
                 requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
@@ -364,13 +352,6 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 handleFailure(inputBuffer.getRecords(), ex, HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
         }
-    }
-
-    private CompletableFuture<InvokeResponse> retryBuffer(final Buffer inputBuffer) {
-        final InvokeRequest requestPayload = inputBuffer.getRequestPayload(
-                lambdaSinkConfig.getFunctionName(),
-                lambdaSinkConfig.getInvocationType().getAwsLambdaValue());
-        return lambdaAsyncClient.invoke(requestPayload);
     }
 
     private boolean isThresholdExceeded(Buffer buffer, Record record) {
