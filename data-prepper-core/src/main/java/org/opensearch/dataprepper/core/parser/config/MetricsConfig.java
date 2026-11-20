@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.core.parser.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
+import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.MeterBinder;
@@ -21,13 +22,19 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import io.micrometer.registry.otlp.AggregationTemporality;
+import io.micrometer.registry.otlp.OtlpConfig;
+import io.micrometer.registry.otlp.OtlpMeterRegistry;
+import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
 import org.opensearch.dataprepper.core.meter.EMFLoggingRegistryConfig;
 import org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
+import org.opensearch.dataprepper.core.parser.model.OtlpMetricsConfig;
 import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +46,13 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics.JVM_MEMORY_USED;
 
 @Configuration
 public class MetricsConfig {
@@ -101,6 +112,8 @@ public class MetricsConfig {
     public PrometheusMeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+            // Earlier Prometheus clients dropped jvm.memory.used without an id tag; keep it out so existing sums do not double.
+            meterRegistry.config().meterFilter(MeterFilter.deny(id -> JVM_MEMORY_USED.equals(id.getName()) && id.getTag("id") == null));
             configureMetricRegistry(
                     dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
                     dataPrepperConfiguration.getDisabledMetrics(),  meterRegistry
@@ -170,6 +183,21 @@ public class MetricsConfig {
     }
 
     @Bean
+    public OtlpMeterRegistry otlpMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
+        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.OTLP)) {
+            final OtlpMeterRegistry meterRegistry = new OtlpMeterRegistry(
+                    createOtlpConfig(dataPrepperConfiguration.getOtlpMetricsConfig()), Clock.SYSTEM);
+            configureMetricRegistry(
+                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
+                    dataPrepperConfiguration.getDisabledMetrics(), meterRegistry
+            );
+            return meterRegistry;
+        } else {
+            return null;
+        }
+    }
+
+    @Bean
     public CompositeMeterRegistry systemMeterRegistry(
             final List<MeterBinder> meterBinders,
             final List<MeterRegistry> meterRegistries,
@@ -191,6 +219,37 @@ public class MetricsConfig {
         meterBinders.forEach(binder -> binder.bindTo(compositeMeterRegistry));
 
         return compositeMeterRegistry;
+    }
+
+    private OtlpConfig createOtlpConfig(final OtlpMetricsConfig otlpMetricsConfig) {
+        return new OtlpConfig() {
+            @Override
+            public String get(final String key) {
+                return null;
+            }
+
+            @Override
+            public String url() {
+                return otlpMetricsConfig.getEndpoint();
+            }
+
+            @Override
+            public AggregationTemporality aggregationTemporality() {
+                return otlpMetricsConfig.getAggregationTemporality();
+            }
+
+            @Override
+            public Duration step() {
+                return otlpMetricsConfig.getStep();
+            }
+
+            @Override
+            public Map<String, String> resourceAttributes() {
+                final Map<String, String> resourceAttributes = new HashMap<>(otlpMetricsConfig.getResourceAttributes());
+                resourceAttributes.putIfAbsent("service.name", DataPrepper.getServiceNameForMetrics());
+                return resourceAttributes;
+            }
+        };
     }
 
     private EMFLoggingRegistryConfig createEMFLoggingRegistryConfig(final DataPrepperConfiguration dataPrepperConfiguration) {

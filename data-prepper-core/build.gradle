@@ -41,12 +41,17 @@ dependencies {
     testImplementation project(':data-prepper-plugin-framework').sourceSets.test.output
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation project(':data-prepper-plugins:file-source')
+    testImplementation project(':data-prepper-plugins:otel-proto-common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.reflections.core
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.micrometer:micrometer-registry-cloudwatch2'
+    implementation('io.micrometer:micrometer-registry-cloudwatch2') {
+        // Keeps the AWS SDK on the project BOM version instead of the newer SDK this registry requests.
+        exclude group: 'software.amazon.awssdk'
+    }
+    implementation 'io.micrometer:micrometer-registry-otlp'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation platform('org.apache.logging.log4j:log4j-bom:2.26.0')

@@ -13,5 +13,6 @@ public enum MetricRegistryType {
     // TODO: capitalize enum values
     Prometheus,
     CloudWatch,
-    EmbeddedMetricsFormat;
+    EmbeddedMetricsFormat,
+    OTLP;
 }
