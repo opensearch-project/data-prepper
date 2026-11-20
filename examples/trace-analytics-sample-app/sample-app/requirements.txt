@@ -1,6 +1,6 @@
 flask==3.0.3
 mysql-connector==2.2.9
-opentelemetry-exporter-otlp==1.40.0
+opentelemetry-exporter-otlp==1.41.0
 opentelemetry-instrumentation-flask==0.60b1
 opentelemetry-instrumentation-mysql==0.60b1
 opentelemetry-instrumentation-requests==0.60b1
