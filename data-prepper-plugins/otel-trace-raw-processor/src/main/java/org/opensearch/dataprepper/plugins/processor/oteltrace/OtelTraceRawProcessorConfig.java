@@ -16,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 
 import java.time.Duration;
 
@@ -65,6 +66,18 @@ public class OtelTraceRawProcessorConfig {
             "non-GenAI roots, such as the HTTP span an agent runs behind. <code>none</code> copies nothing. " +
             "Default is <code>ai_root</code>.")
     private GenAiRootPropagation genAiRootPropagation;
+
+    @JsonProperty(value = "environment_source", defaultValue = "platform_first")
+    @JsonPropertyDescription("Precedence for <code>attributes.derived.environment</code> on SERVER spans. " +
+            "<code>platform_first</code> (default) uses the AWS platform (e.g. <code>eks:default</code>) before " +
+            "<code>deployment.environment.name</code> / <code>deployment.environment</code>; <code>deployment_first</code> " +
+            "uses the deployment environment first. Set it to the same value as on <code>otel_apm_service_map</code>, " +
+            "so spans and their service agree.")
+    private EnvironmentSource environmentSource = EnvironmentSource.PLATFORM_FIRST;
+
+    public EnvironmentSource getEnvironmentSource() {
+        return environmentSource != null ? environmentSource : EnvironmentSource.PLATFORM_FIRST;
+    }
 
     public long getTraceFlushIntervalSeconds() {
         return traceFlushInterval;

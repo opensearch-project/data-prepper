@@ -16,6 +16,7 @@ processor:
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 * `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
+* `environment_source`: Precedence for the `attributes.derived.environment` written on SERVER spans: `platform_first` (default) uses the AWS platform (e.g. `eks:default`) before `deployment.environment.name` / `deployment.environment`; `deployment_first` uses the deployment environment first. Set the same value as on the `otel_apm_service_map` processor so spans and their service agree.
 * `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation` and `genai_coverage_cache_max_size` cannot be set.
 * `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
 * `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none`, written exactly so (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.

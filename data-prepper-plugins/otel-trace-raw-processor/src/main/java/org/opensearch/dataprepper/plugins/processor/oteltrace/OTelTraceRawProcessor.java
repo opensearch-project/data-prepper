@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.trace.Span;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private final GenAiCoverage genAiCoverage;
     private final GenAiRootPropagation genAiRootPropagation;
     private final boolean genAiEnrichmentEnabled;
+    private final EnvironmentSource environmentSource;
 
     private long lastTraceFlushTime = 0L;
 
@@ -83,6 +85,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
           .build();
 
 
+        environmentSource = otelTraceRawProcessorConfig.getEnvironmentSource();
         genAiEnrichmentEnabled = !otelTraceRawProcessorConfig.isGenAiEnrichmentDisabled();
         genAiRootPropagation = Objects.requireNonNullElse(
                 otelTraceRawProcessorConfig.getGenAiRootPropagation(), GenAiRootPropagation.AI_ROOT);
@@ -126,7 +129,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         }
 
         // Derive server span attributes (fault, error, operation, environment)
-        OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans);
+        OTelSpanDerivationUtil.deriveServerSpanAttributes(processedSpans, environmentSource);
 
         return processedSpans.stream().map(Record::new).collect(Collectors.toList());
     }

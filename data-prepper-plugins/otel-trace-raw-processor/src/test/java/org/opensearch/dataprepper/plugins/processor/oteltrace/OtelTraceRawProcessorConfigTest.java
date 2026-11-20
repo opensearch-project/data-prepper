@@ -143,4 +143,12 @@ class OtelTraceRawProcessorConfigTest {
         assertThat(min, notNullValue());
         assertThat(min.value(), equalTo(1L));
     }
+
+    @Test
+    void environmentSource_defaultsToPlatformFirst_andReadsDeploymentFirst() {
+        assertThat(new OtelTraceRawProcessorConfig().getEnvironmentSource(),
+                equalTo(org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource.PLATFORM_FIRST));
+        assertThat(deserialize(Map.of("environment_source", "deployment_first")).getEnvironmentSource(),
+                equalTo(org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource.DEPLOYMENT_FIRST));
+    }
 }
