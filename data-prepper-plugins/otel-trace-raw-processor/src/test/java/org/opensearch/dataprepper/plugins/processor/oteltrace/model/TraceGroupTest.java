@@ -27,14 +27,17 @@ class TraceGroupTest {
     void fromSpan_creates_expected_TraceGroup() {
         final String traceGroup = UUID.randomUUID().toString();
         final TraceGroupFields traceGroupFields = mock(TraceGroupFields.class);
+        final String rootSpanId = UUID.randomUUID().toString();
         final Span span = mock(Span.class);
         when(span.getTraceGroup()).thenReturn(traceGroup);
         when(span.getTraceGroupFields()).thenReturn(traceGroupFields);
+        when(span.getSpanId()).thenReturn(rootSpanId);
 
         final TraceGroup objectUnderTest = TraceGroup.fromSpan(span);
 
         assertThat(objectUnderTest, notNullValue());
         assertThat(objectUnderTest.getTraceGroup(), equalTo(traceGroup));
         assertThat(objectUnderTest.getTraceGroupFields(), equalTo(traceGroupFields));
+        assertThat(objectUnderTest.getRootSpanId(), equalTo(rootSpanId));
     }
 }

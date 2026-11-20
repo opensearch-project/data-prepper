@@ -14,11 +14,12 @@ processor:
 ## Configuration
 
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
-* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
+* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to the value of `trace_flush_interval` (180 seconds unless configured), so that child spans arriving while orphaned spans are still held can be completed with trace group information.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
 * `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation` and `genai_coverage_cache_max_size` cannot be set.
 * `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
 * `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none`, written exactly so (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
+* `genai_root_hold`: A `Duration` for how long to hold a GenAI root span that is still missing a model or token usage, waiting for late child spans to provide them (see [Root span enrichment](#root-span-enrichment)), and a GenAI span whose ancestors have not all arrived, until it is known whether it is its trace's outermost (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). A held span is written as soon as the data arrives, or when the hold expires. `0` writes such spans immediately. Default is 30 seconds. Cannot be set when `disable_genai_enrichment` is `true`.
 
 ## GenAI agent trace enrichment
 
@@ -74,11 +75,15 @@ Agents usually run behind a service: the trace's root is an HTTP or RPC span, su
 
 #### Late spans and the coverage cache
 
-Spans of a trace can arrive in several batches. A span that arrives after its agent was processed is enriched without its ancestors, so it would look outermost and be marked as a second agent run. To prevent this, the processor remembers, per trace, which span ids are already covered by a GenAI span or a marker, and checks there when a parent is not in the batch.
+Spans of a trace can arrive in several batches. A span that arrives after its agent was processed is enriched without its ancestors, so it would look outermost and be marked as a second agent run. To prevent this, the processor remembers, per trace, which span ids are already covered by a GenAI span or a marker, and the parent link of every span it processes once the trace has GenAI data. A span is outermost only when its ancestor chain, followed through the batch and those links, reaches the trace's root, or a span with no parent, without passing a GenAI or covered span. The same per-trace entry also accumulates topmost-only token totals and the first-seen values of the propagated `gen_ai.*` attributes, which [root span enrichment](#root-span-enrichment) reads so a root does not need its children in the same batch.
 
-* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (375 seconds at defaults), so they outlive the flush of spans that arrive without their root.
-* The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
-* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 1,300 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
+* **GenAI roots.** When a trace's root is a GenAI span, or is marked `true` at the source, every other span descends from it, so only the root is marked and no span waits for its ancestors.
+* **Late intermediate spans.** A GenAI span whose chain reaches a span not seen yet, for example an agent whose parent agent has not arrived, could be outermost or not. Instead of marking it and being unable to un-mark the written document, the processor holds it back up to `genai_root_hold`. Its descendants are written right away, unmarked, since they are below a GenAI span whatever it turns out to be. It is written, marked or not, in the batch where its missing ancestors arrive, or marked when the hold expires. `genai_root_hold: 0` marks such spans immediately. The `genAiParkedSpanCount` metric reports how many are held.
+* A span that arrived before its trace had any GenAI data is not linked, so a chain through it resolves only at the trace's root or when the hold expires.
+
+* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (540 seconds at defaults), so they outlive the flush of spans that arrive without their root.
+* The cache holds at most `genai_coverage_cache_max_size` span ids across all traces, counting each covered span id and each parent link, so a covered span with a parent counts twice. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
+* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x (2 x `trace_flush_interval` + `trace_group_cache_ttl`)) GenAI spans per second, about 450 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
 * The covered-span lookup, the marking and the update run atomically per trace, so pipeline workers processing spans of one trace at the same time do not both mark one.
 
 Known limits:
@@ -90,6 +95,8 @@ Known limits:
 ### Root span enrichment
 
 The processor can copy `gen_ai.system`, `gen_ai.provider.name`, `gen_ai.agent.name` and `gen_ai.request.model`, and the trace's token totals, from child spans onto the trace's root span. Attributes the root already has are kept.
+
+The copied values come from the GenAI state the processor accumulates per trace (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)), not only from the spans that share the root's batch: a root processed without its children is still enriched from children recorded in earlier batches. When a GenAI root arrives before any of its children, so there is nothing to enrich it from yet, the processor holds it back up to `genai_root_hold` (30 seconds by default): the root is written as soon as the accumulated state can give it a model and token totals, or with whatever has arrived when the hold expires. Non-GenAI roots, and GenAI roots that already carry a model and token usage, are never delayed. Set `genai_root_hold: 0` to write every root immediately.
 
 `genai_root_propagation` chooses which roots get them:
 
@@ -120,6 +127,8 @@ In addition to the metrics from [AbstractProcessor](https://github.com/opensearc
 * `spanSetCount` - (gauge) The count of span sets in the span set collection
 * `genAiCoverageCount` - (gauge) The count of traces in the GenAI coverage cache
 * `genAiCoverageSpanIdCount` - (gauge) The count of span ids in the GenAI coverage cache, the unit of `genai_coverage_cache_max_size`
+* `genAiHeldRootCount` - (gauge) The count of GenAI root spans currently held for late children, up to `genai_root_hold` each
+* `genAiParkedSpanCount` - (gauge) The count of GenAI spans currently held until their ancestors arrive, up to `genai_root_hold` each
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 
