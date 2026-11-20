@@ -71,4 +71,17 @@ class RegexEqualOperatorTest {
     void evaluate_with_null_lhs_returns_false() {
         assertThat(objectUnderTest.evaluate(null, "a*"), equalTo(false));
     }
+    
+    @Test
+    void testEvalAdversarialArgsWithRe2j() {
+        System.setProperty("dataprepper.pattern.provider", "re2j");
+        try {
+            Boolean result = Assertions.assertTimeoutPreemptively(Duration.ofMillis(1000), () -> {
+                return objectUnderTest.evaluate("a".repeat(1000) + "X", "(a+)+");
+            });
+            assertThat(result, is(false));
+        } finally {
+            System.clearProperty("dataprepper.pattern.provider");
+        }
+    }
 }
