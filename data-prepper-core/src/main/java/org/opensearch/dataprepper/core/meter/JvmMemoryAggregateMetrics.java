@@ -24,7 +24,7 @@ import java.lang.management.MemoryMXBean;
  */
 public class JvmMemoryAggregateMetrics implements MeterBinder {
     static final String AREA_TAG_NAME = "area";
-    static final String JVM_MEMORY_USED = "jvm.memory.used";
+    public static final String JVM_MEMORY_USED = "jvm.memory.used";
     private final MemoryMXBean memoryMXBean;
 
     public JvmMemoryAggregateMetrics() {
