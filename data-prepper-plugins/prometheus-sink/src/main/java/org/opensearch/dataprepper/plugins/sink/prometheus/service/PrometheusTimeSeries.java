@@ -272,9 +272,11 @@ public class PrometheusTimeSeries {
         List<Long> bucketCounts = histogram.getBucketCountsList();
         if (explicitBounds != null && bucketCounts != null) {
             int lastIndex = bucketCounts.size() - 1;
+            long cumulativeCount = 0;
             for (int i = 0; i < bucketCounts.size(); i++) {
+                cumulativeCount += bucketCounts.get(i);
                 String labelValue = (i == lastIndex) ? PLUS_INF : explicitBounds.get(i).toString();
-                addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, labelValue, (double) bucketCounts.get(i));
+                addTimeSeries(NAME_LABEL, metricName + BUCKET_SUFFIX, LE_LABEL, labelValue, (double) cumulativeCount);
             }
         }
     }
