@@ -19,12 +19,12 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.opensearch.dataprepper.plugins.lambda.common.config.StreamingOptions;
 
 
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseHandler;
@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
 class StreamingLambdaHandlerTest {
 
     @Mock
-    private LambdaAsyncClient lambdaAsyncClient;
+    private BoundedLambdaAsyncClient lambdaAsyncClient;
 
     @Mock
     private PluginFactory pluginFactory;

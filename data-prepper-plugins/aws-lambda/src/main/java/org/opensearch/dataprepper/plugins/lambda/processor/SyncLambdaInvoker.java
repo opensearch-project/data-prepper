@@ -16,10 +16,12 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
+import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException;
@@ -30,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -46,7 +49,7 @@ public class SyncLambdaInvoker implements LambdaInvoker {
 
     public SyncLambdaInvoker(
             final LambdaProcessorConfig lambdaProcessorConfig,
-            final LambdaAsyncClient lambdaAsyncClient,
+            final BoundedLambdaAsyncClient lambdaAsyncClient,
             final InputCodec responseCodec,
             final LambdaProcessor processor) {
         this.processor = processor;
@@ -74,7 +77,22 @@ public class SyncLambdaInvoker implements LambdaInvoker {
             CompletableFuture<InvokeResponse> future = entry.getValue();
             Buffer inputBuffer = entry.getKey();
             try {
-                InvokeResponse response = future.join();
+                InvokeResponse response;
+                try {
+                    response = future.join();
+                } catch (CompletionException e) {
+                    if (!LambdaRetryStrategy.isConnectionPoolAcquireFailure(e)) {
+                        throw e;
+                    }
+                    // The request never left this host, so retrying cannot double-invoke
+                    // the function. Back off to let in-flight calls release connections.
+                    processor.connectionPoolExhaustionCounter.increment();
+                    response = LambdaRetryStrategy.retryOnConnectionPoolExhaustion(
+                            () -> retryBuffer(inputBuffer),
+                            processor.getClientOptions().getBaseDelay(),
+                            processor.getClientOptions().getMaxBackoff(),
+                            processor.connectionPoolExhaustionCounter::increment);
+                }
                 Duration latency = inputBuffer.stopLatencyWatch();
                 processor.lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
                 processor.requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
@@ -121,5 +139,12 @@ public class SyncLambdaInvoker implements LambdaInvoker {
             }
         }
         return resultRecords;
+    }
+
+    private CompletableFuture<InvokeResponse> retryBuffer(final Buffer inputBuffer) {
+        final InvokeRequest requestPayload = inputBuffer.getRequestPayload(
+                processor.lambdaProcessorConfig.getFunctionName(),
+                processor.lambdaProcessorConfig.getInvocationType().getAwsLambdaValue());
+        return processor.lambdaAsyncClient.invoke(requestPayload);
     }
 }

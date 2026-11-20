@@ -45,7 +45,7 @@ import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictRespo
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
@@ -157,7 +157,7 @@ public class LambdaProcessorTest {
     private ClientOptions mockClientOptions;
 
     @Mock
-    private LambdaAsyncClient lambdaAsyncClient;
+    private BoundedLambdaAsyncClient lambdaAsyncClient;
 
     @Mock
     CircuitBreaker circuitBreaker;
@@ -234,7 +234,7 @@ public class LambdaProcessorTest {
         // Mock the invoke method to return a completed future
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(
                 invokeResponse);
-        lambdaAsyncClient = mock(LambdaAsyncClient.class);
+        lambdaAsyncClient = mock(BoundedLambdaAsyncClient.class);
         when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
 
     }
@@ -1030,7 +1030,7 @@ public class LambdaProcessorTest {
                 lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
 
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
-        LambdaAsyncClient lambdaAsyncClient = mock(LambdaAsyncClient.class);
+        BoundedLambdaAsyncClient lambdaAsyncClient = mock(BoundedLambdaAsyncClient.class);
         setPrivateField(localLambdaProcessor, "lambdaAsyncClient", lambdaAsyncClient);
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
         when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
